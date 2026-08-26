@@ -1,0 +1,102 @@
+@import '@angular/cdk/overlay-prebuilt.css';
+@import "tailwindcss";
+:root {
+  // Colors theme
+  --tas-color-primary: 17, 232, 162;
+  --tas-color-accent: 44, 62, 80;
+  --tas-color-neutral: 206, 206, 214;
+  --tas-color-warn: 220, 53, 69;
+  --tas-color-white: #fff;
+  --tas-color-black: #000;
+  --tas-color-surface: #e8e8e8;
+  --tas-font-family: 'Inter';
+
+  // Functional notification colors
+  --tas-color-functional-error: #f84646;
+  --tas-color-functional-error-100: #e15353;
+  --tas-color-functional-success: #1e6a3c;
+  --tas-color-functional-success-100: #15732c;
+  --tas-color-functional-warning: #e3a518;
+  --tas-color-functional-warning-100: #cd9f49;
+  --tas-color-functional-info: #02d0fb;
+  --tas-color-functional-info-100: #3434cc;
+  --tas-color-functional-blue: #2626e8;
+  --tas-color-functional-blue-100: #3b3be6;
+
+  // Buttons variables
+  --tas-btn-padding-x: 1rem;
+  --tas-btn-padding-y: 0.5rem;
+  --tas-btn-font-size: 1.2rem;
+  --tas-btn-border-radius: 50px;
+  --tas-btn-raised-shadow-density: 1rem;
+  --tas-btn-small-font-size: 1.25rem;
+  --tas-btn-normal-font-size: 1.5rem;
+  --tas-btn-large-font-size: 1.6rem;
+
+  // Form fields
+  --tas-field-border-radius: 0.5rem;
+  --tas-menu-item-text-font-size: 12px;
+  --tas-navigation-sidebar-opened-size: 270px;
+  --tas-navigation-sidebar-minimized: 40px;
+
+  --tas-text-font-size: 14px;
+}
+
+@font-face {
+  font-family: 'Material Icons';
+  font-style: normal;
+  font-weight: 400;
+  src: url(fonts/flUhRq6tzZclQEJ-Vdg-IuiaDsNc.woff2) format('woff2');
+}
+
+.material-icons {
+  font-family: 'Material Icons';
+  font-weight: normal;
+  font-style: normal;
+  font-size: 24px;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  -webkit-font-smoothing: antialiased;
+}
+
+@font-face {
+  font-family: 'Inter';
+  src: url(fonts/Inter-Bold.ttf) format('opentype');
+  font-weight: bold;
+}
+
+@font-face {
+  font-family: 'Inter';
+  src: url(fonts/Inter-Medium.ttf) format('opentype');
+  font-weight: 500;
+}
+
+@font-face {
+  font-family: 'Inter';
+  src: url(fonts/Inter-Regular.ttf) format('opentype');
+  font-weight: 400;
+}
+
+* {
+  max-width: 100%;
+  scroll-behavior: smooth;
+  word-break: break-word;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
+  font-size: var(--tas-text-font-size);
+}
+
+html {
+  height: 100%;
+}
+
+body {
+  height: 100%;
+  background-color: var(--tas-color-surface);
+  font-family: var(--tas-font-family), sans-serif;
+}

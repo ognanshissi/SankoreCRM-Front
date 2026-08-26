@@ -14,16 +14,36 @@
     "skipLibCheck": true,
     "skipDefaultLibCheck": true,
     "paths": {
-      "@org/api/products": ["./packages/api/products/src/index.ts"],
-      "@org/models": ["./packages/shared/models/src/index.ts"],
-      "@org/shop/data": ["./packages/shop/data/src/index.ts"],
-      "@org/shop/feature-product-detail": [
-        "./packages/shop/feature-product-detail/src/index.ts"
-      ],
-      "@org/shop/feature-products": [
-        "./packages/shop/feature-products/src/index.ts"
-      ],
-      "@org/shop/shared-ui": ["./packages/shop/shared-ui/src/index.ts"]
+      "@talisoft/angular-ui": ["./packages/shared/ui/src/index.ts"],
+      "@talisoft/ui": ["./packages/shared/ui/src/index.ts"],
+      "@talisoft/ui/alert": ["./packages/shared/ui/alert/index.ts"],
+      "@talisoft/ui/api-resources": ["./packages/shared/ui/api-resources/index.ts"],
+      "@talisoft/ui/button": ["./packages/shared/ui/button/index.ts"],
+      "@talisoft/ui/card": ["./packages/shared/ui/card/index.ts"],
+      "@talisoft/ui/checkbox": ["./packages/shared/ui/checkbox/index.ts"],
+      "@talisoft/ui/confirm-dialog": ["./packages/shared/ui/confirm-dialog/index.ts"],
+      "@talisoft/ui/container": ["./packages/shared/ui/container/index.ts"],
+      "@talisoft/ui/core": ["./packages/shared/ui/core/index.ts"],
+      "@talisoft/ui/date-picker": ["./packages/shared/ui/date-picker/index.ts"],
+      "@talisoft/ui/file-uploader": ["./packages/shared/ui/file-uploader/index.ts"],
+      "@talisoft/ui/form-field": ["./packages/shared/ui/form-field/index.ts"],
+      "@talisoft/ui/icon": ["./packages/shared/ui/icon/index.ts"],
+      "@talisoft/ui/input": ["./packages/shared/ui/input/index.ts"],
+      "@talisoft/ui/input-email": ["./packages/shared/ui/input-email/index.ts"],
+      "@talisoft/ui/input-password": ["./packages/shared/ui/input-password/index.ts"],
+      "@talisoft/ui/layouts": ["./packages/shared/ui/layouts/index.ts"],
+      "@talisoft/ui/menu": ["./packages/shared/ui/menu/index.ts"],
+      "@talisoft/ui/multi-select": ["./packages/shared/ui/multi-select/index.ts"],
+      "@talisoft/ui/navigation": ["./packages/shared/ui/navigation/index.ts"],
+      "@talisoft/ui/select": ["./packages/shared/ui/select/index.ts"],
+      "@talisoft/ui/side-drawer": ["./packages/shared/ui/side-drawer/index.ts"],
+      "@talisoft/ui/snackbar": ["./packages/shared/ui/snackbar/index.ts"],
+      "@talisoft/ui/spinner": ["./packages/shared/ui/spinner/index.ts"],
+      "@talisoft/ui/table": ["./packages/shared/ui/table/index.ts"],
+      "@talisoft/ui/tag": ["./packages/shared/ui/tag/index.ts"],
+      "@talisoft/ui/text": ["./packages/shared/ui/text/index.ts"],
+      "@talisoft/ui/timeago": ["./packages/shared/ui/timeago/index.ts"],
+      "@talisoft/ui/title": ["./packages/shared/ui/title/index.ts"]
     }
   },
   "exclude": ["node_modules", "tmp"]

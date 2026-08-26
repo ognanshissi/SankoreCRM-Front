@@ -1,0 +1,1 @@
+export type NgClassType = string | string[] | Set<string> | {[key: string]: any}

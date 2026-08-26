@@ -1,0 +1,6 @@
+@reference "../../../tailwind-ref.css";
+
+.navigation-menu-item__is-active {
+  background-color: rgba(var(--tas-color-primary), 0.2) !important;
+  @apply border-l-primary text-primary;
+}

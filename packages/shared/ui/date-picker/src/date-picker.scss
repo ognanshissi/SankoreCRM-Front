@@ -1,0 +1,178 @@
+// ────────────────────────────────────────────────────────────────────────────
+// TasDatePicker  — follows TAS design system (CSS variables + Tailwind)
+// ────────────────────────────────────────────────────────────────────────────
+
+@reference "../../tailwind-ref.css";
+
+.tas-date-picker__popup {
+  @apply bg-white rounded-lg shadow-lg border border-gray-200 overflow-hidden select-none;
+  min-width: 280px;
+  font-family: var(--tas-font-family, 'Inter'), sans-serif;
+  font-size: var(--tas-text-font-size, 14px);
+}
+
+// ── Header ───────────────────────────────────────────────────────────────────
+
+.tas-date-picker__header {
+  @apply flex items-center justify-between gap-1 px-4 py-3;
+  border-bottom: 1px solid theme('colors.gray.100');
+}
+
+.tas-date-picker__month-year {
+  @apply flex-1 text-center font-semibold text-gray-800 text-sm;
+}
+
+.tas-date-picker__nav-btn {
+  @apply flex items-center justify-center w-7 h-7 rounded-md text-gray-400
+         hover:bg-gray-100 hover:text-gray-700 transition-colors;
+  outline: none;
+}
+
+// ── Grid ─────────────────────────────────────────────────────────────────────
+
+.tas-date-picker__grid {
+  @apply grid grid-cols-7 px-2 pb-2 pt-1;
+}
+
+.tas-date-picker__weekday {
+  @apply flex items-center justify-center h-8 text-xs font-semibold uppercase;
+  color: theme('colors.gray.400');
+}
+
+// Wrapper cell — handles the continuous range background
+.tas-date-picker__day-cell {
+  @apply relative flex items-center justify-center;
+  height: 2rem;
+
+  &--in-range {
+    background-color: rgba(var(--tas-color-primary), 0.1);
+  }
+
+  &--range-start {
+    background: linear-gradient(
+      to right,
+      transparent 50%,
+      rgba(var(--tas-color-primary), 0.1) 50%
+    );
+  }
+
+  &--range-end {
+    background: linear-gradient(
+      to left,
+      transparent 50%,
+      rgba(var(--tas-color-primary), 0.1) 50%
+    );
+  }
+
+  // Never color cells outside current month
+  &:has(.tas-date-picker__day--other-month) {
+    background: transparent !important;
+  }
+}
+
+// Day button — sits on top of the cell background
+.tas-date-picker__day {
+  @apply relative z-10 flex items-center justify-center
+         w-8 h-8 rounded-full text-sm text-gray-700
+         transition-colors outline-none;
+
+  &:not(:disabled):not(.tas-date-picker__day--selected):not(
+      .tas-date-picker__day--range-start
+    ):not(.tas-date-picker__day--range-end) {
+    &:hover {
+      background-color: rgba(var(--tas-color-primary), 0.12);
+      color: rgb(var(--tas-color-primary));
+    }
+  }
+
+  &:disabled {
+    @apply cursor-default;
+  }
+
+  // Today indicator
+  &--today {
+    @apply font-semibold;
+    color: rgb(var(--tas-color-primary));
+    background-color: rgba(var(--tas-color-primary), 0.08);
+  }
+
+  // Single selected date
+  &--selected {
+    background-color: rgb(var(--tas-color-primary)) !important;
+    @apply text-white font-semibold;
+  }
+
+  // Range start / end: filled primary circle
+  &--range-start,
+  &--range-end {
+    background-color: rgb(var(--tas-color-primary)) !important;
+    @apply text-white font-semibold;
+  }
+
+  // Faded day from adjacent month
+  &--other-month {
+    @apply text-gray-300 pointer-events-none;
+  }
+}
+
+// ── Divider ───────────────────────────────────────────────────────────────────
+
+.tas-date-picker__divider {
+  @apply mx-4;
+  height: 1px;
+  background-color: theme('colors.gray.100');
+}
+
+// ── Time picker ───────────────────────────────────────────────────────────────
+
+.tas-date-picker__time {
+  @apply flex items-center justify-center gap-3 py-4;
+}
+
+.tas-date-picker__time-unit {
+  @apply flex flex-col items-center gap-1;
+}
+
+.tas-date-picker__time-btn {
+  @apply flex items-center justify-center w-7 h-7 rounded-md text-gray-400
+         hover:bg-gray-100 hover:text-gray-700 transition-colors;
+  outline: none;
+}
+
+.tas-date-picker__time-value {
+  @apply flex items-center justify-center w-10 h-10 rounded-lg font-inter text-xl font-semibold text-gray-800;
+  background-color: theme('colors.gray.50');
+}
+
+.tas-date-picker__time-sep {
+  @apply text-2xl font-bold text-gray-400 mb-1;
+}
+
+// ── Footer ────────────────────────────────────────────────────────────────────
+
+.tas-date-picker__footer {
+  @apply flex items-center justify-between gap-2 px-4 py-2;
+  border-top: 1px solid theme('colors.gray.100');
+}
+
+.tas-date-picker__link-btn {
+  @apply text-xs font-medium px-3 py-1 rounded-md transition-colors;
+  color: rgb(var(--tas-color-primary));
+
+  &:hover {
+    background-color: rgba(var(--tas-color-primary), 0.08);
+  }
+}
+
+.tas-date-picker__confirm-btn {
+  @apply ml-auto text-xs font-semibold px-4 py-1.5 rounded-md text-white transition-colors;
+  background-color: rgb(var(--tas-color-primary));
+
+  &:hover {
+    background-color: rgba(var(--tas-color-primary), 0.85);
+  }
+}
+
+.tas-date-picker__range-hint {
+  @apply text-xs text-gray-500 italic w-full text-center;
+}

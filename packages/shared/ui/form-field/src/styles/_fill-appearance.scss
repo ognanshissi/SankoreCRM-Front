@@ -1,0 +1,23 @@
+@reference "../../tailwind-ref.css";
+
+.tas-form-field__appearance--fill {
+  .input__container {
+    @apply focus-within:ring-primary focus-within:ring-1;
+
+    &:has([tasInput].ng-invalid.ng-dirty) {
+      @apply focus-within:ring-functional-error border-functional-error;
+
+      [tasSuffix],
+      [tasPrefix] {
+        @apply text-functional-error;
+      }
+    }
+  }
+
+  .form-input,
+  .form-select,
+  .form-textarea,
+  .form-multi-select {
+    border-radius: var(--tas-field-border-radius) !important;
+  }
+}

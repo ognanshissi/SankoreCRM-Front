@@ -1,0 +1,69 @@
+@use 'styles/outline-appearance';
+@use 'styles/fill-appearance';
+
+@reference "../../tailwind-ref.css";
+
+tas-form-field {
+  @apply w-full relative mt-3;
+
+  input::-ms-reveal,
+  input::-ms-clear {
+    display: none;
+  }
+
+  .input__container {
+    @apply w-full text-left items-center border px-1 py-0.5 m-0 border-gray-300 focus-within:border-primary focus-within:shadow bg-white;
+    border-radius: var(--tas-field-border-radius) !important;
+
+    &:has([tasInput].ng-touched.ng-dirty.ng-invalid),
+    &:has(select.ng-touched.ng-dirty.ng-invalid) {
+      @apply border-functional-error;
+
+      [tasSuffix],
+      [tasPrefix] {
+        @apply text-functional-error;
+      }
+    }
+
+    input,
+    textarea,
+    select {
+      @apply bg-transparent w-full;
+    }
+
+    [tasSuffix],
+    [tasPrefix] {
+      @apply text-gray-400;
+    }
+
+    [tasSuffix] {
+      @apply mr-2;
+    }
+
+    [tasPrefix] {
+      @apply ml-2;
+    }
+
+    &:focus-within {
+      [tasSuffix],
+      [tasPrefix] {
+        @apply text-primary;
+      }
+    }
+
+    // Disabled field
+    &:has(input:disabled),
+    &:has(textarea:disabled),
+    &:has(select:disabled) {
+      @apply bg-gray-50 cursor-not-allowed;
+    }
+  }
+
+  // Reset tailwind plugin form
+  .form-input,
+  .form-select,
+  .form-textarea,
+  .form-multi-select {
+    @apply border-none focus:appearance-none outline-none appearance-none focus:ring-0 border-0 mb-0 bg-white;
+  }
+}

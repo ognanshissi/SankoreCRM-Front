@@ -1,21 +1,30 @@
 {
-  "name": "@org/source",
+  "name": "@sankore/front",
   "version": "0.0.0",
   "license": "MIT",
-  "scripts": {},
+  "scripts": {
+    "start": "npx nx run crm:serve:development --port 4222",
+    "ui:watch": "npx nx run ui:build:development --watch",
+    "ui:build": "npx nx run ui:build:development --verbose"
+  },
   "private": true,
   "dependencies": {
     "@angular-devkit/build-angular": "22.0.6",
+    "@angular/cdk": "^22.0.6",
     "@angular/common": "22.0.6",
     "@angular/compiler": "22.0.6",
     "@angular/core": "22.0.6",
     "@angular/forms": "22.0.6",
+    "@angular/material": "^22.1.3",
     "@angular/platform-browser": "22.0.6",
     "@angular/platform-server": "22.0.6",
     "@angular/router": "22.0.6",
     "@angular/ssr": "22.0.6",
+    "@tailwindcss/postcss": "^4.3.3",
+    "date-fns": "^4.4.0",
     "express": "^4.21.2",
     "rxjs": "~7.8.0",
+    "tailwindcss": "^4.3.3",
     "zone.js": "0.16.2"
   },
   "devDependencies": {
@@ -47,6 +56,7 @@
     "@swc-node/register": "1.11.1",
     "@swc/core": "1.15.8",
     "@swc/helpers": "0.5.18",
+    "@tailwindcss/forms": "^0.5.11",
     "@types/express": "^4.17.21",
     "@types/node": "^24.0.0",
     "@types/supertest": "^6.0.3",
@@ -54,6 +64,7 @@
     "@vitest/coverage-v8": "~4.1.0",
     "@vitest/ui": "~4.1.0",
     "angular-eslint": "22.1.0",
+    "autoprefixer": "^10.4.0",
     "esbuild": "^0.27.0",
     "eslint": "^9.8.0",
     "eslint-config-prettier": "^10.0.0",
@@ -61,15 +72,21 @@
     "jiti": "2.4.2",
     "jsdom": "~22.1.0",
     "jsonc-eslint-parser": "^2.1.0",
+    "ng-packagr": "~22.0.0",
     "nx": "23.1.0",
+    "postcss": "^8.5.26",
     "prettier": "^3.8.1",
     "supertest": "^7.1.4",
     "ts-node": "10.9.1",
     "tslib": "^2.3.0",
     "typescript": "6.0.3",
     "typescript-eslint": "^8.40.0",
+    "verdaccio": "^6.3.2",
     "vite": "8.0.9",
     "vite-tsconfig-paths": "^5.1.4",
     "vitest": "~4.1.0"
+  },
+  "nx": {
+    "includedScripts": []
   }
 }

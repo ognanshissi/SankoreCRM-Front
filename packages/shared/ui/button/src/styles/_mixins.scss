@@ -1,0 +1,16 @@
+@reference "../../tailwind-ref.css";
+
+@mixin box-shadow($color, $opacity: 0.40) {
+  box-shadow: 0 2px 4px 0 rgba($color, $opacity);
+}
+
+@mixin button-hover($color) {
+  background-color: rgba($color);
+  @apply text-white;
+}
+
+@mixin button-shadow-focus($color) {
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06),
+  0 0 0 1px rgba($color, 0.16),
+  0 0 0 4px rgba($color, 0.4) !important;
+}

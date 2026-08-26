@@ -1,0 +1,7 @@
+@reference "../../tailwind-ref.css";
+
+.tas-form-field__appearance--outline {
+  .input__container {
+    @apply border-0 border-b;
+  }
+}

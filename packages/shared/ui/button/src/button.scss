@@ -1,0 +1,64 @@
+@use 'styles/mixins';
+@use 'styles/filled-button';
+@use 'styles/outlined-button';
+@use 'styles/raised-button';
+@use 'styles/text-button';
+
+@reference "../../tailwind-ref.css";
+
+// Hide button text on loading state
+button .hide {
+  display: none;
+}
+
+.tas__button__base {
+  @apply font-sans  disabled:cursor-not-allowed;
+  outline: none;
+  font-size: var(--tas-btn-font-size);
+  border-radius: var(--tas-btn-border-radius);
+  padding: var(--tas-btn-padding-y) var(--tas-btn-padding-x);
+}
+
+// Icon and rounded button
+.tas__button__icon,
+.tas__button--rounded {
+  @apply rounded-full;
+}
+
+.tas__button__icon {
+  padding: 8px;
+  @apply bg-transparent hover:bg-gray-200;
+}
+
+// Button sizing
+.tas__button__size--small {
+  @apply text-xs;
+  --tas-btn-padding-y: 0.2rem;
+  --tas-btn-padding-x: 0.4rem;
+}
+
+.tas__button__size--medium {
+  @apply text-sm;
+  --tas-btn-padding-y: 0.4rem;
+  --tas-btn-padding-x: 0.6rem;
+}
+
+.tas__button__size--large {
+  @apply text-lg;
+  --tas-btn-padding-y: 0.8rem;
+  --tas-btn-padding-x: 1rem;
+}
+
+.tas__filled__button__container:not(:disabled),
+.tas__outlined__button__container:not(:disabled),
+.tas__raised__button__container:not(:disabled) {
+  @apply hover:shadow-lg;
+}
+
+a[tas-raised-button],
+a[tas-filled-button],
+a[tas-outlined-button],
+a[tas-text-button],
+a[tas-button] {
+  display: inline-block;
+}

@@ -1,0 +1,82 @@
+@reference "../../tailwind-ref.css";
+
+@mixin raisedVariant($color) {
+  background-color: rgb($color);
+  color: white;
+}
+
+@mixin button-shadow-focus($color) {
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06), 0 0 0 1px rgba($color, 0.16),
+    0 0 0 4px rgba($color, 0.4) !important;
+}
+
+@mixin raisedDisabled() {
+  @apply bg-gray-400;
+}
+
+// Raised button
+.tas__raised__button__container {
+  @apply shadow;
+
+  // Loading state
+  &.tas__button--loading {
+    .spinner {
+      @apply text-gray-200;
+    }
+  }
+
+  // primary variant
+  &.tas__button__variant--primary {
+    @include raisedVariant(var(--tas-color-primary));
+
+    // Modifier
+    &:disabled {
+      @include raisedDisabled;
+    }
+
+    &:hover:not(:disabled) {
+      @include button-shadow-focus(var(--tas-color-primary));
+    }
+  }
+
+  // Accent variant
+  &.tas__button__variant--accent {
+    @include raisedVariant(var(--tas-color-accent));
+
+    // Modifier
+    &:disabled {
+      @include raisedDisabled;
+    }
+
+    &:hover:not(:disabled) {
+      @include button-shadow-focus(var(--tas-color-accent));
+    }
+  }
+
+  // Warn variant
+  &.tas__button__variant--warn {
+    @include raisedVariant(var(--tas-color-warn));
+
+    // Modifier
+    &:disabled {
+      @include raisedDisabled;
+    }
+
+    &:hover:not(:disabled) {
+      @include button-shadow-focus(var(--tas-color-warn));
+    }
+  }
+
+  // Neutral variant
+  &.tas__button__variant--neutral {
+    @include raisedVariant(var(--tas-color-neutral));
+    // Modifier
+    &:disabled {
+      @include raisedDisabled;
+    }
+
+    &:hover:not(:disabled) {
+      @include button-shadow-focus(var(--tas-color-neutral));
+    }
+  }
+}

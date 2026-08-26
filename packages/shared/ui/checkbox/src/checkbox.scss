@@ -1,0 +1,5 @@
+@reference "../../tailwind-ref.css";
+
+.form-checkbox {
+  @apply rounded border-gray-300 text-primary shadow-sm focus:border-primary focus:ring focus:ring-offset-0 focus:ring-primary/50 p-2;
+}

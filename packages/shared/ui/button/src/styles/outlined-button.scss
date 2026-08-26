@@ -1,0 +1,95 @@
+@reference "../../tailwind-ref.css";
+
+@mixin button-shadow-focus($color) {
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06),
+    0 0 0 1px rgba($color, 0.16),
+    0 0 0 4px rgba($color, 0.4) !important;
+  }
+  
+
+@mixin outlineVariant($color) {
+    border-width: 1.5px;
+    color: rgb($color);
+    border-color: rgb($color);
+    background-color: var(--tas-white-color);
+    font-weight: normal;
+}
+
+@mixin outlineHoverVariant($color) {
+  @include button-shadow-focus($color);
+  background: rgba($color, 0.03);
+}
+
+@mixin outlineDisabled() {
+    @apply text-gray-300 border-gray-300;
+}
+
+.tas__outlined__button__container {
+    border-style: solid;
+
+    // Loading state
+    &.tas__button--loading {
+        .spinner {
+            @apply text-gray-300;
+        }
+    }
+
+    // outlined button primary variant
+    &.tas__button__variant--primary {
+        @include outlineVariant(var(--tas-color-primary));
+
+        // Modifier
+        &:disabled {
+            @include outlineDisabled
+        }
+
+        &:hover:not(:disabled) {
+            @include outlineHoverVariant(var(--tas-color-primary));
+        }
+    }
+
+    // outlined button accent variant
+    &.tas__button__variant--accent {
+        @include outlineVariant(var(--tas-color-accent));
+
+        // Modifier
+        &:disabled {
+            @include outlineDisabled
+        }
+
+        &:hover:not(:disabled) {
+            @include outlineHoverVariant(var(--tas-color-accent));
+        }
+    }
+
+
+    // outlined button warn variant
+    &.tas__button__variant--warn {
+        @include outlineVariant(var(--tas-color-warn));
+        // Modifier
+        &:disabled {
+            @include outlineDisabled
+        }
+
+        &:hover:not(:disabled) {
+            @include outlineHoverVariant(var(--tas-color-warn));
+        }
+    }
+
+    // Neutral variant
+    &.tas__button__variant--neutral {
+      @include outlineVariant(var(--tas-color-neutral));
+      @apply text-gray-500;
+        // Modifier
+        &:disabled {
+            @include outlineDisabled
+        }
+
+        &:hover:not(:disabled) {
+            @include outlineHoverVariant(var(--tas-color-neutral));
+        }
+    }
+}
+
+
+

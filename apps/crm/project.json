@@ -1,0 +1,84 @@
+{
+  "name": "crm",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "application",
+  "prefix": "app",
+  "sourceRoot": "apps/crm/src",
+  "tags": [],
+  "targets": {
+    "build": {
+      "executor": "@angular/build:application",
+      "outputs": ["{options.outputPath}"],
+      "defaultConfiguration": "production",
+      "options": {
+        "outputPath": "dist/apps/crm",
+        "browser": "apps/crm/src/main.ts",
+        "tsConfig": "apps/crm/tsconfig.app.json",
+        "assets": [
+          {
+            "glob": "**/*",
+            "input": "apps/crm/public"
+          }
+        ],
+        "styles": [
+          "packages/shared/ui/styles/src/themes/tailwind.css",
+          "packages/shared/ui/styles/src/themes/styles.scss",
+          "apps/crm/src/styles.scss"
+        ],
+        "server": "apps/crm/src/main.server.ts",
+        "ssr": {
+          "entry": "apps/crm/src/server.ts"
+        },
+        "outputMode": "server"
+      },
+      "configurations": {
+        "production": {
+          "budgets": [
+            {
+              "type": "initial",
+              "maximumWarning": "500kb",
+              "maximumError": "1mb"
+            },
+            {
+              "type": "anyComponentStyle",
+              "maximumWarning": "4kb",
+              "maximumError": "8kb"
+            }
+          ],
+          "outputHashing": "all"
+        },
+        "development": {
+          "optimization": false,
+          "extractLicenses": false,
+          "sourceMap": true
+        }
+      }
+    },
+    "serve": {
+      "continuous": true,
+      "executor": "@angular/build:dev-server",
+      "defaultConfiguration": "development",
+      "configurations": {
+        "production": {
+          "buildTarget": "crm:build:production"
+        },
+        "development": {
+          "buildTarget": "crm:build:development"
+        }
+      }
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint"
+    },
+    "serve-static": {
+      "continuous": true,
+      "executor": "@nx/web:file-server",
+      "options": {
+        "buildTarget": "crm:build",
+        "port": 4200,
+        "staticFilePath": "dist/apps/crm/browser",
+        "spa": true
+      }
+    }
+  }
+}

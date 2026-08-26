@@ -1,0 +1,9 @@
+/* You can add global styles to this file, and also import other style files */
+@import '@angular/material/prebuilt-themes/deeppurple-amber.css';
+/* You can add global styles to this file, and also import other style files */
+
+:root {
+  --tas-color-primary: 99, 4, 100; // 10 42 200; // 181 42 87
+  --tas-color-accent: 16, 52, 86; // 0 90 60; // green => #005a3c
+  --tas-color-surface: #f6f6f6;
+}

@@ -1,0 +1,83 @@
+<!--table caption-->
+<div class="p-4 flex justify-between items-center">
+  <div>
+    <tas-title *ngIf="title()">{{ title() }}</tas-title>
+    <tas-text class="text-sm text-gray-400"
+      >{{ data().length || 0 }} éléments trouvés
+    </tas-text>
+  </div>
+  <div class="flex space-x-2 items-center justify-center">
+    <div>
+      <tas-form-field class="w-[500px]">
+        <tas-label class="sr-only">Recherche</tas-label>
+        <input
+          type="search"
+          tasInput
+          (input)="searchInputChange.emit($any($event).target.value)"
+          size="small"
+          placeholder="Rechercher"
+        />
+      </tas-form-field>
+    </div>
+
+    <button tas-button iconButton>
+      <tas-icon
+        iconName="refresh"
+        (click)="refresh.emit()"
+        class="text-gray-500"
+      ></tas-icon>
+    </button>
+
+    <button tas-button iconButton color="primary">
+      <tas-icon iconName="feather:filter" class="text-gray-500"></tas-icon>
+    </button>
+  </div>
+</div>
+<div class="overflow-x-hidden relative">
+  <div class="w-full overflow-x-auto h-[332px] overflow-y-auto">
+    <table class="w-full">
+      <ng-container *ngIf="header">
+        <thead class="sticky top-0 left-0 bg-white z-10">
+          <ng-container
+            *ngTemplateOutlet="header; context: {$implicit: columns()}"
+          ></ng-container>
+        </thead>
+      </ng-container>
+
+      <ng-container *ngIf="body">
+        <tbody class="divide-y divide-gray-200">
+          @for (item of dataSource.connect() | async; track
+          item[identifierField()]) {
+          <ng-container
+            *ngTemplateOutlet="body; context: { $implicit: item }"
+          ></ng-container>
+          }
+        </tbody>
+      </ng-container>
+    </table>
+  </div>
+
+  @if (isLoading()) {
+  <div class="absolute top-0 left-0 w-full h-full bg-white z-20">
+    <div class="p-4 flex justify-center items-center flex-col space-y-4">
+      <tas-spinner></tas-spinner>
+      <span>Chargement en cours...</span>
+    </div>
+  </div>
+  }
+
+  <div
+    class="text-center p-4 text-gray-500"
+    *ngIf="!isLoading() && !data().length"
+  >
+    Aucun élément trouvé
+  </div>
+
+  <mat-paginator
+    #paginator
+    [pageSize]="5"
+    (page)="pageEvent($event)"
+    aria-label="Select page"
+  >
+  </mat-paginator>
+</div>

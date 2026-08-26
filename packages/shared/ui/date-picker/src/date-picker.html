@@ -1,0 +1,201 @@
+<tas-form-field>
+  <tas-label [ngClass]="{ 'sr-only': labelScreenOnly() }">
+    <ng-content></ng-content>
+  </tas-label>
+
+  <input
+    type="text"
+    tasInput
+    readonly
+    class="cursor-pointer"
+    [value]="displayValue()"
+    [placeholder]="effectivePlaceholder()"
+    [disabled]="disabled()"
+    (click)="toggleCalendar()"
+    cdkOverlayOrigin
+    #trigger="cdkOverlayOrigin"
+  />
+
+  @if (hasValue()) {
+  <button tasSuffix type="button" (click)="clearDate()">
+    <tas-icon iconName="feather:x" iconSize="md"></tas-icon>
+  </button>
+  } @else {
+  <button tasSuffix type="button" (click)="toggleCalendar()">
+    <tas-icon [iconName]="prefixIcon()" iconSize="md"></tas-icon>
+  </button>
+  }
+</tas-form-field>
+
+<ng-template
+  cdkConnectedOverlay
+  [cdkConnectedOverlayOrigin]="trigger"
+  [cdkConnectedOverlayOpen]="isOpen()"
+  [cdkConnectedOverlayPositions]="[
+    { originX: 'start', originY: 'bottom', overlayX: 'start', overlayY: 'top', offsetY: 4 },
+    { originX: 'start', originY: 'top',    overlayX: 'start', overlayY: 'bottom', offsetY: -4 }
+  ]"
+  [cdkConnectedOverlayHasBackdrop]="true"
+  cdkConnectedOverlayBackdropClass="cdk-overlay-transparent-backdrop"
+  (backdropClick)="closeCalendar()"
+  (detach)="closeCalendar()"
+>
+  <div class="tas-date-picker__popup">
+    <!-- ── Calendar (date / datetime / daterange) ──────────────────────── -->
+    @if (mode() !== 'time') {
+    <div class="tas-date-picker__header">
+      <button
+        type="button"
+        class="tas-date-picker__nav-btn"
+        (click)="prevYear()"
+      >
+        <tas-icon iconName="feather:chevrons-left" iconSize="sm"></tas-icon>
+      </button>
+      <button
+        type="button"
+        class="tas-date-picker__nav-btn"
+        (click)="prevMonth()"
+      >
+        <tas-icon iconName="feather:chevron-left" iconSize="sm"></tas-icon>
+      </button>
+      <span class="tas-date-picker__month-year">{{ monthYearLabel() }}</span>
+      <button
+        type="button"
+        class="tas-date-picker__nav-btn"
+        (click)="nextMonth()"
+      >
+        <tas-icon iconName="feather:chevron-right" iconSize="sm"></tas-icon>
+      </button>
+      <button
+        type="button"
+        class="tas-date-picker__nav-btn"
+        (click)="nextYear()"
+      >
+        <tas-icon iconName="feather:chevrons-right" iconSize="sm"></tas-icon>
+      </button>
+    </div>
+
+    <div class="tas-date-picker__grid">
+      @for (wd of weekDays; track wd) {
+      <div class="tas-date-picker__weekday">{{ wd }}</div>
+      } @for (day of calendarDays(); track day.date.getTime()) {
+      <div
+        class="tas-date-picker__day-cell"
+        [ngClass]="{
+              'tas-date-picker__day-cell--in-range': day.inRange,
+              'tas-date-picker__day-cell--range-start': day.isRangeStart && (day.inRange || rangeEnd()),
+              'tas-date-picker__day-cell--range-end': day.isRangeEnd && (day.inRange || rangeStart())
+            }"
+        (mouseenter)="onDayHover(day)"
+        (mouseleave)="clearHover()"
+      >
+        <button
+          type="button"
+          class="tas-date-picker__day"
+          [ngClass]="{
+                'tas-date-picker__day--today':       day.isToday && !day.isSelected && !day.isRangeStart && !day.isRangeEnd,
+                'tas-date-picker__day--selected':    day.isSelected,
+                'tas-date-picker__day--range-start': day.isRangeStart,
+                'tas-date-picker__day--range-end':   day.isRangeEnd,
+                'tas-date-picker__day--other-month': !day.currentMonth
+              }"
+          [disabled]="!day.currentMonth"
+          (click)="selectDay(day)"
+        >
+          {{ day.dayNumber }}
+        </button>
+      </div>
+      }
+    </div>
+    }
+
+    <!-- ── Divider ─────────────────────────────────────────────────────── -->
+    @if (mode() === 'datetime') {
+    <div class="tas-date-picker__divider"></div>
+    }
+
+    <!-- ── Time picker (time / datetime) ─────────────────────────────── -->
+    @if (mode() === 'time' || mode() === 'datetime') {
+    <div class="tas-date-picker__time">
+      <div class="tas-date-picker__time-unit">
+        <button
+          type="button"
+          class="tas-date-picker__time-btn"
+          (click)="changeHour(1)"
+        >
+          <tas-icon iconName="feather:chevron-up" iconSize="sm"></tas-icon>
+        </button>
+        <span class="tas-date-picker__time-value">{{ hourDisplay() }}</span>
+        <button
+          type="button"
+          class="tas-date-picker__time-btn"
+          (click)="changeHour(-1)"
+        >
+          <tas-icon iconName="feather:chevron-down" iconSize="sm"></tas-icon>
+        </button>
+      </div>
+
+      <span class="tas-date-picker__time-sep">:</span>
+
+      <div class="tas-date-picker__time-unit">
+        <button
+          type="button"
+          class="tas-date-picker__time-btn"
+          (click)="changeMinute(5)"
+        >
+          <tas-icon iconName="feather:chevron-up" iconSize="sm"></tas-icon>
+        </button>
+        <span class="tas-date-picker__time-value">{{ minuteDisplay() }}</span>
+        <button
+          type="button"
+          class="tas-date-picker__time-btn"
+          (click)="changeMinute(-5)"
+        >
+          <tas-icon iconName="feather:chevron-down" iconSize="sm"></tas-icon>
+        </button>
+      </div>
+    </div>
+    }
+
+    <!-- ── Footer ─────────────────────────────────────────────────────── -->
+    <div class="tas-date-picker__footer">
+      @switch (mode()) { @case ('date') {
+      <button
+        type="button"
+        class="tas-date-picker__link-btn"
+        (click)="selectToday()"
+      >
+        Aujourd'hui
+      </button>
+      } @case ('daterange') {
+      <span class="tas-date-picker__range-hint">
+        @if (rangePhase() === 'start') { Choisir la date de début } @else {
+        Choisir la date de fin }
+      </span>
+      } @case ('time') {
+      <button
+        type="button"
+        class="tas-date-picker__confirm-btn"
+        (click)="confirmTime()"
+      >
+        Confirmer
+      </button>
+      } @case ('datetime') {
+      <button
+        type="button"
+        class="tas-date-picker__link-btn"
+        (click)="selectToday()"
+      >
+        Aujourd'hui
+      </button>
+      <button
+        type="button"
+        class="tas-date-picker__confirm-btn"
+        (click)="confirmTime()"
+      >
+        Confirmer
+      </button>
+      } }
+    </div>
+  </div>
+</ng-template>

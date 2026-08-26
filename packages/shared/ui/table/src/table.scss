@@ -1,0 +1,49 @@
+@reference "../../tailwind-ref.css";
+
+tas-table {
+  thead > tr {
+    th {
+      padding: 10px;
+      text-align: left;
+      text-transform: uppercase;
+      @apply text-gray-500 font-medium text-sm tracking-wider  border-y border-y-gray-200 text-nowrap;
+    }
+
+    th[rowSelectionMaster] {
+      width: 14px !important;
+    }
+  }
+
+  tbody {
+    @apply divide-y divide-gray-200;
+  }
+
+  tbody > tr:hover {
+    td {
+      @apply bg-gray-50;
+    }
+
+    td[tasTableItemAction] {
+      transition: all 0.1s cubic-bezier(0.72, 0.53, 0.21, 0.8);
+      transform: scale(1);
+      @apply block;
+    }
+  }
+
+  tbody > tr {
+    td {
+      @apply px-3 py-2;
+      border: rgba(var(--tas-color-primary));
+      text-align: left;
+      @apply whitespace-nowrap;
+    }
+
+    td.is-row-selected {
+      @apply bg-gray-50;
+    }
+
+    td[tasTableItemAction] {
+      transform: scale(0);
+    }
+  }
+}

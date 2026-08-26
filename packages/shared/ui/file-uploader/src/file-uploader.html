@@ -1,0 +1,64 @@
+<div
+  class="tas-file-uploader relative rounded-xl transition-colors"
+  [class.tas-file-uploader--drag-over]="isDragOver()"
+  [class.tas-file-uploader--has-file]="value"
+  (dragover)="onDragOver($event)"
+  (dragleave)="onDragLeave()"
+  (drop)="onDrop($event)"
+>
+  @if (!value) {
+  <button
+    type="button"
+    class="w-full flex flex-col items-center justify-center gap-2 py-10 px-4 text-center"
+    (click)="fileInput.click()"
+  >
+    <div
+      class="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center"
+    >
+      <tas-icon
+        iconName="feather:upload-cloud"
+        class="text-gray-400"
+      ></tas-icon>
+    </div>
+    <div>
+      <p class="text-sm font-medium text-gray-700">
+        Glissez-déposez votre fichier ici
+      </p>
+      <p class="text-xs text-gray-400 mt-0.5">
+        ou <span class="text-primary font-medium">parcourir</span> — {{ accept()
+        }} uniquement
+      </p>
+    </div>
+  </button>
+  } @else {
+  <div class="flex items-center gap-3 p-4">
+    <div
+      class="w-9 h-9 rounded-md bg-green-50 flex items-center justify-center flex-shrink-0"
+    >
+      <tas-icon
+        iconName="feather:check-circle"
+        class="text-green-600"
+      ></tas-icon>
+    </div>
+    <div class="flex-1 min-w-0">
+      <p class="text-sm font-medium text-gray-800 truncate">{{ value.name }}</p>
+      <p class="text-xs text-gray-400">{{ fileSize() }}</p>
+    </div>
+    <button
+      type="button"
+      class="w-7 h-7 rounded-full hover:bg-gray-100 flex items-center justify-center flex-shrink-0 transition-colors"
+      (click)="clearFile()"
+    >
+      <tas-icon iconName="feather:x" class="text-gray-400"></tas-icon>
+    </button>
+  </div>
+  }
+
+  <input
+    #fileInput
+    type="file"
+    class="hidden"
+    [accept]="accept()"
+    (change)="onFileSelected($event)"
+  />
+</div>

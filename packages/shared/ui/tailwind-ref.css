@@ -1,0 +1,16 @@
+@import "tailwindcss";
+
+@theme inline {
+  --color-primary: rgb(var(--tas-color-primary));
+  --color-accent: rgb(var(--tas-color-accent));
+  --color-warn: rgb(var(--tas-color-warn));
+  --color-neutral: rgb(var(--tas-color-neutral));
+  --color-functional-error: var(--tas-color-functional-error);
+  --color-functional-error-100: var(--tas-color-functional-error-100);
+  --color-functional-success: var(--tas-color-functional-success);
+  --color-functional-success-100: var(--tas-color-functional-success-100);
+  --color-functional-warning: var(--tas-color-functional-warning);
+  --color-functional-warning-100: var(--tas-color-functional-warning-100);
+  --color-functional-info: var(--tas-color-functional-info);
+  --color-functional-info-100: var(--tas-color-functional-info-100);
+}

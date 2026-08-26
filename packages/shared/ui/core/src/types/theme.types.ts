@@ -1,0 +1,1 @@
+export type ThemeVariant = 'primary' | 'accent' | 'warn' | 'neutral'; 

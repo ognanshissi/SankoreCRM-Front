@@ -1,0 +1,75 @@
+@reference "../../tailwind-ref.css";
+
+@mixin textVariant($color) {
+  color: rgb($color);
+}
+
+@mixin textDisabled() {
+  @apply text-gray-300;
+}
+
+@mixin bgVariant($color) {
+  background-color: rgba($color, 0.06);
+}
+
+// Text button
+.tas__text__button__container {
+  &:not(:disabled) {
+    @apply hover:underline;
+  }
+
+  // primary variant
+  &.tas__button__variant--primary {
+    @include textVariant(var(--tas-color-primary));
+
+    // Modifier
+    &:disabled {
+      @include textDisabled;
+    }
+
+    &:hover:not(:disabled) {
+      @include bgVariant(var(--tas-color-primary));
+    }
+  }
+
+  // Accent variant
+  &.tas__button__variant--accent {
+    @include textVariant(var(--tas-color-accent));
+
+    // Modifier
+    &:disabled {
+      @include textDisabled;
+    }
+
+    &:hover:not(:disabled) {
+      @include bgVariant(var(--tas-color-accent));
+    }
+  }
+
+  // Warn variant
+  &.tas__button__variant--warn {
+    @include textVariant(var(--tas-color-warn));
+
+    // Modifier
+    &:disabled {
+      @include textDisabled;
+    }
+
+    &:hover:not(:disabled) {
+      @include bgVariant(var(--tas-color-warn));
+    }
+  }
+
+  // Neutral variant
+  &.tas__button__variant--neutral {
+    @include textVariant(var(--tas-color-neutral));
+    // Modifier
+    &:disabled {
+      @include textDisabled;
+    }
+
+    &:hover:not(:disabled) {
+      @include bgVariant(var(--tas-color-neutral));
+    }
+  }
+}
