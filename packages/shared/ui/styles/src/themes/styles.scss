@@ -82,13 +82,15 @@
   font-weight: 400;
 }
 
-* {
-  max-width: 100%;
-  scroll-behavior: smooth;
-  word-break: break-word;
-  -moz-osx-font-smoothing: grayscale;
-  -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
-  font-size: var(--tas-text-font-size);
+@layer base {
+  * {
+    max-width: 100%;
+    scroll-behavior: smooth;
+    word-break: break-word;
+    -moz-osx-font-smoothing: grayscale;
+    -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
+    font-size: var(--tas-text-font-size);
+  }
 }
 
 html {
