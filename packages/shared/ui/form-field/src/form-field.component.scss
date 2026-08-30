@@ -12,7 +12,7 @@ tas-form-field {
   }
 
   .input__container {
-    @apply w-full text-left items-center border px-3 py-4 m-0 border-gray-300 focus-within:border-primary focus-within:shadow bg-white shadow-sm;
+    @apply w-full text-left items-center border  m-0 border-gray-300 focus-within:border-primary focus-within:shadow bg-white shadow-sm;
     border-radius: var(--tas-field-border-radius) !important;
 
     &:has([tasInput].ng-touched.ng-dirty.ng-invalid),
@@ -28,7 +28,8 @@ tas-form-field {
     input,
     textarea,
     select {
-      @apply bg-transparent w-full text-lg;
+      @apply bg-transparent w-full text-lg px-3 py-4;
+      outline: transparent;
     }
 
     [tasSuffix],

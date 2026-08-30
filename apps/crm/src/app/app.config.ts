@@ -14,6 +14,8 @@ import {
   AbstractFormFieldConfigOptions,
   TAS_FORM_FIELD_OPTIONS,
 } from '@talisoft/ui/form-field';
+import { provideServerRendering } from '@angular/ssr';
+import { serverRoutes } from './app.routes.server';
 
 const tasFormFieldOptions: AbstractFormFieldConfigOptions = {
   rounded: false,

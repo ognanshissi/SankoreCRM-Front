@@ -1,7 +1,7 @@
-<div class="grid grid-rows-[300px_auto] grid-cols-1 justify-between gap-4 p-[50px] overflow-hidden">
+<AuthenticationWrapper>
   <section class="flex flex-col gap-4">
     <p class="uppercase text-primary/80">Bienvenue sur votre CRM</p>
-    <div class="font-bold text-slate-800 text-[4rem]">Ne manquez aucune action importante.</div>
+    <div class="font-bold text-slate-800 text-[3.5rem]">Ne manquez aucune action importante.</div>
     <p class="text-lg text-slate-600">don't let your work slip through the cracks.</p>
   </section>
 
@@ -22,10 +22,10 @@
         <tas-icon iconName="feather:arrow-right"></tas-icon>
       </button>
 
-      <button class="text-center w-full mt-8" tas-text-button [color]="'accent'">Mot de passe oublié</button>
+      <a class="text-center w-full mt-8" tas-text-button color="primary" [routerLink]="['/auth', 'forgot-password']" [queryParams]="{ email: loginFormSchema.email().value() }">Mot de passe oublié ?</a>
     </div>
 
-<!--    footer  -->
+    <!--    footer  -->
     <div class="flex justify-center text-center text-functional-success "> <tas-icon iconName="feather:check" ></tas-icon> <span class="text-[12px]">Votre session de connexion reste privée et protéger</span></div>
   </section>
-</div>
+</AuthenticationWrapper>

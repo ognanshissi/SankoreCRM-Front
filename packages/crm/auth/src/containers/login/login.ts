@@ -6,9 +6,11 @@ import {
 import { TasFormField, TasLabel } from '@talisoft/ui/form-field';
 import { TasInput } from '@talisoft/ui/input';
 import { TasIcon } from "@talisoft/ui/icon";
-import { Button } from "@talisoft/ui/button";
+import { Anchor, Button } from "@talisoft/ui/button";
 import { email, form, FormField, required } from "@angular/forms/signals";
 import { LoginModel } from '../../models/login.model';
+import { RouterLink } from '@angular/router';
+import { AuthenticationWrapper } from '../components/authentication-wrapper';
 
 @Component({
   templateUrl: 'login.html',
@@ -21,6 +23,9 @@ import { LoginModel } from '../../models/login.model';
     Button,
     FormField,
     TasFormField,
+    RouterLink,
+    AuthenticationWrapper,
+    Anchor,
   ],
   encapsulation: ViewEncapsulation.None,
 })
@@ -31,11 +36,11 @@ export class Login {
     required(schema.email, {
       message: "L'adresse éléctronique est obligatoire",
     });
-    email(schema.email, { message: "L'adresse est invalide"});
+    email(schema.email, { message: "L'adresse est invalide" });
     required(schema.password, { message: 'Le mot de passe est obligatoire' });
   });
 
-  public handleFormSubmittion() : void {
+  public handleFormSubmittion(): void {
     console.log(this.loginForm());
   }
 }
