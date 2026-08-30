@@ -18,6 +18,11 @@
           {
             "glob": "**/*",
             "input": "apps/crm/public"
+          },
+          {
+            "glob": "**/*",
+            "input": "packages/shared/ui/icon/src/assets",
+            "output": "assets"
           }
         ],
         "styles": [

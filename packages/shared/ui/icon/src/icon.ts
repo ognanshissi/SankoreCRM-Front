@@ -56,7 +56,7 @@ export class TasIcon {
 
   @HostBinding('aria-hidden')
   get aria() {
-    return this.ariaHidden;
+    return this.ariaHidden();
   }
 
   @HostBinding('class')

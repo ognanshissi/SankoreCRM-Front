@@ -44,11 +44,11 @@ import { TasLabel } from './label.component';
     <ng-content select="tas-error"></ng-content>
   `,
 })
-export class FormField {
+export class TasFormField {
   constructor(
     @Optional()
     @Inject(TAS_FORM_FIELD_OPTIONS)
-    private _formFieldOptions: AbstractFormFieldConfigOptions
+    private _formFieldOptions: AbstractFormFieldConfigOptions,
   ) {}
 
   public appearance = input<FormFieldAppearanceOption>('fill');
@@ -57,7 +57,7 @@ export class FormField {
   static nextId = 0;
 
   @HostBinding('id')
-  componentId = `tas-form-field-id-${FormField.nextId++}`;
+  componentId = `tas-form-field-id-${TasFormField.nextId++}`;
 
   labelControl = viewChild<TasLabel>(TasLabel);
 

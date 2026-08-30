@@ -1,5 +1,5 @@
 @import '@angular/cdk/overlay-prebuilt.css';
-@import "tailwindcss";
+
 :root {
   // Colors theme
   --tas-color-primary: 17, 232, 162;
@@ -27,7 +27,7 @@
   --tas-btn-padding-x: 1rem;
   --tas-btn-padding-y: 0.5rem;
   --tas-btn-font-size: 1.2rem;
-  --tas-btn-border-radius: 50px;
+  --tas-btn-border-radius: .5rem;
   --tas-btn-raised-shadow-density: 1rem;
   --tas-btn-small-font-size: 1.25rem;
   --tas-btn-normal-font-size: 1.5rem;

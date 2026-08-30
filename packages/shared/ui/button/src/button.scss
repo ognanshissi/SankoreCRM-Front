@@ -17,6 +17,11 @@ button .hide {
   font-size: var(--tas-btn-font-size);
   border-radius: var(--tas-btn-border-radius);
   padding: var(--tas-btn-padding-y) var(--tas-btn-padding-x);
+  cursor: pointer;
+}
+
+.tas__button__base:disabled {
+  cursor: not-allowed;
 }
 
 // Icon and rounded button
