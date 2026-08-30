@@ -1,17 +1,24 @@
-<div class="grid grid-cols-12 grid-rows-1 h-screen overflow-hidden">
-  <div class="relative flex flex-col p-6 justify-between col-span-6 bg-primary/90 h-screen overflow-hidden">
-
-    <div class="h-[400px] w-[400px] rounded-full bg-primary/10 absolute top-[20px] left-[-90px]"></div>
-    <div class="h-[600px] w-[600px] rounded-full bg-primary/10 absolute bottom-[-20px] right-[-90px] flex justify-center">
-      <div class="bg-primary/20 h-[200px] w-[200px] rounded-full"></div>
-    </div>
-
-    <div class="flex items-center min-h-[100px]">
-      <span class="">Logo</span>
-    </div>
-    <div></div>
+<div class="relative grid grid-cols-12 grid-rows-1 h-screen overflow-hidden">
+  <div class="h-[600px] w-[600px] rounded-full bg-primary/10 absolute bottom-[-20px] right-[-90px] flex justify-center">
+    <div class="bg-primary/20 h-[200px] w-[200px] rounded-full"></div>
   </div>
-  <div class="col-span-6 border-l border-gray-300 bg-white overflow-y-auto">
+  <div class="relative grid grid-cols-1 grid-rows-[100px_auto] px-8 py-6 col-span-6 bg-primary/50 h-screen overflow-hidden overflow-x-hidden">
+    <div class="h-[400px] w-[400px] rounded-full bg-primary/10 absolute top-[20px] left-[-90px]"></div>
+    <div class="h-[600px] w-[600px] rounded-full bg-primary/10 absolute bottom-[-120px] right-[-90px] flex justify-center">
+    </div>
+
+    <div class="pt-4">
+      <span class="font-bold text-lg text-white">SankoreCRM</span>
+    </div>
+    <div class="flex items-center">
+      <div>
+        <div class="text-[4rem] font-bold text-slate-900">Organisez tout vos <span class="text-primary text-[5rem] italic">clients</span> au même &nbsp;endroit</div>
+        <p class="text-white">Contact centralisé avec la capture de leads depuis plusieurs canaux,&nbsp;
+          gestion des taches et traitement des clients. </p>
+      </div>
+    </div>
+  </div>
+  <div class="col-span-6 border-l border-gray-300 bg-white overflow-y-auto ">
     <router-outlet></router-outlet>
   </div>
 

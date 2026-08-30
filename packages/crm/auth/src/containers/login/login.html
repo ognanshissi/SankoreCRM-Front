@@ -1,29 +1,31 @@
-<div class="grid grid-rows-2 grid-cols-1 justify-between gap-4 p-[50px]">
+<div class="grid grid-rows-[300px_auto] grid-cols-1 justify-between gap-4 p-[50px] overflow-hidden">
   <section class="flex flex-col gap-4">
-    <p class="uppercase text-primary/80">Welcome back</p>
-    <div class="font-bold text-slate-800 text-2xl">Pick up where you left off.</div>
+    <p class="uppercase text-primary/80">Bienvenue sur votre CRM</p>
+    <div class="font-bold text-slate-800 text-[4rem]">Ne manquez aucune action importante.</div>
     <p class="text-lg text-slate-600">don't let your work slip through the cracks.</p>
   </section>
 
   <section class="flex flex-col gap-6">
     <tas-form-field>
-      <tas-label>Email address</tas-label>
-      <input type="email" tasInput placeholder="email address" [formField]="loginFormSchema.email" />
+      <tas-label>Votre adresse électronique</tas-label>
+      <input type="email" tasInput placeholder="Saisissez votre adresse électronique" [formField]="loginFormSchema.email" />
     </tas-form-field>
 
     <tas-form-field>
       <tas-label>Mot de passe</tas-label>
-      <input type="password" tasInput placeholder="mot de passe"  [formField]="loginFormSchema.password" />
+      <input type="password" tasInput placeholder="Saisissez votre mot de passe"  [formField]="loginFormSchema.password" />
     </tas-form-field>
 
     <div class="mt-[2rem]" >
       <button tas-raised-button (click)="handleFormSubmittion()" color="primary" class="w-full" [disabled]="loginFormSchema().invalid()">
-        Enter your workspace
+        Entrer dans votre espace de travail
         <tas-icon iconName="feather:arrow-right"></tas-icon>
       </button>
+
+      <button class="text-center w-full mt-8" tas-text-button [color]="'accent'">Mot de passe oublié</button>
     </div>
 
 <!--    footer  -->
-    <div class="flex justify-center text-center text-functional-success text-[10px]"> <tas-icon iconName="feather:check" ></tas-icon> <span>Votre session de connexion reste privé et proteger</span></div>
+    <div class="flex justify-center text-center text-functional-success "> <tas-icon iconName="feather:check" ></tas-icon> <span class="text-[12px]">Votre session de connexion reste privée et protéger</span></div>
   </section>
 </div>
