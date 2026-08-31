@@ -9,11 +9,21 @@
     <tas-form-field>
       <tas-label>Votre adresse électronique</tas-label>
       <input type="email" tasInput placeholder="Saisissez votre adresse électronique" [formField]="loginFormSchema.email" />
+      @if (loginFormSchema.email().touched() && loginFormSchema.email().invalid()) {
+          @for(error of loginFormSchema.email().errors(); track $index) { 
+            <tas-error>{{ error.message }}</tas-error>
+          }
+        }
     </tas-form-field>
 
     <tas-form-field>
       <tas-label>Mot de passe</tas-label>
       <input type="password" tasInput placeholder="Saisissez votre mot de passe"  [formField]="loginFormSchema.password" />
+      @if (loginFormSchema.password().touched() && loginFormSchema.password().invalid()) {
+          @for(error of loginFormSchema.password().errors(); track $index) { 
+            <tas-error>{{ error.message }}</tas-error>
+          }
+        }
     </tas-form-field>
 
     <div class="mt-[2rem]" >

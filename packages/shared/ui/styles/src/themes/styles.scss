@@ -9,7 +9,7 @@
   --tas-color-white: #fff;
   --tas-color-black: #000;
   --tas-color-surface: #e8e8e8;
-  --tas-font-family: 'Inter';
+  --tas-font-family: 'Inter', 'Montserrat', 'Helvetica Neue', Arial, sans-serif;
 
   // Functional notification colors
   --tas-color-functional-error: #f84646;
@@ -80,17 +80,6 @@
   font-family: 'Inter';
   src: url(fonts/Inter-Regular.ttf) format('opentype');
   font-weight: 400;
-}
-
-@layer base {
-  * {
-    max-width: 100%;
-    scroll-behavior: smooth;
-    word-break: break-word;
-    -moz-osx-font-smoothing: grayscale;
-    -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
-    font-size: var(--tas-text-font-size);
-  }
 }
 
 html {

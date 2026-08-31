@@ -1,0 +1,67 @@
+<AuthenticationWrapper>
+
+  @switch (step()) {
+
+    @case ('checking') {
+      <section class="flex flex-col items-center justify-center gap-4 text-center">
+        <tas-icon iconName="feather:clock" iconSize="2xl" class="text-slate-400"></tas-icon>
+        <TasTitle class="text-2xl">Vérification du lien</TasTitle>
+        <p class="text-lg text-slate-600">Merci de patienter pendant que nous vérifions votre lien d'activation.</p>
+      </section>
+    }
+
+    @case ('invalid') {
+      <section class="flex flex-col items-center justify-center gap-4 text-center">
+        <tas-icon iconName="feather:alert-triangle" iconSize="2xl" class="text-functional-error"></tas-icon>
+        <TasTitle class="text-2xl">Lien d'activation invalide</TasTitle>
+        <p class="text-lg text-slate-600">Ce lien n'est plus valable, il a peut-être déjà été utilisé ou a expiré. Contactez votre administrateur pour recevoir un nouveau lien d'activation.</p>
+      </section>
+
+      <section class="flex flex-col items-center space-y-5">
+        <a class="w-full text-center" tas-raised-button color="primary" [routerLink]="['/auth', 'login']">Retour à la connexion</a>
+      </section>
+    }
+
+    @case ('form') {
+      <section>
+        <TasTitle class="text-2xl">Activez votre compte</TasTitle>
+        <p class="mt-6 text-xl text-slate-800 justify-center">Choisissez un mot de passe pour finaliser la création de votre compte.</p>
+      </section>
+
+      <section class="flex flex-col gap-6">
+        <div>
+          <tas-input-password placeholder="Saisissez votre mot de passe" [formField]="formSchema.password">Mot de passe</tas-input-password>
+          <tas-hint>Au moins 8 caractères, une majuscule, une minuscule et un chiffre.</tas-hint>
+          @if (formSchema.password().touched() && formSchema.password().invalid()) {
+            <tas-error>{{ formSchema.password().errors()[0].message }}</tas-error>
+          }
+        </div>
+
+        <div>
+          <tas-input-password placeholder="Confirmez votre mot de passe" [formField]="formSchema.confirmPassword">Confirmer le mot de passe</tas-input-password>
+          @if (formSchema.confirmPassword().touched() && formSchema.confirmPassword().invalid()) {
+            <tas-error>{{ formSchema.confirmPassword().errors()[0].message }}</tas-error>
+          }
+        </div>
+
+        <div class="mt-[50px] flex flex-col items-center space-y-5">
+          <button class="w-full" tas-raised-button (click)="handleFormSubmission()" [color]="'primary'" [disabled]="formSchema().invalid()">Activer mon compte</button>
+        </div>
+      </section>
+    }
+
+    @case ('success') {
+      <section class="flex flex-col items-center justify-center gap-4 text-center">
+        <tas-icon iconName="feather:check-circle" iconSize="2xl" class="text-functional-success"></tas-icon>
+        <TasTitle class="text-2xl">Votre compte est activé</TasTitle>
+        <p class="text-lg text-slate-600">Votre mot de passe a été enregistré, vous pouvez maintenant vous connecter.</p>
+      </section>
+
+      <section class="flex flex-col items-center space-y-5">
+        <a class="w-full text-center" tas-raised-button color="primary" [routerLink]="['/auth', 'login']">Se connecter</a>
+      </section>
+    }
+
+  }
+
+</AuthenticationWrapper>

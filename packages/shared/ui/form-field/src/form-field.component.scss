@@ -14,17 +14,7 @@ tas-form-field {
   .input__container {
     @apply w-full text-left items-center border  m-0 border-gray-300 focus-within:border-primary focus-within:shadow bg-white shadow-sm;
     border-radius: var(--tas-field-border-radius) !important;
-
-    &:has([tasInput].ng-touched.ng-dirty.ng-invalid),
-    &:has(select.ng-touched.ng-dirty.ng-invalid) {
-      @apply border-functional-error;
-
-      [tasSuffix],
-      [tasPrefix] {
-        @apply text-functional-error;
-      }
-    }
-
+    
     input,
     textarea,
     select {

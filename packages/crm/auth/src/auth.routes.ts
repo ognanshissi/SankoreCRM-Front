@@ -1,6 +1,7 @@
 import { Route } from '@angular/router';
 import Login from './containers/login/login';
 import ForgotPassword from './containers/forgot-password/forgot-password';
+import { AccountActivationComponent } from './containers/account-activation/account-activation';
 
 export const authRoutes: Route[] = [
   {
@@ -15,5 +16,9 @@ export const authRoutes: Route[] = [
   {
     path: 'forgot-password',
     loadComponent: () => ForgotPassword,
+  },
+  {
+    path: 'account-activation',
+    loadComponent: () => AccountActivationComponent,
   }
 ];

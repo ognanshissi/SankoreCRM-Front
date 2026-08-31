@@ -9,7 +9,7 @@ import { Component, HostBinding, Input } from '@angular/core';
     @reference "../../tailwind-ref.css";
     tas-hint {
         display: block;
-        @apply text-[11px] font-sans text-gray-700;
+        @apply text-[11px] font-sans;
     }`
   ]
 })

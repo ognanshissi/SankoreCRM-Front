@@ -1,5 +1,17 @@
 @import "tailwindcss";
 
+
+@layer base {
+  * {
+    max-width: 100%;
+    scroll-behavior: smooth;
+    word-break: break-word;
+    -moz-osx-font-smoothing: grayscale;
+    -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
+    font-size: var(--tas-text-font-size);
+  }
+}
+
 @theme inline {
   --color-primary: rgb(var(--tas-color-primary));
   --color-accent: rgb(var(--tas-color-accent));
@@ -14,4 +26,6 @@
   --color-functional-warning-100: var(--tas-color-functional-warning-100);
   --color-functional-info: var(--tas-color-functional-info);
   --color-functional-info-100: var(--tas-color-functional-info-100);
+
+  --font-sans: var(--tas-font-family), sans-serif;
 }

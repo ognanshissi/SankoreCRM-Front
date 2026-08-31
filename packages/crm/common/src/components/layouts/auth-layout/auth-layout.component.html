@@ -1,27 +1,30 @@
 <div class="grid grid-cols-12 grid-rows-1 h-screen overflow-hidden">
-  <div class="relative grid grid-cols-1 grid-rows-[100px_auto] px-8 py-6 col-span-6 bg-primary h-screen overflow-hidden overflow-x-hidden">
+  
+  
+  <div class="grid grid-cols-1 grid-rows-[100px_auto] px-8 py-6 col-span-6 bg-primary h-screen overflow-hidden overflow-x-hidden">
+    <!-- start: Cricles -->
     <div class="h-[400px] w-[400px] rounded-full bg-slate-100/10 absolute top-[20px] left-[-90px]"></div>
     <div class="h-[600px] w-[600px] rounded-full bg-slate-100/10 absolute bottom-[-120px] right-[-90px] flex justify-center">
     </div>
+    <!-- End: circles -->
 
     <div class="pt-4">
       <span class="font-bold text-lg text-white">SankoreCRM</span>
     </div>
     <div class="flex items-center">
       <div>
-        <div class="text-[4rem] font-bold text-white">Organisez tout vos <span class="text-orange-500 text-[4rem]">clients</span> au même <br/> endroit</div>
-        <div class="text-white">Contact centralisé avec la capture de leads depuis plusieurs canaux,&nbsp;
+        <div class="text-[4rem] font-bold text-white uppercase">Organisez tout vos <br/> <span class="text-orange-500 text-[4rem]">clients</span> au même endroit.</div>
+        <div class="text-gray-300">Contact centralisé avec la capture de leads depuis plusieurs canaux, <br/>
           gestion des taches et traitement des clients. </div>
       </div>
     </div>
   </div>
-  <div class="col-span-6 border-l border-gray-300 bg-white overflow-y-auto">
+  <div class="relative col-span-6 border-l border-gray-300 bg-white overflow-y-auto">
     <!-- right side circle design -->
     <div class="z-0 h-[600px] w-[600px] rounded-full bg-primary/10 absolute bottom-[-20px] right-[-90px] flex justify-center">
+      <div class="bg-primary/20 h-[200px] w-[200px] rounded-full"></div>
     </div>
-    <div class="z-0 bg-primary/20 h-[200px] w-[200px] rounded-full absolute top-[-20px]"></div>
-
-    <div class="relative z-10">
+    <div class="z-10">
       <router-outlet></router-outlet>
     </div>
   </div>
