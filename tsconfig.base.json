@@ -55,7 +55,9 @@
       "@talisoft/ui/timeago": ["./packages/shared/ui/timeago/index.ts"],
       "@talisoft/ui/title": ["./packages/shared/ui/title/index.ts"],
       "@sankore/auth": ["./packages/crm/auth/src/index.ts"],
-      "@sankore/common": ["./packages/crm/common/src/index.ts"]
+      "@sankore/common": ["./packages/crm/common/src/index.ts"],
+      "@sankore/tasks": ["./packages/crm/tasks/src/index.ts"],
+      "@sankore/settings": ["./packages/crm/settings/src/index.ts"]
     }
   },
   "exclude": ["node_modules", "tmp"]

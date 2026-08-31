@@ -1,0 +1,52 @@
+name: Build
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+permissions:
+  actions: read
+  contents: read
+
+concurrency:
+  group: build-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          filter: tree:0
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: 'npm'
+
+      - run: npm ci
+
+      # Derive base/head SHAs used by `nx affected`
+      - uses: nrwl/nx-set-shas@v4
+
+      # On PRs, only lint/typecheck/build what changed
+      - name: Verify affected projects (pull request)
+        if: github.event_name == 'pull_request'
+        run: npx nx affected -t lint typecheck build
+
+      # On main, lint/typecheck/build every project
+      - name: Build all projects (main)
+        if: github.event_name != 'pull_request'
+        run: npx nx run-many -t lint typecheck build
+
+      - uses: actions/upload-artifact@v4
+        if: github.event_name != 'pull_request'
+        with:
+          name: crm-dist
+          path: dist/apps/crm
+          if-no-files-found: error
+          retention-days: 7

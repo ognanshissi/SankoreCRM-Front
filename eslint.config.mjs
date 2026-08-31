@@ -31,7 +31,7 @@ export default [
             {
               sourceTag: 'scope:crm',
               onlyDependOnLibsWithTags: ['scope:crm', 'scope:shared'],
-            }
+            },
           ],
         },
       ],
