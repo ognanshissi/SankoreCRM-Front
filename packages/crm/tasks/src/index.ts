@@ -1,1 +1,3 @@
-export * from './lib/tasks/tasks';
+import tasksRoutes from './tasks.routes';
+
+export default tasksRoutes;

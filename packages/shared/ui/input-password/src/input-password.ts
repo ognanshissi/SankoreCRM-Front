@@ -10,7 +10,6 @@ import { TasIcon } from '@talisoft/ui/icon';
 import {
   ReactiveFormsModule,
 } from '@angular/forms';
-import { TasInput } from '@talisoft/ui/input';
 import { FormValueControl } from '@angular/forms/signals';
 
 @Component({

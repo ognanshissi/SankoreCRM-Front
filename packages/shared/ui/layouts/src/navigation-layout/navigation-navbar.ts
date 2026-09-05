@@ -21,7 +21,7 @@ import { TasIcon } from '@talisoft/ui/icon';
     `
       @reference "tailwindcss";
       tas-navigation-navbar {
-        @apply flex justify-between border-b items-center py-1 px-2 border-gray-300 bg-white sticky top-0;
+        @apply flex justify-between  items-center py-1 px-2 bg-transparent sticky top-0;
       }
     `,
   ],

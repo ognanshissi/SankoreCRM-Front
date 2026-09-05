@@ -54,10 +54,10 @@
       "@talisoft/ui/text": ["./packages/shared/ui/text/index.ts"],
       "@talisoft/ui/timeago": ["./packages/shared/ui/timeago/index.ts"],
       "@talisoft/ui/title": ["./packages/shared/ui/title/index.ts"],
-      "@sankore/auth": ["./packages/crm/auth/src/index.ts"],
-      "@sankore/common": ["./packages/crm/common/src/index.ts"],
-      "@sankore/tasks": ["./packages/crm/tasks/src/index.ts"],
-      "@sankore/settings": ["./packages/crm/settings/src/index.ts"]
+      "@sankore/crm/auth": ["./packages/crm/auth/src/index.ts"],
+      "@sankore/crm/common": ["./packages/crm/common/src/index.ts"],
+      "@sankore/crm/tasks": ["./packages/crm/tasks/src/index.ts"],
+      "@sankore/crm/settings": ["./packages/crm/settings/src/index.ts"]
     }
   },
   "exclude": ["node_modules", "tmp"]

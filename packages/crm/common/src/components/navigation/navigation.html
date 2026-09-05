@@ -1,0 +1,50 @@
+<div class="common-navigation__brand">
+      <a href="/tasks/my-day" class="common-navigation__brand-link">
+        <span class="common-navigation__logo">
+        <tas-icon iconName="feather:check" />
+      </span>
+      <span class="common-navigation__brand-name">{{ brandName() }}</span>
+      </a>
+    </div>
+
+    <ul class="common-navigation__menu" role="list">
+      @for (item of items(); track item.label) {
+        <li>
+          <a
+            class="common-navigation__item"
+            [routerLink]="item.link"
+            routerLinkActive="common-navigation__item--active"
+            [routerLinkActiveOptions]="{ exact: !!item.exact }"
+          >
+            <tas-icon [iconName]="item.icon" />
+            <span>{{ item.label }}</span>
+          </a>
+        </li>
+      }
+    </ul>
+
+    @if (reminderTitle()) {
+      <section class="common-navigation__reminder">
+        <p class="common-navigation__reminder-label">{{ reminderLabel() }}</p>
+        <div class="common-navigation__reminder-card">
+          <p class="common-navigation__reminder-title">{{ reminderTitle() }}</p>
+          @if (reminderText()) {
+            <p class="common-navigation__reminder-text">{{ reminderText() }}</p>
+          }
+        </div>
+      </section>
+    }
+
+    <div class="common-navigation__spacer"></div>
+
+    @if (user(); as currentUser) {
+      <div class="common-navigation__user">
+        <span class="common-navigation__avatar">{{ initials() }}</span>
+        <div class="common-navigation__user-info">
+          <p class="common-navigation__user-name">{{ currentUser.name }}</p>
+          @if (currentUser.email) {
+            <p class="common-navigation__user-email">{{ currentUser.email }}</p>
+          }
+        </div>
+      </div>
+    }

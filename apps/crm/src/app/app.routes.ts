@@ -1,15 +1,20 @@
 import { Route } from '@angular/router';
-import { AuthLayoutComponent } from '@sankore/common';
+import { AuthLayoutComponent, AdminLayoutComponent } from '@sankore/crm/common';
 
 export const appRoutes: Route[] = [
   {
     path: '',
-    redirectTo: '/auth/login',
+    redirectTo: 'tasks/my-day',
     pathMatch: 'full',
   },
   {
     path: 'auth',
     component: AuthLayoutComponent,
-    loadChildren: () => import('@sankore/auth')
+    loadChildren: () => import('@sankore/crm/auth')
+  },
+  {
+    path: 'tasks',
+    component: AdminLayoutComponent,
+    loadChildren: () => import('@sankore/crm/tasks')
   }
 ];
