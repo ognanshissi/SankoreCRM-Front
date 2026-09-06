@@ -1,0 +1,22 @@
+{
+  "$schema": "./node_modules/@openapitools/openapi-generator-cli/config.schema.json",
+  "spaces": 2,
+  "generator-cli": {
+    "version": "6.6.0",
+    "generators": {
+      "sankoreAPI": {
+        "generatorName": "typescript-angular",
+        "output": "#{cwd}/packages/crm-api/src/lib",
+        "glob": "swaggers/sankore-crm-api-swagger.json",
+        "skipValidateSpec": true,
+        "additionalProperties": {
+          "supportsES6": "true",
+          "stringEnums": "true",
+          "modelFileSuffix": ".interface",
+          "fileNaming": "kebab-case",
+          "serviceSuffix": "ApiService"
+        }
+      }
+    }
+  }
+}

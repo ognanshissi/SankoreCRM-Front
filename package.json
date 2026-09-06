@@ -5,7 +5,8 @@
   "scripts": {
     "start": "npx nx run crm:serve:development --port 4222",
     "ui:watch": "npx nx run ui:build:development --watch",
-    "ui:build": "npx nx run ui:build:development --verbose"
+    "ui:build": "npx nx run ui:build:development --verbose",
+    "openapi-generator": "npx @openapitools/openapi-generator-cli generate --generator-key sankoreAPI --skip-validate-spec --verbose"
   },
   "private": true,
   "dependencies": {
@@ -50,6 +51,7 @@
     "@nx/vitest": "23.1.0",
     "@nx/web": "23.1.0",
     "@nx/workspace": "23.1.0",
+    "@openapitools/openapi-generator-cli": "^2.41.0",
     "@oxc-project/runtime": "^0.115.0",
     "@playwright/test": "^1.36.0",
     "@schematics/angular": "22.0.6",
