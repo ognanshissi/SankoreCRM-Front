@@ -1,5 +1,5 @@
 import { Route } from '@angular/router';
-import { AuthLayoutComponent, AdminLayoutComponent } from '@sankore/crm/common';
+import { AuthLayoutComponent, AdminLayoutComponent, PortalLayoutComponent } from '@sankore/crm/common';
 
 export const appRoutes: Route[] = [
   {
@@ -14,7 +14,7 @@ export const appRoutes: Route[] = [
   },
   {
     path: 'tasks',
-    component: AdminLayoutComponent,
+    component: PortalLayoutComponent,
     loadChildren: () => import('@sankore/crm/tasks')
   }
 ];

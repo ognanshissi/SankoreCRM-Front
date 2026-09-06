@@ -15,29 +15,20 @@ import { TasNavigationNavbar } from './navigation-navbar';
   selector: 'tas-navigation-layout',
   standalone: true,
   template: `
-    <div class="relative">
+    <div class="h-screen flex flex-col">
       <!--  top -->
-      <aside class="sticky top-0">
-        <ng-content select="tas-navigation-navbar"></ng-content>
-      </aside>
-      <div class="flex">
+      <ng-content select="tas-navigation-navbar"></ng-content>
+      <div class="flex flex-1 overflow-hidden">
         <!--  left  navigation -->
         <ng-content select="tas-navigation-sidebar"></ng-content>
         <!--  main -->
-        <main class="main-container-wrapper overflow-y-auto w-full">
+        <main class="overflow-y-auto w-full">
           <ng-content></ng-content>
         </main>
       </div>
     </div>
   `,
   imports: [ButtonModule],
-  styles: [
-    `
-      .main-container-wrapper {
-        height: calc(100vh - 50px);
-      }
-    `,
-  ],
 })
 export class TasNavigationLayout implements AfterViewInit {
   public navigationNavbar =

@@ -8,7 +8,7 @@ import {
   ViewEncapsulation,
 } from '@angular/core';
 import { AbstractControlValueAccessor } from '@talisoft/ui/core';
-import { FormField, TasLabel, TasPrefix } from '@talisoft/ui/form-field';
+import { TasFormField, TasLabel, TasPrefix } from '@talisoft/ui/form-field';
 import { TasInput } from '@talisoft/ui/input';
 import {
   AbstractControl,
@@ -42,7 +42,7 @@ import { NgClass } from '@angular/common';
   encapsulation: ViewEncapsulation.None,
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
-    FormField,
+    TasFormField,
     TasInput,
     ReactiveFormsModule,
     TasLabel,

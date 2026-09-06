@@ -47,7 +47,7 @@ export class TasIcon {
   })
   iconName!: string;
 
-  public iconSize = input<'sm' | 'md' | 'lg' | 'xl' | '2xl'>('sm');
+  public iconSize = input<'sm' | 'md' | 'lg' | 'xl' | '2xl'>('md');
   iconClass = input();
 
   ariaHidden = input({

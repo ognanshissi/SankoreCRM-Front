@@ -17,7 +17,7 @@ import { FormControl, FormsModule, NG_VALUE_ACCESSOR } from '@angular/forms';
 import { SelectionModel } from '@angular/cdk/collections';
 import { NgClass, NgForOf, NgIf, NgTemplateOutlet } from '@angular/common';
 import { fromEvent } from 'rxjs';
-import { FormField } from '@talisoft/ui/form-field';
+import { TasFormField } from '@talisoft/ui/form-field';
 import { AbstractControlValueAccessor } from '@talisoft/ui/core';
 import { TasInput } from '@talisoft/ui/input';
 
@@ -37,7 +37,7 @@ import { TasInput } from '@talisoft/ui/input';
   imports: [
     NgIf,
     FormsModule,
-    FormField,
+    TasFormField,
     TasInput,
     NgTemplateOutlet,
     NgClass,

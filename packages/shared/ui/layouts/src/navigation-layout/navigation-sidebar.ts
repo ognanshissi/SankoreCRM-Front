@@ -14,8 +14,9 @@ import {
     `
       @reference "tailwindcss";
       tas-navigation-sidebar {
-        @apply border-r border-gray-300 overflow-y-auto bg-white flex flex-col justify-between;
-        height: calc(100vh - 50px);
+        @apply  overflow-y-auto flex flex-col justify-between h-full;
+        background-color: var(--color-primary);
+        color: var(--tas-color-white);
       }
 
       .menu-item__text {

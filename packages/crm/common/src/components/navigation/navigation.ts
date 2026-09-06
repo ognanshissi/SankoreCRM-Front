@@ -120,7 +120,7 @@ export interface CommonNavigationUser {
         background-color: rgba(255, 255, 255, 0.9);
       }
 
-      .common-navigation__user:hover, {
+      .common-navigation__user:hover
       .common-navigation__item--active {
         background-color: #fff;
         color: #1f2417;

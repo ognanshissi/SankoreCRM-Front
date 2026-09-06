@@ -32,13 +32,13 @@ export class PortalLayoutComponent implements OnInit {
 
   public ngOnInit() {
     this.navigationItems = [
-      {
-        id: 'dashboard',
-        icon: 'feather:grid',
-        title: 'Tableau de bord',
-        type: 'basic',
-        link: '/portal/dashboard',
-      },
+      // {
+      //   id: 'dashboard',
+      //   icon: 'feather:grid',
+      //   title: 'Tableau de bord',
+      //   type: 'basic',
+      //   link: '/portal/dashboard',
+      // },
       {
         id: 'tasks',
         icon: 'feather:crosshair',

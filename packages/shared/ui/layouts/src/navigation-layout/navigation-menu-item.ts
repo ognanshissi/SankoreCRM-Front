@@ -21,12 +21,12 @@ import {
       [routerLink]="path()"
       [routerLinkActive]="'navigation-menu-item__is-active'"
       [queryParams]="queryParams()"
-      class="menu-item p-2 hover:bg-gray-200  flex space-x-2 text-sm items-center border-l-4 border-l-transparent"
+      class="menu-item p-2 flex space-x-2 text-xl items-center rounded-md cursor-pointer mt-2"
     >
       @if(iconName()) {
-        <tas-icon [iconName]="iconName()" class="text-gray-500" />
+        <tas-icon [iconName]="iconName()" class="text-white" />
       }
-      <span class="menu-item__text"><ng-content></ng-content></span>
+      <span class="menu-item__text text-xl"><ng-content></ng-content></span>
     </a>
   `,
   standalone: true,
