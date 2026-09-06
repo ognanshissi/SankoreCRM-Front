@@ -21,9 +21,15 @@ import { Observable }                                        from 'rxjs';
 // @ts-ignore
 import { AccountActivationRequest } from '../model/account-activation-request.interface';
 // @ts-ignore
+import { AccountActivationResult } from '../model/account-activation-result.interface';
+// @ts-ignore
 import { ForgotPasswordRequest } from '../model/forgot-password-request.interface';
 // @ts-ignore
+import { ForgotPasswordResult } from '../model/forgot-password-result.interface';
+// @ts-ignore
 import { LoginRequest } from '../model/login-request.interface';
+// @ts-ignore
+import { LoginResult } from '../model/login-result.interface';
 
 // @ts-ignore
 import { BASE_PATH, COLLECTION_FORMATS }                     from '../variables';
@@ -101,10 +107,10 @@ export class AuthApiService {
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      */
-    public activateAccount(accountActivationRequest: AccountActivationRequest, xTenantId?: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<any>;
-    public activateAccount(accountActivationRequest: AccountActivationRequest, xTenantId?: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<HttpResponse<any>>;
-    public activateAccount(accountActivationRequest: AccountActivationRequest, xTenantId?: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<HttpEvent<any>>;
-    public activateAccount(accountActivationRequest: AccountActivationRequest, xTenantId?: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<any> {
+    public activateAccount(accountActivationRequest: AccountActivationRequest, xTenantId?: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<AccountActivationResult>;
+    public activateAccount(accountActivationRequest: AccountActivationRequest, xTenantId?: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<AccountActivationResult>>;
+    public activateAccount(accountActivationRequest: AccountActivationRequest, xTenantId?: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<AccountActivationResult>>;
+    public activateAccount(accountActivationRequest: AccountActivationRequest, xTenantId?: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
         if (accountActivationRequest === null || accountActivationRequest === undefined) {
             throw new Error('Required parameter accountActivationRequest was null or undefined when calling activateAccount.');
         }
@@ -131,6 +137,7 @@ export class AuthApiService {
         if (localVarHttpHeaderAcceptSelected === undefined) {
             // to determine the Accept header
             const httpHeaderAccepts: string[] = [
+                'application/json'
             ];
             localVarHttpHeaderAcceptSelected = this.configuration.selectHeaderAccept(httpHeaderAccepts);
         }
@@ -165,7 +172,7 @@ export class AuthApiService {
         }
 
         let localVarPath = `/api/v1/auth/activate`;
-        return this.httpClient.request<any>('post', `${this.configuration.basePath}${localVarPath}`,
+        return this.httpClient.request<AccountActivationResult>('post', `${this.configuration.basePath}${localVarPath}`,
             {
                 context: localVarHttpContext,
                 body: accountActivationRequest,
@@ -184,10 +191,10 @@ export class AuthApiService {
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      */
-    public forgotPassword(forgotPasswordRequest: ForgotPasswordRequest, xTenantId?: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<any>;
-    public forgotPassword(forgotPasswordRequest: ForgotPasswordRequest, xTenantId?: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<HttpResponse<any>>;
-    public forgotPassword(forgotPasswordRequest: ForgotPasswordRequest, xTenantId?: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<HttpEvent<any>>;
-    public forgotPassword(forgotPasswordRequest: ForgotPasswordRequest, xTenantId?: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<any> {
+    public forgotPassword(forgotPasswordRequest: ForgotPasswordRequest, xTenantId?: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<ForgotPasswordResult>;
+    public forgotPassword(forgotPasswordRequest: ForgotPasswordRequest, xTenantId?: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<ForgotPasswordResult>>;
+    public forgotPassword(forgotPasswordRequest: ForgotPasswordRequest, xTenantId?: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<ForgotPasswordResult>>;
+    public forgotPassword(forgotPasswordRequest: ForgotPasswordRequest, xTenantId?: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
         if (forgotPasswordRequest === null || forgotPasswordRequest === undefined) {
             throw new Error('Required parameter forgotPasswordRequest was null or undefined when calling forgotPassword.');
         }
@@ -214,6 +221,7 @@ export class AuthApiService {
         if (localVarHttpHeaderAcceptSelected === undefined) {
             // to determine the Accept header
             const httpHeaderAccepts: string[] = [
+                'application/json'
             ];
             localVarHttpHeaderAcceptSelected = this.configuration.selectHeaderAccept(httpHeaderAccepts);
         }
@@ -248,7 +256,7 @@ export class AuthApiService {
         }
 
         let localVarPath = `/api/v1/auth/forgot-password`;
-        return this.httpClient.request<any>('post', `${this.configuration.basePath}${localVarPath}`,
+        return this.httpClient.request<ForgotPasswordResult>('post', `${this.configuration.basePath}${localVarPath}`,
             {
                 context: localVarHttpContext,
                 body: forgotPasswordRequest,
@@ -267,10 +275,10 @@ export class AuthApiService {
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      */
-    public login(loginRequest: LoginRequest, xTenantId?: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<any>;
-    public login(loginRequest: LoginRequest, xTenantId?: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<HttpResponse<any>>;
-    public login(loginRequest: LoginRequest, xTenantId?: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<HttpEvent<any>>;
-    public login(loginRequest: LoginRequest, xTenantId?: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<any> {
+    public login(loginRequest: LoginRequest, xTenantId?: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<LoginResult>;
+    public login(loginRequest: LoginRequest, xTenantId?: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<LoginResult>>;
+    public login(loginRequest: LoginRequest, xTenantId?: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<LoginResult>>;
+    public login(loginRequest: LoginRequest, xTenantId?: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
         if (loginRequest === null || loginRequest === undefined) {
             throw new Error('Required parameter loginRequest was null or undefined when calling login.');
         }
@@ -297,6 +305,7 @@ export class AuthApiService {
         if (localVarHttpHeaderAcceptSelected === undefined) {
             // to determine the Accept header
             const httpHeaderAccepts: string[] = [
+                'application/json'
             ];
             localVarHttpHeaderAcceptSelected = this.configuration.selectHeaderAccept(httpHeaderAccepts);
         }
@@ -331,7 +340,7 @@ export class AuthApiService {
         }
 
         let localVarPath = `/api/v1/auth/login`;
-        return this.httpClient.request<any>('post', `${this.configuration.basePath}${localVarPath}`,
+        return this.httpClient.request<LoginResult>('post', `${this.configuration.basePath}${localVarPath}`,
             {
                 context: localVarHttpContext,
                 body: loginRequest,

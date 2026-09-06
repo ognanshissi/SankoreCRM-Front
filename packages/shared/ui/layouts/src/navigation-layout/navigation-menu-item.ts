@@ -21,7 +21,7 @@ import {
       [routerLink]="path()"
       [routerLinkActive]="'navigation-menu-item__is-active'"
       [queryParams]="queryParams()"
-      class="menu-item p-4 flex space-x-2 text-xl items-center rounded-[12px] cursor-pointer mt-2"
+      class="menu-item p-4 flex space-x-2 text-xl items-center rounded-xl cursor-pointer mt-2"
     >
       @if(iconName()) {
         <tas-icon [iconName]="iconName()" class="text-white" />

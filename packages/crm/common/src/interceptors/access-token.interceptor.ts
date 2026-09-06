@@ -8,13 +8,17 @@ import {
 import { catchError, Observable, throwError } from 'rxjs';
 import { inject } from '@angular/core';
 import { Router } from '@angular/router';
+import { AuthenticationService } from '../services';
 
 export const accessTokenInterceptor: HttpInterceptorFn = (
   req: HttpRequest<unknown>,
   next: HttpHandlerFn
 ): Observable<HttpEvent<unknown>> => {
+
+  let authenticationService = inject(AuthenticationService)
+
   if (urlIncludeNotSecuredPaths(req.url)) return next(req);
-  const token = crypto.randomUUID();
+  const token = authenticationService.loadAccessToken();
   const router = inject(Router);
   const reqClone = req.clone({
     setHeaders: { authorization: `Bearer ${token}` },

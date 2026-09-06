@@ -38,6 +38,12 @@
       },
       "configurations": {
         "production": {
+          "fileReplacements": [
+            {
+              "replace": "apps/crm/environments/environment.ts",
+              "with": "apps/crm/environments/environment.prod.ts"
+            }
+          ],
           "budgets": [
             {
               "type": "initial",

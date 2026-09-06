@@ -1,4 +1,5 @@
 export * from './account-activation-request.interface';
+export * from './account-activation-result.interface';
 export * from './add-step-request.interface';
 export * from './agency-dto.interface';
 export * from './agency-dto-paged-result.interface';
@@ -25,9 +26,11 @@ export * from './dispatch-lead-request.interface';
 export * from './dispatch-lead-result.interface';
 export * from './dispatching-strategy.interface';
 export * from './forgot-password-request.interface';
+export * from './forgot-password-result.interface';
 export * from './lead-source.interface';
 export * from './list-users-result.interface';
 export * from './login-request.interface';
+export * from './login-result.interface';
 export * from './move-agency-request.interface';
 export * from './notification-settings-dto.interface';
 export * from './problem-details.interface';

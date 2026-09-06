@@ -14,6 +14,14 @@ import {
   AbstractFormFieldConfigOptions,
   TAS_FORM_FIELD_OPTIONS,
 } from '@talisoft/ui/form-field';
+import {
+  accessTokenInterceptor,
+  ENVIRONMENT_CONFIG,
+  tenantInterceptor,
+} from '@sankore/crm/common';
+import { BASE_PATH } from '@sankore/crm-api';
+import { environment } from '../environments/environment';
+import { provideHttpClient, withInterceptors } from '@angular/common/http';
 
 const tasFormFieldOptions: AbstractFormFieldConfigOptions = {
   rounded: false,
@@ -26,10 +34,19 @@ export const appConfig: ApplicationConfig = {
     provideClientHydration(withEventReplay()),
     provideBrowserGlobalErrorListeners(),
     provideRouter(appRoutes, withComponentInputBinding()),
+    provideHttpClient(withInterceptors([accessTokenInterceptor, tenantInterceptor])),
     importProvidersFrom(TasIconRegistry),
+    {
+      provide: BASE_PATH,
+      useValue: environment.apiUrl
+    },
     {
       provide: TAS_FORM_FIELD_OPTIONS,
       useValue: tasFormFieldOptions,
+    },
+    {
+      provide: ENVIRONMENT_CONFIG,
+      useValue: environment,
     },
   ],
 };

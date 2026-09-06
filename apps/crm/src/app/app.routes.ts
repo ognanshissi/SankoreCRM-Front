@@ -1,5 +1,5 @@
 import { Route } from '@angular/router';
-import { AuthLayoutComponent, AdminLayoutComponent, PortalLayoutComponent } from '@sankore/crm/common';
+import { AuthLayoutComponent, AdminLayoutComponent, PortalLayoutComponent, authorized } from '@sankore/crm/common';
 
 export const appRoutes: Route[] = [
   {
@@ -8,13 +8,18 @@ export const appRoutes: Route[] = [
     pathMatch: 'full',
   },
   {
-    path: 'auth',
-    component: AuthLayoutComponent,
-    loadChildren: () => import('@sankore/crm/auth')
-  },
-  {
     path: 'tasks',
     component: PortalLayoutComponent,
-    loadChildren: () => import('@sankore/crm/tasks')
-  }
+    canActivate: [authorized],
+    loadChildren: () => import('@sankore/crm/tasks'),
+  },
+  {
+    path: 'auth',
+    component: AuthLayoutComponent,
+    loadChildren: () => import('@sankore/crm/auth'),
+  },
+  {
+    path: '**',
+    redirectTo: 'auth/login',
+  },
 ];

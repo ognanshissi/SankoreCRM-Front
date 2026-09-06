@@ -5,15 +5,18 @@ import {
   HttpRequest,
 } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { TenantProvider } from '../services';
+import { inject } from '@angular/core';
 
 export const tenantInterceptor: HttpInterceptorFn = (
   req: HttpRequest<unknown>,
   next: HttpHandlerFn
 ): Observable<HttpEvent<unknown>> => {
   // tenant fqdn will be loaded by APP_INITIALIZER
-  const tenantFqdn = 'db';
+  const tenantProvider = inject(TenantProvider);
+  const tenantFqdn = tenantProvider.getTenantId();
   const reqClone = req.clone({
-    setHeaders: { 'X-TENANT-FQDN': tenantFqdn },
+    setHeaders: { 'x-tenant-id': tenantFqdn },
   });
   return next(reqClone);
 };

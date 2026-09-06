@@ -22,6 +22,7 @@ encoder.ts
 git_push.sh
 index.ts
 model/account-activation-request.interface.ts
+model/account-activation-result.interface.ts
 model/add-step-request.interface.ts
 model/agency-dto-paged-result.interface.ts
 model/agency-dto.interface.ts
@@ -48,9 +49,11 @@ model/dispatch-lead-request.interface.ts
 model/dispatch-lead-result.interface.ts
 model/dispatching-strategy.interface.ts
 model/forgot-password-request.interface.ts
+model/forgot-password-result.interface.ts
 model/lead-source.interface.ts
 model/list-users-result.interface.ts
 model/login-request.interface.ts
+model/login-result.interface.ts
 model/models.ts
 model/move-agency-request.interface.ts
 model/notification-settings-dto.interface.ts

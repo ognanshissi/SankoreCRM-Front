@@ -1,6 +1,8 @@
 import {
   ChangeDetectionStrategy,
-  Component, signal,
+  Component,
+  inject,
+  signal,
   ViewEncapsulation,
 } from '@angular/core';
 import { TasFormField, TasLabel, TasError } from '@talisoft/ui/form-field';
@@ -9,8 +11,9 @@ import { TasIcon } from "@talisoft/ui/icon";
 import { Anchor, Button } from "@talisoft/ui/button";
 import { email, form, FormField, required } from "@angular/forms/signals";
 import { LoginModel } from '../../models/login.model';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AuthenticationWrapper } from '../../components/authentication-wrapper';
+import { AuthenticationService, TenantProvider } from '@sankore/crm/common';
 
 @Component({
   templateUrl: 'login.html',
@@ -31,6 +34,10 @@ import { AuthenticationWrapper } from '../../components/authentication-wrapper';
   encapsulation: ViewEncapsulation.None,
 })
 export class Login {
+  private readonly _authenticationService = inject(AuthenticationService);
+  private readonly _activatedRoute = inject(ActivatedRoute);
+  private readonly _router = inject(Router);
+
   public loginForm = signal(LoginModel.instantiate());
 
   public loginFormSchema = form(this.loginForm, (schema) => {
@@ -41,8 +48,24 @@ export class Login {
     required(schema.password, { message: 'Le mot de passe est obligatoire' });
   });
 
-  public handleFormSubmittion(): void {
-    console.log(this.loginForm());
+  public handleFormSubmit(): void {
+
+    if (this.loginFormSchema().invalid()) {
+      return;
+    }
+
+    console.log(this.loginFormSchema().submitting());
+
+    this._authenticationService.login(this.loginForm()).subscribe({
+      next: (result) => {
+        console.log(result);
+        const redirectPath =
+          this._activatedRoute.snapshot.queryParamMap.get('redirectPath') ??
+          '/tasks/my-day';
+        this._router.navigate([redirectPath]).then();
+      }
+    })
+
   }
 }
 
