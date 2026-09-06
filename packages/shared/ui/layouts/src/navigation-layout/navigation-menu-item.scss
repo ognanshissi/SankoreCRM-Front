@@ -1,17 +1,18 @@
 @reference "../../../tailwind-ref.css";
 
 .navigation-menu-item__is-active {
-  background-color: rgba(var(--tas-color-primary), 0.2) !important;
   @apply text-primary;
-}
-
-.menu-item {
-  // @apply mx-4
+  background-color: rgba(255, 255, 255, 0.8);
+  & tas-icon {
+    color: var(--tas-color-primary) !important;
+  }
 }
 
 .menu-item:hover {
-  @apply bg-gray-200 text-primary;
+  @apply text-primary;
 
+  background-color: rgba(000, 000, 000, 0.2);
+  color: var(--tas-color-white) !important;
   & tas-icon {
     color: var(--tas-color-primary) !important;
   }

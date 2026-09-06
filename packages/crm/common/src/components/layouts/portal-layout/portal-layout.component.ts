@@ -44,7 +44,7 @@ export class PortalLayoutComponent implements OnInit {
         icon: 'feather:crosshair',
         title: 'Tâches',
         type: 'basic',
-        link: '/portal/tasks',
+        link: '/tasks/my-day',
       },
       {
         id: 'contacts',

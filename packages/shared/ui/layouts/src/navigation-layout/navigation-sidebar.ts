@@ -25,13 +25,22 @@ import {
 
       .navigation-size__large {
         @apply w-[270px];
+
+         .menu-item {
+         @apply mx-4;
+        }
       }
       .navigation-size__minimized {
-        @apply w-[40px];
+        @apply w-[50px];
 
         .menu-item__text {
           display: none;
         }
+
+        .menu-item {
+         @apply rounded-none p-3;
+        }
+
       }
     `,
   ],
