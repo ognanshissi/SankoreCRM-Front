@@ -61,7 +61,6 @@ export class Login {
       action: async (field) => {
         const result = await firstValueFrom(this._authenticationService.login(field()?.value()).pipe(
           catchError(error => {
-            console.log(error);
             this._snackbarService.error("Erreur", "Une erreur est survenue lors de la connexion");
             return throwError(error);
           }),
