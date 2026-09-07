@@ -1,4 +1,5 @@
-import { afterNextRender, inject, Injectable, signal } from '@angular/core';
+import { inject, Injectable, PLATFORM_ID, signal } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
 import { Router } from '@angular/router';
 import {
   catchError,
@@ -24,7 +25,8 @@ export const TOKEN_STORAGE_KEY = 'SANKORE_ACCESS_TOKEN';
   providedIn: 'root',
 })
 export class AuthenticationService {
-  private storage: Storage = window.localStorage;
+  private readonly _platformId = inject(PLATFORM_ID);
+  private storage: Storage | null = null;
 
   private readonly _authService = inject(AuthApiService);
   private readonly _usersApiService = inject(UsersApiService);
@@ -52,9 +54,9 @@ export class AuthenticationService {
   private tokenExpiresIn = signal<number>(0);
 
   public constructor() {
-    afterNextRender(() => {
+    if (isPlatformBrowser(this._platformId)) {
       this.storage = window.localStorage;
-    });
+    }
   }
 
   public login(loginRequest: LoginRequest): Observable<LoginResult> {
@@ -120,7 +122,7 @@ export class AuthenticationService {
   }
 
   public logout(): void {
-    localStorage.removeItem(TOKEN_STORAGE_KEY);
+    this.storage?.removeItem(TOKEN_STORAGE_KEY);
     this._connectedUser.set(null);
     this._accessToken.set(null);
     this._router.navigate(['/auth', 'login']);
@@ -130,6 +132,6 @@ export class AuthenticationService {
     this.tokenExpiresIn.set(Math.ceil(accessToken.expiresIn / 100));
     this._accessToken.set(accessToken.accessToken);
     console.log(this.accessToken());
-    localStorage.setItem(TOKEN_STORAGE_KEY, JSON.stringify(accessToken));
+    this.storage?.setItem(TOKEN_STORAGE_KEY, JSON.stringify(accessToken));
   }
 }

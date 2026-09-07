@@ -19,7 +19,7 @@ import {
 import { LoginModel } from '../../models/login.model';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AuthenticationWrapper } from '../../components/authentication-wrapper';
-import { AuthenticationService, TenantProvider } from '@sankore/crm/common';
+import { AuthenticationService } from '@sankore/crm/common';
 import { firstValueFrom } from 'rxjs';
 
 @Component({
@@ -67,8 +67,6 @@ export class Login {
       }
     }
   });
-
-  protected readonly submit = submit;
 }
 
 
