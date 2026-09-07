@@ -9,11 +9,18 @@ import { TasFormField, TasLabel, TasError } from '@talisoft/ui/form-field';
 import { TasInput } from '@talisoft/ui/input';
 import { TasIcon } from "@talisoft/ui/icon";
 import { Anchor, Button } from "@talisoft/ui/button";
-import { email, form, FormField, required } from "@angular/forms/signals";
+import {
+  email,
+  form,
+  FormField,
+  FormRoot,
+  required, submit,
+} from '@angular/forms/signals';
 import { LoginModel } from '../../models/login.model';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AuthenticationWrapper } from '../../components/authentication-wrapper';
 import { AuthenticationService, TenantProvider } from '@sankore/crm/common';
+import { firstValueFrom } from 'rxjs';
 
 @Component({
   templateUrl: 'login.html',
@@ -29,7 +36,8 @@ import { AuthenticationService, TenantProvider } from '@sankore/crm/common';
     RouterLink,
     AuthenticationWrapper,
     Anchor,
-    TasError
+    TasError,
+    FormRoot
 ],
   encapsulation: ViewEncapsulation.None,
 })
@@ -46,27 +54,21 @@ export class Login {
     });
     email(schema.email, { message: "L'adresse éléctronique n'est pas valide" });
     required(schema.password, { message: 'Le mot de passe est obligatoire' });
+  }, {
+    submission: {
+      action: async (field) => {
+        const result = await firstValueFrom(this._authenticationService.login(field()?.value()));
+        if (result) {
+          const redirectPath =
+            this._activatedRoute.snapshot.queryParamMap.get('redirectPath') ??
+            '/tasks/my-day';
+          this._router.navigate([redirectPath]).then();
+        }
+      }
+    }
   });
 
-  public handleFormSubmit(): void {
-
-    if (this.loginFormSchema().invalid()) {
-      return;
-    }
-
-    console.log(this.loginFormSchema().submitting());
-
-    this._authenticationService.login(this.loginForm()).subscribe({
-      next: (result) => {
-        console.log(result);
-        const redirectPath =
-          this._activatedRoute.snapshot.queryParamMap.get('redirectPath') ??
-          '/tasks/my-day';
-        this._router.navigate([redirectPath]).then();
-      }
-    })
-
-  }
+  protected readonly submit = submit;
 }
 
 

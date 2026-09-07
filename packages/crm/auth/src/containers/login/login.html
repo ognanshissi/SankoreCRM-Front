@@ -5,37 +5,40 @@
     <p class="text-lg text-slate-600">don't let your work slip through the cracks.</p>
   </section>
 
-  <section class="flex flex-col gap-6">
-    <tas-form-field>
-      <tas-label>Votre adresse électronique</tas-label>
-      <input type="email" tasInput placeholder="Saisissez votre adresse électronique" [formField]="loginFormSchema.email" />
-      @if (loginFormSchema.email().touched() && loginFormSchema.email().invalid()) {
+  <form [formRoot]="loginFormSchema">
+    <section class="flex flex-col gap-6">
+      <tas-form-field>
+        <tas-label>Votre adresse électronique</tas-label>
+        <input type="email" tasInput placeholder="Saisissez votre adresse électronique" [formField]="loginFormSchema.email" />
+        @if (loginFormSchema.email().touched() && loginFormSchema.email().invalid()) {
           @for(error of loginFormSchema.email().errors(); track $index) {
             <tas-error>{{ error.message }}</tas-error>
           }
         }
-    </tas-form-field>
+      </tas-form-field>
 
-    <tas-form-field>
-      <tas-label>Mot de passe</tas-label>
-      <input type="password" tasInput placeholder="Saisissez votre mot de passe"  [formField]="loginFormSchema.password" />
-      @if (loginFormSchema.password().touched() && loginFormSchema.password().invalid()) {
+      <tas-form-field>
+        <tas-label>Mot de passe</tas-label>
+        <input type="password" tasInput placeholder="Saisissez votre mot de passe"  [formField]="loginFormSchema.password" />
+        @if (loginFormSchema.password().touched() && loginFormSchema.password().invalid()) {
           @for(error of loginFormSchema.password().errors(); track $index) {
             <tas-error>{{ error.message }}</tas-error>
           }
         }
-    </tas-form-field>
+      </tas-form-field>
 
-    <div class="mt-[2rem]" >
-      <button tas-raised-button (click)="handleFormSubmit()" color="primary" class="w-full" [disabled]="loginFormSchema().invalid()">
-        Entrer dans votre espace de travail
-        <tas-icon iconName="feather:arrow-right"></tas-icon>
-      </button>
+      <div class="mt-[2rem]" >
+        <button tas-raised-button type="submit" color="primary" class="w-full" [disabled]="loginFormSchema().pending()" [isLoading]="loginFormSchema().submitting()">
+          Entrer dans votre espace de travail
+          <tas-icon iconName="feather:arrow-right"></tas-icon>
+        </button>
 
-      <a class="text-center w-full mt-8" tas-text-button color="primary" [routerLink]="['/auth', 'forgot-password']" [queryParams]="{ email: loginFormSchema.email().value() }">Mot de passe oublié ?</a>
-    </div>
+        <a class="text-center w-full mt-8" tas-text-button color="primary" [routerLink]="['/auth', 'forgot-password']" [queryParams]="{ email: loginFormSchema.email().value() }">Mot de passe oublié ?</a>
+      </div>
 
-    <!--    footer  -->
-    <div class="flex justify-center text-center text-functional-success "> <tas-icon iconName="feather:check" ></tas-icon> <span class="text-[12px]">Votre session de connexion reste privée et protéger</span></div>
-  </section>
+      <!--    footer  -->
+      <div class="flex justify-center text-center text-functional-success "> <tas-icon iconName="feather:check" ></tas-icon> <span class="text-[12px]">Votre session de connexion reste privée et protéger</span></div>
+    </section>
+  </form>
+
 </AuthenticationWrapper>

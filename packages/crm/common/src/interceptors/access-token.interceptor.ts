@@ -26,7 +26,7 @@ export const accessTokenInterceptor: HttpInterceptorFn = (
   return next(reqClone).pipe(
     catchError((error: HttpErrorResponse) => {
       if (error.status === 401) {
-        router.navigate(['/auth/login']);
+        router.navigate(['/auth/login']).then();
       }
       return throwError(() => error);
     })

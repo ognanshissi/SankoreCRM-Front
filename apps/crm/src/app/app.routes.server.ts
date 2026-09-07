@@ -7,7 +7,11 @@ export const serverRoutes: ServerRoute[] = [
   },
   {
     path: 'auth/',
-    renderMode: RenderMode.Client,
+    renderMode: RenderMode.Prerender,
+  },
+  {
+    path: 'tasks',
+    renderMode: RenderMode.Prerender,
   },
   {
     path: '**',
