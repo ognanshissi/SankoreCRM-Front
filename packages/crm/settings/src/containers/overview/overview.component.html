@@ -1,0 +1,46 @@
+<div class="pb-8 px-4">
+  <tas-title>Paramétrage général</tas-title>
+</div>
+
+<div class="grid grid-cols-4 gap-4">
+  <div class="col-span-1 p-2">
+    <div class="space-y-2 flex flex-col">
+      @for (item of menus(); track item.id) {
+      <button
+        class="p-2 hover:shadow border border-gray-300 hover:cursor-pointer hover:bg-primary/50 rounded-lg bg-white text-left min-h-[80px]"
+        [ngClass]="{
+          'menu-group__active shadow border-gray-100':
+            item.id === selectedMenu().id
+        }"
+        *ngIf="item.type === 'group'"
+        (click)="toggleSelectedMenuGroup(item)"
+      >
+        <p class="font-semibold">{{ item.title }}</p>
+        <tas-text>{{ item.description }}</tas-text>
+      </button>
+      }
+    </div>
+  </div>
+  <div class="col-span-3 p-4">
+    @if (selectedMenu()) {
+    <div class="p-4">
+      <tas-title>{{ selectedMenu().title }}</tas-title>
+      <tas-text>{{ selectedMenu().description }}</tas-text>
+    </div>
+
+    <div class="grid grid-cols-3 gap-6 mt-8">
+      @for (item of selectedMenu().children; track item.id) {
+        @if (item.type === 'basic') {
+          <a
+            class="p-4 border border-gray-200 rounded-lg hover:bg-primary/50 bg-gray-50 text-left min-h-[80px]"
+            [routerLink]="item.link"
+          >
+            <p class="font-semibold">{{ item.title }}</p>
+            <tas-text>{{ item.description }}</tas-text>
+          </a>
+        }
+      }
+    </div>
+    }
+  </div>
+</div>

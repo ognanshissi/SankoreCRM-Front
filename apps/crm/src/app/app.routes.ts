@@ -14,6 +14,12 @@ export const appRoutes: Route[] = [
     loadChildren: () => import('@sankore/crm/tasks'),
   },
   {
+    path: 'settings',
+    component: PortalLayoutComponent,
+    canActivate: [authorized],
+    loadChildren: () => import('@sankore/crm/settings'),
+  },
+  {
     path: 'auth',
     component: AuthLayoutComponent,
     loadChildren: () => import('@sankore/crm/auth'),
