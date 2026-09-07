@@ -20,7 +20,8 @@ import { LoginModel } from '../../models/login.model';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AuthenticationWrapper } from '../../components/authentication-wrapper';
 import { AuthenticationService } from '@sankore/crm/common';
-import { firstValueFrom } from 'rxjs';
+import { catchError, firstValueFrom, throwError } from 'rxjs';
+import { SnackbarService } from '@talisoft/ui/snackbar';
 
 @Component({
   templateUrl: 'login.html',
@@ -45,6 +46,7 @@ export class Login {
   private readonly _authenticationService = inject(AuthenticationService);
   private readonly _activatedRoute = inject(ActivatedRoute);
   private readonly _router = inject(Router);
+  private readonly _snackbarService = inject(SnackbarService);
 
   public loginForm = signal(LoginModel.instantiate());
 
@@ -57,7 +59,13 @@ export class Login {
   }, {
     submission: {
       action: async (field) => {
-        const result = await firstValueFrom(this._authenticationService.login(field()?.value()));
+        const result = await firstValueFrom(this._authenticationService.login(field()?.value()).pipe(
+          catchError(error => {
+            console.log(error);
+            this._snackbarService.error("Erreur", "Une erreur est survenue lors de la connexion");
+            return throwError(error);
+          }),
+        ));
         if (result) {
           const redirectPath =
             this._activatedRoute.snapshot.queryParamMap.get('redirectPath') ??
