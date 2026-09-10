@@ -97,9 +97,9 @@ export class AuthenticationService {
   public loadAccessToken(): string | null {
     // when the token is used, I should load user information
     if (!this._accessToken()) {
-      const storage = JSON.parse(
-        this.storage?.getItem(TOKEN_STORAGE_KEY) || '',
-      ) as string | null;
+      const raw = this.storage?.getItem(TOKEN_STORAGE_KEY);
+      if (!raw) return null;
+      const storage = JSON.parse(raw) as string | null;
       if (storage === null) return null;
       this._accessToken.set(storage ?? '');
     }

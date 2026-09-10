@@ -1,0 +1,23 @@
+<div class="flex justify-between items-center">
+  <TasTitle>Agencies</TasTitle>
+  <button tas-filled-button [color]="'primary'">
+    <tas-icon iconName="feather:plus"></tas-icon>
+    Ajouter une agence
+  </button>
+</div>
+  <tas-table
+    [data]="[]"
+    [config]="tableConfig"
+  >
+    <ng-template #header>
+      <tr>
+        <th>Nom</th>
+        <th class="w-[350px]">Principal</th>
+        <th>Adresse</th>
+        <th>Statut</th>
+        <th>Date de création</th>
+      </tr>
+    </ng-template>
+    <ng-template #body let-item>
+    </ng-template>
+  </tas-table>

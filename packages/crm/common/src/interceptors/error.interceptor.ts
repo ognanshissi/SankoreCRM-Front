@@ -14,9 +14,12 @@ export const errorInterceptor: HttpInterceptorFn = (
 
   return next(req).pipe(
     catchError((error: HttpErrorResponse) => {
-      console.log('ErrorInterceptor', error);
+      console.log('ErrorInterceptorStatus', error.status);
       if (error.status === 0) {
-        return EMPTY;
+        const errorMessage = error.error.message ? error.error.message : error.message || "Une erreur est survenue";
+        console.log('ErrorInterceptor', errorMessage);
+        console.log('ErrorInterceptorStatus', error.status);
+        return throwError(() => new Error(error.message));
       }
       return throwError(() => error);
     }),

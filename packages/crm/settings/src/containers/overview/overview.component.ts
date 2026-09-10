@@ -57,26 +57,26 @@ export class OverviewComponent {
       ],
     },
     {
-      title: 'Equipes & Territoires',
+      title: 'Agences & utilisateurs',
       type: 'group',
       id: 'teams_territories',
-      description: 'Gestion des utilisateurs et groupes par territoires',
+      description: 'Gestion des utilisateurs et agences de l\'organisation',
       children: [
-        {
-          title: 'Automatisations',
-          type: 'basic',
-          id: 'groups_workflows',
-          link: '/portal/automation-workflows',
-          description:
-            'Gerer les automatismes dans le cycle de vie des contacts et clients',
-        },
-        {
-          title: 'Rêgles de dispatching',
-          type: 'basic',
-          id: 'groups_dispatching',
-          link: '/settings/dispatch-rules',
-          description: 'Gérer les règles de dispatching des leads',
-        },
+        // {
+        //   title: 'Automatisations',
+        //   type: 'basic',
+        //   id: 'groups_workflows',
+        //   link: '/portal/automation-workflows',
+        //   description:
+        //     'Gerer les automatismes dans le cycle de vie des contacts et clients',
+        // },
+        // {
+        //   title: 'Rêgles de dispatching',
+        //   type: 'basic',
+        //   id: 'groups_dispatching',
+        //   link: '/settings/dispatch-rules',
+        //   description: 'Gérer les règles de dispatching des leads',
+        // },
         {
           title: 'Utilisateurs',
           type: 'basic',
@@ -92,11 +92,11 @@ export class OverviewComponent {
           description: 'Gestion des utilisateurs et groupes par territoires',
         },
         {
-          title: 'Equipes',
+          title: 'Agences',
           type: 'basic',
-          id: 'teams_territories_teams',
-          link: '/settings/teams',
-          description: 'Gestion des utilisateurs et groupes par territoires',
+          id: 'teams_territories_agencies',
+          link: '/settings/agencies',
+          description: "Gestion des agences de l'organisation",
         },
         {
           title: 'Territoires',

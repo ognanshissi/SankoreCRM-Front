@@ -40,6 +40,7 @@ function urlIncludeNotSecuredPaths(url: string): boolean {
     'forgot-password',
     'reset-password',
     'webforms-generated',
+    'assets/',
   ];
   return publicPaths.some((path) => url.includes(path));
 }

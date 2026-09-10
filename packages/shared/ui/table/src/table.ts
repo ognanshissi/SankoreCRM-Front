@@ -24,7 +24,7 @@ import { RowSelectionMaster } from './row-selection-master';
 import { RowSelectionItem } from './row-selection-item';
 import { TasSpinner } from '@talisoft/ui/spinner';
 import { ButtonModule } from '@talisoft/ui/button';
-import { FormField, TasLabel } from '@talisoft/ui/form-field';
+import { TasFormField, TasLabel } from '@talisoft/ui/form-field';
 import { TasIcon } from '@talisoft/ui/icon';
 import { TasInput } from '@talisoft/ui/input';
 import { TasTitle } from '@talisoft/ui/title';
@@ -46,11 +46,10 @@ export const DEFAULT_TABLE_CONFIG: TableConfig = {
   templateUrl: `./table.html`,
   styleUrl: './table.scss',
   imports: [
-    NgIf,
     NgTemplateOutlet,
     TasSpinner,
     ButtonModule,
-    FormField,
+    TasFormField,
     TasIcon,
     TasInput,
     TasTitle,
@@ -84,19 +83,19 @@ export class TasTable<T extends TableEntity>
     true,
     [],
     true,
-    (o1, o2) => o1[this.identifierField()] === o2[this.identifierField()]
+    (o1, o2) => o1[this.identifierField()] === o2[this.identifierField()],
   );
 
   public refresh = output();
 
   public rowSelectionMaster = contentChild<RowSelectionMaster>(
     RowSelectionMaster,
-    { descendants: true }
+    { descendants: true },
   );
 
   public rowSelectionItems = contentChildren<RowSelectionItem>(
     RowSelectionItem,
-    { descendants: true }
+    { descendants: true },
   );
 
   // ContentChild
@@ -143,7 +142,7 @@ export class TasTable<T extends TableEntity>
         item.valueChange.subscribe(() => {
           this.selection.toggle(currentItem);
           this.rowSelectionMaster()?.isChecked.set(
-            this.selection.selected.length === this.data().length
+            this.selection.selected.length === this.data().length,
           );
         });
       }

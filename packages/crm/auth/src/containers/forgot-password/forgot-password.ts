@@ -1,10 +1,17 @@
-import { Component, input, signal } from '@angular/core';
+import { Component, inject, input, signal } from '@angular/core';
 import { TasTitle } from '@talisoft/ui/title';
 import { AuthenticationWrapper } from '../../components/authentication-wrapper';
 import { TasFormField, TasLabel } from '@talisoft/ui/form-field';
 import { Anchor, Button } from '@talisoft/ui/button';
 import { RouterLink } from '@angular/router';
-import { email, form, FormField, required } from '@angular/forms/signals';
+import { email, form, FormField, FormRoot, required } from '@angular/forms/signals';
+import { catchError, EMPTY, firstValueFrom } from 'rxjs';
+import { AuthApiService } from '@sankore/crm-api';
+import { TasIcon } from '@talisoft/ui/icon';
+import { TasAlert } from '@talisoft/ui/alert';
+import { FormGroup } from '@angular/forms';
+import { MatSnackBar } from '@angular/material/snack-bar';
+import { SnackbarService } from '@talisoft/ui/snackbar';
 
 export class ForgotPasswordModel {
   public email!: string;
@@ -21,25 +28,59 @@ export class ForgotPasswordModel {
     Anchor,
     RouterLink,
     FormField,
+    FormRoot,
+    TasIcon,
+    TasAlert,
   ],
 })
 export class ForgotPassword {
+  private readonly _authApiService = inject(AuthApiService);
+  private readonly _snackbarService = inject(SnackbarService);
+
   public email = input<string>();
   public model = signal<ForgotPasswordModel>({ email: this.email() ?? '' });
 
-  public formSchema = form(this.model, (schema) => {
-    required(schema.email, {
-      message: "L'adresse electronique est obligatoire",
-    });
-    email(schema.email, {
-      message: "L'adresse electronique n'est pas valide",
-    });
-  });
+  public emailSent = signal<boolean>(false);
+
+  public formSchema = form(
+    this.model,
+    (schema) => {
+      required(schema.email, {
+        message: "L'adresse electronique est obligatoire",
+      });
+      email(schema.email, {
+        message: "L'adresse electronique n'est pas valide",
+      });
+    },
+    {
+      submission: {
+        action: async (field) => {
+          const result = await firstValueFrom(
+            this._authApiService.forgotPassword(field()?.value()).pipe(
+              catchError((err) => {
+                console.log(err);
+                this._snackbarService.error('Erreur', "Impossible d'envoyer le mail, reessayez plutard !");
+                return EMPTY;
+              }),
+            )
+          );
+          if (result) {
+            this.emailSent.set(true);
+            return;
+          }
+
+          return {kind: "ServerError", message: ""}
+        },
+      },
+    },
+  );
 
   ngOnInit(): void {
     console.log(this.email());
     this.model.set({ email: this.email() ?? '' });
   }
+
+  protected readonly form = form;
 }
 
 export default ForgotPassword;

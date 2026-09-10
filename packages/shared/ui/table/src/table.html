@@ -1,14 +1,16 @@
 <!--table caption-->
 <div class="p-4 flex justify-between items-center">
   <div>
-    <tas-title *ngIf="title()">{{ title() }}</tas-title>
+    @if (title()) {
+      <tas-title>{{ title() }}</tas-title>
+    }
     <tas-text class="text-sm text-gray-400"
       >{{ data().length || 0 }} éléments trouvés
     </tas-text>
   </div>
   <div class="flex space-x-2 items-center justify-center">
     <div>
-      <tas-form-field class="w-[500px]">
+      <tas-form-field class="w-125">
         <tas-label class="sr-only">Recherche</tas-label>
         <input
           type="search"
@@ -34,26 +36,24 @@
   </div>
 </div>
 <div class="overflow-x-hidden relative">
-  <div class="w-full overflow-x-auto h-[332px] overflow-y-auto">
+  <div class="w-full overflow-x-auto max-h-80 bg-white overflow-y-auto rounded-lg">
     <table class="w-full">
-      <ng-container *ngIf="header">
+      @if (header) {
         <thead class="sticky top-0 left-0 bg-white z-10">
-          <ng-container
-            *ngTemplateOutlet="header; context: {$implicit: columns()}"
-          ></ng-container>
+        <ng-container
+          *ngTemplateOutlet="header; context: {$implicit: columns()}"></ng-container>
         </thead>
-      </ng-container>
-
-      <ng-container *ngIf="body">
+      }
+      @if (body) {
         <tbody class="divide-y divide-gray-200">
           @for (item of dataSource.connect() | async; track
-          item[identifierField()]) {
-          <ng-container
-            *ngTemplateOutlet="body; context: { $implicit: item }"
-          ></ng-container>
+            item[identifierField()]) {
+            <ng-container
+              *ngTemplateOutlet="body; context: { $implicit: item }"
+            ></ng-container>
           }
         </tbody>
-      </ng-container>
+      }
     </table>
   </div>
 
@@ -65,14 +65,11 @@
     </div>
   </div>
   }
-
-  <div
-    class="text-center p-4 text-gray-500"
-    *ngIf="!isLoading() && !data().length"
-  >
-    Aucun élément trouvé
-  </div>
-
+  @if (!isLoading() && !data().length) {
+    <div class="text-center p-4 text-gray-500 bg-white">
+      Aucun élément trouvé
+    </div>
+  }
   <mat-paginator
     #paginator
     [pageSize]="5"

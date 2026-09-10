@@ -6,7 +6,7 @@ tas-table {
       padding: 10px;
       text-align: left;
       text-transform: uppercase;
-      @apply text-gray-500 font-medium text-sm tracking-wider  border-y border-y-gray-200 text-nowrap;
+      @apply text-gray-500 font-medium text-sm tracking-wider  text-nowrap;
     }
 
     th[rowSelectionMaster] {
