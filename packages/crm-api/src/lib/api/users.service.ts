@@ -31,8 +31,6 @@ import { ListUsersResult } from '../model/list-users-result.interface';
 // @ts-ignore
 import { RegisterRequest } from '../model/register-request.interface';
 // @ts-ignore
-import { ResetPasswordRequest } from '../model/reset-password-request.interface';
-// @ts-ignore
 import { RevokeRoleRequest } from '../model/revoke-role-request.interface';
 // @ts-ignore
 import { UpdateUserRequest } from '../model/update-user-request.interface';
@@ -135,12 +133,6 @@ export class UsersApiService {
         let localVarHeaders = this.defaultHeaders;
 
         let localVarCredential: string | undefined;
-        // authentication (TenantHeader) required
-        localVarCredential = this.configuration.lookupCredential('TenantHeader');
-        if (localVarCredential) {
-            localVarHeaders = localVarHeaders.set('x-tenant-id', localVarCredential);
-        }
-
         // authentication (BearerToken) required
         localVarCredential = this.configuration.lookupCredential('BearerToken');
         if (localVarCredential) {
@@ -220,12 +212,6 @@ export class UsersApiService {
         let localVarHeaders = this.defaultHeaders;
 
         let localVarCredential: string | undefined;
-        // authentication (TenantHeader) required
-        localVarCredential = this.configuration.lookupCredential('TenantHeader');
-        if (localVarCredential) {
-            localVarHeaders = localVarHeaders.set('x-tenant-id', localVarCredential);
-        }
-
         // authentication (BearerToken) required
         localVarCredential = this.configuration.lookupCredential('BearerToken');
         if (localVarCredential) {
@@ -285,30 +271,20 @@ export class UsersApiService {
 
     /**
      * @param registerRequest 
-     * @param xTenantId Tenant identifier (UUID). Overrides the tenant_id JWT claim when present.
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      */
-    public createRoot(registerRequest: RegisterRequest, xTenantId?: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<any>;
-    public createRoot(registerRequest: RegisterRequest, xTenantId?: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<HttpResponse<any>>;
-    public createRoot(registerRequest: RegisterRequest, xTenantId?: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<HttpEvent<any>>;
-    public createRoot(registerRequest: RegisterRequest, xTenantId?: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<any> {
+    public createRoot(registerRequest: RegisterRequest, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<any>;
+    public createRoot(registerRequest: RegisterRequest, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<HttpResponse<any>>;
+    public createRoot(registerRequest: RegisterRequest, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<HttpEvent<any>>;
+    public createRoot(registerRequest: RegisterRequest, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<any> {
         if (registerRequest === null || registerRequest === undefined) {
             throw new Error('Required parameter registerRequest was null or undefined when calling createRoot.');
         }
 
         let localVarHeaders = this.defaultHeaders;
-        if (xTenantId !== undefined && xTenantId !== null) {
-            localVarHeaders = localVarHeaders.set('x-tenant-id', String(xTenantId));
-        }
 
         let localVarCredential: string | undefined;
-        // authentication (TenantHeader) required
-        localVarCredential = this.configuration.lookupCredential('TenantHeader');
-        if (localVarCredential) {
-            localVarHeaders = localVarHeaders.set('x-tenant-id', localVarCredential);
-        }
-
         // authentication (BearerToken) required
         localVarCredential = this.configuration.lookupCredential('BearerToken');
         if (localVarCredential) {
@@ -370,34 +346,20 @@ export class UsersApiService {
      * Create a new user (admin action)
      * Creates a user account in PendingActivation status. An activation email is sent so the user can set their first password. Requires permission: user:create.
      * @param createUserRequest 
-     * @param xTenantId Tenant identifier (UUID). Overrides the tenant_id JWT claim when present.
-     * @param xTenantId2 Tenant identifier (UUID). Overrides the tenant_id JWT claim when present.
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      */
-    public createUser(createUserRequest: CreateUserRequest, xTenantId?: string, xTenantId2?: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<CreateUserResult>;
-    public createUser(createUserRequest: CreateUserRequest, xTenantId?: string, xTenantId2?: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<CreateUserResult>>;
-    public createUser(createUserRequest: CreateUserRequest, xTenantId?: string, xTenantId2?: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<CreateUserResult>>;
-    public createUser(createUserRequest: CreateUserRequest, xTenantId?: string, xTenantId2?: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
+    public createUser(createUserRequest: CreateUserRequest, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<CreateUserResult>;
+    public createUser(createUserRequest: CreateUserRequest, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<CreateUserResult>>;
+    public createUser(createUserRequest: CreateUserRequest, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<CreateUserResult>>;
+    public createUser(createUserRequest: CreateUserRequest, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
         if (createUserRequest === null || createUserRequest === undefined) {
             throw new Error('Required parameter createUserRequest was null or undefined when calling createUser.');
         }
 
         let localVarHeaders = this.defaultHeaders;
-        if (xTenantId !== undefined && xTenantId !== null) {
-            localVarHeaders = localVarHeaders.set('x-tenant-id', String(xTenantId));
-        }
-        if (xTenantId2 !== undefined && xTenantId2 !== null) {
-            localVarHeaders = localVarHeaders.set('x-tenant-id', String(xTenantId2));
-        }
 
         let localVarCredential: string | undefined;
-        // authentication (TenantHeader) required
-        localVarCredential = this.configuration.lookupCredential('TenantHeader');
-        if (localVarCredential) {
-            localVarHeaders = localVarHeaders.set('x-tenant-id', localVarCredential);
-        }
-
         // authentication (BearerToken) required
         localVarCredential = this.configuration.lookupCredential('BearerToken');
         if (localVarCredential) {
@@ -460,34 +422,20 @@ export class UsersApiService {
      * Create a new user (admin action)
      * Creates a user account in PendingActivation status. An activation email is sent so the user can set their first password. Requires permission: user:create.
      * @param createUserRequest 
-     * @param xTenantId Tenant identifier (UUID). Overrides the tenant_id JWT claim when present.
-     * @param xTenantId2 Tenant identifier (UUID). Overrides the tenant_id JWT claim when present.
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      */
-    public createUser_1(createUserRequest: CreateUserRequest, xTenantId?: string, xTenantId2?: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<CreateUserResult>;
-    public createUser_1(createUserRequest: CreateUserRequest, xTenantId?: string, xTenantId2?: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<CreateUserResult>>;
-    public createUser_1(createUserRequest: CreateUserRequest, xTenantId?: string, xTenantId2?: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<CreateUserResult>>;
-    public createUser_1(createUserRequest: CreateUserRequest, xTenantId?: string, xTenantId2?: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
+    public createUser_1(createUserRequest: CreateUserRequest, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<CreateUserResult>;
+    public createUser_1(createUserRequest: CreateUserRequest, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<CreateUserResult>>;
+    public createUser_1(createUserRequest: CreateUserRequest, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<CreateUserResult>>;
+    public createUser_1(createUserRequest: CreateUserRequest, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
         if (createUserRequest === null || createUserRequest === undefined) {
             throw new Error('Required parameter createUserRequest was null or undefined when calling createUser_1.');
         }
 
         let localVarHeaders = this.defaultHeaders;
-        if (xTenantId !== undefined && xTenantId !== null) {
-            localVarHeaders = localVarHeaders.set('x-tenant-id', String(xTenantId));
-        }
-        if (xTenantId2 !== undefined && xTenantId2 !== null) {
-            localVarHeaders = localVarHeaders.set('x-tenant-id', String(xTenantId2));
-        }
 
         let localVarCredential: string | undefined;
-        // authentication (TenantHeader) required
-        localVarCredential = this.configuration.lookupCredential('TenantHeader');
-        if (localVarCredential) {
-            localVarHeaders = localVarHeaders.set('x-tenant-id', localVarCredential);
-        }
-
         // authentication (BearerToken) required
         localVarCredential = this.configuration.lookupCredential('BearerToken');
         if (localVarCredential) {
@@ -550,34 +498,20 @@ export class UsersApiService {
      * Logically deactivate a user
      * Sets the user status to Disabled and revokes all active role assignments. The user record is never deleted. A UserDeactivatedEvent is published so the Leads module can automatically reassign the agent\&#39;s active leads. Requires permission: user:deactivate.
      * @param userId 
-     * @param xTenantId Tenant identifier (UUID). Overrides the tenant_id JWT claim when present.
-     * @param xTenantId2 Tenant identifier (UUID). Overrides the tenant_id JWT claim when present.
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      */
-    public deactivateUser(userId: string, xTenantId?: string, xTenantId2?: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<any>;
-    public deactivateUser(userId: string, xTenantId?: string, xTenantId2?: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<HttpResponse<any>>;
-    public deactivateUser(userId: string, xTenantId?: string, xTenantId2?: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<HttpEvent<any>>;
-    public deactivateUser(userId: string, xTenantId?: string, xTenantId2?: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<any> {
+    public deactivateUser(userId: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<any>;
+    public deactivateUser(userId: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<HttpResponse<any>>;
+    public deactivateUser(userId: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<HttpEvent<any>>;
+    public deactivateUser(userId: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<any> {
         if (userId === null || userId === undefined) {
             throw new Error('Required parameter userId was null or undefined when calling deactivateUser.');
         }
 
         let localVarHeaders = this.defaultHeaders;
-        if (xTenantId !== undefined && xTenantId !== null) {
-            localVarHeaders = localVarHeaders.set('x-tenant-id', String(xTenantId));
-        }
-        if (xTenantId2 !== undefined && xTenantId2 !== null) {
-            localVarHeaders = localVarHeaders.set('x-tenant-id', String(xTenantId2));
-        }
 
         let localVarCredential: string | undefined;
-        // authentication (TenantHeader) required
-        localVarCredential = this.configuration.lookupCredential('TenantHeader');
-        if (localVarCredential) {
-            localVarHeaders = localVarHeaders.set('x-tenant-id', localVarCredential);
-        }
-
         // authentication (BearerToken) required
         localVarCredential = this.configuration.lookupCredential('BearerToken');
         if (localVarCredential) {
@@ -628,34 +562,20 @@ export class UsersApiService {
     /**
      * Get a user by ID
      * @param userId 
-     * @param xTenantId Tenant identifier (UUID). Overrides the tenant_id JWT claim when present.
-     * @param xTenantId2 Tenant identifier (UUID). Overrides the tenant_id JWT claim when present.
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      */
-    public getUser(userId: string, xTenantId?: string, xTenantId2?: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<UserDto>;
-    public getUser(userId: string, xTenantId?: string, xTenantId2?: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<UserDto>>;
-    public getUser(userId: string, xTenantId?: string, xTenantId2?: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<UserDto>>;
-    public getUser(userId: string, xTenantId?: string, xTenantId2?: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
+    public getUser(userId: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<UserDto>;
+    public getUser(userId: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<UserDto>>;
+    public getUser(userId: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<UserDto>>;
+    public getUser(userId: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
         if (userId === null || userId === undefined) {
             throw new Error('Required parameter userId was null or undefined when calling getUser.');
         }
 
         let localVarHeaders = this.defaultHeaders;
-        if (xTenantId !== undefined && xTenantId !== null) {
-            localVarHeaders = localVarHeaders.set('x-tenant-id', String(xTenantId));
-        }
-        if (xTenantId2 !== undefined && xTenantId2 !== null) {
-            localVarHeaders = localVarHeaders.set('x-tenant-id', String(xTenantId2));
-        }
 
         let localVarCredential: string | undefined;
-        // authentication (TenantHeader) required
-        localVarCredential = this.configuration.lookupCredential('TenantHeader');
-        if (localVarCredential) {
-            localVarHeaders = localVarHeaders.set('x-tenant-id', localVarCredential);
-        }
-
         // authentication (BearerToken) required
         localVarCredential = this.configuration.lookupCredential('BearerToken');
         if (localVarCredential) {
@@ -722,12 +642,6 @@ export class UsersApiService {
         let localVarHeaders = this.defaultHeaders;
 
         let localVarCredential: string | undefined;
-        // authentication (TenantHeader) required
-        localVarCredential = this.configuration.lookupCredential('TenantHeader');
-        if (localVarCredential) {
-            localVarHeaders = localVarHeaders.set('x-tenant-id', localVarCredential);
-        }
-
         // authentication (BearerToken) required
         localVarCredential = this.configuration.lookupCredential('BearerToken');
         if (localVarCredential) {
@@ -779,34 +693,20 @@ export class UsersApiService {
     /**
      * Get a user by ID
      * @param userId 
-     * @param xTenantId Tenant identifier (UUID). Overrides the tenant_id JWT claim when present.
-     * @param xTenantId2 Tenant identifier (UUID). Overrides the tenant_id JWT claim when present.
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      */
-    public getUser_2(userId: string, xTenantId?: string, xTenantId2?: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<UserDto>;
-    public getUser_2(userId: string, xTenantId?: string, xTenantId2?: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<UserDto>>;
-    public getUser_2(userId: string, xTenantId?: string, xTenantId2?: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<UserDto>>;
-    public getUser_2(userId: string, xTenantId?: string, xTenantId2?: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
+    public getUser_2(userId: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<UserDto>;
+    public getUser_2(userId: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<UserDto>>;
+    public getUser_2(userId: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<UserDto>>;
+    public getUser_2(userId: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
         if (userId === null || userId === undefined) {
             throw new Error('Required parameter userId was null or undefined when calling getUser_2.');
         }
 
         let localVarHeaders = this.defaultHeaders;
-        if (xTenantId !== undefined && xTenantId !== null) {
-            localVarHeaders = localVarHeaders.set('x-tenant-id', String(xTenantId));
-        }
-        if (xTenantId2 !== undefined && xTenantId2 !== null) {
-            localVarHeaders = localVarHeaders.set('x-tenant-id', String(xTenantId2));
-        }
 
         let localVarCredential: string | undefined;
-        // authentication (TenantHeader) required
-        localVarCredential = this.configuration.lookupCredential('TenantHeader');
-        if (localVarCredential) {
-            localVarHeaders = localVarHeaders.set('x-tenant-id', localVarCredential);
-        }
-
         // authentication (BearerToken) required
         localVarCredential = this.configuration.lookupCredential('BearerToken');
         if (localVarCredential) {
@@ -862,15 +762,13 @@ export class UsersApiService {
      * @param search 
      * @param page 
      * @param pageSize 
-     * @param xTenantId Tenant identifier (UUID). Overrides the tenant_id JWT claim when present.
-     * @param xTenantId2 Tenant identifier (UUID). Overrides the tenant_id JWT claim when present.
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      */
-    public listUsers(status?: UserStatus, agencyId?: string, search?: string, page?: number, pageSize?: number, xTenantId?: string, xTenantId2?: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<ListUsersResult>;
-    public listUsers(status?: UserStatus, agencyId?: string, search?: string, page?: number, pageSize?: number, xTenantId?: string, xTenantId2?: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<ListUsersResult>>;
-    public listUsers(status?: UserStatus, agencyId?: string, search?: string, page?: number, pageSize?: number, xTenantId?: string, xTenantId2?: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<ListUsersResult>>;
-    public listUsers(status?: UserStatus, agencyId?: string, search?: string, page?: number, pageSize?: number, xTenantId?: string, xTenantId2?: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
+    public listUsers(status?: UserStatus, agencyId?: string, search?: string, page?: number, pageSize?: number, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<ListUsersResult>;
+    public listUsers(status?: UserStatus, agencyId?: string, search?: string, page?: number, pageSize?: number, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<ListUsersResult>>;
+    public listUsers(status?: UserStatus, agencyId?: string, search?: string, page?: number, pageSize?: number, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<ListUsersResult>>;
+    public listUsers(status?: UserStatus, agencyId?: string, search?: string, page?: number, pageSize?: number, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
 
         let localVarQueryParameters = new HttpParams({encoder: this.encoder});
         if (status !== undefined && status !== null) {
@@ -895,20 +793,8 @@ export class UsersApiService {
         }
 
         let localVarHeaders = this.defaultHeaders;
-        if (xTenantId !== undefined && xTenantId !== null) {
-            localVarHeaders = localVarHeaders.set('x-tenant-id', String(xTenantId));
-        }
-        if (xTenantId2 !== undefined && xTenantId2 !== null) {
-            localVarHeaders = localVarHeaders.set('x-tenant-id', String(xTenantId2));
-        }
 
         let localVarCredential: string | undefined;
-        // authentication (TenantHeader) required
-        localVarCredential = this.configuration.lookupCredential('TenantHeader');
-        if (localVarCredential) {
-            localVarHeaders = localVarHeaders.set('x-tenant-id', localVarCredential);
-        }
-
         // authentication (BearerToken) required
         localVarCredential = this.configuration.lookupCredential('BearerToken');
         if (localVarCredential) {
@@ -965,15 +851,13 @@ export class UsersApiService {
      * @param search 
      * @param page 
      * @param pageSize 
-     * @param xTenantId Tenant identifier (UUID). Overrides the tenant_id JWT claim when present.
-     * @param xTenantId2 Tenant identifier (UUID). Overrides the tenant_id JWT claim when present.
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      */
-    public listUsers_3(status?: UserStatus, agencyId?: string, search?: string, page?: number, pageSize?: number, xTenantId?: string, xTenantId2?: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<ListUsersResult>;
-    public listUsers_3(status?: UserStatus, agencyId?: string, search?: string, page?: number, pageSize?: number, xTenantId?: string, xTenantId2?: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<ListUsersResult>>;
-    public listUsers_3(status?: UserStatus, agencyId?: string, search?: string, page?: number, pageSize?: number, xTenantId?: string, xTenantId2?: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<ListUsersResult>>;
-    public listUsers_3(status?: UserStatus, agencyId?: string, search?: string, page?: number, pageSize?: number, xTenantId?: string, xTenantId2?: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
+    public listUsers_3(status?: UserStatus, agencyId?: string, search?: string, page?: number, pageSize?: number, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<ListUsersResult>;
+    public listUsers_3(status?: UserStatus, agencyId?: string, search?: string, page?: number, pageSize?: number, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<ListUsersResult>>;
+    public listUsers_3(status?: UserStatus, agencyId?: string, search?: string, page?: number, pageSize?: number, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<ListUsersResult>>;
+    public listUsers_3(status?: UserStatus, agencyId?: string, search?: string, page?: number, pageSize?: number, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
 
         let localVarQueryParameters = new HttpParams({encoder: this.encoder});
         if (status !== undefined && status !== null) {
@@ -998,20 +882,8 @@ export class UsersApiService {
         }
 
         let localVarHeaders = this.defaultHeaders;
-        if (xTenantId !== undefined && xTenantId !== null) {
-            localVarHeaders = localVarHeaders.set('x-tenant-id', String(xTenantId));
-        }
-        if (xTenantId2 !== undefined && xTenantId2 !== null) {
-            localVarHeaders = localVarHeaders.set('x-tenant-id', String(xTenantId2));
-        }
 
         let localVarCredential: string | undefined;
-        // authentication (TenantHeader) required
-        localVarCredential = this.configuration.lookupCredential('TenantHeader');
-        if (localVarCredential) {
-            localVarHeaders = localVarHeaders.set('x-tenant-id', localVarCredential);
-        }
-
         // authentication (BearerToken) required
         localVarCredential = this.configuration.lookupCredential('BearerToken');
         if (localVarCredential) {
@@ -1064,34 +936,20 @@ export class UsersApiService {
     /**
      * Reactivate a disabled user
      * @param userId 
-     * @param xTenantId Tenant identifier (UUID). Overrides the tenant_id JWT claim when present.
-     * @param xTenantId2 Tenant identifier (UUID). Overrides the tenant_id JWT claim when present.
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      */
-    public reactivateUser(userId: string, xTenantId?: string, xTenantId2?: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<any>;
-    public reactivateUser(userId: string, xTenantId?: string, xTenantId2?: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<HttpResponse<any>>;
-    public reactivateUser(userId: string, xTenantId?: string, xTenantId2?: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<HttpEvent<any>>;
-    public reactivateUser(userId: string, xTenantId?: string, xTenantId2?: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<any> {
+    public reactivateUser(userId: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<any>;
+    public reactivateUser(userId: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<HttpResponse<any>>;
+    public reactivateUser(userId: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<HttpEvent<any>>;
+    public reactivateUser(userId: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<any> {
         if (userId === null || userId === undefined) {
             throw new Error('Required parameter userId was null or undefined when calling reactivateUser.');
         }
 
         let localVarHeaders = this.defaultHeaders;
-        if (xTenantId !== undefined && xTenantId !== null) {
-            localVarHeaders = localVarHeaders.set('x-tenant-id', String(xTenantId));
-        }
-        if (xTenantId2 !== undefined && xTenantId2 !== null) {
-            localVarHeaders = localVarHeaders.set('x-tenant-id', String(xTenantId2));
-        }
 
         let localVarCredential: string | undefined;
-        // authentication (TenantHeader) required
-        localVarCredential = this.configuration.lookupCredential('TenantHeader');
-        if (localVarCredential) {
-            localVarHeaders = localVarHeaders.set('x-tenant-id', localVarCredential);
-        }
-
         // authentication (BearerToken) required
         localVarCredential = this.configuration.lookupCredential('BearerToken');
         if (localVarCredential) {
@@ -1142,34 +1000,20 @@ export class UsersApiService {
     /**
      * Reactivate a disabled user
      * @param userId 
-     * @param xTenantId Tenant identifier (UUID). Overrides the tenant_id JWT claim when present.
-     * @param xTenantId2 Tenant identifier (UUID). Overrides the tenant_id JWT claim when present.
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      */
-    public reactivateUser_4(userId: string, xTenantId?: string, xTenantId2?: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<any>;
-    public reactivateUser_4(userId: string, xTenantId?: string, xTenantId2?: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<HttpResponse<any>>;
-    public reactivateUser_4(userId: string, xTenantId?: string, xTenantId2?: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<HttpEvent<any>>;
-    public reactivateUser_4(userId: string, xTenantId?: string, xTenantId2?: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<any> {
+    public reactivateUser_4(userId: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<any>;
+    public reactivateUser_4(userId: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<HttpResponse<any>>;
+    public reactivateUser_4(userId: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<HttpEvent<any>>;
+    public reactivateUser_4(userId: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<any> {
         if (userId === null || userId === undefined) {
             throw new Error('Required parameter userId was null or undefined when calling reactivateUser_4.');
         }
 
         let localVarHeaders = this.defaultHeaders;
-        if (xTenantId !== undefined && xTenantId !== null) {
-            localVarHeaders = localVarHeaders.set('x-tenant-id', String(xTenantId));
-        }
-        if (xTenantId2 !== undefined && xTenantId2 !== null) {
-            localVarHeaders = localVarHeaders.set('x-tenant-id', String(xTenantId2));
-        }
 
         let localVarCredential: string | undefined;
-        // authentication (TenantHeader) required
-        localVarCredential = this.configuration.lookupCredential('TenantHeader');
-        if (localVarCredential) {
-            localVarHeaders = localVarHeaders.set('x-tenant-id', localVarCredential);
-        }
-
         // authentication (BearerToken) required
         localVarCredential = this.configuration.lookupCredential('BearerToken');
         if (localVarCredential) {
@@ -1218,99 +1062,6 @@ export class UsersApiService {
     }
 
     /**
-     * Reset a user\&#39;s password (admin action)
-     * Resets the user\&#39;s password and extends the expiry by 90 days. Reuse of any of the last 12 passwords is rejected with PASSWORD_RECENTLY_USED. Requires permission: user:reset-password.
-     * @param userId 
-     * @param resetPasswordRequest 
-     * @param xTenantId Tenant identifier (UUID). Overrides the tenant_id JWT claim when present.
-     * @param xTenantId2 Tenant identifier (UUID). Overrides the tenant_id JWT claim when present.
-     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
-     * @param reportProgress flag to report request and response progress.
-     */
-    public resetPassword(userId: string, resetPasswordRequest: ResetPasswordRequest, xTenantId?: string, xTenantId2?: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<any>;
-    public resetPassword(userId: string, resetPasswordRequest: ResetPasswordRequest, xTenantId?: string, xTenantId2?: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<HttpResponse<any>>;
-    public resetPassword(userId: string, resetPasswordRequest: ResetPasswordRequest, xTenantId?: string, xTenantId2?: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<HttpEvent<any>>;
-    public resetPassword(userId: string, resetPasswordRequest: ResetPasswordRequest, xTenantId?: string, xTenantId2?: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<any> {
-        if (userId === null || userId === undefined) {
-            throw new Error('Required parameter userId was null or undefined when calling resetPassword.');
-        }
-        if (resetPasswordRequest === null || resetPasswordRequest === undefined) {
-            throw new Error('Required parameter resetPasswordRequest was null or undefined when calling resetPassword.');
-        }
-
-        let localVarHeaders = this.defaultHeaders;
-        if (xTenantId !== undefined && xTenantId !== null) {
-            localVarHeaders = localVarHeaders.set('x-tenant-id', String(xTenantId));
-        }
-        if (xTenantId2 !== undefined && xTenantId2 !== null) {
-            localVarHeaders = localVarHeaders.set('x-tenant-id', String(xTenantId2));
-        }
-
-        let localVarCredential: string | undefined;
-        // authentication (TenantHeader) required
-        localVarCredential = this.configuration.lookupCredential('TenantHeader');
-        if (localVarCredential) {
-            localVarHeaders = localVarHeaders.set('x-tenant-id', localVarCredential);
-        }
-
-        // authentication (BearerToken) required
-        localVarCredential = this.configuration.lookupCredential('BearerToken');
-        if (localVarCredential) {
-            localVarHeaders = localVarHeaders.set('Authorization', 'Bearer ' + localVarCredential);
-        }
-
-        let localVarHttpHeaderAcceptSelected: string | undefined = options && options.httpHeaderAccept;
-        if (localVarHttpHeaderAcceptSelected === undefined) {
-            // to determine the Accept header
-            const httpHeaderAccepts: string[] = [
-            ];
-            localVarHttpHeaderAcceptSelected = this.configuration.selectHeaderAccept(httpHeaderAccepts);
-        }
-        if (localVarHttpHeaderAcceptSelected !== undefined) {
-            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
-        }
-
-        let localVarHttpContext: HttpContext | undefined = options && options.context;
-        if (localVarHttpContext === undefined) {
-            localVarHttpContext = new HttpContext();
-        }
-
-
-        // to determine the Content-Type header
-        const consumes: string[] = [
-            'application/json'
-        ];
-        const httpContentTypeSelected: string | undefined = this.configuration.selectHeaderContentType(consumes);
-        if (httpContentTypeSelected !== undefined) {
-            localVarHeaders = localVarHeaders.set('Content-Type', httpContentTypeSelected);
-        }
-
-        let responseType_: 'text' | 'json' | 'blob' = 'json';
-        if (localVarHttpHeaderAcceptSelected) {
-            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
-                responseType_ = 'text';
-            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
-                responseType_ = 'json';
-            } else {
-                responseType_ = 'blob';
-            }
-        }
-
-        let localVarPath = `/api/v1/users/${this.configuration.encodeParam({name: "userId", value: userId, in: "path", style: "simple", explode: false, dataType: "string", dataFormat: "uuid"})}/reset-password`;
-        return this.httpClient.request<any>('post', `${this.configuration.basePath}${localVarPath}`,
-            {
-                context: localVarHttpContext,
-                body: resetPasswordRequest,
-                responseType: <any>responseType_,
-                withCredentials: this.configuration.withCredentials,
-                headers: localVarHeaders,
-                observe: observe,
-                reportProgress: reportProgress
-            }
-        );
-    }
-
-    /**
      * Revoke a role from a user
      * Removes a role from a user. The System role cannot be revoked. Requires permission: user:revoke-role.
      * @param userId 
@@ -1332,12 +1083,6 @@ export class UsersApiService {
         let localVarHeaders = this.defaultHeaders;
 
         let localVarCredential: string | undefined;
-        // authentication (TenantHeader) required
-        localVarCredential = this.configuration.lookupCredential('TenantHeader');
-        if (localVarCredential) {
-            localVarHeaders = localVarHeaders.set('x-tenant-id', localVarCredential);
-        }
-
         // authentication (BearerToken) required
         localVarCredential = this.configuration.lookupCredential('BearerToken');
         if (localVarCredential) {
@@ -1417,12 +1162,6 @@ export class UsersApiService {
         let localVarHeaders = this.defaultHeaders;
 
         let localVarCredential: string | undefined;
-        // authentication (TenantHeader) required
-        localVarCredential = this.configuration.lookupCredential('TenantHeader');
-        if (localVarCredential) {
-            localVarHeaders = localVarHeaders.set('x-tenant-id', localVarCredential);
-        }
-
         // authentication (BearerToken) required
         localVarCredential = this.configuration.lookupCredential('BearerToken');
         if (localVarCredential) {
@@ -1475,15 +1214,13 @@ export class UsersApiService {
      * Partial update: only provided fields are applied. Requires permission: user:update.
      * @param userId 
      * @param updateUserRequest 
-     * @param xTenantId Tenant identifier (UUID). Overrides the tenant_id JWT claim when present.
-     * @param xTenantId2 Tenant identifier (UUID). Overrides the tenant_id JWT claim when present.
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      */
-    public updateUser(userId: string, updateUserRequest: UpdateUserRequest, xTenantId?: string, xTenantId2?: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<any>;
-    public updateUser(userId: string, updateUserRequest: UpdateUserRequest, xTenantId?: string, xTenantId2?: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<HttpResponse<any>>;
-    public updateUser(userId: string, updateUserRequest: UpdateUserRequest, xTenantId?: string, xTenantId2?: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<HttpEvent<any>>;
-    public updateUser(userId: string, updateUserRequest: UpdateUserRequest, xTenantId?: string, xTenantId2?: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<any> {
+    public updateUser(userId: string, updateUserRequest: UpdateUserRequest, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<any>;
+    public updateUser(userId: string, updateUserRequest: UpdateUserRequest, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<HttpResponse<any>>;
+    public updateUser(userId: string, updateUserRequest: UpdateUserRequest, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<HttpEvent<any>>;
+    public updateUser(userId: string, updateUserRequest: UpdateUserRequest, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<any> {
         if (userId === null || userId === undefined) {
             throw new Error('Required parameter userId was null or undefined when calling updateUser.');
         }
@@ -1492,20 +1229,8 @@ export class UsersApiService {
         }
 
         let localVarHeaders = this.defaultHeaders;
-        if (xTenantId !== undefined && xTenantId !== null) {
-            localVarHeaders = localVarHeaders.set('x-tenant-id', String(xTenantId));
-        }
-        if (xTenantId2 !== undefined && xTenantId2 !== null) {
-            localVarHeaders = localVarHeaders.set('x-tenant-id', String(xTenantId2));
-        }
 
         let localVarCredential: string | undefined;
-        // authentication (TenantHeader) required
-        localVarCredential = this.configuration.lookupCredential('TenantHeader');
-        if (localVarCredential) {
-            localVarHeaders = localVarHeaders.set('x-tenant-id', localVarCredential);
-        }
-
         // authentication (BearerToken) required
         localVarCredential = this.configuration.lookupCredential('BearerToken');
         if (localVarCredential) {
@@ -1568,15 +1293,13 @@ export class UsersApiService {
      * Partial update: only provided fields are applied. Requires permission: user:update.
      * @param userId 
      * @param updateUserRequest 
-     * @param xTenantId Tenant identifier (UUID). Overrides the tenant_id JWT claim when present.
-     * @param xTenantId2 Tenant identifier (UUID). Overrides the tenant_id JWT claim when present.
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      */
-    public updateUser_5(userId: string, updateUserRequest: UpdateUserRequest, xTenantId?: string, xTenantId2?: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<any>;
-    public updateUser_5(userId: string, updateUserRequest: UpdateUserRequest, xTenantId?: string, xTenantId2?: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<HttpResponse<any>>;
-    public updateUser_5(userId: string, updateUserRequest: UpdateUserRequest, xTenantId?: string, xTenantId2?: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<HttpEvent<any>>;
-    public updateUser_5(userId: string, updateUserRequest: UpdateUserRequest, xTenantId?: string, xTenantId2?: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<any> {
+    public updateUser_5(userId: string, updateUserRequest: UpdateUserRequest, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<any>;
+    public updateUser_5(userId: string, updateUserRequest: UpdateUserRequest, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<HttpResponse<any>>;
+    public updateUser_5(userId: string, updateUserRequest: UpdateUserRequest, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<HttpEvent<any>>;
+    public updateUser_5(userId: string, updateUserRequest: UpdateUserRequest, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<any> {
         if (userId === null || userId === undefined) {
             throw new Error('Required parameter userId was null or undefined when calling updateUser_5.');
         }
@@ -1585,20 +1308,8 @@ export class UsersApiService {
         }
 
         let localVarHeaders = this.defaultHeaders;
-        if (xTenantId !== undefined && xTenantId !== null) {
-            localVarHeaders = localVarHeaders.set('x-tenant-id', String(xTenantId));
-        }
-        if (xTenantId2 !== undefined && xTenantId2 !== null) {
-            localVarHeaders = localVarHeaders.set('x-tenant-id', String(xTenantId2));
-        }
 
         let localVarCredential: string | undefined;
-        // authentication (TenantHeader) required
-        localVarCredential = this.configuration.lookupCredential('TenantHeader');
-        if (localVarCredential) {
-            localVarHeaders = localVarHeaders.set('x-tenant-id', localVarCredential);
-        }
-
         // authentication (BearerToken) required
         localVarCredential = this.configuration.lookupCredential('BearerToken');
         if (localVarCredential) {

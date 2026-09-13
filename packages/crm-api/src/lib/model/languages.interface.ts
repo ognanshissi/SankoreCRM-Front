@@ -11,10 +11,8 @@
  */
 
 
-export interface ResetPasswordRequest { 
-    userId?: string | null;
-    token?: string | null;
-    newPassword?: string | null;
-    confirmPassword?: string | null;
+export enum Languages {
+    NUMBER_0 = 0,
+    NUMBER_1 = 1
 }
 

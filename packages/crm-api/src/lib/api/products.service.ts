@@ -19,13 +19,11 @@ import { CustomHttpParameterCodec }                          from '../encoder';
 import { Observable }                                        from 'rxjs';
 
 // @ts-ignore
-import { CreateTerritoryRequest } from '../model/create-territory-request.interface';
+import { CreateProductRequest } from '../model/create-product-request.interface';
 // @ts-ignore
-import { CreateTerritoryResult } from '../model/create-territory-result.interface';
+import { ProductDto } from '../model/product-dto.interface';
 // @ts-ignore
-import { TerritoryDto } from '../model/territory-dto.interface';
-// @ts-ignore
-import { UpdateTerritoryRequest } from '../model/update-territory-request.interface';
+import { UpdateProductRequest } from '../model/update-product-request.interface';
 
 // @ts-ignore
 import { BASE_PATH, COLLECTION_FORMATS }                     from '../variables';
@@ -36,7 +34,7 @@ import { Configuration }                                     from '../configurat
 @Injectable({
   providedIn: 'root'
 })
-export class TerritoriesApiService {
+export class ProductsApiService {
 
     protected basePath = 'http://localhost';
     public defaultHeaders = new HttpHeaders();
@@ -98,18 +96,18 @@ export class TerritoriesApiService {
     }
 
     /**
-     * Create a new territory
-     * Creates a territory with a geographic center point and coverage radius. Code must be unique within the tenant. Requires permission: territory:create.
-     * @param createTerritoryRequest 
+     * Create a product speciality
+     * Creates a new product speciality for the tenant. Code must be unique per tenant. Requires permission: product:create.
+     * @param createProductRequest 
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      */
-    public createTerritory(createTerritoryRequest: CreateTerritoryRequest, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<CreateTerritoryResult>;
-    public createTerritory(createTerritoryRequest: CreateTerritoryRequest, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<CreateTerritoryResult>>;
-    public createTerritory(createTerritoryRequest: CreateTerritoryRequest, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<CreateTerritoryResult>>;
-    public createTerritory(createTerritoryRequest: CreateTerritoryRequest, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
-        if (createTerritoryRequest === null || createTerritoryRequest === undefined) {
-            throw new Error('Required parameter createTerritoryRequest was null or undefined when calling createTerritory.');
+    public createProduct(createProductRequest: CreateProductRequest, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<string>;
+    public createProduct(createProductRequest: CreateProductRequest, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<string>>;
+    public createProduct(createProductRequest: CreateProductRequest, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<string>>;
+    public createProduct(createProductRequest: CreateProductRequest, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
+        if (createProductRequest === null || createProductRequest === undefined) {
+            throw new Error('Required parameter createProductRequest was null or undefined when calling createProduct.');
         }
 
         let localVarHeaders = this.defaultHeaders;
@@ -159,11 +157,11 @@ export class TerritoriesApiService {
             }
         }
 
-        let localVarPath = `/api/v1/territories`;
-        return this.httpClient.request<CreateTerritoryResult>('post', `${this.configuration.basePath}${localVarPath}`,
+        let localVarPath = `/api/v1/products`;
+        return this.httpClient.request<string>('post', `${this.configuration.basePath}${localVarPath}`,
             {
                 context: localVarHttpContext,
-                body: createTerritoryRequest,
+                body: createProductRequest,
                 responseType: <any>responseType_,
                 withCredentials: this.configuration.withCredentials,
                 headers: localVarHeaders,
@@ -174,18 +172,17 @@ export class TerritoriesApiService {
     }
 
     /**
-     * Deactivate (soft-delete) a territory
-     * Marks the territory as inactive. Deactivated territories are excluded from the list endpoint by default. This operation is idempotent-safe: deleting an already-inactive territory returns 400. Requires permission: territory:delete.
+     * Delete a product speciality
      * @param id 
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      */
-    public deleteTerritory(id: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<any>;
-    public deleteTerritory(id: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<HttpResponse<any>>;
-    public deleteTerritory(id: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<HttpEvent<any>>;
-    public deleteTerritory(id: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<any> {
+    public deleteProduct(id: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<any>;
+    public deleteProduct(id: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<HttpResponse<any>>;
+    public deleteProduct(id: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<HttpEvent<any>>;
+    public deleteProduct(id: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<any> {
         if (id === null || id === undefined) {
-            throw new Error('Required parameter id was null or undefined when calling deleteTerritory.');
+            throw new Error('Required parameter id was null or undefined when calling deleteProduct.');
         }
 
         let localVarHeaders = this.defaultHeaders;
@@ -225,7 +222,7 @@ export class TerritoriesApiService {
             }
         }
 
-        let localVarPath = `/api/v1/territories/${this.configuration.encodeParam({name: "id", value: id, in: "path", style: "simple", explode: false, dataType: "string", dataFormat: "uuid"})}`;
+        let localVarPath = `/api/v1/products/${this.configuration.encodeParam({name: "id", value: id, in: "path", style: "simple", explode: false, dataType: "string", dataFormat: "uuid"})}`;
         return this.httpClient.request<any>('delete', `${this.configuration.basePath}${localVarPath}`,
             {
                 context: localVarHttpContext,
@@ -239,17 +236,17 @@ export class TerritoriesApiService {
     }
 
     /**
-     * Get a territory by ID
+     * Get a product speciality by ID
      * @param id 
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      */
-    public getTerritory(id: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<TerritoryDto>;
-    public getTerritory(id: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<TerritoryDto>>;
-    public getTerritory(id: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<TerritoryDto>>;
-    public getTerritory(id: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
+    public getProduct(id: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<ProductDto>;
+    public getProduct(id: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<ProductDto>>;
+    public getProduct(id: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<ProductDto>>;
+    public getProduct(id: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
         if (id === null || id === undefined) {
-            throw new Error('Required parameter id was null or undefined when calling getTerritory.');
+            throw new Error('Required parameter id was null or undefined when calling getProduct.');
         }
 
         let localVarHeaders = this.defaultHeaders;
@@ -290,8 +287,8 @@ export class TerritoriesApiService {
             }
         }
 
-        let localVarPath = `/api/v1/territories/${this.configuration.encodeParam({name: "id", value: id, in: "path", style: "simple", explode: false, dataType: "string", dataFormat: "uuid"})}`;
-        return this.httpClient.request<TerritoryDto>('get', `${this.configuration.basePath}${localVarPath}`,
+        let localVarPath = `/api/v1/products/${this.configuration.encodeParam({name: "id", value: id, in: "path", style: "simple", explode: false, dataType: "string", dataFormat: "uuid"})}`;
+        return this.httpClient.request<ProductDto>('get', `${this.configuration.basePath}${localVarPath}`,
             {
                 context: localVarHttpContext,
                 responseType: <any>responseType_,
@@ -304,25 +301,14 @@ export class TerritoriesApiService {
     }
 
     /**
-     * List all territories for the current tenant
-     * Returns active territories by default. Pass includeInactive&#x3D;true to include deactivated ones.
-     * @param includeInactive 
+     * List all product specialities for the tenant
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      */
-    public listTerritories(includeInactive: boolean, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<Array<TerritoryDto>>;
-    public listTerritories(includeInactive: boolean, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<Array<TerritoryDto>>>;
-    public listTerritories(includeInactive: boolean, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<Array<TerritoryDto>>>;
-    public listTerritories(includeInactive: boolean, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
-        if (includeInactive === null || includeInactive === undefined) {
-            throw new Error('Required parameter includeInactive was null or undefined when calling listTerritories.');
-        }
-
-        let localVarQueryParameters = new HttpParams({encoder: this.encoder});
-        if (includeInactive !== undefined && includeInactive !== null) {
-          localVarQueryParameters = this.addToHttpParams(localVarQueryParameters,
-            <any>includeInactive, 'includeInactive');
-        }
+    public listProducts(observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<Array<ProductDto>>;
+    public listProducts(observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<Array<ProductDto>>>;
+    public listProducts(observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<Array<ProductDto>>>;
+    public listProducts(observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
 
         let localVarHeaders = this.defaultHeaders;
 
@@ -362,11 +348,10 @@ export class TerritoriesApiService {
             }
         }
 
-        let localVarPath = `/api/v1/territories`;
-        return this.httpClient.request<Array<TerritoryDto>>('get', `${this.configuration.basePath}${localVarPath}`,
+        let localVarPath = `/api/v1/products`;
+        return this.httpClient.request<Array<ProductDto>>('get', `${this.configuration.basePath}${localVarPath}`,
             {
                 context: localVarHttpContext,
-                params: localVarQueryParameters,
                 responseType: <any>responseType_,
                 withCredentials: this.configuration.withCredentials,
                 headers: localVarHeaders,
@@ -377,22 +362,22 @@ export class TerritoriesApiService {
     }
 
     /**
-     * Update a territory\&#39;s details
-     * Updates the name, description, geographic center, radius, and product specialities. Deactivated territories cannot be updated. Requires permission: territory:update.
+     * Update a product speciality
+     * Updates name and description. Code is immutable after creation. Requires permission: product:update.
      * @param id 
-     * @param updateTerritoryRequest 
+     * @param updateProductRequest 
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      */
-    public updateTerritory(id: string, updateTerritoryRequest: UpdateTerritoryRequest, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<any>;
-    public updateTerritory(id: string, updateTerritoryRequest: UpdateTerritoryRequest, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<HttpResponse<any>>;
-    public updateTerritory(id: string, updateTerritoryRequest: UpdateTerritoryRequest, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<HttpEvent<any>>;
-    public updateTerritory(id: string, updateTerritoryRequest: UpdateTerritoryRequest, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<any> {
+    public updateProduct(id: string, updateProductRequest: UpdateProductRequest, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<any>;
+    public updateProduct(id: string, updateProductRequest: UpdateProductRequest, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<HttpResponse<any>>;
+    public updateProduct(id: string, updateProductRequest: UpdateProductRequest, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<HttpEvent<any>>;
+    public updateProduct(id: string, updateProductRequest: UpdateProductRequest, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<any> {
         if (id === null || id === undefined) {
-            throw new Error('Required parameter id was null or undefined when calling updateTerritory.');
+            throw new Error('Required parameter id was null or undefined when calling updateProduct.');
         }
-        if (updateTerritoryRequest === null || updateTerritoryRequest === undefined) {
-            throw new Error('Required parameter updateTerritoryRequest was null or undefined when calling updateTerritory.');
+        if (updateProductRequest === null || updateProductRequest === undefined) {
+            throw new Error('Required parameter updateProductRequest was null or undefined when calling updateProduct.');
         }
 
         let localVarHeaders = this.defaultHeaders;
@@ -441,90 +426,11 @@ export class TerritoriesApiService {
             }
         }
 
-        let localVarPath = `/api/v1/territories/territories/${this.configuration.encodeParam({name: "id", value: id, in: "path", style: "simple", explode: false, dataType: "string", dataFormat: "uuid"})}`;
+        let localVarPath = `/api/v1/products/${this.configuration.encodeParam({name: "id", value: id, in: "path", style: "simple", explode: false, dataType: "string", dataFormat: "uuid"})}`;
         return this.httpClient.request<any>('put', `${this.configuration.basePath}${localVarPath}`,
             {
                 context: localVarHttpContext,
-                body: updateTerritoryRequest,
-                responseType: <any>responseType_,
-                withCredentials: this.configuration.withCredentials,
-                headers: localVarHeaders,
-                observe: observe,
-                reportProgress: reportProgress
-            }
-        );
-    }
-
-    /**
-     * Update a territory\&#39;s details
-     * Updates the name, description, geographic center, radius, and product specialities. Deactivated territories cannot be updated. Requires permission: territory:update.
-     * @param id 
-     * @param updateTerritoryRequest 
-     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
-     * @param reportProgress flag to report request and response progress.
-     */
-    public updateTerritory_1(id: string, updateTerritoryRequest: UpdateTerritoryRequest, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<any>;
-    public updateTerritory_1(id: string, updateTerritoryRequest: UpdateTerritoryRequest, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<HttpResponse<any>>;
-    public updateTerritory_1(id: string, updateTerritoryRequest: UpdateTerritoryRequest, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<HttpEvent<any>>;
-    public updateTerritory_1(id: string, updateTerritoryRequest: UpdateTerritoryRequest, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<any> {
-        if (id === null || id === undefined) {
-            throw new Error('Required parameter id was null or undefined when calling updateTerritory_1.');
-        }
-        if (updateTerritoryRequest === null || updateTerritoryRequest === undefined) {
-            throw new Error('Required parameter updateTerritoryRequest was null or undefined when calling updateTerritory_1.');
-        }
-
-        let localVarHeaders = this.defaultHeaders;
-
-        let localVarCredential: string | undefined;
-        // authentication (BearerToken) required
-        localVarCredential = this.configuration.lookupCredential('BearerToken');
-        if (localVarCredential) {
-            localVarHeaders = localVarHeaders.set('Authorization', 'Bearer ' + localVarCredential);
-        }
-
-        let localVarHttpHeaderAcceptSelected: string | undefined = options && options.httpHeaderAccept;
-        if (localVarHttpHeaderAcceptSelected === undefined) {
-            // to determine the Accept header
-            const httpHeaderAccepts: string[] = [
-            ];
-            localVarHttpHeaderAcceptSelected = this.configuration.selectHeaderAccept(httpHeaderAccepts);
-        }
-        if (localVarHttpHeaderAcceptSelected !== undefined) {
-            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
-        }
-
-        let localVarHttpContext: HttpContext | undefined = options && options.context;
-        if (localVarHttpContext === undefined) {
-            localVarHttpContext = new HttpContext();
-        }
-
-
-        // to determine the Content-Type header
-        const consumes: string[] = [
-            'application/json'
-        ];
-        const httpContentTypeSelected: string | undefined = this.configuration.selectHeaderContentType(consumes);
-        if (httpContentTypeSelected !== undefined) {
-            localVarHeaders = localVarHeaders.set('Content-Type', httpContentTypeSelected);
-        }
-
-        let responseType_: 'text' | 'json' | 'blob' = 'json';
-        if (localVarHttpHeaderAcceptSelected) {
-            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
-                responseType_ = 'text';
-            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
-                responseType_ = 'json';
-            } else {
-                responseType_ = 'blob';
-            }
-        }
-
-        let localVarPath = `/api/v1/territories/territories/${this.configuration.encodeParam({name: "id", value: id, in: "path", style: "simple", explode: false, dataType: "string", dataFormat: "uuid"})}`;
-        return this.httpClient.request<any>('put', `${this.configuration.basePath}${localVarPath}`,
-            {
-                context: localVarHttpContext,
-                body: updateTerritoryRequest,
+                body: updateProductRequest,
                 responseType: <any>responseType_,
                 withCredentials: this.configuration.withCredentials,
                 headers: localVarHeaders,

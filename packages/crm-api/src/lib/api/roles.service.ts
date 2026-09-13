@@ -120,12 +120,6 @@ export class RolesApiService {
         let localVarHeaders = this.defaultHeaders;
 
         let localVarCredential: string | undefined;
-        // authentication (TenantHeader) required
-        localVarCredential = this.configuration.lookupCredential('TenantHeader');
-        if (localVarCredential) {
-            localVarHeaders = localVarHeaders.set('x-tenant-id', localVarCredential);
-        }
-
         // authentication (BearerToken) required
         localVarCredential = this.configuration.lookupCredential('BearerToken');
         if (localVarCredential) {
@@ -200,12 +194,6 @@ export class RolesApiService {
         let localVarHeaders = this.defaultHeaders;
 
         let localVarCredential: string | undefined;
-        // authentication (TenantHeader) required
-        localVarCredential = this.configuration.lookupCredential('TenantHeader');
-        if (localVarCredential) {
-            localVarHeaders = localVarHeaders.set('x-tenant-id', localVarCredential);
-        }
-
         // authentication (BearerToken) required
         localVarCredential = this.configuration.lookupCredential('BearerToken');
         if (localVarCredential) {
@@ -280,12 +268,6 @@ export class RolesApiService {
         let localVarHeaders = this.defaultHeaders;
 
         let localVarCredential: string | undefined;
-        // authentication (TenantHeader) required
-        localVarCredential = this.configuration.lookupCredential('TenantHeader');
-        if (localVarCredential) {
-            localVarHeaders = localVarHeaders.set('x-tenant-id', localVarCredential);
-        }
-
         // authentication (BearerToken) required
         localVarCredential = this.configuration.lookupCredential('BearerToken');
         if (localVarCredential) {
@@ -350,12 +332,6 @@ export class RolesApiService {
         let localVarHeaders = this.defaultHeaders;
 
         let localVarCredential: string | undefined;
-        // authentication (TenantHeader) required
-        localVarCredential = this.configuration.lookupCredential('TenantHeader');
-        if (localVarCredential) {
-            localVarHeaders = localVarHeaders.set('x-tenant-id', localVarCredential);
-        }
-
         // authentication (BearerToken) required
         localVarCredential = this.configuration.lookupCredential('BearerToken');
         if (localVarCredential) {
@@ -418,12 +394,6 @@ export class RolesApiService {
         let localVarHeaders = this.defaultHeaders;
 
         let localVarCredential: string | undefined;
-        // authentication (TenantHeader) required
-        localVarCredential = this.configuration.lookupCredential('TenantHeader');
-        if (localVarCredential) {
-            localVarHeaders = localVarHeaders.set('x-tenant-id', localVarCredential);
-        }
-
         // authentication (BearerToken) required
         localVarCredential = this.configuration.lookupCredential('BearerToken');
         if (localVarCredential) {
@@ -493,12 +463,6 @@ export class RolesApiService {
         let localVarHeaders = this.defaultHeaders;
 
         let localVarCredential: string | undefined;
-        // authentication (TenantHeader) required
-        localVarCredential = this.configuration.lookupCredential('TenantHeader');
-        if (localVarCredential) {
-            localVarHeaders = localVarHeaders.set('x-tenant-id', localVarCredential);
-        }
-
         // authentication (BearerToken) required
         localVarCredential = this.configuration.lookupCredential('BearerToken');
         if (localVarCredential) {
@@ -567,12 +531,6 @@ export class RolesApiService {
         let localVarHeaders = this.defaultHeaders;
 
         let localVarCredential: string | undefined;
-        // authentication (TenantHeader) required
-        localVarCredential = this.configuration.lookupCredential('TenantHeader');
-        if (localVarCredential) {
-            localVarHeaders = localVarHeaders.set('x-tenant-id', localVarCredential);
-        }
-
         // authentication (BearerToken) required
         localVarCredential = this.configuration.lookupCredential('BearerToken');
         if (localVarCredential) {

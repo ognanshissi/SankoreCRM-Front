@@ -101,34 +101,20 @@ export class LeadsApiService {
 
     /**
      * @param captureLeadRequest 
-     * @param xTenantId Tenant identifier (UUID). Overrides the tenant_id JWT claim when present.
-     * @param xTenantId2 Tenant identifier (UUID). Overrides the tenant_id JWT claim when present.
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      */
-    public captureLead(captureLeadRequest: CaptureLeadRequest, xTenantId?: string, xTenantId2?: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<CaptureLeadResult>;
-    public captureLead(captureLeadRequest: CaptureLeadRequest, xTenantId?: string, xTenantId2?: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<CaptureLeadResult>>;
-    public captureLead(captureLeadRequest: CaptureLeadRequest, xTenantId?: string, xTenantId2?: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<CaptureLeadResult>>;
-    public captureLead(captureLeadRequest: CaptureLeadRequest, xTenantId?: string, xTenantId2?: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
+    public captureLead(captureLeadRequest: CaptureLeadRequest, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<CaptureLeadResult>;
+    public captureLead(captureLeadRequest: CaptureLeadRequest, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<CaptureLeadResult>>;
+    public captureLead(captureLeadRequest: CaptureLeadRequest, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<CaptureLeadResult>>;
+    public captureLead(captureLeadRequest: CaptureLeadRequest, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
         if (captureLeadRequest === null || captureLeadRequest === undefined) {
             throw new Error('Required parameter captureLeadRequest was null or undefined when calling captureLead.');
         }
 
         let localVarHeaders = this.defaultHeaders;
-        if (xTenantId !== undefined && xTenantId !== null) {
-            localVarHeaders = localVarHeaders.set('x-tenant-id', String(xTenantId));
-        }
-        if (xTenantId2 !== undefined && xTenantId2 !== null) {
-            localVarHeaders = localVarHeaders.set('x-tenant-id', String(xTenantId2));
-        }
 
         let localVarCredential: string | undefined;
-        // authentication (TenantHeader) required
-        localVarCredential = this.configuration.lookupCredential('TenantHeader');
-        if (localVarCredential) {
-            localVarHeaders = localVarHeaders.set('x-tenant-id', localVarCredential);
-        }
-
         // authentication (BearerToken) required
         localVarCredential = this.configuration.lookupCredential('BearerToken');
         if (localVarCredential) {
@@ -190,15 +176,13 @@ export class LeadsApiService {
     /**
      * @param leadId 
      * @param dispatchLeadRequest 
-     * @param xTenantId Tenant identifier (UUID). Overrides the tenant_id JWT claim when present.
-     * @param xTenantId2 Tenant identifier (UUID). Overrides the tenant_id JWT claim when present.
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      */
-    public dispatchLead(leadId: string, dispatchLeadRequest: DispatchLeadRequest, xTenantId?: string, xTenantId2?: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json' | 'application/problem+json', context?: HttpContext}): Observable<DispatchLeadResult>;
-    public dispatchLead(leadId: string, dispatchLeadRequest: DispatchLeadRequest, xTenantId?: string, xTenantId2?: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json' | 'application/problem+json', context?: HttpContext}): Observable<HttpResponse<DispatchLeadResult>>;
-    public dispatchLead(leadId: string, dispatchLeadRequest: DispatchLeadRequest, xTenantId?: string, xTenantId2?: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json' | 'application/problem+json', context?: HttpContext}): Observable<HttpEvent<DispatchLeadResult>>;
-    public dispatchLead(leadId: string, dispatchLeadRequest: DispatchLeadRequest, xTenantId?: string, xTenantId2?: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json' | 'application/problem+json', context?: HttpContext}): Observable<any> {
+    public dispatchLead(leadId: string, dispatchLeadRequest: DispatchLeadRequest, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json' | 'application/problem+json', context?: HttpContext}): Observable<DispatchLeadResult>;
+    public dispatchLead(leadId: string, dispatchLeadRequest: DispatchLeadRequest, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json' | 'application/problem+json', context?: HttpContext}): Observable<HttpResponse<DispatchLeadResult>>;
+    public dispatchLead(leadId: string, dispatchLeadRequest: DispatchLeadRequest, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json' | 'application/problem+json', context?: HttpContext}): Observable<HttpEvent<DispatchLeadResult>>;
+    public dispatchLead(leadId: string, dispatchLeadRequest: DispatchLeadRequest, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json' | 'application/problem+json', context?: HttpContext}): Observable<any> {
         if (leadId === null || leadId === undefined) {
             throw new Error('Required parameter leadId was null or undefined when calling dispatchLead.');
         }
@@ -207,20 +191,8 @@ export class LeadsApiService {
         }
 
         let localVarHeaders = this.defaultHeaders;
-        if (xTenantId !== undefined && xTenantId !== null) {
-            localVarHeaders = localVarHeaders.set('x-tenant-id', String(xTenantId));
-        }
-        if (xTenantId2 !== undefined && xTenantId2 !== null) {
-            localVarHeaders = localVarHeaders.set('x-tenant-id', String(xTenantId2));
-        }
 
         let localVarCredential: string | undefined;
-        // authentication (TenantHeader) required
-        localVarCredential = this.configuration.lookupCredential('TenantHeader');
-        if (localVarCredential) {
-            localVarHeaders = localVarHeaders.set('x-tenant-id', localVarCredential);
-        }
-
         // authentication (BearerToken) required
         localVarCredential = this.configuration.lookupCredential('BearerToken');
         if (localVarCredential) {

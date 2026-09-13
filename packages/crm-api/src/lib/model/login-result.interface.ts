@@ -14,7 +14,8 @@
 export interface LoginResult { 
     accessToken?: string | null;
     expiresAt?: string;
+    refreshToken?: string | null;
+    refreshTokenExpiresAt?: string;
     userId?: string;
-    tenantId?: string;
 }
 

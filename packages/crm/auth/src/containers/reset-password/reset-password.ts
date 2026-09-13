@@ -13,8 +13,12 @@ import { TasInputPassword } from '@talisoft/ui/input-password';
 import { TasIcon } from '@talisoft/ui/icon';
 import { Anchor, Button } from '@talisoft/ui/button';
 import { AuthenticationWrapper } from '../../components/authentication-wrapper';
-import { AccountActivationModel } from '../../models/account-activation.model';
-import { AuthApiService } from '@sankore/crm-api';
+import { ResetPasswordModel } from '../../models/reset-password.model';
+import {
+  AuthApiService,
+  ResetPasswordRequest,
+  UsersApiService,
+} from '@sankore/crm-api';
 import { Loading } from '@sankore/crm/common';
 
 /**
@@ -22,10 +26,10 @@ import { Loading } from '@sankore/crm/common';
  */
 const PASSWORD_COMPLEXITY_PATTERN = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).+$/;
 
-type ActivationStep = 'checking' | 'invalid' | 'form' | 'success';
+type ResetPasswordStep = 'checking' | 'invalid' | 'form' | 'success';
 
 @Component({
-  templateUrl: './account-activation.html',
+  templateUrl: './reset-password.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     AuthenticationWrapper,
@@ -40,16 +44,16 @@ type ActivationStep = 'checking' | 'invalid' | 'form' | 'success';
     FormField,
   ],
 })
-export class AccountActivationComponent {
+export class ResetPasswordComponent {
   private readonly _authApiService = inject(AuthApiService);
   private readonly _loadingService = inject(Loading);
-  // Bound automatically from the `?token=` query param (see `withComponentInputBinding`).
+
   public token = input<string>();
   public userId = input<string>();
 
-  public step = signal<ActivationStep>('checking');
+  public step = signal<ResetPasswordStep>('checking');
 
-  public model = signal(AccountActivationModel.instantiate());
+  public model = signal(ResetPasswordModel.instantiate());
 
   public formSchema = form(this.model, (schema) => {
     required(schema.password, { message: 'Le mot de passe est obligatoire' });
@@ -91,20 +95,16 @@ export class AccountActivationComponent {
 
     this._loadingService
       .showLoaderUntilCompleted(
-        this._authApiService.activateAccount({
-          ...this.formSchema()?.value,
-          token: this.token(),
-          userId: this.userId()
-        }),
+        this._authApiService.refreshToken({
+          newPassword: this.formSchema()?.value().password,
+          confirmPassword: this.formSchema()?.value().confirmPassword,
+          userId: this.userId()!,
+          token: this.token()!,
+        } as ResetPasswordRequest),
       )
       .subscribe({
-        next: (response) => {
-          console.log(response);
-          this.step.set('success')
-        },
-        error: (_error) => {
-          this.step.set('invalid')
-        }
+        next: () => this.step.set('success'),
+        error: () => this.step.set('invalid'),
       });
   }
 
@@ -117,22 +117,15 @@ export class AccountActivationComponent {
       return;
     }
 
-    this.step.set('checking');
-
     this._loadingService
       .showLoaderUntilCompleted(
-        this._authApiService.validateActivationToken(
-          this.userId() ?? '',
-          this.token() ?? '',
-        ),
+        this._authApiService.validateActivationToken(userId, token),
       )
       .subscribe({
         next: () => this.step.set('form'),
-        error: () => {
-          this.step.set('invalid');
-        },
+        error: () => this.step.set('invalid'),
       });
   }
 }
 
-export default AccountActivationComponent;
+export default ResetPasswordComponent;

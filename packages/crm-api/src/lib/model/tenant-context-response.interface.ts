@@ -11,12 +11,17 @@
  */
 
 
-export interface RegisterRequest { 
-    email?: string | null;
-    password?: string | null;
-    confirmPassword?: string | null;
-    firstName?: string | null;
-    lastName?: string | null;
+export interface TenantContextResponse { 
     tenantId?: string;
+    name?: string | null;
+    isActive?: boolean;
+    isMaintenance?: boolean;
+    trialExpiresAt?: string | null;
+    companyName?: string | null;
+    description?: string | null;
+    logoUrl?: string | null;
+    primaryColor?: string | null;
+    secondaryColor?: string | null;
+    defaultLanguage?: string | null;
 }
 

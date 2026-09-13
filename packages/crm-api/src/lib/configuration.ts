@@ -95,17 +95,6 @@ export class Configuration {
                     : this.accessToken;
             };
         }
-
-        // init default TenantHeader credential
-        if (!this.credentials['TenantHeader']) {
-            this.credentials['TenantHeader'] = () => {
-                if (this.apiKeys === null || this.apiKeys === undefined) {
-                    return undefined;
-                } else {
-                    return this.apiKeys['TenantHeader'] || this.apiKeys['x-tenant-id'];
-                }
-            };
-        }
     }
 
     /**

@@ -107,34 +107,20 @@ export class AgenciesApiService {
      * Re-activate a soft-deleted agency
      * Reverses a soft-delete: sets IsActive&#x3D;true and IsDeleted&#x3D;false. Requires permission: agency:activate.
      * @param id 
-     * @param xTenantId Tenant identifier (UUID). Overrides the tenant_id JWT claim when present.
-     * @param xTenantId2 Tenant identifier (UUID). Overrides the tenant_id JWT claim when present.
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      */
-    public activateAgency(id: string, xTenantId?: string, xTenantId2?: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<any>;
-    public activateAgency(id: string, xTenantId?: string, xTenantId2?: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<HttpResponse<any>>;
-    public activateAgency(id: string, xTenantId?: string, xTenantId2?: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<HttpEvent<any>>;
-    public activateAgency(id: string, xTenantId?: string, xTenantId2?: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<any> {
+    public activateAgency(id: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<any>;
+    public activateAgency(id: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<HttpResponse<any>>;
+    public activateAgency(id: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<HttpEvent<any>>;
+    public activateAgency(id: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<any> {
         if (id === null || id === undefined) {
             throw new Error('Required parameter id was null or undefined when calling activateAgency.');
         }
 
         let localVarHeaders = this.defaultHeaders;
-        if (xTenantId !== undefined && xTenantId !== null) {
-            localVarHeaders = localVarHeaders.set('x-tenant-id', String(xTenantId));
-        }
-        if (xTenantId2 !== undefined && xTenantId2 !== null) {
-            localVarHeaders = localVarHeaders.set('x-tenant-id', String(xTenantId2));
-        }
 
         let localVarCredential: string | undefined;
-        // authentication (TenantHeader) required
-        localVarCredential = this.configuration.lookupCredential('TenantHeader');
-        if (localVarCredential) {
-            localVarHeaders = localVarHeaders.set('x-tenant-id', localVarCredential);
-        }
-
         // authentication (BearerToken) required
         localVarCredential = this.configuration.lookupCredential('BearerToken');
         if (localVarCredential) {
@@ -186,34 +172,20 @@ export class AgenciesApiService {
      * Create a new agency
      * Creates an agency within the tenant. Non-HQ agencies must reference an existing parent. Requires permission: agency:create.
      * @param createAgencyRequest 
-     * @param xTenantId Tenant identifier (UUID). Overrides the tenant_id JWT claim when present.
-     * @param xTenantId2 Tenant identifier (UUID). Overrides the tenant_id JWT claim when present.
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      */
-    public createAgency(createAgencyRequest: CreateAgencyRequest, xTenantId?: string, xTenantId2?: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<CreateAgencyResult>;
-    public createAgency(createAgencyRequest: CreateAgencyRequest, xTenantId?: string, xTenantId2?: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<CreateAgencyResult>>;
-    public createAgency(createAgencyRequest: CreateAgencyRequest, xTenantId?: string, xTenantId2?: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<CreateAgencyResult>>;
-    public createAgency(createAgencyRequest: CreateAgencyRequest, xTenantId?: string, xTenantId2?: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
+    public createAgency(createAgencyRequest: CreateAgencyRequest, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<CreateAgencyResult>;
+    public createAgency(createAgencyRequest: CreateAgencyRequest, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<CreateAgencyResult>>;
+    public createAgency(createAgencyRequest: CreateAgencyRequest, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<CreateAgencyResult>>;
+    public createAgency(createAgencyRequest: CreateAgencyRequest, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
         if (createAgencyRequest === null || createAgencyRequest === undefined) {
             throw new Error('Required parameter createAgencyRequest was null or undefined when calling createAgency.');
         }
 
         let localVarHeaders = this.defaultHeaders;
-        if (xTenantId !== undefined && xTenantId !== null) {
-            localVarHeaders = localVarHeaders.set('x-tenant-id', String(xTenantId));
-        }
-        if (xTenantId2 !== undefined && xTenantId2 !== null) {
-            localVarHeaders = localVarHeaders.set('x-tenant-id', String(xTenantId2));
-        }
 
         let localVarCredential: string | undefined;
-        // authentication (TenantHeader) required
-        localVarCredential = this.configuration.lookupCredential('TenantHeader');
-        if (localVarCredential) {
-            localVarHeaders = localVarHeaders.set('x-tenant-id', localVarCredential);
-        }
-
         // authentication (BearerToken) required
         localVarCredential = this.configuration.lookupCredential('BearerToken');
         if (localVarCredential) {
@@ -276,34 +248,20 @@ export class AgenciesApiService {
      * Soft-delete an agency
      * Marks the agency as deleted and inactive. Fails if the agency still has users assigned to it. Requires permission: agency:delete.
      * @param id 
-     * @param xTenantId Tenant identifier (UUID). Overrides the tenant_id JWT claim when present.
-     * @param xTenantId2 Tenant identifier (UUID). Overrides the tenant_id JWT claim when present.
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      */
-    public deleteAgency(id: string, xTenantId?: string, xTenantId2?: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<any>;
-    public deleteAgency(id: string, xTenantId?: string, xTenantId2?: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<HttpResponse<any>>;
-    public deleteAgency(id: string, xTenantId?: string, xTenantId2?: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<HttpEvent<any>>;
-    public deleteAgency(id: string, xTenantId?: string, xTenantId2?: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<any> {
+    public deleteAgency(id: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<any>;
+    public deleteAgency(id: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<HttpResponse<any>>;
+    public deleteAgency(id: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<HttpEvent<any>>;
+    public deleteAgency(id: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<any> {
         if (id === null || id === undefined) {
             throw new Error('Required parameter id was null or undefined when calling deleteAgency.');
         }
 
         let localVarHeaders = this.defaultHeaders;
-        if (xTenantId !== undefined && xTenantId !== null) {
-            localVarHeaders = localVarHeaders.set('x-tenant-id', String(xTenantId));
-        }
-        if (xTenantId2 !== undefined && xTenantId2 !== null) {
-            localVarHeaders = localVarHeaders.set('x-tenant-id', String(xTenantId2));
-        }
 
         let localVarCredential: string | undefined;
-        // authentication (TenantHeader) required
-        localVarCredential = this.configuration.lookupCredential('TenantHeader');
-        if (localVarCredential) {
-            localVarHeaders = localVarHeaders.set('x-tenant-id', localVarCredential);
-        }
-
         // authentication (BearerToken) required
         localVarCredential = this.configuration.lookupCredential('BearerToken');
         if (localVarCredential) {
@@ -354,34 +312,20 @@ export class AgenciesApiService {
     /**
      * Get an agency by ID
      * @param id 
-     * @param xTenantId Tenant identifier (UUID). Overrides the tenant_id JWT claim when present.
-     * @param xTenantId2 Tenant identifier (UUID). Overrides the tenant_id JWT claim when present.
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      */
-    public getAgency(id: string, xTenantId?: string, xTenantId2?: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<AgencyDto>;
-    public getAgency(id: string, xTenantId?: string, xTenantId2?: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<AgencyDto>>;
-    public getAgency(id: string, xTenantId?: string, xTenantId2?: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<AgencyDto>>;
-    public getAgency(id: string, xTenantId?: string, xTenantId2?: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
+    public getAgency(id: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<AgencyDto>;
+    public getAgency(id: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<AgencyDto>>;
+    public getAgency(id: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<AgencyDto>>;
+    public getAgency(id: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
         if (id === null || id === undefined) {
             throw new Error('Required parameter id was null or undefined when calling getAgency.');
         }
 
         let localVarHeaders = this.defaultHeaders;
-        if (xTenantId !== undefined && xTenantId !== null) {
-            localVarHeaders = localVarHeaders.set('x-tenant-id', String(xTenantId));
-        }
-        if (xTenantId2 !== undefined && xTenantId2 !== null) {
-            localVarHeaders = localVarHeaders.set('x-tenant-id', String(xTenantId2));
-        }
 
         let localVarCredential: string | undefined;
-        // authentication (TenantHeader) required
-        localVarCredential = this.configuration.lookupCredential('TenantHeader');
-        if (localVarCredential) {
-            localVarHeaders = localVarHeaders.set('x-tenant-id', localVarCredential);
-        }
-
         // authentication (BearerToken) required
         localVarCredential = this.configuration.lookupCredential('BearerToken');
         if (localVarCredential) {
@@ -435,15 +379,13 @@ export class AgenciesApiService {
      * Returns all agencies as a nested tree. Pass rootId to get a specific subtree. Pass includeDeleted&#x3D;true to include soft-deleted nodes. Requires permission: agency:read.
      * @param includeDeleted 
      * @param rootId 
-     * @param xTenantId Tenant identifier (UUID). Overrides the tenant_id JWT claim when present.
-     * @param xTenantId2 Tenant identifier (UUID). Overrides the tenant_id JWT claim when present.
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      */
-    public getAgencyTree(includeDeleted: boolean, rootId?: string, xTenantId?: string, xTenantId2?: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<Array<AgencyTreeNodeDto>>;
-    public getAgencyTree(includeDeleted: boolean, rootId?: string, xTenantId?: string, xTenantId2?: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<Array<AgencyTreeNodeDto>>>;
-    public getAgencyTree(includeDeleted: boolean, rootId?: string, xTenantId?: string, xTenantId2?: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<Array<AgencyTreeNodeDto>>>;
-    public getAgencyTree(includeDeleted: boolean, rootId?: string, xTenantId?: string, xTenantId2?: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
+    public getAgencyTree(includeDeleted: boolean, rootId?: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<Array<AgencyTreeNodeDto>>;
+    public getAgencyTree(includeDeleted: boolean, rootId?: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<Array<AgencyTreeNodeDto>>>;
+    public getAgencyTree(includeDeleted: boolean, rootId?: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<Array<AgencyTreeNodeDto>>>;
+    public getAgencyTree(includeDeleted: boolean, rootId?: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
         if (includeDeleted === null || includeDeleted === undefined) {
             throw new Error('Required parameter includeDeleted was null or undefined when calling getAgencyTree.');
         }
@@ -459,20 +401,8 @@ export class AgenciesApiService {
         }
 
         let localVarHeaders = this.defaultHeaders;
-        if (xTenantId !== undefined && xTenantId !== null) {
-            localVarHeaders = localVarHeaders.set('x-tenant-id', String(xTenantId));
-        }
-        if (xTenantId2 !== undefined && xTenantId2 !== null) {
-            localVarHeaders = localVarHeaders.set('x-tenant-id', String(xTenantId2));
-        }
 
         let localVarCredential: string | undefined;
-        // authentication (TenantHeader) required
-        localVarCredential = this.configuration.lookupCredential('TenantHeader');
-        if (localVarCredential) {
-            localVarHeaders = localVarHeaders.set('x-tenant-id', localVarCredential);
-        }
-
         // authentication (BearerToken) required
         localVarCredential = this.configuration.lookupCredential('BearerToken');
         if (localVarCredential) {
@@ -529,15 +459,13 @@ export class AgenciesApiService {
      * @param page 
      * @param pageSize 
      * @param parentId 
-     * @param xTenantId Tenant identifier (UUID). Overrides the tenant_id JWT claim when present.
-     * @param xTenantId2 Tenant identifier (UUID). Overrides the tenant_id JWT claim when present.
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      */
-    public listAgencies(includeDeleted: boolean, page: number, pageSize: number, parentId?: string, xTenantId?: string, xTenantId2?: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<AgencyDtoPagedResult>;
-    public listAgencies(includeDeleted: boolean, page: number, pageSize: number, parentId?: string, xTenantId?: string, xTenantId2?: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<AgencyDtoPagedResult>>;
-    public listAgencies(includeDeleted: boolean, page: number, pageSize: number, parentId?: string, xTenantId?: string, xTenantId2?: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<AgencyDtoPagedResult>>;
-    public listAgencies(includeDeleted: boolean, page: number, pageSize: number, parentId?: string, xTenantId?: string, xTenantId2?: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
+    public listAgencies(includeDeleted: boolean, page: number, pageSize: number, parentId?: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<AgencyDtoPagedResult>;
+    public listAgencies(includeDeleted: boolean, page: number, pageSize: number, parentId?: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<AgencyDtoPagedResult>>;
+    public listAgencies(includeDeleted: boolean, page: number, pageSize: number, parentId?: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<AgencyDtoPagedResult>>;
+    public listAgencies(includeDeleted: boolean, page: number, pageSize: number, parentId?: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
         if (includeDeleted === null || includeDeleted === undefined) {
             throw new Error('Required parameter includeDeleted was null or undefined when calling listAgencies.');
         }
@@ -567,20 +495,8 @@ export class AgenciesApiService {
         }
 
         let localVarHeaders = this.defaultHeaders;
-        if (xTenantId !== undefined && xTenantId !== null) {
-            localVarHeaders = localVarHeaders.set('x-tenant-id', String(xTenantId));
-        }
-        if (xTenantId2 !== undefined && xTenantId2 !== null) {
-            localVarHeaders = localVarHeaders.set('x-tenant-id', String(xTenantId2));
-        }
 
         let localVarCredential: string | undefined;
-        // authentication (TenantHeader) required
-        localVarCredential = this.configuration.lookupCredential('TenantHeader');
-        if (localVarCredential) {
-            localVarHeaders = localVarHeaders.set('x-tenant-id', localVarCredential);
-        }
-
         // authentication (BearerToken) required
         localVarCredential = this.configuration.lookupCredential('BearerToken');
         if (localVarCredential) {
@@ -635,15 +551,13 @@ export class AgenciesApiService {
      * Reparents an agency. Pass null for newParentAgencyId to promote a HeadQuarter agency to root level. Circular references are rejected. Requires permission: agency:move.
      * @param id 
      * @param moveAgencyRequest 
-     * @param xTenantId Tenant identifier (UUID). Overrides the tenant_id JWT claim when present.
-     * @param xTenantId2 Tenant identifier (UUID). Overrides the tenant_id JWT claim when present.
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      */
-    public moveAgency(id: string, moveAgencyRequest: MoveAgencyRequest, xTenantId?: string, xTenantId2?: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<any>;
-    public moveAgency(id: string, moveAgencyRequest: MoveAgencyRequest, xTenantId?: string, xTenantId2?: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<HttpResponse<any>>;
-    public moveAgency(id: string, moveAgencyRequest: MoveAgencyRequest, xTenantId?: string, xTenantId2?: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<HttpEvent<any>>;
-    public moveAgency(id: string, moveAgencyRequest: MoveAgencyRequest, xTenantId?: string, xTenantId2?: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<any> {
+    public moveAgency(id: string, moveAgencyRequest: MoveAgencyRequest, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<any>;
+    public moveAgency(id: string, moveAgencyRequest: MoveAgencyRequest, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<HttpResponse<any>>;
+    public moveAgency(id: string, moveAgencyRequest: MoveAgencyRequest, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<HttpEvent<any>>;
+    public moveAgency(id: string, moveAgencyRequest: MoveAgencyRequest, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<any> {
         if (id === null || id === undefined) {
             throw new Error('Required parameter id was null or undefined when calling moveAgency.');
         }
@@ -652,20 +566,8 @@ export class AgenciesApiService {
         }
 
         let localVarHeaders = this.defaultHeaders;
-        if (xTenantId !== undefined && xTenantId !== null) {
-            localVarHeaders = localVarHeaders.set('x-tenant-id', String(xTenantId));
-        }
-        if (xTenantId2 !== undefined && xTenantId2 !== null) {
-            localVarHeaders = localVarHeaders.set('x-tenant-id', String(xTenantId2));
-        }
 
         let localVarCredential: string | undefined;
-        // authentication (TenantHeader) required
-        localVarCredential = this.configuration.lookupCredential('TenantHeader');
-        if (localVarCredential) {
-            localVarHeaders = localVarHeaders.set('x-tenant-id', localVarCredential);
-        }
-
         // authentication (BearerToken) required
         localVarCredential = this.configuration.lookupCredential('BearerToken');
         if (localVarCredential) {
@@ -727,15 +629,13 @@ export class AgenciesApiService {
      * Update an agency\&#39;s details
      * @param id 
      * @param updateAgencyRequest 
-     * @param xTenantId Tenant identifier (UUID). Overrides the tenant_id JWT claim when present.
-     * @param xTenantId2 Tenant identifier (UUID). Overrides the tenant_id JWT claim when present.
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      */
-    public updateAgency(id: string, updateAgencyRequest: UpdateAgencyRequest, xTenantId?: string, xTenantId2?: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<any>;
-    public updateAgency(id: string, updateAgencyRequest: UpdateAgencyRequest, xTenantId?: string, xTenantId2?: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<HttpResponse<any>>;
-    public updateAgency(id: string, updateAgencyRequest: UpdateAgencyRequest, xTenantId?: string, xTenantId2?: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<HttpEvent<any>>;
-    public updateAgency(id: string, updateAgencyRequest: UpdateAgencyRequest, xTenantId?: string, xTenantId2?: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<any> {
+    public updateAgency(id: string, updateAgencyRequest: UpdateAgencyRequest, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<any>;
+    public updateAgency(id: string, updateAgencyRequest: UpdateAgencyRequest, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<HttpResponse<any>>;
+    public updateAgency(id: string, updateAgencyRequest: UpdateAgencyRequest, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<HttpEvent<any>>;
+    public updateAgency(id: string, updateAgencyRequest: UpdateAgencyRequest, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<any> {
         if (id === null || id === undefined) {
             throw new Error('Required parameter id was null or undefined when calling updateAgency.');
         }
@@ -744,20 +644,8 @@ export class AgenciesApiService {
         }
 
         let localVarHeaders = this.defaultHeaders;
-        if (xTenantId !== undefined && xTenantId !== null) {
-            localVarHeaders = localVarHeaders.set('x-tenant-id', String(xTenantId));
-        }
-        if (xTenantId2 !== undefined && xTenantId2 !== null) {
-            localVarHeaders = localVarHeaders.set('x-tenant-id', String(xTenantId2));
-        }
 
         let localVarCredential: string | undefined;
-        // authentication (TenantHeader) required
-        localVarCredential = this.configuration.lookupCredential('TenantHeader');
-        if (localVarCredential) {
-            localVarHeaders = localVarHeaders.set('x-tenant-id', localVarCredential);
-        }
-
         // authentication (BearerToken) required
         localVarCredential = this.configuration.lookupCredential('BearerToken');
         if (localVarCredential) {

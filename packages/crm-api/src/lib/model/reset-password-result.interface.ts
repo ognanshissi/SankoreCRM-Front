@@ -11,10 +11,7 @@
  */
 
 
-export interface ResetPasswordRequest { 
-    userId?: string | null;
-    token?: string | null;
-    newPassword?: string | null;
-    confirmPassword?: string | null;
+export interface ResetPasswordResult { 
+    message?: string | null;
 }
 

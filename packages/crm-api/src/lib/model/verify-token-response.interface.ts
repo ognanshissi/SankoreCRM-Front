@@ -11,10 +11,12 @@
  */
 
 
-export interface ResetPasswordRequest { 
-    userId?: string | null;
-    token?: string | null;
-    newPassword?: string | null;
-    confirmPassword?: string | null;
+export interface VerifyTokenResponse { 
+    userId?: string;
+    email?: string | null;
+    name?: string | null;
+    roles?: Array<string> | null;
+    permissions?: Array<string> | null;
+    expiresAt?: string | null;
 }
 

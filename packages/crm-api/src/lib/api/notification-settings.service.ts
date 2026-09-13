@@ -97,31 +97,17 @@ export class NotificationSettingsApiService {
 
     /**
      * Get the email provider configuration for the current tenant
-     * @param xTenantId Tenant identifier (UUID). Overrides the tenant_id JWT claim when present.
-     * @param xTenantId2 Tenant identifier (UUID). Overrides the tenant_id JWT claim when present.
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      */
-    public getNotificationSettings(xTenantId?: string, xTenantId2?: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<NotificationSettingsDto>;
-    public getNotificationSettings(xTenantId?: string, xTenantId2?: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<NotificationSettingsDto>>;
-    public getNotificationSettings(xTenantId?: string, xTenantId2?: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<NotificationSettingsDto>>;
-    public getNotificationSettings(xTenantId?: string, xTenantId2?: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
+    public getNotificationSettings(observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<NotificationSettingsDto>;
+    public getNotificationSettings(observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<NotificationSettingsDto>>;
+    public getNotificationSettings(observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<NotificationSettingsDto>>;
+    public getNotificationSettings(observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
 
         let localVarHeaders = this.defaultHeaders;
-        if (xTenantId !== undefined && xTenantId !== null) {
-            localVarHeaders = localVarHeaders.set('x-tenant-id', String(xTenantId));
-        }
-        if (xTenantId2 !== undefined && xTenantId2 !== null) {
-            localVarHeaders = localVarHeaders.set('x-tenant-id', String(xTenantId2));
-        }
 
         let localVarCredential: string | undefined;
-        // authentication (TenantHeader) required
-        localVarCredential = this.configuration.lookupCredential('TenantHeader');
-        if (localVarCredential) {
-            localVarHeaders = localVarHeaders.set('x-tenant-id', localVarCredential);
-        }
-
         // authentication (BearerToken) required
         localVarCredential = this.configuration.lookupCredential('BearerToken');
         if (localVarCredential) {
@@ -173,34 +159,20 @@ export class NotificationSettingsApiService {
     /**
      * Set or clear the monthly email quota for the tenant (platform admin only)
      * @param setMonthlyQuotaCommand 
-     * @param xTenantId Tenant identifier (UUID). Overrides the tenant_id JWT claim when present.
-     * @param xTenantId2 Tenant identifier (UUID). Overrides the tenant_id JWT claim when present.
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      */
-    public setMonthlyEmailQuota(setMonthlyQuotaCommand: SetMonthlyQuotaCommand, xTenantId?: string, xTenantId2?: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<any>;
-    public setMonthlyEmailQuota(setMonthlyQuotaCommand: SetMonthlyQuotaCommand, xTenantId?: string, xTenantId2?: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<HttpResponse<any>>;
-    public setMonthlyEmailQuota(setMonthlyQuotaCommand: SetMonthlyQuotaCommand, xTenantId?: string, xTenantId2?: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<HttpEvent<any>>;
-    public setMonthlyEmailQuota(setMonthlyQuotaCommand: SetMonthlyQuotaCommand, xTenantId?: string, xTenantId2?: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<any> {
+    public setMonthlyEmailQuota(setMonthlyQuotaCommand: SetMonthlyQuotaCommand, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<any>;
+    public setMonthlyEmailQuota(setMonthlyQuotaCommand: SetMonthlyQuotaCommand, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<HttpResponse<any>>;
+    public setMonthlyEmailQuota(setMonthlyQuotaCommand: SetMonthlyQuotaCommand, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<HttpEvent<any>>;
+    public setMonthlyEmailQuota(setMonthlyQuotaCommand: SetMonthlyQuotaCommand, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<any> {
         if (setMonthlyQuotaCommand === null || setMonthlyQuotaCommand === undefined) {
             throw new Error('Required parameter setMonthlyQuotaCommand was null or undefined when calling setMonthlyEmailQuota.');
         }
 
         let localVarHeaders = this.defaultHeaders;
-        if (xTenantId !== undefined && xTenantId !== null) {
-            localVarHeaders = localVarHeaders.set('x-tenant-id', String(xTenantId));
-        }
-        if (xTenantId2 !== undefined && xTenantId2 !== null) {
-            localVarHeaders = localVarHeaders.set('x-tenant-id', String(xTenantId2));
-        }
 
         let localVarCredential: string | undefined;
-        // authentication (TenantHeader) required
-        localVarCredential = this.configuration.lookupCredential('TenantHeader');
-        if (localVarCredential) {
-            localVarHeaders = localVarHeaders.set('x-tenant-id', localVarCredential);
-        }
-
         // authentication (BearerToken) required
         localVarCredential = this.configuration.lookupCredential('BearerToken');
         if (localVarCredential) {
@@ -261,34 +233,20 @@ export class NotificationSettingsApiService {
     /**
      * Configure the email provider for the current tenant
      * @param updateNotificationSettingsCommand 
-     * @param xTenantId Tenant identifier (UUID). Overrides the tenant_id JWT claim when present.
-     * @param xTenantId2 Tenant identifier (UUID). Overrides the tenant_id JWT claim when present.
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      */
-    public updateNotificationSettings(updateNotificationSettingsCommand: UpdateNotificationSettingsCommand, xTenantId?: string, xTenantId2?: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<any>;
-    public updateNotificationSettings(updateNotificationSettingsCommand: UpdateNotificationSettingsCommand, xTenantId?: string, xTenantId2?: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<HttpResponse<any>>;
-    public updateNotificationSettings(updateNotificationSettingsCommand: UpdateNotificationSettingsCommand, xTenantId?: string, xTenantId2?: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<HttpEvent<any>>;
-    public updateNotificationSettings(updateNotificationSettingsCommand: UpdateNotificationSettingsCommand, xTenantId?: string, xTenantId2?: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<any> {
+    public updateNotificationSettings(updateNotificationSettingsCommand: UpdateNotificationSettingsCommand, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<any>;
+    public updateNotificationSettings(updateNotificationSettingsCommand: UpdateNotificationSettingsCommand, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<HttpResponse<any>>;
+    public updateNotificationSettings(updateNotificationSettingsCommand: UpdateNotificationSettingsCommand, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<HttpEvent<any>>;
+    public updateNotificationSettings(updateNotificationSettingsCommand: UpdateNotificationSettingsCommand, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<any> {
         if (updateNotificationSettingsCommand === null || updateNotificationSettingsCommand === undefined) {
             throw new Error('Required parameter updateNotificationSettingsCommand was null or undefined when calling updateNotificationSettings.');
         }
 
         let localVarHeaders = this.defaultHeaders;
-        if (xTenantId !== undefined && xTenantId !== null) {
-            localVarHeaders = localVarHeaders.set('x-tenant-id', String(xTenantId));
-        }
-        if (xTenantId2 !== undefined && xTenantId2 !== null) {
-            localVarHeaders = localVarHeaders.set('x-tenant-id', String(xTenantId2));
-        }
 
         let localVarCredential: string | undefined;
-        // authentication (TenantHeader) required
-        localVarCredential = this.configuration.lookupCredential('TenantHeader');
-        if (localVarCredential) {
-            localVarHeaders = localVarHeaders.set('x-tenant-id', localVarCredential);
-        }
-
         // authentication (BearerToken) required
         localVarCredential = this.configuration.lookupCredential('BearerToken');
         if (localVarCredential) {

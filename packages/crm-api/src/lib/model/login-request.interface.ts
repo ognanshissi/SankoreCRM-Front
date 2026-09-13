@@ -12,7 +12,6 @@
 
 
 export interface LoginRequest { 
-    tenantId?: string;
     email?: string | null;
     password?: string | null;
 }

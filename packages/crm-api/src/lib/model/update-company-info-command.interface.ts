@@ -9,12 +9,17 @@
  * https://openapi-generator.tech
  * Do not edit the class manually.
  */
+import { Languages } from './languages.interface';
 
 
-export interface ResetPasswordRequest { 
-    userId?: string | null;
-    token?: string | null;
-    newPassword?: string | null;
-    confirmPassword?: string | null;
+export interface UpdateCompanyInfoCommand { 
+    name?: string | null;
+    description?: string | null;
+    logoUrl?: string | null;
+    primaryColor?: string | null;
+    secondaryColor?: string | null;
+    defaultLanguage?: Languages;
 }
+
+
 

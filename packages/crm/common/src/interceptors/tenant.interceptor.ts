@@ -14,9 +14,9 @@ export const tenantInterceptor: HttpInterceptorFn = (
 ): Observable<HttpEvent<unknown>> => {
   // tenant fqdn will be loaded by APP_INITIALIZER
   const tenantProvider = inject(TenantProvider);
-  const tenantFqdn = tenantProvider.getTenantId();
+  // const tenantFqdn = tenantProvider.getTenantId();
   const reqClone = req.clone({
-    setHeaders: { 'x-tenant-id': tenantFqdn },
+    setHeaders: { 'x-tenant-Fqdn': "http://localhost:4222" },
   });
   return next(reqClone);
 };
