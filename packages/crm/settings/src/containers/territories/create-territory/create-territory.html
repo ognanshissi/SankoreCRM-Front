@@ -1,0 +1,115 @@
+<tas-side-drawer>
+  <tas-drawer-title>
+    <TasTitle class="text-lg">Nouveau territoire</TasTitle>
+  </tas-drawer-title>
+
+  <tas-drawer-content>
+    @if (isLoadingOptions()) {
+      <div class="flex justify-center py-12">
+        <tas-spinner size="8" class="text-primary"></tas-spinner>
+      </div>
+    } @else {
+      <form [formRoot]="formSchema" class="flex flex-col gap-5">
+
+        <div class="grid grid-cols-2 gap-4">
+          <tas-form-field>
+            <tas-label>Nom <span class="text-functional-error">*</span></tas-label>
+            <input
+              tasInput
+              type="text"
+              placeholder="ex: Dakar Nord"
+              [formField]="formSchema.name"
+            />
+            @if (formSchema.name().touched() && formSchema.name().invalid()) {
+              <tas-error>{{ formSchema.name().errors()[0].message }}</tas-error>
+            }
+          </tas-form-field>
+
+          <tas-form-field>
+            <tas-label>Code <span class="text-functional-error">*</span></tas-label>
+            <input
+              tasInput
+              type="text"
+              placeholder="ex: DKR-N"
+              [formField]="formSchema.code"
+            />
+            @if (formSchema.code().touched() && formSchema.code().invalid()) {
+              <tas-error>{{ formSchema.code().errors()[0].message }}</tas-error>
+            }
+          </tas-form-field>
+        </div>
+
+        <tas-form-field>
+          <tas-label>Description</tas-label>
+          <input
+            tasInput
+            type="text"
+            placeholder="Description du territoire"
+            [formField]="formSchema.description"
+          />
+        </tas-form-field>
+
+        <div class="border-t border-gray-200 pt-4 mt-2">
+          <p class="text-sm font-medium text-slate-600 mb-3">Localisation</p>
+          <div class="grid grid-cols-3 gap-4">
+            <tas-form-field>
+              <tas-label>Latitude</tas-label>
+              <input
+                tasInput
+                type="number"
+                placeholder="ex: 14.6928"
+                [formField]="formSchema.latitude"
+              />
+            </tas-form-field>
+
+            <tas-form-field>
+              <tas-label>Longitude</tas-label>
+              <input
+                tasInput
+                type="number"
+                placeholder="ex: -17.4467"
+                [formField]="formSchema.longitude"
+              />
+            </tas-form-field>
+
+            <tas-form-field>
+              <tas-label>Rayon (km)</tas-label>
+              <input
+                tasInput
+                type="number"
+                placeholder="ex: 50"
+                [formField]="formSchema.rayonKm"
+              />
+            </tas-form-field>
+          </div>
+        </div>
+
+        <tas-form-field>
+          <tas-label>Spécialités produits</tas-label>
+          <tas-multi-select
+            [options]="specialtyOptions()"
+            placeholder="Sélectionnez des spécialités"
+            [ngModel]="selectedSpecialities()"
+            [ngModelOptions]="{ standalone: true }"
+            (ngModelChange)="selectedSpecialities.set($event)"
+          ></tas-multi-select>
+        </tas-form-field>
+
+      </form>
+    }
+  </tas-drawer-content>
+
+  <tas-drawer-action>
+    <button tas-outlined-button color="primary" type="button" (click)="close()">Annuler</button>
+    <button
+      tas-raised-button
+      color="primary"
+      type="button"
+      (click)="handleSubmit()"
+      [disabled]="formSchema().invalid() || formSchema().submitting() || isLoadingOptions()"
+      [isLoading]="formSchema().submitting()"
+    >
+      Créer le territoire
+    </button>
+  </tas-drawer-action>
+</tas-side-drawer>

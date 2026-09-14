@@ -35,6 +35,16 @@ const settingsRoutes: Routes = [
     ],
   },
   {
+    path: 'territories',
+    loadComponent: () =>
+      import('./containers/territories/territories-homepage/territories-homepage'),
+  },
+  {
+    path: 'territories/:id/edit',
+    loadComponent: () =>
+      import('./containers/territories/edit-territory/edit-territory'),
+  },
+  {
     path: 'roles',
     loadComponent: () =>
       import('./containers/roles/roles-homepage/roles-homepage'),

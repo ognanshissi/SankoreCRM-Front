@@ -1,0 +1,142 @@
+@if (isLoading()) {
+  <div class="flex justify-center py-24">
+    <tas-spinner size="10" class="text-primary"></tas-spinner>
+  </div>
+} @else if (territory()) {
+  <div class="max-w-3xl mx-auto pb-8 flex flex-col gap-6">
+
+    <!-- Header -->
+    <div class="flex items-center justify-between">
+      <div>
+        <h1 class="text-xl font-semibold text-slate-800">{{ territory()!.name }}</h1>
+        <p class="text-sm text-slate-500 mt-0.5">Code : {{ territory()!.code ?? '—' }}</p>
+      </div>
+      <span
+        class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
+        [ngClass]="{
+          'bg-green-100 text-green-700': territory()!.isActive,
+          'bg-red-100 text-red-700': !territory()!.isActive
+        }"
+      >
+        {{ territory()!.isActive ? 'Actif' : 'Inactif' }}
+      </span>
+    </div>
+
+    <!-- Edit form -->
+    <tas-card>
+      <div class="p-4 flex flex-col gap-4">
+        <p class="text-sm font-semibold text-slate-700">Informations générales</p>
+
+        <form [formRoot]="formSchema" class="flex flex-col gap-4">
+
+          <div class="grid grid-cols-2 gap-4">
+            <tas-form-field>
+              <tas-label>Nom <span class="text-functional-error">*</span></tas-label>
+              <input
+                tasInput
+                type="text"
+                placeholder="ex: Dakar Nord"
+                [formField]="formSchema.name"
+              />
+              @if (formSchema.name().touched() && formSchema.name().invalid()) {
+                <tas-error>{{ formSchema.name().errors()[0].message }}</tas-error>
+              }
+            </tas-form-field>
+
+            <tas-form-field>
+              <tas-label>Description</tas-label>
+              <input
+                tasInput
+                type="text"
+                placeholder="Description du territoire"
+                [formField]="formSchema.description"
+              />
+            </tas-form-field>
+          </div>
+
+          <div class="border-t border-gray-100 pt-4">
+            <p class="text-sm font-medium text-slate-600 mb-3">Localisation</p>
+            <div class="grid grid-cols-3 gap-4">
+              <tas-form-field>
+                <tas-label>Latitude</tas-label>
+                <input
+                  tasInput
+                  type="number"
+                  placeholder="ex: 14.6928"
+                  [formField]="formSchema.latitude"
+                />
+              </tas-form-field>
+
+              <tas-form-field>
+                <tas-label>Longitude</tas-label>
+                <input
+                  tasInput
+                  type="number"
+                  placeholder="ex: -17.4467"
+                  [formField]="formSchema.longitude"
+                />
+              </tas-form-field>
+
+              <tas-form-field>
+                <tas-label>Rayon (km)</tas-label>
+                <input
+                  tasInput
+                  type="number"
+                  placeholder="ex: 50"
+                  [formField]="formSchema.rayonKm"
+                />
+              </tas-form-field>
+            </div>
+          </div>
+
+          <tas-form-field>
+            <tas-label>Spécialités produits</tas-label>
+            <tas-multi-select
+              [options]="specialtyOptions()"
+              placeholder="Sélectionnez des spécialités"
+              [ngModel]="selectedSpecialities()"
+              [ngModelOptions]="{ standalone: true }"
+              (ngModelChange)="selectedSpecialities.set($event)"
+            ></tas-multi-select>
+          </tas-form-field>
+
+        </form>
+
+        <div class="flex justify-end pt-2">
+          <button
+            tas-raised-button
+            color="primary"
+            type="button"
+            [disabled]="formSchema().submitting()"
+            [isLoading]="formSchema().submitting()"
+            (click)="handleUpdate()"
+          >
+            Enregistrer
+          </button>
+        </div>
+      </div>
+    </tas-card>
+
+    <!-- Danger zone -->
+    <tas-card>
+      <div class="p-4">
+        <p class="text-sm font-semibold text-red-600 mb-1">Zone de danger</p>
+        <p class="text-sm text-slate-500 mb-4">
+          La désactivation d'un territoire le retire de toutes les listes actives. Cette action est réversible via l'API.
+        </p>
+        <button
+          tas-outlined-button
+          color="warn"
+          type="button"
+          [disabled]="isDeleting()"
+          [isLoading]="isDeleting()"
+          (click)="openDeleteDialog()"
+        >
+          <tas-icon iconName="feather:trash-2"></tas-icon>
+          Désactiver le territoire
+        </button>
+      </div>
+    </tas-card>
+
+  </div>
+}

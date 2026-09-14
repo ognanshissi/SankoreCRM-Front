@@ -49,7 +49,7 @@
         </div>
 
         <div class="mt-[50px] flex flex-col items-center space-y-5">
-          <button class="w-full" tas-raised-button (click)="handleFormSubmission()" [color]="'primary'" [disabled]="formSchema().invalid()">Activer mon compte</button>
+          <button class="w-full" tas-raised-button size="large" (click)="handleFormSubmission()" [color]="'primary'" [disabled]="formSchema().invalid()">Activer mon compte</button>
         </div>
       </section>
     }
@@ -62,7 +62,7 @@
       </section>
 
       <section class="flex flex-col items-center space-y-5">
-        <a class="w-full text-center" tas-raised-button color="primary" [routerLink]="['/auth', 'login']">Se connecter</a>
+        <a class="w-full text-center" tas-raised-button size="large" color="primary" [routerLink]="['/auth', 'login']">Se connecter</a>
       </section>
     }
 

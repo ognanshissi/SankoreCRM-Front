@@ -1,0 +1,73 @@
+<div class="flex justify-between items-center mb-6">
+  <TasTitle>Territoires</TasTitle>
+  <button tas-filled-button [color]="'primary'" (click)="openCreateDrawer()">
+    <tas-icon iconName="feather:plus"></tas-icon>
+    Ajouter un territoire
+  </button>
+</div>
+
+<tas-card>
+  <tas-table
+    [data]="territories()"
+    [config]="tableConfig()"
+    [isLoading]="isLoading()"
+    (refresh)="loadTerritories()"
+  >
+    <ng-template #header>
+      <tr>
+        <th>Nom</th>
+        <th>Code</th>
+        <th>Spécialités</th>
+        <th>Rayon (km)</th>
+        <th>Statut</th>
+        <th>Date de création</th>
+        <th></th>
+      </tr>
+    </ng-template>
+
+    <ng-template #body let-item>
+      <tr class="cursor-pointer hover:bg-slate-50" (click)="navigateToEdit(item)">
+        <td>
+          <div class="font-medium text-slate-800">{{ item.name ?? '—' }}</div>
+          @if (item.description) {
+            <div class="text-xs text-slate-400 truncate max-w-xs">{{ item.description }}</div>
+          }
+        </td>
+        <td class="text-slate-600">{{ item.code ?? '—' }}</td>
+        <td class="text-slate-600">
+          @if (item.productSpecialities?.length) {
+            <div class="flex flex-wrap gap-1">
+              @for (s of item.productSpecialities; track s) {
+                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-50 text-blue-700">{{ s }}</span>
+              }
+            </div>
+          } @else {
+            —
+          }
+        </td>
+        <td class="text-slate-600">{{ item.rayonKm ?? '—' }}</td>
+        <td>
+          <span
+            class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
+            [ngClass]="{
+              'bg-green-100 text-green-700': item.isActive,
+              'bg-red-100 text-red-700': !item.isActive
+            }"
+          >
+            {{ item.isActive ? 'Actif' : 'Inactif' }}
+          </span>
+        </td>
+        <td class="text-slate-600">{{ item.createdAt | dateTimeAgo }}</td>
+        <td class="text-right">
+          <button
+            tas-raised-button
+            [color]="'primary'"
+            (click)="navigateToEdit(item); $event.stopPropagation()"
+          >
+            <tas-icon iconName="feather:eye"></tas-icon>&nbsp;Consulter
+          </button>
+        </td>
+      </tr>
+    </ng-template>
+  </tas-table>
+</tas-card>
