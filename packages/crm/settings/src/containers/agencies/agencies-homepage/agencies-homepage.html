@@ -21,11 +21,12 @@
         <th>Adresse</th>
         <th>Statut</th>
         <th>Date de création</th>
+        <th></th>
       </tr>
     </ng-template>
 
     <ng-template #body let-item>
-      <tr>
+      <tr class="cursor-pointer hover:bg-slate-50">
         <td>
           <div class="font-medium text-slate-800">{{ item.name }}</div>
           @if (item.code) {
@@ -52,6 +53,11 @@
         </span>
         </td>
         <td class="text-slate-600">{{ item.createdAt | dateTimeAgo }}</td>
+        <td>
+          <button tas-outlined-button [color]="'primary'" (click)="navigateToEdit(item)">
+            <tas-icon iconName="feather:visibility_on"></tas-icon>
+          </button>
+        </td>
       </tr>
     </ng-template>
   </tas-table>

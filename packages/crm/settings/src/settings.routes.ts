@@ -10,7 +10,11 @@ const settingsRoutes: Routes = [
     {
       path: 'agencies',
       loadComponent: () => AgenciesHomePage,
-    }
+    },
+    {
+      path: 'agencies/:id/edit',
+      loadComponent: () => import('./containers/agencies/edit-agency/edit-agency'),
+    },
   ];
 
 

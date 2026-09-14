@@ -1,4 +1,5 @@
 import { Component, inject, signal } from '@angular/core';
+import { Router } from '@angular/router';
 import { TasTitle } from '@talisoft/ui/title';
 import { Button } from '@talisoft/ui/button';
 import { TasIcon } from '@talisoft/ui/icon';
@@ -26,6 +27,7 @@ import { TimeagoPipe } from '@talisoft/ui/timeago';
 export class AgenciesHomePage {
   private readonly _agenciesApiService = inject(AgenciesApiService);
   private readonly _sideDrawerService = inject(SideDrawerService);
+  private readonly _router = inject(Router);
 
   public isLoading = signal(false);
   public agencies = signal<AgencyDto[]>([]);
@@ -60,6 +62,10 @@ export class AgenciesHomePage {
         );
       }
     });
+  }
+
+  public navigateToEdit(agency: AgencyDto): void {
+    this._router.navigate(['/settings/agencies', agency.id, 'edit']);
   }
 
   public onPageChange(event: PageEvent): void {
