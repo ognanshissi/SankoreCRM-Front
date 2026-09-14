@@ -524,18 +524,19 @@ export class AgenciesApiService {
 
     /**
      * List agencies for the current tenant
-     * Returns a paginated list of agencies. Pass parentId&#x3D;&lt;guid&gt; to filter children; parentId&#x3D;00000000-0000-0000-0000-000000000000 returns root-level agencies. Pass includeDeleted&#x3D;true to include soft-deleted entries. Pass page and pageSize for pagination (pageSize&#x3D;0 returns all). Requires permission: agency:read.
+     * Returns a paginated list of agencies. Pass parentId&#x3D;&lt;guid&gt; to filter children; parentId&#x3D;00000000-0000-0000-0000-000000000000 returns root-level agencies. Pass search&#x3D;&lt;text&gt; to filter by name or code (case-insensitive substring match). Pass includeDeleted&#x3D;true to include soft-deleted entries. Pass page and pageSize for pagination (pageSize&#x3D;0 returns all). Requires permission: agency:read.
      * @param includeDeleted 
      * @param page 
      * @param pageSize 
      * @param parentId 
+     * @param search 
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      */
-    public listAgencies(includeDeleted: boolean, page: number, pageSize: number, parentId?: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<AgencyDtoPagedResult>;
-    public listAgencies(includeDeleted: boolean, page: number, pageSize: number, parentId?: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<AgencyDtoPagedResult>>;
-    public listAgencies(includeDeleted: boolean, page: number, pageSize: number, parentId?: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<AgencyDtoPagedResult>>;
-    public listAgencies(includeDeleted: boolean, page: number, pageSize: number, parentId?: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
+    public listAgencies(includeDeleted: boolean, page: number, pageSize: number, parentId?: string, search?: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<AgencyDtoPagedResult>;
+    public listAgencies(includeDeleted: boolean, page: number, pageSize: number, parentId?: string, search?: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<AgencyDtoPagedResult>>;
+    public listAgencies(includeDeleted: boolean, page: number, pageSize: number, parentId?: string, search?: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<AgencyDtoPagedResult>>;
+    public listAgencies(includeDeleted: boolean, page: number, pageSize: number, parentId?: string, search?: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
         if (includeDeleted === null || includeDeleted === undefined) {
             throw new Error('Required parameter includeDeleted was null or undefined when calling listAgencies.');
         }
@@ -550,6 +551,10 @@ export class AgenciesApiService {
         if (parentId !== undefined && parentId !== null) {
           localVarQueryParameters = this.addToHttpParams(localVarQueryParameters,
             <any>parentId, 'parentId');
+        }
+        if (search !== undefined && search !== null) {
+          localVarQueryParameters = this.addToHttpParams(localVarQueryParameters,
+            <any>search, 'search');
         }
         if (includeDeleted !== undefined && includeDeleted !== null) {
           localVarQueryParameters = this.addToHttpParams(localVarQueryParameters,

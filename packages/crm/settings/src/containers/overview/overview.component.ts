@@ -25,7 +25,7 @@ export interface MenuItem {
     `
       .menu-group__active {
         background-color: rgba(var(--tas-color-primary)) !important;
-        color: var(--tas-color-white)
+        color: var(--tas-color-white);
       }
     `,
   ],
@@ -34,33 +34,10 @@ export interface MenuItem {
 export class OverviewComponent {
   private readonly menuData: MenuItem[] = [
     {
-      title: 'Leads, Contacts & Compte',
-      type: 'group',
-      description: 'Gestion des personnes et vos différents clients',
-      id: 'leads_contacts_compte',
-      children: [
-        {
-          title: 'Capture de leads',
-          type: 'basic',
-          id: 'leads_contacts_capture',
-          link: '/settings/lead-capture',
-          description:
-            'Configurer les intégrations pour capturer des leads (site web, LinkedIn, etc.)',
-        },
-        {
-          title: 'Formulaires dynamiques',
-          type: 'basic',
-          id: 'leads_contacts_dynamic_forms',
-          link: '/settings/dynamic-forms',
-          description: 'Personnaliser les champs des formulaires par entité',
-        },
-      ],
-    },
-    {
       title: 'Agences & utilisateurs',
       type: 'group',
       id: 'teams_territories',
-      description: 'Gestion des utilisateurs et agences de l\'organisation',
+      description: "Gestion des utilisateurs et agences de l'organisation",
       children: [
         // {
         //   title: 'Automatisations',
@@ -104,6 +81,29 @@ export class OverviewComponent {
           id: 'teams_territories_territory',
           link: '/settings/territories',
           description: 'Gestion des utilisateurs et groupes par territoires',
+        },
+      ],
+    },
+    {
+      title: 'Leads, Contacts & Compte',
+      type: 'group',
+      description: 'Gestion des personnes et vos différents clients',
+      id: 'leads_contacts_compte',
+      children: [
+        {
+          title: 'Capture de leads',
+          type: 'basic',
+          id: 'leads_contacts_capture',
+          link: '/settings/lead-capture',
+          description:
+            'Configurer les intégrations pour capturer des leads (site web, LinkedIn, etc.)',
+        },
+        {
+          title: 'Formulaires dynamiques',
+          type: 'basic',
+          id: 'leads_contacts_dynamic_forms',
+          link: '/settings/dynamic-forms',
+          description: 'Personnaliser les champs des formulaires par entité',
         },
       ],
     },

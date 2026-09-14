@@ -1,7 +1,8 @@
 import OverviewComponent from './containers/overview/overview.component';
 import { Routes } from '@angular/router';
 import AgenciesHomePage from './containers/agencies/agencies-homepage/agencies-homepage';
-import EditRoleNavigation from './containers/roles/edit-role-navigation/edit-role-navigation';
+import EditRoleNavigation from './containers/roles/edit-role/edit-role-navigation';
+import EditUserNavigation from './containers/users/edit-user/edit-user-navigation';
 
 const settingsRoutes: Routes = [
   {
@@ -18,6 +19,22 @@ const settingsRoutes: Routes = [
       import('./containers/agencies/edit-agency/edit-agency'),
   },
   {
+    path: 'users',
+    loadComponent: () =>
+      import('./containers/users/users-homepage/users-homepage'),
+  },
+  {
+    path: 'users/:id',
+    loadComponent: () => EditUserNavigation,
+    children: [
+      { path: '', redirectTo: 'informations', pathMatch: 'full' },
+      { path: 'informations', loadComponent: () => import('./containers/users/edit-user/informations') },
+      { path: 'roles', loadComponent: () => import('./containers/users/edit-user/roles') },
+      { path: 'parametrage', loadComponent: () => import('./containers/users/edit-user/parametrage') },
+      { path: 'danger', loadComponent: () => import('./containers/users/edit-user/danger') },
+    ],
+  },
+  {
     path: 'roles',
     loadComponent: () =>
       import('./containers/roles/roles-homepage/roles-homepage'),
@@ -27,10 +44,10 @@ const settingsRoutes: Routes = [
     loadComponent: () => EditRoleNavigation,
     children: [
       { path: '', redirectTo: 'informations', pathMatch: 'full' },
-      { path: 'informations', loadComponent: () => import('./containers/roles/edit-role-navigation/informations') },
-      { path: 'permissions', loadComponent: () => import('./containers/roles/edit-role-navigation/permissions') },
-      { path: 'users', loadComponent: () => import('./containers/roles/edit-role-navigation/users') },
-      { path: 'danger', loadComponent: () => import('./containers/roles/edit-role-navigation/danger') },
+      { path: 'informations', loadComponent: () => import('./containers/roles/edit-role/informations') },
+      { path: 'permissions', loadComponent: () => import('./containers/roles/edit-role/permissions') },
+      { path: 'users', loadComponent: () => import('./containers/roles/edit-role/users') },
+      { path: 'danger', loadComponent: () => import('./containers/roles/edit-role/danger') },
     ],
   },
 ];

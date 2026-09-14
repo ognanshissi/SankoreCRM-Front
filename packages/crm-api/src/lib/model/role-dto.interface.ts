@@ -17,5 +17,6 @@ export interface RoleDto {
     label?: string | null;
     isSystem?: boolean;
     isAssignable?: boolean;
+    permissionCount?: number;
 }
 

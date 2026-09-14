@@ -8,9 +8,6 @@ import { email, form, FormField, FormRoot, required } from '@angular/forms/signa
 import { catchError, EMPTY, firstValueFrom } from 'rxjs';
 import { AuthApiService } from '@sankore/crm-api';
 import { TasIcon } from '@talisoft/ui/icon';
-import { TasAlert } from '@talisoft/ui/alert';
-import { FormGroup } from '@angular/forms';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { SnackbarService } from '@talisoft/ui/snackbar';
 
 export class ForgotPasswordModel {
@@ -29,8 +26,7 @@ export class ForgotPasswordModel {
     RouterLink,
     FormField,
     FormRoot,
-    TasIcon,
-    TasAlert,
+    TasIcon
   ],
 })
 export class ForgotPassword {

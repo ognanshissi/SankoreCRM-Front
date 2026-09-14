@@ -1,0 +1,125 @@
+<tas-side-drawer>
+  <tas-drawer-title>
+    <TasTitle class="text-lg">Nouvel utilisateur</TasTitle>
+  </tas-drawer-title>
+
+  <tas-drawer-content>
+    @if (isLoadingOptions()) {
+      <div class="flex justify-center py-12">
+        <tas-spinner size="8" class="text-primary"></tas-spinner>
+      </div>
+    } @else {
+      <form [formRoot]="formSchema" class="flex flex-col gap-5">
+
+        <div class="flex space-x-5">
+          <tas-form-field>
+            <tas-label>Nom <span class="text-functional-error">*</span></tas-label>
+            <input
+              tasInput
+              type="text"
+              placeholder="ex: Amadou"
+              [formField]="formSchema.firstName"
+            />
+            @if (formSchema.firstName().touched() && formSchema.firstName().invalid()) {
+              <tas-error>{{ formSchema.firstName().errors()[0].message }}</tas-error>
+            }
+          </tas-form-field>
+
+          <tas-form-field>
+            <tas-label>Prenom <span class="text-functional-error">*</span></tas-label>
+            <input
+              tasInput
+              type="text"
+              placeholder="ex: Amadou Diallo"
+              [formField]="formSchema.lastName"
+            />
+            @if (formSchema.lastName().touched() && formSchema.lastName().invalid()) {
+              <tas-error>{{ formSchema.lastName().errors()[0].message }}</tas-error>
+            }
+          </tas-form-field>
+        </div>
+
+        <tas-form-field>
+          <tas-label>Adresse e-mail <span class="text-functional-error">*</span></tas-label>
+          <input
+            tasInput
+            type="email"
+            placeholder="ex: amadou.diallo@organisation.com"
+            [formField]="formSchema.email"
+          />
+          <p class="text-xs text-slate-400 mt-1">Un e-mail d'activation sera envoyé à cette adresse.</p>
+          @if (formSchema.email().touched() && formSchema.email().invalid()) {
+            <tas-error>{{ formSchema.email().errors()[0].message }}</tas-error>
+          }
+        </tas-form-field>
+
+        <tas-form-field>
+          <tas-label>Langue par défaut <span class="text-functional-error">*</span></tas-label>
+          <tas-select
+            [options]="languageOptions"
+            placeholder="Sélectionnez une langue"
+            [formField]="formSchema.defaultLanguage"
+          ></tas-select>
+          @if (formSchema.defaultLanguage().touched() && formSchema.defaultLanguage().invalid()) {
+            <tas-error>{{ formSchema.defaultLanguage().errors()[0].message }}</tas-error>
+          }
+        </tas-form-field>
+
+        <tas-form-field>
+          <tas-label>Agence</tas-label>
+          <tas-select
+            [options]="agencyOptions()"
+            placeholder="Sélectionnez une agence"
+            [formField]="formSchema.agencyId"
+          ></tas-select>
+        </tas-form-field>
+
+        <tas-form-field>
+          <tas-label>Rôle</tas-label>
+          <tas-select
+            [options]="roleOptions()"
+            placeholder="Sélectionnez un rôle"
+            [formField]="formSchema.roleId"
+          ></tas-select>
+        </tas-form-field>
+
+        <tas-form-field>
+          <tas-label>Langues parlées</tas-label>
+          <tas-multi-select
+            [options]="languageOptions"
+            placeholder="Sélectionnez des langues"
+            [ngModel]="selectedSpokenLanguages()"
+            [ngModelOptions]="{ standalone: true }"
+            (ngModelChange)="selectedSpokenLanguages.set($event)"
+          ></tas-multi-select>
+        </tas-form-field>
+
+        <tas-form-field>
+          <tas-label>Spécialités</tas-label>
+          <tas-multi-select
+            [options]="specialtyOptions()"
+            [ngModelOptions]="{ standalone: true }"
+            placeholder="Sélectionnez des spécialités"
+            [ngModel]="selectedSpecialties()"
+            (ngModelChange)="selectedSpecialties.set($event)"
+          ></tas-multi-select>
+        </tas-form-field>
+
+      </form>
+    }
+  </tas-drawer-content>
+
+  <tas-drawer-action>
+    <button tas-outlined-button color="primary" type="button" (click)="close()">Annuler</button>
+    <button
+      tas-raised-button
+      color="primary"
+      type="button"
+      (click)="handleSubmit()"
+      [disabled]="formSchema().invalid() || formSchema().submitting() || isLoadingOptions()"
+      [isLoading]="formSchema().submitting()"
+    >
+      Créer l'utilisateur
+    </button>
+  </tas-drawer-action>
+</tas-side-drawer>

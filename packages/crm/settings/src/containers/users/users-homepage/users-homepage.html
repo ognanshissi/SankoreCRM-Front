@@ -1,0 +1,58 @@
+<div class="flex justify-between items-center mb-6">
+  <TasTitle>Utilisateurs</TasTitle>
+  <button tas-filled-button [color]="'primary'" (click)="openCreateDrawer()">
+    <tas-icon iconName="feather:plus"></tas-icon>
+    Ajouter un utilisateur
+  </button>
+</div>
+
+<tas-card>
+  <tas-table
+    [data]="users()"
+    [config]="tableConfig()"
+    [isLoading]="isLoading()"
+    (pageEventChange)="onPageChange($event)"
+  >
+    <ng-template #header>
+      <tr>
+        <th>Nom complet</th>
+        <th>Email</th>
+        <th>Agence</th>
+        <th>Statut</th>
+        <th>Dernière connexion</th>
+        <th></th>
+      </tr>
+    </ng-template>
+
+    <ng-template #body let-item>
+      <tr>
+        <td>
+          <span class="font-medium text-slate-800">{{ item.fullName ?? '—' }}</span>
+        </td>
+        <td class="text-slate-600">{{ item.email ?? '—' }}</td>
+        <td class="text-slate-600">{{ item.agencyName ?? '—' }}</td>
+        <td>
+          <span
+            class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
+            [ngClass]="statusClass(item.status)"
+          >
+            {{ statusLabel(item.status) }}
+          </span>
+        </td>
+        <td class="text-slate-500 text-sm">
+          {{ item.lastLoginAt ? (item.lastLoginAt | dateTimeAgo)  : '—' }}
+        </td>
+        <td class="text-right">
+          <button
+            tas-button
+            iconButton
+            type="button"
+            (click)="navigateToEdit(item)"
+            title="Voir / modifier">
+            <tas-icon iconName="feather:edit-2" iconSize="sm"></tas-icon>
+          </button>
+        </td>
+      </tr>
+    </ng-template>
+  </tas-table>
+</tas-card>

@@ -14,7 +14,8 @@
 export interface CreateUserRequest { 
     agencyId?: string;
     roleId?: string;
-    fullName?: string | null;
+    firstName?: string | null;
+    lastName?: string | null;
     email?: string | null;
     defaultLanguage?: string | null;
     spokenLanguages?: Array<string> | null;

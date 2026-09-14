@@ -10,7 +10,6 @@ import { TasSpinner } from '@talisoft/ui/spinner';
 import { UsersApiService, RolesApiService, UserDto } from '@sankore/crm-api';
 import { SnackbarService } from '@talisoft/ui/snackbar';
 import { ConfirmDialogService } from '@talisoft/ui/confirm-dialog';
-import { TasTitle } from '@talisoft/ui/title';
 
 @Component({
   selector: 'role-users',
@@ -22,8 +21,7 @@ import { TasTitle } from '@talisoft/ui/title';
     TasFormField,
     TasLabel,
     TasSelect,
-    TasSpinner,
-    TasTitle,
+    TasSpinner
   ],
   template: `
     @if (isLoading()) {
