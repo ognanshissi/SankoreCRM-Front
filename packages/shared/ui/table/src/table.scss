@@ -32,7 +32,7 @@ tas-table {
 
   tbody > tr {
     td {
-      @apply px-3 py-2;
+      @apply px-3 py-2 border border-slate-500;
       border: rgba(var(--tas-color-primary));
       text-align: left;
       @apply whitespace-nowrap;

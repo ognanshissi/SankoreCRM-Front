@@ -1,23 +1,59 @@
-<div class="flex justify-between items-center">
-  <TasTitle>Agencies</TasTitle>
-  <button tas-filled-button [color]="'primary'">
+<div class="flex justify-between items-center mb-6">
+  <TasTitle>Agences</TasTitle>
+  <button tas-filled-button [color]="'primary'" (click)="openCreateDrawer()">
     <tas-icon iconName="feather:plus"></tas-icon>
     Ajouter une agence
   </button>
 </div>
+
+
+<tas-card>
   <tas-table
-    [data]="[]"
-    [config]="tableConfig"
+    [data]="agencies()"
+    [config]="tableConfig()"
+    [isLoading]="isLoading()"
+    (pageEventChange)="onPageChange($event)"
   >
     <ng-template #header>
       <tr>
         <th>Nom</th>
-        <th class="w-[350px]">Principal</th>
+        <th>Type</th>
         <th>Adresse</th>
         <th>Statut</th>
         <th>Date de création</th>
       </tr>
     </ng-template>
+
     <ng-template #body let-item>
+      <tr>
+        <td>
+          <div class="font-medium text-slate-800">{{ item.name }}</div>
+          @if (item.code) {
+            <div class="text-xs text-slate-400">{{ item.code }}</div>
+          }
+        </td>
+        <td class="text-slate-600">{{ item.agencyType ?? '—' }}</td>
+        <td class="text-slate-600">
+          @if (item.addressCity || item.addressCountry) {
+            {{ item.addressCity }}{{ item.addressCity && item.addressCountry ? ', ' : '' }}{{ item.addressCountry }}
+          } @else {
+            —
+          }
+        </td>
+        <td>
+        <span
+          class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
+          [ngClass]="{
+            'bg-green-100 text-green-700': item.isActive,
+            'bg-red-100 text-red-700': !item.isActive
+          }"
+        >
+          {{ item.isActive ? 'Actif' : 'Inactif' }}
+        </span>
+        </td>
+        <td class="text-slate-600">{{ item.createdAt | dateTimeAgo }}</td>
+      </tr>
     </ng-template>
   </tas-table>
+</tas-card>
+

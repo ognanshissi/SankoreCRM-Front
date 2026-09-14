@@ -53,7 +53,7 @@ export class ButtonBaseMixins implements OnDestroy, AfterViewInit {
 
   @Input({ transform: booleanAttribute }) iconButton!: boolean;
 
-  @Input() size: 'small' | 'medium' | 'large' = 'large';
+  @Input() size: 'small' | 'medium' | 'large' = 'medium';
 
   ngAfterViewInit() {
     this._focusMonitor.monitor(this._elementRef, true);

@@ -7,7 +7,7 @@ import {
 } from '@angular/core';
 
 @Component({
-  selector: 'tas-spinner',
+  selector: 'tas-spinner, Spinner, core-spinner',
   template: ` <svg
     class="animate-spin -ml-1 mr-3  spinner"
     [ngClass]="getSizeClass"

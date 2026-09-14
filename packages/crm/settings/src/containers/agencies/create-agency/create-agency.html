@@ -1,0 +1,100 @@
+<tas-side-drawer>
+  <tas-drawer-title>
+    <TasTitle class="text-lg">Nouvelle agence</TasTitle>
+  </tas-drawer-title>
+
+  <tas-drawer-content>
+    <form [formRoot]="formSchema" class="flex flex-col gap-5">
+
+      <tas-form-field>
+        <tas-label>Nom de l'agence <span class="text-functional-error">*</span></tas-label>
+        <input
+          tasInput
+          type="text"
+          placeholder="Saisissez le nom de l'agence"
+          [formField]="formSchema.name"
+        />
+        @if (formSchema.name().touched() && formSchema.name().invalid()) {
+          <tas-error>{{ formSchema.name().errors()[0].message }}</tas-error>
+        }
+      </tas-form-field>
+
+      <tas-form-field>
+        <tas-label>Type d'agence</tas-label>
+        <tas-select
+          [options]="agencyTypeOptions"
+          placeholder="Sélectionnez un type"
+          [formField]="formSchema.agencyType"
+        ></tas-select>
+      </tas-form-field>
+
+      @if (!isHQ()) {
+        <tas-form-field>
+          <tas-label>Agence parente <span class="text-functional-error">*</span></tas-label>
+          <tas-select
+            [options]="parentAgencyOptions()"
+            placeholder="Sélectionnez l'agence parente"
+            [formField]="formSchema.parentAgencyId"
+          ></tas-select>
+          @if (formSchema.parentAgencyId().touched() && formSchema.parentAgencyId().invalid()) {
+            <tas-error>{{ formSchema.parentAgencyId().errors()[0].message }}</tas-error>
+          }
+        </tas-form-field>
+      }
+
+      <tas-form-field>
+        <tas-label>Description</tas-label>
+        <input
+          tasInput
+          type="text"
+          placeholder="Description de l'agence"
+          [formField]="formSchema.description"
+        />
+      </tas-form-field>
+
+      <div class="border-t border-gray-200 pt-4 mt-2">
+        <p class="text-sm font-medium text-slate-600 mb-3">Adresse</p>
+        <div class="flex flex-col gap-4">
+
+          <tas-form-field>
+            <tas-label>Rue</tas-label>
+            <input tasInput type="text" placeholder="Rue" [formField]="formSchema.addressStreet" />
+          </tas-form-field>
+
+          <div class="grid grid-cols-2 gap-3">
+            <tas-form-field>
+              <tas-label>Ville</tas-label>
+              <input tasInput type="text" placeholder="Ville" [formField]="formSchema.addressCity" />
+            </tas-form-field>
+
+            <tas-form-field>
+              <tas-label>Code postal</tas-label>
+              <input tasInput type="text" placeholder="Code postal" [formField]="formSchema.addressZipCode" />
+            </tas-form-field>
+          </div>
+
+          <tas-form-field>
+            <tas-label>Pays</tas-label>
+            <input tasInput type="text" placeholder="Pays" [formField]="formSchema.addressCountry" />
+          </tas-form-field>
+
+        </div>
+      </div>
+
+    </form>
+  </tas-drawer-content>
+
+  <tas-drawer-action>
+    <button tas-outlined-button color="primary" type="button" (click)="close()">Annuler</button>
+    <button
+      tas-raised-button
+      color="primary"
+      type="button"
+      (click)="handleSubmit()"
+      [disabled]="formSchema().invalid() || formSchema().submitting()"
+      [isLoading]="formSchema().submitting()"
+    >
+      Créer l'agence
+    </button>
+  </tas-drawer-action>
+</tas-side-drawer>

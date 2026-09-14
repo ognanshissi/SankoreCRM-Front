@@ -21,7 +21,7 @@ import {
 } from '@sankore/crm/common';
 import { BASE_PATH } from '@sankore/crm-api';
 import { environment } from '../environments/environment';
-import { provideHttpClient, withInterceptors } from '@angular/common/http';
+import { provideHttpClient, withFetch, withInterceptors } from '@angular/common/http';
 
 const tasFormFieldOptions: AbstractFormFieldConfigOptions = {
   rounded: false,
@@ -34,7 +34,7 @@ export const appConfig: ApplicationConfig = {
     provideClientHydration(withEventReplay()),
     provideBrowserGlobalErrorListeners(),
     provideRouter(appRoutes, withComponentInputBinding()),
-    provideHttpClient(withInterceptors([accessTokenInterceptor, errorInterceptor, tenantInterceptor])),
+    provideHttpClient(withFetch(), withInterceptors([accessTokenInterceptor, errorInterceptor, tenantInterceptor])),
     importProvidersFrom(TasIconRegistry),
     {
       provide: BASE_PATH,
