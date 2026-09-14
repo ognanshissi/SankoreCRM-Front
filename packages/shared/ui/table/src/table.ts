@@ -57,6 +57,8 @@ export const DEFAULT_TABLE_CONFIG: TableConfig = {
     TasLabel,
     MatPaginator,
     AsyncPipe,
+    TasIcon,
+    TasSpinner,
   ],
   encapsulation: ViewEncapsulation.None,
   changeDetection: ChangeDetectionStrategy.OnPush,

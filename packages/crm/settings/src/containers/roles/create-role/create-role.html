@@ -1,0 +1,53 @@
+<tas-side-drawer>
+  <tas-drawer-title>
+    <TasTitle class="text-lg">Nouveau rôle</TasTitle>
+  </tas-drawer-title>
+
+  <tas-drawer-content>
+    <form [formRoot]="formSchema" class="flex flex-col gap-5">
+
+      <tas-form-field>
+        <tas-label>Nom du rôle <span class="text-functional-error">*</span></tas-label>
+        <input
+          tasInput
+          type="text"
+          placeholder="ex: commercial_senior"
+          [formField]="formSchema.name"
+        />
+        <p class="text-xs text-slate-400 mt-1">Identifiant technique unique, sans espaces.</p>
+        @if (formSchema.name().touched() && formSchema.name().invalid()) {
+          <tas-error>{{ formSchema.name().errors()[0].message }}</tas-error>
+        }
+      </tas-form-field>
+
+      <tas-form-field>
+        <tas-label>Libellé <span class="text-functional-error">*</span></tas-label>
+        <input
+          tasInput
+          type="text"
+          placeholder="ex: Commercial Senior"
+          [formField]="formSchema.label"
+        />
+        <p class="text-xs text-slate-400 mt-1">Nom affiché aux utilisateurs.</p>
+        @if (formSchema.label().touched() && formSchema.label().invalid()) {
+          <tas-error>{{ formSchema.label().errors()[0].message }}</tas-error>
+        }
+      </tas-form-field>
+
+    </form>
+  </tas-drawer-content>
+
+  <tas-drawer-action>
+    <button tas-outlined-button color="primary" type="button" (click)="close()">Annuler</button>
+    <button
+      tas-raised-button
+      color="primary"
+      type="button"
+      (click)="handleSubmit()"
+      [disabled]="formSchema().invalid() || formSchema().submitting()"
+      [isLoading]="formSchema().submitting()"
+    >
+      Créer le rôle
+    </button>
+  </tas-drawer-action>
+</tas-side-drawer>

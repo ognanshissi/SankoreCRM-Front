@@ -1,0 +1,23 @@
+<ng-content select="[tas-navigation-top]"></ng-content>
+<div class="grid grid-cols-4 gap-4 mt-4">
+  <!-- Navigation menu -->
+  <div class="col-span-1">
+    <tas-card>
+      <ng-content select="[tas-navigation-info]"></ng-content>
+      @for (item of menuItems(); track $index) {
+        <a
+          class="px-4 py-3 hover:bg-gray-200 flex space-x-2"
+          [routerLink]="item.route"
+          [routerLinkActive]="'is-link-active'"
+        >
+          <tas-icon [iconName]="item.icon"></tas-icon>
+          <span>{{ item.label }}</span>
+        </a>
+      }
+    </tas-card>
+  </div>
+  <!-- Page content -->
+  <div class="col-span-3 h-[calc(100vh_-_130px)] overflow-y-auto">
+    <router-outlet></router-outlet>
+  </div>
+</div>

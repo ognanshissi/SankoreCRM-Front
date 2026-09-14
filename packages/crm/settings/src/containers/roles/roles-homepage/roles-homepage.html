@@ -1,0 +1,79 @@
+<div class="flex justify-between items-center mb-6">
+  <TasTitle>Rôles</TasTitle>
+  <button tas-filled-button [color]="'primary'" (click)="openCreateDrawer()">
+    <tas-icon iconName="feather:plus"></tas-icon>
+    Ajouter un rôle
+  </button>
+</div>
+
+<tas-card>
+  <tas-table
+    [data]="roles()"
+    [config]="tableConfig()"
+    [isLoading]="isLoading()"
+  >
+    <ng-template #header>
+      <tr>
+        <th>Nom</th>
+        <th>Libellé</th>
+        <th>Type</th>
+        <th>Assignable</th>
+        <th></th>
+      </tr>
+    </ng-template>
+
+    <ng-template #body let-item>
+      <tr>
+        <td>
+          <span class="font-medium text-slate-800">{{ item.name }}</span>
+        </td>
+        <td class="text-slate-600">{{ item.label ?? '—' }}</td>
+        <td>
+          <span
+            class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
+            [ngClass]="{
+              'bg-slate-100 text-slate-600': item.isSystem,
+              'bg-blue-100 text-blue-700': !item.isSystem
+            }"
+          >
+            {{ item.isSystem ? 'Système' : 'Personnalisé' }}
+          </span>
+        </td>
+        <td>
+          <span
+            class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
+            [ngClass]="{
+              'bg-green-100 text-green-700': item.isAssignable,
+              'bg-slate-100 text-slate-500': !item.isAssignable
+            }">
+            {{ item.isAssignable ? 'Oui' : 'Non' }}
+          </span>
+        </td>
+        <td class="text-right">
+          <div class="flex items-center justify-end gap-1">
+            <button
+              tas-button
+              iconButton
+              type="button"
+              (click)="navigateToEdit(item)"
+              title="Voir / modifier">
+              <tas-icon iconName="feather:edit-2" iconSize="sm"></tas-icon>
+            </button>
+            @if (!item.isSystem) {
+              <button
+                tas-button
+                iconButton
+                color="warn"
+                type="button"
+                [disabled]="deletingId() === item.id"
+                (click)="$event.stopPropagation(); confirmDelete(item)"
+                title="Supprimer le rôle">
+                <tas-icon iconName="feather:trash-2" iconSize="sm"></tas-icon>
+              </button>
+            }
+          </div>
+        </td>
+      </tr>
+    </ng-template>
+  </tas-table>
+</tas-card>
