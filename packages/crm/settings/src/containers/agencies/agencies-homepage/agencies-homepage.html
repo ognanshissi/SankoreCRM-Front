@@ -12,6 +12,7 @@
     [data]="agencies()"
     [config]="tableConfig()"
     [isLoading]="isLoading()"
+    (refresh)="loadAgencies(1, 100)"
     (pageEventChange)="onPageChange($event)"
   >
     <ng-template #header>
@@ -26,7 +27,7 @@
     </ng-template>
 
     <ng-template #body let-item>
-      <tr class="cursor-pointer hover:bg-slate-50">
+      <tr class="cursor-pointer hover:bg-slate-50" (click)="navigateToEdit(item)">
         <td>
           <div class="font-medium text-slate-800">{{ item.name }}</div>
           @if (item.code) {
@@ -54,8 +55,8 @@
         </td>
         <td class="text-slate-600">{{ item.createdAt | dateTimeAgo }}</td>
         <td>
-          <button tas-outlined-button [color]="'primary'" (click)="navigateToEdit(item)">
-            <tas-icon iconName="feather:visibility_on"></tas-icon>
+          <button tas-raised-button [color]="'primary'" (click)="navigateToEdit(item)">
+            <tas-icon iconName="feather:eye"></tas-icon> &nbsp; Consulter
           </button>
         </td>
       </tr>

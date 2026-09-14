@@ -21,6 +21,7 @@ export const errorInterceptor: HttpInterceptorFn = (
         console.log('ErrorInterceptorStatus', error.status);
         return throwError(() => new Error(error.message));
       }
+
       return throwError(() => error);
     }),
   );

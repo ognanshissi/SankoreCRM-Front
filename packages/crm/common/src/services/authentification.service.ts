@@ -64,7 +64,12 @@ export class AuthenticationService {
     this._connectedUser.set(null);
     return this._authService.login(loginRequest).pipe(
       switchMap((response) => {
-        this.setAccessToken(response.accessToken);
+        this.setAccessToken(
+          response.accessToken,
+          response.expiresAt,
+          response.refreshToken ?? '',
+          response.refreshTokenExpiresAt,
+        );
         return this.getCurrentUserInfo(response.userId ?? '').pipe(
           map(() => {
             return response;
@@ -95,17 +100,11 @@ export class AuthenticationService {
   }
 
   public loadAccessToken(): string | null {
-    // when the token is used, I should load user information
     if (!this._accessToken()) {
-      const raw = this.storage?.getItem(TOKEN_STORAGE_KEY);
-      if (!raw) return null;
-      const storage = JSON.parse(raw) as string | null;
-      if (storage === null) return null;
-      this._accessToken.set(storage ?? '');
+      const token = this.storage?.getItem(TOKEN_STORAGE_KEY) ?? null;
+      if (!token) return null;
+      this._accessToken.set(token);
     }
-    // if (!this._connectedUser() && !this._loadingUserInfo()) {
-    //   this.getCurrentUserInfo().subscribe();
-    // }
     return this.accessToken();
   }
 
@@ -128,10 +127,19 @@ export class AuthenticationService {
     this._router.navigate(['/auth', 'login']);
   }
 
-  private setAccessToken(accessToken: any): void {
-    this.tokenExpiresIn.set(Math.ceil(accessToken.expiresIn / 100));
-    this._accessToken.set(accessToken.accessToken);
-    console.log(this.accessToken());
-    this.storage?.setItem(TOKEN_STORAGE_KEY, JSON.stringify(accessToken));
+  private setAccessToken(
+    accessToken: any,
+    expiresIn: any,
+    refreshToken: any,
+    refreshTokenExpiresAt?: string | null,
+  ): void {
+    const expiresTime = +new Date(expiresIn);
+    const time = +new Date()
+    this.tokenExpiresIn.set(Math.ceil((expiresTime - time) / 100));
+    this._accessToken.set(accessToken);
+    this.storage?.setItem(TOKEN_STORAGE_KEY, accessToken);
+    this.storage?.setItem('expiresIn', JSON.stringify(expiresIn));
+    this.storage?.setItem('refreshToken', refreshToken);
+    this.storage?.setItem('refreshTokenExpiresAt', JSON.stringify(refreshTokenExpiresAt));
   }
 }

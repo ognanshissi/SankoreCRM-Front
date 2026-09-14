@@ -80,7 +80,7 @@ export class AgenciesHomePage {
     this.loadAgencies(event.pageIndex, event.pageSize);
   }
 
-  private loadAgencies(page: number, pageSize: number): void {
+  public loadAgencies(page: number, pageSize: number): void {
     this.isLoading.set(true);
     this._agenciesApiService.listAgencies(false, page + 1, pageSize).subscribe({
       next: (result) => {

@@ -87,6 +87,7 @@ export class TasTable<T extends TableEntity>
   );
 
   public refresh = output();
+  public filterButtonClicked = output();
 
   public rowSelectionMaster = contentChild<RowSelectionMaster>(
     RowSelectionMaster,
