@@ -101,7 +101,7 @@ export class AuthenticationService {
 
   public loadAccessToken(): string | null {
     if (!this._accessToken()) {
-      const token = this.storage?.getItem(TOKEN_STORAGE_KEY) ?? null;
+      const token = localStorage.getItem(TOKEN_STORAGE_KEY) ?? null;
       if (!token) return null;
       this._accessToken.set(token);
     }
@@ -121,7 +121,7 @@ export class AuthenticationService {
   }
 
   public logout(): void {
-    this.storage?.removeItem(TOKEN_STORAGE_KEY);
+    localStorage.removeItem(TOKEN_STORAGE_KEY);
     this._connectedUser.set(null);
     this._accessToken.set(null);
     this._router.navigate(['/auth', 'login']);
@@ -137,9 +137,12 @@ export class AuthenticationService {
     const time = +new Date()
     this.tokenExpiresIn.set(Math.ceil((expiresTime - time) / 100));
     this._accessToken.set(accessToken);
-    this.storage?.setItem(TOKEN_STORAGE_KEY, accessToken);
-    this.storage?.setItem('expiresIn', JSON.stringify(expiresIn));
-    this.storage?.setItem('refreshToken', refreshToken);
-    this.storage?.setItem('refreshTokenExpiresAt', JSON.stringify(refreshTokenExpiresAt));
+    localStorage.setItem(TOKEN_STORAGE_KEY, accessToken);
+    localStorage.setItem('expiresIn', JSON.stringify(expiresIn));
+    localStorage.setItem('refreshToken', refreshToken);
+    localStorage.setItem(
+      'refreshTokenExpiresAt',
+      JSON.stringify(refreshTokenExpiresAt),
+    );
   }
 }

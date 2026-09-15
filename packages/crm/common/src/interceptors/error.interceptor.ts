@@ -5,27 +5,17 @@ import {
   HttpInterceptorFn,
   HttpRequest,
 } from '@angular/common/http';
-import { catchError, EMPTY, Observable, throwError } from 'rxjs';
-import { Router } from '@angular/router';
-import { inject } from '@angular/core';
+import { catchError, Observable, throwError } from 'rxjs';
 
 export const errorInterceptor: HttpInterceptorFn = (
   req: HttpRequest<unknown>,
   next: HttpHandlerFn,
-):  Observable<HttpEvent<unknown>>  => {
-
-  const router= inject(Router);
+): Observable<HttpEvent<unknown>> => {
   return next(req).pipe(
     catchError((error: HttpErrorResponse) => {
-      console.log('ErrorInterceptorStatus', error.status);
-      if (error.status === 0) {
-        const errorMessage = error.error.message ? error.error.message : error.message || "Une erreur est survenue";
-        console.log('ErrorInterceptor', errorMessage);
-        console.log('ErrorInterceptorStatus', error.status);
-        router.navigate(['/auth/login']);
-        return EMPTY;
-      }
-
+      // status 0 = network error or aborted request (e.g. component destroyed mid-flight,
+      // HMR reload cancellation). Do NOT redirect to login for these — the
+      // access-token interceptor already handles 401 redirects.
       return throwError(() => error);
     }),
   );

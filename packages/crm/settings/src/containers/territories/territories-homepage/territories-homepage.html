@@ -3,7 +3,7 @@
   <div>
     <div class="flex items-center gap-2.5">
       <h1 class="text-lg font-semibold text-slate-800">Territoires</h1>
-      @if ((territories().length ?? 0) > 0) {
+      @if ((territories().length || 0) > 0) {
         <span class="px-2 py-0.5 rounded-md bg-slate-100 text-slate-500 text-xs font-medium tabular-nums">
           {{ territories().length }}
         </span>

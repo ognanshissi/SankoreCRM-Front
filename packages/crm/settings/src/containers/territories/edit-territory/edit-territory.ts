@@ -12,7 +12,6 @@ import { form, FormField, FormRoot, required, submit } from '@angular/forms/sign
 import { catchError, EMPTY, filter, firstValueFrom, forkJoin } from 'rxjs';
 import { NgClass } from '@angular/common';
 import { Dialog } from '@angular/cdk/dialog';
-import { TasTitle } from '@talisoft/ui/title';
 import { TasCard } from '@talisoft/ui/card';
 import { Anchor, Button } from '@talisoft/ui/button';
 import { TasIcon } from '@talisoft/ui/icon';
@@ -49,7 +48,6 @@ class EditTerritoryFormModel {
   imports: [
     FormsModule,
     NgClass,
-    TasTitle,
     TasCard,
     Button,
     TasIcon,
