@@ -1,0 +1,93 @@
+<!-- Page header -->
+<div class="flex items-start justify-between mb-5">
+  <div>
+    <div class="flex items-center gap-2.5">
+      <h1 class="text-lg font-semibold text-slate-800">Produits</h1>
+      @if (products().length > 0) {
+        <span class="px-2 py-0.5 rounded-md bg-slate-100 text-slate-500 text-xs font-medium tabular-nums">
+          {{ filteredProducts().length }}
+        </span>
+      }
+    </div>
+    <p class="text-sm text-slate-400 mt-0.5">Gérez les produits disponibles comme spécialités pour vos utilisateurs et territoires.</p>
+  </div>
+  <button tas-filled-button [color]="'primary'" (click)="openCreateDrawer()">
+    <tas-icon iconName="feather:plus"></tas-icon>
+    Nouveau produit
+  </button>
+</div>
+
+<!-- Table -->
+<tas-card>
+  <tas-table
+    [data]="filteredProducts()"
+    [config]="tableConfig()"
+    [isLoading]="isLoading()"
+    (searchInputChange)="onSearchChange($event)"
+  >
+    <ng-template #header>
+      <tr>
+        <th>Produit</th>
+        <th>Description</th>
+        <th></th>
+      </tr>
+    </ng-template>
+
+    <ng-template #body let-item>
+      <tr
+        class="cursor-pointer hover:bg-slate-50 transition-colors"
+        (click)="navigateToEdit(item)"
+      >
+        <!-- Identity: code badge + name + mono code chip -->
+        <td class="py-3">
+          <div class="flex items-center gap-3">
+            <div class="w-9 h-9 rounded-full bg-indigo-50 flex items-center justify-center flex-shrink-0 select-none">
+              <span class="text-xs font-bold text-indigo-600">{{ codeBadge(item.code) }}</span>
+            </div>
+            <div class="min-w-0">
+              <div class="font-medium text-slate-800 leading-tight truncate">
+                {{ item.name ?? item.code ?? '—' }}
+              </div>
+              @if (item.code) {
+                <span class="inline-block mt-0.5 px-1.5 py-0 rounded text-xs font-mono bg-slate-100 text-slate-500">
+                  {{ item.code }}
+                </span>
+              }
+            </div>
+          </div>
+        </td>
+
+        <!-- Description -->
+        <td class="text-sm text-slate-500 max-w-xs">
+          <span class="line-clamp-1">{{ item.description ?? '—' }}</span>
+        </td>
+
+        <!-- Actions — stop propagation so row click doesn't double-fire -->
+        <td class="text-right" (click)="$event.stopPropagation()">
+          <div class="flex items-center justify-end gap-1">
+            <button
+              tas-button
+              iconButton
+              type="button"
+              (click)="navigateToEdit(item)"
+              title="Modifier"
+            >
+              <tas-icon iconName="feather:edit-2" iconSize="sm"></tas-icon>
+            </button>
+            <button
+              tas-button
+              iconButton
+              color="warn"
+              type="button"
+              [disabled]="deletingId() === item.id"
+              (click)="confirmDelete(item)"
+              title="Supprimer"
+            >
+              <tas-icon iconName="feather:trash-2" iconSize="sm"></tas-icon>
+            </button>
+          </div>
+        </td>
+      </tr>
+    </ng-template>
+  </tas-table>
+</tas-card>

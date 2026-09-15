@@ -7,14 +7,14 @@ import {
   signal,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { form, FormField, FormRoot, required, submit } from '@angular/forms/signals';
 import { catchError, EMPTY, filter, firstValueFrom, forkJoin } from 'rxjs';
 import { NgClass } from '@angular/common';
 import { Dialog } from '@angular/cdk/dialog';
 import { TasTitle } from '@talisoft/ui/title';
 import { TasCard } from '@talisoft/ui/card';
-import { Button } from '@talisoft/ui/button';
+import { Anchor, Button } from '@talisoft/ui/button';
 import { TasIcon } from '@talisoft/ui/icon';
 import { TasFormField, TasLabel, TasError } from '@talisoft/ui/form-field';
 import { TasInput } from '@talisoft/ui/input';
@@ -61,6 +61,8 @@ class EditTerritoryFormModel {
     TasSpinner,
     FormRoot,
     FormField,
+    Anchor,
+    RouterLink,
   ],
 })
 export class EditTerritoryPage {
@@ -97,12 +99,18 @@ export class EditTerritoryPage {
           this.updateModel.set(EditTerritoryFormModel.fromTerritory(territory));
           this.selectedSpecialities.set(territory.productSpecialities ?? []);
           this.specialtyOptions.set(
-            (products ?? []).map((p) => ({ label: p.name ?? p.code ?? '', value: p.code ?? '' }))
+            (products ?? []).map((p) => ({
+              label: p.name ?? p.code ?? '',
+              value: p.code ?? '',
+            })),
           );
           this.isLoading.set(false);
         },
         error: () => {
-          this._snackbarService.error('Erreur', 'Impossible de charger le territoire.');
+          this._snackbarService.error(
+            'Erreur',
+            'Impossible de charger le territoire.',
+          );
           this.isLoading.set(false);
         },
       });
@@ -126,12 +134,18 @@ export class EditTerritoryPage {
           })
           .pipe(
             catchError(() => {
-              this._snackbarService.error('Erreur', 'Impossible de mettre à jour le territoire.');
+              this._snackbarService.error(
+                'Erreur',
+                'Impossible de mettre à jour le territoire.',
+              );
               return EMPTY;
             }),
           ),
       );
-      this._snackbarService.success('Succès', 'Territoire mis à jour avec succès.');
+      this._snackbarService.success(
+        'Succès',
+        'Territoire mis à jour avec succès.',
+      );
     });
   }
 
@@ -147,13 +161,19 @@ export class EditTerritoryPage {
         .deleteTerritory(this.id())
         .pipe(
           catchError(() => {
-            this._snackbarService.error('Erreur', 'Impossible de supprimer le territoire.');
+            this._snackbarService.error(
+              'Erreur',
+              'Impossible de supprimer le territoire.',
+            );
             this.isDeleting.set(false);
             return EMPTY;
           }),
         )
         .subscribe(() => {
-          this._snackbarService.success('Succès', 'Territoire supprimé avec succès.');
+          this._snackbarService.success(
+            'Succès',
+            'Territoire supprimé avec succès.',
+          );
           this._router.navigate(['/settings/territories']);
         });
     });

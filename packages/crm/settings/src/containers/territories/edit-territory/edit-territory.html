@@ -3,13 +3,19 @@
     <tas-spinner size="10" class="text-primary"></tas-spinner>
   </div>
 } @else if (territory()) {
-  <div class="max-w-3xl mx-auto pb-8 flex flex-col gap-6">
+  <div class="max-w-3xl pb-8 flex flex-col gap-6">
 
     <!-- Header -->
     <div class="flex items-center justify-between">
-      <div>
-        <h1 class="text-xl font-semibold text-slate-800">{{ territory()!.name }}</h1>
-        <p class="text-sm text-slate-500 mt-0.5">Code : {{ territory()!.code ?? '—' }}</p>
+      <div class="flex items-center">
+        <a [routerLink]="['/settings/terriories']" tas-button iconButton>
+          <tas-icon iconName="feather:chevron-left"></tas-icon>
+        </a>
+
+        <div>
+          <h1 class="text-xl font-semibold text-slate-800">{{ territory()!.name }}</h1>
+          <p class="text-sm text-slate-500 mt-0.5">Code : {{ territory()!.code ?? '—' }}</p>
+        </div>
       </div>
       <span
         class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
@@ -99,7 +105,6 @@
               (ngModelChange)="selectedSpecialities.set($event)"
             ></tas-multi-select>
           </tas-form-field>
-
         </form>
 
         <div class="flex justify-end pt-2">
@@ -109,8 +114,8 @@
             type="button"
             [disabled]="formSchema().submitting()"
             [isLoading]="formSchema().submitting()"
-            (click)="handleUpdate()"
-          >
+            (click)="handleUpdate()">
+            <tas-icon iconName="feather:save" size="sm"></tas-icon> &nbsp;
             Enregistrer
           </button>
         </div>
