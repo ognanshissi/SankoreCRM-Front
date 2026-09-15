@@ -1,20 +1,22 @@
 <!-- Page header -->
 <div class="flex items-start justify-between mb-5">
   <div>
-    <div class="flex items-center gap-2.5">
-      <h1 class="text-lg font-semibold text-slate-800">Utilisateurs</h1>
-      @if ((tableConfig().pagination.totalElements ?? 0) > 0) {
-        <span class="px-2 py-0.5 rounded-md bg-slate-100 text-slate-500 text-xs font-medium tabular-nums">
-          {{ tableConfig().pagination.totalElements }}
-        </span>
-      }
-    </div>
+    <h1 class="text-lg font-semibold text-slate-800">Utilisateurs</h1>
     <p class="text-sm text-slate-400 mt-0.5">Gérez les accès et profils des membres de votre organisation.</p>
   </div>
   <button tas-filled-button [color]="'primary'" (click)="openCreateDrawer()">
     <tas-icon iconName="feather:user-plus"></tas-icon>
     Ajouter un utilisateur
   </button>
+</div>
+
+<!-- tags filter -->
+@let countInactive = (userStatusStats().locked || 0) + (userStatusStats().disabled || 0);
+<div class="flex space-x-3 pb-4">
+  <button tas-raised-button  [color]="'primary'">Tout ({{ userStatusStats().total }}) </button>
+  <button tas-outlined-button [color]="'primary'">Actifs ({{ userStatusStats().active }})</button>
+  <button tas-outlined-button [color]="'primary'">Activation en attente ({{ userStatusStats().pendingActivation }}) </button>
+  <button tas-outlined-button [color]="'primary'">Désactivés / Suspendus ({{ countInactive  }}) </button>
 </div>
 
 <!-- Table -->
@@ -30,6 +32,8 @@
       <tr>
         <th>Membre</th>
         <th>Agence</th>
+        <th>Type</th>
+        <th>Role</th>
         <th>Statut</th>
         <th>Dernière connexion</th>
         <th></th>
@@ -41,22 +45,28 @@
         class="cursor-pointer hover:bg-slate-50 transition-colors"
         (click)="navigateToEdit(item)"
       >
-        <!-- Identity cell: avatar + name + email -->
+        <!-- Identity cell: avatar + name + email + mfa indicator -->
         <td class="py-3">
           <div class="flex items-center gap-3">
-            <div
-              class="w-9 h-9 rounded-full flex items-center justify-center text-xs font-semibold flex-shrink-0 select-none"
-              [ngClass]="avatarColor(item.fullName)"
-            >
-              {{ initials(item.fullName) }}
+            <div class="relative flex-shrink-0">
+              <div
+                class="w-9 h-9 rounded-full flex items-center justify-center text-xs font-semibold select-none"
+                [ngClass]="avatarColor(item.fullName)"
+              >
+                {{ item.fullName | initials }}
+              </div>
+              @if (item.isAvailable) {
+                <span class="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-green-500 border-2 border-white"></span>
+              }
             </div>
             <div class="min-w-0">
-              <div class="font-medium text-slate-800 leading-tight truncate">
-                {{ item.fullName ?? '—' }}
+              <div class="flex items-center gap-1.5 leading-tight">
+                <span class="font-medium text-slate-800 truncate">{{ item.fullName ?? '—' }}</span>
+                @if (item.mfaEnabled) {
+                  <tas-icon iconName="feather:shield" iconSize="sm" class="text-primary flex-shrink-0" title="MFA activé"></tas-icon>
+                }
               </div>
-              <div class="text-xs text-slate-400 mt-0.5 truncate">
-                {{ item.email ?? '' }}
-              </div>
+              <div class="text-xs text-slate-400 mt-0.5 truncate">{{ item.email ?? '' }}</div>
             </div>
           </div>
         </td>
@@ -64,23 +74,43 @@
         <!-- Agency -->
         <td class="text-sm text-slate-600">{{ item.agencyName ?? '—' }}</td>
 
-        <!-- Status badge with dot -->
+        <!-- Account type badge -->
         <td>
-          <span
-            class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium"
-            [ngClass]="statusClass(item.status)"
-          >
-            <span class="w-1.5 h-1.5 rounded-full bg-current opacity-60 flex-shrink-0"></span>
+          @if (item.accountType) {
+            <span class="px-2 py-0.5 rounded text-xs font-medium bg-accent/10 text-accent">
+              {{ accountTypeLabel(item.accountType) }}
+            </span>
+          } @else {
+            <span class="text-slate-400 text-sm">—</span>
+          }
+        </td>
+
+        <!-- Role  -->
+        <td>
+          @if (item.roles?.length) {
+            @if (item.roles?.length > 1) {
+              <tas-tag [severity]="'neutral'" [title]="displayRoles(item.roles)">{{ item.roles[0] }}, ...</tas-tag>
+            } @else {
+              <tas-tag [severity]="'neutral'">{{ item.roles }}</tas-tag>
+            }
+          } @else {
+            <span class="text-slate-400 text-sm">—</span>
+          }
+        </td>
+
+        <!-- Status: left-border treatment -->
+        <td>
+          <span class="text-sm font-medium pl-2" [ngClass]="statusBorderClass(item.status)">
             {{ statusLabel(item.status) }}
           </span>
         </td>
 
         <!-- Last login -->
         <td class="text-sm text-slate-500">
-          {{ item.lastLoginAt ? (item.lastLoginAt | dateTimeAgo) : 'Jamais' }}
+          {{ item.lastLoginAt ? (item.lastLoginAt | dateTimeAgo) : 'Jamais connecté' }}
         </td>
 
-        <!-- Action — stop propagation so row click doesn't double-fire -->
+        <!-- Action -->
         <td class="text-right" (click)="$event.stopPropagation()">
           <button
             tas-button

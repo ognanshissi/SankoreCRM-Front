@@ -1,10 +1,12 @@
-import { Injectable, signal } from '@angular/core';
+import { inject, Injectable, signal } from '@angular/core';
+import { DOCUMENT } from '@angular/common';
 import { TenantContextResponse } from '@sankore/crm-api';
 
 @Injectable({
   providedIn: 'root'
 })
 export class TenantProvider {
+  private readonly _document = inject(DOCUMENT);
   private readonly _context = signal<TenantContextResponse | null>(null);
   public readonly context = this._context.asReadonly();
 
@@ -13,6 +15,6 @@ export class TenantProvider {
   }
 
   public getFqdn(): string {
-    return window.location.origin;
+    return this._document.defaultView?.location.origin ?? '';
   }
 }

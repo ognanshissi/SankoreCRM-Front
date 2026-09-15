@@ -64,6 +64,7 @@ export * from './update-user-request.interface';
 export * from './user-dto.interface';
 export * from './user-permissions-dto.interface';
 export * from './user-status.interface';
+export * from './user-status-stats-dto.interface';
 export * from './verify-token-response.interface';
 export * from './workflow-instance-dto.interface';
 export * from './workflow-instance-step-dto.interface';

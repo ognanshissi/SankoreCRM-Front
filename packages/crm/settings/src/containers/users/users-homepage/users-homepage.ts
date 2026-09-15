@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { NgClass } from '@angular/common';
 import { PageEvent } from '@angular/material/paginator';
 import { Router } from '@angular/router';
@@ -7,17 +7,22 @@ import { TasIcon } from '@talisoft/ui/icon';
 import { TasCard } from '@talisoft/ui/card';
 import { TasTable, TableConfig } from '@talisoft/ui/table';
 import { SideDrawerService } from '@talisoft/ui/side-drawer';
-import { UsersApiService, UserDto } from '@sankore/crm-api';
+import {
+  UsersApiService,
+  UserDto,
+  RoleDto,
+  UserStatusStatsDto,
+} from '@sankore/crm-api';
 import { CreateUserComponent } from '../create-user/create-user';
 import { TimeagoPipe } from '@talisoft/ui/timeago';
+import { InitialsPipe } from '@sankore/crm/common';
+import { TasTag } from '@talisoft/ui/tag';
 
 const AVATAR_COLORS = [
-  'bg-violet-100 text-violet-700',
-  'bg-blue-100 text-blue-700',
-  'bg-emerald-100 text-emerald-700',
-  'bg-amber-100 text-amber-700',
-  'bg-rose-100 text-rose-700',
-  'bg-cyan-100 text-cyan-700',
+  'bg-primary/10 text-primary',
+  'bg-accent/10 text-accent',
+  'bg-primary/20 text-primary',
+  'bg-accent/20 text-accent',
 ];
 
 @Component({
@@ -29,6 +34,8 @@ const AVATAR_COLORS = [
     TasCard,
     TasTable,
     TimeagoPipe,
+    InitialsPipe,
+    TasTag,
   ],
 })
 export class UsersHomePage {
@@ -39,6 +46,8 @@ export class UsersHomePage {
   public isLoading = signal(false);
   public users = signal<UserDto[]>([]);
   public searchQuery = signal('');
+
+  public userStatusStats = signal<UserStatusStatsDto>({ total: 0, active: 0 , disabled: 0, locked: 0, pendingActivation: 0});
 
   public tableConfig = signal<TableConfig>({
     property: 'id',
@@ -53,6 +62,9 @@ export class UsersHomePage {
 
   ngOnInit(): void {
     this.loadUsers(0, 20);
+    this._usersApiService.getUserStatusStats().subscribe({
+      next: data => this.userStatusStats.set(data),
+    })
   }
 
   public onSearchChange(query: string): void {
@@ -101,57 +113,68 @@ export class UsersHomePage {
     this._usersApiService
       .listUsers(undefined, undefined, search || undefined, page + 1, pageSize)
       .subscribe({
-      next: (result) => {
-        this.users.set(result.items ?? []);
-        this.tableConfig.update((c) => ({
-          ...c,
-          pagination: {
-            ...c.pagination,
-            totalElements: result.totalCount ?? 0,
-          },
-        }));
-        this.isLoading.set(false);
-      },
-      error: () => this.isLoading.set(false),
-    });
+        next: (result) => {
+          this.users.set(result.items ?? []);
+          this.tableConfig.update((c) => ({
+            ...c,
+            pagination: {
+              ...c.pagination,
+              totalElements: result.totalCount ?? 0,
+            },
+          }));
+          this.isLoading.set(false);
+        },
+        error: () => this.isLoading.set(false),
+      });
   }
 
   public statusLabel(status: string | null | undefined): string {
     switch (status) {
-      case '0':
-        return 'En attente';
-      case '1':
+      case 'PendingActivation':
+        return 'Activation en attente';
+      case 'Active':
         return 'Actif';
-      case '2':
+      case 'Disabled':
         return 'Désactivé';
-      case '3':
+      case 'Locked':
         return 'Suspendu';
       default:
         return status ?? '—';
     }
   }
 
-  public statusClass(
+  public displayRoles(roles: string[]): string {
+    return roles.join(', ');
+  }
+
+  public statusBorderClass(
     status: string | null | undefined,
   ): Record<string, boolean> {
     return {
-      'bg-yellow-100 text-yellow-700': status === '0',
-      'bg-green-100 text-green-700': status === '1',
-      'bg-slate-100 text-slate-500': status === '2',
-      'bg-red-100 text-red-700': status === '3',
+      'border-l-2 border-green-500 text-green-700': status === 'Active',
+      'border-l-2 border-amber-500 text-amber-700':
+        status === 'PendingActivation',
+      'border-l-2 border-slate-300 text-slate-500': status === 'Disabled',
+      'border-l-2 border-warn text-warn': status === 'Locked',
     };
+  }
+
+  public accountTypeLabel(type: string | null | undefined): string {
+    switch (type) {
+      case '0':
+        return 'Admin';
+      case '1':
+        return 'Manager';
+      case '2':
+        return 'Terrain';
+      default:
+        return type ?? '';
+    }
   }
 
   public avatarColor(name: string | null | undefined): string {
     if (!name) return 'bg-slate-100 text-slate-400';
     return AVATAR_COLORS[name.charCodeAt(0) % AVATAR_COLORS.length];
-  }
-
-  public initials(name: string | null | undefined): string {
-    if (!name) return '?';
-    const parts = name.trim().split(/\s+/);
-    if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
-    return name.slice(0, 2).toUpperCase();
   }
 }
 

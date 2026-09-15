@@ -11,6 +11,7 @@ import { TasSpinner } from '@talisoft/ui/spinner';
 import { UsersApiService, RolesApiService, UserDto } from '@sankore/crm-api';
 import { SnackbarService } from '@talisoft/ui/snackbar';
 import { ConfirmDialogService } from '@talisoft/ui/confirm-dialog';
+import { InitialsPipe } from '@sankore/crm/common';
 
 const AVATAR_COLORS = [
   'bg-violet-100 text-violet-700',
@@ -33,6 +34,7 @@ const AVATAR_COLORS = [
     TasLabel,
     TasSelect,
     TasSpinner,
+    InitialsPipe,
   ],
   template: `
     @if (isLoading()) {
@@ -101,7 +103,7 @@ const AVATAR_COLORS = [
                       class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold flex-shrink-0 select-none"
                       [ngClass]="avatarColor(user.fullName)"
                     >
-                      {{ initials(user.fullName) }}
+                      {{ user.fullName | initials }}
                     </div>
                     <div>
                       <p class="font-medium text-slate-800 leading-tight">{{ user.fullName ?? '—' }}</p>
@@ -153,13 +155,6 @@ export class RoleUsersPage {
   public avatarColor(name: string | null | undefined): string {
     if (!name) return 'bg-slate-100 text-slate-400';
     return AVATAR_COLORS[name.charCodeAt(0) % AVATAR_COLORS.length];
-  }
-
-  public initials(name: string | null | undefined): string {
-    if (!name) return '?';
-    const parts = name.trim().split(/\s+/);
-    if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
-    return name.slice(0, 2).toUpperCase();
   }
 
   constructor() {

@@ -90,6 +90,7 @@ model/update-territory-request.interface.ts
 model/update-user-request.interface.ts
 model/user-dto.interface.ts
 model/user-permissions-dto.interface.ts
+model/user-status-stats-dto.interface.ts
 model/user-status.interface.ts
 model/verify-token-response.interface.ts
 model/workflow-instance-dto.interface.ts
