@@ -10,7 +10,7 @@ import { Loading } from './loading';
       <div class="absolute top-0 left-0 w-full right-0 z-10">
         <mat-progress-bar
           mode="indeterminate"
-          color="accent"
+          color="primary"
           class="absolute top-0 left-0 w-full right-0 z-10"
         ></mat-progress-bar>
       </div>

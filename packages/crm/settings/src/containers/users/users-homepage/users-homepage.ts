@@ -101,19 +101,19 @@ export class UsersHomePage {
     this._usersApiService
       .listUsers(undefined, undefined, search || undefined, page + 1, pageSize)
       .subscribe({
-        next: (result) => {
-          this.users.set(result.items ?? []);
-          this.tableConfig.update((c) => ({
-            ...c,
-            pagination: {
-              ...c.pagination,
-              totalElements: result.totalCount ?? 0,
-            },
-          }));
-          this.isLoading.set(false);
-        },
-        error: () => this.isLoading.set(false),
-      });
+      next: (result) => {
+        this.users.set(result.items ?? []);
+        this.tableConfig.update((c) => ({
+          ...c,
+          pagination: {
+            ...c.pagination,
+            totalElements: result.totalCount ?? 0,
+          },
+        }));
+        this.isLoading.set(false);
+      },
+      error: () => this.isLoading.set(false),
+    });
   }
 
   public statusLabel(status: string | null | undefined): string {

@@ -16,7 +16,9 @@ import {
 } from '@talisoft/ui/form-field';
 import {
   accessTokenInterceptor,
-  ENVIRONMENT_CONFIG, errorInterceptor,
+  ENVIRONMENT_CONFIG,
+  errorInterceptor,
+  loadingInterceptor,
   tenantInterceptor,
 } from '@sankore/crm/common';
 import { BASE_PATH } from '@sankore/crm-api';
@@ -34,7 +36,7 @@ export const appConfig: ApplicationConfig = {
     provideClientHydration(withEventReplay()),
     provideBrowserGlobalErrorListeners(),
     provideRouter(appRoutes, withComponentInputBinding()),
-    provideHttpClient(withFetch(), withInterceptors([accessTokenInterceptor, errorInterceptor, tenantInterceptor])),
+    provideHttpClient(withFetch(), withInterceptors([loadingInterceptor, accessTokenInterceptor, errorInterceptor, tenantInterceptor])),
     importProvidersFrom(TasIconRegistry),
     {
       provide: BASE_PATH,

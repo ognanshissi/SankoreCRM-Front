@@ -168,12 +168,12 @@ export class RoleUsersPage {
       this._usersApiService
         .listUsers(undefined, undefined, undefined, 1, 0)
         .subscribe({
-          next: (result) => {
-            this.users.set(result.items ?? []);
-            this.isLoading.set(false);
-          },
-          error: () => this.isLoading.set(false),
-        });
+        next: (result) => {
+          this.users.set(result.items ?? []);
+          this.isLoading.set(false);
+        },
+        error: () => this.isLoading.set(false),
+      });
     });
   }
 
