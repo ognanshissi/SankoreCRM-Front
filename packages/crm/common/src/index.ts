@@ -1,5 +1,6 @@
 export * from './components';
 export * from './interceptors';
+export * from './initializers/tenant.initializer';
 export * from './utils';
 export * from './services';
 

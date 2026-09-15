@@ -19,6 +19,7 @@ import {
   ENVIRONMENT_CONFIG,
   errorInterceptor,
   loadingInterceptor,
+  provideTenantInitializer,
   tenantInterceptor,
 } from '@sankore/crm/common';
 import { BASE_PATH } from '@sankore/crm-api';
@@ -37,6 +38,7 @@ export const appConfig: ApplicationConfig = {
     provideBrowserGlobalErrorListeners(),
     provideRouter(appRoutes, withComponentInputBinding()),
     provideHttpClient(withFetch(), withInterceptors([loadingInterceptor, accessTokenInterceptor, errorInterceptor, tenantInterceptor])),
+    provideTenantInitializer(),
     importProvidersFrom(TasIconRegistry),
     {
       provide: BASE_PATH,

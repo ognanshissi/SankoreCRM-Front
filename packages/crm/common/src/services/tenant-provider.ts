@@ -1,14 +1,18 @@
-import { Injectable } from '@angular/core';
+import { Injectable, signal } from '@angular/core';
+import { TenantContextResponse } from '@sankore/crm-api';
 
 @Injectable({
   providedIn: 'root'
 })
 export class TenantProvider {
+  private readonly _context = signal<TenantContextResponse | null>(null);
+  public readonly context = this._context.asReadonly();
 
-  public getTenantId(): string {
-    // show get the id by using the hostname
-    // This api is call inside
-    return `2fae736d-9c5c-456e-8d3c-5e4e9b0674ce`;
+  public setContext(ctx: TenantContextResponse): void {
+    this._context.set(ctx);
   }
 
+  public getFqdn(): string {
+    return window.location.origin;
+  }
 }

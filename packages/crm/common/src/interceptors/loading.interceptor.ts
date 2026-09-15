@@ -1,14 +1,22 @@
 import {
+  HttpContext,
+  HttpContextToken,
   HttpEvent,
   HttpHandlerFn,
   HttpInterceptorFn,
   HttpRequest,
 } from '@angular/common/http';
-import { finalize, Observable, tap } from 'rxjs';
+import { finalize, Observable } from 'rxjs';
 import { inject } from '@angular/core';
 import { Loading } from '@sankore/crm/common';
 
+export const SKIP_LOADING = new HttpContextToken<boolean>(() => false);
+
 export const loadingInterceptor: HttpInterceptorFn = (req: HttpRequest<unknown>, next: HttpHandlerFn): Observable<HttpEvent<unknown>> => {
+  if (req.context.get(SKIP_LOADING)) {
+    return next(req);
+  }
+
   const loading = inject(Loading);
 
   if (req.method === 'POST' ||
@@ -19,9 +27,8 @@ export const loadingInterceptor: HttpInterceptorFn = (req: HttpRequest<unknown>,
     loading.set(true);
 
     return next(req).pipe(
-      tap(() => console.log("loading...")),
       finalize(() => loading.set(false))
-    )
+    );
   }
-  return next(req)
+  return next(req);
 }
