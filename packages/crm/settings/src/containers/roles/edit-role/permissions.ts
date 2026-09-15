@@ -1,11 +1,12 @@
 import { Component, computed, effect, inject, input, signal } from '@angular/core';
+import { NgClass } from '@angular/common';
 import { catchError, EMPTY } from 'rxjs';
 import { TasCard } from '@talisoft/ui/card';
 import { TasIcon } from '@talisoft/ui/icon';
 import { TasSpinner } from '@talisoft/ui/spinner';
+import { TasSwitch } from '@talisoft/ui/switch';
 import { RolesApiService, RolePermissionDto } from '@sankore/crm-api';
 import { SnackbarService } from '@talisoft/ui/snackbar';
-import { TasTitle } from '@talisoft/ui/title';
 
 export interface PermissionEntry { code: string; description: string; }
 export interface PermissionGroup { domain: string; label: string; permissions: PermissionEntry[]; }
@@ -77,7 +78,7 @@ export const PERMISSION_CATALOG: PermissionGroup[] = [
 
 @Component({
   selector: 'role-permissions',
-  imports: [TasCard, TasIcon, TasSpinner, TasTitle],
+  imports: [NgClass, TasCard, TasIcon, TasSpinner, TasSwitch],
   template: `
     @if (isLoading()) {
       <div class="flex justify-center py-24">
@@ -85,54 +86,62 @@ export const PERMISSION_CATALOG: PermissionGroup[] = [
       </div>
     } @else {
       <div class="pb-6 flex flex-col gap-4">
-        <tas-title>Permissions</tas-title>
-        @if (isSystem()) {
-          <div class="flex gap-3 p-4 rounded-lg bg-slate-50 border border-slate-200">
-            <tas-icon iconName="feather:info" class="text-slate-400 shrink-0 mt-0.5"></tas-icon>
-            <p class="text-sm text-slate-600">Les permissions des rôles système ne peuvent pas être modifiées.</p>
+
+        <!-- Page header -->
+        <div class="flex items-start justify-between">
+          <div>
+            <h1 class="text-lg font-semibold text-slate-800">Permissions</h1>
+            <p class="text-sm text-slate-400 mt-0.5">
+              {{ grantedCodes().size }} permission{{ grantedCodes().size !== 1 ? 's' : '' }} accordée{{ grantedCodes().size !== 1 ? 's' : '' }} sur {{ totalPermissions }}
+            </p>
           </div>
-        }
+          @if (isSystem()) {
+            <div class="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-50 border border-slate-200">
+              <tas-icon iconName="feather:lock" class="text-slate-400 shrink-0" style="font-size:14px"></tas-icon>
+              <p class="text-xs text-slate-500">Rôle système — lecture seule</p>
+            </div>
+          }
+        </div>
 
         @for (group of catalog; track group.domain) {
-          <tas-card>
-            <div class="px-4 py-3 border-b border-gray-100 flex items-center gap-2">
-              <p class="text-sm font-semibold text-slate-700">{{ group.label }}</p>
-              <span class="text-xs text-slate-400 font-mono">{{ group.domain }}</span>
+          @let groupGranted = grantedCount(group);
+          @let groupTotal = group.permissions.length;
+          <tas-card [class.opacity-60]="isSystem()">
+            <!-- Group header -->
+            <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <p class="text-sm font-semibold text-slate-700">{{ group.label }}</p>
+                <span class="font-mono text-xs text-slate-400">{{ group.domain }}</span>
+              </div>
+              <span
+                class="text-xs font-medium px-2 py-0.5 rounded-full tabular-nums"
+                [ngClass]="{
+                  'bg-green-100 text-green-700': groupGranted === groupTotal,
+                  'bg-primary/10 text-primary': groupGranted > 0 && groupGranted < groupTotal,
+                  'bg-slate-100 text-slate-500': groupGranted === 0
+                }"
+              >
+                {{ groupGranted }} / {{ groupTotal }}
+              </span>
             </div>
+
+            <!-- Permission rows -->
             <div class="divide-y divide-gray-100">
               @for (perm of group.permissions; track perm.code) {
                 @let granted = grantedCodes().has(perm.code);
                 @let toggling = togglingCode() === perm.code;
-                <div
-                  class="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors"
-                  [class.opacity-50]="toggling"
-                >
-                  <button
-                    type="button"
-                    class="relative flex-shrink-0 w-10 h-6 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:cursor-not-allowed"
-                    [class.bg-primary]="granted"
-                    [class.bg-slate-200]="!granted"
+                <div class="flex items-center gap-4 px-4 py-3 hover:bg-slate-50 transition-colors">
+                  <tas-switch
+                    [checked]="granted"
                     [disabled]="isSystem() || togglingCode() !== null"
-                    (click)="toggle(perm.code, granted)"
-                    [title]="granted ? 'Retirer la permission' : 'Accorder la permission'"
-                  >
-                    <span
-                      class="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-sm transition-transform"
-                      [class.translate-x-4]="granted"
-                    ></span>
-                    @if (toggling) {
-                      <span class="absolute inset-0 flex items-center justify-center">
-                        <tas-spinner size="3" class="text-white"></tas-spinner>
-                      </span>
-                    }
-                  </button>
+                    [isLoading]="toggling"
+                    [ariaLabel]="perm.description"
+                    (toggle)="toggle(perm.code, granted)"
+                  ></tas-switch>
                   <div class="flex-1 min-w-0">
-                    <p class="font-mono text-sm font-medium text-slate-800">{{ perm.code }}</p>
-                    <p class="text-xs text-slate-500 mt-0.5">{{ perm.description }}</p>
+                    <p class="font-mono text-sm text-slate-800">{{ perm.code }}</p>
+                    <p class="text-xs text-slate-400 mt-0.5">{{ perm.description }}</p>
                   </div>
-                  @if (granted) {
-                    <span class="text-xs font-medium text-primary bg-primary/10 px-2 py-0.5 rounded-full shrink-0">Accordée</span>
-                  }
                 </div>
               }
             </div>
@@ -149,6 +158,7 @@ export class RolePermissionsPage {
   public readonly id = input.required<string>();
 
   public readonly catalog = PERMISSION_CATALOG;
+  public readonly totalPermissions = PERMISSION_CATALOG.reduce((acc, g) => acc + g.permissions.length, 0);
   public isLoading = signal(true);
   public isSystem = signal(false);
   public permissions = signal<RolePermissionDto[]>([]);
@@ -157,6 +167,11 @@ export class RolePermissionsPage {
   public grantedCodes = computed(
     () => new Set(this.permissions().map((p) => p.code ?? '')),
   );
+
+  public grantedCount(group: PermissionGroup): number {
+    const granted = this.grantedCodes();
+    return group.permissions.filter((p) => granted.has(p.code)).length;
+  }
 
   constructor() {
     effect(() => {

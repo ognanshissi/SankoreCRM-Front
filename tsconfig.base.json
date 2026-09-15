@@ -50,6 +50,7 @@
       "@talisoft/ui/snackbar": ["./packages/shared/ui/snackbar/index.ts"],
       "@talisoft/ui/spinner": ["./packages/shared/ui/spinner/index.ts"],
       "@talisoft/ui/table": ["./packages/shared/ui/table/index.ts"],
+      "@talisoft/ui/switch": ["./packages/shared/ui/switch/index.ts"],
       "@talisoft/ui/tag": ["./packages/shared/ui/tag/index.ts"],
       "@talisoft/ui/text": ["./packages/shared/ui/text/index.ts"],
       "@talisoft/ui/timeago": ["./packages/shared/ui/timeago/index.ts"],

@@ -1,66 +1,112 @@
-<div class="flex justify-between items-center mb-6">
-  <TasTitle>Agences</TasTitle>
+<!-- Page header -->
+<div class="flex items-start justify-between mb-5">
+  <div>
+    <div class="flex items-center gap-2.5">
+      <h1 class="text-lg font-semibold text-slate-800">Agences</h1>
+      @if ((tableConfig().pagination.totalElements ?? 0) > 0) {
+        <span class="px-2 py-0.5 rounded-md bg-slate-100 text-slate-500 text-xs font-medium tabular-nums">
+          {{ tableConfig().pagination.totalElements }}
+        </span>
+      }
+    </div>
+    <p class="text-sm text-slate-400 mt-0.5">Gérez la hiérarchie des agences de votre organisation.</p>
+  </div>
   <button tas-filled-button [color]="'primary'" (click)="openCreateDrawer()">
     <tas-icon iconName="feather:plus"></tas-icon>
     Ajouter une agence
   </button>
 </div>
 
-
+<!-- Table (built-in search via searchInputChange) -->
 <tas-card>
   <tas-table
     [data]="agencies()"
     [config]="tableConfig()"
     [isLoading]="isLoading()"
-    (refresh)="loadAgencies(1, 100)"
+    (searchInputChange)="onSearchChange($event)"
     (pageEventChange)="onPageChange($event)"
+    (refresh)="loadAgencies(tableConfig().pagination.pageIndex, tableConfig().pagination.pageSize, searchQuery() || undefined)"
   >
     <ng-template #header>
       <tr>
-        <th>Nom</th>
+        <th>Agence</th>
         <th>Type</th>
         <th>Adresse</th>
         <th>Statut</th>
-        <th>Date de création</th>
+        <th>Créée</th>
         <th></th>
       </tr>
     </ng-template>
 
     <ng-template #body let-item>
-      <tr class="cursor-pointer hover:bg-slate-50" (click)="navigateToEdit(item)">
-        <td>
-          <div class="font-medium text-slate-800">{{ item.name }}</div>
-          @if (item.code) {
-            <div class="text-xs text-slate-400">{{ item.code }}</div>
-          }
+      <tr
+        class="cursor-pointer hover:bg-slate-50 transition-colors"
+        (click)="navigateToEdit(item)"
+      >
+        <!-- Identity cell: code badge + name + code tag -->
+        <td class="py-3">
+          <div class="flex items-center gap-3">
+            <div class="w-9 h-9 rounded-full flex items-center justify-center text-xs font-semibold flex-shrink-0 select-none bg-amber-100 text-amber-700">
+              {{ codeBadge(item.code, item.name) }}
+            </div>
+            <div class="min-w-0">
+              <div class="flex items-center gap-2">
+                <span class="font-medium text-slate-800 leading-tight truncate">{{ item.name ?? '—' }}</span>
+                @if (item.code) {
+                  <span class="px-1.5 py-0.5 rounded text-xs font-mono bg-slate-100 text-slate-500 flex-shrink-0">
+                    {{ item.code }}
+                  </span>
+                }
+              </div>
+              @if (item.parentAgencyName) {
+                <div class="text-xs text-slate-400 mt-0.5 truncate">{{ item.parentAgencyName }}</div>
+              }
+            </div>
+          </div>
         </td>
-        <td class="text-slate-600">{{ item.agencyType ?? '—' }}</td>
-        <td class="text-slate-600">
+
+        <!-- Agency type -->
+        <td class="text-sm text-slate-600">{{ agencyTypeLabel(item.agencyType) }}</td>
+
+        <!-- Address -->
+        <td class="text-sm text-slate-600">
           @if (item.addressCity || item.addressCountry) {
             {{ item.addressCity }}{{ item.addressCity && item.addressCountry ? ', ' : '' }}{{ item.addressCountry }}
           } @else {
-            —
+            <span class="text-slate-400">—</span>
           }
         </td>
+
+        <!-- Status with dot -->
         <td>
-        <span
-          class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
-          [ngClass]="{
-            'bg-green-100 text-green-700': item.isActive,
-            'bg-red-100 text-red-700': !item.isActive
-          }"
-        >
-          {{ item.isActive ? 'Actif' : 'Inactif' }}
-        </span>
+          <span
+            class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium"
+            [ngClass]="{
+              'bg-green-100 text-green-700': item.isActive,
+              'bg-red-100 text-red-700': !item.isActive
+            }"
+          >
+            <span class="w-1.5 h-1.5 rounded-full bg-current opacity-60 flex-shrink-0"></span>
+            {{ item.isActive ? 'Actif' : 'Inactif' }}
+          </span>
         </td>
-        <td class="text-slate-600">{{ item.createdAt | dateTimeAgo }}</td>
-        <td>
-          <button tas-raised-button [color]="'primary'" (click)="navigateToEdit(item)">
-            <tas-icon iconName="feather:eye"></tas-icon> &nbsp; Consulter
+
+        <!-- Created date -->
+        <td class="text-sm text-slate-500">{{ item.createdAt | dateTimeAgo }}</td>
+
+        <!-- Action -->
+        <td class="text-right" (click)="$event.stopPropagation()">
+          <button
+            tas-button
+            iconButton
+            type="button"
+            (click)="navigateToEdit(item)"
+            title="Voir / modifier"
+          >
+            <tas-icon iconName="feather:edit-2" iconSize="sm"></tas-icon>
           </button>
         </td>
       </tr>
     </ng-template>
   </tas-table>
 </tas-card>
-

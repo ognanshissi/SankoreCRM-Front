@@ -1,5 +1,4 @@
 import { Component, computed, effect, inject, input, signal } from '@angular/core';
-import { NgClass } from '@angular/common';
 import { form, FormField, FormRoot, submit } from '@angular/forms/signals';
 import { catchError, EMPTY, firstValueFrom, forkJoin } from 'rxjs';
 import { TasCard } from '@talisoft/ui/card';
@@ -8,7 +7,9 @@ import { TasFormField, TasLabel } from '@talisoft/ui/form-field';
 import { TasInput } from '@talisoft/ui/input';
 import { TasSelect } from '@talisoft/ui/select';
 import { TasSpinner } from '@talisoft/ui/spinner';
-import { UsersApiService, AgenciesApiService, UserDto, AgencyDto } from '@sankore/crm-api';
+import { TasTag } from '@talisoft/ui/tag';
+import { TasIcon } from '@talisoft/ui/icon';
+import { UsersApiService, AgenciesApiService, AuthApiService, UserDto, AgencyDto } from '@sankore/crm-api';
 import { SnackbarService } from '@talisoft/ui/snackbar';
 import { TimeagoPipe } from '@talisoft/ui/timeago';
 
@@ -27,7 +28,6 @@ class EditUserFormModel {
 @Component({
   selector: 'user-informations',
   imports: [
-    NgClass,
     TasCard,
     Button,
     TasFormField,
@@ -35,6 +35,8 @@ class EditUserFormModel {
     TasInput,
     TasSelect,
     TasSpinner,
+    TasTag,
+    TasIcon,
     FormRoot,
     FormField,
     TimeagoPipe,
@@ -46,54 +48,36 @@ class EditUserFormModel {
       </div>
     } @else if (user()) {
       <div class="pb-6 flex flex-col gap-4">
-        <!-- Read-only info -->
+        <!-- Read-only metadata strip -->
         <tas-card>
-          <div class="p-4 grid grid-cols-2 gap-4 text-sm">
+          <div class="p-4 grid grid-cols-2 gap-x-6 gap-y-4">
             <div>
-              <p
-                class="text-xs font-medium text-slate-500 uppercase tracking-wide mb-1"
-              >
-                Email
-              </p>
-              <p class="font-medium text-slate-800">
+              <p class="text-xs text-slate-400 mb-1">Adresse e-mail</p>
+              <p class="text-sm font-medium text-slate-800 truncate">
                 {{ user()!.email ?? '—' }}
               </p>
             </div>
             <div>
-              <p
-                class="text-xs font-medium text-slate-500 uppercase tracking-wide mb-1"
-              >
-                Type de compte
-              </p>
-              <p class="font-medium text-slate-800">
+              <p class="text-xs text-slate-400 mb-1">Type de compte</p>
+              <p class="text-sm font-medium text-slate-800">
                 {{ user()!.accountType ?? '—' }}
               </p>
             </div>
             <div>
-              <p
-                class="text-xs font-medium text-slate-500 uppercase tracking-wide mb-1"
-              >
-                Dernière connexion
-              </p>
-              <p class="font-medium text-slate-800">
-                {{ $any(user()!.lastLoginAt) | dateTimeAgo }}
+              <p class="text-xs text-slate-400 mb-1">Dernière connexion</p>
+              <p class="text-sm font-medium text-slate-800">
+                {{
+                  user()!.lastLoginAt
+                    ? ($any(user()!.lastLoginAt) | dateTimeAgo)
+                    : 'Jamais'
+                }}
               </p>
             </div>
             <div>
-              <p
-                class="text-xs font-medium text-slate-500 uppercase tracking-wide mb-1"
-              >
-                MFA
-              </p>
-              <span
-                class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
-                [ngClass]="{
-                  'bg-green-100 text-green-700': user()!.mfaEnabled,
-                  'bg-slate-100 text-slate-500': !user()!.mfaEnabled,
-                }"
-              >
-                {{ user()!.mfaEnabled ? 'Activé' : 'Désactivé' }}
-              </span>
+              <p class="text-xs text-slate-400 mb-1">Double authentification</p>
+              <tas-tag [severity]="user()!.mfaEnabled ? 'success' : 'neutral'">
+                {{ user()!.mfaEnabled ? 'Activée' : 'Désactivée' }}
+              </tas-tag>
             </div>
           </div>
         </tas-card>
@@ -133,7 +117,90 @@ class EditUserFormModel {
                 [isLoading]="formSchema().submitting()"
                 (click)="save()"
               >
+                <tas-icon iconName="feather:save" iconSize="sm"></tas-icon>
                 Enregistrer
+              </button>
+            </div>
+          </div>
+        </tas-card>
+
+        <!-- Security actions -->
+        <tas-card>
+          <div class="divide-y divide-gray-100">
+            <!-- Resend activation (pending only) -->
+            <div class="p-4 flex items-start justify-between gap-4">
+              <div class="flex items-start gap-3">
+                <div
+                  class="w-8 h-8 rounded-full bg-amber-50 flex items-center justify-center shrink-0 mt-0.5"
+                >
+                  <tas-icon
+                    iconName="feather:mail"
+                    class="text-amber-500"
+                    style="font-size:14px"
+                  ></tas-icon>
+                </div>
+                <div>
+                  <p class="text-sm font-medium text-slate-700">
+                    Renvoyer l'e-mail d'activation
+                  </p>
+                  <p class="text-xs text-slate-400 mt-0.5">
+                    Envoie à nouveau le lien d'activation du compte. Disponible
+                    uniquement si le compte est en attente.
+                  </p>
+                </div>
+              </div>
+              <button
+                tas-outlined-button
+                color="primary"
+                type="button"
+                [disabled]="
+                  user()!.status !== 'PendingActivation' || isSendingEmail()
+                "
+                [isLoading]="isSendingEmail()"
+                (click)="sendActivation()"
+                class="shrink-0"
+              >
+                <tas-icon iconName="feather:send" iconSize="sm"></tas-icon>
+                Renvoyer
+              </button>
+            </div>
+
+            <!-- Send reset password link (active only) -->
+            <div class="p-4 flex items-start justify-between gap-4">
+              <div class="flex items-start gap-3">
+                <div
+                  class="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center shrink-0 mt-0.5"
+                >
+                  <tas-icon
+                    iconName="feather:key"
+                    class="text-blue-400"
+                    style="font-size:14px"
+                  ></tas-icon>
+                </div>
+                <div>
+                  <p class="text-sm font-medium text-slate-700">
+                    Envoyer un lien de réinitialisation
+                  </p>
+                  <p class="text-xs text-slate-400 mt-0.5">
+                    Envoie un e-mail permettant à l'utilisateur de choisir un
+                    nouveau mot de passe. Disponible uniquement si le compte est
+                    actif.
+                  </p>
+                </div>
+              </div>
+              <button
+                tas-outlined-button
+                color="primary"
+                type="button"
+                [isLoading]="isSendingPasswordReset()"
+                [disabled]="
+                  user()!.status !== 'Active' || isSendingPasswordReset()
+                "
+                (click)="sendPasswordReset()"
+                class="shrink-0"
+              >
+                <tas-icon iconName="feather:send" iconSize="sm"></tas-icon>
+                Envoyer
               </button>
             </div>
           </div>
@@ -145,11 +212,14 @@ class EditUserFormModel {
 export class UserInformationsPage {
   private readonly _usersApiService = inject(UsersApiService);
   private readonly _agenciesApiService = inject(AgenciesApiService);
+  private readonly _authApiService = inject(AuthApiService);
   private readonly _snackbarService = inject(SnackbarService);
 
   public readonly id = input.required<string>();
 
   public isLoading = signal(true);
+  public isSendingEmail = signal(false);
+  public isSendingPasswordReset = signal(false);
   public user = signal<UserDto | null>(null);
   public agencies = signal<AgencyDto[]>([]);
 
@@ -182,6 +252,53 @@ export class UserInformationsPage {
         },
       });
     });
+  }
+
+  public sendActivation(): void {
+    const email = this.user()?.email;
+    if (!email) return;
+    this.isSendingEmail.set(true);
+    this._authApiService
+      .forgotPassword({ email })
+      .pipe(
+        catchError(() => {
+          this._snackbarService.error(
+            'Erreur',
+            "Impossible d'envoyer l'e-mail d'activation.",
+          );
+          this.isSendingEmail.set(false);
+          return EMPTY;
+        }),
+      )
+      .subscribe(() => {
+        this._snackbarService.success('Succès', "E-mail d'activation envoyé.");
+        this.isSendingEmail.set(false);
+      });
+  }
+
+  public sendPasswordReset(): void {
+    const email = this.user()?.email;
+    if (!email) return;
+    this.isSendingPasswordReset.set(true);
+    this._authApiService
+      .forgotPassword({ email })
+      .pipe(
+        catchError(() => {
+          this._snackbarService.error(
+            'Erreur',
+            "Impossible d'envoyer le lien de réinitialisation.",
+          );
+          this.isSendingPasswordReset.set(false);
+          return EMPTY;
+        }),
+      )
+      .subscribe(() => {
+        this._snackbarService.success(
+          'Succès',
+          'Lien de réinitialisation envoyé.',
+        );
+        this.isSendingPasswordReset.set(false);
+      });
   }
 
   public save(): void {

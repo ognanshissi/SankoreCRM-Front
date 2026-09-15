@@ -1,22 +1,34 @@
-<div class="flex justify-between items-center mb-6">
-  <TasTitle>Utilisateurs</TasTitle>
+<!-- Page header -->
+<div class="flex items-start justify-between mb-5">
+  <div>
+    <div class="flex items-center gap-2.5">
+      <h1 class="text-lg font-semibold text-slate-800">Utilisateurs</h1>
+      @if ((tableConfig().pagination.totalElements ?? 0) > 0) {
+        <span class="px-2 py-0.5 rounded-md bg-slate-100 text-slate-500 text-xs font-medium tabular-nums">
+          {{ tableConfig().pagination.totalElements }}
+        </span>
+      }
+    </div>
+    <p class="text-sm text-slate-400 mt-0.5">Gérez les accès et profils des membres de votre organisation.</p>
+  </div>
   <button tas-filled-button [color]="'primary'" (click)="openCreateDrawer()">
-    <tas-icon iconName="feather:plus"></tas-icon>
+    <tas-icon iconName="feather:user-plus"></tas-icon>
     Ajouter un utilisateur
   </button>
 </div>
 
+<!-- Table -->
 <tas-card>
   <tas-table
     [data]="users()"
     [config]="tableConfig()"
     [isLoading]="isLoading()"
     (pageEventChange)="onPageChange($event)"
+    (searchInputChange)="onSearchChange($event)"
   >
     <ng-template #header>
       <tr>
-        <th>Nom complet</th>
-        <th>Email</th>
+        <th>Membre</th>
         <th>Agence</th>
         <th>Statut</th>
         <th>Dernière connexion</th>
@@ -25,30 +37,58 @@
     </ng-template>
 
     <ng-template #body let-item>
-      <tr>
-        <td>
-          <span class="font-medium text-slate-800">{{ item.fullName ?? '—' }}</span>
+      <tr
+        class="cursor-pointer hover:bg-slate-50 transition-colors"
+        (click)="navigateToEdit(item)"
+      >
+        <!-- Identity cell: avatar + name + email -->
+        <td class="py-3">
+          <div class="flex items-center gap-3">
+            <div
+              class="w-9 h-9 rounded-full flex items-center justify-center text-xs font-semibold flex-shrink-0 select-none"
+              [ngClass]="avatarColor(item.fullName)"
+            >
+              {{ initials(item.fullName) }}
+            </div>
+            <div class="min-w-0">
+              <div class="font-medium text-slate-800 leading-tight truncate">
+                {{ item.fullName ?? '—' }}
+              </div>
+              <div class="text-xs text-slate-400 mt-0.5 truncate">
+                {{ item.email ?? '' }}
+              </div>
+            </div>
+          </div>
         </td>
-        <td class="text-slate-600">{{ item.email ?? '—' }}</td>
-        <td class="text-slate-600">{{ item.agencyName ?? '—' }}</td>
+
+        <!-- Agency -->
+        <td class="text-sm text-slate-600">{{ item.agencyName ?? '—' }}</td>
+
+        <!-- Status badge with dot -->
         <td>
           <span
-            class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
+            class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium"
             [ngClass]="statusClass(item.status)"
           >
+            <span class="w-1.5 h-1.5 rounded-full bg-current opacity-60 flex-shrink-0"></span>
             {{ statusLabel(item.status) }}
           </span>
         </td>
-        <td class="text-slate-500 text-sm">
-          {{ item.lastLoginAt ? (item.lastLoginAt | dateTimeAgo)  : '—' }}
+
+        <!-- Last login -->
+        <td class="text-sm text-slate-500">
+          {{ item.lastLoginAt ? (item.lastLoginAt | dateTimeAgo) : 'Jamais' }}
         </td>
-        <td class="text-right">
+
+        <!-- Action — stop propagation so row click doesn't double-fire -->
+        <td class="text-right" (click)="$event.stopPropagation()">
           <button
             tas-button
             iconButton
             type="button"
             (click)="navigateToEdit(item)"
-            title="Voir / modifier">
+            title="Voir / modifier"
+          >
             <tas-icon iconName="feather:edit-2" iconSize="sm"></tas-icon>
           </button>
         </td>

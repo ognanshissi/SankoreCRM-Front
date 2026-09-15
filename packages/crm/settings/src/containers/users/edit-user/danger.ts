@@ -18,38 +18,64 @@ import { ConfirmDialogService } from '@talisoft/ui/confirm-dialog';
         <tas-spinner size="10" class="text-primary"></tas-spinner>
       </div>
     } @else {
-      <div class="pb-6">
-        <tas-card>
-          <div class="p-4 flex flex-col gap-4">
-            <p class="text-sm font-semibold text-slate-700">Zone de danger</p>
+      <div class="pb-6 flex flex-col gap-4">
+        <h1 class="text-lg font-semibold text-slate-800">Zone de danger</h1>
 
-            @if (!isActive()) {
-              <div class="flex gap-3 p-4 rounded-lg bg-slate-50 border border-slate-200">
-                <tas-icon iconName="feather:info" class="text-slate-400 shrink-0 mt-0.5"></tas-icon>
-                <p class="text-sm text-slate-600">Cet utilisateur est déjà désactivé.</p>
+        <!-- Deactivate — active users only -->
+        <tas-card>
+          <div class="p-4 flex items-start justify-between gap-4">
+            <div class="flex items-start gap-3">
+              <div class="w-8 h-8 rounded-full bg-red-50 flex items-center justify-center shrink-0 mt-0.5">
+                <tas-icon iconName="feather:user-x" class="text-red-400" style="font-size:14px"></tas-icon>
               </div>
-            } @else {
-              <div class="flex items-start justify-between gap-4 p-4 rounded-lg border border-functional-error/20 bg-functional-error/5">
-                <div>
-                  <p class="font-medium text-warn">Désactiver l'utilisateur</p>
-                  <p class="text-sm text-slate-500 mt-1">
-                    Révoque tous les accès. Le compte n'est pas supprimé et peut être réactivé. Les leads actifs seront réassignés automatiquement.
-                  </p>
-                </div>
-                <button
-                  tas-outlined-button
-                  color="warn"
-                  type="button"
-                  [disabled]="isDeactivating()"
-                  [isLoading]="isDeactivating()"
-                  (click)="confirmDeactivate()"
-                  class="shrink-0"
-                >
-                  <tas-icon iconName="feather:user-x" iconSize="sm"></tas-icon>
-                  Désactiver
-                </button>
+              <div>
+                <p class="text-sm font-semibold text-red-600">Désactiver cet utilisateur</p>
+                <p class="text-sm text-slate-500 mt-0.5">
+                  Révoque immédiatement tous les accès. Le compte reste conservé et peut être réactivé. Les leads actifs seront réassignés automatiquement.
+                </p>
               </div>
-            }
+            </div>
+            <button
+              tas-outlined-button
+              color="warn"
+              type="button"
+              [disabled]="status() !== '1' || isDeactivating()"
+              [isLoading]="isDeactivating()"
+              (click)="confirmDeactivate()"
+              class="shrink-0"
+            >
+              <tas-icon iconName="feather:user-x" iconSize="sm"></tas-icon>
+              Désactiver
+            </button>
+          </div>
+        </tas-card>
+
+        <!-- Reactivate — disabled users only -->
+        <tas-card>
+          <div class="p-4 flex items-start justify-between gap-4">
+            <div class="flex items-start gap-3">
+              <div class="w-8 h-8 rounded-full bg-green-50 flex items-center justify-center shrink-0 mt-0.5">
+                <tas-icon iconName="feather:user-check" class="text-green-500" style="font-size:14px"></tas-icon>
+              </div>
+              <div>
+                <p class="text-sm font-semibold text-slate-700">Réactiver cet utilisateur</p>
+                <p class="text-sm text-slate-500 mt-0.5">
+                  Restaure l'accès à la plateforme. Disponible uniquement pour les comptes désactivés.
+                </p>
+              </div>
+            </div>
+            <button
+              tas-outlined-button
+              color="primary"
+              type="button"
+              [disabled]="status() !== '2' || isReactivating()"
+              [isLoading]="isReactivating()"
+              (click)="confirmReactivate()"
+              class="shrink-0"
+            >
+              <tas-icon iconName="feather:user-check" iconSize="sm"></tas-icon>
+              Réactiver
+            </button>
           </div>
         </tas-card>
       </div>
@@ -66,9 +92,10 @@ export class UserDangerPage {
 
   public isLoading = signal(true);
   public isDeactivating = signal(false);
+  public isReactivating = signal(false);
   public user = signal<UserDto | null>(null);
 
-  public isActive = computed(() => this.user()?.status === '1');
+  public status = computed(() => this.user()?.status ?? null);
 
   constructor() {
     effect(() => {
@@ -103,6 +130,32 @@ export class UserDangerPage {
           .subscribe(() => {
             this._snackbarService.success('Succès', 'Utilisateur désactivé.');
             this._router.navigate(['/settings/users']);
+          });
+      },
+    });
+  }
+
+  public confirmReactivate(): void {
+    this._confirmDialogService.confirm({
+      title: "Réactiver l'utilisateur",
+      message: `Réactiver "${this.user()?.fullName ?? this.user()?.email}" ? L'utilisateur pourra à nouveau se connecter à la plateforme.`,
+      closable: true,
+      showCancelButton: true,
+      acceptButtonProps: { label: 'Réactiver', theme: 'primary' },
+      rejectButtonProps: { label: 'Annuler' },
+      accept: () => {
+        this.isReactivating.set(true);
+        this._usersApiService
+          .reactivateUser(this.id())
+          .pipe(catchError(() => {
+            this._snackbarService.error('Erreur', "Impossible de réactiver l'utilisateur.");
+            this.isReactivating.set(false);
+            return EMPTY;
+          }))
+          .subscribe(() => {
+            this._snackbarService.success('Succès', 'Utilisateur réactivé.');
+            this.user.update((u) => u ? { ...u, status: '1' } : u);
+            this.isReactivating.set(false);
           });
       },
     });

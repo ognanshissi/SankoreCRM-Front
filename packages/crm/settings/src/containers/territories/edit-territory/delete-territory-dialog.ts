@@ -1,10 +1,11 @@
 import { Component, inject } from '@angular/core';
 import { DialogRef, DIALOG_DATA } from '@angular/cdk/dialog';
 import { Button } from '@talisoft/ui/button';
+import { TasIcon } from '@talisoft/ui/icon';
 
 @Component({
   selector: 'delete-territory-dialog',
-  imports: [Button],
+  imports: [Button, TasIcon],
   template: `
     <div class="p-6 flex flex-col gap-4 bg-white rounded-xl shadow-xl">
       <div>
@@ -17,9 +18,11 @@ import { Button } from '@talisoft/ui/button';
       </div>
       <div class="flex justify-end gap-3">
         <button tas-outlined-button color="primary" type="button" (click)="cancel()">
+          <tas-icon iconName="feather:x" iconSize="sm"></tas-icon>
           Annuler
         </button>
         <button tas-raised-button color="warn" type="button" (click)="confirm()">
+          <tas-icon iconName="feather:trash-2" iconSize="sm"></tas-icon>
           Désactiver
         </button>
       </div>

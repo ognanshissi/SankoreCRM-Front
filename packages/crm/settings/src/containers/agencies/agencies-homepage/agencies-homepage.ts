@@ -1,6 +1,5 @@
 import { Component, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
-import { TasTitle } from '@talisoft/ui/title';
 import { Button } from '@talisoft/ui/button';
 import { TasIcon } from '@talisoft/ui/icon';
 import { TasCard } from '@talisoft/ui/card';
@@ -15,7 +14,6 @@ import { TimeagoPipe } from '@talisoft/ui/timeago';
 @Component({
   templateUrl: './agencies-homepage.html',
   imports: [
-    TasTitle,
     Button,
     TasIcon,
     TasCard,
@@ -31,6 +29,7 @@ export class AgenciesHomePage {
 
   public isLoading = signal(false);
   public agencies = signal<AgencyDto[]>([]);
+  public searchQuery = signal('');
 
   public tableConfig = signal<TableConfig>({
     property: 'id',
@@ -77,12 +76,22 @@ export class AgenciesHomePage {
         pageSize: event.pageSize,
       },
     }));
-    this.loadAgencies(event.pageIndex, event.pageSize);
+    this.loadAgencies(event.pageIndex, event.pageSize, this.searchQuery() || undefined);
   }
 
-  public loadAgencies(page: number, pageSize: number): void {
+  public onSearchChange(q: string): void {
+    this.searchQuery.set(q);
+    const pageSize = this.tableConfig().pagination.pageSize;
+    this.tableConfig.update((c) => ({
+      ...c,
+      pagination: { ...c.pagination, pageIndex: 0 },
+    }));
+    this.loadAgencies(0, pageSize, q || undefined);
+  }
+
+  public loadAgencies(page: number, pageSize: number, search?: string): void {
     this.isLoading.set(true);
-    this._agenciesApiService.listAgencies(false, page + 1, pageSize).subscribe({
+    this._agenciesApiService.listAgencies(false, page + 1, pageSize, undefined, search).subscribe({
       next: (result) => {
         this.agencies.set(result.items ?? []);
         this.tableConfig.update((config) => ({
@@ -98,6 +107,21 @@ export class AgenciesHomePage {
         this.isLoading.set(false);
       },
     });
+  }
+
+  public codeBadge(code: string | null | undefined, name: string | null | undefined): string {
+    const src = code ?? name ?? '??';
+    return src.replace(/[^A-Za-z0-9]/g, '').slice(0, 2).toUpperCase();
+  }
+
+  public agencyTypeLabel(type: number | string | null | undefined): string {
+    switch (Number(type)) {
+      case 0: return 'HQ';
+      case 1: return 'Région';
+      case 2: return 'Zone';
+      case 3: return 'Agence';
+      default: return type != null ? String(type) : '—';
+    }
   }
 }
 

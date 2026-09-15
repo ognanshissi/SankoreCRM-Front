@@ -1,7 +1,6 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { NgClass } from '@angular/common';
-import { TasTitle } from '@talisoft/ui/title';
 import { Button } from '@talisoft/ui/button';
 import { TasIcon } from '@talisoft/ui/icon';
 import { TasCard } from '@talisoft/ui/card';
@@ -13,7 +12,7 @@ import { TimeagoPipe } from '@talisoft/ui/timeago';
 
 @Component({
   templateUrl: './territories-homepage.html',
-  imports: [TasTitle, Button, TasIcon, TasCard, TasTable, NgClass, TimeagoPipe],
+  imports: [Button, TasIcon, TasCard, TasTable, NgClass, TimeagoPipe],
 })
 export class TerritoriesHomePage {
   private readonly _territoriesApiService = inject(TerritoriesApiService);
@@ -22,6 +21,18 @@ export class TerritoriesHomePage {
 
   public isLoading = signal(false);
   public territories = signal<TerritoryDto[]>([]);
+  public searchQuery = signal('');
+
+  public filteredTerritories = computed(() => {
+    const q = this.searchQuery().toLowerCase().trim();
+    if (!q) return this.territories();
+    return this.territories().filter(
+      (t) =>
+        t.name?.toLowerCase().includes(q) ||
+        t.code?.toLowerCase().includes(q) ||
+        t.description?.toLowerCase().includes(q),
+    );
+  });
 
   public tableConfig = signal<TableConfig>({
     property: 'id',
@@ -53,6 +64,11 @@ export class TerritoriesHomePage {
 
   public navigateToEdit(territory: TerritoryDto): void {
     this._router.navigate(['/settings/territories', territory.id, 'edit']);
+  }
+
+  public codeBadge(code: string | null | undefined): string {
+    if (!code) return '??';
+    return code.replace(/[^A-Za-z0-9]/g, '').slice(0, 2).toUpperCase();
   }
 
   public loadTerritories(): void {

@@ -1,5 +1,6 @@
 import { Component, computed, effect, inject, input, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { NgClass } from '@angular/common';
 import { catchError, EMPTY } from 'rxjs';
 import { TasCard } from '@talisoft/ui/card';
 import { Button } from '@talisoft/ui/button';
@@ -11,17 +12,27 @@ import { UsersApiService, RolesApiService, UserDto } from '@sankore/crm-api';
 import { SnackbarService } from '@talisoft/ui/snackbar';
 import { ConfirmDialogService } from '@talisoft/ui/confirm-dialog';
 
+const AVATAR_COLORS = [
+  'bg-violet-100 text-violet-700',
+  'bg-blue-100 text-blue-700',
+  'bg-emerald-100 text-emerald-700',
+  'bg-amber-100 text-amber-700',
+  'bg-rose-100 text-rose-700',
+  'bg-cyan-100 text-cyan-700',
+];
+
 @Component({
   selector: 'role-users',
   imports: [
     FormsModule,
+    NgClass,
     TasCard,
     Button,
     TasIcon,
     TasFormField,
     TasLabel,
     TasSelect,
-    TasSpinner
+    TasSpinner,
   ],
   template: `
     @if (isLoading()) {
@@ -30,12 +41,21 @@ import { ConfirmDialogService } from '@talisoft/ui/confirm-dialog';
       </div>
     } @else {
       <div class="pb-6 flex flex-col gap-4">
-        <h1 class="text-lg font-semibold text-slate-900 truncate">Les utilisateurs</h1>
 
-        <!-- Assign section -->
+        <!-- Page header -->
+        <div class="flex items-center gap-2">
+          <h1 class="text-lg font-semibold text-slate-800">Utilisateurs</h1>
+          @if (users().length > 0) {
+            <span class="px-2 py-0.5 rounded-md bg-slate-100 text-slate-500 text-xs font-medium tabular-nums">
+              {{ users().length }}
+            </span>
+          }
+        </div>
+
+        <!-- Assign -->
         <tas-card>
-          <div class="p-4 flex flex-col gap-4">
-            <p class="font-medium text-slate-800">Assigner ce rôle à un utilisateur</p>
+          <div class="p-4 flex flex-col gap-3">
+            <p class="text-sm font-semibold text-slate-700">Assigner ce rôle</p>
             <div class="flex gap-3 items-end">
               <div class="flex-1">
                 <tas-form-field>
@@ -64,21 +84,29 @@ import { ConfirmDialogService } from '@talisoft/ui/confirm-dialog';
           </div>
         </tas-card>
 
-        <!-- Users list -->
-        <h1 class="text-lg font-semibold text-slate-900 truncate">Liste des utilisateurs associés</h1>
+        <!-- Users with this role -->
         <tas-card>
           @if (users().length === 0) {
-            <div class="flex flex-col items-center py-12 text-slate-400 gap-2">
-              <tas-icon iconName="feather:users" iconSize="xl"></tas-icon>
-              <p class="text-sm">Aucun utilisateur trouvé.</p>
+            <div class="flex flex-col items-center py-12 gap-2">
+              <tas-icon iconName="feather:users" iconSize="xl" class="text-slate-300"></tas-icon>
+              <p class="text-sm text-slate-400">Aucun utilisateur n'a encore ce rôle.</p>
+              <p class="text-xs text-slate-400">Utilisez le formulaire ci-dessus pour en assigner un.</p>
             </div>
           } @else {
             <div class="divide-y divide-gray-100">
               @for (user of users(); track user.id) {
                 <div class="flex items-center justify-between px-4 py-3 hover:bg-slate-50">
-                  <div>
-                    <p class="font-medium text-slate-800">{{ user.fullName ?? '—' }}</p>
-                    <p class="text-xs text-slate-500">{{ user.email }}</p>
+                  <div class="flex items-center gap-3">
+                    <div
+                      class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold flex-shrink-0 select-none"
+                      [ngClass]="avatarColor(user.fullName)"
+                    >
+                      {{ initials(user.fullName) }}
+                    </div>
+                    <div>
+                      <p class="font-medium text-slate-800 leading-tight">{{ user.fullName ?? '—' }}</p>
+                      <p class="text-xs text-slate-400 mt-0.5">{{ user.email }}</p>
+                    </div>
                   </div>
                   <button
                     tas-outlined-button
@@ -88,6 +116,7 @@ import { ConfirmDialogService } from '@talisoft/ui/confirm-dialog';
                     [isLoading]="revokingUserId() === user.id"
                     (click)="revoke(user)"
                   >
+                    <tas-icon iconName="feather:x" iconSize="sm"></tas-icon>
                     Révoquer
                   </button>
                 </div>
@@ -120,6 +149,18 @@ export class RoleUsersPage {
       value: u.id ?? '',
     })),
   );
+
+  public avatarColor(name: string | null | undefined): string {
+    if (!name) return 'bg-slate-100 text-slate-400';
+    return AVATAR_COLORS[name.charCodeAt(0) % AVATAR_COLORS.length];
+  }
+
+  public initials(name: string | null | undefined): string {
+    if (!name) return '?';
+    const parts = name.trim().split(/\s+/);
+    if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+    return name.slice(0, 2).toUpperCase();
+  }
 
   constructor() {
     effect(() => {

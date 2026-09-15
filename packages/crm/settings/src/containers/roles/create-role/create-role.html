@@ -1,20 +1,21 @@
 <tas-side-drawer>
   <tas-drawer-title>
-    <TasTitle class="text-lg">Nouveau rôle</TasTitle>
+    <p class="text-base font-semibold text-slate-800">Nouveau rôle</p>
+    <p class="text-xs text-slate-400 mt-0.5">Les rôles définissent les permissions accordées aux utilisateurs.</p>
   </tas-drawer-title>
 
   <tas-drawer-content>
     <form [formRoot]="formSchema" class="flex flex-col gap-5">
 
       <tas-form-field>
-        <tas-label>Nom du rôle <span class="text-functional-error">*</span></tas-label>
+        <tas-label>Nom technique <span class="text-functional-error">*</span></tas-label>
         <input
           tasInput
           type="text"
           placeholder="ex: commercial_senior"
           [formField]="formSchema.name"
         />
-        <p class="text-xs text-slate-400 mt-1">Identifiant technique unique, sans espaces.</p>
+        <p class="text-xs text-slate-400 mt-1">Identifiant unique, sans espaces ni caractères spéciaux.</p>
         @if (formSchema.name().touched() && formSchema.name().invalid()) {
           <tas-error>{{ formSchema.name().errors()[0].message }}</tas-error>
         }
@@ -28,7 +29,7 @@
           placeholder="ex: Commercial Senior"
           [formField]="formSchema.label"
         />
-        <p class="text-xs text-slate-400 mt-1">Nom affiché aux utilisateurs.</p>
+        <p class="text-xs text-slate-400 mt-1">Nom lisible affiché aux utilisateurs dans l'interface.</p>
         @if (formSchema.label().touched() && formSchema.label().invalid()) {
           <tas-error>{{ formSchema.label().errors()[0].message }}</tas-error>
         }
@@ -38,7 +39,10 @@
   </tas-drawer-content>
 
   <tas-drawer-action>
-    <button tas-outlined-button color="primary" type="button" (click)="close()">Annuler</button>
+    <button tas-outlined-button color="primary" type="button" (click)="close()">
+      <tas-icon iconName="feather:x" iconSize="sm"></tas-icon>
+      Annuler
+    </button>
     <button
       tas-raised-button
       color="primary"
@@ -47,6 +51,7 @@
       [disabled]="formSchema().invalid() || formSchema().submitting()"
       [isLoading]="formSchema().submitting()"
     >
+      <tas-icon iconName="feather:plus" iconSize="sm"></tas-icon>
       Créer le rôle
     </button>
   </tas-drawer-action>

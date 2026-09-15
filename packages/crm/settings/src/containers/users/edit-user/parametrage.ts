@@ -4,8 +4,10 @@ import { catchError, EMPTY, forkJoin } from 'rxjs';
 import { TasCard } from '@talisoft/ui/card';
 import { Button } from '@talisoft/ui/button';
 import { TasFormField, TasLabel } from '@talisoft/ui/form-field';
+import { TasIcon } from '@talisoft/ui/icon';
 import { TasMultiSelect } from '@talisoft/ui/multi-select';
 import { TasSpinner } from '@talisoft/ui/spinner';
+import { TasSwitch } from '@talisoft/ui/switch';
 import { UsersApiService, ProductsApiService } from '@sankore/crm-api';
 import { SnackbarService } from '@talisoft/ui/snackbar';
 
@@ -16,7 +18,7 @@ const LANGUAGE_OPTIONS = [
 
 @Component({
   selector: 'user-parametrage',
-  imports: [FormsModule, TasCard, Button, TasFormField, TasLabel, TasMultiSelect, TasSpinner],
+  imports: [FormsModule, TasCard, Button, TasIcon, TasFormField, TasLabel, TasMultiSelect, TasSpinner, TasSwitch],
   template: `
     @if (isLoading()) {
       <div class="flex justify-center py-24">
@@ -25,8 +27,9 @@ const LANGUAGE_OPTIONS = [
     } @else {
       <div class="pb-6 flex flex-col gap-4">
 
+        <!-- Langue & Spécialités -->
         <tas-card>
-          <div class="p-4 flex flex-col gap-5">
+          <div class="p-4 flex flex-col gap-4">
             <p class="text-sm font-semibold text-slate-700">Langue & Spécialités</p>
 
             <tas-form-field>
@@ -57,6 +60,7 @@ const LANGUAGE_OPTIONS = [
                 [disabled]="isSaving()"
                 [isLoading]="isSaving()"
                 (click)="save()">
+                <tas-icon iconName="feather:save" iconSize="sm"></tas-icon>
                 Enregistrer
               </button>
             </div>
@@ -68,21 +72,15 @@ const LANGUAGE_OPTIONS = [
           <div class="p-4 flex items-center justify-between gap-4">
             <div>
               <p class="text-sm font-semibold text-slate-700">Notifications</p>
-              <p class="text-xs text-slate-500 mt-1">Activer les notifications pour cet utilisateur.</p>
+              <p class="text-xs text-slate-400 mt-0.5">Activer les notifications par e-mail pour cet utilisateur.</p>
             </div>
-            <button
-              type="button"
-              class="relative flex-shrink-0 w-12 h-6 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary/40"
-              [class.bg-primary]="enableNotifications()"
-              [class.bg-slate-200]="!enableNotifications()"
-              (click)="toggleNotifications()"
+            <tas-switch
+              [checked]="enableNotifications()"
+              [isLoading]="isSavingNotifications()"
               [disabled]="isSavingNotifications()"
-            >
-              <span
-                class="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-sm transition-transform"
-                [class.translate-x-6]="enableNotifications()"
-              ></span>
-            </button>
+              (toggle)="toggleNotifications()"
+              ariaLabel="Activer les notifications"
+            ></tas-switch>
           </div>
         </tas-card>
 

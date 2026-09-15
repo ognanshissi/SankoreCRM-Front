@@ -18,38 +18,47 @@ import { ConfirmDialogService } from '@talisoft/ui/confirm-dialog';
         <tas-spinner size="10" class="text-primary"></tas-spinner>
       </div>
     } @else {
-      <div class="pb-6">
-        <tas-card>
-          <div class="p-4">
-            @if (isSystem()) {
-              <div class="flex gap-3 p-4 rounded-lg bg-slate-50 border border-slate-200">
-                <tas-icon iconName="feather:info" class="text-slate-400 shrink-0 mt-0.5"></tas-icon>
-                <p class="text-sm text-slate-600">Les rôles système ne peuvent pas être supprimés.</p>
+      <div class="pb-6 flex flex-col gap-4">
+        <h1 class="text-lg font-semibold text-slate-800">Zone de danger</h1>
+
+        @if (isSystem()) {
+          <tas-card>
+            <div class="flex items-start gap-3 p-4">
+              <div class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center shrink-0 mt-0.5">
+                <tas-icon iconName="feather:lock" class="text-slate-400" style="font-size:14px"></tas-icon>
               </div>
-            } @else {
-              <div class="flex items-start justify-between gap-4 p-4 rounded-lg border border-functional-error/20 bg-functional-error/5">
-                <div>
-                  <p class="font-medium text-warn">Supprimer le rôle</p>
-                  <p class="text-sm text-slate-500 mt-1">
-                    Supprime définitivement ce rôle. Impossible si des utilisateurs y sont encore assignés.
-                  </p>
-                </div>
-                <button
-                  tas-outlined-button
-                  color="warn"
-                  type="button"
-                  [disabled]="isDeleting()"
-                  [isLoading]="isDeleting()"
-                  (click)="confirmDelete()"
-                  class="shrink-0"
-                >
-                  <tas-icon iconName="feather:trash-2" iconSize="sm"></tas-icon>
-                  Supprimer
-                </button>
+              <div>
+                <p class="text-sm font-medium text-slate-700">Rôle système protégé</p>
+                <p class="text-sm text-slate-500 mt-0.5">
+                  Ce rôle fait partie des rôles système de la plateforme et ne peut pas être supprimé.
+                </p>
               </div>
-            }
-          </div>
-        </tas-card>
+            </div>
+          </tas-card>
+        } @else {
+          <tas-card>
+            <div class="p-4 flex items-start justify-between gap-4">
+              <div>
+                <p class="text-sm font-semibold text-red-600">Supprimer ce rôle</p>
+                <p class="text-sm text-slate-500 mt-1">
+                  Suppression définitive et irréversible. Impossible tant que des utilisateurs ont ce rôle.
+                </p>
+              </div>
+              <button
+                tas-outlined-button
+                color="warn"
+                type="button"
+                [disabled]="isDeleting()"
+                [isLoading]="isDeleting()"
+                (click)="confirmDelete()"
+                class="shrink-0"
+              >
+                <tas-icon iconName="feather:trash-2" iconSize="sm"></tas-icon>
+                Supprimer
+              </button>
+            </div>
+          </tas-card>
+        }
       </div>
     }
   `,

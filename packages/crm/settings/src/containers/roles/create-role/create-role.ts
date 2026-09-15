@@ -3,7 +3,6 @@ import { DialogRef } from '@angular/cdk/dialog';
 import { form, FormField, FormRoot, required, submit } from '@angular/forms/signals';
 import { catchError, EMPTY, firstValueFrom } from 'rxjs';
 import { signal } from '@angular/core';
-import { TasTitle } from '@talisoft/ui/title';
 import {
   TasDrawerAction,
   TasDrawerContent,
@@ -11,6 +10,7 @@ import {
   TasSideDrawer,
 } from '@talisoft/ui/side-drawer';
 import { Button } from '@talisoft/ui/button';
+import { TasIcon } from '@talisoft/ui/icon';
 import { TasFormField, TasLabel, TasError } from '@talisoft/ui/form-field';
 import { TasInput } from '@talisoft/ui/input';
 import { RolesApiService } from '@sankore/crm-api';
@@ -37,8 +37,8 @@ class CreateRoleFormModel {
     TasDrawerTitle,
     TasDrawerContent,
     TasDrawerAction,
-    TasTitle,
     Button,
+    TasIcon,
     TasFormField,
     TasLabel,
     TasError,

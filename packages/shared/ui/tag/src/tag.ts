@@ -22,7 +22,7 @@ export class TasTag {
 
   @HostBinding('class')
   get severityClasses(): string {
-    const baseClasses = 'rounded-full px-2 py-3 text-sm font-medium';
+    const baseClasses = 'inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium';
     const severityClasses: Record<Severity, string> = {
       info: 'bg-blue-100 text-blue-800',
       success: 'bg-green-100 text-green-800',

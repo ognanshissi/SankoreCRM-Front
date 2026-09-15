@@ -7,13 +7,14 @@ import { TasIcon } from '@talisoft/ui/icon';
 import { TasFormField, TasLabel } from '@talisoft/ui/form-field';
 import { TasSelect } from '@talisoft/ui/select';
 import { TasSpinner } from '@talisoft/ui/spinner';
+import { TasTag } from '@talisoft/ui/tag';
 import { UsersApiService, RolesApiService, RoleDto } from '@sankore/crm-api';
 import { SnackbarService } from '@talisoft/ui/snackbar';
 import { ConfirmDialogService } from '@talisoft/ui/confirm-dialog';
 
 @Component({
   selector: 'user-roles',
-  imports: [FormsModule, TasCard, Button, TasIcon, TasFormField, TasLabel, TasSelect, TasSpinner],
+  imports: [FormsModule, TasCard, Button, TasIcon, TasFormField, TasLabel, TasSelect, TasSpinner, TasTag],
   template: `
     @if (isLoading()) {
       <div class="flex justify-center py-24">
@@ -22,9 +23,19 @@ import { ConfirmDialogService } from '@talisoft/ui/confirm-dialog';
     } @else {
       <div class="pb-6 flex flex-col gap-4">
 
+        <!-- Page header -->
+        <div class="flex items-center gap-2">
+          <h1 class="text-lg font-semibold text-slate-800">Rôles</h1>
+          @if (roles().length > 0) {
+            <span class="px-2 py-0.5 rounded-md bg-slate-100 text-slate-500 text-xs font-medium tabular-nums">
+              {{ roles().length }}
+            </span>
+          }
+        </div>
+
         <!-- Assign role -->
         <tas-card>
-          <div class="p-4 flex flex-col gap-4">
+          <div class="p-4 flex flex-col gap-3">
             <p class="text-sm font-semibold text-slate-700">Assigner un rôle</p>
             <div class="flex gap-3 items-end">
               <div class="flex-1">
@@ -57,27 +68,32 @@ import { ConfirmDialogService } from '@talisoft/ui/confirm-dialog';
         <!-- Roles list -->
         <tas-card>
           @if (roles().length === 0) {
-            <div class="flex flex-col items-center py-12 text-slate-400 gap-2">
-              <tas-icon iconName="feather:shield" iconSize="xl"></tas-icon>
-              <p class="text-sm">Aucun rôle assigné à cet utilisateur.</p>
+            <div class="flex flex-col items-center py-12 gap-2">
+              <div class="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center">
+                <tas-icon iconName="feather:shield" class="text-slate-400"></tas-icon>
+              </div>
+              <p class="text-sm text-slate-500">Aucun rôle assigné.</p>
+              <p class="text-xs text-slate-400">Utilisez le formulaire ci-dessus pour en ajouter un.</p>
             </div>
           } @else {
             <div class="divide-y divide-gray-100">
               @for (role of roles(); track role.id) {
                 <div class="flex items-center justify-between px-4 py-3 hover:bg-slate-50">
-                  <div>
-                    <p class="font-medium text-slate-800">{{ role.label ?? role.name }}</p>
-                    @if (role.label) {
-                      <p class="text-xs text-slate-500 font-mono">{{ role.name }}</p>
-                    }
+                  <div class="flex items-center gap-3 min-w-0">
+                    <div class="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                      <tas-icon iconName="feather:shield" class="text-primary" style="font-size:14px"></tas-icon>
+                    </div>
+                    <div class="min-w-0">
+                      <p class="font-medium text-slate-800 leading-tight truncate">{{ role.label ?? role.name }}</p>
+                      @if (role.label) {
+                        <p class="text-xs text-slate-400 font-mono mt-0.5">{{ role.name }}</p>
+                      }
+                    </div>
                   </div>
-                  <div class="flex items-center gap-2">
-                    <span
-                      class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium"
-                      [class]="role.isSystem ? 'bg-slate-100 text-slate-600' : 'bg-blue-100 text-blue-700'"
-                    >
+                  <div class="flex items-center gap-2 shrink-0">
+                    <tas-tag [severity]="role.isSystem ? 'neutral' : 'info'">
                       {{ role.isSystem ? 'Système' : 'Personnalisé' }}
-                    </span>
+                    </tas-tag>
                     @if (!role.isSystem) {
                       <button
                         tas-outlined-button
@@ -87,6 +103,7 @@ import { ConfirmDialogService } from '@talisoft/ui/confirm-dialog';
                         [isLoading]="revokingRoleId() === role.id"
                         (click)="revoke(role)"
                       >
+                        <tas-icon iconName="feather:x" iconSize="sm"></tas-icon>
                         Révoquer
                       </button>
                     }

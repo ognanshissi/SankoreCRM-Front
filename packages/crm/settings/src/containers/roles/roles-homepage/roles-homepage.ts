@@ -1,11 +1,10 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
-import { TasTitle } from '@talisoft/ui/title';
 import { Button } from '@talisoft/ui/button';
 import { TasIcon } from '@talisoft/ui/icon';
 import { TasCard } from '@talisoft/ui/card';
 import { TasTable, TableConfig } from '@talisoft/ui/table';
-import { NgClass } from '@angular/common';
+import { TasTag } from '@talisoft/ui/tag';
 import { RolesApiService, RoleDto } from '@sankore/crm-api';
 import { SideDrawerService } from '@talisoft/ui/side-drawer';
 import { ConfirmDialogService } from '@talisoft/ui/confirm-dialog';
@@ -15,7 +14,7 @@ import { CreateRoleComponent } from '../create-role/create-role';
 
 @Component({
   templateUrl: './roles-homepage.html',
-  imports: [TasTitle, Button, TasIcon, TasCard, TasTable, NgClass],
+  imports: [Button, TasIcon, TasCard, TasTable, TasTag],
 })
 export class RolesHomePage {
   private readonly _rolesApiService = inject(RolesApiService);
@@ -26,7 +25,18 @@ export class RolesHomePage {
 
   public isLoading = signal(false);
   public roles = signal<RoleDto[]>([]);
+  public searchQuery = signal('');
   public deletingId = signal<string | null>(null);
+
+  public filteredRoles = computed(() => {
+    const q = this.searchQuery().toLowerCase().trim();
+    if (!q) return this.roles();
+    return this.roles().filter(
+      (r) =>
+        r.name?.toLowerCase().includes(q) ||
+        r.label?.toLowerCase().includes(q),
+    );
+  });
 
   public tableConfig = signal<TableConfig>({
     property: 'id',
@@ -41,6 +51,10 @@ export class RolesHomePage {
 
   ngOnInit(): void {
     this.loadRoles();
+  }
+
+  public onSearchChange(query: string): void {
+    this.searchQuery.set(query);
   }
 
   public navigateToEdit(role: RoleDto): void {
