@@ -1,13 +1,36 @@
 /* You can add global styles to this file, and also import other style files */
-@import '@angular/material/prebuilt-themes/deeppurple-amber.css';
-/* You can add global styles to this file, and also import other style files */
+@use '@angular/material' as mat;
+
+html {
+  @include mat.theme((
+    color: (
+      primary: mat.$azure-palette,
+      tertiary: mat.$blue-palette,
+    ),
+    typography: Roboto,
+    density: 0,
+  ));
+}
 
 :root {
-  --tas-color-primary: 26, 77, 77; // 26, 77, 77; // 99, 4, 100; // 10, 42, 200; // 181 42 87
-  --tas-color-accent: 16, 52, 86; // 0 90 60; // green => #005a3c
-  --tas-color-surface: #F5EAD8; // #F5EAD8;
+  --tas-color-primary: 26, 77, 77;
+  --tas-color-accent: 16, 52, 86;
+  --tas-color-warn: 221, 47, 47;
+  --tas-color-surface: #F5EAD8;
   --tas-field-border-radius: .5rem;
   --tas-btn-border-radius: 2rem;
+
+  // Override Material M3 system tokens with design system colors
+  --mat-sys-primary: rgb(var(--tas-color-primary));
+  --mat-sys-on-primary: #ffffff;
+  --mat-sys-primary-container: rgba(var(--tas-color-primary), 0.15);
+  --mat-sys-on-primary-container: rgb(var(--tas-color-primary));
+  --mat-sys-secondary: rgb(var(--tas-color-accent));
+  --mat-sys-on-secondary: #ffffff;
+  --mat-sys-secondary-container: rgba(var(--tas-color-accent), 0.15);
+  --mat-sys-on-secondary-container: rgb(var(--tas-color-accent));
+  --mat-sys-error: rgb(var(--tas-color-warn));
+  --mat-sys-on-error: #ffffff;
 }
 
 @media (prefers-color-scheme: dark) {
