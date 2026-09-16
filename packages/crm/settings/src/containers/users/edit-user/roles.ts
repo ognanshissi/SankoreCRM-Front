@@ -6,13 +6,22 @@ import { Button } from '@talisoft/ui/button';
 import { TasIcon } from '@talisoft/ui/icon';
 import { TasFormField, TasLabel } from '@talisoft/ui/form-field';
 import { TasSelect } from '@talisoft/ui/select';
+import { TasInput } from '@talisoft/ui/input';
 import { TasSpinner } from '@talisoft/ui/spinner';
 import { TasTag } from '@talisoft/ui/tag';
-import { UsersApiService, RolesApiService, RoleDto, UserRoleDto } from '@sankore/crm-api';
+import {
+  UsersApiService,
+  RolesApiService,
+  RoleDto,
+  UserRoleDto,
+  ScopedPermissionDto,
+  AssignScopedPermissionRequest,
+} from '@sankore/crm-api';
 import { SnackbarService } from '@talisoft/ui/snackbar';
 import { ConfirmDialogService } from '@talisoft/ui/confirm-dialog';
 import Users from '../../roles/edit-role/users';
 import { TimeagoPipe } from '@talisoft/ui/timeago';
+import { PERMISSION_CATALOG } from '../../roles/edit-role/permissions';
 
 @Component({
   selector: 'user-roles',
@@ -24,6 +33,7 @@ import { TimeagoPipe } from '@talisoft/ui/timeago';
     TasFormField,
     TasLabel,
     TasSelect,
+    TasInput,
     TasSpinner,
     TasTag,
     TimeagoPipe,
@@ -124,13 +134,11 @@ import { TimeagoPipe } from '@talisoft/ui/timeago';
                         </p>
                       }
                       <p class="text-xs text-slate-400 font-mono mt-0.5">
-
                         @if (role.assignedAt) {
                           Assigné: {{ role.assignedAt | dateTimeAgo }}
                         } @else {
                           "Inconnu"
                         }
-
                       </p>
                     </div>
                   </div>
@@ -155,6 +163,137 @@ import { TimeagoPipe } from '@talisoft/ui/timeago';
             </div>
           }
         </tas-card>
+
+        <!-- Scoped permissions header -->
+        <div class="flex items-center gap-2 mt-2">
+          <h2 class="text-lg font-semibold text-slate-800">Permissions directes</h2>
+          @if (scopedPermissions().length > 0) {
+            <span class="px-2 py-0.5 rounded-md bg-slate-100 text-slate-500 text-xs font-medium tabular-nums">
+              {{ scopedPermissions().length }}
+            </span>
+          }
+        </div>
+
+        <!-- Assign scoped permission -->
+        <tas-card>
+          <div class="p-4 flex flex-col gap-3">
+            <p class="text-sm font-semibold text-slate-700">Attribuer une permission directe</p>
+            <div class="grid grid-cols-2 gap-3">
+              <div class="col-span-2">
+                <tas-form-field>
+                  <tas-label>Permission</tas-label>
+                  <tas-select
+                    [options]="permissionOptions"
+                    placeholder="Sélectionnez une permission"
+                    [ngModel]="newPermissionCode()"
+                    (ngModelChange)="newPermissionCode.set($event)"
+                  ></tas-select>
+                </tas-form-field>
+              </div>
+              <tas-form-field>
+                <tas-label>Type de portée</tas-label>
+                <input
+                  tasInput
+                  type="text"
+                  placeholder="ex: agency, territory"
+                  [ngModel]="newScopeType()"
+                  (ngModelChange)="newScopeType.set($event)"
+                />
+              </tas-form-field>
+              <tas-form-field>
+                <tas-label>ID de portée</tas-label>
+                <input
+                  tasInput
+                  type="text"
+                  placeholder="ID de l'entité"
+                  [ngModel]="newScopeId()"
+                  (ngModelChange)="newScopeId.set($event)"
+                />
+              </tas-form-field>
+              <tas-form-field>
+                <tas-label>Date de début (optionnel)</tas-label>
+                <input
+                  tasInput
+                  type="date"
+                  [ngModel]="newStartDate()"
+                  (ngModelChange)="newStartDate.set($event)"
+                />
+              </tas-form-field>
+              <tas-form-field>
+                <tas-label>Date de fin (optionnel)</tas-label>
+                <input
+                  tasInput
+                  type="date"
+                  [ngModel]="newEndDate()"
+                  (ngModelChange)="newEndDate.set($event)"
+                />
+              </tas-form-field>
+            </div>
+            <div class="flex justify-end">
+              <button
+                tas-raised-button
+                color="primary"
+                type="button"
+                [disabled]="!newPermissionCode() || isAssigningPermission()"
+                [isLoading]="isAssigningPermission()"
+                (click)="assignScopedPermission()"
+              >
+                <tas-icon iconName="feather:plus" iconSize="sm"></tas-icon>
+                Attribuer
+              </button>
+            </div>
+          </div>
+        </tas-card>
+
+        <!-- Scoped permissions list -->
+        <tas-card>
+          @if (scopedPermissions().length === 0) {
+            <div class="flex flex-col items-center py-12 gap-2">
+              <div class="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center">
+                <tas-icon iconName="feather:lock" class="text-slate-400"></tas-icon>
+              </div>
+              <p class="text-sm text-slate-500">Aucune permission directe.</p>
+              <p class="text-xs text-slate-400">Utilisez le formulaire ci-dessus pour en attribuer une.</p>
+            </div>
+          } @else {
+            <div class="divide-y divide-gray-100">
+              @for (perm of scopedPermissions(); track perm.id) {
+                <div class="flex items-center justify-between px-4 py-3 hover:bg-slate-50">
+                  <div class="flex items-center gap-3 min-w-0">
+                    <div class="w-8 h-8 rounded-full bg-accent/10 flex items-center justify-center shrink-0">
+                      <tas-icon iconName="feather:key" class="text-accent" style="font-size:14px"></tas-icon>
+                    </div>
+                    <div class="min-w-0">
+                      <p class="font-medium text-slate-800 leading-tight font-mono text-sm">{{ perm.permissionCode }}</p>
+                      @if (perm.scopeType || perm.scopeId) {
+                        <p class="text-xs text-slate-400 mt-0.5">
+                          {{ perm.scopeType }}{{ perm.scopeId ? ' · ' + perm.scopeId : '' }}
+                        </p>
+                      }
+                      @if (perm.startDate || perm.endDate) {
+                        <p class="text-xs text-slate-400 mt-0.5">
+                          {{ perm.startDate ? 'Du ' + (perm.startDate | dateTimeAgo) : '' }}
+                          {{ perm.endDate ? ' au ' + (perm.endDate | dateTimeAgo) : '' }}
+                        </p>
+                      }
+                    </div>
+                  </div>
+                  <button
+                    tas-outlined-button
+                    color="warn"
+                    type="button"
+                    [disabled]="revokingPermissionId() === perm.id"
+                    [isLoading]="revokingPermissionId() === perm.id"
+                    (click)="revokeScopedPermission(perm)"
+                  >
+                    <tas-icon iconName="feather:x" iconSize="sm"></tas-icon>
+                    Révoquer
+                  </button>
+                </div>
+              }
+            </div>
+          }
+        </tas-card>
       </div>
     }
   `,
@@ -169,10 +308,26 @@ export class UserRolesPage {
 
   public isLoading = signal(true);
   public isAssigning = signal(false);
+  public isAssigningPermission = signal(false);
   public roles = signal<UserRoleDto[]>([]);
   public allRoles = signal<RoleDto[]>([]);
+  public scopedPermissions = signal<ScopedPermissionDto[]>([]);
   public selectedRoleId = signal('');
   public revokingRoleId = signal<string | null>(null);
+  public revokingPermissionId = signal<string | null>(null);
+
+  public newPermissionCode = signal('');
+  public newScopeType = signal('');
+  public newScopeId = signal('');
+  public newStartDate = signal('');
+  public newEndDate = signal('');
+
+  public readonly permissionOptions = PERMISSION_CATALOG.flatMap((g) =>
+    g.permissions.map((p) => ({
+      label: `${p.code} — ${p.description}`,
+      value: p.code,
+    }))
+  );
 
   public roleOptions = computed(() =>
     this.allRoles().map((r) => ({
@@ -187,11 +342,12 @@ export class UserRolesPage {
       forkJoin({
         roles: this._usersApiService.getUserRoles(this.id()),
         allRoles: this._rolesApiService.listRoles(),
+        permissions: this._usersApiService.getUserPermissions(this.id()),
       }).subscribe({
-        next: ({ roles, allRoles }) => {
+        next: ({ roles, allRoles, permissions }) => {
           this.allRoles.set(allRoles ?? []);
-          // Build the user's current roles from the full list (user.roles not in DTO, show all for now)
           this.roles.set(roles);
+          this.scopedPermissions.set(permissions.scopedPermissions ?? []);
           this.isLoading.set(false);
         },
         error: () => this.isLoading.set(false),
@@ -250,6 +406,66 @@ export class UserRolesPage {
             this.roles.update((list) => list.filter((r) => r.id !== role.id));
             this._snackbarService.success('Succès', 'Rôle révoqué.');
             this.revokingRoleId.set(null);
+          });
+      },
+    });
+  }
+
+  public assignScopedPermission(): void {
+    const req: AssignScopedPermissionRequest = {
+      permissionCode: this.newPermissionCode() || null,
+      scopeType: this.newScopeType() || null,
+      scopeId: this.newScopeId() || null,
+      startDate: this.newStartDate() || undefined,
+      endDate: this.newEndDate() || undefined,
+    };
+    this.isAssigningPermission.set(true);
+    this._usersApiService
+      .assignScopedPermission(this.id(), req)
+      .pipe(
+        catchError(() => {
+          this._snackbarService.error('Erreur', "Impossible d'attribuer la permission.");
+          this.isAssigningPermission.set(false);
+          return EMPTY;
+        }),
+      )
+      .subscribe(() => {
+        this._usersApiService.getUserPermissions(this.id()).subscribe({
+          next: (p) => this.scopedPermissions.set(p.scopedPermissions ?? []),
+        });
+        this._snackbarService.success('Succès', 'Permission attribuée.');
+        this.newPermissionCode.set('');
+        this.newScopeType.set('');
+        this.newScopeId.set('');
+        this.newStartDate.set('');
+        this.newEndDate.set('');
+        this.isAssigningPermission.set(false);
+      });
+  }
+
+  public revokeScopedPermission(perm: ScopedPermissionDto): void {
+    this._confirmDialogService.confirm({
+      title: 'Révoquer la permission',
+      message: `Révoquer la permission "${perm.permissionCode}" pour cet utilisateur ?`,
+      closable: true,
+      showCancelButton: true,
+      acceptButtonProps: { label: 'Révoquer', theme: 'warn' },
+      rejectButtonProps: { label: 'Annuler' },
+      accept: () => {
+        this.revokingPermissionId.set(perm.id ?? null);
+        this._usersApiService
+          .revokeScopedPermission(this.id(), perm.id!)
+          .pipe(
+            catchError(() => {
+              this._snackbarService.error('Erreur', 'Impossible de révoquer la permission.');
+              this.revokingPermissionId.set(null);
+              return EMPTY;
+            }),
+          )
+          .subscribe(() => {
+            this.scopedPermissions.update((list) => list.filter((p) => p.id !== perm.id));
+            this._snackbarService.success('Succès', 'Permission révoquée.');
+            this.revokingPermissionId.set(null);
           });
       },
     });
