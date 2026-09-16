@@ -10,6 +10,7 @@ import { TasSpinner } from '@talisoft/ui/spinner';
 import { ProductsApiService, ProductDto } from '@sankore/crm-api';
 import { SnackbarService } from '@talisoft/ui/snackbar';
 import { ConfirmDialogService } from '@talisoft/ui/confirm-dialog';
+import { BreadcrumbService } from '@sankore/crm/common';
 
 @Component({
   selector: 'edit-product',
@@ -169,6 +170,7 @@ export class EditProductPage {
   private readonly _snackbarService = inject(SnackbarService);
   private readonly _confirmDialogService = inject(ConfirmDialogService);
   private readonly _router = inject(Router);
+  private readonly _breadcrumbService = inject(BreadcrumbService);
 
   public readonly id = input.required<string>();
 
@@ -197,6 +199,11 @@ export class EditProductPage {
           this.editedName.set(product.name ?? '');
           this.editedDescription.set(product.description ?? '');
           this.isLoading.set(false);
+          this._breadcrumbService.set([
+            { label: 'Paramétrage', link: ['/settings'] },
+            { label: 'Produits', link: ['/settings/products'] },
+            { label: product.name ?? product.code ?? 'Produit' },
+          ]);
         },
         error: () => {
           this._snackbarService.error(

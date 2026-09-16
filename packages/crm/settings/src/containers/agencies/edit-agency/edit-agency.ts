@@ -24,6 +24,7 @@ import { AgenciesApiService, AgencyDto, AgencyType } from '@sankore/crm-api';
 import { SnackbarService } from '@talisoft/ui/snackbar';
 import { ConfirmDialogService } from '@talisoft/ui/confirm-dialog';
 import { DeleteAgencyDialog } from './delete-agency-dialog';
+import { BreadcrumbService } from '@sankore/crm/common';
 
 class EditAgencyFormModel {
   public name!: string;
@@ -92,6 +93,7 @@ export class EditAgencyPage {
   private readonly _confirmDialogService = inject(ConfirmDialogService);
   private readonly _dialog = inject(Dialog);
   private readonly _router = inject(Router);
+  private readonly _breadcrumbService = inject(BreadcrumbService);
 
   public readonly id = input.required<string>();
 
@@ -254,6 +256,11 @@ export class EditAgencyPage {
         this.updateModel.set(EditAgencyFormModel.fromAgency(agency));
         this.isLoading.set(false);
         this._loadAvailableParents(id);
+        this._breadcrumbService.set([
+          { label: 'Paramétrage', link: ['/settings'] },
+          { label: 'Agences', link: ['/settings/agencies'] },
+          { label: agency.name ?? 'Agence' },
+        ]);
       },
       error: () => {
         this._snackbarService.error(

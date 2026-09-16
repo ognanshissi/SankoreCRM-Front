@@ -6,7 +6,7 @@ import { TasIcon } from '@talisoft/ui/icon';
 import { TasSpinner } from '@talisoft/ui/spinner';
 import { RolesApiService, RoleDetailDto } from '@sankore/crm-api';
 import { Anchor } from '@talisoft/ui/button';
-import { MenuItem } from '@sankore/crm/common';
+import { BreadcrumbService, MenuItem } from '@sankore/crm/common';
 
 @Component({
   imports: [Navigation, RouterLink, NgClass, TasIcon, TasSpinner, Anchor],
@@ -79,6 +79,7 @@ import { MenuItem } from '@sankore/crm/common';
 })
 export class EditRoleNavigation {
   private readonly _rolesApiService = inject(RolesApiService);
+  private readonly _breadcrumbService = inject(BreadcrumbService);
 
   public readonly id = input.required<string>();
 
@@ -98,6 +99,11 @@ export class EditRoleNavigation {
         next: (role) => {
           this.role.set(role);
           this.isLoading.set(false);
+          this._breadcrumbService.set([
+            { label: 'Paramétrage', link: ['/settings'] },
+            { label: 'Rôles', link: ['/settings/roles'] },
+            { label: role.label ?? role.name ?? 'Rôle' },
+          ]);
         },
         error: () => {
           this.isLoading.set(false);

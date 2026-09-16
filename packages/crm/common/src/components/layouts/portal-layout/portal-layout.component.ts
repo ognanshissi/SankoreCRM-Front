@@ -10,6 +10,7 @@ import {
   TasNavigationNavbar,
   TasNavigationSidebar,
 } from '@talisoft/ui/layouts';
+import { BreadcrumbComponent } from '../../breadcrumb/breadcrumb.component';
 
 @Component({
   selector: 'common-portal-layout',
@@ -24,6 +25,7 @@ import {
     TasNavigationNavbar,
     TasNavigationMenu,
     TasNavigationMenuItem,
+    BreadcrumbComponent,
   ],
 })
 export class PortalLayoutComponent implements OnInit {

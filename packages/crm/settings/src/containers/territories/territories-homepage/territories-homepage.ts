@@ -9,6 +9,7 @@ import { SideDrawerService } from '@talisoft/ui/side-drawer';
 import { TerritoriesApiService, TerritoryDto } from '@sankore/crm-api';
 import { CreateTerritoryComponent } from '../create-territory/create-territory';
 import { TimeagoPipe } from '@talisoft/ui/timeago';
+import { BreadcrumbService } from '@sankore/crm/common';
 
 @Component({
   templateUrl: './territories-homepage.html',
@@ -18,6 +19,7 @@ export class TerritoriesHomePage {
   private readonly _territoriesApiService = inject(TerritoriesApiService);
   private readonly _sideDrawerService = inject(SideDrawerService);
   private readonly _router = inject(Router);
+  private readonly _breadcrumbService = inject(BreadcrumbService);
 
   public isLoading = signal(false);
   public territories = signal<TerritoryDto[]>([]);
@@ -46,6 +48,10 @@ export class TerritoriesHomePage {
   });
 
   ngOnInit(): void {
+    this._breadcrumbService.set([
+      { label: 'Paramétrage', link: ['/settings'] },
+      { label: 'Territoires' },
+    ]);
     this.loadTerritories();
   }
 

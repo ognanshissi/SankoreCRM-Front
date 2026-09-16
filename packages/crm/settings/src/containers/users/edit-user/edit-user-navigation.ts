@@ -6,7 +6,7 @@ import { TasIcon } from '@talisoft/ui/icon';
 import { TasSpinner } from '@talisoft/ui/spinner';
 import { Anchor } from '@talisoft/ui/button';
 import { UsersApiService, UserDto } from '@sankore/crm-api';
-import { MenuItem } from '@sankore/crm/common';
+import { BreadcrumbService, MenuItem } from '@sankore/crm/common';
 
 @Component({
   imports: [Navigation, RouterLink, NgClass, TasIcon, TasSpinner, Anchor],
@@ -67,6 +67,7 @@ import { MenuItem } from '@sankore/crm/common';
 })
 export class EditUserNavigation {
   private readonly _usersApiService = inject(UsersApiService);
+  private readonly _breadcrumbService = inject(BreadcrumbService);
 
   public readonly id = input.required<string>();
 
@@ -86,6 +87,11 @@ export class EditUserNavigation {
         next: (user) => {
           this.user.set(user);
           this.isLoading.set(false);
+          this._breadcrumbService.set([
+            { label: 'Paramétrage', link: ['/settings'] },
+            { label: 'Utilisateurs', link: ['/settings/users'] },
+            { label: user.fullName ?? user.email ?? 'Utilisateur' },
+          ]);
         },
         error: () => this.isLoading.set(false),
       });

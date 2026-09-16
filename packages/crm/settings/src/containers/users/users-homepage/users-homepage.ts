@@ -15,7 +15,7 @@ import {
 } from '@sankore/crm-api';
 import { CreateUserComponent } from '../create-user/create-user';
 import { TimeagoPipe } from '@talisoft/ui/timeago';
-import { InitialsPipe } from '@sankore/crm/common';
+import { BreadcrumbService, InitialsPipe } from '@sankore/crm/common';
 import { TasTag } from '@talisoft/ui/tag';
 
 const AVATAR_COLORS = [
@@ -42,6 +42,7 @@ export class UsersHomePage {
   private readonly _usersApiService = inject(UsersApiService);
   private readonly _sideDrawerService = inject(SideDrawerService);
   private readonly _router = inject(Router);
+  private readonly _breadcrumbService = inject(BreadcrumbService);
 
   public isLoading = signal(false);
   public users = signal<UserDto[]>([]);
@@ -62,6 +63,10 @@ export class UsersHomePage {
   });
 
   ngOnInit(): void {
+    this._breadcrumbService.set([
+      { label: 'Paramétrage', link: ['/settings'] },
+      { label: 'Utilisateurs' },
+    ]);
     this.loadUsers(0, 20);
     this._usersApiService.getUserStatusStats().subscribe({
       next: data => this.userStatusStats.set(data),

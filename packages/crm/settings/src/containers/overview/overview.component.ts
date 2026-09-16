@@ -4,6 +4,7 @@ import { TasText } from '@talisoft/ui/text';
 import { NgClass, NgIf } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { SnackbarService } from '@talisoft/ui/snackbar';
+import { BreadcrumbService } from '@sankore/crm/common';
 
 export interface MenuItem {
   title: string;
@@ -247,10 +248,15 @@ export class OverviewComponent {
   ];
 
   private readonly _snackbarService = inject(SnackbarService);
+  private readonly _breadcrumbService = inject(BreadcrumbService);
 
   public menus = signal<MenuItem[]>(this.menuData);
 
   public selectedMenu = signal<MenuItem>(this.menuData[0]);
+
+  ngOnInit(): void {
+    this._breadcrumbService.set([{ label: 'Paramétrage' }]);
+  }
 
   public toggleSelectedMenuGroup(item: MenuItem) {
     this.selectedMenu.set(item);

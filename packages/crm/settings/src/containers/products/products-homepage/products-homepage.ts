@@ -10,6 +10,7 @@ import { ConfirmDialogService } from '@talisoft/ui/confirm-dialog';
 import { SnackbarService } from '@talisoft/ui/snackbar';
 import { catchError, EMPTY } from 'rxjs';
 import { CreateProductComponent } from '../create-product/create-product';
+import { BreadcrumbService } from '@sankore/crm/common';
 
 @Component({
   templateUrl: './products-homepage.html',
@@ -21,6 +22,7 @@ export class ProductsHomePage {
   private readonly _confirmDialogService = inject(ConfirmDialogService);
   private readonly _snackbarService = inject(SnackbarService);
   private readonly _router = inject(Router);
+  private readonly _breadcrumbService = inject(BreadcrumbService);
 
   public isLoading = signal(false);
   public products = signal<ProductDto[]>([]);
@@ -50,6 +52,10 @@ export class ProductsHomePage {
   });
 
   ngOnInit(): void {
+    this._breadcrumbService.set([
+      { label: 'Paramétrage', link: ['/settings'] },
+      { label: 'Produits' },
+    ]);
     this.loadProducts();
   }
 

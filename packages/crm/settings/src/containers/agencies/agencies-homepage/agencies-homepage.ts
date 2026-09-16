@@ -10,6 +10,7 @@ import { SideDrawerService } from '@talisoft/ui/side-drawer';
 import { CreateAgencyComponent } from '../create-agency/create-agency';
 import { NgClass } from '@angular/common';
 import { TimeagoPipe } from '@talisoft/ui/timeago';
+import { BreadcrumbService } from '@sankore/crm/common';
 
 @Component({
   templateUrl: './agencies-homepage.html',
@@ -26,6 +27,7 @@ export class AgenciesHomePage {
   private readonly _agenciesApiService = inject(AgenciesApiService);
   private readonly _sideDrawerService = inject(SideDrawerService);
   private readonly _router = inject(Router);
+  private readonly _breadcrumbService = inject(BreadcrumbService);
 
   public isLoading = signal(false);
   public agencies = signal<AgencyDto[]>([]);
@@ -43,6 +45,10 @@ export class AgenciesHomePage {
   });
 
   ngOnInit(): void {
+    this._breadcrumbService.set([
+      { label: 'Paramétrage', link: ['/settings'] },
+      { label: 'Agences' },
+    ]);
     this.loadAgencies(0, 10);
   }
 

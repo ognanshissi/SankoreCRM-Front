@@ -22,6 +22,7 @@ import { TasSpinner } from '@talisoft/ui/spinner';
 import { TerritoriesApiService, ProductsApiService, TerritoryDto } from '@sankore/crm-api';
 import { SnackbarService } from '@talisoft/ui/snackbar';
 import { DeleteTerritoryDialog } from './delete-territory-dialog';
+import { BreadcrumbService } from '@sankore/crm/common';
 
 class EditTerritoryFormModel {
   public name!: string;
@@ -69,6 +70,7 @@ export class EditTerritoryPage {
   private readonly _snackbarService = inject(SnackbarService);
   private readonly _dialog = inject(Dialog);
   private readonly _router = inject(Router);
+  private readonly _breadcrumbService = inject(BreadcrumbService);
 
   public readonly id = input.required<string>();
 
@@ -95,6 +97,11 @@ export class EditTerritoryPage {
         next: ({ territory, products }) => {
           this.territory.set(territory);
           this.updateModel.set(EditTerritoryFormModel.fromTerritory(territory));
+          this._breadcrumbService.set([
+            { label: 'Paramétrage', link: ['/settings'] },
+            { label: 'Territoires', link: ['/settings/territories'] },
+            { label: territory.name ?? 'Territoire' },
+          ]);
           this.selectedSpecialities.set(territory.productSpecialities ?? []);
           this.specialtyOptions.set(
             (products ?? []).map((p) => ({

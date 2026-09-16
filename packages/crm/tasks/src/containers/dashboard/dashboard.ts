@@ -1,5 +1,6 @@
-import { Component } from '@angular/core';
+import { Component, inject, OnInit } from '@angular/core';
 import { TasTitle } from '@talisoft/ui/title';
+import { BreadcrumbService } from '@sankore/crm/common';
 
 @Component({
     templateUrl: './dashboard.html',
@@ -7,5 +8,11 @@ import { TasTitle } from '@talisoft/ui/title';
         TasTitle
     ],
 })
-export class DashboardComponent {}
+export class DashboardComponent implements OnInit {
+  private readonly _breadcrumbService = inject(BreadcrumbService);
+
+  ngOnInit(): void {
+    this._breadcrumbService.set([{ label: 'Ma journée' }]);
+  }
+}
 

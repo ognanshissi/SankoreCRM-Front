@@ -11,6 +11,7 @@ import { ConfirmDialogService } from '@talisoft/ui/confirm-dialog';
 import { SnackbarService } from '@talisoft/ui/snackbar';
 import { catchError, EMPTY } from 'rxjs';
 import { CreateRoleComponent } from '../create-role/create-role';
+import { BreadcrumbService } from '@sankore/crm/common';
 
 @Component({
   templateUrl: './roles-homepage.html',
@@ -22,6 +23,7 @@ export class RolesHomePage {
   private readonly _sideDrawerService = inject(SideDrawerService);
   private readonly _confirmDialogService = inject(ConfirmDialogService);
   private readonly _snackbarService = inject(SnackbarService);
+  private readonly _breadcrumbService = inject(BreadcrumbService);
 
   public isLoading = signal(false);
   public roles = signal<RoleDto[]>([]);
@@ -50,6 +52,10 @@ export class RolesHomePage {
   });
 
   ngOnInit(): void {
+    this._breadcrumbService.set([
+      { label: 'Paramétrage', link: ['/settings'] },
+      { label: 'Rôles' },
+    ]);
     this.loadRoles();
   }
 
