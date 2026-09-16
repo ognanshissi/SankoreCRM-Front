@@ -12,6 +12,7 @@ import { TasTag } from '@talisoft/ui/tag';
 import {
   UsersApiService,
   RolesApiService,
+  PermissionsApiService,
   RoleDto,
   UserRoleDto,
   ScopedPermissionDto,
@@ -21,7 +22,6 @@ import { SnackbarService } from '@talisoft/ui/snackbar';
 import { ConfirmDialogService } from '@talisoft/ui/confirm-dialog';
 import Users from '../../roles/edit-role/users';
 import { TimeagoPipe } from '@talisoft/ui/timeago';
-import { PERMISSION_CATALOG } from '../../roles/edit-role/permissions';
 
 @Component({
   selector: 'user-roles',
@@ -183,7 +183,7 @@ import { PERMISSION_CATALOG } from '../../roles/edit-role/permissions';
                 <tas-form-field>
                   <tas-label>Permission</tas-label>
                   <tas-select
-                    [options]="permissionOptions"
+                    [options]="permissionOptions()"
                     placeholder="Sélectionnez une permission"
                     [ngModel]="newPermissionCode()"
                     (ngModelChange)="newPermissionCode.set($event)"
@@ -301,6 +301,7 @@ import { PERMISSION_CATALOG } from '../../roles/edit-role/permissions';
 export class UserRolesPage {
   private readonly _usersApiService = inject(UsersApiService);
   private readonly _rolesApiService = inject(RolesApiService);
+  private readonly _permissionsApiService = inject(PermissionsApiService);
   private readonly _snackbarService = inject(SnackbarService);
   private readonly _confirmDialogService = inject(ConfirmDialogService);
 
@@ -322,12 +323,7 @@ export class UserRolesPage {
   public newStartDate = signal('');
   public newEndDate = signal('');
 
-  public readonly permissionOptions = PERMISSION_CATALOG.flatMap((g) =>
-    g.permissions.map((p) => ({
-      label: `${p.code} — ${p.description}`,
-      value: p.code,
-    }))
-  );
+  public permissionOptions = signal<{ label: string; value: string }[]>([]);
 
   public roleOptions = computed(() =>
     this.allRoles().map((r) => ({
@@ -343,11 +339,20 @@ export class UserRolesPage {
         roles: this._usersApiService.getUserRoles(this.id()),
         allRoles: this._rolesApiService.listRoles(),
         permissions: this._usersApiService.getUserPermissions(this.id()),
+        catalog: this._permissionsApiService.listPermissions(),
       }).subscribe({
-        next: ({ roles, allRoles, permissions }) => {
+        next: ({ roles, allRoles, permissions, catalog }) => {
           this.allRoles.set(allRoles ?? []);
           this.roles.set(roles);
           this.scopedPermissions.set(permissions.scopedPermissions ?? []);
+          this.permissionOptions.set(
+            (catalog ?? []).flatMap((g) =>
+              (g.permissions ?? []).map((p) => ({
+                label: `${p.code} — ${p.description}`,
+                value: p.code ?? '',
+              }))
+            )
+          );
           this.isLoading.set(false);
         },
         error: () => this.isLoading.set(false),

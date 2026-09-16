@@ -1,80 +1,12 @@
 import { Component, computed, effect, inject, input, signal } from '@angular/core';
 import { NgClass } from '@angular/common';
-import { catchError, EMPTY } from 'rxjs';
+import { catchError, EMPTY, forkJoin } from 'rxjs';
 import { TasCard } from '@talisoft/ui/card';
 import { TasIcon } from '@talisoft/ui/icon';
 import { TasSpinner } from '@talisoft/ui/spinner';
 import { TasSwitch } from '@talisoft/ui/switch';
-import { RolesApiService, RolePermissionDto } from '@sankore/crm-api';
+import { RolesApiService, RolePermissionDto, PermissionsApiService, PermissionGroupDto } from '@sankore/crm-api';
 import { SnackbarService } from '@talisoft/ui/snackbar';
-
-export interface PermissionEntry { code: string; description: string; }
-export interface PermissionGroup { domain: string; label: string; permissions: PermissionEntry[]; }
-
-export const PERMISSION_CATALOG: PermissionGroup[] = [
-  {
-    domain: 'agency', label: 'Agences',
-    permissions: [
-      { code: 'agency:read', description: 'Consulter les agences' },
-      { code: 'agency:create', description: 'Créer une agence' },
-      { code: 'agency:delete', description: 'Supprimer une agence' },
-      { code: 'agency:activate', description: 'Réactiver une agence supprimée' },
-      { code: 'agency:move', description: 'Déplacer / réorganiser la hiérarchie' },
-    ],
-  },
-  {
-    domain: 'user', label: 'Utilisateurs',
-    permissions: [
-      { code: 'user:read', description: 'Consulter les utilisateurs' },
-      { code: 'user:create', description: 'Créer un utilisateur' },
-      { code: 'user:update', description: 'Modifier un utilisateur' },
-      { code: 'user:deactivate', description: 'Désactiver un utilisateur' },
-      { code: 'user:assign-role', description: 'Assigner un rôle à un utilisateur' },
-      { code: 'user:revoke-role', description: "Révoquer un rôle d'un utilisateur" },
-      { code: 'user:assign-permission', description: 'Attribuer une permission directe' },
-      { code: 'user:revoke-permission', description: 'Révoquer une permission directe' },
-    ],
-  },
-  {
-    domain: 'role', label: 'Rôles',
-    permissions: [
-      { code: 'role:read', description: 'Consulter les rôles' },
-      { code: 'role:create', description: 'Créer un rôle personnalisé' },
-      { code: 'role:update', description: "Modifier le libellé d'un rôle" },
-      { code: 'role:delete', description: 'Supprimer un rôle personnalisé' },
-      { code: 'role:assign-permission', description: 'Ajouter une permission à un rôle' },
-      { code: 'role:revoke-permission', description: "Retirer une permission d'un rôle" },
-    ],
-  },
-  {
-    domain: 'product', label: 'Produits',
-    permissions: [
-      { code: 'product:read', description: 'Consulter les produits' },
-      { code: 'product:create', description: 'Créer un produit' },
-      { code: 'product:update', description: 'Modifier un produit' },
-      { code: 'product:delete', description: 'Supprimer un produit' },
-    ],
-  },
-  {
-    domain: 'territory', label: 'Territoires',
-    permissions: [
-      { code: 'territory:read', description: 'Consulter les territoires' },
-      { code: 'territory:create', description: 'Créer un territoire' },
-      { code: 'territory:update', description: 'Modifier un territoire' },
-      { code: 'territory:delete', description: 'Désactiver un territoire' },
-    ],
-  },
-  {
-    domain: 'lead', label: 'Leads',
-    permissions: [
-      { code: 'lead:read', description: 'Consulter les leads' },
-      { code: 'lead:create', description: 'Créer un lead' },
-      { code: 'lead:update', description: 'Modifier un lead' },
-      { code: 'lead:delete', description: 'Supprimer un lead' },
-      { code: 'lead:assign', description: 'Assigner un lead à un agent' },
-    ],
-  },
-];
 
 @Component({
   selector: 'role-permissions',
@@ -92,7 +24,7 @@ export const PERMISSION_CATALOG: PermissionGroup[] = [
           <div>
             <h1 class="text-lg font-semibold text-slate-800">Permissions</h1>
             <p class="text-sm text-slate-400 mt-0.5">
-              {{ grantedCodes().size }} permission{{ grantedCodes().size !== 1 ? 's' : '' }} accordée{{ grantedCodes().size !== 1 ? 's' : '' }} sur {{ totalPermissions }}
+              {{ grantedCodes().size }} permission{{ grantedCodes().size !== 1 ? 's' : '' }} accordée{{ grantedCodes().size !== 1 ? 's' : '' }} sur {{ totalPermissions() }}
             </p>
           </div>
           @if (isSystem()) {
@@ -103,48 +35,64 @@ export const PERMISSION_CATALOG: PermissionGroup[] = [
           }
         </div>
 
-        @for (group of catalog; track group.domain) {
+        @for (group of catalog(); track group.module) {
+          @let module = group.module ?? '';
           @let groupGranted = grantedCount(group);
-          @let groupTotal = group.permissions.length;
+          @let groupTotal = group.permissions?.length ?? 0;
+          @let isExpanded = expandedModules().has(module);
+
           <tas-card [class.opacity-60]="isSystem()">
-            <!-- Group header -->
-            <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+            <!-- Accordion header -->
+            <button
+              type="button"
+              class="w-full px-4 py-3 flex items-center justify-between gap-3 hover:bg-slate-50 transition-colors"
+              (click)="toggleModule(module)"
+            >
               <div class="flex items-center gap-2">
-                <p class="text-sm font-semibold text-slate-700">{{ group.label }}</p>
-                <span class="font-mono text-xs text-slate-400">{{ group.domain }}</span>
+                <p class="text-sm font-semibold text-slate-700 capitalize">{{ module }}</p>
+                <span class="font-mono text-xs text-slate-400">{{ module }}</span>
               </div>
-              <span
-                class="text-xs font-medium px-2 py-0.5 rounded-full tabular-nums"
-                [ngClass]="{
-                  'bg-green-100 text-green-700': groupGranted === groupTotal,
-                  'bg-primary/10 text-primary': groupGranted > 0 && groupGranted < groupTotal,
-                  'bg-slate-100 text-slate-500': groupGranted === 0
-                }"
-              >
-                {{ groupGranted }} / {{ groupTotal }}
-              </span>
-            </div>
+              <div class="flex items-center gap-2 shrink-0">
+                <span
+                  class="text-xs font-medium px-2 py-0.5 rounded-full tabular-nums"
+                  [ngClass]="{
+                    'bg-green-100 text-green-700': groupGranted === groupTotal && groupTotal > 0,
+                    'bg-primary/10 text-primary': groupGranted > 0 && groupGranted < groupTotal,
+                    'bg-slate-100 text-slate-500': groupGranted === 0
+                  }"
+                >
+                  {{ groupGranted }} / {{ groupTotal }}
+                </span>
+                <tas-icon
+                  [iconName]="isExpanded ? 'feather:chevron-up' : 'feather:chevron-down'"
+                  style="font-size:14px"
+                  class="text-slate-400"
+                ></tas-icon>
+              </div>
+            </button>
 
             <!-- Permission rows -->
-            <div class="divide-y divide-gray-100">
-              @for (perm of group.permissions; track perm.code) {
-                @let granted = grantedCodes().has(perm.code);
-                @let toggling = togglingCode() === perm.code;
-                <div class="flex items-center gap-4 px-4 py-3 hover:bg-slate-50 transition-colors">
-                  <tas-switch
-                    [checked]="granted"
-                    [disabled]="isSystem() || togglingCode() !== null"
-                    [isLoading]="toggling"
-                    [ariaLabel]="perm.description"
-                    (toggle)="toggle(perm.code, granted)"
-                  ></tas-switch>
-                  <div class="flex-1 min-w-0">
-                    <p class="font-mono text-sm text-slate-800">{{ perm.code }}</p>
-                    <p class="text-xs text-slate-400 mt-0.5">{{ perm.description }}</p>
+            @if (isExpanded) {
+              <div class="divide-y divide-gray-100 border-t border-gray-100">
+                @for (perm of group.permissions; track perm.code) {
+                  @let granted = grantedCodes().has(perm.code ?? '');
+                  @let toggling = togglingCode() === perm.code;
+                  <div class="flex items-center gap-4 px-4 py-3 hover:bg-slate-50 transition-colors">
+                    <tas-switch
+                      [checked]="granted"
+                      [disabled]="isSystem() || togglingCode() !== null"
+                      [isLoading]="toggling"
+                      [ariaLabel]="perm.description ?? perm.code ?? ''"
+                      (toggle)="toggle(perm.code ?? '', granted)"
+                    ></tas-switch>
+                    <div class="flex-1 min-w-0">
+                      <p class="font-mono text-sm text-slate-800">{{ perm.code }}</p>
+                      <p class="text-xs text-slate-400 mt-0.5">{{ perm.description }}</p>
+                    </div>
                   </div>
-                </div>
-              }
-            </div>
+                }
+              </div>
+            }
           </tas-card>
         }
       </div>
@@ -153,33 +101,53 @@ export const PERMISSION_CATALOG: PermissionGroup[] = [
 })
 export class RolePermissionsPage {
   private readonly _rolesApiService = inject(RolesApiService);
+  private readonly _permissionsApiService = inject(PermissionsApiService);
   private readonly _snackbarService = inject(SnackbarService);
 
   public readonly id = input.required<string>();
 
-  public readonly catalog = PERMISSION_CATALOG;
-  public readonly totalPermissions = PERMISSION_CATALOG.reduce((acc, g) => acc + g.permissions.length, 0);
   public isLoading = signal(true);
   public isSystem = signal(false);
   public permissions = signal<RolePermissionDto[]>([]);
+  public catalog = signal<PermissionGroupDto[]>([]);
   public togglingCode = signal<string | null>(null);
+  public expandedModules = signal<Set<string>>(new Set());
+
+  public totalPermissions = computed(() =>
+    this.catalog().reduce((acc, g) => acc + (g.permissions?.length ?? 0), 0)
+  );
 
   public grantedCodes = computed(
     () => new Set(this.permissions().map((p) => p.code ?? '')),
   );
 
-  public grantedCount(group: PermissionGroup): number {
+  public grantedCount(group: PermissionGroupDto): number {
     const granted = this.grantedCodes();
-    return group.permissions.filter((p) => granted.has(p.code)).length;
+    return (group.permissions ?? []).filter((p) => granted.has(p.code ?? '')).length;
+  }
+
+  public toggleModule(module: string): void {
+    this.expandedModules.update((set) => {
+      const next = new Set(set);
+      next.has(module) ? next.delete(module) : next.add(module);
+      return next;
+    });
   }
 
   constructor() {
     effect(() => {
       this.isLoading.set(true);
-      this._rolesApiService.getRole(this.id()).subscribe({
-        next: (role) => {
+      forkJoin({
+        role: this._rolesApiService.getRole(this.id()),
+        catalog: this._permissionsApiService.listPermissions(),
+      }).subscribe({
+        next: ({ role, catalog }) => {
           this.isSystem.set(role.isSystem ?? false);
           this.permissions.set(role.permissions ?? []);
+          this.catalog.set(catalog ?? []);
+          this.expandedModules.set(
+            new Set((catalog ?? []).map((g) => g.module ?? ''))
+          );
           this.isLoading.set(false);
         },
         error: () => {
