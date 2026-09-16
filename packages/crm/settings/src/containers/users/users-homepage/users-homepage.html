@@ -13,10 +13,22 @@
 <!-- tags filter -->
 @let countInactive = (userStatusStats().locked || 0) + (userStatusStats().disabled || 0);
 <div class="flex space-x-3 pb-4">
-  <button tas-raised-button  [color]="'primary'">Tout ({{ userStatusStats().total }}) </button>
-  <button tas-outlined-button [color]="'primary'">Actifs ({{ userStatusStats().active }})</button>
-  <button tas-outlined-button [color]="'primary'">Activation en attente ({{ userStatusStats().pendingActivation }}) </button>
-  <button tas-outlined-button [color]="'primary'">Désactivés / Suspendus ({{ countInactive  }}) </button>
+  <button tas-raised-button
+    [color]="statusFilter() === undefined ? 'primary' : 'neutral'"
+    (click)="onStatusFilterChange(undefined)"
+  >Tout ({{ userStatusStats().total }})</button>
+  <button tas-raised-button
+    [color]="statusFilter() === 1 ? 'primary' : 'neutral'"
+    (click)="onStatusFilterChange(1)"
+  >Actifs ({{ userStatusStats().active }})</button>
+  <button tas-raised-button
+    [color]="statusFilter() === 0 ? 'primary' : 'neutral'"
+    (click)="onStatusFilterChange(0)"
+  >Activation en attente ({{ userStatusStats().pendingActivation }})</button>
+  <button tas-raised-button
+    [color]="statusFilter() === 2 ? 'primary' : 'neutral'"
+    (click)="onStatusFilterChange(2)"
+  >Désactivés / Suspendus ({{ countInactive }})</button>
 </div>
 
 <!-- Table -->

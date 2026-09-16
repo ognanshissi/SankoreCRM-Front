@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { NgClass } from '@angular/common';
 import { PageEvent } from '@angular/material/paginator';
 import { Router } from '@angular/router';
@@ -10,8 +10,8 @@ import { SideDrawerService } from '@talisoft/ui/side-drawer';
 import {
   UsersApiService,
   UserDto,
-  RoleDto,
   UserStatusStatsDto,
+  UserStatus,
 } from '@sankore/crm-api';
 import { CreateUserComponent } from '../create-user/create-user';
 import { TimeagoPipe } from '@talisoft/ui/timeago';
@@ -46,6 +46,7 @@ export class UsersHomePage {
   public isLoading = signal(false);
   public users = signal<UserDto[]>([]);
   public searchQuery = signal('');
+  public statusFilter = signal<UserStatus | undefined>(undefined);
 
   public userStatusStats = signal<UserStatusStatsDto>({ total: 0, active: 0 , disabled: 0, locked: 0, pendingActivation: 0});
 
@@ -67,13 +68,22 @@ export class UsersHomePage {
     })
   }
 
+  public onStatusFilterChange(status: UserStatus | undefined): void {
+    this.statusFilter.set(status);
+    this.tableConfig.update((c) => ({
+      ...c,
+      pagination: { ...c.pagination, pageIndex: 0 },
+    }));
+    this.loadUsers(0, this.tableConfig().pagination.pageSize, this.searchQuery(), status);
+  }
+
   public onSearchChange(query: string): void {
     this.searchQuery.set(query);
     this.tableConfig.update((c) => ({
       ...c,
       pagination: { ...c.pagination, pageIndex: 0 },
     }));
-    this.loadUsers(0, this.tableConfig().pagination.pageSize, query);
+    this.loadUsers(0, this.tableConfig().pagination.pageSize, query, this.statusFilter());
   }
 
   public openCreateDrawer(): void {
@@ -105,13 +115,13 @@ export class UsersHomePage {
         pageSize: event.pageSize,
       },
     }));
-    this.loadUsers(event.pageIndex, event.pageSize, this.searchQuery());
+    this.loadUsers(event.pageIndex, event.pageSize, this.searchQuery(), this.statusFilter());
   }
 
-  public loadUsers(page: number, pageSize: number, search?: string): void {
+  public loadUsers(page: number, pageSize: number, search?: string, status?: UserStatus): void {
     this.isLoading.set(true);
     this._usersApiService
-      .listUsers(undefined, undefined, search || undefined, page + 1, pageSize)
+      .listUsers(status, undefined, search || undefined, page + 1, pageSize)
       .subscribe({
         next: (result) => {
           this.users.set(result.items ?? []);
