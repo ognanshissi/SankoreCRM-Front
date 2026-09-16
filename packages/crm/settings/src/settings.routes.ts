@@ -55,6 +55,11 @@ const settingsRoutes: Routes = [
       import('./containers/products/edit-product/edit-product'),
   },
   {
+    path: 'audit',
+    loadComponent: () =>
+      import('./containers/audit/audit-homepage/audit-homepage'),
+  },
+  {
     path: 'roles',
     loadComponent: () =>
       import('./containers/roles/roles-homepage/roles-homepage'),

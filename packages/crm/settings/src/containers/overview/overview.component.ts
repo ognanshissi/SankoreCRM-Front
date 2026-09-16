@@ -208,6 +208,21 @@ export class OverviewComponent {
       ],
     },
     {
+      title: 'Sécurité & Conformité',
+      type: 'group',
+      id: 'security_compliance',
+      description: "Supervision des activités et traçabilité des actions sur l'organisation",
+      children: [
+        {
+          title: "Journal d'audit",
+          type: 'basic',
+          id: 'security_audit',
+          link: '/settings/audit',
+          description: "Consulter l'historique des actions effectuées par les utilisateurs",
+        },
+      ],
+    },
+    {
       title: 'Réglages de compte',
       type: 'group',
       id: 'account_settings',
