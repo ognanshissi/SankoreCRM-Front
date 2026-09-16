@@ -18,10 +18,10 @@
 </div>
 
 <!-- Table (built-in search via searchInputChange) -->
-<tas-card>
-  <tas-table
+<tas-table
     [data]="agencies()"
     [config]="tableConfig()"
+    [hasCaption]="true"
     [isLoading]="isLoading()"
     (searchInputChange)="onSearchChange($event)"
     (pageEventChange)="onPageChange($event)"
@@ -109,4 +109,3 @@
       </tr>
     </ng-template>
   </tas-table>
-</tas-card>

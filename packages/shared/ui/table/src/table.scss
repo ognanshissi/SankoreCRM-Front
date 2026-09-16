@@ -1,5 +1,8 @@
 @reference "../../tailwind-ref.css";
 
+.mat-mdc-paginator {
+  background-color: var(--tas-color-white) !important;
+}
 tas-table {
   thead > tr {
     th {

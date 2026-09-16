@@ -32,10 +32,10 @@
 </div>
 
 <!-- Table -->
-<tas-card>
-  <tas-table
+<tas-table
     [data]="users()"
     [config]="tableConfig()"
+    [hasCaption]="true"
     [isLoading]="isLoading()"
     (pageEventChange)="onPageChange($event)"
     (searchInputChange)="onSearchChange($event)"
@@ -137,4 +137,3 @@
       </tr>
     </ng-template>
   </tas-table>
-</tas-card>

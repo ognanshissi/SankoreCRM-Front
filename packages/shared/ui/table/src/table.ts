@@ -29,6 +29,7 @@ import { TasIcon } from '@talisoft/ui/icon';
 import { TasInput } from '@talisoft/ui/input';
 import { TasTitle } from '@talisoft/ui/title';
 import { TasText } from '@talisoft/ui/text';
+import { TasCard } from '../../card';
 
 export const DEFAULT_TABLE_CONFIG: TableConfig = {
   property: 'entity',
@@ -59,6 +60,7 @@ export const DEFAULT_TABLE_CONFIG: TableConfig = {
     AsyncPipe,
     TasIcon,
     TasSpinner,
+    TasCard,
   ],
   encapsulation: ViewEncapsulation.None,
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -73,6 +75,7 @@ export class TasTable<T extends TableEntity>
   public isLoading = input<boolean>(false);
 
   public title = input<string>();
+  public hasCaption = input<boolean>(false);
 
   public selectionItemsChange = output<T[]>();
 

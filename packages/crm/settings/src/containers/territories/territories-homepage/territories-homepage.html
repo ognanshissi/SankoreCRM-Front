@@ -39,8 +39,7 @@
 </div>
 
 <!-- Table -->
-<tas-card>
-  <tas-table
+<tas-table
     [data]="filteredTerritories()"
     [config]="tableConfig()"
     [isLoading]="isLoading()"
@@ -101,7 +100,7 @@
 
         <!-- Radius -->
         <td class="text-sm text-slate-600">
-          @if (item.rayonKm != null) {
+          @if (item.rayonKm !== null) {
             <span>{{ item.rayonKm }} <span class="text-slate-400">km</span></span>
           } @else {
             <span class="text-slate-400">—</span>
@@ -140,4 +139,3 @@
       </tr>
     </ng-template>
   </tas-table>
-</tas-card>

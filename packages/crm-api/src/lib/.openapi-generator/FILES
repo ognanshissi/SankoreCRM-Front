@@ -12,6 +12,7 @@ api/email-templates.service.ts
 api/health.service.ts
 api/leads.service.ts
 api/notification-settings.service.ts
+api/permissions.service.ts
 api/products.service.ts
 api/roles.service.ts
 api/territories.service.ts
@@ -63,6 +64,8 @@ model/login-result.interface.ts
 model/models.ts
 model/move-agency-request.interface.ts
 model/notification-settings-dto.interface.ts
+model/permission-dto.interface.ts
+model/permission-group-dto.interface.ts
 model/problem-details.interface.ts
 model/product-dto.interface.ts
 model/refresh-token-request.interface.ts

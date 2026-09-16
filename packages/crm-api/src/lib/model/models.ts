@@ -36,6 +36,8 @@ export * from './login-request.interface';
 export * from './login-result.interface';
 export * from './move-agency-request.interface';
 export * from './notification-settings-dto.interface';
+export * from './permission-dto.interface';
+export * from './permission-group-dto.interface';
 export * from './problem-details.interface';
 export * from './product-dto.interface';
 export * from './refresh-token-request.interface';
