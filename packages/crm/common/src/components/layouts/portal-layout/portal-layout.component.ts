@@ -54,6 +54,13 @@ export class PortalLayoutComponent implements OnInit {
         link: '/tasks/my-day',
       },
       {
+        id: 'my-queue',
+        icon: 'feather:inbox',
+        title: 'Ma file',
+        type: 'basic',
+        link: '/settings/workflows/ma-file',
+      },
+      {
         id: 'contacts',
         icon: 'feather:phone',
         title: 'leads & contacts',

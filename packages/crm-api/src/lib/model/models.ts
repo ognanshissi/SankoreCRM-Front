@@ -80,6 +80,7 @@ export * from './update-email-template-request.interface';
 export * from './update-notification-settings-command.interface';
 export * from './update-product-request.interface';
 export * from './update-role-request.interface';
+export * from './update-step-request.interface';
 export * from './update-template-request.interface';
 export * from './update-territory-request.interface';
 export * from './update-user-request.interface';

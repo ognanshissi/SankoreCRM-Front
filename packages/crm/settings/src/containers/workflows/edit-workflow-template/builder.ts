@@ -16,7 +16,7 @@ import { TasIcon } from '@talisoft/ui/icon';
 import { TasSpinner } from '@talisoft/ui/spinner';
 import { SnackbarService } from '@talisoft/ui/snackbar';
 import { ConfirmDialogService } from '@talisoft/ui/confirm-dialog';
-import { ActionDto, ActionType, TransitionDto, WorkflowTemplatesApiService } from '@sankore/crm-api';
+import { ActionDto, ActionType, TransitionDto, UpdateStepRequest, WorkflowTemplatesApiService } from '@sankore/crm-api';
 import { ACTION_TYPE_OPTIONS, actionTypeLabel } from '../workflow-shared';
 
 // ─── Domain Model ────────────────────────────────────────────────────────────
@@ -37,6 +37,9 @@ export interface CanvasState {
   name: string;
   type: StateType;
   position: { x: number; y: number };
+  description: string | null;
+  approverRoleCode: string | null;
+  timeoutHours: number | null;
 }
 
 export interface CanvasTransition {
@@ -99,6 +102,7 @@ export class WorkflowBuilderPage implements OnInit {
   // ── Loading ───────────────────────────────────────────────────────────────
   public isLoading = signal(true);
   public isSaving = signal(false);
+  public isUpdatingState = signal(false);
 
   // ── Canvas data ──────────────────────────────────────────────────────────
   public states = signal<CanvasState[]>([]);
@@ -136,10 +140,54 @@ export class WorkflowBuilderPage implements OnInit {
   public readonly ActionType = ActionType;
   public readonly actionTypeLabel = actionTypeLabel;
 
+  // ── New state form (WF-006) ───────────────────────────────────────────────
+  public pendingNewState = signal<{ type: StateType } | null>(null);
+  public newStateName = signal('');
+  public newStateDescription = signal('');
+  public newStateRole = signal('');
+  public newStateTimeoutHours = signal('');
+
+  // ── Type edit tracking (WF-007) ───────────────────────────────────────────
+  private _originalStateType: StateType | null = null;
+  public hasTypeChange = signal(false);
+
+  // ── Inline state editing (P4) ─────────────────────────────────────────────
+  public editStateName = signal('');
+  public editStateDescription = signal('');
+  public editStateRole = signal('');
+  public editStateTimeout = signal('');
+
   // ── Computed ─────────────────────────────────────────────────────────────
   public readonly NODE_W = NODE_W;
   public readonly NODE_H = NODE_H;
   public readonly STATE_TYPE_META = STATE_TYPE_META;
+
+  /** Inline validation for the creation form — null means no error. */
+  public newStateNameError = computed((): string | null => {
+    if (!this.pendingNewState()) return null;
+    const v = this.newStateName().trim();
+    if (!v) return 'Le nom est obligatoire.';
+    if (v.length < 2) return 'Au moins 2 caractères.';
+    return null;
+  });
+
+  public newStateTimeoutError = computed((): string | null => {
+    const v = this.newStateTimeoutHours();
+    if (!v) return null; // field is optional
+    const n = Number(v);
+    if (isNaN(n) || n < 1 || !Number.isInteger(n)) return 'Entier positif requis.';
+    return null;
+  });
+
+  /** True when the creation form is valid and can be submitted. */
+  public newStateFormValid = computed(
+    () => !!this.newStateName().trim() && !this.newStateNameError() && !this.newStateTimeoutError(),
+  );
+
+  /** Warn when the user is about to add a second Initial state. */
+  public isDuplicateInitial = computed(
+    () => this.pendingNewState()?.type === 'Initial' && this.states().some((s) => s.type === 'Initial'),
+  );
 
   public selectedState = computed(() => this.states().find((s) => s.id === this.selectedStateId()) ?? null);
   public selectedTransition = computed(() => this.transitions().find((t) => t.id === this.selectedTransitionId()) ?? null);
@@ -218,6 +266,9 @@ export class WorkflowBuilderPage implements OnInit {
             name: step.name ?? 'Étape',
             type: (meta.types?.[step.id!] as StateType) ?? 'Normal',
             position: meta.positions?.[step.id!] ?? { x: 80 + i * 260, y: 200 },
+            description: step.description ?? null,
+            approverRoleCode: step.approverRoleCode ?? null,
+            timeoutHours: step.timeoutHours ?? null,
           })),
         );
         this.transitions.set(this._mapTransitions(transitions ?? [], meta));
@@ -247,37 +298,81 @@ export class WorkflowBuilderPage implements OnInit {
     });
   }
 
-  // ── Palette: add state ────────────────────────────────────────────────────
+  // ── Palette: add state (WF-006) ───────────────────────────────────────────
 
-  public addState(type: StateType): void {
+  /** Opens the creation form in the right panel without touching the API yet. */
+  public openNewStateForm(type: StateType): void {
+    this.selectedStateId.set(null);
+    this.selectedTransitionId.set(null);
+    this.selectedTransitionActions.set([]);
+    this._originalStateType = null;
+    this.hasTypeChange.set(false);
+    this.newStateName.set(STATE_TYPE_META[type].label);
+    this.newStateDescription.set('');
+    this.newStateRole.set('');
+    this.newStateTimeoutHours.set('');
+    this.pendingNewState.set({ type });
+  }
+
+  public cancelNewState(): void {
+    this.pendingNewState.set(null);
+  }
+
+  /** Submits the creation form and calls the API. */
+  public confirmAddState(): void {
+    const pending = this.pendingNewState();
+    if (!pending) return;
+    const name = this.newStateName().trim();
+    if (!name) return;
+
     const vp = this.viewportRef.nativeElement;
     const cx = (vp.clientWidth / 2 - this.viewX()) / this.viewScale();
     const cy = (vp.clientHeight / 2 - this.viewY()) / this.viewScale();
-    const offset = this.states().filter((s) => s.type === type).length * 24;
+    const offset = this.states().filter((s) => s.type === pending.type).length * 24;
     const pos = { x: cx - NODE_W / 2 + offset, y: cy - NODE_H / 2 + offset };
-    const name = STATE_TYPE_META[type].label;
     const order = this.states().length + 1;
+    const timeoutHours = this.newStateTimeoutHours() ? +this.newStateTimeoutHours() : null;
 
     this.isSaving.set(true);
-    this._api.addWorkflowStep(this.id(), { order, name }).subscribe({
-      next: (stepId) => {
-        const meta = this._loadMeta();
-        meta.positions[stepId] = pos;
-        meta.types[stepId] = type;
-        this._saveMeta(meta);
-        this.states.update((ss) => [
-          ...ss,
-          { id: stepId, code: `STEP_${order}`, name, type, position: pos },
-        ]);
-        this.selectedStateId.set(stepId);
-        this.selectedTransitionId.set(null);
-        this.isSaving.set(false);
-      },
-      error: () => {
-        this._snackbar.error('Erreur', "Impossible d'ajouter l'étape.");
-        this.isSaving.set(false);
-      },
-    });
+    this._api
+      .addWorkflowStep(this.id(), {
+        order,
+        name,
+        description: this.newStateDescription().trim() || null,
+        approverRoleCode: this.newStateRole().trim() || null,
+        timeoutHours,
+      })
+      .subscribe({
+        next: (stepId) => {
+          const meta = this._loadMeta();
+          meta.positions[stepId] = pos;
+          meta.types[stepId] = pending.type;
+          this._saveMeta(meta);
+          this.states.update((ss) => [
+            ...ss,
+            {
+              id: stepId,
+              code: `STEP_${order}`,
+              name,
+              type: pending.type,
+              position: pos,
+              description: this.newStateDescription().trim() || null,
+              approverRoleCode: this.newStateRole().trim() || null,
+              timeoutHours,
+            },
+          ]);
+          this.selectedStateId.set(stepId);
+          this.selectedTransitionId.set(null);
+          this.pendingNewState.set(null);
+          this._originalStateType = pending.type;
+          this.hasTypeChange.set(false);
+          this.isSaving.set(false);
+        },
+        error: () => {
+          this._snackbar.error('Erreur', "Impossible d'ajouter l'étape.");
+          this.isSaving.set(false);
+        },
+      });
   }
 
   // ── Selection ─────────────────────────────────────────────────────────────
@@ -286,6 +381,15 @@ export class WorkflowBuilderPage implements OnInit {
     event.stopPropagation();
     this.selectedStateId.set(id);
     this.selectedTransitionId.set(null);
+    this.pendingNewState.set(null);
+    const state = this.states().find((s) => s.id === id);
+    this._originalStateType = state?.type ?? null;
+    this.hasTypeChange.set(false);
+    // Pre-fill inline edit fields
+    this.editStateName.set(state?.name ?? '');
+    this.editStateDescription.set(state?.description ?? '');
+    this.editStateRole.set(state?.approverRoleCode ?? '');
+    this.editStateTimeout.set(state?.timeoutHours != null ? String(state.timeoutHours) : '');
   }
 
   public selectTransition(id: string, event: MouseEvent): void {
@@ -302,6 +406,13 @@ export class WorkflowBuilderPage implements OnInit {
     this.selectedStateId.set(null);
     this.selectedTransitionId.set(null);
     this.selectedTransitionActions.set([]);
+    this.pendingNewState.set(null);
+    this._originalStateType = null;
+    this.hasTypeChange.set(false);
+    this.editStateName.set('');
+    this.editStateDescription.set('');
+    this.editStateRole.set('');
+    this.editStateTimeout.set('');
   }
 
   // ── Deletion ──────────────────────────────────────────────────────────────
@@ -309,9 +420,33 @@ export class WorkflowBuilderPage implements OnInit {
   public deleteSelectedState(): void {
     const id = this.selectedStateId();
     if (!id) return;
+
+    const state = this.states().find((s) => s.id === id);
+
+    // WF-008: Block deletion of the last Initial state
+    if (state?.type === 'Initial' && this.states().filter((s) => s.type === 'Initial').length === 1) {
+      this._snackbar.error(
+        'Suppression impossible',
+        'Le workflow doit conserver au moins un état initial.',
+      );
+      return;
+    }
+
+    // WF-008: List affected transitions by name in the confirm message
+    const affected = this.transitions().filter(
+      (t) => t.sourceStateId === id || t.targetStateId === id,
+    );
+    const transitionLines = affected
+      .map((t) => `· ${this.stateName(t.sourceStateId)} → ${this.stateName(t.targetStateId)}`)
+      .join('\n');
+    const message =
+      affected.length > 0
+        ? `L'étape "${state?.name}" sera supprimée ainsi que ${affected.length} transition${affected.length > 1 ? 's' : ''} :\n\n${transitionLines}`
+        : `L'étape "${state?.name}" sera définitivement supprimée.`;
+
     this._confirm.confirm({
       title: "Supprimer l'étape",
-      message: 'Cette étape et toutes ses transitions seront supprimées. Continuer ?',
+      message,
       closable: true,
       acceptButtonProps: { label: 'Supprimer', theme: 'warn' },
       rejectButtonProps: { label: 'Annuler' },
@@ -354,6 +489,93 @@ export class WorkflowBuilderPage implements OnInit {
 
   // ── Property updates ──────────────────────────────────────────────────────
 
+  /** Cancel a pending type change and revert the node to its original type (WF-007). */
+  public cancelTypeEdit(): void {
+    const id = this.selectedStateId();
+    if (!id || !this._originalStateType) return;
+    const original = this._originalStateType;
+    this.states.update((ss) => ss.map((s) => (s.id === id ? { ...s, type: original } : s)));
+    const meta = this._loadMeta();
+    meta.types[id] = original;
+    this._saveMeta(meta);
+    this.hasTypeChange.set(false);
+  }
+
+  // ── Inline state field saves (P4) ─────────────────────────────────────────
+
+  public saveStateName(name: string): void {
+    const id = this.selectedStateId();
+    const state = this.states().find((s) => s.id === id);
+    if (!id || !state || !name.trim() || name.trim() === state.name) return;
+    this._patchState(id, state, { name: name.trim() });
+  }
+
+  public saveStateDescription(description: string): void {
+    const id = this.selectedStateId();
+    const state = this.states().find((s) => s.id === id);
+    if (!id || !state || description === (state.description ?? '')) return;
+    this._patchState(id, state, { description: description.trim() || null });
+  }
+
+  public saveStateRole(role: string): void {
+    const id = this.selectedStateId();
+    const state = this.states().find((s) => s.id === id);
+    if (!id || !state || role === (state.approverRoleCode ?? '')) return;
+    this._patchState(id, state, { approverRoleCode: role.trim() || null });
+  }
+
+  public saveStateTimeout(val: string): void {
+    const id = this.selectedStateId();
+    const state = this.states().find((s) => s.id === id);
+    if (!id || !state) return;
+    const n = val ? Number(val) : null;
+    if (n === state.timeoutHours) return;
+    if (val && (isNaN(n!) || n! < 1 || !Number.isInteger(n!))) return;
+    this._patchState(id, state, { timeoutHours: n });
+  }
+
+  private _patchState(id: string, state: CanvasState, patch: UpdateStepRequest): void {
+    if (this.isUpdatingState()) return;
+    this.isUpdatingState.set(true);
+    const payload: UpdateStepRequest = {
+      name: state.name,
+      description: state.description,
+      approverRoleCode: state.approverRoleCode,
+      timeoutHours: state.timeoutHours,
+      ...patch,
+    };
+    this._api.updateWorkflowStep(this.id(), id, payload).subscribe({
+      next: () => {
+        this.states.update((canvas) =>
+          canvas.map((s) =>
+            s.id === id
+              ? {
+                  ...s,
+                  name: patch.name ?? s.name,
+                  description: patch.description !== undefined ? patch.description : s.description,
+                  approverRoleCode: patch.approverRoleCode !== undefined ? patch.approverRoleCode : s.approverRoleCode,
+                  timeoutHours: patch.timeoutHours !== undefined ? patch.timeoutHours : s.timeoutHours,
+                }
+              : s,
+          ),
+        );
+        this.isUpdatingState.set(false);
+      },
+      error: () => {
+        this._snackbar.error('Erreur', "Impossible de mettre à jour l'étape.");
+        // Revert edit fields to stored state values
+        const s = this.states().find((s) => s.id === id);
+        if (s) {
+          this.editStateName.set(s.name ?? '');
+          this.editStateDescription.set(s.description ?? '');
+          this.editStateRole.set(s.approverRoleCode ?? '');
+          this.editStateTimeout.set(s.timeoutHours != null ? String(s.timeoutHours) : '');
+        }
+        this.isUpdatingState.set(false);
+      },
+    });
+  }
+
   public updateTransitionName(name: string): void {
     const id = this.selectedTransitionId();
     if (!id || id.startsWith('temp-')) return;
@@ -370,6 +592,7 @@ export class WorkflowBuilderPage implements OnInit {
     const meta = this._loadMeta();
     meta.types[id] = type;
     this._saveMeta(meta);
+    this.hasTypeChange.set(type !== this._originalStateType);
   }
 
   // ── Node drag ─────────────────────────────────────────────────────────────
@@ -557,6 +780,9 @@ export class WorkflowBuilderPage implements OnInit {
     if (event.code === 'Space') {
       event.preventDefault();
       this._spaceDown = true;
+    }
+    if (event.key === 'Escape') {
+      this.clearSelection(); // also cancels pendingNewState
     }
     if (event.key === 'Delete' || event.key === 'Backspace') {
       if (this.selectedStateId()) this.deleteSelectedState();

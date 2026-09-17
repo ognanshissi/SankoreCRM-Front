@@ -1,6 +1,6 @@
 import { Component, computed, effect, inject, input, signal } from '@angular/core';
 import { form, FormField, FormRoot, required, submit } from '@angular/forms/signals';
-import { catchError, EMPTY, firstValueFrom, forkJoin } from 'rxjs';
+import { catchError, EMPTY, firstValueFrom, forkJoin, map } from 'rxjs';
 import { TasCard } from '@talisoft/ui/card';
 import { Button } from '@talisoft/ui/button';
 import { TasFormField, TasLabel, TasError } from '@talisoft/ui/form-field';
@@ -14,6 +14,8 @@ import {
   RuleDto,
   RuleOperator,
   RuleType,
+  UpdateStepRequest,
+  WorkflowStepDto,
   WorkflowTemplateDto,
   WorkflowTemplatesApiService,
 } from '@sankore/crm-api';
@@ -27,6 +29,8 @@ import {
   ruleTypeLabel,
 } from '../workflow-shared';
 
+// ─── Form models ─────────────────────────────────────────────────────────────
+
 class AddStepFormModel {
   public name!: string;
   public description!: string;
@@ -39,6 +43,22 @@ class AddStepFormModel {
     m.description = '';
     m.approverRoleCode = '';
     m.timeoutHours = null;
+    return m;
+  }
+}
+
+class EditStepFormModel {
+  public name!: string;
+  public description!: string;
+  public approverRoleCode!: string;
+  public timeoutHours!: number | null;
+
+  public static from(step: WorkflowStepDto): EditStepFormModel {
+    const m = new EditStepFormModel();
+    m.name = step.name ?? '';
+    m.description = step.description ?? '';
+    m.approverRoleCode = step.approverRoleCode ?? '';
+    m.timeoutHours = step.timeoutHours ?? null;
     return m;
   }
 }
@@ -92,7 +112,7 @@ class AddStepFormModel {
               <div class="flex items-start gap-3 p-3 rounded-lg border border-slate-200 bg-slate-50 mb-4">
                 <tas-icon iconName="feather:sliders" iconSize="sm" class="text-slate-400 flex-shrink-0 mt-0.5"></tas-icon>
                 <p class="text-sm text-slate-500">
-                  Ce modèle est actif. Désactivez-le pour ajouter ou retirer des étapes.
+                  Ce modèle est actif. Désactivez-le pour modifier les étapes.
                 </p>
               </div>
             }
@@ -103,6 +123,7 @@ class AddStepFormModel {
               <div class="flex flex-col">
                 @for (step of steps(); track step.id; let last = $last) {
                   <div class="flex gap-3">
+                    <!-- Timeline connector -->
                     <div class="flex flex-col items-center">
                       <div class="w-7 h-7 rounded-full bg-primary/10 text-primary text-xs font-semibold flex items-center justify-center flex-shrink-0">
                         {{ step.order }}
@@ -111,42 +132,127 @@ class AddStepFormModel {
                         <div class="w-px flex-1 bg-slate-200 my-1"></div>
                       }
                     </div>
-                    <div class="flex-1 pb-5" [class.pb-0]="last">
-                      <div class="flex items-start justify-between gap-3">
-                        <div class="min-w-0">
-                          <p class="font-medium text-slate-800">{{ step.name }}</p>
-                          @if (step.description) {
-                            <p class="text-sm text-slate-500 mt-0.5">{{ step.description }}</p>
-                          }
-                          <div class="flex items-center gap-3 mt-2 text-xs text-slate-500">
-                            <span class="inline-flex items-center gap-1">
-                              <tas-icon iconName="feather:user-check" iconSize="sm"></tas-icon>
-                              {{ roleLabel(step.approverRoleCode) }}
-                            </span>
-                            @if (step.timeoutHours) {
-                              <span class="inline-flex items-center gap-1">
-                                <tas-icon iconName="feather:clock" iconSize="sm"></tas-icon>
-                                {{ step.timeoutHours }}h
-                              </span>
-                            }
-                          </div>
-                        </div>
-                        @if (!template()?.isActive) {
-                          <button
-                            tas-button
-                            iconButton
-                            type="button"
-                            title="Supprimer l'étape"
-                            [disabled]="removingStepId() === step.id"
-                            (click)="removeStep(step.id)"
-                            class="shrink-0"
-                          >
-                            <tas-icon iconName="feather:trash-2" iconSize="sm" class="text-functional-error"></tas-icon>
-                          </button>
-                        }
-                      </div>
 
-                      <!-- Rules section -->
+                    <!-- Step body -->
+                    <div class="flex-1 pb-5" [class.pb-0]="last">
+
+                      <!-- ── Edit form (inline) ── -->
+                      @if (editingStepId() === step.id) {
+                        <form
+                          [formRoot]="editStepFormSchema"
+                          class="flex flex-col gap-4 p-4 rounded-lg border border-primary/20 bg-primary/5 mb-2"
+                        >
+                          <div class="flex items-center justify-between">
+                            <p class="text-sm font-medium text-slate-700">Modifier l'étape</p>
+                            <button
+                              type="button"
+                              class="text-slate-400 hover:text-slate-600 transition-colors"
+                              title="Annuler"
+                              (click)="cancelEditStepForm()"
+                            >
+                              <tas-icon iconName="feather:x" style="font-size:14px"></tas-icon>
+                            </button>
+                          </div>
+
+                          <tas-form-field>
+                            <tas-label>Nom <span class="text-functional-error">*</span></tas-label>
+                            <input tasInput type="text" placeholder="Ex : Validation manager" [formField]="editStepFormSchema.name" />
+                            @if (editStepFormSchema.name().touched() && editStepFormSchema.name().invalid()) {
+                              <tas-error>{{ editStepFormSchema.name().errors()[0].message }}</tas-error>
+                            }
+                          </tas-form-field>
+
+                          <tas-form-field>
+                            <tas-label>Description</tas-label>
+                            <input tasInput type="text" placeholder="Description de l'étape" [formField]="editStepFormSchema.description" />
+                          </tas-form-field>
+
+                          <div class="grid grid-cols-2 gap-3">
+                            <tas-form-field>
+                              <tas-label>Rôle approbateur <span class="text-functional-error">*</span></tas-label>
+                              <tas-select
+                                [options]="roleOptions()"
+                                placeholder="Sélectionnez un rôle"
+                                [formField]="editStepFormSchema.approverRoleCode"
+                              ></tas-select>
+                              @if (editStepFormSchema.approverRoleCode().touched() && editStepFormSchema.approverRoleCode().invalid()) {
+                                <tas-error>{{ editStepFormSchema.approverRoleCode().errors()[0].message }}</tas-error>
+                              }
+                            </tas-form-field>
+
+                            <tas-form-field>
+                              <tas-label>Délai (heures)</tas-label>
+                              <input tasInput type="number" placeholder="Optionnel" [formField]="editStepFormSchema.timeoutHours" />
+                            </tas-form-field>
+                          </div>
+
+                          <div class="flex justify-end gap-2 pt-1">
+                            <button tas-text-button type="button" (click)="cancelEditStepForm()">Annuler</button>
+                            <button
+                              tas-raised-button
+                              color="primary"
+                              type="button"
+                              (click)="handleEditStep(step.id!)"
+                              [disabled]="editStepFormSchema().invalid() || isEditingStep()"
+                              [isLoading]="isEditingStep()"
+                            >
+                              Enregistrer
+                            </button>
+                          </div>
+                        </form>
+                      } @else {
+
+                        <!-- ── Normal display ── -->
+                        <div class="flex items-start justify-between gap-3">
+                          <div class="min-w-0">
+                            <p class="font-medium text-slate-800">{{ step.name }}</p>
+                            @if (step.description) {
+                              <p class="text-sm text-slate-500 mt-0.5">{{ step.description }}</p>
+                            }
+                            <div class="flex items-center gap-3 mt-2 text-xs text-slate-500">
+                              <span class="inline-flex items-center gap-1">
+                                <tas-icon iconName="feather:user-check" iconSize="sm"></tas-icon>
+                                {{ roleLabel(step.approverRoleCode) }}
+                              </span>
+                              @if (step.timeoutHours) {
+                                <span class="inline-flex items-center gap-1">
+                                  <tas-icon iconName="feather:clock" iconSize="sm"></tas-icon>
+                                  {{ step.timeoutHours }}h
+                                </span>
+                              }
+                            </div>
+                          </div>
+                          @if (!template()?.isActive) {
+                            <div class="flex items-center gap-1 shrink-0">
+                              <!-- Edit button -->
+                              <button
+                                tas-button
+                                iconButton
+                                type="button"
+                                title="Modifier l'étape"
+                                [disabled]="removingStepId() === step.id || isEditingStep()"
+                                (click)="openEditStepForm(step)"
+                              >
+                                <tas-icon iconName="feather:edit-2" iconSize="sm" class="text-slate-400"></tas-icon>
+                              </button>
+                              <!-- Delete button -->
+                              <button
+                                tas-button
+                                iconButton
+                                type="button"
+                                title="Supprimer l'étape"
+                                [disabled]="removingStepId() === step.id || isEditingStep()"
+                                (click)="removeStep(step.id)"
+                              >
+                                <tas-icon iconName="feather:trash-2" iconSize="sm" class="text-functional-error"></tas-icon>
+                              </button>
+                            </div>
+                          }
+                        </div>
+
+                      }
+
+                      <!-- Rules section (always visible) -->
                       <div class="mt-3">
                         <button
                           type="button"
@@ -171,7 +277,6 @@ class AddStepFormModel {
                         @if (expandedStepId() === step.id) {
                           <div class="mt-2 ml-2 pl-3 border-l-2 border-slate-100">
 
-                            <!-- Rule list -->
                             @if (rulesForStep(step.id!).length === 0) {
                               <p class="text-xs text-slate-400 mb-2">Aucune règle définie.</p>
                             } @else {
@@ -206,7 +311,6 @@ class AddStepFormModel {
                               </div>
                             }
 
-                            <!-- Add rule form -->
                             @if (!template()?.isActive) {
                               @if (ruleFormStepId() === step.id) {
                                 <div class="flex flex-col gap-2 p-3 rounded-md border border-slate-200 bg-white">
@@ -292,12 +396,14 @@ class AddStepFormModel {
                           </div>
                         }
                       </div>
+
                     </div>
                   </div>
                 }
               </div>
             }
 
+            <!-- Add step form -->
             @if (showAddStepForm()) {
               <form [formRoot]="addStepFormSchema" class="flex flex-col gap-4 mt-2 p-4 rounded-lg border border-slate-200 bg-slate-50">
                 <p class="text-sm font-medium text-slate-600">Nouvelle étape — {{ steps().length + 1 }}</p>
@@ -375,6 +481,15 @@ export class WorkflowStepsPage {
   public template = signal<WorkflowTemplateDto | null>(null);
   public roleOptions = signal<{ label: string; value: string }[]>([]);
 
+  // ── Edit step (WF-007 P2) ─────────────────────────────────────────────────
+  public editingStepId = signal<string | null>(null);
+  public isEditingStep = signal(false);
+  public editStepModel = signal(EditStepFormModel.from({} as WorkflowStepDto));
+  public editStepFormSchema = form(this.editStepModel, (schema) => {
+    required(schema.name, { message: "Le nom de l'étape est obligatoire" });
+    required(schema.approverRoleCode, { message: 'Le rôle approbateur est obligatoire' });
+  });
+
   // ── Rules ─────────────────────────────────────────────────────────────────
   public expandedStepId = signal<string | null>(null);
   public stepRulesMap = signal<Record<string, RuleDto[]>>({});
@@ -419,7 +534,7 @@ export class WorkflowStepsPage {
     });
   }
 
-  // ── Step CRUD ─────────────────────────────────────────────────────────────
+  // ── Add step ──────────────────────────────────────────────────────────────
 
   public toggleAddStepForm(): void {
     this.addStepModel.set(AddStepFormModel.instantiate());
@@ -454,32 +569,118 @@ export class WorkflowStepsPage {
     });
   }
 
+  // ── Edit step (WF-007 P2) — remove + recreate + migrate ──────────────────
+
+  public openEditStepForm(step: WorkflowStepDto): void {
+    this.editStepModel.set(EditStepFormModel.from(step));
+    this.editingStepId.set(step.id!);
+    this.showAddStepForm.set(false);
+  }
+
+  public cancelEditStepForm(): void {
+    this.editingStepId.set(null);
+  }
+
+  public handleEditStep(stepId: string): void {
+    submit(this.editStepFormSchema, (field) => {
+      const value = field()?.value();
+      this.isEditingStep.set(true);
+      const payload: UpdateStepRequest = {
+        name: value.name,
+        description: value.description || null,
+        approverRoleCode: value.approverRoleCode || null,
+        timeoutHours: value.timeoutHours || null,
+      };
+      return firstValueFrom(this._workflowTemplatesApiService
+        .updateWorkflowStep(this.id(), stepId, payload)
+        .pipe(
+          catchError(() => {
+            this._snackbarService.error('Erreur', 'La mise à jour a échoué.');
+            this.isEditingStep.set(false);
+            return EMPTY;
+          }),
+          map(response => {
+            this._snackbarService.success('Succès', 'Étape mise à jour avec succès.');
+            this.isEditingStep.set(false);
+            this.editingStepId.set(null);
+            if (this.expandedStepId() === stepId) {
+              this._loadRules(stepId);
+            }
+            this._reload();
+          })
+        ))
+    });
+  }
+
+  // ── Delete step ───────────────────────────────────────────────────────────
+
   public removeStep(stepId: string | undefined): void {
     if (!stepId) return;
-    this._confirmDialogService.confirm({
-      title: "Supprimer l'étape",
-      message: 'Cette étape sera retirée du modèle. Continuer ?',
-      closable: true,
-      acceptButtonProps: { label: 'Supprimer', theme: 'warn' },
-      rejectButtonProps: { label: 'Annuler' },
-      accept: () => {
-        this.removingStepId.set(stepId);
-        this._workflowTemplatesApiService
-          .removeWorkflowStep(this.id(), stepId)
-          .pipe(
-            catchError(() => {
-              this._snackbarService.error('Erreur', "Impossible de supprimer l'étape.");
-              this.removingStepId.set(null);
-              return EMPTY;
-            }),
-          )
-          .subscribe(() => {
-            this._snackbarService.success('Succès', 'Étape supprimée avec succès.');
-            this.removingStepId.set(null);
-            this._reload();
-          });
-      },
-    });
+    const step = this.steps().find((s) => s.id === stepId);
+
+    // Load transitions first so the confirm message lists what will be removed
+    firstValueFrom(this._workflowTemplatesApiService.listWorkflowTransitions(this.id()))
+      .then((transitions) => {
+        const affected = (transitions ?? []).filter(
+          (t) => t.fromStateId === stepId || t.toStateId === stepId,
+        );
+        const transitionNote =
+          affected.length > 0
+            ? `\n\n${affected.length} transition${affected.length > 1 ? 's' : ''} liée${affected.length > 1 ? 's' : ''} seront également supprimées.`
+            : '';
+
+        this._confirmDialogService.confirm({
+          title: "Supprimer l'étape",
+          message: `L'étape "${step?.name}" sera retirée du modèle.${transitionNote}`,
+          closable: true,
+          acceptButtonProps: { label: 'Supprimer', theme: 'warn' },
+          rejectButtonProps: { label: 'Annuler' },
+          accept: () => {
+            this.removingStepId.set(stepId);
+            this._workflowTemplatesApiService
+              .removeWorkflowStep(this.id(), stepId)
+              .pipe(
+                catchError(() => {
+                  this._snackbarService.error('Erreur', "Impossible de supprimer l'étape.");
+                  this.removingStepId.set(null);
+                  return EMPTY;
+                }),
+              )
+              .subscribe(() => {
+                this._snackbarService.success('Succès', 'Étape supprimée avec succès.');
+                this.removingStepId.set(null);
+                this._reload();
+              });
+          },
+        });
+      })
+      .catch(() => {
+        // Fallback if transition load fails — still allow deletion
+        this._confirmDialogService.confirm({
+          title: "Supprimer l'étape",
+          message: `L'étape "${step?.name}" sera retirée du modèle. Continuer ?`,
+          closable: true,
+          acceptButtonProps: { label: 'Supprimer', theme: 'warn' },
+          rejectButtonProps: { label: 'Annuler' },
+          accept: () => {
+            this.removingStepId.set(stepId);
+            this._workflowTemplatesApiService
+              .removeWorkflowStep(this.id(), stepId)
+              .pipe(
+                catchError(() => {
+                  this._snackbarService.error('Erreur', "Impossible de supprimer l'étape.");
+                  this.removingStepId.set(null);
+                  return EMPTY;
+                }),
+              )
+              .subscribe(() => {
+                this._snackbarService.success('Succès', 'Étape supprimée avec succès.');
+                this.removingStepId.set(null);
+                this._reload();
+              });
+          },
+        });
+      });
   }
 
   public roleLabel(code: string | null | undefined): string {
@@ -510,10 +711,7 @@ export class WorkflowStepsPage {
   }
 
   public isNoValueOperator(op: RuleOperator | undefined): boolean {
-    if (op) {
-      return NO_VALUE_OPERATORS.includes(op);
-    }
-    return false;
+    return op !== undefined ? NO_VALUE_OPERATORS.includes(op) : false;
   }
 
   public addRule(stepId: string): void {

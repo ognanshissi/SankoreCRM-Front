@@ -83,7 +83,8 @@
         <button
           type="button"
           class="group relative flex items-center gap-2.5 w-full pr-3 py-2.5 text-sm text-left hover:bg-slate-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed overflow-hidden"
-          (click)="addState(type)"
+          [class.bg-slate-50]="pendingNewState()?.type === type"
+          (click)="openNewStateForm(type)"
           [disabled]="isLoading() || isSaving()"
           [title]="'Ajouter ' + STATE_TYPE_META[type].label"
         >
@@ -321,25 +322,184 @@
     </div><!-- /viewport -->
 
     <!-- ── Right properties panel ────────────────────────────────────────── -->
-    @if (selectedState() || selectedTransition()) {
+    @if (selectedState() || selectedTransition() || pendingNewState()) {
       <div class="w-60 border-l border-slate-200 bg-white shrink-0 overflow-y-auto">
+
+        <!-- New state creation form (WF-006) -->
+        @if (pendingNewState(); as pending) {
+          <div class="p-4">
+            <div class="flex items-center gap-2 mb-4">
+              <span class="w-2.5 h-2.5 rounded-full shrink-0" [ngClass]="STATE_TYPE_META[pending.type].color"></span>
+              <p class="text-sm font-semibold text-slate-700">Nouvel état</p>
+            </div>
+
+            <div class="flex flex-col gap-3">
+              <!-- Duplicate Initial warning -->
+              @if (isDuplicateInitial()) {
+                <div class="flex items-start gap-2 px-2.5 py-2 rounded-md bg-amber-50 border border-amber-200 text-xs text-amber-700">
+                  <tas-icon iconName="feather:alert-triangle" style="font-size:11px" class="shrink-0 mt-0.5"></tas-icon>
+                  <span>Un état initial existe déjà. En ajouter un second peut rendre le workflow ambigu.</span>
+                </div>
+              }
+
+              <div>
+                <label class="text-xs font-medium text-slate-400 mb-1 block">Nom <span class="text-red-400">*</span></label>
+                <input
+                  type="text"
+                  class="w-full px-2.5 py-1.5 text-sm rounded-md bg-white focus:outline-none focus:ring-1 transition-colors"
+                  [class.border]="!newStateNameError()"
+                  [class.border-slate-200]="!newStateNameError()"
+                  [class.focus\:ring-primary\/40]="!newStateNameError()"
+                  [class.focus\:border-primary\/40]="!newStateNameError()"
+                  [class.border-2]="!!newStateNameError()"
+                  [class.border-red-400]="!!newStateNameError()"
+                  [class.focus\:ring-red-300]="!!newStateNameError()"
+                  placeholder="ex : Validation KYC"
+                  [value]="newStateName()"
+                  (input)="newStateName.set($any($event.target).value)"
+                  autofocus
+                />
+                @if (newStateNameError()) {
+                  <p class="text-[10px] text-red-500 mt-1">{{ newStateNameError() }}</p>
+                }
+              </div>
+
+              <div>
+                <label class="text-xs font-medium text-slate-400 mb-1 block">Description</label>
+                <textarea
+                  class="w-full px-2.5 py-1.5 text-sm border border-slate-200 rounded-md bg-white focus:outline-none focus:ring-1 focus:ring-primary/40 focus:border-primary/40 transition-colors resize-none"
+                  rows="2"
+                  placeholder="Description (optionnel)"
+                  [value]="newStateDescription()"
+                  (input)="newStateDescription.set($any($event.target).value)"
+                ></textarea>
+              </div>
+
+              <div>
+                <label class="text-xs font-medium text-slate-400 mb-1 block">Rôle approbateur</label>
+                <input
+                  type="text"
+                  class="w-full px-2.5 py-1.5 text-sm border border-slate-200 rounded-md bg-white focus:outline-none focus:ring-1 focus:ring-primary/40 focus:border-primary/40 transition-colors"
+                  placeholder="ex : MANAGER"
+                  [value]="newStateRole()"
+                  (input)="newStateRole.set($any($event.target).value)"
+                />
+              </div>
+
+              <div>
+                <label class="text-xs font-medium text-slate-400 mb-1 block">Délai limite (heures)</label>
+                <input
+                  type="number"
+                  class="w-full px-2.5 py-1.5 text-sm rounded-md bg-white focus:outline-none focus:ring-1 transition-colors"
+                  [class.border]="!newStateTimeoutError()"
+                  [class.border-slate-200]="!newStateTimeoutError()"
+                  [class.focus\:ring-primary\/40]="!newStateTimeoutError()"
+                  [class.border-2]="!!newStateTimeoutError()"
+                  [class.border-red-400]="!!newStateTimeoutError()"
+                  placeholder="ex : 48"
+                  min="1"
+                  [value]="newStateTimeoutHours()"
+                  (input)="newStateTimeoutHours.set($any($event.target).value)"
+                />
+                @if (newStateTimeoutError()) {
+                  <p class="text-[10px] text-red-500 mt-1">{{ newStateTimeoutError() }}</p>
+                }
+              </div>
+            </div>
+
+            <div class="flex items-center gap-2 mt-4">
+              <button
+                type="button"
+                class="flex-1 px-3 py-1.5 rounded-md bg-primary text-white text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-40"
+                [disabled]="!newStateFormValid() || isSaving()"
+                (click)="confirmAddState()"
+              >
+                Ajouter
+              </button>
+              <button
+                type="button"
+                class="px-3 py-1.5 rounded-md border border-slate-200 text-sm text-slate-600 hover:bg-slate-50 transition-colors"
+                (click)="cancelNewState()"
+              >
+                Annuler
+              </button>
+            </div>
+          </div>
+        }
 
         <!-- State properties -->
         @if (selectedState(); as st) {
           <div class="p-4">
-            <div class="flex items-center gap-2 mb-4">
-              <span class="w-2.5 h-2.5 rounded-full shrink-0" [ngClass]="STATE_TYPE_META[st.type].color"></span>
-              <p class="text-sm font-semibold text-slate-700">Étape</p>
+            <div class="flex items-center justify-between gap-2 mb-4">
+              <div class="flex items-center gap-2">
+                <span class="w-2.5 h-2.5 rounded-full shrink-0" [ngClass]="STATE_TYPE_META[st.type].color"></span>
+                <p class="text-sm font-semibold text-slate-700">Étape</p>
+              </div>
+              @if (isUpdatingState()) {
+                <tas-spinner size="3" class="text-primary shrink-0"></tas-spinner>
+              }
             </div>
 
             <div class="flex flex-col gap-3">
+
+              <!-- Name (required) -->
               <div>
-                <label class="text-xs font-medium text-slate-400 mb-1 block">Nom</label>
-                <p class="px-2.5 py-1.5 bg-slate-50 rounded-md text-sm text-slate-700 font-medium truncate">
-                  {{ st.name }}
-                </p>
+                <label class="text-xs font-medium text-slate-400 mb-1 block">Nom <span class="text-red-400">*</span></label>
+                <input
+                  type="text"
+                  class="w-full px-2.5 py-1.5 text-sm border border-slate-200 rounded-md bg-white focus:outline-none focus:ring-1 focus:ring-primary/40 focus:border-primary/40 transition-colors disabled:opacity-50"
+                  [value]="editStateName()"
+                  (input)="editStateName.set($any($event.target).value)"
+                  (blur)="saveStateName(editStateName())"
+                  [disabled]="isUpdatingState()"
+                  placeholder="Nom de l'étape"
+                />
               </div>
 
+              <!-- Description (optional) -->
+              <div>
+                <label class="text-xs font-medium text-slate-400 mb-1 block">Description</label>
+                <textarea
+                  class="w-full px-2.5 py-1.5 text-sm border border-slate-200 rounded-md bg-white focus:outline-none focus:ring-1 focus:ring-primary/40 focus:border-primary/40 transition-colors resize-none disabled:opacity-50"
+                  rows="2"
+                  [value]="editStateDescription()"
+                  (input)="editStateDescription.set($any($event.target).value)"
+                  (blur)="saveStateDescription(editStateDescription())"
+                  [disabled]="isUpdatingState()"
+                  placeholder="Description (optionnel)"
+                ></textarea>
+              </div>
+
+              <!-- Approver role (optional) -->
+              <div>
+                <label class="text-xs font-medium text-slate-400 mb-1 block">Rôle approbateur</label>
+                <input
+                  type="text"
+                  class="w-full px-2.5 py-1.5 text-sm border border-slate-200 rounded-md bg-white focus:outline-none focus:ring-1 focus:ring-primary/40 focus:border-primary/40 transition-colors font-mono disabled:opacity-50"
+                  [value]="editStateRole()"
+                  (input)="editStateRole.set($any($event.target).value)"
+                  (blur)="saveStateRole(editStateRole())"
+                  [disabled]="isUpdatingState()"
+                  placeholder="ex : MANAGER"
+                />
+              </div>
+
+              <!-- Timeout (optional, positive integer) -->
+              <div>
+                <label class="text-xs font-medium text-slate-400 mb-1 block">Délai limite (heures)</label>
+                <input
+                  type="number"
+                  class="w-full px-2.5 py-1.5 text-sm border border-slate-200 rounded-md bg-white focus:outline-none focus:ring-1 focus:ring-primary/40 focus:border-primary/40 transition-colors disabled:opacity-50"
+                  [value]="editStateTimeout()"
+                  (input)="editStateTimeout.set($any($event.target).value)"
+                  (blur)="saveStateTimeout(editStateTimeout())"
+                  [disabled]="isUpdatingState()"
+                  min="1"
+                  placeholder="ex : 48"
+                />
+              </div>
+
+              <!-- Visual type -->
               <div>
                 <label class="text-xs font-medium text-slate-400 mb-1 block">Type visuel</label>
                 <select
@@ -351,18 +511,25 @@
                     <option [value]="opt.value">{{ opt.label }}</option>
                   }
                 </select>
+                @if (hasTypeChange()) {
+                  <button
+                    type="button"
+                    class="mt-1.5 flex items-center gap-1 text-[10px] text-slate-400 hover:text-slate-600 transition-colors"
+                    (click)="cancelTypeEdit()"
+                  >
+                    <tas-icon iconName="feather:rotate-ccw" style="font-size:9px"></tas-icon>
+                    Annuler la modification
+                  </button>
+                }
               </div>
 
-              <p class="text-[10px] text-slate-400 leading-relaxed bg-slate-50 rounded-md px-2.5 py-2">
-                Pour modifier le nom ou le rôle approbateur, utilisez l'onglet <strong>Étapes</strong>.
-              </p>
             </div>
 
             <div class="mt-5 pt-4 border-t border-slate-100">
               <button
                 type="button"
                 class="flex items-center gap-1.5 text-xs text-red-500 hover:text-red-700 transition-colors disabled:opacity-40"
-                [disabled]="isSaving()"
+                [disabled]="isSaving() || isUpdatingState()"
                 (click)="deleteSelectedState()"
               >
                 <tas-icon iconName="feather:trash-2" style="font-size:12px"></tas-icon>

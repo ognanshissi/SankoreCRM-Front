@@ -1,5 +1,4 @@
 .gitignore
-.openapi-generator-ignore
 README.md
 api.module.ts
 api/agencies.service.ts
@@ -110,6 +109,7 @@ model/update-email-template-request.interface.ts
 model/update-notification-settings-command.interface.ts
 model/update-product-request.interface.ts
 model/update-role-request.interface.ts
+model/update-step-request.interface.ts
 model/update-template-request.interface.ts
 model/update-territory-request.interface.ts
 model/update-user-request.interface.ts
