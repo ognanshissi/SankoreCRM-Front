@@ -9,19 +9,18 @@
  * https://openapi-generator.tech
  * Do not edit the class manually.
  */
-import { WorkflowStepDto } from './workflow-step-dto.interface';
+import { StepStatsDto } from './step-stats-dto.interface';
 
 
-export interface WorkflowTemplateDto { 
-    id?: string;
-    tenantId?: string;
+export interface TemplateStatsDto { 
+    templateId?: string;
     entityType?: string | null;
-    name?: string | null;
-    description?: string | null;
-    isActive?: boolean;
+    templateName?: string | null;
     version?: number;
-    createdAt?: string;
-    updatedAt?: string;
-    steps?: Array<WorkflowStepDto> | null;
+    totalInstances?: number;
+    byStatus?: { [key: string]: number; } | null;
+    avgCompletionHours?: number | null;
+    slaBreachCount?: number;
+    stepStats?: Array<StepStatsDto> | null;
 }
 

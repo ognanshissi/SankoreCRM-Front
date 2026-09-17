@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, inject, OnInit, signal } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { ButtonModule } from '@talisoft/ui/button';
 import { TasIcon } from '@talisoft/ui/icon';
@@ -11,6 +11,8 @@ import {
   TasNavigationSidebar,
 } from '@talisoft/ui/layouts';
 import { BreadcrumbComponent } from '../../breadcrumb/breadcrumb.component';
+import { TenantProvider } from '../../../services';
+import { TenantContextResponse } from '@sankore/crm-api';
 
 @Component({
   selector: 'common-portal-layout',
@@ -31,6 +33,9 @@ import { BreadcrumbComponent } from '../../breadcrumb/breadcrumb.component';
 export class PortalLayoutComponent implements OnInit {
 
   public navigationItems: NavigationItem[] = [];
+  private readonly _tenantProvider = inject(TenantProvider);
+
+  public tenantContext = this._tenantProvider.context();
 
   public ngOnInit() {
     this.navigationItems = [

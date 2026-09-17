@@ -9,19 +9,18 @@
  * https://openapi-generator.tech
  * Do not edit the class manually.
  */
-import { WorkflowStepDto } from './workflow-step-dto.interface';
+import { RuleType } from './rule-type.interface';
+import { RuleOperator } from './rule-operator.interface';
 
 
-export interface WorkflowTemplateDto { 
+export interface RuleDto { 
     id?: string;
-    tenantId?: string;
-    entityType?: string | null;
-    name?: string | null;
-    description?: string | null;
-    isActive?: boolean;
-    version?: number;
-    createdAt?: string;
-    updatedAt?: string;
-    steps?: Array<WorkflowStepDto> | null;
+    ruleType?: RuleType;
+    field?: string | null;
+    operator?: RuleOperator;
+    value?: string | null;
+    logicalGroup?: number;
 }
+
+
 

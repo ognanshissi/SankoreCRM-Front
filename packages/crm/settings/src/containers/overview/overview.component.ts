@@ -40,14 +40,14 @@ export class OverviewComponent {
       id: 'teams_territories',
       description: "Gestion des utilisateurs et agences de l'organisation",
       children: [
-        // {
-        //   title: 'Automatisations',
-        //   type: 'basic',
-        //   id: 'groups_workflows',
-        //   link: '/portal/automation-workflows',
-        //   description:
-        //     'Gerer les automatismes dans le cycle de vie des contacts et clients',
-        // },
+        {
+          title: 'Workflows',
+          type: 'basic',
+          id: 'groups_workflows',
+          link: '/settings/workflows',
+          description:
+            'Définir les étapes de validation appliquées aux leads, contacts et opportunités',
+        },
         // {
         //   title: 'Rêgles de dispatching',
         //   type: 'basic',
@@ -229,6 +229,13 @@ export class OverviewComponent {
       description:
         'Paramétrage global du compte, facturation, et souscription ',
       children: [
+        {
+          title: "Informations de l'organisation",
+          type: 'basic',
+          id: 'account_settings_company',
+          link: '/settings/company',
+          description: "Nom, logo, langue par défaut et couleurs de l'organisation",
+        },
         {
           title: 'Monnaie',
           type: 'basic',

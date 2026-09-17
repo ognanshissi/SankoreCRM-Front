@@ -1,0 +1,492 @@
+<!-- host: flex flex-col, fills col-span-3 content area -->
+<div class="flex flex-col" style="height: calc(100vh - 130px);">
+
+  <!-- ── Toolbar ─────────────────────────────────────────────────────────── -->
+  <div class="flex items-center gap-2 px-3 py-2 border-b border-slate-200 bg-white shrink-0 text-sm">
+
+    <!-- Zoom -->
+    <div class="flex items-center gap-0.5">
+      <button
+        type="button"
+        class="w-7 h-7 flex items-center justify-center rounded text-slate-500 hover:bg-slate-100 transition-colors"
+        (click)="zoomOut()"
+        title="Dézoomer"
+      >
+        <tas-icon iconName="feather:minus" style="font-size:13px"></tas-icon>
+      </button>
+      <span class="w-12 text-center text-xs text-slate-500 tabular-nums select-none">
+        {{ zoomPercent() }}%
+      </span>
+      <button
+        type="button"
+        class="w-7 h-7 flex items-center justify-center rounded text-slate-500 hover:bg-slate-100 transition-colors"
+        (click)="zoomIn()"
+        title="Zoomer"
+      >
+        <tas-icon iconName="feather:plus" style="font-size:13px"></tas-icon>
+      </button>
+    </div>
+
+    <div class="w-px h-4 bg-slate-200"></div>
+
+    <button
+      type="button"
+      class="flex items-center gap-1.5 px-2 py-1 rounded text-xs text-slate-500 hover:bg-slate-100 transition-colors"
+      (click)="fitToScreen()"
+      title="Ajuster à l'écran"
+    >
+      <tas-icon iconName="feather:maximize-2" style="font-size:12px"></tas-icon>
+      Ajuster
+    </button>
+
+    <div class="flex-1"></div>
+
+    <!-- Live count pill -->
+    @if (!isLoading()) {
+      <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-50 border border-slate-200 text-xs text-slate-500 select-none">
+        <span class="tabular-nums font-medium text-slate-700">{{ states().length }}</span>
+        <span>état{{ states().length !== 1 ? 's' : '' }}</span>
+        <span class="text-slate-300">·</span>
+        <span class="tabular-nums font-medium text-slate-700">{{ transitions().length }}</span>
+        <span>transition{{ transitions().length !== 1 ? 's' : '' }}</span>
+      </div>
+    }
+
+    <!-- Hints -->
+    <span class="text-xs text-slate-400 hidden lg:block">
+      Espace + glisser · Molette pour zoomer
+    </span>
+
+    @if (isSaving()) {
+      <div class="flex items-center gap-1 text-xs text-slate-400">
+        <tas-spinner size="3" class="text-primary"></tas-spinner>
+        Sauvegarde…
+      </div>
+    }
+  </div>
+
+  <!-- ── Main area ───────────────────────────────────────────────────────── -->
+  <div class="flex flex-1 min-h-0 relative">
+
+    <!-- ── Loading overlay ──────────────────────────────────────────────── -->
+    @if (isLoading()) {
+      <div class="absolute inset-0 z-20 bg-white/80 flex items-center justify-center">
+        <tas-spinner size="8" class="text-primary"></tas-spinner>
+      </div>
+    }
+
+    <!-- ── Left palette ─────────────────────────────────────────────────── -->
+    <div class="w-44 border-r border-slate-200 bg-white shrink-0 overflow-y-auto flex flex-col">
+      <p class="text-xs font-medium text-slate-400 px-3 pt-3 pb-1.5">Ajouter un état</p>
+
+      @for (type of paletteTypes; track type) {
+        <button
+          type="button"
+          class="group relative flex items-center gap-2.5 w-full pr-3 py-2.5 text-sm text-left hover:bg-slate-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed overflow-hidden"
+          (click)="addState(type)"
+          [disabled]="isLoading() || isSaving()"
+          [title]="'Ajouter ' + STATE_TYPE_META[type].label"
+        >
+          <!-- Left accent stripe — mirrors the node's color stripe exactly -->
+          <span
+            class="w-[3px] self-stretch shrink-0 rounded-r-sm"
+            [ngClass]="STATE_TYPE_META[type].color"
+          ></span>
+          <tas-icon
+            [iconName]="STATE_TYPE_META[type].icon"
+            class="shrink-0 ml-2.5"
+            [ngClass]="STATE_TYPE_META[type].text"
+            style="font-size:13px"
+          ></tas-icon>
+          <span class="flex-1 leading-none text-slate-700">{{ STATE_TYPE_META[type].label }}</span>
+          <tas-icon
+            iconName="feather:plus"
+            class="text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+            style="font-size:11px"
+          ></tas-icon>
+        </button>
+      }
+
+      <div class="mt-auto px-3 py-3 border-t border-slate-100">
+        <p class="text-[10px] text-slate-400 leading-relaxed">
+          Cliquez pour ajouter.<br>
+          Glissez depuis le port <span class="font-semibold text-slate-500">→</span> droit pour relier deux états.
+        </p>
+      </div>
+    </div>
+
+    <!-- ── Canvas viewport ──────────────────────────────────────────────── -->
+    <div
+      #viewport
+      class="flex-1 relative overflow-hidden select-none"
+      style="background-color:#f8fafc; background-image:radial-gradient(circle, #e2e8f0 1px, transparent 1px); background-size:24px 24px;"
+      (mousedown)="onCanvasMouseDown($event)"
+      (wheel)="onWheel($event)"
+    >
+
+      <!-- Transformed canvas layer -->
+      <div
+        class="absolute top-0 left-0"
+        [style.transform]="canvasTransform()"
+        style="transform-origin: 0 0; will-change: transform;"
+      >
+        <!-- SVG: transitions + connecting preview -->
+        <svg
+          class="absolute top-0 left-0 pointer-events-none"
+          style="overflow: visible;"
+          width="1"
+          height="1"
+        >
+          <defs>
+            <marker
+              id="wf-arrow"
+              markerWidth="8"
+              markerHeight="6"
+              refX="7"
+              refY="3"
+              orient="auto"
+            >
+              <!-- Boosted contrast: #64748b instead of #94a3b8 -->
+              <polygon points="0 0, 8 3, 0 6" fill="#64748b" />
+            </marker>
+            <marker
+              id="wf-arrow-sel"
+              markerWidth="8"
+              markerHeight="6"
+              refX="7"
+              refY="3"
+              orient="auto"
+            >
+              <polygon points="0 0, 8 3, 0 6" fill="rgb(var(--tas-color-primary))" />
+            </marker>
+          </defs>
+
+          <!-- Existing transitions -->
+          @for (t of transitions(); track t.id) {
+            <g
+              class="pointer-events-auto cursor-pointer"
+              (mousedown)="selectTransition(t.id, $event)"
+            >
+              <!-- Wide invisible hit zone -->
+              <path
+                [attr.d]="transitionPath(t)"
+                fill="none"
+                stroke="transparent"
+                stroke-width="14"
+              />
+              <!-- Visible stroke -->
+              <path
+                [attr.d]="transitionPath(t)"
+                fill="none"
+                [attr.stroke]="selectedTransitionId() === t.id ? 'rgb(var(--tas-color-primary))' : '#64748b'"
+                stroke-width="2"
+                [attr.stroke-dasharray]="t.id.startsWith('temp-') ? '6 4' : '0'"
+                [attr.marker-end]="selectedTransitionId() === t.id ? 'url(#wf-arrow-sel)' : 'url(#wf-arrow)'"
+              />
+            </g>
+          }
+
+          <!-- Connecting preview -->
+          @if (connectingPath()) {
+            <path
+              [attr.d]="connectingPath()"
+              fill="none"
+              stroke="rgb(var(--tas-color-primary))"
+              stroke-width="2"
+              stroke-dasharray="6 4"
+              marker-end="url(#wf-arrow-sel)"
+            />
+          }
+        </svg>
+
+        <!-- Transition name labels -->
+        @for (t of transitions(); track t.id) {
+          @if (transitionMid(t); as mid) {
+            <div
+              class="absolute pointer-events-none"
+              [style.left.px]="mid.x"
+              [style.top.px]="mid.y"
+              style="transform: translate(-50%, -50%);"
+            >
+              <span
+                class="px-1.5 py-0.5 rounded text-[10px] whitespace-nowrap shadow-sm border"
+                [class.bg-white]="selectedTransitionId() !== t.id"
+                [class.border-slate-200]="selectedTransitionId() !== t.id"
+                [class.text-slate-500]="selectedTransitionId() !== t.id"
+                [class.bg-primary]="selectedTransitionId() === t.id"
+                [class.border-primary]="selectedTransitionId() === t.id"
+                [class.text-white]="selectedTransitionId() === t.id"
+              >
+                {{ t.name }}
+              </span>
+            </div>
+          }
+        }
+
+        <!-- State nodes -->
+        @for (state of states(); track state.id) {
+          <div
+            class="group absolute rounded-lg border-2 bg-white shadow-sm transition-shadow"
+            [style.left.px]="state.position.x"
+            [style.top.px]="state.position.y"
+            [style.width.px]="NODE_W"
+            [style.height.px]="NODE_H"
+            [class.shadow-lg]="selectedStateId() === state.id"
+            [class.ring-2]="connectFrom() === state.id"
+            [class.ring-primary]="connectFrom() === state.id"
+            [class.ring-offset-1]="connectFrom() === state.id"
+            [ngClass]="selectedStateId() === state.id
+              ? ['border-primary']
+              : [STATE_TYPE_META[state.type].border]"
+            style="cursor: move;"
+            (mousedown)="onNodeMouseDown(state, $event)"
+            (click)="selectState(state.id, $event)"
+          >
+            <!-- Left color stripe -->
+            <div
+              class="absolute left-0 top-0 bottom-0 w-1 rounded-l-md"
+              [ngClass]="STATE_TYPE_META[state.type].color"
+            ></div>
+
+            <!-- Node body -->
+            <div class="flex flex-col justify-center pl-4 pr-3 h-full">
+              <div class="flex items-center gap-1.5 min-w-0">
+                <tas-icon
+                  [iconName]="STATE_TYPE_META[state.type].icon"
+                  class="shrink-0"
+                  [ngClass]="STATE_TYPE_META[state.type].text"
+                  style="font-size:12px"
+                ></tas-icon>
+                <span class="font-semibold text-slate-800 text-sm truncate leading-tight">
+                  {{ state.name }}
+                </span>
+              </div>
+              <!-- Type label replaces opaque STEP_N code -->
+              <div
+                class="text-[10px] mt-0.5 font-medium leading-none"
+                [ngClass]="STATE_TYPE_META[state.type].text"
+              >
+                {{ STATE_TYPE_META[state.type].label }}
+              </div>
+            </div>
+
+            <!-- Input port (left edge) — always visible, lights up on connecting mode -->
+            <div
+              data-port="input"
+              class="absolute w-4 h-4 rounded-full bg-white border-2 transition-all z-10"
+              [class.border-slate-300]="!connectFrom() || connectFrom() === state.id"
+              [class.border-primary]="connectFrom() && connectFrom() !== state.id"
+              [class.scale-125]="connectFrom() && connectFrom() !== state.id"
+              [class.cursor-crosshair]="connectFrom() && connectFrom() !== state.id"
+              style="left:-9px; top:50%; transform:translateY(-50%);"
+              (mouseup)="onInputPortMouseUp(state.id, $event)"
+            ></div>
+
+            <!-- Output port (right edge) — appears on node hover -->
+            <div
+              data-port="output"
+              class="absolute w-4 h-4 rounded-full bg-white border-2 border-slate-300 opacity-0 group-hover:opacity-100 group-hover:border-primary hover:scale-125 transition-all z-10 cursor-crosshair"
+              style="right:-9px; top:50%; transform:translateY(-50%);"
+              (mousedown)="onOutputPortMouseDown(state.id, $event)"
+            ></div>
+          </div>
+        }
+      </div><!-- /canvas layer -->
+
+      <!-- Empty state hint -->
+      @if (!isLoading() && states().length === 0) {
+        <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+          <div class="text-center">
+            <div class="w-14 h-14 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto mb-4">
+              <tas-icon iconName="feather:git-branch" class="text-slate-400" style="font-size:24px"></tas-icon>
+            </div>
+            <p class="text-sm font-medium text-slate-600">Canvas vide</p>
+            <p class="text-xs text-slate-400 mt-1.5 max-w-[200px] leading-relaxed">
+              Ajoutez des états depuis le panneau gauche pour commencer.
+            </p>
+          </div>
+        </div>
+      }
+
+      <!-- Connecting hint overlay — appears only during connection drag -->
+      @if (connectFrom()) {
+        <div class="absolute bottom-4 left-1/2 -translate-x-1/2 pointer-events-none z-10">
+          <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-800/90 backdrop-blur-sm text-white text-xs shadow-lg">
+            <tas-icon iconName="feather:crosshair" style="font-size:11px"></tas-icon>
+            Relâchez sur le port gauche d'un autre état
+          </div>
+        </div>
+      }
+
+    </div><!-- /viewport -->
+
+    <!-- ── Right properties panel ────────────────────────────────────────── -->
+    @if (selectedState() || selectedTransition()) {
+      <div class="w-60 border-l border-slate-200 bg-white shrink-0 overflow-y-auto">
+
+        <!-- State properties -->
+        @if (selectedState(); as st) {
+          <div class="p-4">
+            <div class="flex items-center gap-2 mb-4">
+              <span class="w-2.5 h-2.5 rounded-full shrink-0" [ngClass]="STATE_TYPE_META[st.type].color"></span>
+              <p class="text-sm font-semibold text-slate-700">Étape</p>
+            </div>
+
+            <div class="flex flex-col gap-3">
+              <div>
+                <label class="text-xs font-medium text-slate-400 mb-1 block">Nom</label>
+                <p class="px-2.5 py-1.5 bg-slate-50 rounded-md text-sm text-slate-700 font-medium truncate">
+                  {{ st.name }}
+                </p>
+              </div>
+
+              <div>
+                <label class="text-xs font-medium text-slate-400 mb-1 block">Type visuel</label>
+                <select
+                  class="w-full px-2.5 py-1.5 text-sm border border-slate-200 rounded-md bg-white focus:outline-none focus:ring-1 focus:ring-primary/40 focus:border-primary/40 transition-colors"
+                  [value]="st.type"
+                  (change)="updateStateType($any($event.target).value)"
+                >
+                  @for (opt of typeSelectOptions; track opt.value) {
+                    <option [value]="opt.value">{{ opt.label }}</option>
+                  }
+                </select>
+              </div>
+
+              <p class="text-[10px] text-slate-400 leading-relaxed bg-slate-50 rounded-md px-2.5 py-2">
+                Pour modifier le nom ou le rôle approbateur, utilisez l'onglet <strong>Étapes</strong>.
+              </p>
+            </div>
+
+            <div class="mt-5 pt-4 border-t border-slate-100">
+              <button
+                type="button"
+                class="flex items-center gap-1.5 text-xs text-red-500 hover:text-red-700 transition-colors disabled:opacity-40"
+                [disabled]="isSaving()"
+                (click)="deleteSelectedState()"
+              >
+                <tas-icon iconName="feather:trash-2" style="font-size:12px"></tas-icon>
+                Supprimer l'étape
+              </button>
+            </div>
+          </div>
+        }
+
+        <!-- Transition properties -->
+        @if (selectedTransition(); as tr) {
+          <div class="p-4">
+            <div class="flex items-center gap-2 mb-4">
+              <tas-icon iconName="feather:arrow-right" class="text-slate-400" style="font-size:14px"></tas-icon>
+              <p class="text-sm font-semibold text-slate-700">Transition</p>
+            </div>
+
+            <div class="flex flex-col gap-3">
+              <div>
+                <label class="text-xs font-medium text-slate-400 mb-1 block">De</label>
+                <p class="px-2.5 py-1.5 bg-slate-50 rounded-md text-sm text-slate-700 font-medium truncate">
+                  {{ stateName(tr.sourceStateId) }}
+                </p>
+              </div>
+
+              <div>
+                <label class="text-xs font-medium text-slate-400 mb-1 block">Vers</label>
+                <p class="px-2.5 py-1.5 bg-slate-50 rounded-md text-sm text-slate-700 font-medium truncate">
+                  {{ stateName(tr.targetStateId) }}
+                </p>
+              </div>
+
+              @if (!tr.id.startsWith('temp-')) {
+                <div>
+                  <label class="text-xs font-medium text-slate-400 mb-1 block">Libellé</label>
+                  <input
+                    type="text"
+                    class="w-full px-2.5 py-1.5 text-sm border border-slate-200 rounded-md bg-white focus:outline-none focus:ring-1 focus:ring-primary/40 focus:border-primary/40 transition-colors"
+                    placeholder="ex : Approuver"
+                    [value]="tr.name"
+                    (change)="updateTransitionName($any($event.target).value)"
+                  />
+                </div>
+              }
+
+              @if (tr.id.startsWith('temp-')) {
+                <p class="text-[10px] text-amber-600 bg-amber-50 rounded-md px-2.5 py-2">
+                  Sauvegarde en cours…
+                </p>
+              }
+            </div>
+
+            <!-- Actions section (non-temp transitions only) -->
+            @if (!tr.id.startsWith('temp-')) {
+              <div class="mt-4 pt-4 border-t border-slate-100">
+                <p class="text-xs font-medium text-slate-400 mb-2">Actions</p>
+
+                @if (selectedTransitionActions().length === 0) {
+                  <p class="text-[10px] text-slate-400 mb-2">Aucune action.</p>
+                } @else {
+                  <div class="flex flex-col gap-1 mb-2">
+                    @for (action of selectedTransitionActions(); track action.id) {
+                      <div class="flex items-center justify-between gap-1 py-1 px-2 rounded bg-slate-50">
+                        <div class="flex items-center gap-1.5 min-w-0">
+                          <span class="w-4 h-4 rounded-full bg-primary/10 flex items-center justify-center shrink-0 text-[8px] font-bold text-primary">
+                            {{ action.executionOrder }}
+                          </span>
+                          <span class="text-xs text-slate-700 truncate">{{ actionTypeLabel(action.actionType) }}</span>
+                        </div>
+                        <button
+                          type="button"
+                          class="text-slate-300 hover:text-red-500 transition-colors shrink-0 disabled:opacity-40"
+                          [disabled]="removingActionId() === action.id"
+                          (click)="removeAction(action.id!)"
+                          title="Supprimer l'action"
+                        >
+                          <tas-icon iconName="feather:x" style="font-size:11px"></tas-icon>
+                        </button>
+                      </div>
+                    }
+                  </div>
+                }
+
+                <!-- Add action row -->
+                <div class="flex items-center gap-1.5">
+                  <select
+                    class="flex-1 min-w-0 px-2 py-1 text-xs border border-slate-200 rounded bg-white focus:outline-none focus:ring-1 focus:ring-primary/40"
+                    [value]="newActionType()"
+                    (change)="newActionType.set(+$any($event.target).value)"
+                  >
+                    @for (opt of ACTION_TYPE_OPTIONS; track opt.value) {
+                      <option [value]="opt.value">{{ opt.label }}</option>
+                    }
+                  </select>
+                  <button
+                    type="button"
+                    class="shrink-0 px-2 py-1 rounded bg-primary text-white text-xs font-medium hover:opacity-90 transition-opacity disabled:opacity-40"
+                    [disabled]="isAddingAction()"
+                    (click)="addAction()"
+                    title="Ajouter l'action"
+                  >
+                    <tas-icon iconName="feather:plus" style="font-size:11px"></tas-icon>
+                  </button>
+                </div>
+              </div>
+
+              <div class="mt-4 pt-4 border-t border-slate-100">
+                <button
+                  type="button"
+                  class="flex items-center gap-1.5 text-xs text-red-500 hover:text-red-700 transition-colors disabled:opacity-40"
+                  [disabled]="isSaving()"
+                  (click)="deleteSelectedTransition()"
+                >
+                  <tas-icon iconName="feather:trash-2" style="font-size:12px"></tas-icon>
+                  Supprimer la transition
+                </button>
+              </div>
+            }
+          </div>
+        }
+
+      </div>
+    }
+
+  </div><!-- /main area -->
+
+</div>

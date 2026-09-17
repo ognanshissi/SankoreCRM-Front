@@ -3,6 +3,7 @@ import { Routes } from '@angular/router';
 import AgenciesHomePage from './containers/agencies/agencies-homepage/agencies-homepage';
 import EditRoleNavigation from './containers/roles/edit-role/edit-role-navigation';
 import EditUserNavigation from './containers/users/edit-user/edit-user-navigation';
+import EditWorkflowTemplateNavigation from './containers/workflows/edit-workflow-template/edit-workflow-template-navigation';
 
 const settingsRoutes: Routes = [
   {
@@ -53,6 +54,33 @@ const settingsRoutes: Routes = [
     path: 'products/:id/edit',
     loadComponent: () =>
       import('./containers/products/edit-product/edit-product'),
+  },
+  {
+    path: 'company',
+    loadComponent: () =>
+      import('./containers/company/company'),
+  },
+  {
+    path: 'workflows',
+    loadComponent: () =>
+      import('./containers/workflows/workflows-homepage/workflows-homepage'),
+  },
+  {
+    path: 'workflows/ma-file',
+    loadComponent: () => import('./containers/workflows/edit-workflow-template/my-queue'),
+  },
+  {
+    path: 'workflows/:id',
+    loadComponent: () => EditWorkflowTemplateNavigation,
+    children: [
+      { path: '', redirectTo: 'builder', pathMatch: 'full' },
+      { path: 'builder', loadComponent: () => import('./containers/workflows/edit-workflow-template/builder') },
+      { path: 'informations', loadComponent: () => import('./containers/workflows/edit-workflow-template/informations') },
+      { path: 'etapes', loadComponent: () => import('./containers/workflows/edit-workflow-template/steps') },
+      { path: 'declencheurs', loadComponent: () => import('./containers/workflows/edit-workflow-template/triggers') },
+      { path: 'instances', loadComponent: () => import('./containers/workflows/edit-workflow-template/instances') },
+      { path: 'instances/:instanceId', loadComponent: () => import('./containers/workflows/edit-workflow-template/instance-detail') },
+    ],
   },
   {
     path: 'audit',

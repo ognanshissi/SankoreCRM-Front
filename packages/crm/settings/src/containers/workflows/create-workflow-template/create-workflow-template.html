@@ -1,0 +1,68 @@
+<tas-side-drawer>
+  <tas-drawer-title>
+    <TasTitle class="text-lg">Nouveau modèle de workflow</TasTitle>
+  </tas-drawer-title>
+
+  <tas-drawer-content>
+    <form [formRoot]="formSchema" class="flex flex-col gap-5">
+
+      <tas-form-field>
+        <tas-label>Nom du modèle <span class="text-functional-error">*</span></tas-label>
+        <input
+          tasInput
+          type="text"
+          placeholder="Ex : Validation création opportunité"
+          [formField]="formSchema.name"
+        />
+        @if (formSchema.name().touched() && formSchema.name().invalid()) {
+          <tas-error>{{ formSchema.name().errors()[0].message }}</tas-error>
+        }
+      </tas-form-field>
+
+      <tas-form-field>
+        <tas-label>Entité déclencheur <span class="text-functional-error">*</span></tas-label>
+        <tas-select
+          [options]="entityTypeOptions"
+          placeholder="Sélectionnez une entité"
+          [formField]="formSchema.entityType"
+        ></tas-select>
+        @if (formSchema.entityType().touched() && formSchema.entityType().invalid()) {
+          <tas-error>{{ formSchema.entityType().errors()[0].message }}</tas-error>
+        }
+        <tas-hint>Le workflow sera proposé sur cette entité au moment opportun.</tas-hint>
+      </tas-form-field>
+
+      <tas-form-field>
+        <tas-label>Description</tas-label>
+        <input
+          tasInput
+          type="text"
+          placeholder="À quoi sert ce workflow ?"
+          [formField]="formSchema.description"
+        />
+      </tas-form-field>
+
+      <div class="rounded-lg border border-slate-200 bg-slate-50 p-4 flex gap-3">
+        <tas-icon iconName="feather:sliders" iconSize="sm" class="text-slate-400 flex-shrink-0 mt-0.5"></tas-icon>
+        <p class="text-sm text-slate-500">
+          Le modèle est créé en brouillon. Vous ajouterez ses étapes de validation à l'écran suivant, puis l'activerez quand il sera prêt.
+        </p>
+      </div>
+
+    </form>
+  </tas-drawer-content>
+
+  <tas-drawer-action>
+    <button tas-outlined-button color="primary" type="button" (click)="close()">Annuler</button>
+    <button
+      tas-raised-button
+      color="primary"
+      type="button"
+      (click)="handleSubmit()"
+      [disabled]="formSchema().invalid() || formSchema().submitting()"
+      [isLoading]="formSchema().submitting()"
+    >
+      Créer le modèle
+    </button>
+  </tas-drawer-action>
+</tas-side-drawer>

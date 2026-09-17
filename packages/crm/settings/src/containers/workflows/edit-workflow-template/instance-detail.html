@@ -1,0 +1,384 @@
+<div class="pb-6">
+
+  <!-- ── Back link ───────────────────────────────────────────────────────── -->
+  <div class="mb-4">
+    <button
+      type="button"
+      class="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-700 transition-colors"
+      (click)="goBack()"
+    >
+      <tas-icon iconName="feather:chevron-left" style="font-size:14px"></tas-icon>
+      Retour aux instances
+    </button>
+  </div>
+
+  @if (isLoading()) {
+    <div class="flex justify-center py-16">
+      <tas-spinner size="8" class="text-primary"></tas-spinner>
+    </div>
+  } @else if (instance(); as inst) {
+
+    <!-- ── Header ──────────────────────────────────────────────────────── -->
+    <tas-card class="mb-4">
+      <div class="p-4">
+        <div class="flex items-start justify-between gap-4">
+          <div class="min-w-0">
+            <div class="flex items-center gap-2 mb-1">
+              <tas-tag [severity]="instanceStatusMeta(inst.status).severity">
+                {{ instanceStatusMeta(inst.status).label }}
+              </tas-tag>
+              <span class="text-sm font-medium text-slate-800">
+                {{ entityTypeLabel(inst.entityType) }}
+              </span>
+            </div>
+            <p class="text-xs text-slate-400 font-mono">{{ inst.entityId }}</p>
+            <p class="text-xs text-slate-400 mt-1">
+              Étape {{ inst.currentStepOrder }}/{{ inst.totalSteps }} ·
+              Démarré {{ inst.startedAt! | dateTimeAgo }}
+              @if (inst.completedAt) {
+                · Terminé {{ inst.completedAt | dateTimeAgo }}
+              }
+            </p>
+          </div>
+
+          @if (inst.status === 'InProgress') {
+            <button
+              type="button"
+              tas-button
+              theme="warn"
+              [disabled]="isActing()"
+              (click)="cancelInstance()"
+            >
+              Annuler l'instance
+            </button>
+          }
+        </div>
+      </div>
+    </tas-card>
+
+    <!-- ── Step timeline ──────────────────────────────────────────────── -->
+    <tas-card class="mb-4">
+      <div class="p-4 border-b border-slate-100">
+        <p class="font-semibold text-slate-800">Étapes</p>
+      </div>
+      <div class="px-4 py-2">
+        @if (!inst.steps?.length) {
+          <p class="text-sm text-slate-400 py-4 text-center">Aucune étape définie.</p>
+        } @else {
+          <div class="relative">
+            <!-- Vertical connector line -->
+            <div class="absolute left-4 top-6 bottom-6 w-px bg-slate-200"></div>
+
+            <div class="flex flex-col gap-0">
+              @for (step of inst.steps; track step.id; let last = $last) {
+                <div class="relative flex items-start gap-4 py-3">
+                  <!-- Step status icon -->
+                  <div class="shrink-0 z-10">
+                    @if (step.status === 'Approved') {
+                      <div class="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center">
+                        <tas-icon iconName="feather:check" class="text-green-600" style="font-size:14px"></tas-icon>
+                      </div>
+                    } @else if (step.status === 'Rejected') {
+                      <div class="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center">
+                        <tas-icon iconName="feather:x" class="text-red-600" style="font-size:14px"></tas-icon>
+                      </div>
+                    } @else if (step.status === 'Pending') {
+                      <div class="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center ring-2 ring-amber-400 ring-offset-1">
+                        <tas-icon iconName="feather:clock" class="text-amber-600" style="font-size:14px"></tas-icon>
+                      </div>
+                    } @else {
+                      <div class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center">
+                        <span class="text-xs font-semibold text-slate-400">{{ step.order }}</span>
+                      </div>
+                    }
+                  </div>
+
+                  <!-- Step info -->
+                  <div class="flex-1 min-w-0 pt-1">
+                    <div class="flex items-center justify-between gap-2">
+                      <p class="text-sm font-medium text-slate-800">{{ step.name ?? '—' }}</p>
+                      <tas-tag [severity]="stepStatusMeta(step.status).severity" class="shrink-0">
+                        {{ stepStatusMeta(step.status).label }}
+                      </tas-tag>
+                    </div>
+                    @if (step.approverRoleCode) {
+                      <p class="text-xs text-slate-400 mt-0.5">
+                        <tas-icon iconName="feather:user" class="inline-block" style="font-size:10px"></tas-icon>
+                        Rôle : {{ step.approverRoleCode }}
+                      </p>
+                    }
+                    @if (step.comment) {
+                      <p class="text-xs text-slate-500 mt-1 italic">"{{ step.comment }}"</p>
+                    }
+                    @if (step.completedAt) {
+                      <p class="text-xs text-slate-400 mt-0.5">{{ step.completedAt | dateTimeAgo }}</p>
+                    }
+                  </div>
+                </div>
+              }
+            </div>
+          </div>
+        }
+      </div>
+    </tas-card>
+
+    <!-- ── Actions (approve / reject) ─────────────────────────────────── -->
+    @if (inst.status === 'InProgress' && currentStep()) {
+      <tas-card class="mb-4">
+        <div class="p-4 border-b border-slate-100">
+          <p class="font-semibold text-slate-800">Action requise</p>
+          <p class="text-sm text-slate-500 mt-0.5">
+            Étape en attente : <strong>{{ currentStep()!.name }}</strong>
+          </p>
+        </div>
+        <div class="p-4 flex flex-col gap-3">
+
+          <!-- Approve form -->
+          @if (showApproveForm()) {
+            <div class="border border-green-200 rounded-lg p-3 bg-green-50">
+              <p class="text-sm font-medium text-green-800 mb-2">Confirmer l'approbation</p>
+              <textarea
+                class="w-full px-2.5 py-1.5 text-sm border border-green-200 rounded-md bg-white focus:outline-none focus:ring-1 focus:ring-green-400 resize-none"
+                rows="2"
+                placeholder="Commentaire (optionnel)"
+                [value]="approveComment()"
+                (input)="approveComment.set($any($event.target).value)"
+              ></textarea>
+              <div class="flex items-center gap-2 mt-2">
+                <button
+                  type="button"
+                  tas-button
+                  size="small"
+                  [disabled]="isActing()"
+                  (click)="approve()"
+                >
+                  Approuver
+                </button>
+                <button
+                  type="button"
+                  tas-outlined-button
+                  size="small"
+                  [disabled]="isActing()"
+                  (click)="showApproveForm.set(false)"
+                >
+                  Annuler
+                </button>
+              </div>
+            </div>
+          }
+
+          <!-- Reject form -->
+          @if (showRejectForm()) {
+            <div class="border border-red-200 rounded-lg p-3 bg-red-50">
+              <p class="text-sm font-medium text-red-800 mb-2">Confirmer le rejet</p>
+              <textarea
+                class="w-full px-2.5 py-1.5 text-sm border border-red-200 rounded-md bg-white focus:outline-none focus:ring-1 focus:ring-red-400 resize-none"
+                rows="2"
+                placeholder="Motif du rejet (optionnel)"
+                [value]="rejectComment()"
+                (input)="rejectComment.set($any($event.target).value)"
+              ></textarea>
+              <div class="flex items-center gap-2 mt-2">
+                <button
+                  type="button"
+                  tas-button
+                  color="warn"
+                  size="small"
+                  [disabled]="isActing()"
+                  (click)="reject()"
+                >
+                  Rejeter
+                </button>
+                <button
+                  type="button"
+                  tas-outlined-button
+                  size="small"
+                  [disabled]="isActing()"
+                  (click)="showRejectForm.set(false)"
+                >
+                  Annuler
+                </button>
+              </div>
+            </div>
+          }
+
+          <!-- Assign form -->
+          @if (showAssignForm()) {
+            <div class="border border-blue-200 rounded-lg p-3 bg-blue-50">
+              <p class="text-sm font-medium text-blue-800 mb-2">Assigner l'étape à</p>
+              @if (isLoadingUsers()) {
+                <div class="flex justify-center py-2">
+                  <tas-spinner size="5" class="text-primary"></tas-spinner>
+                </div>
+              } @else {
+                <select
+                  class="w-full px-2.5 py-1.5 text-sm border border-blue-200 rounded-md bg-white focus:outline-none focus:ring-1 focus:ring-blue-400"
+                  [value]="assignUserId()"
+                  (change)="assignUserId.set($any($event.target).value)"
+                >
+                  <option value="">— Sélectionner un utilisateur —</option>
+                  @for (u of users(); track u.id) {
+                    <option [value]="u.id">{{ u.fullName ?? u.email ?? u.id }}</option>
+                  }
+                </select>
+              }
+              <div class="flex items-center gap-2 mt-2">
+                <button
+                  type="button"
+                  tas-button
+                  size="small"
+                  [disabled]="isActing() || !assignUserId()"
+                  (click)="assign()"
+                >
+                  Assigner
+                </button>
+                <button
+                  type="button"
+                  tas-outlined-button
+                  size="small"
+                  [disabled]="isActing()"
+                  (click)="showAssignForm.set(false)"
+                >
+                  Annuler
+                </button>
+              </div>
+            </div>
+          }
+
+          <!-- Delegate form -->
+          @if (showDelegateForm()) {
+            <div class="border border-violet-200 rounded-lg p-3 bg-violet-50">
+              <p class="text-sm font-medium text-violet-800 mb-2">Déléguer l'étape à</p>
+              @if (isLoadingUsers()) {
+                <div class="flex justify-center py-2">
+                  <tas-spinner size="5" class="text-primary"></tas-spinner>
+                </div>
+              } @else {
+                <select
+                  class="w-full px-2.5 py-1.5 text-sm border border-violet-200 rounded-md bg-white focus:outline-none focus:ring-1 focus:ring-violet-400"
+                  [value]="delegateUserId()"
+                  (change)="delegateUserId.set($any($event.target).value)"
+                >
+                  <option value="">— Sélectionner un utilisateur —</option>
+                  @for (u of users(); track u.id) {
+                    <option [value]="u.id">{{ u.fullName ?? u.email ?? u.id }}</option>
+                  }
+                </select>
+              }
+              <textarea
+                class="w-full px-2.5 py-1.5 text-sm border border-violet-200 rounded-md bg-white focus:outline-none focus:ring-1 focus:ring-violet-400 resize-none mt-2"
+                rows="2"
+                placeholder="Motif de la délégation (optionnel)"
+                [value]="delegateComment()"
+                (input)="delegateComment.set($any($event.target).value)"
+              ></textarea>
+              <div class="flex items-center gap-2 mt-2">
+                <button
+                  type="button"
+                  tas-button
+                  size="small"
+                  [disabled]="isActing() || !delegateUserId()"
+                  (click)="delegate()"
+                >
+                  Déléguer
+                </button>
+                <button
+                  type="button"
+                  tas-outlined-button
+                  size="small"
+                  [disabled]="isActing()"
+                  (click)="showDelegateForm.set(false)"
+                >
+                  Annuler
+                </button>
+              </div>
+            </div>
+          }
+
+          <!-- Action buttons (shown when no form is open) -->
+          @if (!showApproveForm() && !showRejectForm() && !showAssignForm() && !showDelegateForm()) {
+            <div class="flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                tas-button
+                [disabled]="isActing()"
+                (click)="showApproveForm.set(true)"
+              >
+                <tas-icon iconName="feather:check" style="font-size:14px"></tas-icon>
+                Approuver
+              </button>
+              <button
+                type="button"
+                tas-outlined-button
+                color="warn"
+                [disabled]="isActing()"
+                (click)="showRejectForm.set(true)"
+              >
+                <tas-icon iconName="feather:x" style="font-size:14px"></tas-icon>
+                Rejeter
+              </button>
+              <button
+                type="button"
+                tas-outlined-button
+                [disabled]="isActing()"
+                (click)="openAssignForm()"
+              >
+                <tas-icon iconName="feather:user-check" style="font-size:14px"></tas-icon>
+                Assigner
+              </button>
+              <button
+                type="button"
+                tas-outlined-button
+                [disabled]="isActing()"
+                (click)="openDelegateForm()"
+              >
+                <tas-icon iconName="feather:share-2" style="font-size:14px"></tas-icon>
+                Déléguer
+              </button>
+            </div>
+          }
+
+        </div>
+      </tas-card>
+    }
+
+    <!-- ── Audit trail ──────────────────────────────────────────────────── -->
+    @if (audit().length > 0) {
+      <tas-card>
+        <div class="p-4 border-b border-slate-100">
+          <p class="font-semibold text-slate-800">Historique</p>
+        </div>
+        <div class="px-4 pb-4">
+          <div class="flex flex-col divide-y divide-slate-100">
+            @for (entry of audit(); track entry.id) {
+              <div class="py-3">
+                <div class="flex items-center gap-2 text-sm text-slate-700">
+                  @if (entry.fromStateId) {
+                    <span class="text-slate-500">{{ stepName(entry.fromStateId) }}</span>
+                    <tas-icon iconName="feather:arrow-right" class="text-slate-300 shrink-0" style="font-size:12px"></tas-icon>
+                  }
+                  <span class="font-medium">{{ stepName(entry.toStateId) }}</span>
+                  @if (entry.eventCode) {
+                    <span class="text-xs text-slate-400 font-mono">[{{ entry.eventCode }}]</span>
+                  }
+                </div>
+                @if (entry.comment) {
+                  <p class="text-xs text-slate-500 mt-0.5 italic">"{{ entry.comment }}"</p>
+                }
+                <p class="text-xs text-slate-400 mt-0.5">
+                  {{ entry.occurredAt! | dateTimeAgo }}
+                </p>
+              </div>
+            }
+          </div>
+        </div>
+      </tas-card>
+    }
+
+  } @else {
+    <div class="text-center py-16 text-sm text-slate-400">
+      Instance introuvable.
+    </div>
+  }
+
+</div>

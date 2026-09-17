@@ -1,0 +1,151 @@
+<!-- Page header -->
+<div class="flex items-start justify-between mb-5">
+  <div>
+    <h1 class="text-lg font-semibold text-slate-800">Informations de l'organisation</h1>
+    <p class="text-sm text-slate-400 mt-0.5">Identité et apparence visuelle de votre organisation.</p>
+  </div>
+</div>
+
+@if (isLoading()) {
+  <div class="flex justify-center py-24">
+    <tas-spinner size="10" class="text-primary"></tas-spinner>
+  </div>
+} @else {
+  <form [formRoot]="formSchema" class="max-w-2xl flex flex-col gap-5">
+
+    <!-- Section identité -->
+    <tas-card>
+      <div class="p-4 flex flex-col gap-4">
+        <p class="text-sm font-semibold text-slate-700">Identité</p>
+
+        <tas-form-field>
+          <tas-label>Nom de l'organisation <span class="text-functional-error">*</span></tas-label>
+          <input
+            tasInput
+            type="text"
+            placeholder="ex: MicroFinance Sénégal"
+            [formField]="formSchema.name"
+          />
+          @if (formSchema.name().touched() && formSchema.name().invalid()) {
+            <tas-error>{{ formSchema.name().errors()[0].message }}</tas-error>
+          }
+        </tas-form-field>
+
+        <tas-form-field>
+          <tas-label>Description</tas-label>
+          <input
+            tasInput
+            type="text"
+            placeholder="ex: Institution de microfinance agréée"
+            [formField]="formSchema.description"
+          />
+        </tas-form-field>
+
+        <tas-form-field>
+          <tas-label>URL du logo</tas-label>
+          <input
+            tasInput
+            type="url"
+            placeholder="https://example.com/logo.png"
+            [formField]="formSchema.logoUrl"
+          />
+        </tas-form-field>
+
+        <tas-form-field>
+          <tas-label>Langue par défaut</tas-label>
+          <tas-select
+            [options]="languageOptions"
+            [formField]="formSchema.defaultLanguage"
+          ></tas-select>
+        </tas-form-field>
+      </div>
+    </tas-card>
+
+    <!-- Section apparence -->
+    <tas-card>
+      <div class="p-4 flex flex-col gap-4">
+        <div>
+          <p class="text-sm font-semibold text-slate-700">Apparence</p>
+          <p class="text-xs text-slate-400 mt-0.5">Les couleurs sont appliquées immédiatement après enregistrement.</p>
+        </div>
+
+        <!-- Couleur principale -->
+        <div class="flex items-center gap-3">
+          <div class="flex-1">
+            <tas-form-field>
+              <tas-label>Couleur principale</tas-label>
+              <input
+                tasInput
+                type="text"
+                placeholder="#1A4D4D"
+                [formField]="formSchema.primaryColor"
+              />
+            </tas-form-field>
+          </div>
+          <div class="shrink-0 mt-5">
+            <label class="block text-xs text-slate-400 mb-1 sr-only">Sélecteur</label>
+            <input
+              type="color"
+              class="w-10 h-10 rounded-lg border border-slate-200 cursor-pointer p-0.5 bg-white"
+              [value]="formSchema.primaryColor().value() || '#1A4D4D'"
+              (input)="onColorPickerChange('primaryColor', $any($event.target).value)"
+            />
+          </div>
+        </div>
+
+        <!-- Couleur secondaire -->
+        <div class="flex items-center gap-3">
+          <div class="flex-1">
+            <tas-form-field>
+              <tas-label>Couleur secondaire</tas-label>
+              <input
+                tasInput
+                type="text"
+                placeholder="#103456"
+                [formField]="formSchema.secondaryColor"
+              />
+            </tas-form-field>
+          </div>
+          <div class="shrink-0 mt-5">
+            <label class="block text-xs text-slate-400 mb-1 sr-only">Sélecteur</label>
+            <input
+              type="color"
+              class="w-10 h-10 rounded-lg border border-slate-200 cursor-pointer p-0.5 bg-white"
+              [value]="formSchema.secondaryColor().value() || '#103456'"
+              (input)="onColorPickerChange('secondaryColor', $any($event.target).value)"
+            />
+          </div>
+        </div>
+
+        <!-- Aperçu -->
+        <div class="flex items-center gap-3 p-3 rounded-lg bg-slate-50 border border-slate-100">
+          <div
+            class="w-8 h-8 rounded-full shrink-0"
+            [style.background-color]="formSchema.primaryColor().value() || '#1A4D4D'"
+          ></div>
+          <div
+            class="w-8 h-8 rounded-full shrink-0"
+            [style.background-color]="formSchema.secondaryColor().value() || '#103456'"
+          ></div>
+          <p class="text-xs text-slate-400">Aperçu des couleurs</p>
+        </div>
+      </div>
+    </tas-card>
+
+    <!-- Save -->
+    <div class="flex justify-end">
+      <button
+        tas-raised-button
+        color="primary"
+        type="button"
+        [disabled]="isSaving()"
+        [isLoading]="isSaving()"
+        (click)="handleSave()"
+      >
+        <tas-icon iconName="feather:save" iconSize="sm"></tas-icon>
+        Enregistrer
+      </button>
+    </div>
+
+  </form>
+}

@@ -9,19 +9,15 @@
  * https://openapi-generator.tech
  * Do not edit the class manually.
  */
-import { WorkflowStepDto } from './workflow-step-dto.interface';
 
 
-export interface WorkflowTemplateDto { 
-    id?: string;
-    tenantId?: string;
-    entityType?: string | null;
-    name?: string | null;
-    description?: string | null;
-    isActive?: boolean;
-    version?: number;
+export interface MyStepDto { 
+    stepId?: string;
+    instanceId?: string;
+    stepName?: string | null;
+    approverRoleCode?: string | null;
+    assignedToUserId?: string | null;
+    dueAt?: string | null;
     createdAt?: string;
-    updatedAt?: string;
-    steps?: Array<WorkflowStepDto> | null;
 }
 

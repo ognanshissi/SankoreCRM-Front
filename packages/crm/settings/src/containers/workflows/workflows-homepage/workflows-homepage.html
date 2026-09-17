@@ -1,0 +1,143 @@
+<!-- Page header -->
+<div class="flex items-start justify-between mb-5">
+  <div>
+    <div class="flex items-center gap-2.5">
+      <h1 class="text-lg font-semibold text-slate-800">Workflows</h1>
+      @if (templates().length > 0) {
+        <span class="px-2 py-0.5 rounded-md bg-slate-100 text-slate-500 text-xs font-medium tabular-nums">
+          {{ templates().length }}
+        </span>
+      }
+    </div>
+    <p class="text-sm text-slate-400 mt-0.5">
+      Définissez les étapes de validation appliquées automatiquement à vos entités.
+    </p>
+  </div>
+  <button tas-filled-button color="primary" (click)="openCreateDrawer()">
+    <tas-icon iconName="feather:plus"></tas-icon>
+    Nouveau modèle
+  </button>
+</div>
+
+@if (!isLoading() && templates().length === 0) {
+  <!-- Empty state: no template created yet -->
+  <tas-card>
+    <div class="flex flex-col items-center justify-center text-center py-16 px-6">
+      <div class="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mb-4">
+        <tas-icon iconName="feather:git-branch" iconSize="lg" class="text-slate-400"></tas-icon>
+      </div>
+      <p class="font-medium text-slate-800">Aucun workflow pour le moment</p>
+      <p class="text-sm text-slate-400 mt-1 max-w-sm">
+        Créez un modèle pour déclencher une chaîne de validations à chaque fois qu'un lead, un contact ou une opportunité franchit une étape clé.
+      </p>
+      <button tas-filled-button color="primary" class="mt-5" (click)="openCreateDrawer()">
+        <tas-icon iconName="feather:plus"></tas-icon>
+        Créer mon premier modèle
+      </button>
+    </div>
+  </tas-card>
+} @else {
+  <!-- Status filter -->
+  <div class="flex items-center gap-1 mb-4 p-1 rounded-lg bg-slate-100 w-fit">
+    @for (filter of statusFilters; track filter.value) {
+      <button
+        type="button"
+        class="px-3 py-1.5 rounded-md text-sm font-medium transition-colors"
+        [class.bg-white]="statusFilter() === filter.value"
+        [class.text-slate-800]="statusFilter() === filter.value"
+        [class.shadow-sm]="statusFilter() === filter.value"
+        [class.text-slate-500]="statusFilter() !== filter.value"
+        (click)="setStatusFilter(filter.value)"
+      >
+        {{ filter.label }}
+      </button>
+    }
+  </div>
+
+  <tas-table
+    [data]="filteredTemplates()"
+    [config]="tableConfig()"
+    [hasCaption]="true"
+    [isLoading]="isLoading()"
+    (searchInputChange)="onSearchChange($event)"
+    (refresh)="loadTemplates()"
+  >
+    <ng-template #header>
+      <tr>
+        <th>Modèle</th>
+        <th>Entité déclencheur</th>
+        <th>Étapes</th>
+        <th>Statut</th>
+        <th>Mis à jour</th>
+        <th></th>
+      </tr>
+    </ng-template>
+
+    <ng-template #body let-item>
+      <tr
+        class="cursor-pointer hover:bg-slate-50 transition-colors"
+        (click)="navigateToEdit(item)"
+      >
+        <!-- Identity cell -->
+        <td class="py-3">
+          <div class="min-w-0">
+            <span class="font-medium text-slate-800 leading-tight truncate">{{ item.name || 'Sans nom' }}</span>
+            @if (item.description) {
+              <div class="text-xs text-slate-400 mt-0.5 truncate max-w-xs">{{ item.description }}</div>
+            }
+          </div>
+        </td>
+
+        <!-- Entity type -->
+        <td>
+          <tas-tag severity="neutral">{{ entityTypeLabel(item.entityType) }}</tas-tag>
+        </td>
+
+        <!-- Step chain preview -->
+        <td>
+          @if (stepCount(item) > 0) {
+            <div class="flex items-center">
+              @for (step of item.steps; track step.id; let last = $last) {
+                <div
+                  class="w-6 h-6 rounded-full bg-primary/10 text-primary text-[10px] font-semibold flex items-center justify-center flex-shrink-0"
+                  [title]="step.name"
+                >
+                  {{ step.order }}
+                </div>
+                @if (!last) {
+                  <div class="w-3 h-px bg-slate-200 flex-shrink-0"></div>
+                }
+              }
+              <span class="text-xs text-slate-400 ml-2 whitespace-nowrap">{{ stepCount(item) }} étape{{ stepCount(item) > 1 ? 's' : '' }}</span>
+            </div>
+          } @else {
+            <span class="text-sm text-slate-400">Aucune étape</span>
+          }
+        </td>
+
+        <!-- Status -->
+        <td>
+          <tas-tag [severity]="item.isActive ? 'success' : 'warning'">
+            {{ item.isActive ? 'Actif' : 'Brouillon' }}
+          </tas-tag>
+        </td>
+
+        <!-- Updated date -->
+        <td class="text-sm text-slate-500">{{ item.updatedAt! | dateTimeAgo }}</td>
+
+        <!-- Action -->
+        <td class="text-right" (click)="$event.stopPropagation()">
+          <button
+            tas-button
+            iconButton
+            type="button"
+            (click)="navigateToEdit(item)"
+            title="Voir / modifier"
+          >
+            <tas-icon iconName="feather:edit-2" iconSize="sm"></tas-icon>
+          </button>
+        </td>
+      </tr>
+    </ng-template>
+  </tas-table>
+}

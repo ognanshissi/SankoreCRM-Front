@@ -9,10 +9,10 @@ import {
 } from '@angular/router';
 import { Loading } from '@sankore/crm/common';
 import { filter } from 'rxjs';
-import { LoadingComponent } from '@sankore/crm/common';
+import { LoadingComponent, PageLoadingComponent } from '@sankore/crm/common';
 
 @Component({
-  imports: [RouterModule, LoadingComponent],
+  imports: [RouterModule, LoadingComponent, PageLoadingComponent],
   selector: 'app-root',
   templateUrl: './app.html',
   styleUrl: './app.css',

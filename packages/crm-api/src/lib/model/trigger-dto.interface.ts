@@ -9,19 +9,17 @@
  * https://openapi-generator.tech
  * Do not edit the class manually.
  */
-import { WorkflowStepDto } from './workflow-step-dto.interface';
+import { TriggerType } from './trigger-type.interface';
 
 
-export interface WorkflowTemplateDto { 
+export interface TriggerDto { 
     id?: string;
-    tenantId?: string;
-    entityType?: string | null;
-    name?: string | null;
-    description?: string | null;
+    triggerType?: TriggerType;
+    eventName?: string | null;
+    conditionJson?: string | null;
     isActive?: boolean;
-    version?: number;
     createdAt?: string;
-    updatedAt?: string;
-    steps?: Array<WorkflowStepDto> | null;
 }
+
+
 
