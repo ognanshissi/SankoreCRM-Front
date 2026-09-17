@@ -70,6 +70,10 @@ const settingsRoutes: Routes = [
     loadComponent: () => import('./containers/workflows/edit-workflow-template/my-queue'),
   },
   {
+    path: 'workflows/analytiques',
+    loadComponent: () => import('./containers/workflows/workflow-analytics/workflow-analytics'),
+  },
+  {
     path: 'workflows/:id',
     loadComponent: () => EditWorkflowTemplateNavigation,
     children: [
@@ -80,6 +84,8 @@ const settingsRoutes: Routes = [
       { path: 'declencheurs', loadComponent: () => import('./containers/workflows/edit-workflow-template/triggers') },
       { path: 'instances', loadComponent: () => import('./containers/workflows/edit-workflow-template/instances') },
       { path: 'instances/:instanceId', loadComponent: () => import('./containers/workflows/edit-workflow-template/instance-detail') },
+      { path: 'analytiques', loadComponent: () => import('./containers/workflows/edit-workflow-template/analytics') },
+      { path: 'comparer', loadComponent: () => import('./containers/workflows/edit-workflow-template/compare') },
     ],
   },
   {

@@ -1,6 +1,6 @@
 import { Component, computed, inject, signal } from '@angular/core';
-import { Router } from '@angular/router';
-import { Button } from '@talisoft/ui/button';
+import { Router, RouterLink } from '@angular/router';
+import { Button, Anchor } from '@talisoft/ui/button';
 import { TasIcon } from '@talisoft/ui/icon';
 import { TasCard } from '@talisoft/ui/card';
 import { TasTag } from '@talisoft/ui/tag';
@@ -16,7 +16,7 @@ type StatusFilter = 'all' | 'active' | 'draft';
 
 @Component({
   templateUrl: './workflows-homepage.html',
-  imports: [Button, TasIcon, TasCard, TasTag, TasTable, TimeagoPipe],
+  imports: [RouterLink, Button, Anchor, TasIcon, TasCard, TasTag, TasTable, TimeagoPipe],
 })
 export class WorkflowsHomePage {
   private readonly _workflowTemplatesApiService = inject(WorkflowTemplatesApiService);

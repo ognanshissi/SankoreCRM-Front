@@ -9,15 +9,13 @@
  * https://openapi-generator.tech
  * Do not edit the class manually.
  */
+import { StepChangedDto } from './step-changed-dto.interface';
+import { StepSnapshotDto } from './step-snapshot-dto.interface';
 
 
-export enum WorkflowStatus {
-    NUMBER_0 = 0,
-    NUMBER_1 = 1,
-    NUMBER_2 = 2,
-    NUMBER_3 = 3,
-    NUMBER_4 = 4,
-    NUMBER_5 = 5,
-    NUMBER_6 = 6
+export interface StepsDiffDto { 
+    added?: Array<StepSnapshotDto> | null;
+    removed?: Array<StepSnapshotDto> | null;
+    changed?: Array<StepChangedDto> | null;
 }
 

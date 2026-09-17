@@ -7,7 +7,8 @@ import { fr } from 'date-fns/locale';
   standalone: true,
 })
 export class TimeagoPipe implements PipeTransform {
-  transform(value: string | Date) {
+  transform(value: string | Date | null | undefined): string {
+    if (!value) return '—';
     return formatRelative(value, new Date(), {
       locale: fr,
     });

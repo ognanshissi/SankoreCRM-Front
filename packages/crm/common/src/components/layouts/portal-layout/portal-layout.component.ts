@@ -61,6 +61,13 @@ export class PortalLayoutComponent implements OnInit {
         link: '/settings/workflows/ma-file',
       },
       {
+        id: 'workflow-health',
+        icon: 'feather:activity',
+        title: 'Santé workflows',
+        type: 'basic',
+        link: '/settings/workflows/analytiques',
+      },
+      {
         id: 'contacts',
         icon: 'feather:phone',
         title: 'leads & contacts',

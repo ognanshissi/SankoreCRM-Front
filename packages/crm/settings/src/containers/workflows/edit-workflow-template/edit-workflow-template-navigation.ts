@@ -29,6 +29,9 @@ import { Anchor } from '@talisoft/ui/button';
             }
           </div>
           @if (!isLoading() && template()) {
+            @if (template()!.version) {
+              <span class="text-xs text-slate-400 font-mono shrink-0">v{{ template()!.version }}</span>
+            }
             <span
               class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium shrink-0"
               [ngClass]="{
@@ -63,6 +66,9 @@ import { Anchor } from '@talisoft/ui/button';
                 class="inline-block w-3 h-3 mr-1"
               ></tas-icon>
               {{ entityTypeLabel(template()!.entityType) }}
+              @if (template()!.version) {
+                · v{{ template()!.version }}
+              }
             </p>
           </div>
         }
@@ -106,6 +112,18 @@ export class EditWorkflowTemplateNavigation {
       label: 'Instances',
       icon: 'feather:activity',
       route: 'instances',
+      active: true,
+    },
+    {
+      label: 'Analytiques',
+      icon: 'feather:bar-chart-2',
+      route: 'analytiques',
+      active: true,
+    },
+    {
+      label: 'Comparer',
+      icon: 'feather:git-merge',
+      route: 'comparer',
       active: true,
     },
   ]);

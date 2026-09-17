@@ -13,10 +13,16 @@
       Définissez les étapes de validation appliquées automatiquement à vos entités.
     </p>
   </div>
-  <button tas-filled-button color="primary" (click)="openCreateDrawer()">
-    <tas-icon iconName="feather:plus"></tas-icon>
-    Nouveau modèle
-  </button>
+  <div class="flex items-center gap-2">
+    <a [routerLink]="['/settings/workflows/analytiques']" tas-outlined-button color="primary">
+      <tas-icon iconName="feather:activity" iconSize="sm"></tas-icon>
+      Santé
+    </a>
+    <button tas-filled-button color="primary" (click)="openCreateDrawer()">
+      <tas-icon iconName="feather:plus"></tas-icon>
+      Nouveau modèle
+    </button>
+  </div>
 </div>
 
 @if (!isLoading() && templates().length === 0) {
@@ -81,7 +87,12 @@
         <!-- Identity cell -->
         <td class="py-3">
           <div class="min-w-0">
-            <span class="font-medium text-slate-800 leading-tight truncate">{{ item.name || 'Sans nom' }}</span>
+            <div class="flex items-center gap-1.5">
+              <span class="font-medium text-slate-800 leading-tight truncate">{{ item.name || 'Sans nom' }}</span>
+              @if (item.version) {
+                <span class="text-[10px] font-medium text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded shrink-0 tabular-nums">v{{ item.version }}</span>
+              }
+            </div>
             @if (item.description) {
               <div class="text-xs text-slate-400 mt-0.5 truncate max-w-xs">{{ item.description }}</div>
             }

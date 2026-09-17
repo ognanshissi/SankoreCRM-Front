@@ -9,15 +9,14 @@
  * https://openapi-generator.tech
  * Do not edit the class manually.
  */
+import { StuckInstanceDto } from './stuck-instance-dto.interface';
+import { TemplateQueueDto } from './template-queue-dto.interface';
 
 
-export enum WorkflowStatus {
-    NUMBER_0 = 0,
-    NUMBER_1 = 1,
-    NUMBER_2 = 2,
-    NUMBER_3 = 3,
-    NUMBER_4 = 4,
-    NUMBER_5 = 5,
-    NUMBER_6 = 6
+export interface ExecutionMonitorDto { 
+    asOf?: string;
+    stuckThresholdHours?: number;
+    byTemplate?: Array<TemplateQueueDto> | null;
+    stuckInstances?: Array<StuckInstanceDto> | null;
 }
 

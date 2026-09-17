@@ -9,15 +9,12 @@
  * https://openapi-generator.tech
  * Do not edit the class manually.
  */
+import { FieldChangedDto } from './field-changed-dto.interface';
 
 
-export enum WorkflowStatus {
-    NUMBER_0 = 0,
-    NUMBER_1 = 1,
-    NUMBER_2 = 2,
-    NUMBER_3 = 3,
-    NUMBER_4 = 4,
-    NUMBER_5 = 5,
-    NUMBER_6 = 6
+export interface StepChangedDto { 
+    order?: number;
+    code?: string | null;
+    changes?: { [key: string]: FieldChangedDto; } | null;
 }
 
