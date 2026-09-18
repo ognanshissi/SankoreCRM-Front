@@ -10,130 +10,207 @@
   </button>
 </div>
 
-<!-- tags filter -->
-@let countInactive = (userStatusStats().locked || 0) + (userStatusStats().disabled || 0);
-<div class="flex space-x-3 pb-4">
-  <button tas-raised-button
-    [color]="statusFilter() === undefined ? 'primary' : 'neutral'"
+<!-- KPI stats row -->
+<div class="grid grid-cols-4 gap-3 mb-5">
+  <tas-card>
+    <div class="flex items-center gap-3 p-3">
+      <div class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center shrink-0">
+        <tas-icon iconName="feather:users" class="text-slate-500" style="font-size:14px"></tas-icon>
+      </div>
+      <div>
+        <p class="text-xl font-semibold text-slate-800 tabular-nums leading-none">{{ userStatusStats().total ?? 0 }}</p>
+        <p class="text-xs text-slate-400 mt-0.5">Total</p>
+      </div>
+    </div>
+  </tas-card>
+  <tas-card>
+    <div class="flex items-center gap-3 p-3">
+      <div class="w-8 h-8 rounded-full bg-green-50 flex items-center justify-center shrink-0">
+        <tas-icon iconName="feather:user-check" class="text-green-500" style="font-size:14px"></tas-icon>
+      </div>
+      <div>
+        <p class="text-xl font-semibold text-slate-800 tabular-nums leading-none">{{ userStatusStats().active ?? 0 }}</p>
+        <p class="text-xs text-slate-400 mt-0.5">Actifs</p>
+      </div>
+    </div>
+  </tas-card>
+  <tas-card>
+    <div class="flex items-center gap-3 p-3">
+      <div class="w-8 h-8 rounded-full bg-amber-50 flex items-center justify-center shrink-0">
+        <tas-icon iconName="feather:clock" class="text-amber-500" style="font-size:14px"></tas-icon>
+      </div>
+      <div>
+        <p class="text-xl font-semibold text-slate-800 tabular-nums leading-none">{{ userStatusStats().pendingActivation ?? 0 }}</p>
+        <p class="text-xs text-slate-400 mt-0.5">En attente</p>
+      </div>
+    </div>
+  </tas-card>
+  <tas-card>
+    <div class="flex items-center gap-3 p-3">
+      <div class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center shrink-0">
+        <tas-icon iconName="feather:user-x" class="text-slate-400" style="font-size:14px"></tas-icon>
+      </div>
+      <div>
+        <p class="text-xl font-semibold text-slate-800 tabular-nums leading-none">
+          {{ (userStatusStats().disabled ?? 0) + (userStatusStats().locked ?? 0) }}
+        </p>
+        <p class="text-xs text-slate-400 mt-0.5">Désactivés / Suspendus</p>
+      </div>
+    </div>
+  </tas-card>
+</div>
+
+<!-- Status filter tabs -->
+<div class="flex items-center gap-1 mb-4 p-1 rounded-lg bg-slate-100 w-fit">
+  <button
+    type="button"
+    class="px-3 py-1.5 rounded-md text-sm font-medium transition-colors"
+    [class.bg-white]="statusFilter() === undefined"
+    [class.text-slate-800]="statusFilter() === undefined"
+    [class.shadow-sm]="statusFilter() === undefined"
+    [class.text-slate-500]="statusFilter() !== undefined"
     (click)="onStatusFilterChange(undefined)"
-  >Tout ({{ userStatusStats().total }})</button>
-  <button tas-raised-button
-    [color]="statusFilter() === 1 ? 'primary' : 'neutral'"
+  >
+    Tous
+    <span class="ml-1 text-[10px] font-semibold tabular-nums">{{ userStatusStats().total ?? 0 }}</span>
+  </button>
+  <button
+    type="button"
+    class="px-3 py-1.5 rounded-md text-sm font-medium transition-colors"
+    [class.bg-white]="statusFilter() === 1"
+    [class.text-slate-800]="statusFilter() === 1"
+    [class.shadow-sm]="statusFilter() === 1"
+    [class.text-slate-500]="statusFilter() !== 1"
     (click)="onStatusFilterChange(1)"
-  >Actifs ({{ userStatusStats().active }})</button>
-  <button tas-raised-button
-    [color]="statusFilter() === 0 ? 'primary' : 'neutral'"
+  >
+    Actifs
+    <span class="ml-1 text-[10px] font-semibold tabular-nums">{{ userStatusStats().active ?? 0 }}</span>
+  </button>
+  <button
+    type="button"
+    class="px-3 py-1.5 rounded-md text-sm font-medium transition-colors"
+    [class.bg-white]="statusFilter() === 0"
+    [class.text-slate-800]="statusFilter() === 0"
+    [class.shadow-sm]="statusFilter() === 0"
+    [class.text-slate-500]="statusFilter() !== 0"
     (click)="onStatusFilterChange(0)"
-  >Activation en attente ({{ userStatusStats().pendingActivation }})</button>
-  <button tas-raised-button
-    [color]="statusFilter() === 2 ? 'primary' : 'neutral'"
+  >
+    En attente
+    <span class="ml-1 text-[10px] font-semibold tabular-nums">{{ userStatusStats().pendingActivation ?? 0 }}</span>
+  </button>
+  <button
+    type="button"
+    class="px-3 py-1.5 rounded-md text-sm font-medium transition-colors"
+    [class.bg-white]="statusFilter() === 2"
+    [class.text-slate-800]="statusFilter() === 2"
+    [class.shadow-sm]="statusFilter() === 2"
+    [class.text-slate-500]="statusFilter() !== 2"
     (click)="onStatusFilterChange(2)"
-  >Désactivés / Suspendus ({{ countInactive }})</button>
+  >
+    Désactivés / Suspendus
+    <span class="ml-1 text-[10px] font-semibold tabular-nums">{{ (userStatusStats().disabled ?? 0) + (userStatusStats().locked ?? 0) }}</span>
+  </button>
 </div>
 
 <!-- Table -->
 <tas-table
-    [data]="users()"
-    [config]="tableConfig()"
-    [hasCaption]="true"
-    [isLoading]="isLoading()"
-    (pageEventChange)="onPageChange($event)"
-    (searchInputChange)="onSearchChange($event)"
-  >
-    <ng-template #header>
-      <tr>
-        <th>Membre</th>
-        <th>Agence</th>
-        <th>Type</th>
-        <th>Role</th>
-        <th>Statut</th>
-        <th>Dernière connexion</th>
-        <th></th>
-      </tr>
-    </ng-template>
+  [data]="users()"
+  [config]="tableConfig()"
+  [hasCaption]="true"
+  [isLoading]="isLoading()"
+  (pageEventChange)="onPageChange($event)"
+  (searchInputChange)="onSearchChange($event)"
+>
+  <ng-template #header>
+    <tr>
+      <th>Membre</th>
+      <th>Agence</th>
+      <th>Type</th>
+      <th>Rôle</th>
+      <th>Statut</th>
+      <th>Dernière connexion</th>
+      <th></th>
+    </tr>
+  </ng-template>
 
-    <ng-template #body let-item>
-      <tr
-        class="cursor-pointer hover:bg-slate-50 transition-colors"
-        (click)="navigateToEdit(item)"
-      >
-        <!-- Identity cell: avatar + name + email + mfa indicator -->
-        <td class="py-3">
-          <div class="flex items-center gap-3">
-            <div class="relative flex-shrink-0">
-              <div
-                class="w-9 h-9 rounded-full flex items-center justify-center text-xs font-semibold select-none"
-                [ngClass]="avatarColor(item.fullName)"
-              >
-                {{ item.fullName | initials }}
-              </div>
-              @if (item.isAvailable) {
-                <span class="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-green-500 border-2 border-white"></span>
+  <ng-template #body let-item>
+    <tr
+      class="cursor-pointer hover:bg-slate-50 transition-colors"
+      (click)="navigateToEdit(item)"
+    >
+      <!-- Identity: avatar + name + email + MFA -->
+      <td class="py-3">
+        <div class="flex items-center gap-3">
+          <div class="relative flex-shrink-0">
+            <div
+              class="w-9 h-9 rounded-full flex items-center justify-center text-xs font-semibold select-none"
+              [ngClass]="avatarColor(item.fullName)"
+            >
+              {{ item.fullName | initials }}
+            </div>
+            @if (item.isAvailable) {
+              <span class="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-green-500 border-2 border-white"></span>
+            }
+          </div>
+          <div class="min-w-0">
+            <div class="flex items-center gap-1.5 leading-tight">
+              <span class="font-medium text-slate-800 truncate">{{ item.fullName ?? '—' }}</span>
+              @if (item.mfaEnabled) {
+                <tas-icon iconName="feather:shield" iconSize="sm" class="text-primary flex-shrink-0" title="MFA activé"></tas-icon>
               }
             </div>
-            <div class="min-w-0">
-              <div class="flex items-center gap-1.5 leading-tight">
-                <span class="font-medium text-slate-800 truncate">{{ item.fullName ?? '—' }}</span>
-                @if (item.mfaEnabled) {
-                  <tas-icon iconName="feather:shield" iconSize="sm" class="text-primary flex-shrink-0" title="MFA activé"></tas-icon>
-                }
-              </div>
-              <div class="text-xs text-slate-400 mt-0.5 truncate">{{ item.email ?? '' }}</div>
-            </div>
+            <div class="text-xs text-slate-400 mt-0.5 truncate">{{ item.email ?? '' }}</div>
           </div>
-        </td>
+        </div>
+      </td>
 
-        <!-- Agency -->
-        <td class="text-sm text-slate-600">{{ item.agencyName ?? '—' }}</td>
+      <!-- Agency -->
+      <td class="text-sm text-slate-600">{{ item.agencyName ?? '—' }}</td>
 
-        <!-- Account type badge -->
-        <td>
-          @if (item.accountType) {
-            <span class="px-2 py-0.5 rounded text-xs font-medium bg-accent/10 text-accent">
-              {{ accountTypeLabel(item.accountType) }}
-            </span>
+      <!-- Account type -->
+      <td>
+        @if (item.accountType != null) {
+          <tas-tag severity="neutral">{{ accountTypeLabel(item.accountType) }}</tas-tag>
+        } @else {
+          <span class="text-slate-400 text-sm">—</span>
+        }
+      </td>
+
+      <!-- Roles -->
+      <td>
+        @if (item.roles?.length) {
+          @if (item.roles.length > 1) {
+            <tas-tag severity="neutral" [title]="displayRoles(item.roles)">{{ item.roles[0] }}, +{{ item.roles.length - 1 }}</tas-tag>
           } @else {
-            <span class="text-slate-400 text-sm">—</span>
+            <tas-tag severity="neutral">{{ item.roles[0] }}</tas-tag>
           }
-        </td>
+        } @else {
+          <span class="text-slate-400 text-sm">—</span>
+        }
+      </td>
 
-        <!-- Role  -->
-        <td>
-          @if (item.roles?.length) {
-            @if (item.roles?.length > 1) {
-              <tas-tag [severity]="'neutral'" [title]="displayRoles(item.roles)">{{ item.roles[0] }}, ...</tas-tag>
-            } @else {
-              <tas-tag [severity]="'neutral'">{{ item.roles }}</tas-tag>
-            }
-          } @else {
-            <span class="text-slate-400 text-sm">—</span>
-          }
-        </td>
+      <!-- Status -->
+      <td>
+        <tas-tag [severity]="statusSeverity(item.status)">{{ statusLabel(item.status) }}</tas-tag>
+      </td>
 
-        <!-- Status: left-border treatment -->
-        <td>
-          <span class="text-sm font-medium pl-2" [ngClass]="statusBorderClass(item.status)">
-            {{ statusLabel(item.status) }}
-          </span>
-        </td>
+      <!-- Last login -->
+      <td class="text-sm text-slate-500">
+        {{ item.lastLoginAt ? (item.lastLoginAt | dateTimeAgo) : 'Jamais connecté' }}
+      </td>
 
-        <!-- Last login -->
-        <td class="text-sm text-slate-500">
-          {{ item.lastLoginAt ? (item.lastLoginAt | dateTimeAgo) : 'Jamais connecté' }}
-        </td>
-
-        <!-- Action -->
-        <td class="text-right" (click)="$event.stopPropagation()">
-          <button
-            tas-button
-            iconButton
-            type="button"
-            (click)="navigateToEdit(item)"
-            title="Voir / modifier"
-          >
-            <tas-icon iconName="feather:edit-2" iconSize="sm"></tas-icon>
-          </button>
-        </td>
-      </tr>
-    </ng-template>
-  </tas-table>
+      <!-- Action -->
+      <td class="text-right" (click)="$event.stopPropagation()">
+        <button
+          tas-button
+          iconButton
+          type="button"
+          (click)="navigateToEdit(item)"
+          title="Voir / modifier"
+        >
+          <tas-icon iconName="feather:edit-2" iconSize="sm"></tas-icon>
+        </button>
+      </td>
+    </tr>
+  </ng-template>
+</tas-table>

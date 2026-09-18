@@ -33,9 +33,9 @@ const AVATAR_COLORS = [
     TasIcon,
     TasCard,
     TasTable,
+    TasTag,
     TimeagoPipe,
     InitialsPipe,
-    TasTag,
   ],
 })
 export class UsersHomePage {
@@ -93,8 +93,7 @@ export class UsersHomePage {
 
   public openCreateDrawer(): void {
     const ref = this._sideDrawerService.open(CreateUserComponent, {
-      width: '100%',
-      height: '100%',
+      width: '100vw',
       panelClass: 'side-drawer-panel',
     });
     ref.closed.subscribe((result) => {
@@ -162,16 +161,13 @@ export class UsersHomePage {
     return roles.join(', ');
   }
 
-  public statusBorderClass(
-    status: string | null | undefined,
-  ): Record<string, boolean> {
-    return {
-      'border-l-2 border-green-500 text-green-700': status === 'Active',
-      'border-l-2 border-amber-500 text-amber-700':
-        status === 'PendingActivation',
-      'border-l-2 border-slate-300 text-slate-500': status === 'Disabled',
-      'border-l-2 border-warn text-warn': status === 'Locked',
-    };
+  public statusSeverity(status: string | null | undefined): 'success' | 'warning' | 'neutral' | 'error' {
+    switch (status) {
+      case 'Active': return 'success';
+      case 'PendingActivation': return 'warning';
+      case 'Locked': return 'error';
+      default: return 'neutral';
+    }
   }
 
   public accountTypeLabel(type: string | null | undefined): string {

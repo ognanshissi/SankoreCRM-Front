@@ -35,6 +35,7 @@ model/add-rule-request.interface.ts
 model/add-step-request.interface.ts
 model/add-transition-request.interface.ts
 model/add-trigger-request.interface.ts
+model/admin-reset-password-request.interface.ts
 model/agency-dto-paged-result.interface.ts
 model/agency-dto.interface.ts
 model/agency-tree-node-dto.interface.ts
@@ -48,8 +49,11 @@ model/audit-entry-dto-paged-result.interface.ts
 model/audit-entry-dto.interface.ts
 model/capture-lead-request.interface.ts
 model/capture-lead-result.interface.ts
+model/change-password-request.interface.ts
 model/company-info-dto.interface.ts
 model/complete-task-request.interface.ts
+model/completed-task-dto-paged-result.interface.ts
+model/completed-task-dto.interface.ts
 model/create-agency-request.interface.ts
 model/create-agency-result.interface.ts
 model/create-email-template-request.interface.ts

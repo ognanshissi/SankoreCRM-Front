@@ -5,28 +5,42 @@ import { Router } from '@angular/router';
 import { TasCard } from '@talisoft/ui/card';
 import { TasSpinner } from '@talisoft/ui/spinner';
 import { TasIcon } from '@talisoft/ui/icon';
+import { TasTag } from '@talisoft/ui/tag';
 import { Button } from '@talisoft/ui/button';
 import { TimeagoPipe } from '@talisoft/ui/timeago';
 import { SnackbarService } from '@talisoft/ui/snackbar';
 import {
   ApproveStepRequest,
+  CompletedTaskDto,
   MyStepDto,
   RejectStepRequest,
   WorkflowInstancesApiService,
 } from '@sankore/crm-api';
 
+const COMPLETED_STATUS_META: Record<string, { label: string; severity: 'success' | 'error' | 'warning' | 'neutral' }> = {
+  Approved:  { label: 'Approuvé',  severity: 'success'  },
+  Rejected:  { label: 'Rejeté',   severity: 'error'    },
+  TimedOut:  { label: 'Expiré',   severity: 'warning'  },
+  Cancelled: { label: 'Annulé',   severity: 'neutral'  },
+  Skipped:   { label: 'Sauté',    severity: 'neutral'  },
+};
+
+function completedStatusMeta(status: string | null | undefined) {
+  return COMPLETED_STATUS_META[status ?? ''] ?? { label: status ?? '—', severity: 'neutral' as const };
+}
+
 @Component({
   selector: 'workflow-my-queue',
-  imports: [NgClass, FormsModule, TasCard, TasSpinner, TasIcon, Button, TimeagoPipe],
+  imports: [NgClass, FormsModule, TasCard, TasSpinner, TasIcon, TasTag, Button, TimeagoPipe],
   template: `
     <div class="pb-6">
       <!-- Header -->
       <div class="flex items-start justify-between mb-4">
         <div>
           <h2 class="text-lg font-semibold text-slate-800">Ma file d'attente</h2>
-          <p class="text-sm text-slate-500 mt-0.5">Étapes qui vous sont assignées et en attente d'action.</p>
+          <p class="text-sm text-slate-500 mt-0.5">Étapes assignées et historique de vos actions.</p>
         </div>
-        @if (!isLoading() && steps().length > 0) {
+        @if (!isLoading() && activeTab() === 'pending' && steps().length > 0) {
           <div class="flex items-center gap-2 shrink-0">
             <span class="text-sm text-slate-400">{{ steps().length }} tâche{{ steps().length > 1 ? 's' : '' }}</span>
             @if (overdueCount() > 0) {
@@ -39,35 +53,80 @@ import {
         }
       </div>
 
-      <!-- Overdue alert banner -->
-      @if (!isLoading() && overdueCount() > 0) {
-        <div class="flex items-start gap-3 p-3 rounded-lg border border-red-200 bg-red-50 mb-4">
-          <tas-icon iconName="feather:alert-triangle" class="text-red-500 shrink-0 mt-0.5" style="font-size:14px"></tas-icon>
-          <p class="text-sm text-red-700">
-            <strong>{{ overdueCount() }} étape{{ overdueCount() > 1 ? 's sont' : ' est' }} en retard.</strong>
-            Traitez-les en priorité pour respecter les délais.
-          </p>
-        </div>
-      }
+      <!-- Tabs -->
+      <div class="flex items-center gap-1 mb-4 p-1 rounded-lg bg-slate-100 w-fit">
+        <button
+          type="button"
+          class="px-3 py-1.5 rounded-md text-sm font-medium transition-colors"
+          [class.bg-white]="activeTab() === 'pending'"
+          [class.text-slate-800]="activeTab() === 'pending'"
+          [class.shadow-sm]="activeTab() === 'pending'"
+          [class.text-slate-500]="activeTab() !== 'pending'"
+          (click)="setTab('pending')"
+        >
+          En attente
+          @if (steps().length > 0) {
+            <span class="ml-1.5 text-[10px] font-semibold tabular-nums px-1.5 py-0.5 rounded-full"
+              [class.bg-primary]="activeTab() === 'pending'"
+              [class.text-white]="activeTab() === 'pending'"
+              [class.bg-slate-200]="activeTab() !== 'pending'"
+              [class.text-slate-600]="activeTab() !== 'pending'"
+            >{{ steps().length }}</span>
+          }
+        </button>
+        <button
+          type="button"
+          class="px-3 py-1.5 rounded-md text-sm font-medium transition-colors"
+          [class.bg-white]="activeTab() === 'done'"
+          [class.text-slate-800]="activeTab() === 'done'"
+          [class.shadow-sm]="activeTab() === 'done'"
+          [class.text-slate-500]="activeTab() !== 'done'"
+          (click)="setTab('done')"
+        >
+          Terminé
+          @if (doneTotalCount() > 0) {
+            <span class="ml-1.5 text-[10px] font-semibold tabular-nums px-1.5 py-0.5 rounded-full"
+              [class.bg-primary]="activeTab() === 'done'"
+              [class.text-white]="activeTab() === 'done'"
+              [class.bg-slate-200]="activeTab() !== 'done'"
+              [class.text-slate-600]="activeTab() !== 'done'"
+            >{{ doneTotalCount() }}</span>
+          }
+        </button>
+      </div>
 
-      @if (isLoading()) {
-        <div class="flex justify-center py-16">
-          <tas-spinner size="8" class="text-primary"></tas-spinner>
-        </div>
-      } @else if (steps().length === 0) {
-        <tas-card>
-          <div class="p-12 flex flex-col items-center gap-2 text-center">
-            <tas-icon iconName="feather:check-circle" class="text-green-400" style="font-size:40px"></tas-icon>
-            <p class="text-base font-medium text-slate-700 mt-2">Aucune étape en attente</p>
-            <p class="text-sm text-slate-400">Vous n'avez aucune étape à traiter pour le moment.</p>
+      <!-- ── Pending tab ───────────────────────────────────────────────────── -->
+      @if (activeTab() === 'pending') {
+
+        <!-- Overdue alert banner -->
+        @if (!isLoading() && overdueCount() > 0) {
+          <div class="flex items-start gap-3 p-3 rounded-lg border border-red-200 bg-red-50 mb-4">
+            <tas-icon iconName="feather:alert-triangle" class="text-red-500 shrink-0 mt-0.5" style="font-size:14px"></tas-icon>
+            <p class="text-sm text-red-700">
+              <strong>{{ overdueCount() }} étape{{ overdueCount() > 1 ? 's sont' : ' est' }} en retard.</strong>
+              Traitez-les en priorité pour respecter les délais.
+            </p>
           </div>
-        </tas-card>
-      } @else {
-        <div class="flex flex-col gap-3">
-          @for (step of sortedSteps(); track step.stepId) {
-            @let overdue = isOverdue(step.dueAt);
-            @let isExpanded = expandedStepId() === step.stepId;
-            @let isActing = actingOnStepId() === step.stepId;
+        }
+
+        @if (isLoading()) {
+          <div class="flex justify-center py-16">
+            <tas-spinner size="8" class="text-primary"></tas-spinner>
+          </div>
+        } @else if (steps().length === 0) {
+          <tas-card>
+            <div class="p-12 flex flex-col items-center gap-2 text-center">
+              <tas-icon iconName="feather:check-circle" class="text-green-400" style="font-size:40px"></tas-icon>
+              <p class="text-base font-medium text-slate-700 mt-2">Aucune étape en attente</p>
+              <p class="text-sm text-slate-400">Vous n'avez aucune étape à traiter pour le moment.</p>
+            </div>
+          </tas-card>
+        } @else {
+          <div class="flex flex-col gap-3">
+            @for (step of sortedSteps(); track step.stepId) {
+              @let overdue = isOverdue(step.dueAt);
+              @let isExpanded = expandedStepId() === step.stepId;
+              @let isActing = actingOnStepId() === step.stepId;
 
             <tas-card>
               <!-- Step row -->
@@ -213,8 +272,113 @@ import {
               }
             </tas-card>
           }
-        </div>
+          </div>
+        }
+
       }
+
+      <!-- ── Done tab ──────────────────────────────────────────────────────── -->
+      @if (activeTab() === 'done') {
+
+        @if (isDoneLoading()) {
+          <div class="flex justify-center py-16">
+            <tas-spinner size="8" class="text-primary"></tas-spinner>
+          </div>
+        } @else if (doneSteps().length === 0) {
+          <tas-card>
+            <div class="p-12 flex flex-col items-center gap-2 text-center">
+              <tas-icon iconName="feather:clock" class="text-slate-300" style="font-size:40px"></tas-icon>
+              <p class="text-base font-medium text-slate-700 mt-2">Aucune action effectuée</p>
+              <p class="text-sm text-slate-400">Votre historique de validation apparaîtra ici.</p>
+            </div>
+          </tas-card>
+        } @else {
+          <div class="flex flex-col gap-3">
+            @for (task of doneSteps(); track task.stepId) {
+              @let meta = completedStatusMeta(task.status);
+              <tas-card>
+                <div class="flex items-start gap-4 px-4 py-3">
+                  <!-- Icon -->
+                  <div
+                    class="shrink-0 w-9 h-9 rounded-full flex items-center justify-center ring-2 mt-0.5"
+                    [ngClass]="task.status === 'Approved'
+                      ? 'bg-green-100 ring-green-300'
+                      : task.status === 'Rejected'
+                        ? 'bg-red-100 ring-red-300'
+                        : 'bg-slate-100 ring-slate-200'"
+                  >
+                    <tas-icon
+                      [iconName]="task.status === 'Approved' ? 'feather:check' : task.status === 'Rejected' ? 'feather:x' : 'feather:minus'"
+                      [ngClass]="task.status === 'Approved' ? 'text-green-600' : task.status === 'Rejected' ? 'text-red-500' : 'text-slate-400'"
+                      style="font-size:14px"
+                    ></tas-icon>
+                  </div>
+
+                  <!-- Info -->
+                  <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-2 flex-wrap">
+                      <p class="text-sm font-medium text-slate-800 truncate">{{ task.stepName ?? '—' }}</p>
+                      <tas-tag [severity]="meta.severity">{{ meta.label }}</tas-tag>
+                    </div>
+                    <div class="flex flex-wrap gap-x-3 gap-y-0.5 mt-0.5 text-xs text-slate-400">
+                      @if (task.templateName) {
+                        <span class="truncate max-w-[160px]">{{ task.templateName }}</span>
+                      }
+                      @if (task.entityType) {
+                        <span>{{ task.entityType }} · <span class="font-mono">{{ task.entityId }}</span></span>
+                      }
+                      @if (task.stepOrder != null) {
+                        <span>Étape {{ task.stepOrder }}</span>
+                      }
+                    </div>
+                    @if (task.comment) {
+                      <p class="text-xs text-slate-500 italic mt-1">"{{ task.comment }}"</p>
+                    }
+                    @if (task.completedAt) {
+                      <p class="text-xs text-slate-400 mt-1">{{ task.completedAt | dateTimeAgo }}</p>
+                    }
+                  </div>
+
+                  <!-- Link to instance -->
+                  <button
+                    tas-button
+                    iconButton
+                    type="button"
+                    size="small"
+                    title="Voir l'instance"
+                    [disabled]="navigatingStepId() === task.stepId"
+                    (click)="navigateToDoneTask(task)"
+                  >
+                    @if (navigatingStepId() === task.stepId) {
+                      <tas-spinner size="4" class="text-primary"></tas-spinner>
+                    } @else {
+                      <tas-icon iconName="feather:external-link" style="font-size:13px"></tas-icon>
+                    }
+                  </button>
+                </div>
+              </tas-card>
+            }
+
+            <!-- Load more -->
+            @if (doneHasNextPage()) {
+              <div class="flex justify-center pt-2">
+                <button
+                  tas-outlined-button
+                  color="primary"
+                  type="button"
+                  [disabled]="isDoneLoadingMore()"
+                  [isLoading]="isDoneLoadingMore()"
+                  (click)="loadMoreDone()"
+                >
+                  Charger plus
+                </button>
+              </div>
+            }
+          </div>
+        }
+
+      }
+
     </div>
   `,
 })
@@ -223,6 +387,9 @@ export class WorkflowMyQueuePage implements OnInit {
   private readonly _snackbar = inject(SnackbarService);
   private readonly _router = inject(Router);
 
+  public readonly completedStatusMeta = completedStatusMeta;
+
+  // ── Pending tab ────────────────────────────────────────────────────────────
   public readonly isLoading = signal(true);
   public readonly steps = signal<MyStepDto[]>([]);
   public readonly navigatingStepId = signal<string | null>(null);
@@ -230,6 +397,16 @@ export class WorkflowMyQueuePage implements OnInit {
   public readonly actionType = signal<'approve' | 'reject' | null>(null);
   public readonly actingOnStepId = signal<string | null>(null);
   public actionComment = '';
+
+  // ── Done tab ───────────────────────────────────────────────────────────────
+  public readonly activeTab = signal<'pending' | 'done'>('pending');
+  public readonly doneSteps = signal<CompletedTaskDto[]>([]);
+  public readonly doneTotalCount = signal(0);
+  public readonly isDoneLoading = signal(false);
+  public readonly isDoneLoadingMore = signal(false);
+  public readonly doneHasNextPage = signal(false);
+  private _donePage = 1;
+  private readonly _donePageSize = 20;
 
   public readonly overdueCount = computed(
     () => this.steps().filter((s) => this.isOverdue(s.dueAt)).length,
@@ -261,6 +438,60 @@ export class WorkflowMyQueuePage implements OnInit {
       error: () => {
         this._snackbar.error('Erreur', 'Impossible de charger la file d\'attente.');
         this.isLoading.set(false);
+      },
+    });
+  }
+
+  public setTab(tab: 'pending' | 'done'): void {
+    this.activeTab.set(tab);
+    if (tab === 'done' && this.doneSteps().length === 0 && !this.isDoneLoading()) {
+      this._loadDone(1);
+    }
+  }
+
+  public loadMoreDone(): void {
+    this._loadDone(this._donePage + 1, true);
+  }
+
+  private _loadDone(page: number, append = false): void {
+    if (append) {
+      this.isDoneLoadingMore.set(true);
+    } else {
+      this.isDoneLoading.set(true);
+    }
+    this._api.getMyCompletedTasks(page, this._donePageSize).subscribe({
+      next: (result) => {
+        this._donePage = page;
+        const items = result.items ?? [];
+        this.doneSteps.update((prev) => append ? [...prev, ...items] : items);
+        this.doneTotalCount.set(result.totalCount ?? items.length);
+        this.doneHasNextPage.set(result.hasNextPage ?? false);
+        this.isDoneLoading.set(false);
+        this.isDoneLoadingMore.set(false);
+      },
+      error: () => {
+        this._snackbar.error('Erreur', 'Impossible de charger l\'historique.');
+        this.isDoneLoading.set(false);
+        this.isDoneLoadingMore.set(false);
+      },
+    });
+  }
+
+  public navigateToDoneTask(task: CompletedTaskDto): void {
+    if (!task.instanceId) return;
+    this.navigatingStepId.set(task.stepId ?? null);
+    this._api.getWorkflowInstance(task.instanceId).subscribe({
+      next: (instance) => {
+        this.navigatingStepId.set(null);
+        if (!instance.templateId) {
+          this._snackbar.error('Erreur', 'Template introuvable pour cette instance.');
+          return;
+        }
+        this._router.navigate(['/settings/workflows', instance.templateId, 'instances', task.instanceId]);
+      },
+      error: () => {
+        this.navigatingStepId.set(null);
+        this._snackbar.error('Erreur', 'Impossible d\'ouvrir l\'instance.');
       },
     });
   }
