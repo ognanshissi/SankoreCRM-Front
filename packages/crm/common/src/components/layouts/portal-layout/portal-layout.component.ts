@@ -60,13 +60,7 @@ export class PortalLayoutComponent implements OnInit {
         type: 'basic',
         link: '/settings/workflows/ma-file',
       },
-      {
-        id: 'workflow-health',
-        icon: 'feather:activity',
-        title: 'Santé workflows',
-        type: 'basic',
-        link: '/settings/workflows/analytiques',
-      },
+
       {
         id: 'contacts',
         icon: 'feather:phone',
@@ -95,12 +89,19 @@ export class PortalLayoutComponent implements OnInit {
       //   type: 'basic',
       //   link: '/portal/loans',
       // },
+      // {
+      //   id: 'workflows',
+      //   icon: 'feather:sliders',
+      //   title: 'Automatisation et workflows',
+      //   type: 'basic',
+      //   link: '/portal/automation-workflows',
+      // },
       {
-        id: 'workflows',
-        icon: 'feather:sliders',
-        title: 'Automatisation et workflows',
+        id: 'workflow-health',
+        icon: 'feather:activity',
+        title: 'Analytiques workflows',
         type: 'basic',
-        link: '/portal/automation-workflows',
+        link: '/settings/workflows/analytiques',
       },
     ];
   }

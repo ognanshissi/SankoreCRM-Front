@@ -1,12 +1,15 @@
 import { Component, effect, inject, input, signal } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-import { catchError, EMPTY } from 'rxjs';
+import { catchError, EMPTY, switchMap } from 'rxjs';
 import { TasCard } from '@talisoft/ui/card';
 import { Button } from '@talisoft/ui/button';
 import { TasTag } from '@talisoft/ui/tag';
 import { TasSpinner } from '@talisoft/ui/spinner';
 import { TasIcon } from '@talisoft/ui/icon';
-import { WorkflowInstanceDto, WorkflowInstancesApiService } from '@sankore/crm-api';
+import { TasFormField, TasLabel, TasError } from '@talisoft/ui/form-field';
+import { TasInput } from '@talisoft/ui/input';
+import { WorkflowInstanceDto, WorkflowInstancesApiService, WorkflowTemplateDto, WorkflowTemplatesApiService } from '@sankore/crm-api';
 import { SnackbarService } from '@talisoft/ui/snackbar';
 import { ConfirmDialogService } from '@talisoft/ui/confirm-dialog';
 import { TimeagoPipe } from '@talisoft/ui/timeago';
@@ -14,9 +17,80 @@ import { entityTypeLabel, instanceStatusMeta } from '../workflow-shared';
 
 @Component({
   selector: 'workflow-instances',
-  imports: [TasCard, Button, TasTag, TasSpinner, TasIcon, TimeagoPipe],
+  imports: [FormsModule, TasCard, Button, TasTag, TasSpinner, TasIcon, TasFormField, TasLabel, TasError, TasInput, TimeagoPipe],
   template: `
-    <div class="pb-6">
+    <div class="pb-6 flex flex-col gap-4">
+
+      <!-- Start instance form -->
+      @if (template()?.isActive) {
+        <tas-card>
+          <div class="p-4 border-b border-slate-100 flex items-center justify-between gap-4">
+            <div>
+              <p class="font-semibold text-slate-800">Démarrer une instance</p>
+              <p class="text-sm text-slate-500 mt-0.5">
+                Lance manuellement un suivi pour une entité existante.
+              </p>
+            </div>
+            @if (!showStartForm()) {
+              <button
+                tas-raised-button
+                color="primary"
+                type="button"
+                (click)="openStartForm()"
+              >
+                <tas-icon iconName="feather:play" iconSize="sm"></tas-icon>
+                Démarrer
+              </button>
+            }
+          </div>
+
+          @if (showStartForm()) {
+            <div class="p-4 flex flex-col gap-4">
+              <div class="grid grid-cols-2 gap-4">
+                <div>
+                  <p class="text-xs text-slate-400 mb-1">Type d'entité</p>
+                  <p class="text-sm font-medium text-slate-800">
+                    {{ entityTypeLabel(template()!.entityType) }}
+                  </p>
+                </div>
+                <tas-form-field>
+                  <tas-label>Identifiant de l'entité <span class="text-functional-error">*</span></tas-label>
+                  <input
+                    tasInput
+                    type="text"
+                    placeholder="UUID de l'entité"
+                    [(ngModel)]="startEntityId"
+                  />
+                  @if (showEntityIdError()) {
+                    <tas-error>L'identifiant est obligatoire</tas-error>
+                  }
+                </tas-form-field>
+              </div>
+              <div class="flex items-center gap-2 justify-end">
+                <button
+                  tas-button
+                  type="button"
+                  (click)="closeStartForm()"
+                  [disabled]="isStarting()"
+                >
+                  Annuler
+                </button>
+                <button
+                  tas-raised-button
+                  color="primary"
+                  type="button"
+                  (click)="startInstance()"
+                  [disabled]="isStarting()"
+                  [isLoading]="isStarting()"
+                >
+                  Démarrer l'instance
+                </button>
+              </div>
+            </div>
+          }
+        </tas-card>
+      }
+
       <tas-card>
         <div class="p-4 border-b border-slate-100 mb-2">
           <p class="font-semibold text-slate-800">Instances récentes</p>
@@ -79,6 +153,7 @@ import { entityTypeLabel, instanceStatusMeta } from '../workflow-shared';
 })
 export class WorkflowInstancesPage {
   private readonly _workflowInstancesApiService = inject(WorkflowInstancesApiService);
+  private readonly _workflowTemplatesApiService = inject(WorkflowTemplatesApiService);
   private readonly _snackbarService = inject(SnackbarService);
   private readonly _confirmDialogService = inject(ConfirmDialogService);
   private readonly _router = inject(Router);
@@ -90,11 +165,59 @@ export class WorkflowInstancesPage {
   public isLoading = signal(true);
   public cancellingInstanceId = signal<string | null>(null);
   public instances = signal<WorkflowInstanceDto[]>([]);
+  public template = signal<WorkflowTemplateDto | null>(null);
+
+  public showStartForm = signal(false);
+  public startEntityId = '';
+  public showEntityIdError = signal(false);
+  public isStarting = signal(false);
 
   constructor() {
     effect(() => {
-      this._loadInstances();
+      this._load();
     });
+  }
+
+  public openStartForm(): void {
+    this.startEntityId = '';
+    this.showEntityIdError.set(false);
+    this.showStartForm.set(true);
+  }
+
+  public closeStartForm(): void {
+    this.showStartForm.set(false);
+    this.showEntityIdError.set(false);
+  }
+
+  public startInstance(): void {
+    if (!this.startEntityId.trim()) {
+      this.showEntityIdError.set(true);
+      return;
+    }
+    this.showEntityIdError.set(false);
+    this.isStarting.set(true);
+    this._workflowInstancesApiService
+      .startWorkflowInstance({
+        entityType: this.template()?.entityType ?? null,
+        entityId: this.startEntityId.trim(),
+      })
+      .pipe(
+        catchError(() => {
+          this._snackbarService.error('Erreur', "Impossible de démarrer l'instance.");
+          this.isStarting.set(false);
+          return EMPTY;
+        }),
+      )
+      .subscribe((instanceId) => {
+        this.isStarting.set(false);
+        this.closeStartForm();
+        this._snackbarService.success('Succès', 'Instance démarrée avec succès.');
+        if (instanceId) {
+          this._router.navigate(['/settings/workflows', this.id(), 'instances', instanceId]);
+        } else {
+          this._load();
+        }
+      });
   }
 
   public navigateToInstance(instance: WorkflowInstanceDto): void {
@@ -125,17 +248,24 @@ export class WorkflowInstancesPage {
           .subscribe(() => {
             this._snackbarService.success('Succès', 'Instance annulée avec succès.');
             this.cancellingInstanceId.set(null);
-            this._loadInstances();
+            this._load();
           });
       },
     });
   }
 
-  private _loadInstances(): void {
+  private _load(): void {
     this.isLoading.set(true);
-    this._workflowInstancesApiService.listWorkflowInstances().subscribe({
-      next: (result) => {
-        this.instances.set((result ?? []).filter((i) => i.templateId === this.id()));
+    this._workflowTemplatesApiService.getWorkflowTemplate(this.id()).pipe(
+      switchMap((template) => {
+        this.template.set(template);
+        return this._workflowInstancesApiService.listWorkflowInstances(
+          template.entityType ?? undefined,
+        );
+      }),
+    ).subscribe({
+      next: (instances) => {
+        this.instances.set((instances ?? []).filter((i) => i.templateId === this.id()));
         this.isLoading.set(false);
       },
       error: () => {

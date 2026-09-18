@@ -84,6 +84,9 @@ export class WorkflowInstanceDetailPage implements OnInit {
   public completingTaskId = signal<string | null>(null);
   public cancellingTaskId = signal<string | null>(null);
   public taskComment = signal<string>('');
+  public expandedTaskId = signal<string | null>(null);
+  public taskDetail = signal<TaskDto | null>(null);
+  public isLoadingTaskDetail = signal(false);
 
   // ── Approve / Reject ──────────────────────────────────────────────────────
   public showApproveForm = signal(false);
@@ -302,6 +305,25 @@ export class WorkflowInstanceDetailPage implements OnInit {
           },
         });
       },
+    });
+  }
+
+  public toggleTaskDetail(task: TaskDto): void {
+    if (!task.id) return;
+    if (this.expandedTaskId() === task.id) {
+      this.expandedTaskId.set(null);
+      this.taskDetail.set(null);
+      return;
+    }
+    this.expandedTaskId.set(task.id);
+    this.taskDetail.set(null);
+    this.isLoadingTaskDetail.set(true);
+    this._tasksApi.getWorkflowTask(this.instanceId(), task.id).subscribe({
+      next: (detail) => {
+        this.taskDetail.set(detail);
+        this.isLoadingTaskDetail.set(false);
+      },
+      error: () => this.isLoadingTaskDetail.set(false),
     });
   }
 

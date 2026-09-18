@@ -1,19 +1,23 @@
 import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { NgClass } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { TasCard } from '@talisoft/ui/card';
 import { TasSpinner } from '@talisoft/ui/spinner';
 import { TasIcon } from '@talisoft/ui/icon';
+import { Button } from '@talisoft/ui/button';
 import { TimeagoPipe } from '@talisoft/ui/timeago';
 import { SnackbarService } from '@talisoft/ui/snackbar';
 import {
+  ApproveStepRequest,
   MyStepDto,
+  RejectStepRequest,
   WorkflowInstancesApiService,
 } from '@sankore/crm-api';
 
 @Component({
   selector: 'workflow-my-queue',
-  imports: [NgClass, TasCard, TasSpinner, TasIcon, TimeagoPipe],
+  imports: [NgClass, FormsModule, TasCard, TasSpinner, TasIcon, Button, TimeagoPipe],
   template: `
     <div class="pb-6">
       <!-- Header -->
@@ -59,21 +63,22 @@ import {
           </div>
         </tas-card>
       } @else {
-        <tas-card>
-          <div class="divide-y divide-slate-100">
-            @for (step of sortedSteps(); track step.stepId) {
-              @let overdue = isOverdue(step.dueAt);
+        <div class="flex flex-col gap-3">
+          @for (step of sortedSteps(); track step.stepId) {
+            @let overdue = isOverdue(step.dueAt);
+            @let isExpanded = expandedStepId() === step.stepId;
+            @let isActing = actingOnStepId() === step.stepId;
+
+            <tas-card>
+              <!-- Step row -->
               <div
-                class="flex items-center gap-4 px-4 py-3 cursor-pointer transition-colors"
-                [ngClass]="overdue ? 'bg-red-50/40 hover:bg-red-50' : 'hover:bg-slate-50'"
-                (click)="navigateToStep(step)"
+                class="flex items-center gap-4 px-4 py-3 transition-colors"
+                [ngClass]="overdue ? 'bg-red-50/40' : ''"
               >
                 <!-- Step icon -->
                 <div
                   class="shrink-0 w-9 h-9 rounded-full flex items-center justify-center ring-2"
-                  [ngClass]="overdue
-                    ? 'bg-red-100 ring-red-400'
-                    : 'bg-amber-100 ring-amber-300'"
+                  [ngClass]="overdue ? 'bg-red-100 ring-red-400' : 'bg-amber-100 ring-amber-300'"
                 >
                   <tas-icon
                     [iconName]="overdue ? 'feather:alert-circle' : 'feather:clock'"
@@ -115,16 +120,100 @@ import {
                   </div>
                 </div>
 
-                <!-- Nav indicator -->
-                @if (navigatingStepId() === step.stepId) {
-                  <tas-spinner size="4" class="text-primary shrink-0"></tas-spinner>
-                } @else {
-                  <tas-icon iconName="feather:chevron-right" class="text-slate-300 shrink-0" style="font-size:16px"></tas-icon>
-                }
+                <!-- Actions -->
+                <div class="flex items-center gap-1.5 shrink-0">
+                  <button
+                    tas-raised-button
+                    color="primary"
+                    type="button"
+                    size="small"
+                    [disabled]="isActing"
+                    (click)="openAction(step, 'approve')"
+                  >
+                    <tas-icon iconName="feather:check" style="font-size:12px"></tas-icon>
+                    Approuver
+                  </button>
+                  <button
+                    tas-outlined-button
+                    color="warn"
+                    type="button"
+                    size="small"
+                    [disabled]="isActing"
+                    (click)="openAction(step, 'reject')"
+                  >
+                    <tas-icon iconName="feather:x" style="font-size:12px"></tas-icon>
+                    Rejeter
+                  </button>
+                  <button
+                    tas-button
+                    iconButton
+                    type="button"
+                    size="small"
+                    title="Voir l'instance"
+                    [disabled]="navigatingStepId() === step.stepId"
+                    (click)="navigateToStep(step)"
+                  >
+                    @if (navigatingStepId() === step.stepId) {
+                      <tas-spinner size="4" class="text-primary"></tas-spinner>
+                    } @else {
+                      <tas-icon iconName="feather:external-link" style="font-size:13px"></tas-icon>
+                    }
+                  </button>
+                </div>
               </div>
-            }
-          </div>
-        </tas-card>
+
+              <!-- Inline action form -->
+              @if (isExpanded) {
+                <div
+                  class="mx-4 mb-4 mt-1 p-3 rounded-lg border"
+                  [ngClass]="actionType() === 'approve'
+                    ? 'border-green-200 bg-green-50'
+                    : 'border-red-200 bg-red-50'"
+                >
+                  <p
+                    class="text-sm font-medium mb-2"
+                    [ngClass]="actionType() === 'approve' ? 'text-green-800' : 'text-red-800'"
+                  >
+                    {{ actionType() === 'approve' ? 'Confirmer l\'approbation' : 'Confirmer le rejet' }}
+                  </p>
+                  <textarea
+                    class="w-full px-2.5 py-1.5 text-sm border rounded-md bg-white focus:outline-none focus:ring-1 resize-none"
+                    [ngClass]="actionType() === 'approve'
+                      ? 'border-green-200 focus:ring-green-400'
+                      : 'border-red-200 focus:ring-red-400'"
+                    rows="2"
+                    [placeholder]="actionType() === 'approve' ? 'Commentaire (optionnel)' : 'Motif du rejet (optionnel)'"
+                    [(ngModel)]="actionComment"
+                  ></textarea>
+                  <div class="flex items-center gap-2 mt-2">
+                    <button
+                      tas-button
+                      type="button"
+                      size="small"
+                      [ngClass]="actionType() === 'approve' ? '' : 'text-red-600'"
+                      [disabled]="isActing"
+                      (click)="submitAction(step)"
+                    >
+                      @if (isActing) {
+                        <tas-spinner size="4"></tas-spinner>
+                      }
+                      {{ actionType() === 'approve' ? 'Approuver' : 'Rejeter' }}
+                    </button>
+                    <button
+                      tas-outlined-button
+                      type="button"
+                      size="small"
+                      [disabled]="isActing"
+                      (click)="closeAction()"
+                    >
+                      Annuler
+                    </button>
+                  </div>
+                </div>
+              }
+            </tas-card>
+          }
+        </div>
       }
     </div>
   `,
@@ -137,6 +226,10 @@ export class WorkflowMyQueuePage implements OnInit {
   public readonly isLoading = signal(true);
   public readonly steps = signal<MyStepDto[]>([]);
   public readonly navigatingStepId = signal<string | null>(null);
+  public readonly expandedStepId = signal<string | null>(null);
+  public readonly actionType = signal<'approve' | 'reject' | null>(null);
+  public readonly actingOnStepId = signal<string | null>(null);
+  public actionComment = '';
 
   public readonly overdueCount = computed(
     () => this.steps().filter((s) => this.isOverdue(s.dueAt)).length,
@@ -168,6 +261,46 @@ export class WorkflowMyQueuePage implements OnInit {
       error: () => {
         this._snackbar.error('Erreur', 'Impossible de charger la file d\'attente.');
         this.isLoading.set(false);
+      },
+    });
+  }
+
+  public openAction(step: MyStepDto, type: 'approve' | 'reject'): void {
+    this.actionComment = '';
+    this.actionType.set(type);
+    this.expandedStepId.set(step.stepId ?? null);
+  }
+
+  public closeAction(): void {
+    this.expandedStepId.set(null);
+    this.actionType.set(null);
+    this.actionComment = '';
+  }
+
+  public submitAction(step: MyStepDto): void {
+    if (!step.instanceId) return;
+    const type = this.actionType();
+    if (!type) return;
+
+    this.actingOnStepId.set(step.stepId ?? null);
+    const comment = this.actionComment.trim() || null;
+    const request$ = type === 'approve'
+      ? this._api.approveWorkflowStep(step.instanceId, { comment } as ApproveStepRequest)
+      : this._api.rejectWorkflowStep(step.instanceId, { comment } as RejectStepRequest);
+
+    request$.subscribe({
+      next: () => {
+        this._snackbar.success(
+          'Succès',
+          type === 'approve' ? 'Étape approuvée.' : 'Étape rejetée.',
+        );
+        this.actingOnStepId.set(null);
+        this.closeAction();
+        this.steps.update((list) => list.filter((s) => s.stepId !== step.stepId));
+      },
+      error: () => {
+        this._snackbar.error('Erreur', type === 'approve' ? "Impossible d'approuver." : 'Impossible de rejeter.');
+        this.actingOnStepId.set(null);
       },
     });
   }

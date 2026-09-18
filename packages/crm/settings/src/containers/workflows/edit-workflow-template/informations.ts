@@ -120,73 +120,73 @@ class EditTemplateFormModel {
         </tas-card>
 
         <!-- Activate / Deactivate -->
-        <tas-card>
-          <div class="p-4 flex items-start justify-between gap-4">
-            <div class="flex items-start gap-3">
-              <div class="w-8 h-8 rounded-full flex items-center justify-center shrink-0 mt-0.5"
-                [class]="template()!.isActive ? 'bg-yellow-50' : 'bg-green-50'"
-              >
-                <tas-icon
-                  [iconName]="template()!.isActive ? 'feather:pause-circle' : 'feather:play-circle'"
-                  [class]="template()!.isActive ? 'text-yellow-500' : 'text-green-500'"
-                  style="font-size:14px"
-                ></tas-icon>
-              </div>
-              <div>
-                <p class="text-sm font-medium text-slate-700">
-                  {{ template()!.isActive ? 'Désactiver le modèle' : 'Activer le modèle' }}
-                </p>
-                <p class="text-xs text-slate-400 mt-0.5">
-                  @if (template()!.isActive) {
-                    Les nouvelles instances ne pourront plus être démarrées. Les instances en cours ne seront pas affectées.
-                  } @else {
-                    Le modèle sera disponible pour démarrer de nouvelles instances de workflow.
-                  }
-                </p>
-              </div>
-            </div>
-            <button
-              [attr.tas-outlined-button]="template()!.isActive ? '' : null"
-              [attr.tas-filled-button]="!template()!.isActive ? '' : null"
-              color="primary"
-              type="button"
-              [disabled]="isTogglingStatus()"
-              (click)="toggleStatus()"
-              class="shrink-0"
-            >
-              {{ template()!.isActive ? 'Désactiver' : 'Activer' }}
-            </button>
-          </div>
-        </tas-card>
+<!--        <tas-card>-->
+<!--          <div class="p-4 flex items-start justify-between gap-4">-->
+<!--            <div class="flex items-start gap-3">-->
+<!--              <div class="w-8 h-8 rounded-full flex items-center justify-center shrink-0 mt-0.5"-->
+<!--                [class]="template()!.isActive ? 'bg-yellow-50' : 'bg-green-50'"-->
+<!--              >-->
+<!--                <tas-icon-->
+<!--                  [iconName]="template()!.isActive ? 'feather:pause-circle' : 'feather:play-circle'"-->
+<!--                  [class]="template()!.isActive ? 'text-yellow-500' : 'text-green-500'"-->
+<!--                  style="font-size:14px"-->
+<!--                ></tas-icon>-->
+<!--              </div>-->
+<!--              <div>-->
+<!--                <p class="text-sm font-medium text-slate-700">-->
+<!--                  {{ template()!.isActive ? 'Désactiver le modèle' : 'Activer le modèle' }}-->
+<!--                </p>-->
+<!--                <p class="text-xs text-slate-400 mt-0.5">-->
+<!--                  @if (template()!.isActive) {-->
+<!--                    Les nouvelles instances ne pourront plus être démarrées. Les instances en cours ne seront pas affectées.-->
+<!--                  } @else {-->
+<!--                    Le modèle sera disponible pour démarrer de nouvelles instances de workflow.-->
+<!--                  }-->
+<!--                </p>-->
+<!--              </div>-->
+<!--            </div>-->
+<!--            <button-->
+<!--              [attr.tas-outlined-button]="template()!.isActive ? '' : null"-->
+<!--              [attr.tas-filled-button]="!template()!.isActive ? '' : null"-->
+<!--              color="primary"-->
+<!--              type="button"-->
+<!--              [disabled]="isTogglingStatus()"-->
+<!--              (click)="toggleStatus()"-->
+<!--              class="shrink-0"-->
+<!--            >-->
+<!--              {{ template()!.isActive ? 'Désactiver' : 'Activer' }}-->
+<!--            </button>-->
+<!--          </div>-->
+<!--        </tas-card>-->
 
         <!-- Create draft (active templates only) -->
-        @if (template()!.isActive) {
-          <tas-card>
-            <div class="p-4 flex items-start justify-between gap-4">
-              <div class="flex items-start gap-3">
-                <div class="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center shrink-0 mt-0.5">
-                  <tas-icon iconName="feather:copy" class="text-slate-400" style="font-size:14px"></tas-icon>
-                </div>
-                <div>
-                  <p class="text-sm font-medium text-slate-700">Créer un brouillon modifiable</p>
-                  <p class="text-xs text-slate-400 mt-0.5">
-                    Duplique ce modèle en brouillon. Le modèle actif reste inchangé jusqu'à la prochaine activation.
-                  </p>
-                </div>
-              </div>
-              <button
-                tas-outlined-button
-                color="primary"
-                type="button"
-                [disabled]="isCreatingDraft()"
-                (click)="createDraft()"
-                class="shrink-0"
-              >
-                Créer un brouillon
-              </button>
-            </div>
-          </tas-card>
-        }
+<!--        @if (template()!.isActive) {-->
+<!--          <tas-card>-->
+<!--            <div class="p-4 flex items-start justify-between gap-4">-->
+<!--              <div class="flex items-start gap-3">-->
+<!--                <div class="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center shrink-0 mt-0.5">-->
+<!--                  <tas-icon iconName="feather:copy" class="text-slate-400" style="font-size:14px"></tas-icon>-->
+<!--                </div>-->
+<!--                <div>-->
+<!--                  <p class="text-sm font-medium text-slate-700">Créer un brouillon modifiable</p>-->
+<!--                  <p class="text-xs text-slate-400 mt-0.5">-->
+<!--                    Duplique ce modèle en brouillon. Le modèle actif reste inchangé jusqu'à la prochaine activation.-->
+<!--                  </p>-->
+<!--                </div>-->
+<!--              </div>-->
+<!--              <button-->
+<!--                tas-outlined-button-->
+<!--                color="primary"-->
+<!--                type="button"-->
+<!--                [disabled]="isCreatingDraft()"-->
+<!--                (click)="createDraft()"-->
+<!--                class="shrink-0"-->
+<!--              >-->
+<!--                Créer un brouillon-->
+<!--              </button>-->
+<!--            </div>-->
+<!--          </tas-card>-->
+<!--        }-->
 
       </div>
     }

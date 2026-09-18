@@ -1,21 +1,32 @@
 import { Component, effect, inject, input, signal } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { NgClass } from '@angular/common';
+import { catchError, EMPTY } from 'rxjs';
 import { Navigation } from '../../../components/navigation/navigation';
 import { TasIcon } from '@talisoft/ui/icon';
 import { TasSpinner } from '@talisoft/ui/spinner';
 import { WorkflowTemplateDto, WorkflowTemplatesApiService } from '@sankore/crm-api';
 import { BreadcrumbService, MenuItem } from '@sankore/crm/common';
+import { SnackbarService } from '@talisoft/ui/snackbar';
 import { entityTypeLabel } from '../workflow-shared';
-import { Anchor } from '@talisoft/ui/button';
+import { Anchor, Button } from '@talisoft/ui/button';
 
 @Component({
   selector: 'edit-workflow-template-navigation',
-  imports: [Navigation, RouterLink, NgClass, TasIcon, TasSpinner, Anchor],
+  imports: [
+    Navigation,
+    RouterLink,
+    NgClass,
+    TasIcon,
+    TasSpinner,
+    Anchor,
+    Button,
+  ],
   template: `
     <crm-navigation [menuItems]="menuItems()">
       <div tas-navigation-top>
-        <div class="flex items-center gap-3 mb-2">
+        <!-- Row 1: back + title + status badge -->
+        <div class="flex items-center gap-2 mb-1">
           <a [routerLink]="['/settings/workflows']" tas-button iconButton>
             <tas-icon iconName="feather:chevron-left"></tas-icon>
           </a>
@@ -23,24 +34,49 @@ import { Anchor } from '@talisoft/ui/button';
             @if (isLoading()) {
               <div class="h-5 w-40 bg-slate-200 rounded animate-pulse"></div>
             } @else {
-              <h1 class="text-lg font-semibold text-slate-900 truncate">
+              <h1 class="text-base font-semibold text-slate-900 truncate">
                 {{ template()?.name ?? 'Modèle de workflow' }}
               </h1>
             }
           </div>
+          <!-- Row 2: actions -->
           @if (!isLoading() && template()) {
-            @if (template()!.version) {
-              <span class="text-xs text-slate-400 font-mono shrink-0">v{{ template()!.version }}</span>
-            }
-            <span
-              class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium shrink-0"
-              [ngClass]="{
-                'bg-green-100 text-green-700': template()!.isActive,
-                'bg-yellow-100 text-yellow-700': !template()!.isActive,
-              }"
-            >
-              {{ template()!.isActive ? 'Actif' : 'Brouillon' }}
-            </span>
+            <div class="flex items-center gap-1.5">
+              <button
+                tas-raised-button
+                color="primary"
+                type="button"
+                size="small"
+                [disabled]="isTogglingStatus()"
+                [isLoading]="isTogglingStatus()"
+                (click)="toggleStatus()"
+              >
+                <tas-icon
+                  [iconName]="
+                    template()!.isActive
+                      ? 'feather:pause-circle'
+                      : 'feather:play-circle'
+                  "
+                  iconSize="sm"
+                ></tas-icon>
+                {{ template()!.isActive ? 'Désactiver' : 'Activer' }}
+              </button>
+              @if (template()!.isActive) {
+                <button
+                  tas-outlined-button
+                  color="primary"
+                  type="button"
+                  size="small"
+                  [disabled]="isCreatingDraft()"
+                  [isLoading]="isCreatingDraft()"
+                  (click)="createDraft()"
+                  title="Créer un brouillon modifiable"
+                >
+                  Créer un brouillon &nbsp;
+                  <tas-icon iconName="feather:copy" iconSize="sm"></tas-icon>
+                </button>
+              }
+            </div>
           }
         </div>
       </div>
@@ -81,11 +117,15 @@ export class EditWorkflowTemplateNavigation {
     WorkflowTemplatesApiService,
   );
   private readonly _breadcrumbService = inject(BreadcrumbService);
+  private readonly _snackbar = inject(SnackbarService);
+  private readonly _router = inject(Router);
 
   public readonly id = input.required<string>();
   public readonly entityTypeLabel = entityTypeLabel;
 
   public isLoading = signal(true);
+  public isTogglingStatus = signal(false);
+  public isCreatingDraft = signal(false);
   public template = signal<WorkflowTemplateDto | null>(null);
 
   public menuItems = signal<MenuItem[]>([
@@ -145,6 +185,57 @@ export class EditWorkflowTemplateNavigation {
           error: () => this.isLoading.set(false),
         });
     });
+  }
+
+  public toggleStatus(): void {
+    const t = this.template();
+    if (!t) return;
+    this.isTogglingStatus.set(true);
+    const request$ = t.isActive
+      ? this._workflowTemplatesApiService.deactivateWorkflowTemplate(this.id())
+      : this._workflowTemplatesApiService.activateWorkflowTemplate(this.id());
+    request$
+      .pipe(
+        catchError((error) => {
+          this._snackbar.error(
+            'Erreur',
+            error.error.detail ??
+              `Impossible de ${t.isActive ? 'désactiver' : 'activer'} le modèle.`,
+          );
+          this.isTogglingStatus.set(false);
+          return EMPTY;
+        }),
+      )
+      .subscribe(() => {
+        this.template.update((tpl) =>
+          tpl ? { ...tpl, isActive: !tpl.isActive } : tpl,
+        );
+        this._snackbar.success(
+          'Succès',
+          t.isActive ? 'Modèle désactivé.' : 'Modèle activé.',
+        );
+        this.isTogglingStatus.set(false);
+      });
+  }
+
+  public createDraft(): void {
+    this.isCreatingDraft.set(true);
+    this._workflowTemplatesApiService
+      .createWorkflowTemplateDraft(this.id())
+      .pipe(
+        catchError(() => {
+          this._snackbar.error('Erreur', 'Impossible de créer le brouillon.');
+          this.isCreatingDraft.set(false);
+          return EMPTY;
+        }),
+      )
+      .subscribe((draftId) => {
+        this.isCreatingDraft.set(false);
+        this._snackbar.success('Succès', 'Brouillon créé.');
+        if (draftId) {
+          this._router.navigate(['/settings/workflows', draftId]);
+        }
+      });
   }
 }
 

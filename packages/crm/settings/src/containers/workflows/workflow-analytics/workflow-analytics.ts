@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, inject, OnInit, signal } from '@angular/core';
 import { NgClass } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -15,6 +15,7 @@ import {
   SlaDashboardDto,
   StuckInstanceDto,
   WorkflowAnalyticsApiService,
+  WorkflowInstancesApiService,
 } from '@sankore/crm-api';
 import { BreadcrumbService } from '@sankore/crm/common';
 import { entityTypeLabel } from '../workflow-shared';
@@ -245,8 +246,9 @@ function breachSeverity(rate: number | undefined): Severity {
     }
   `,
 })
-export class WorkflowAnalyticsGlobalPage {
+export class WorkflowAnalyticsGlobalPage implements OnInit {
   private readonly _analyticsApi = inject(WorkflowAnalyticsApiService);
+  private readonly _instancesApi = inject(WorkflowInstancesApiService);
   private readonly _breadcrumbService = inject(BreadcrumbService);
   private readonly _router = inject(Router);
 
@@ -291,10 +293,14 @@ export class WorkflowAnalyticsGlobalPage {
   }
 
   public navigateToInstance(step: OverdueStepDto): void {
-    if (step.instanceId) {
-      // Navigate to the instance — templateId unknown here, go to global instances list
-      this._router.navigate(['/settings/workflows/ma-file']);
-    }
+    if (!step.instanceId) return;
+    this._instancesApi.getWorkflowInstance(step.instanceId).subscribe({
+      next: (instance) => {
+        if (instance.templateId) {
+          this._router.navigate(['/settings/workflows', instance.templateId, 'instances', step.instanceId]);
+        }
+      },
+    });
   }
 
   public navigateToStuckInstance(s: StuckInstanceDto): void {
