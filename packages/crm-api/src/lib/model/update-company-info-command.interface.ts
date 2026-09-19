@@ -9,7 +9,6 @@
  * https://openapi-generator.tech
  * Do not edit the class manually.
  */
-import { Languages } from './languages.interface';
 
 
 export interface UpdateCompanyInfoCommand { 
@@ -18,8 +17,15 @@ export interface UpdateCompanyInfoCommand {
     logoUrl?: string | null;
     primaryColor?: string | null;
     secondaryColor?: string | null;
-    defaultLanguage?: Languages;
+    /**
+     * One of: Fr, En
+     */
+    defaultLanguage?: UpdateCompanyInfoCommandDefaultLanguageEnum;
 }
+export enum UpdateCompanyInfoCommandDefaultLanguageEnum {
+    Fr = 'Fr',
+    En = 'En'
+};
 
 
 

@@ -9,8 +9,6 @@
  * https://openapi-generator.tech
  * Do not edit the class manually.
  */
-import { TaskPriority } from './task-priority.interface';
-import { WorkflowTaskStatus } from './workflow-task-status.interface';
 
 
 export interface TaskDto { 
@@ -20,13 +18,31 @@ export interface TaskDto {
     description?: string | null;
     assignedToUserId?: string | null;
     assignedRoleCode?: string | null;
-    priority?: TaskPriority;
-    status?: WorkflowTaskStatus;
+    /**
+     * One of: Low, Normal, High, Urgent
+     */
+    priority?: TaskDtoPriorityEnum;
+    /**
+     * One of: Pending, InProgress, Completed, Cancelled
+     */
+    status?: TaskDtoStatusEnum;
     dueAt?: string | null;
     createdAt?: string;
     completedAt?: string | null;
     completionComment?: string | null;
 }
+export enum TaskDtoPriorityEnum {
+    Low = 'Low',
+    Normal = 'Normal',
+    High = 'High',
+    Urgent = 'Urgent'
+};
+export enum TaskDtoStatusEnum {
+    Pending = 'Pending',
+    InProgress = 'InProgress',
+    Completed = 'Completed',
+    Cancelled = 'Cancelled'
+};
 
 
 

@@ -9,10 +9,13 @@
  * https://openapi-generator.tech
  * Do not edit the class manually.
  */
+import { DuplicateMatchResult } from './duplicate-match-result.interface';
 
 
 export interface CaptureLeadResult { 
-    leadId?: string;
+    leadId?: string | null;
     status?: string | null;
+    duplicateDetected?: boolean;
+    potentialDuplicates?: Array<DuplicateMatchResult> | null;
 }
 

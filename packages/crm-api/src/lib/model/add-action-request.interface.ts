@@ -9,14 +9,25 @@
  * https://openapi-generator.tech
  * Do not edit the class manually.
  */
-import { ActionType } from './action-type.interface';
 
 
 export interface AddActionRequest { 
-    actionType?: ActionType;
+    /**
+     * One of: AssignUser, AssignRoundRobin, SendNotification, CreateTask, CallWebhook, PublishEvent, StartChildWorkflow
+     */
+    actionType?: AddActionRequestActionTypeEnum;
     configJson?: string | null;
     executionOrder?: number;
 }
+export enum AddActionRequestActionTypeEnum {
+    AssignUser = 'AssignUser',
+    AssignRoundRobin = 'AssignRoundRobin',
+    SendNotification = 'SendNotification',
+    CreateTask = 'CreateTask',
+    CallWebhook = 'CallWebhook',
+    PublishEvent = 'PublishEvent',
+    StartChildWorkflow = 'StartChildWorkflow'
+};
 
 
 

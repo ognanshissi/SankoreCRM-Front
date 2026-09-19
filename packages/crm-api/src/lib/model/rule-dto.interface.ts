@@ -9,18 +9,41 @@
  * https://openapi-generator.tech
  * Do not edit the class manually.
  */
-import { RuleType } from './rule-type.interface';
-import { RuleOperator } from './rule-operator.interface';
 
 
 export interface RuleDto { 
     id?: string;
-    ruleType?: RuleType;
+    /**
+     * One of: SkipIf, AutoApproveIf, RequireIf
+     */
+    ruleType?: RuleDtoRuleTypeEnum;
     field?: string | null;
-    operator?: RuleOperator;
+    /**
+     * One of: Eq, NotEq, Gt, Gte, Lt, Lte, Contains, In, NotIn, IsEmpty, IsNotEmpty, Between
+     */
+    operator?: RuleDtoOperatorEnum;
     value?: string | null;
     logicalGroup?: number;
 }
+export enum RuleDtoRuleTypeEnum {
+    SkipIf = 'SkipIf',
+    AutoApproveIf = 'AutoApproveIf',
+    RequireIf = 'RequireIf'
+};
+export enum RuleDtoOperatorEnum {
+    Eq = 'Eq',
+    NotEq = 'NotEq',
+    Gt = 'Gt',
+    Gte = 'Gte',
+    Lt = 'Lt',
+    Lte = 'Lte',
+    Contains = 'Contains',
+    In = 'In',
+    NotIn = 'NotIn',
+    IsEmpty = 'IsEmpty',
+    IsNotEmpty = 'IsNotEmpty',
+    Between = 'Between'
+};
 
 
 

@@ -9,17 +9,40 @@
  * https://openapi-generator.tech
  * Do not edit the class manually.
  */
-import { RuleType } from './rule-type.interface';
-import { RuleOperator } from './rule-operator.interface';
 
 
 export interface AddRuleRequest { 
-    ruleType?: RuleType;
+    /**
+     * One of: SkipIf, AutoApproveIf, RequireIf
+     */
+    ruleType?: AddRuleRequestRuleTypeEnum;
     field?: string | null;
-    operator?: RuleOperator;
+    /**
+     * One of: Eq, NotEq, Gt, Gte, Lt, Lte, Contains, In, NotIn, IsEmpty, IsNotEmpty, Between
+     */
+    operator?: AddRuleRequestOperatorEnum;
     value?: string | null;
     logicalGroup?: number;
 }
+export enum AddRuleRequestRuleTypeEnum {
+    SkipIf = 'SkipIf',
+    AutoApproveIf = 'AutoApproveIf',
+    RequireIf = 'RequireIf'
+};
+export enum AddRuleRequestOperatorEnum {
+    Eq = 'Eq',
+    NotEq = 'NotEq',
+    Gt = 'Gt',
+    Gte = 'Gte',
+    Lt = 'Lt',
+    Lte = 'Lte',
+    Contains = 'Contains',
+    In = 'In',
+    NotIn = 'NotIn',
+    IsEmpty = 'IsEmpty',
+    IsNotEmpty = 'IsNotEmpty',
+    Between = 'Between'
+};
 
 
 

@@ -9,19 +9,85 @@
  * https://openapi-generator.tech
  * Do not edit the class manually.
  */
-import { LeadSource } from './lead-source.interface';
 
 
 export interface CaptureLeadRequest { 
     fullName?: string | null;
     phoneNumber?: string | null;
-    source?: LeadSource;
+    /**
+     * One of: Web, MobileAgent, Agency, CallCenter, Sms, Ussd, WhatsApp, Referral, Partner, FileImport, Campaign
+     */
+    source?: CaptureLeadRequestSourceEnum;
     interestedProduct?: string | null;
     preferredLanguage?: string | null;
     latitude?: number;
     longitude?: number;
     preferredAgencyId?: string | null;
+    firstName?: string | null;
+    lastName?: string | null;
+    email?: string | null;
+    gender?: CaptureLeadRequestGenderEnum | null;
+    dateOfBirth?: string | null;
+    desiredAmount?: number | null;
+    desiredCurrency?: string | null;
+    campaign?: string | null;
+    channel?: CaptureLeadRequestChannelEnum | null;
+    comment?: string | null;
+    externalReference?: string | null;
+    ownerId?: string | null;
+    agencyId?: string | null;
+    agentCollectedLeadId?: string | null;
+    companyName?: string | null;
+    companyEmail?: string | null;
+    companyPhone?: string | null;
+    website?: string | null;
+    prospectType?: CaptureLeadRequestProspectTypeEnum | null;
+    nationalId?: string | null;
+    customerReference?: string | null;
+    gateMode?: CaptureLeadRequestGateModeEnum | null;
+    minConfidenceThreshold?: number | null;
+    force?: boolean;
 }
+export enum CaptureLeadRequestSourceEnum {
+    Web = 'Web',
+    MobileAgent = 'MobileAgent',
+    Agency = 'Agency',
+    CallCenter = 'CallCenter',
+    Sms = 'Sms',
+    Ussd = 'Ussd',
+    WhatsApp = 'WhatsApp',
+    Referral = 'Referral',
+    Partner = 'Partner',
+    FileImport = 'FileImport',
+    Campaign = 'Campaign'
+};
+export enum CaptureLeadRequestGenderEnum {
+    NUMBER_0 = 0,
+    NUMBER_1 = 1,
+    NUMBER_2 = 2,
+    NUMBER_3 = 3
+};
+export enum CaptureLeadRequestChannelEnum {
+    NUMBER_0 = 0,
+    NUMBER_1 = 1,
+    NUMBER_2 = 2,
+    NUMBER_3 = 3,
+    NUMBER_4 = 4,
+    NUMBER_5 = 5,
+    NUMBER_6 = 6,
+    NUMBER_7 = 7,
+    NUMBER_8 = 8,
+    NUMBER_9 = 9,
+    NUMBER_10 = 10
+};
+export enum CaptureLeadRequestProspectTypeEnum {
+    NUMBER_0 = 0,
+    NUMBER_1 = 1
+};
+export enum CaptureLeadRequestGateModeEnum {
+    NUMBER_0 = 0,
+    NUMBER_1 = 1
+};
 
 
 

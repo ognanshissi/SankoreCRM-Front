@@ -9,13 +9,15 @@
  * https://openapi-generator.tech
  * Do not edit the class manually.
  */
-import { AgencyType } from './agency-type.interface';
 
 
 export interface CreateAgencyRequest { 
     name?: string | null;
     description?: string | null;
-    agencyType?: AgencyType;
+    /**
+     * One of: HeadQuarter, Branch, ServicePoint, Counter
+     */
+    agencyType?: CreateAgencyRequestAgencyTypeEnum;
     parentAgencyId?: string | null;
     addressStreet?: string | null;
     addressCity?: string | null;
@@ -25,6 +27,12 @@ export interface CreateAgencyRequest {
     latitude?: number | null;
     longitude?: number | null;
 }
+export enum CreateAgencyRequestAgencyTypeEnum {
+    HeadQuarter = 'HeadQuarter',
+    Branch = 'Branch',
+    ServicePoint = 'ServicePoint',
+    Counter = 'Counter'
+};
 
 
 

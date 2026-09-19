@@ -9,12 +9,21 @@
  * https://openapi-generator.tech
  * Do not edit the class manually.
  */
-import { DispatchingStrategy } from './dispatching-strategy.interface';
 
 
 export interface DispatchLeadRequest { 
-    strategy?: DispatchingStrategy;
+    /**
+     * One of: RoundRobin, WeightedRoundRobin, CherryPicking, CompatibilityScoring, StickyAssignment
+     */
+    strategy?: DispatchLeadRequestStrategyEnum;
 }
+export enum DispatchLeadRequestStrategyEnum {
+    RoundRobin = 'RoundRobin',
+    WeightedRoundRobin = 'WeightedRoundRobin',
+    CherryPicking = 'CherryPicking',
+    CompatibilityScoring = 'CompatibilityScoring',
+    StickyAssignment = 'StickyAssignment'
+};
 
 
 

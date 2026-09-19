@@ -45,8 +45,6 @@ import { UserPermissionsDto } from '../model/user-permissions-dto.interface';
 // @ts-ignore
 import { UserRoleDto } from '../model/user-role-dto.interface';
 // @ts-ignore
-import { UserStatus } from '../model/user-status.interface';
-// @ts-ignore
 import { UserStatusStatsDto } from '../model/user-status-stats-dto.interface';
 
 // @ts-ignore
@@ -1114,10 +1112,10 @@ export class UsersApiService {
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      */
-    public listUsers(status?: UserStatus, agencyId?: string, search?: string, page?: number, pageSize?: number, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<ListUsersResult>;
-    public listUsers(status?: UserStatus, agencyId?: string, search?: string, page?: number, pageSize?: number, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<ListUsersResult>>;
-    public listUsers(status?: UserStatus, agencyId?: string, search?: string, page?: number, pageSize?: number, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<ListUsersResult>>;
-    public listUsers(status?: UserStatus, agencyId?: string, search?: string, page?: number, pageSize?: number, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
+    public listUsers(status?: 0 | 1 | 2 | 3, agencyId?: string, search?: string, page?: number, pageSize?: number, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<ListUsersResult>;
+    public listUsers(status?: 0 | 1 | 2 | 3, agencyId?: string, search?: string, page?: number, pageSize?: number, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<ListUsersResult>>;
+    public listUsers(status?: 0 | 1 | 2 | 3, agencyId?: string, search?: string, page?: number, pageSize?: number, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<ListUsersResult>>;
+    public listUsers(status?: 0 | 1 | 2 | 3, agencyId?: string, search?: string, page?: number, pageSize?: number, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
 
         let localVarQueryParameters = new HttpParams({encoder: this.encoder});
         if (status !== undefined && status !== null) {
@@ -1203,10 +1201,10 @@ export class UsersApiService {
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      */
-    public listUsers_4(status?: UserStatus, agencyId?: string, search?: string, page?: number, pageSize?: number, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<ListUsersResult>;
-    public listUsers_4(status?: UserStatus, agencyId?: string, search?: string, page?: number, pageSize?: number, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<ListUsersResult>>;
-    public listUsers_4(status?: UserStatus, agencyId?: string, search?: string, page?: number, pageSize?: number, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<ListUsersResult>>;
-    public listUsers_4(status?: UserStatus, agencyId?: string, search?: string, page?: number, pageSize?: number, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
+    public listUsers_4(status?: 0 | 1 | 2 | 3, agencyId?: string, search?: string, page?: number, pageSize?: number, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<ListUsersResult>;
+    public listUsers_4(status?: 0 | 1 | 2 | 3, agencyId?: string, search?: string, page?: number, pageSize?: number, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<ListUsersResult>>;
+    public listUsers_4(status?: 0 | 1 | 2 | 3, agencyId?: string, search?: string, page?: number, pageSize?: number, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<ListUsersResult>>;
+    public listUsers_4(status?: 0 | 1 | 2 | 3, agencyId?: string, search?: string, page?: number, pageSize?: number, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
 
         let localVarQueryParameters = new HttpParams({encoder: this.encoder});
         if (status !== undefined && status !== null) {

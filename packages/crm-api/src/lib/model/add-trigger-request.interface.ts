@@ -9,14 +9,21 @@
  * https://openapi-generator.tech
  * Do not edit the class manually.
  */
-import { TriggerType } from './trigger-type.interface';
 
 
 export interface AddTriggerRequest { 
-    triggerType?: TriggerType;
+    /**
+     * One of: EntityEvent, Schedule, ExternalEvent
+     */
+    triggerType?: AddTriggerRequestTriggerTypeEnum;
     eventName?: string | null;
     conditionJson?: string | null;
 }
+export enum AddTriggerRequestTriggerTypeEnum {
+    EntityEvent = 'EntityEvent',
+    Schedule = 'Schedule',
+    ExternalEvent = 'ExternalEvent'
+};
 
 
 

@@ -9,17 +9,24 @@
  * https://openapi-generator.tech
  * Do not edit the class manually.
  */
-import { TriggerType } from './trigger-type.interface';
 
 
 export interface TriggerDto { 
     id?: string;
-    triggerType?: TriggerType;
+    /**
+     * One of: EntityEvent, Schedule, ExternalEvent
+     */
+    triggerType?: TriggerDtoTriggerTypeEnum;
     eventName?: string | null;
     conditionJson?: string | null;
     isActive?: boolean;
     createdAt?: string;
 }
+export enum TriggerDtoTriggerTypeEnum {
+    EntityEvent = 'EntityEvent',
+    Schedule = 'Schedule',
+    ExternalEvent = 'ExternalEvent'
+};
 
 
 
