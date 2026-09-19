@@ -4,3 +4,4 @@ export * from './layouts/admin-layout/admin-layout.component';
 export * from './navigation/navigation';
 export * from './loading';
 export * from './breadcrumb/breadcrumb.component';
+export * from './duplicate-warning-banner/duplicate-warning-banner';

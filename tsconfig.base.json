@@ -39,6 +39,9 @@
       "@talisoft/ui/input-password": [
         "./packages/shared/ui/input-password/index.ts"
       ],
+      "@talisoft/ui/input-phone": [
+        "./packages/shared/ui/input-phone/index.ts"
+      ],
       "@talisoft/ui/layouts": ["./packages/shared/ui/layouts/index.ts"],
       "@talisoft/ui/menu": ["./packages/shared/ui/menu/index.ts"],
       "@talisoft/ui/multi-select": [

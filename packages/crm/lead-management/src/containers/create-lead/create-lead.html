@@ -1,0 +1,183 @@
+<tas-side-drawer>
+  <tas-drawer-title>
+    <TasTitle class="text-lg">Nouveau lead</TasTitle>
+  </tas-drawer-title>
+
+  <tas-drawer-content>
+    <form [formRoot]="formSchema" class="flex flex-col gap-5">
+
+      <!-- Prospect type -->
+      <tas-form-field>
+        <tas-label>Type de prospect</tas-label>
+        <tas-select
+          [options]="prospectTypeOptions"
+          placeholder="Sélectionnez un type"
+          [formField]="formSchema.prospectType"
+        ></tas-select>
+      </tas-form-field>
+
+      <!-- Identity -->
+      <div class="grid grid-cols-2 gap-3">
+        <tas-form-field>
+          <tas-label>Prénom <span class="text-functional-error">*</span></tas-label>
+          <input
+            tasInput
+            type="text"
+            placeholder="Prénom"
+            [formField]="formSchema.firstName"
+          />
+          @if (formSchema.firstName().touched() && formSchema.firstName().invalid()) {
+            <tas-error>{{ formSchema.firstName().errors()[0].message }}</tas-error>
+          }
+        </tas-form-field>
+
+        <tas-form-field>
+          <tas-label>Nom <span class="text-functional-error">*</span></tas-label>
+          <input
+            tasInput
+            type="text"
+            placeholder="Nom de famille"
+            [formField]="formSchema.lastName"
+          />
+          @if (formSchema.lastName().touched() && formSchema.lastName().invalid()) {
+            <tas-error>{{ formSchema.lastName().errors()[0].message }}</tas-error>
+          }
+        </tas-form-field>
+      </div>
+
+      <tas-form-field>
+        <tas-label>Téléphone <span class="text-functional-error">*</span></tas-label>
+        <tas-input-phone
+          defaultCountry="CI"
+          [formField]="formSchema.phoneNumber"
+        ></tas-input-phone>
+        @if (formSchema.phoneNumber().touched() && formSchema.phoneNumber().invalid()) {
+          <tas-error>{{ formSchema.phoneNumber().errors()[0].message }}</tas-error>
+        }
+      </tas-form-field>
+
+      <duplicate-warning-banner
+        [duplicates]="duplicates()"
+        (viewDuplicate)="viewDuplicate($event)"
+      ></duplicate-warning-banner>
+
+      <tas-form-field>
+        <tas-label>E-mail</tas-label>
+        <input
+          tasInput
+          type="email"
+          placeholder="exemple@domaine.com"
+          [formField]="formSchema.email"
+        />
+      </tas-form-field>
+
+      <tas-form-field>
+        <tas-label>Pièce d'identité</tas-label>
+        <input
+          tasInput
+          type="text"
+          placeholder="Numéro CNI / passeport"
+          [formField]="formSchema.nationalId"
+        />
+      </tas-form-field>
+
+      @if (isCompany()) {
+        <tas-form-field>
+          <tas-label>Nom de l'entreprise</tas-label>
+          <input
+            tasInput
+            type="text"
+            placeholder="Raison sociale"
+            [formField]="formSchema.companyName"
+          />
+        </tas-form-field>
+      }
+
+      <!-- Commercial interest -->
+      <div class="border-t border-gray-200 pt-4 mt-1">
+        <p class="text-sm font-medium text-slate-600 mb-3">Intérêt commercial</p>
+        <div class="flex flex-col gap-4">
+
+          <tas-form-field>
+            <tas-label>Source</tas-label>
+            <tas-select
+              [options]="sourceOptions"
+              placeholder="Canal d'entrée"
+              [formField]="formSchema.source"
+            ></tas-select>
+          </tas-form-field>
+
+          <tas-form-field>
+            <tas-label>Produit souhaité</tas-label>
+            <tas-select
+              [options]="productOptions()"
+              optionLabel="name"
+              optionValue="code"
+              placeholder="Produit souhaité"
+              [formField]="formSchema.interestedProduct"
+            ></tas-select>
+          </tas-form-field>
+
+          <div class="grid grid-cols-2 gap-3">
+            <tas-form-field>
+              <tas-label>Montant souhaité</tas-label>
+              <input
+                tasInput
+                type="number"
+                placeholder="0"
+                [formField]="formSchema.desiredAmount"
+              />
+            </tas-form-field>
+
+            <tas-form-field>
+              <tas-label>Devise</tas-label>
+              <tas-select
+                [options]="currencyOptions"
+                [formField]="formSchema.desiredCurrency"
+              ></tas-select>
+            </tas-form-field>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Assignment -->
+      <div class="border-t border-gray-200 pt-4 mt-1">
+        <p class="text-sm font-medium text-slate-600 mb-3">Affectation</p>
+        <tas-form-field>
+          <tas-label>Agence</tas-label>
+          <tas-select
+            [options]="agencies()"
+            placeholder="Sélectionnez une agence"
+            [formField]="formSchema.agencyId"
+          ></tas-select>
+        </tas-form-field>
+      </div>
+
+      <tas-form-field>
+        <tas-label>Commentaire</tas-label>
+        <input
+          tasInput
+          type="text"
+          placeholder="Informations complémentaires…"
+          [formField]="formSchema.comment"
+        />
+      </tas-form-field>
+
+    </form>
+  </tas-drawer-content>
+
+  <tas-drawer-action>
+    <button tas-outlined-button color="primary" type="button" (click)="close()">Annuler</button>
+    <button
+      tas-raised-button
+      color="primary"
+      type="button"
+      (click)="handleSubmit()"
+      [disabled]="formSchema().invalid() || formSchema().submitting()"
+      [isLoading]="formSchema().submitting()"
+    >
+      Créer le lead
+    </button>
+  </tas-drawer-action>
+</tas-side-drawer>

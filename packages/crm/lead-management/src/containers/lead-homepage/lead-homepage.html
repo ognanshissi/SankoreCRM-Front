@@ -1,0 +1,284 @@
+<!-- Page header -->
+<div class="flex items-start justify-between mb-5">
+  <div>
+    <div class="flex items-center gap-2.5">
+      <h1 class="text-lg font-semibold text-slate-800">Leads</h1>
+      @if ((tableConfig().pagination.totalElements ?? 0) > 0) {
+        <span class="px-2 py-0.5 rounded-md bg-slate-100 text-slate-500 text-xs font-medium tabular-nums">
+          {{ tableConfig().pagination.totalElements }}
+        </span>
+      }
+    </div>
+    <p class="text-sm text-slate-400 mt-0.5">Retrouvez et pilotez vos prospects.</p>
+  </div>
+  <div class="flex items-center gap-2">
+    <div class="flex border border-slate-200 rounded-full overflow-hidden">
+      <button
+        class="px-3 py-1.5 text-xs transition-colors flex items-center gap-1"
+        [class]="viewMode() === 'list'
+          ? 'bg-primary text-white'
+          : 'bg-white text-slate-500 hover:bg-slate-50'"
+        (click)="setViewMode('list')"
+      >
+        <tas-icon iconName="feather:list" class="w-3.5 h-3.5"></tas-icon>
+        Liste
+      </button>
+      <button
+        class="px-3 py-1.5 text-xs transition-colors flex items-center gap-1"
+        [class]="viewMode() === 'kanban'
+          ? 'bg-primary text-white'
+          : 'bg-white text-slate-500 hover:bg-slate-50'"
+        (click)="setViewMode('kanban')"
+      >
+        <tas-icon iconName="feather:columns" class="w-3.5 h-3.5"></tas-icon>
+        Pipeline
+      </button>
+    </div>
+    <button tas-outlined-button [color]="'primary'" (click)="openImportDrawer()">
+      <tas-icon iconName="feather:upload"></tas-icon>
+      Importer
+    </button>
+    <button tas-filled-button [color]="'primary'" (click)="openCreateDrawer()">
+      <tas-icon iconName="feather:plus"></tas-icon>
+      Nouveau lead
+    </button>
+  </div>
+</div>
+
+<!-- KPI stats -->
+<div class="grid grid-cols-4 gap-3 mb-5">
+  <tas-card>
+    <div class="flex items-center gap-3 p-3">
+      <div class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center shrink-0">
+        <tas-icon iconName="feather:users" class="text-slate-500" style="font-size:14px"></tas-icon>
+      </div>
+      <div>
+        <p class="text-xl font-semibold text-slate-800 tabular-nums leading-none">{{ stats().total ?? 0 }}</p>
+        <p class="text-xs text-slate-400 mt-0.5">Total</p>
+      </div>
+    </div>
+  </tas-card>
+  <tas-card>
+    <div class="flex items-center gap-3 p-3">
+      <div class="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center shrink-0">
+        <tas-icon iconName="feather:inbox" class="text-blue-500" style="font-size:14px"></tas-icon>
+      </div>
+      <div>
+        <p class="text-xl font-semibold text-slate-800 tabular-nums leading-none">{{ statusCount('New') }}</p>
+        <p class="text-xs text-slate-400 mt-0.5">Nouveaux</p>
+      </div>
+    </div>
+  </tas-card>
+  <tas-card>
+    <div class="flex items-center gap-3 p-3">
+      <div class="w-8 h-8 rounded-full bg-green-50 flex items-center justify-center shrink-0">
+        <tas-icon iconName="feather:check-circle" class="text-green-500" style="font-size:14px"></tas-icon>
+      </div>
+      <div>
+        <p class="text-xl font-semibold text-slate-800 tabular-nums leading-none">{{ stats().convertedCount ?? 0 }}</p>
+        <p class="text-xs text-slate-400 mt-0.5">Convertis</p>
+      </div>
+    </div>
+  </tas-card>
+  <tas-card>
+    <div class="flex items-center gap-3 p-3">
+      <div class="w-8 h-8 rounded-full bg-teal-50 flex items-center justify-center shrink-0">
+        <tas-icon iconName="feather:trending-up" class="text-teal-600" style="font-size:14px"></tas-icon>
+      </div>
+      <div>
+        <p class="text-xl font-semibold text-slate-800 tabular-nums leading-none">
+          {{ ((stats().conversionRate ?? 0) * 100).toFixed(1) }}%
+        </p>
+        <p class="text-xs text-slate-400 mt-0.5">Taux de conversion</p>
+      </div>
+    </div>
+  </tas-card>
+</div>
+
+<!-- Status tabs -->
+<div class="flex items-center gap-1 mb-4 p-1 rounded-lg bg-slate-100 w-fit">
+  @for (tab of statusTabs; track tab.value) {
+    <button
+      type="button"
+      class="px-3 py-1.5 rounded-md text-sm font-medium transition-colors"
+      [class.bg-white]="filterStatus() === tab.value"
+      [class.text-slate-800]="filterStatus() === tab.value"
+      [class.shadow-sm]="filterStatus() === tab.value"
+      [class.text-slate-500]="filterStatus() !== tab.value"
+      (click)="onFilterChange('status', tab.value)"
+    >
+      {{ tab.label }}
+      <span class="ml-1 text-[10px] font-semibold tabular-nums">{{ tab.count() }}</span>
+    </button>
+  }
+</div>
+
+<!-- Secondary filters -->
+<div class="flex items-center gap-3 mb-4">
+  <div class="w-48">
+    <tas-select
+      placeholder="Source"
+      [options]="sourceFilterOptions"
+      [ngModel]="filterSource()"
+      (ngModelChange)="onFilterChange('source', $event)"
+    ></tas-select>
+  </div>
+  <div class="w-48">
+    <tas-select
+      placeholder="Agence"
+      [options]="agencyOptions()"
+      [ngModel]="filterAgencyId()"
+      (ngModelChange)="onFilterChange('agency', $event)"
+    ></tas-select>
+  </div>
+  <div class="w-48">
+    <tas-select
+      placeholder="Température"
+      [options]="intentFilterOptions"
+      [ngModel]="filterIntent()"
+      (ngModelChange)="onFilterChange('intent', $event)"
+    ></tas-select>
+  </div>
+  @if (hasActiveSecondaryFilters()) {
+    <button
+      class="text-xs text-slate-400 hover:text-slate-600 whitespace-nowrap transition-colors"
+      (click)="clearSecondaryFilters()"
+    >
+      Réinitialiser
+    </button>
+  }
+</div>
+
+<!-- List view -->
+@if (viewMode() === 'list') {
+  <tas-table
+    [data]="leads()"
+    [config]="tableConfig()"
+    [hasCaption]="true"
+    [isLoading]="isLoading()"
+    (searchInputChange)="onSearchChange($event)"
+    (pageEventChange)="onPageChange($event)"
+    (refresh)="reloadCurrentPage()"
+  >
+    <ng-template #header>
+      <tr>
+        <th>Lead</th>
+        <th>Téléphone</th>
+        <th>Type</th>
+        <th>Source</th>
+        <th>Température</th>
+        <th>Statut</th>
+        <th>Capturé</th>
+      </tr>
+    </ng-template>
+
+    <ng-template #body let-item>
+      <tr class="cursor-pointer hover:bg-slate-50 transition-colors" (click)="navigateToLead(item)">
+        <td class="py-3">
+          <div class="flex items-center gap-3">
+            <div class="w-9 h-9 rounded-full flex items-center justify-center text-xs font-semibold flex-shrink-0 select-none bg-teal-50 text-teal-800">
+              {{ initials(item) }}
+            </div>
+            <div class="min-w-0">
+              <div class="font-medium text-slate-800 leading-tight truncate">{{ displayName(item) }}</div>
+              @if (item.email) {
+                <div class="text-xs text-slate-400 mt-0.5 truncate">{{ item.email }}</div>
+              }
+            </div>
+          </div>
+        </td>
+        <td class="text-sm text-slate-600 tabular-nums">{{ item.phoneNumber ?? '—' }}</td>
+        <td class="text-sm text-slate-600">{{ prospectTypeLabel(item.prospectType) }}</td>
+        <td class="text-sm text-slate-600">{{ sourceLabel(item.source) }}</td>
+        <td>
+          @if (item.intentLevel != null) {
+            <span
+              class="inline-flex items-center gap-1 text-xs font-medium"
+              [class]="intentDotClass(item.intentLevel)"
+            >
+              <span class="w-1.5 h-1.5 rounded-full" [class]="intentDotBg(item.intentLevel)"></span>
+              {{ intentMeta(item.intentLevel).label }}
+            </span>
+          } @else {
+            <span class="text-sm text-slate-400">—</span>
+          }
+        </td>
+        <td>
+          <tas-tag [severity]="leadStatusMeta(item.status).severity">
+            {{ leadStatusMeta(item.status).label }}
+          </tas-tag>
+        </td>
+        <td class="text-sm text-slate-500">{{ item.capturedAt | dateTimeAgo }}</td>
+      </tr>
+    </ng-template>
+  </tas-table>
+}
+
+<!-- Kanban view -->
+@if (viewMode() === 'kanban') {
+  @if (isLoading()) {
+    <div class="flex justify-center py-24">
+      <div class="animate-spin w-6 h-6 border-2 border-primary border-t-transparent rounded-full"></div>
+    </div>
+  } @else {
+    <div class="flex gap-3 overflow-x-auto pb-4" style="min-height: 60vh">
+      @for (col of kanbanColumns; track col.status) {
+        <div class="flex-shrink-0 w-[272px] flex flex-col">
+          <!-- Column header -->
+          <div
+            class="flex items-center gap-2 mb-3 px-3 py-2 rounded-lg"
+            [style.background-color]="col.color"
+          >
+            <span class="text-xs font-medium text-white">{{ col.label }}</span>
+            <span class="ml-auto px-1.5 py-0.5 rounded bg-white/20 text-[10px] font-semibold text-white tabular-nums">
+              {{ kanbanLeadsByStatus(col.statusValue).length }}
+            </span>
+          </div>
+
+          <!-- Cards -->
+          <div class="flex-1 flex flex-col gap-2">
+            @for (lead of kanbanLeadsByStatus(col.statusValue); track lead.id) {
+              <div
+                class="bg-white rounded-lg p-3 cursor-pointer hover:shadow-sm transition-shadow border-l-[3px]"
+                [style.border-left-color]="col.color"
+                [style.border-top]="'1px solid #e2e8f0'"
+                [style.border-right]="'1px solid #e2e8f0'"
+                [style.border-bottom]="'1px solid #e2e8f0'"
+                (click)="navigateToLead(lead)"
+              >
+                <div class="flex items-center gap-2 mb-1.5">
+                  <div class="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-semibold bg-teal-50 text-teal-800 flex-shrink-0">
+                    {{ initials(lead) }}
+                  </div>
+                  <p class="text-sm font-medium text-slate-800 truncate">{{ displayName(lead) }}</p>
+                </div>
+                @if (lead.phoneNumber) {
+                  <p class="text-xs text-slate-400 tabular-nums truncate">{{ lead.phoneNumber }}</p>
+                }
+                <div class="flex items-center justify-between mt-2">
+                  @if (lead.source) {
+                    <span class="text-[10px] text-slate-400">{{ sourceLabel(lead.source) }}</span>
+                  }
+                  @if (lead.intentLevel != null) {
+                    <span
+                      class="inline-flex items-center gap-1 text-[10px] font-medium"
+                      [class]="intentDotClass(lead.intentLevel)"
+                    >
+                      <span class="w-1.5 h-1.5 rounded-full" [class]="intentDotBg(lead.intentLevel)"></span>
+                      {{ intentMeta(lead.intentLevel).label }}
+                    </span>
+                  }
+                </div>
+              </div>
+            }
+            @if (kanbanLeadsByStatus(col.statusValue).length === 0) {
+              <div class="flex-1 border-2 border-dashed border-slate-100 rounded-lg flex items-center justify-center min-h-[100px]">
+                <p class="text-xs text-slate-300">Aucun lead</p>
+              </div>
+            }
+          </div>
+        </div>
+      }
+    </div>
+  }
+}
