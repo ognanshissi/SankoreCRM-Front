@@ -20,7 +20,7 @@ import { TasFormField, TasLabel, TasError } from '@talisoft/ui/form-field';
 import { TasInput } from '@talisoft/ui/input';
 import { TasSelect } from '@talisoft/ui/select';
 import { TasSpinner } from '@talisoft/ui/spinner';
-import { AgenciesApiService, AgencyDto, AgencyType } from '@sankore/crm-api';
+import { AgenciesApiService, AgencyDto, UpdateAgencyRequestAgencyTypeEnum } from '@sankore/crm-api';
 import { SnackbarService } from '@talisoft/ui/snackbar';
 import { ConfirmDialogService } from '@talisoft/ui/confirm-dialog';
 import { DeleteAgencyDialog } from './delete-agency-dialog';
@@ -29,7 +29,7 @@ import { BreadcrumbService } from '@sankore/crm/common';
 class EditAgencyFormModel {
   public name!: string;
   public description!: string;
-  public agencyType!: AgencyType;
+  public agencyType!: UpdateAgencyRequestAgencyTypeEnum;
   public addressStreet!: string;
   public addressCity!: string;
   public addressZipCode!: string;
@@ -39,7 +39,7 @@ class EditAgencyFormModel {
     const m = new EditAgencyFormModel();
     m.name = agency.name ?? '';
     m.description = agency.description ?? '';
-    m.agencyType = (Number(agency.agencyType) as AgencyType) ?? AgencyType.NUMBER_3;
+    m.agencyType = (agency.agencyType as UpdateAgencyRequestAgencyTypeEnum) ?? UpdateAgencyRequestAgencyTypeEnum.Counter;
     m.addressStreet = agency.addressStreet ?? '';
     m.addressCity = agency.addressCity ?? '';
     m.addressZipCode = agency.addressZipCode ?? '';
@@ -59,10 +59,10 @@ class MoveAgencyFormModel {
 }
 
 const AGENCY_TYPE_OPTIONS = [
-  { label: 'HeadQuarter', value: AgencyType.NUMBER_0 },
-  { label: 'Région', value: AgencyType.NUMBER_1 },
-  { label: 'Zone', value: AgencyType.NUMBER_2 },
-  { label: 'Agence', value: AgencyType.NUMBER_3 },
+  { label: 'HeadQuarter', value: UpdateAgencyRequestAgencyTypeEnum.HeadQuarter },
+  { label: 'Région', value: UpdateAgencyRequestAgencyTypeEnum.Branch },
+  { label: 'Zone', value: UpdateAgencyRequestAgencyTypeEnum.ServicePoint },
+  { label: 'Agence', value: UpdateAgencyRequestAgencyTypeEnum.Counter },
 ];
 
 @Component({

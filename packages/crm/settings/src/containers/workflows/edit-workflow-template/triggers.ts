@@ -9,8 +9,8 @@ import { SnackbarService } from '@talisoft/ui/snackbar';
 import { ConfirmDialogService } from '@talisoft/ui/confirm-dialog';
 import { TimeagoPipe } from '@talisoft/ui/timeago';
 import {
+  AddTriggerRequestTriggerTypeEnum,
   TriggerDto,
-  TriggerType,
   WorkflowTemplateDto,
   WorkflowTemplatesApiService,
 } from '@sankore/crm-api';
@@ -123,7 +123,7 @@ import { TRIGGER_TYPE_OPTIONS, triggerTypeLabel } from '../workflow-shared';
                   <select
                     class="w-full px-3 py-2 text-sm border border-slate-200 rounded-md bg-white focus:outline-none focus:ring-1 focus:ring-primary/40 focus:border-primary/40"
                     [value]="newTriggerType()"
-                    (change)="newTriggerType.set(+$any($event.target).value)"
+                    (change)="newTriggerType.set($any($event.target).value)"
                   >
                     @for (opt of triggerTypeOptions; track opt.value) {
                       <option [value]="opt.value">{{ opt.label }}</option>
@@ -131,7 +131,7 @@ import { TRIGGER_TYPE_OPTIONS, triggerTypeLabel } from '../workflow-shared';
                   </select>
                 </div>
 
-                @if (newTriggerType() === TriggerType.NUMBER_1) {
+                @if (newTriggerType() === AddTriggerRequestTriggerTypeEnum.EntityEvent) {
                   <div>
                     <label class="text-xs text-slate-500 mb-1 block">Nom de l'événement</label>
                     <input
@@ -149,7 +149,7 @@ import { TRIGGER_TYPE_OPTIONS, triggerTypeLabel } from '../workflow-shared';
                     tas-raised-button
                     color="primary"
                     type="button"
-                    [disabled]="isSaving() || (newTriggerType() === TriggerType.NUMBER_1 && !newEventName().trim())"
+                    [disabled]="isSaving() || (newTriggerType() === AddTriggerRequestTriggerTypeEnum.EntityEvent && !newEventName().trim())"
                     (click)="addTrigger()"
                   >
                     Ajouter le déclencheur
@@ -180,7 +180,7 @@ export class WorkflowTriggersPage {
   public readonly id = input.required<string>();
   public readonly triggerTypeLabel = triggerTypeLabel;
   public readonly triggerTypeOptions = TRIGGER_TYPE_OPTIONS;
-  public readonly TriggerType = TriggerType;
+  public readonly AddTriggerRequestTriggerTypeEnum = AddTriggerRequestTriggerTypeEnum;
 
   public isLoading = signal(true);
   public isSaving = signal(false);
@@ -188,7 +188,7 @@ export class WorkflowTriggersPage {
   public triggers = signal<TriggerDto[]>([]);
   public template = signal<WorkflowTemplateDto | null>(null);
   public showAddForm = signal(false);
-  public newTriggerType = signal<TriggerType>(TriggerType.NUMBER_0);
+  public newTriggerType = signal<AddTriggerRequestTriggerTypeEnum>(AddTriggerRequestTriggerTypeEnum.EntityEvent);
   public newEventName = signal('');
 
   constructor() {
@@ -198,17 +198,17 @@ export class WorkflowTriggersPage {
   }
 
   public triggerIcon(trigger: TriggerDto): string {
-    switch (trigger.triggerType) {
-      case TriggerType.NUMBER_0: return 'feather:mouse-pointer';
-      case TriggerType.NUMBER_1: return 'feather:zap';
-      case TriggerType.NUMBER_2: return 'feather:clock';
+    switch (trigger.triggerType as string) {
+      case AddTriggerRequestTriggerTypeEnum.EntityEvent: return 'feather:zap';
+      case AddTriggerRequestTriggerTypeEnum.Schedule: return 'feather:clock';
+      case AddTriggerRequestTriggerTypeEnum.ExternalEvent: return 'feather:mouse-pointer';
       default: return 'feather:zap';
     }
   }
 
   public toggleAddForm(): void {
     this.showAddForm.update((v) => !v);
-    this.newTriggerType.set(TriggerType.NUMBER_0);
+    this.newTriggerType.set(AddTriggerRequestTriggerTypeEnum.EntityEvent);
     this.newEventName.set('');
   }
 
@@ -217,13 +217,13 @@ export class WorkflowTriggersPage {
     this._api
       .addTrigger(this.id(), {
         triggerType: this.newTriggerType(),
-        eventName: this.newTriggerType() === TriggerType.NUMBER_1 ? this.newEventName().trim() : null,
+        eventName: this.newTriggerType() === AddTriggerRequestTriggerTypeEnum.EntityEvent ? this.newEventName().trim() : null,
       })
       .subscribe({
         next: () => {
           this._snackbar.success('Succès', 'Déclencheur ajouté.');
           this.showAddForm.set(false);
-          this.newTriggerType.set(TriggerType.NUMBER_0);
+          this.newTriggerType.set(AddTriggerRequestTriggerTypeEnum.EntityEvent);
           this.newEventName.set('');
           this.isSaving.set(false);
           this._reloadTriggers();

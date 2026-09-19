@@ -9,11 +9,11 @@ import { TasSelect } from '@talisoft/ui/select';
 import { TasSpinner } from '@talisoft/ui/spinner';
 import { TasIcon } from '@talisoft/ui/icon';
 import {
+  AddRuleRequestOperatorEnum,
+  AddRuleRequestRuleTypeEnum,
   RoleDto,
   RolesApiService,
   RuleDto,
-  RuleOperator,
-  RuleType,
   UpdateStepRequest,
   WorkflowStepDto,
   WorkflowTemplateDto,
@@ -320,7 +320,7 @@ class EditStepFormModel {
                                       <select
                                         class="w-full px-2 py-1.5 text-xs border border-slate-200 rounded bg-white focus:outline-none focus:ring-1 focus:ring-primary/40"
                                         [value]="newRuleType()"
-                                        (change)="newRuleType.set(+$any($event.target).value)"
+                                        (change)="newRuleType.set($any($event.target).value)"
                                       >
                                         @for (opt of ruleTypeOptions; track opt.value) {
                                           <option [value]="opt.value">{{ opt.label }}</option>
@@ -332,7 +332,7 @@ class EditStepFormModel {
                                       <select
                                         class="w-full px-2 py-1.5 text-xs border border-slate-200 rounded bg-white focus:outline-none focus:ring-1 focus:ring-primary/40"
                                         [value]="newRuleOperator()"
-                                        (change)="newRuleOperator.set(+$any($event.target).value)"
+                                        (change)="newRuleOperator.set($any($event.target).value)"
                                       >
                                         @for (opt of ruleOperatorOptions; track opt.value) {
                                           <option [value]="opt.value">{{ opt.label }}</option>
@@ -495,9 +495,9 @@ export class WorkflowStepsPage {
   public stepRulesMap = signal<Record<string, RuleDto[]>>({});
   public stepRulesLoadingId = signal<string | null>(null);
   public ruleFormStepId = signal<string | null>(null);
-  public newRuleType = signal<RuleType>(RuleType.NUMBER_0);
+  public newRuleType = signal<AddRuleRequestRuleTypeEnum>(AddRuleRequestRuleTypeEnum.SkipIf);
   public newRuleField = signal('');
-  public newRuleOperator = signal<RuleOperator>(RuleOperator.NUMBER_0);
+  public newRuleOperator = signal<AddRuleRequestOperatorEnum>(AddRuleRequestOperatorEnum.Eq);
   public newRuleValue = signal('');
   public isAddingRule = signal(false);
   public removingRuleId = signal<string | null>(null);
@@ -710,8 +710,8 @@ export class WorkflowStepsPage {
     return this.stepRulesMap()[stepId]?.length ?? 0;
   }
 
-  public isNoValueOperator(op: RuleOperator | undefined): boolean {
-    return op !== undefined ? NO_VALUE_OPERATORS.includes(op) : false;
+  public isNoValueOperator(op: string | undefined): boolean {
+    return op !== undefined ? (NO_VALUE_OPERATORS as string[]).includes(op) : false;
   }
 
   public addRule(stepId: string): void {
@@ -730,8 +730,8 @@ export class WorkflowStepsPage {
           this.ruleFormStepId.set(null);
           this.newRuleField.set('');
           this.newRuleValue.set('');
-          this.newRuleType.set(RuleType.NUMBER_0);
-          this.newRuleOperator.set(RuleOperator.NUMBER_0);
+          this.newRuleType.set(AddRuleRequestRuleTypeEnum.SkipIf);
+          this.newRuleOperator.set(AddRuleRequestOperatorEnum.Eq);
           this.isAddingRule.set(false);
           this._loadRules(stepId);
         },

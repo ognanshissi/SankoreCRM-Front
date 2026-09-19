@@ -11,8 +11,9 @@ import {
   UsersApiService,
   UserDto,
   UserStatusStatsDto,
-  UserStatus,
 } from '@sankore/crm-api';
+
+type UserStatus = 0 | 1 | 2 | 3;
 import { CreateUserComponent } from '../create-user/create-user';
 import { TimeagoPipe } from '@talisoft/ui/timeago';
 import { BreadcrumbService, InitialsPipe } from '@sankore/crm/common';

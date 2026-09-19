@@ -9,7 +9,7 @@ import { TasFormField, TasLabel, TasError } from '@talisoft/ui/form-field';
 import { TasInput } from '@talisoft/ui/input';
 import { TasSelect } from '@talisoft/ui/select';
 import { TasSpinner } from '@talisoft/ui/spinner';
-import { CompanyInfoApiService, CompanyInfoDto, Languages } from '@sankore/crm-api';
+import { CompanyInfoApiService, CompanyInfoDto, UpdateCompanyInfoCommandDefaultLanguageEnum } from '@sankore/crm-api';
 import { SnackbarService } from '@talisoft/ui/snackbar';
 import { BreadcrumbService, TenantProvider } from '@sankore/crm/common';
 
@@ -98,7 +98,7 @@ export class CompanyPage {
             logoUrl: value.logoUrl || null,
             primaryColor: value.primaryColor || null,
             secondaryColor: value.secondaryColor || null,
-            defaultLanguage: Number(value.defaultLanguage) as Languages,
+            defaultLanguage: value.defaultLanguage as UpdateCompanyInfoCommandDefaultLanguageEnum || null,
           })
           .pipe(
             catchError(() => {

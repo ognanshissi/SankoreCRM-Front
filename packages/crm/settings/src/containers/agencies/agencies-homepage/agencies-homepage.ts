@@ -120,13 +120,13 @@ export class AgenciesHomePage {
     return src.replace(/[^A-Za-z0-9]/g, '').slice(0, 2).toUpperCase();
   }
 
-  public agencyTypeLabel(type: number | string | null | undefined): string {
-    switch (Number(type)) {
-      case 0: return 'HQ';
-      case 1: return 'Région';
-      case 2: return 'Zone';
-      case 3: return 'Agence';
-      default: return type != null ? String(type) : '—';
+  public agencyTypeLabel(type: string | null | undefined): string {
+    switch (type) {
+      case 'HeadQuarter': return 'HQ';
+      case 'Branch': return 'Région';
+      case 'ServicePoint': return 'Zone';
+      case 'Counter': return 'Agence';
+      default: return type ?? '—';
     }
   }
 }

@@ -24,30 +24,25 @@ import {
 } from '@sankore/crm-api';
 import { entityTypeLabel, instanceStatusMeta, stepStatusMeta } from '../workflow-shared';
 
-function taskStatusMeta(status: number | undefined): {
+function taskStatusMeta(status: string | undefined): {
   label: string;
   severity: Severity;
 } {
   switch (status) {
-    case 0:
-      return { label: 'En attente', severity: 'warning' };
-    case 1:
-      return { label: 'En cours', severity: 'info' };
-    case 2:
-      return { label: 'Terminé', severity: 'success' };
-    case 3:
-      return { label: 'Annulé', severity: 'neutral' };
-    default:
-      return { label: '—', severity: 'neutral' };
+    case 'Pending':    return { label: 'En attente', severity: 'warning' };
+    case 'InProgress': return { label: 'En cours', severity: 'info' };
+    case 'Completed':  return { label: 'Terminé', severity: 'success' };
+    case 'Cancelled':  return { label: 'Annulé', severity: 'neutral' };
+    default:           return { label: '—', severity: 'neutral' };
   }
 }
 
-function taskPriorityLabel(priority: number | undefined): string {
+function taskPriorityLabel(priority: string | undefined): string {
   switch (priority) {
-    case 0: return 'Basse';
-    case 1: return 'Normale';
-    case 2: return 'Haute';
-    case 3: return 'Urgente';
+    case 'Low':    return 'Basse';
+    case 'Normal': return 'Normale';
+    case 'High':   return 'Haute';
+    case 'Urgent': return 'Urgente';
     default: return '—';
   }
 }

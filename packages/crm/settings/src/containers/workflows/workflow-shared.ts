@@ -1,5 +1,10 @@
 import { Severity } from '@talisoft/ui/tag';
-import { ActionType, RuleOperator, RuleType, TriggerType } from '@sankore/crm-api';
+import {
+  AddActionRequestActionTypeEnum,
+  AddRuleRequestOperatorEnum,
+  AddRuleRequestRuleTypeEnum,
+  AddTriggerRequestTriggerTypeEnum,
+} from '@sankore/crm-api';
 
 /**
  * `entityType` and `status` come back from the API as free strings (no
@@ -47,62 +52,62 @@ export function stepStatusMeta(status: string | null | undefined): StatusMeta {
 
 // ─── Trigger types ────────────────────────────────────────────────────────────
 
-export const TRIGGER_TYPE_OPTIONS: { label: string; value: TriggerType }[] = [
-  { label: 'Manuel', value: TriggerType.NUMBER_0 },
-  { label: 'Événement', value: TriggerType.NUMBER_1 },
-  { label: 'Planifié', value: TriggerType.NUMBER_2 },
+export const TRIGGER_TYPE_OPTIONS: { label: string; value: AddTriggerRequestTriggerTypeEnum }[] = [
+  { label: 'Événement entité', value: AddTriggerRequestTriggerTypeEnum.EntityEvent },
+  { label: 'Planifié', value: AddTriggerRequestTriggerTypeEnum.Schedule },
+  { label: 'Événement externe', value: AddTriggerRequestTriggerTypeEnum.ExternalEvent },
 ];
 
-export function triggerTypeLabel(type: TriggerType | null | undefined): string {
+export function triggerTypeLabel(type: AddTriggerRequestTriggerTypeEnum | string | null | undefined): string {
   return TRIGGER_TYPE_OPTIONS.find((o) => o.value === type)?.label ?? String(type ?? '—');
 }
 
 // ─── Action types ─────────────────────────────────────────────────────────────
 
-export const ACTION_TYPE_OPTIONS: { label: string; value: ActionType }[] = [
-  { label: 'Email', value: ActionType.NUMBER_0 },
-  { label: 'Webhook', value: ActionType.NUMBER_1 },
-  { label: 'Notification', value: ActionType.NUMBER_2 },
-  { label: 'Assignation', value: ActionType.NUMBER_3 },
-  { label: 'Mise à jour champ', value: ActionType.NUMBER_4 },
-  { label: 'Création de tâche', value: ActionType.NUMBER_5 },
-  { label: 'Script', value: ActionType.NUMBER_6 },
+export const ACTION_TYPE_OPTIONS: { label: string; value: AddActionRequestActionTypeEnum }[] = [
+  { label: 'Assigner un utilisateur', value: AddActionRequestActionTypeEnum.AssignUser },
+  { label: 'Round Robin', value: AddActionRequestActionTypeEnum.AssignRoundRobin },
+  { label: 'Notification', value: AddActionRequestActionTypeEnum.SendNotification },
+  { label: 'Créer une tâche', value: AddActionRequestActionTypeEnum.CreateTask },
+  { label: 'Webhook', value: AddActionRequestActionTypeEnum.CallWebhook },
+  { label: 'Publier un événement', value: AddActionRequestActionTypeEnum.PublishEvent },
+  { label: 'Sous-workflow', value: AddActionRequestActionTypeEnum.StartChildWorkflow },
 ];
 
-export function actionTypeLabel(type: ActionType | null | undefined): string {
+export function actionTypeLabel(type: AddActionRequestActionTypeEnum | string | null | undefined): string {
   return ACTION_TYPE_OPTIONS.find((o) => o.value === type)?.label ?? String(type ?? '—');
 }
 
 // ─── Rule types & operators ───────────────────────────────────────────────────
 
-export const RULE_TYPE_OPTIONS: { label: string; value: RuleType }[] = [
-  { label: 'Pré-condition', value: RuleType.NUMBER_0 },
-  { label: 'Post-condition', value: RuleType.NUMBER_1 },
-  { label: 'Validation', value: RuleType.NUMBER_2 },
+export const RULE_TYPE_OPTIONS: { label: string; value: AddRuleRequestRuleTypeEnum }[] = [
+  { label: 'Ignorer si', value: AddRuleRequestRuleTypeEnum.SkipIf },
+  { label: 'Auto-approuver si', value: AddRuleRequestRuleTypeEnum.AutoApproveIf },
+  { label: 'Requis si', value: AddRuleRequestRuleTypeEnum.RequireIf },
 ];
 
-export const RULE_OPERATOR_OPTIONS: { label: string; value: RuleOperator }[] = [
-  { label: 'Égal à', value: RuleOperator.NUMBER_0 },
-  { label: 'Différent de', value: RuleOperator.NUMBER_1 },
-  { label: 'Inférieur à', value: RuleOperator.NUMBER_2 },
-  { label: 'Inférieur ou égal à', value: RuleOperator.NUMBER_3 },
-  { label: 'Supérieur à', value: RuleOperator.NUMBER_4 },
-  { label: 'Supérieur ou égal à', value: RuleOperator.NUMBER_5 },
-  { label: 'Contient', value: RuleOperator.NUMBER_6 },
-  { label: 'Ne contient pas', value: RuleOperator.NUMBER_7 },
-  { label: 'Commence par', value: RuleOperator.NUMBER_8 },
-  { label: 'Finit par', value: RuleOperator.NUMBER_9 },
-  { label: 'Est vide', value: RuleOperator.NUMBER_10 },
-  { label: "N'est pas vide", value: RuleOperator.NUMBER_11 },
+export const RULE_OPERATOR_OPTIONS: { label: string; value: AddRuleRequestOperatorEnum }[] = [
+  { label: 'Égal à', value: AddRuleRequestOperatorEnum.Eq },
+  { label: 'Différent de', value: AddRuleRequestOperatorEnum.NotEq },
+  { label: 'Inférieur à', value: AddRuleRequestOperatorEnum.Lt },
+  { label: 'Inférieur ou égal à', value: AddRuleRequestOperatorEnum.Lte },
+  { label: 'Supérieur à', value: AddRuleRequestOperatorEnum.Gt },
+  { label: 'Supérieur ou égal à', value: AddRuleRequestOperatorEnum.Gte },
+  { label: 'Contient', value: AddRuleRequestOperatorEnum.Contains },
+  { label: 'Dans la liste', value: AddRuleRequestOperatorEnum.In },
+  { label: 'Hors liste', value: AddRuleRequestOperatorEnum.NotIn },
+  { label: 'Est vide', value: AddRuleRequestOperatorEnum.IsEmpty },
+  { label: "N'est pas vide", value: AddRuleRequestOperatorEnum.IsNotEmpty },
+  { label: 'Entre', value: AddRuleRequestOperatorEnum.Between },
 ];
 
 /** Operators that don't require a value field */
-export const NO_VALUE_OPERATORS = [RuleOperator.NUMBER_10, RuleOperator.NUMBER_11];
+export const NO_VALUE_OPERATORS = [AddRuleRequestOperatorEnum.IsEmpty, AddRuleRequestOperatorEnum.IsNotEmpty];
 
-export function ruleTypeLabel(type: RuleType | null | undefined): string {
+export function ruleTypeLabel(type: AddRuleRequestRuleTypeEnum | string | null | undefined): string {
   return RULE_TYPE_OPTIONS.find((o) => o.value === type)?.label ?? String(type ?? '—');
 }
 
-export function ruleOperatorLabel(op: RuleOperator | null | undefined): string {
+export function ruleOperatorLabel(op: AddRuleRequestOperatorEnum | string | null | undefined): string {
   return RULE_OPERATOR_OPTIONS.find((o) => o.value === op)?.label ?? String(op ?? '—');
 }

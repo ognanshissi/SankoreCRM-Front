@@ -618,7 +618,7 @@
                   <select
                     class="flex-1 min-w-0 px-2 py-1 text-xs border border-slate-200 rounded bg-white focus:outline-none focus:ring-1 focus:ring-primary/40"
                     [value]="newActionType()"
-                    (change)="newActionType.set(+$any($event.target).value)"
+                    (change)="newActionType.set($any($event.target).value)"
                   >
                     @for (opt of ACTION_TYPE_OPTIONS; track opt.value) {
                       <option [value]="opt.value">{{ opt.label }}</option>

@@ -16,7 +16,7 @@ import { TasIcon } from '@talisoft/ui/icon';
 import { TasSpinner } from '@talisoft/ui/spinner';
 import { SnackbarService } from '@talisoft/ui/snackbar';
 import { ConfirmDialogService } from '@talisoft/ui/confirm-dialog';
-import { ActionDto, ActionType, TransitionDto, UpdateStepRequest, WorkflowTemplatesApiService } from '@sankore/crm-api';
+import { ActionDto, AddActionRequestActionTypeEnum, TransitionDto, UpdateStepRequest, WorkflowTemplatesApiService } from '@sankore/crm-api';
 import { ACTION_TYPE_OPTIONS, actionTypeLabel } from '../workflow-shared';
 
 // ─── Domain Model ────────────────────────────────────────────────────────────
@@ -133,11 +133,11 @@ export class WorkflowBuilderPage implements OnInit {
 
   // ── Transition actions ────────────────────────────────────────────────────
   public selectedTransitionActions = signal<ActionDto[]>([]);
-  public newActionType = signal<ActionType>(ActionType.NUMBER_0);
+  public newActionType = signal<AddActionRequestActionTypeEnum>(AddActionRequestActionTypeEnum.AssignUser);
   public isAddingAction = signal(false);
   public removingActionId = signal<string | null>(null);
   public readonly ACTION_TYPE_OPTIONS = ACTION_TYPE_OPTIONS;
-  public readonly ActionType = ActionType;
+  public readonly AddActionRequestActionTypeEnum = AddActionRequestActionTypeEnum;
   public readonly actionTypeLabel = actionTypeLabel;
 
   // ── New state form (WF-006) ───────────────────────────────────────────────

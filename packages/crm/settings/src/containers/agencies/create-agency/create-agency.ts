@@ -20,13 +20,13 @@ import { Button } from '@talisoft/ui/button';
 import { TasFormField, TasError, TasLabel } from '@talisoft/ui/form-field';
 import { TasInput } from '@talisoft/ui/input';
 import { TasSelect } from '@talisoft/ui/select';
-import { AgenciesApiService, AgencyDto, AgencyType } from '@sankore/crm-api';
+import { AgenciesApiService, AgencyDto, CreateAgencyRequestAgencyTypeEnum } from '@sankore/crm-api';
 import { SnackbarService } from '@talisoft/ui/snackbar';
 
 export class CreateAgencyFormModel {
   public name!: string;
   public description!: string;
-  public agencyType!: AgencyType;
+  public agencyType!: CreateAgencyRequestAgencyTypeEnum;
   public parentAgencyId!: string;
   public addressStreet!: string;
   public addressCity!: string;
@@ -37,7 +37,7 @@ export class CreateAgencyFormModel {
     const model = new CreateAgencyFormModel();
     model.name = '';
     model.description = '';
-    model.agencyType = AgencyType.NUMBER_3;
+    model.agencyType = CreateAgencyRequestAgencyTypeEnum.Counter;
     model.parentAgencyId = '';
     model.addressStreet = '';
     model.addressCity = '';
@@ -48,10 +48,10 @@ export class CreateAgencyFormModel {
 }
 
 export const AGENCY_TYPE_OPTIONS = [
-  { label: 'HeadQuarter', value: AgencyType.NUMBER_0 },
-  { label: 'Région', value: AgencyType.NUMBER_1 },
-  { label: 'Zone', value: AgencyType.NUMBER_2 },
-  { label: 'Agence', value: AgencyType.NUMBER_3 },
+  { label: 'HeadQuarter', value: CreateAgencyRequestAgencyTypeEnum.HeadQuarter },
+  { label: 'Région', value: CreateAgencyRequestAgencyTypeEnum.Branch },
+  { label: 'Zone', value: CreateAgencyRequestAgencyTypeEnum.ServicePoint },
+  { label: 'Agence', value: CreateAgencyRequestAgencyTypeEnum.Counter },
 ];
 
 @Component({
@@ -94,7 +94,7 @@ export class CreateAgencyComponent {
     required(schema.name, { message: "Le nom de l'agence est obligatoire" });
     validate(schema.parentAgencyId, (ctx) => {
       const type = ctx.valueOf(schema.agencyType);
-      if (type !== AgencyType.NUMBER_0 && !ctx.value()) {
+      if (type !== CreateAgencyRequestAgencyTypeEnum.HeadQuarter && !ctx.value()) {
         return {
           kind: 'required',
           message: "L'agence parente est obligatoire",
@@ -105,8 +105,8 @@ export class CreateAgencyComponent {
   });
 
   public isHQ = computed(() => {
-    console.log(this.formSchema.agencyType().value() === AgencyType.NUMBER_0);
-    return this.formSchema.agencyType().value() === AgencyType.NUMBER_0;
+    console.log(this.formSchema.agencyType().value() === CreateAgencyRequestAgencyTypeEnum.HeadQuarter);
+    return this.formSchema.agencyType().value() === CreateAgencyRequestAgencyTypeEnum.HeadQuarter;
   });
 
   constructor() {
