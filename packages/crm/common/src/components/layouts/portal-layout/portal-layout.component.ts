@@ -60,13 +60,12 @@ export class PortalLayoutComponent implements OnInit {
         type: 'basic',
         link: '/settings/workflows/ma-file',
       },
-
       {
         id: 'contacts',
         icon: 'feather:phone',
-        title: 'leads & contacts',
+        title: 'leads',
         type: 'basic',
-        link: '/portal/contacts',
+        link: '/leads',
       },
       // {
       //   id: 'leads',

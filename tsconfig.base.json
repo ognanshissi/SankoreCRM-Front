@@ -59,7 +59,10 @@
       "@sankore/crm/common": ["./packages/crm/common/src/index.ts"],
       "@sankore/crm/tasks": ["./packages/crm/tasks/src/index.ts"],
       "@sankore/crm/settings": ["./packages/crm/settings/src/index.ts"],
-      "@sankore/crm-api": ["./packages/crm-api/src/index.ts"]
+      "@sankore/crm-api": ["./packages/crm-api/src/index.ts"],
+      "@sankore/crm/lead-management": [
+        "./packages/crm/lead-management/src/index.ts"
+      ]
     }
   },
   "exclude": ["node_modules", "tmp"]
