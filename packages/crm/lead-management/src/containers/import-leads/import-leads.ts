@@ -21,11 +21,39 @@ import { TasSelect } from '@talisoft/ui/select';
 import { TasFormField, TasLabel } from '@talisoft/ui/form-field';
 import { TasTag } from '@talisoft/ui/tag';
 import {
-  ImportLeadRow,
-  ImportLeadRowSourceEnum,
   ImportRowFailure,
   LeadsApiService,
 } from '@sankore/crm-api';
+
+// Types defined locally — the generated DTOs were removed from the API package
+export interface ImportLeadRow {
+  fullName?: string | null;
+  phoneNumber?: string | null;
+  source?: ImportLeadRowSourceEnum;
+  interestedProduct?: string | null;
+  preferredLanguage?: string | null;
+  latitude?: number;
+  longitude?: number;
+  firstName?: string | null;
+  lastName?: string | null;
+  email?: string | null;
+  gender?: string;
+  dateOfBirth?: string | null;
+  desiredAmount?: number | null;
+  desiredCurrency?: string | null;
+  campaign?: string | null;
+  channel?: number | null;
+  comment?: string | null;
+  externalReference?: string | null;
+  ownerId?: string | null;
+  agencyId?: string | null;
+}
+export enum ImportLeadRowSourceEnum {
+  Web = 'Web', MobileAgent = 'MobileAgent', Agency = 'Agency',
+  CallCenter = 'CallCenter', Sms = 'Sms', Ussd = 'Ussd',
+  WhatsApp = 'WhatsApp', Referral = 'Referral', Partner = 'Partner',
+  FileImport = 'FileImport', Campaign = 'Campaign',
+}
 import { SnackbarService } from '@talisoft/ui/snackbar';
 import { catchError, EMPTY, finalize } from 'rxjs';
 
