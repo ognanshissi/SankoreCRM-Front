@@ -24,6 +24,12 @@ export interface ActivityDto {
     performedAt?: string;
     durationMinutes?: number | null;
     outcome?: ActivityDtoOutcomeEnum | null;
+    attachmentsJson?: string | null;
+    ctiCallReference?: string | null;
+    isSystemGenerated?: boolean;
+    visitLatitude?: number | null;
+    visitLongitude?: number | null;
+    visitPhotoReference?: string | null;
 }
 export enum ActivityDtoTypeEnum {
     Call = 'Call',

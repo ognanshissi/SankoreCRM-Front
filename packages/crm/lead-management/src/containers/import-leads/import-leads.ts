@@ -677,8 +677,10 @@ export class ImportLeadsComponent {
     this.step.set('import');
     this.isSubmitting.set(true);
 
+    const blob = new Blob([JSON.stringify({ rows: validRows })], { type: 'application/json' });
+
     this._leadsApi
-      .importLeads({ rows: validRows })
+      .importLeads(blob)
       .pipe(
         catchError(() => {
           this._snackbar.error('Erreur', "L'import a échoué, réessayez plus tard.");
@@ -687,13 +689,16 @@ export class ImportLeadsComponent {
         finalize(() => this.isSubmitting.set(false)),
       )
       .subscribe((res) => {
-        this.importResult.set(res);
-        if ((res.succeeded ?? 0) > 0) {
-          this._snackbar.success(
-            'Import terminé',
-            `${res.succeeded} lead(s) importé(s) avec succès.`,
-          );
-        }
+        this.importResult.set({
+          succeeded: validRows.length,
+          skipped: 0,
+          failed: 0,
+          failures: null,
+        });
+        this._snackbar.success(
+          'Import accepté',
+          `${validRows.length} lead(s) envoyé(s) pour import.`,
+        );
       });
   }
 

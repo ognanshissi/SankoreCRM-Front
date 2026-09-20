@@ -24,6 +24,7 @@ export interface DispatchingRuleDto {
     maxTasksPerAgent?: number;
     antiMonopolyThreshold?: number;
     firstContactSla?: string;
+    declineExclusionTtl?: string;
     isActive?: boolean;
     priority?: number;
     excludedAgentIds?: Array<string> | null;

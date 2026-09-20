@@ -17,11 +17,16 @@ export interface LogActivityRequest {
      */
     type?: LogActivityRequestTypeEnum;
     subject?: string | null;
-    performedBy?: string;
     notes?: string | null;
     scheduledAt?: string | null;
     durationMinutes?: number | null;
     outcome?: LogActivityRequestOutcomeEnum | null;
+    attachmentsJson?: string | null;
+    ctiCallReference?: string | null;
+    isSystemGenerated?: boolean;
+    visitLatitude?: number | null;
+    visitLongitude?: number | null;
+    visitPhotoReference?: string | null;
 }
 export enum LogActivityRequestTypeEnum {
     Call = 'Call',
