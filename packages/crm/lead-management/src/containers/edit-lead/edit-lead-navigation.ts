@@ -1,4 +1,4 @@
-import { Component, computed, effect, inject, input, signal } from '@angular/core';
+import { Component, computed, effect, inject, input, signal, OnDestroy } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { TasIcon } from '@talisoft/ui/icon';
 import { TasCard } from '@talisoft/ui/card';
@@ -24,6 +24,50 @@ function leadStatusMeta(status: string | null | undefined): { label: string; sev
     case 'Lost':      return { label: 'Perdu',    severity: 'error' };
     case 'Expired':   return { label: 'Expiré',   severity: 'neutral' };
     default:          return { label: status ?? '—', severity: 'neutral' };
+  }
+}
+
+interface TemperatureMeta {
+  label: string;
+  key: string;
+  colorClasses: string;
+  dotClass: string;
+}
+
+function temperatureMeta(intentLevel: string | null | undefined): TemperatureMeta {
+  switch (String(intentLevel)) {
+    case '0': return { label: 'Froid',      key: 'COLD',    colorClasses: 'bg-slate-100 text-slate-700 border-slate-300',   dotClass: 'bg-slate-400' };
+    case '1': return { label: 'Tiède',      key: 'WARM',    colorClasses: 'bg-blue-50 text-blue-700 border-blue-300',       dotClass: 'bg-blue-500' };
+    case '2': return { label: 'Chaud',      key: 'HOT',     colorClasses: 'bg-amber-50 text-amber-700 border-amber-300',    dotClass: 'bg-amber-500' };
+    case '3': return { label: 'Très chaud', key: 'VERY HOT', colorClasses: 'bg-red-50 text-red-700 border-red-300',         dotClass: 'bg-red-500' };
+    default:  return { label: 'Inconnu',    key: 'UNKNOWN', colorClasses: 'bg-gray-50 text-gray-500 border-gray-300',       dotClass: 'bg-gray-400' };
+  }
+}
+
+function scoreColor(score: number): { bg: string; text: string; bar: string } {
+  if (score >= 70) return { bg: 'bg-green-50',  text: 'text-green-700', bar: 'bg-green-500' };
+  if (score >= 40) return { bg: 'bg-amber-50',  text: 'text-amber-700', bar: 'bg-amber-500' };
+  return               { bg: 'bg-red-50',    text: 'text-red-700',   bar: 'bg-red-400' };
+}
+
+interface ScoreFactor {
+  label: string;
+  value: string;
+  impact: string;
+}
+
+function parseFactors(factorsJson: string | null | undefined): ScoreFactor[] {
+  if (!factorsJson) return [];
+  try {
+    const parsed = JSON.parse(factorsJson);
+    if (Array.isArray(parsed)) return parsed;
+    return Object.entries(parsed).map(([key, val]: [string, any]) => ({
+      label: key,
+      value: typeof val === 'object' ? (val.value ?? val.detail ?? JSON.stringify(val)) : String(val),
+      impact: typeof val === 'object' ? (val.impact ?? '') : '',
+    }));
+  } catch {
+    return [];
   }
 }
 
@@ -103,10 +147,86 @@ function leadStatusMeta(status: string | null | undefined): { label: string; sev
                     {{ lead()!.source }}
                   </p>
                 }
-                @if (lead()!.score != null) {
-                  <div class="mt-2 flex items-center gap-1.5">
-                    <span class="text-xs text-slate-400">Score</span>
-                    <span class="text-sm font-semibold text-slate-700 tabular-nums">{{ lead()!.score }}</span>
+                <!-- Score & Temperature badge -->
+                @if (lead()!.score != null || lead()!.intentLevel != null) {
+                  <div class="mt-3 relative">
+                    <button
+                      type="button"
+                      class="w-full flex items-center gap-2 p-2 rounded-lg border cursor-pointer transition-colors hover:shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+                      [class]="scoreBadgeClasses()"
+                      (click)="toggleFactorsPanel()"
+                      (keydown.enter)="toggleFactorsPanel()"
+                      (keydown.space)="toggleFactorsPanel(); $event.preventDefault()"
+                      [attr.aria-expanded]="showFactors()"
+                      aria-controls="score-factors-panel"
+                    >
+                      <!-- Score circle -->
+                      <div
+                        class="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold tabular-nums shrink-0"
+                        [class]="scoreCircleClasses()"
+                      >
+                        {{ lead()!.score ?? '—' }}
+                      </div>
+                      <div class="flex-1 min-w-0 text-left">
+                        <div class="flex items-center gap-1">
+                          <span class="w-2 h-2 rounded-full shrink-0" [class]="tempMeta().dotClass"></span>
+                          <span class="text-xs font-semibold truncate">{{ tempMeta().label }}</span>
+                        </div>
+                        <span class="text-[10px] opacity-70">Score {{ lead()!.score ?? 0 }}/100</span>
+                      </div>
+                      <tas-icon
+                        [iconName]="showFactors() ? 'feather:chevron-up' : 'feather:chevron-down'"
+                        class="shrink-0 opacity-50"
+                        style="font-size:14px"
+                      ></tas-icon>
+                    </button>
+
+                    <!-- Factors detail panel -->
+                    @if (showFactors()) {
+                      <div
+                        id="score-factors-panel"
+                        class="mt-2 rounded-lg border border-slate-200 bg-white shadow-sm overflow-hidden"
+                        role="region"
+                        aria-label="Détail du score"
+                      >
+                        <div class="px-3 py-2 border-b border-slate-100 bg-slate-50">
+                          <p class="text-xs font-semibold text-slate-700">Facteurs du score</p>
+                        </div>
+                        @if (scoreFactors().length === 0) {
+                          <div class="px-3 py-4 text-center">
+                            <p class="text-xs text-slate-400">Aucun détail disponible</p>
+                          </div>
+                        } @else {
+                          <div class="divide-y divide-slate-100">
+                            @for (factor of scoreFactors(); track factor.label) {
+                              <div class="px-3 py-2 flex items-start justify-between gap-2">
+                                <div class="min-w-0">
+                                  <p class="text-xs font-medium text-slate-700 truncate">{{ factor.label }}</p>
+                                  <p class="text-[10px] text-slate-500 truncate">{{ factor.value }}</p>
+                                </div>
+                                @if (factor.impact) {
+                                  <span
+                                    class="text-[10px] font-semibold tabular-nums shrink-0"
+                                    [class]="factor.impact.startsWith('-') ? 'text-red-600' : 'text-green-600'"
+                                  >
+                                    {{ factor.impact.startsWith('-') ? '' : '+' }}{{ factor.impact }}
+                                  </span>
+                                }
+                              </div>
+                            }
+                          </div>
+                        }
+                        <div class="px-3 py-2 border-t border-slate-100 bg-slate-50">
+                          <div class="flex items-center justify-between">
+                            <span class="text-[10px] text-slate-400">Température</span>
+                            <span class="inline-flex items-center gap-1 text-xs font-medium">
+                              <span class="w-1.5 h-1.5 rounded-full" [class]="tempMeta().dotClass"></span>
+                              {{ tempMeta().label }}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    }
                   </div>
                 }
               </div>
@@ -142,16 +262,21 @@ function leadStatusMeta(status: string | null | undefined): { label: string; sev
     `,
   ],
 })
-export class EditLeadNavigation {
+export class EditLeadNavigation implements OnDestroy {
   private readonly _leadsApiService = inject(LeadsApiService);
   private readonly _breadcrumbService = inject(BreadcrumbService);
   private readonly _router = inject(Router);
+  private _pollTimer: ReturnType<typeof setInterval> | null = null;
 
   public readonly id = input.required<string>();
 
   public isLoading = signal(true);
   public lead = signal<LeadDto | null>(null);
   public notFound = signal(false);
+  public showFactors = signal(false);
+  public latestFactorsJson = signal<string | null>(null);
+
+  public readonly scoreFactors = computed(() => parseFactors(this.latestFactorsJson()));
 
   public readonly menuItems: LeadMenuItem[] = [
     { label: 'Informations',  icon: 'feather:user',        route: 'informations' },
@@ -169,6 +294,7 @@ export class EditLeadNavigation {
       const id = this.id();
       this.isLoading.set(true);
       this.notFound.set(false);
+      this._stopPolling();
 
       this._leadsApiService.getLead(id).pipe(
         catchError((err) => {
@@ -185,8 +311,14 @@ export class EditLeadNavigation {
           { label: 'Leads', link: ['/leads'] },
           { label: this._displayName(lead) },
         ]);
+        this._loadScoreFactors(id);
+        this._startPolling(id);
       });
     });
+  }
+
+  ngOnDestroy(): void {
+    this._stopPolling();
   }
 
   public displayName(): string {
@@ -195,6 +327,55 @@ export class EditLeadNavigation {
 
   public statusMeta(): { label: string; severity: Severity } {
     return leadStatusMeta(this.lead()?.status);
+  }
+
+  public tempMeta(): TemperatureMeta {
+    return temperatureMeta(this.lead()?.intentLevel);
+  }
+
+  public scoreBadgeClasses(): string {
+    return temperatureMeta(this.lead()?.intentLevel).colorClasses;
+  }
+
+  public scoreCircleClasses(): string {
+    const s = this.lead()?.score ?? 0;
+    const c = scoreColor(s);
+    return `${c.bg} ${c.text}`;
+  }
+
+  public toggleFactorsPanel(): void {
+    this.showFactors.update((v) => !v);
+  }
+
+  private _loadScoreFactors(leadId: string): void {
+    this._leadsApiService.getLeadScoreHistory(leadId).pipe(
+      catchError(() => EMPTY),
+    ).subscribe((history) => {
+      const latest = history?.[0];
+      this.latestFactorsJson.set(latest?.factorsJson ?? null);
+    });
+  }
+
+  /** Poll every 30s to pick up real-time score recalculations */
+  private _startPolling(leadId: string): void {
+    this._pollTimer = setInterval(() => {
+      this._leadsApiService.getLead(leadId).pipe(
+        catchError(() => EMPTY),
+      ).subscribe((lead) => {
+        const current = this.lead();
+        if (current && (current.score !== lead.score || current.intentLevel !== lead.intentLevel)) {
+          this.lead.set(lead);
+          this._loadScoreFactors(leadId);
+        }
+      });
+    }, 30_000);
+  }
+
+  private _stopPolling(): void {
+    if (this._pollTimer) {
+      clearInterval(this._pollTimer);
+      this._pollTimer = null;
+    }
   }
 
   private _displayName(lead: LeadDto | null | undefined): string {

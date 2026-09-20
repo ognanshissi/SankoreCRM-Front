@@ -5,3 +5,4 @@ export * from './navigation/navigation';
 export * from './loading';
 export * from './breadcrumb/breadcrumb.component';
 export * from './duplicate-warning-banner/duplicate-warning-banner';
+export * from './dynamic-form-renderer/dynamic-form-renderer';
