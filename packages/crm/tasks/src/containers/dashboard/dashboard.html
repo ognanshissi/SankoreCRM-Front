@@ -220,6 +220,14 @@
                     >
                       Démarrer
                     </button>
+                    <button
+                      type="button"
+                      class="text-xs text-slate-400 hover:text-red-500 transition-colors px-2 py-1"
+                      (click)="declineTask(task)"
+                      title="Refuser cette tâche"
+                    >
+                      <tas-icon iconName="feather:x" style="font-size:14px"></tas-icon>
+                    </button>
                   }
                   @if (task.status === 'InProgress') {
                     <button
@@ -231,6 +239,14 @@
                       [disabled]="actionInProgress() === task.id"
                     >
                       Terminer
+                    </button>
+                    <button
+                      type="button"
+                      class="text-xs text-slate-400 hover:text-red-500 transition-colors px-2 py-1"
+                      (click)="declineTask(task)"
+                      title="Refuser cette tâche"
+                    >
+                      <tas-icon iconName="feather:x" style="font-size:14px"></tas-icon>
                     </button>
                   }
                 </div>
@@ -328,8 +344,16 @@
                 }
 
                 <!-- Actions -->
-                <div class="mt-2 flex justify-end">
+                <div class="mt-2 flex items-center justify-end gap-1">
                   @if (task.status === 'Pending') {
+                    <button
+                      type="button"
+                      class="text-[10px] text-slate-400 hover:text-red-500 transition-colors px-1.5 py-0.5"
+                      (click)="declineTask(task)"
+                      title="Refuser"
+                    >
+                      <tas-icon iconName="feather:x" style="font-size:12px"></tas-icon>
+                    </button>
                     <button
                       tas-outlined-button
                       type="button"
@@ -341,6 +365,14 @@
                     </button>
                   }
                   @if (task.status === 'InProgress') {
+                    <button
+                      type="button"
+                      class="text-[10px] text-slate-400 hover:text-red-500 transition-colors px-1.5 py-0.5"
+                      (click)="declineTask(task)"
+                      title="Refuser"
+                    >
+                      <tas-icon iconName="feather:x" style="font-size:12px"></tas-icon>
+                    </button>
                     <button
                       tas-outlined-button
                       type="button"

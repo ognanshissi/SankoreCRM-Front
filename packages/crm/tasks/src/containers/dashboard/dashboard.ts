@@ -17,6 +17,7 @@ import {
 } from '@sankore/crm-api';
 import { AuthenticationService, BreadcrumbService } from '@sankore/crm/common';
 import { CompleteTaskDrawer } from './complete-task-drawer';
+import { DeclineTaskDrawer } from './decline-task-drawer';
 
 // ——— Status / Priority / Type metadata ———
 
@@ -310,6 +311,24 @@ export class DashboardComponent implements OnInit, OnDestroy {
     ref.closed.subscribe((result) => {
       if (result && typeof result === 'object' && result.completed) {
         this._loadTasks();
+      }
+    });
+  }
+
+  public declineTask(task: CrmTaskDto): void {
+    if (!task.id) return;
+
+    const ref = this._sideDrawer.open(DeclineTaskDrawer, {
+      width: '100%',
+      height: '100%',
+      panelClass: 'side-drawer-panel',
+      data: { task },
+    });
+
+    ref.closed.subscribe((declined) => {
+      if (declined) {
+        // Remove immediately from local list
+        this.allTasks.update((list) => list.filter((t) => t.id !== task.id));
       }
     });
   }

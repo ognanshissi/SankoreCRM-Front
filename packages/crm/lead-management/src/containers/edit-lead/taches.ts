@@ -14,7 +14,7 @@ import {
   CrmTaskDtoStatusEnum,
   CrmTaskDtoPriorityEnum,
 } from '@sankore/crm-api';
-import { CompleteTaskDrawer } from '@sankore/crm/tasks';
+import { CompleteTaskDrawer, DeclineTaskDrawer } from '@sankore/crm/tasks';
 
 function statusMeta(status: CrmTaskDtoStatusEnum | undefined): { label: string; severity: Severity } {
   switch (status) {
@@ -110,28 +110,46 @@ function typeLabel(type: string | undefined): string {
                     </div>
 
                     @if (task.status === 'Pending') {
-                      <button
-                        tas-outlined-button
-                        color="primary"
-                        type="button"
-                        class="shrink-0"
-                        (click)="startTask(task)"
-                        [disabled]="actionInProgress() === task.id"
-                      >
-                        Démarrer
-                      </button>
+                      <div class="flex items-center gap-1 shrink-0">
+                        <button
+                          tas-outlined-button
+                          color="primary"
+                          type="button"
+                          (click)="startTask(task)"
+                          [disabled]="actionInProgress() === task.id"
+                        >
+                          Démarrer
+                        </button>
+                        <button
+                          type="button"
+                          class="text-slate-400 hover:text-red-500 transition-colors p-1"
+                          (click)="declineTask(task)"
+                          title="Refuser cette tâche"
+                        >
+                          <tas-icon iconName="feather:x" style="font-size:14px"></tas-icon>
+                        </button>
+                      </div>
                     }
                     @if (task.status === 'InProgress') {
-                      <button
-                        tas-outlined-button
-                        color="primary"
-                        type="button"
-                        class="shrink-0"
-                        (click)="completeTask(task)"
-                        [disabled]="actionInProgress() === task.id"
-                      >
-                        Terminer
-                      </button>
+                      <div class="flex items-center gap-1 shrink-0">
+                        <button
+                          tas-outlined-button
+                          color="primary"
+                          type="button"
+                          (click)="completeTask(task)"
+                          [disabled]="actionInProgress() === task.id"
+                        >
+                          Terminer
+                        </button>
+                        <button
+                          type="button"
+                          class="text-slate-400 hover:text-red-500 transition-colors p-1"
+                          (click)="declineTask(task)"
+                          title="Refuser cette tâche"
+                        >
+                          <tas-icon iconName="feather:x" style="font-size:14px"></tas-icon>
+                        </button>
+                      </div>
                     }
                   </div>
                 </div>
@@ -203,6 +221,23 @@ export class LeadTachesPage {
     ref.closed.subscribe((result) => {
       if (result && typeof result === 'object' && (result as any).completed) {
         this._loadTasks();
+      }
+    });
+  }
+
+  public declineTask(task: CrmTaskDto): void {
+    if (!task.id) return;
+
+    const ref = this._sideDrawer.open(DeclineTaskDrawer, {
+      width: '100%',
+      height: '100%',
+      panelClass: 'side-drawer-panel',
+      data: { task },
+    });
+
+    ref.closed.subscribe((declined) => {
+      if (declined) {
+        this.tasks.update((list) => list.filter((t) => t.id !== task.id));
       }
     });
   }
