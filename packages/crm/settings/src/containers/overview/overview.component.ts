@@ -100,11 +100,11 @@ export class OverviewComponent {
             'Configurer les intégrations pour capturer des leads (site web, LinkedIn, etc.)',
         },
         {
-          title: 'Formulaires dynamiques',
+          title: 'Formulaires de qualification',
           type: 'basic',
-          id: 'leads_contacts_dynamic_forms',
-          link: '/settings/dynamic-forms',
-          description: 'Personnaliser les champs des formulaires par entité',
+          id: 'leads_contacts_qualification_templates',
+          link: '/settings/qualification-templates',
+          description: 'Configurer les formulaires de qualification par produit (sections, questions, règles conditionnelles)',
         },
         {
           title: 'Étapes du pipeline',

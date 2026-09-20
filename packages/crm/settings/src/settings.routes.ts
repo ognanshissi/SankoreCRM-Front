@@ -89,6 +89,21 @@ const settingsRoutes: Routes = [
     ],
   },
   {
+    path: 'qualification-templates',
+    loadComponent: () =>
+      import('./containers/qualification-templates/qualification-templates'),
+  },
+  {
+    path: 'qualification-templates/create',
+    loadComponent: () =>
+      import('./containers/qualification-templates/edit-qualification-template'),
+  },
+  {
+    path: 'qualification-templates/:id/edit',
+    loadComponent: () =>
+      import('./containers/qualification-templates/edit-qualification-template'),
+  },
+  {
     path: 'lead-sources',
     loadComponent: () =>
       import('./containers/lead-sources/lead-sources'),
