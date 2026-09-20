@@ -8,6 +8,7 @@ import { TasTag, Severity } from '@talisoft/ui/tag';
 import { TimeagoPipe } from '@talisoft/ui/timeago';
 import { Button } from '@talisoft/ui/button';
 import { SnackbarService } from '@talisoft/ui/snackbar';
+import { SideDrawerService } from '@talisoft/ui/side-drawer';
 import {
   TasksApiService,
   CrmTaskDto,
@@ -15,6 +16,7 @@ import {
   CrmTaskDtoPriorityEnum,
 } from '@sankore/crm-api';
 import { AuthenticationService, BreadcrumbService } from '@sankore/crm/common';
+import { CompleteTaskDrawer } from './complete-task-drawer';
 
 // ——— Status / Priority / Type metadata ———
 
@@ -128,6 +130,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   private readonly _tasksApi = inject(TasksApiService);
   private readonly _auth = inject(AuthenticationService);
   private readonly _snackbar = inject(SnackbarService);
+  private readonly _sideDrawer = inject(SideDrawerService);
   private readonly _router = inject(Router);
   private readonly _breadcrumbService = inject(BreadcrumbService);
 
@@ -269,25 +272,45 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   public startTask(task: CrmTaskDto): void {
     if (!task.id) return;
-    this.actionInProgress.set(task.id);
+
+    // Optimistic update — switch to InProgress immediately
+    this.allTasks.update((list) =>
+      list.map((t) =>
+        t.id === task.id
+          ? { ...t, status: CrmTaskDtoStatusEnum.InProgress, startedAt: new Date().toISOString() }
+          : t,
+      ),
+    );
+
+    // Silent server confirmation
     this._tasksApi.startCrmTask(task.id).pipe(
-      catchError(() => { this._snackbar.error('Erreur', 'Impossible de démarrer la tâche.'); return EMPTY; }),
-    ).subscribe(() => {
-      this._snackbar.success('Tâche démarrée', 'La tâche est maintenant en cours.');
-      this.actionInProgress.set(null);
-      this._loadTasks();
-    });
+      catchError(() => {
+        // Rollback
+        this.allTasks.update((list) =>
+          list.map((t) =>
+            t.id === task.id ? { ...t, status: CrmTaskDtoStatusEnum.Pending, startedAt: null } : t,
+          ),
+        );
+        this._snackbar.error('Erreur', 'Impossible de démarrer la tâche. Elle a été remise en attente.');
+        return EMPTY;
+      }),
+    ).subscribe();
   }
 
   public completeTask(task: CrmTaskDto): void {
     if (!task.id) return;
-    this.actionInProgress.set(task.id);
-    this._tasksApi.completeCrmTask(task.id).pipe(
-      catchError(() => { this._snackbar.error('Erreur', 'Impossible de terminer la tâche.'); return EMPTY; }),
-    ).subscribe(() => {
-      this._snackbar.success('Tâche terminée', 'La tâche a été complétée.');
-      this.actionInProgress.set(null);
-      this._loadTasks();
+
+    const ref = this._sideDrawer.open(CompleteTaskDrawer, {
+      width: '100%',
+      height: '100%',
+      panelClass: 'side-drawer-panel',
+      data: { task },
+    });
+
+    ref.closed.subscribe((result) => {
+      if (result && typeof result === 'object' && result.completed) {
+        this._loadTasks();
+      }
     });
   }
 
