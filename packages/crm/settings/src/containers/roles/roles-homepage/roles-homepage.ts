@@ -2,7 +2,6 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { Button } from '@talisoft/ui/button';
 import { TasIcon } from '@talisoft/ui/icon';
-import { TasCard } from '@talisoft/ui/card';
 import { TasTable, TableConfig } from '@talisoft/ui/table';
 import { TasTag } from '@talisoft/ui/tag';
 import { RolesApiService, RoleDto } from '@sankore/crm-api';
@@ -15,7 +14,7 @@ import { BreadcrumbService } from '@sankore/crm/common';
 
 @Component({
   templateUrl: './roles-homepage.html',
-  imports: [Button, TasIcon, TasCard, TasTable, TasTag],
+  imports: [Button, TasIcon, TasTable, TasTag],
 })
 export class RolesHomePage {
   private readonly _rolesApiService = inject(RolesApiService);

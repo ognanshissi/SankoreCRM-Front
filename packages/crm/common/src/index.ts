@@ -9,3 +9,4 @@ export * from './models/environment-config';
 export * from './guards/authorized.guard'
 
 export * from './models';
+export * from './directives/has-permission.directive';

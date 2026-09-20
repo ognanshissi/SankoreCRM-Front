@@ -191,7 +191,7 @@
         <td class="text-sm text-slate-600">{{ prospectTypeLabel(item.prospectType) }}</td>
         <td class="text-sm text-slate-600">{{ sourceLabel(item.source) }}</td>
         <td>
-          @if (item.intentLevel != null) {
+          @if (item.intentLevel !== null) {
             <span
               class="inline-flex items-center gap-1 text-xs font-medium"
               [class]="intentDotClass(item.intentLevel)"
@@ -214,38 +214,83 @@
   </tas-table>
 }
 
-<!-- Kanban view -->
+<!-- Kanban / Pipeline view -->
 @if (viewMode() === 'kanban') {
   @if (isLoading()) {
     <div class="flex justify-center py-24">
       <div class="animate-spin w-6 h-6 border-2 border-primary border-t-transparent rounded-full"></div>
     </div>
   } @else {
-    <div class="flex gap-3 overflow-x-auto pb-4" style="min-height: 60vh">
-      @for (col of kanbanColumns; track col.status) {
-        <div class="flex-shrink-0 w-[272px] flex flex-col">
+    <div
+      class="flex gap-3 overflow-x-auto pb-4"
+      style="min-height: 60vh"
+      cdkDropListGroup
+    >
+      @for (col of pipelineColumns; track col.stage) {
+        <div class="flex-shrink-0 w-[240px] flex flex-col">
           <!-- Column header -->
           <div
-            class="flex items-center gap-2 mb-3 px-3 py-2 rounded-lg"
+            class="mb-2 px-3 py-2 rounded-lg"
             [style.background-color]="col.color"
           >
-            <span class="text-xs font-medium text-white">{{ col.label }}</span>
-            <span class="ml-auto px-1.5 py-0.5 rounded bg-white/20 text-[10px] font-semibold text-white tabular-nums">
-              {{ kanbanLeadsByStatus(col.statusValue).length }}
-            </span>
+            <div class="flex items-center gap-2">
+              <span class="text-xs font-medium text-white truncate">{{ col.label }}</span>
+              <span class="ml-auto px-1.5 py-0.5 rounded bg-white/20 text-[10px] font-semibold text-white tabular-nums shrink-0">
+                {{ pipelineLeads(col.stage).length }}
+              </span>
+            </div>
+            <!-- Column stats: amount + SLA -->
+            <div class="flex items-center justify-between mt-1.5">
+              @if (stageTotalAmount(col.stage) > 0) {
+                <span class="text-[10px] text-white/80 tabular-nums">
+                  {{ formatAmount(stageTotalAmount(col.stage)) }} XOF
+                </span>
+              } @else {
+                <span></span>
+              }
+              @if (stageSlaBreachCount(col.stage) > 0) {
+                <span
+                  class="inline-flex items-center gap-0.5 text-[10px] font-semibold text-white bg-white/25 rounded px-1 py-0.5"
+                  title="Leads en dépassement SLA"
+                >
+                  <tas-icon iconName="feather:alert-triangle" style="font-size:8px"></tas-icon>
+                  {{ stageSlaBreachCount(col.stage) }} SLA
+                </span>
+              }
+            </div>
           </div>
 
-          <!-- Cards -->
-          <div class="flex-1 flex flex-col gap-2">
-            @for (lead of kanbanLeadsByStatus(col.statusValue); track lead.id) {
+          <!-- Drop list -->
+          <div
+            cdkDropList
+            [cdkDropListData]="col.stage"
+            [cdkDropListConnectedTo]="pipelineColumnIds()"
+            [id]="'pipeline-' + col.stage"
+            (cdkDropListDropped)="onDrop($any($event))"
+            class="flex-1 flex flex-col gap-2 min-h-[100px] rounded-lg p-1 transition-colors"
+            [class]="pipelineLeads(col.stage).length === 0 ? 'border-2 border-dashed border-slate-100' : ''"
+          >
+            @for (lead of pipelineLeads(col.stage); track lead.id) {
               <div
-                class="bg-white rounded-lg p-3 cursor-pointer hover:shadow-sm transition-shadow border-l-[3px]"
+                cdkDrag
+                [cdkDragData]="lead"
+                class="bg-white rounded-lg p-3 cursor-grab active:cursor-grabbing hover:shadow-sm transition-shadow border-l-[3px]"
                 [style.border-left-color]="col.color"
                 [style.border-top]="'1px solid #e2e8f0'"
                 [style.border-right]="'1px solid #e2e8f0'"
                 [style.border-bottom]="'1px solid #e2e8f0'"
+                [attr.tabindex]="0"
+                [attr.role]="'button'"
+                [attr.aria-label]="displayName(lead) + ' — ' + col.label + '. Flèches gauche/droite pour déplacer.'"
+                [attr.aria-roledescription]="'carte de lead déplaçable'"
+                (keydown)="onCardKeydown($event, lead, col.stage)"
                 (click)="navigateToLead(lead)"
+                (focus)="focusedCardId.set(lead.id ?? null)"
+                (blur)="focusedCardId.set(null)"
               >
+                <!-- Drag placeholder -->
+                <div cdkDragPlaceholder class="bg-slate-50 border-2 border-dashed border-slate-300 rounded-lg h-20"></div>
+
                 <div class="flex items-center gap-2 mb-1.5">
                   <div class="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-semibold bg-teal-50 text-teal-800 flex-shrink-0">
                     {{ initials(lead) }}
@@ -256,10 +301,16 @@
                   <p class="text-xs text-slate-400 tabular-nums truncate">{{ lead.phoneNumber }}</p>
                 }
                 <div class="flex items-center justify-between mt-2">
-                  @if (lead.source) {
+                  @if (lead.desiredAmount?.amount) {
+                    <span class="text-[10px] text-slate-500 font-medium tabular-nums">
+                      {{ formatAmount(lead.desiredAmount?.amount ?? 0) }} {{ lead.desiredAmount?.currency ?? '' }}
+                    </span>
+                  } @else if (lead.source) {
                     <span class="text-[10px] text-slate-400">{{ sourceLabel(lead.source) }}</span>
+                  } @else {
+                    <span></span>
                   }
-                  @if (lead.intentLevel != null) {
+                  @if (lead.intentLevel !== null) {
                     <span
                       class="inline-flex items-center gap-1 text-[10px] font-medium"
                       [class]="intentDotClass(lead.intentLevel)"
@@ -269,10 +320,30 @@
                     </span>
                   }
                 </div>
+                <!-- Score + SLA warning -->
+                <div class="flex items-center justify-between mt-1.5">
+                  @if (lead.score !== null) {
+                    <span class="text-[10px] text-slate-400 tabular-nums">Score {{ lead.score }}</span>
+                  } @else {
+                    <span></span>
+                  }
+                  @if (lead.expiresAt && isSlaBreach(lead)) {
+                    <span class="text-[10px] text-red-500 font-medium flex items-center gap-0.5">
+                      <tas-icon iconName="feather:alert-circle" style="font-size:8px"></tas-icon>
+                      SLA
+                    </span>
+                  }
+                </div>
+                <!-- Keyboard hint when focused -->
+                @if (focusedCardId() === lead.id) {
+                  <div class="mt-2 pt-1.5 border-t border-slate-100 flex items-center gap-1">
+                    <span class="text-[9px] text-slate-300">← → déplacer · Entrée ouvrir</span>
+                  </div>
+                }
               </div>
             }
-            @if (kanbanLeadsByStatus(col.statusValue).length === 0) {
-              <div class="flex-1 border-2 border-dashed border-slate-100 rounded-lg flex items-center justify-center min-h-[100px]">
+            @if (pipelineLeads(col.stage).length === 0) {
+              <div class="flex-1 flex items-center justify-center min-h-[80px]">
                 <p class="text-xs text-slate-300">Aucun lead</p>
               </div>
             }

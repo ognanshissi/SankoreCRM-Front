@@ -2,7 +2,7 @@ import { Component, computed, inject, signal, Signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { catchError, EMPTY, map } from 'rxjs';
-import { CdkDragDrop, DragDropModule, moveItemInArray, transferArrayItem } from '@angular/cdk/drag-drop';
+import { CdkDragDrop, DragDropModule } from '@angular/cdk/drag-drop';
 import { Button } from '@talisoft/ui/button';
 import { TasIcon } from '@talisoft/ui/icon';
 import { TasCard } from '@talisoft/ui/card';
@@ -236,6 +236,11 @@ export class LeadHomepage {
       if (!l.expiresAt) return false;
       return new Date(l.expiresAt).getTime() < now;
     }).length;
+  }
+
+  public isSlaBreach(lead: LeadDto): boolean {
+    if (!lead.expiresAt) return false;
+    return new Date(lead.expiresAt).getTime() < Date.now();
   }
 
   public formatAmount(amount: number): string {

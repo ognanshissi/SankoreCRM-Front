@@ -1,6 +1,5 @@
 import { Component, effect, inject, input, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
-import { NgClass } from '@angular/common';
 import { catchError, EMPTY } from 'rxjs';
 import { Navigation } from '../../../components/navigation/navigation';
 import { TasIcon } from '@talisoft/ui/icon';
@@ -16,7 +15,6 @@ import { Anchor, Button } from '@talisoft/ui/button';
   imports: [
     Navigation,
     RouterLink,
-    NgClass,
     TasIcon,
     TasSpinner,
     Anchor,

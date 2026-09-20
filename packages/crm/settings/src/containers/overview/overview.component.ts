@@ -106,6 +106,13 @@ export class OverviewComponent {
           link: '/settings/dynamic-forms',
           description: 'Personnaliser les champs des formulaires par entité',
         },
+        {
+          title: 'Étapes du pipeline',
+          type: 'basic',
+          id: 'leads_contacts_pipeline_stages',
+          link: '/settings/pipeline-stages',
+          description: 'Définir, réordonner et activer/désactiver les étapes du pipeline commercial',
+        },
       ],
     },
     {

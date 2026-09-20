@@ -1,5 +1,4 @@
 import { Component, computed, effect, inject, input, signal } from '@angular/core';
-import { NgClass } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { catchError, EMPTY } from 'rxjs';
 import { TasCard } from '@talisoft/ui/card';
@@ -10,7 +9,6 @@ import { TasSelect } from '@talisoft/ui/select';
 import {
   FieldChangedDto,
   StepChangedDto,
-  StepSnapshotDto,
   TemplateDiffDto,
   TransitionChangedDto,
   TransitionSnapshotDto,
@@ -37,7 +35,7 @@ function fieldLabel(key: string): string {
 
 @Component({
   selector: 'workflow-compare',
-  imports: [NgClass, FormsModule, TasCard, TasSpinner, TasIcon, TasFormField, TasLabel, TasSelect],
+  imports: [ FormsModule, TasCard, TasSpinner, TasIcon, TasFormField, TasLabel, TasSelect],
   template: `
     <div class="pb-6 flex flex-col gap-4">
 

@@ -3,7 +3,6 @@ import { Router } from '@angular/router';
 import { NgClass } from '@angular/common';
 import { Button } from '@talisoft/ui/button';
 import { TasIcon } from '@talisoft/ui/icon';
-import { TasCard } from '@talisoft/ui/card';
 import { TableConfig, TasTable } from '@talisoft/ui/table';
 import { SideDrawerService } from '@talisoft/ui/side-drawer';
 import { TerritoriesApiService, TerritoryDto } from '@sankore/crm-api';
@@ -13,7 +12,7 @@ import { BreadcrumbService } from '@sankore/crm/common';
 
 @Component({
   templateUrl: './territories-homepage.html',
-  imports: [Button, TasIcon, TasCard, TasTable, NgClass, TimeagoPipe],
+  imports: [Button, TasIcon, TasTable, NgClass, TimeagoPipe],
 })
 export class TerritoriesHomePage {
   private readonly _territoriesApiService = inject(TerritoriesApiService);

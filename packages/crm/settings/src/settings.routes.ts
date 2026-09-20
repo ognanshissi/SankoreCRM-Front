@@ -89,6 +89,11 @@ const settingsRoutes: Routes = [
     ],
   },
   {
+    path: 'pipeline-stages',
+    loadComponent: () =>
+      import('./containers/pipeline-stages/pipeline-stages'),
+  },
+  {
     path: 'audit',
     loadComponent: () =>
       import('./containers/audit/audit-homepage/audit-homepage'),

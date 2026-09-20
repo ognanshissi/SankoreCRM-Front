@@ -2,7 +2,6 @@ import { Component, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { Button } from '@talisoft/ui/button';
 import { TasIcon } from '@talisoft/ui/icon';
-import { TasCard } from '@talisoft/ui/card';
 import { TableConfig, TasTable } from '@talisoft/ui/table';
 import { PageEvent } from '@angular/material/paginator';
 import { AgenciesApiService, AgencyDto } from '@sankore/crm-api';
@@ -17,7 +16,6 @@ import { BreadcrumbService } from '@sankore/crm/common';
   imports: [
     Button,
     TasIcon,
-    TasCard,
     TasTable,
     NgClass,
     TimeagoPipe,
