@@ -3,9 +3,11 @@ import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/rou
 import { TasIcon } from '@talisoft/ui/icon';
 import { TasCard } from '@talisoft/ui/card';
 import { TasSpinner } from '@talisoft/ui/spinner';
-import { Anchor } from '@talisoft/ui/button';
+import { Anchor, Button } from '@talisoft/ui/button';
 import { LeadsApiService, LeadDto } from '@sankore/crm-api';
 import { BreadcrumbService } from '@sankore/crm/common';
+import { SideDrawerService } from '@talisoft/ui/side-drawer';
+import { ReassignLeadDrawer } from './reassign-lead-drawer';
 import { Severity, TasTag } from '@talisoft/ui/tag';
 import { catchError, EMPTY } from 'rxjs';
 
@@ -80,6 +82,7 @@ function parseFactors(factorsJson: string | null | undefined): ScoreFactor[] {
     TasCard,
     TasSpinner,
     Anchor,
+    Button,
     TasTag,
   ],
   template: `
@@ -115,6 +118,16 @@ function parseFactors(factorsJson: string | null | undefined): ScoreFactor[] {
         </div>
         @if (!isLoading() && lead()) {
           <tas-tag [severity]="statusMeta().severity">{{ statusMeta().label }}</tas-tag>
+          <button
+            tas-outlined-button
+            color="primary"
+            type="button"
+            (click)="openReassignDrawer()"
+            class="text-xs"
+          >
+            <tas-icon iconName="feather:user-plus" style="font-size:14px"></tas-icon>
+            Réassigner
+          </button>
         }
       </div>
 
@@ -265,6 +278,7 @@ function parseFactors(factorsJson: string | null | undefined): ScoreFactor[] {
 export class EditLeadNavigation implements OnDestroy {
   private readonly _leadsApiService = inject(LeadsApiService);
   private readonly _breadcrumbService = inject(BreadcrumbService);
+  private readonly _sideDrawerService = inject(SideDrawerService);
   private readonly _router = inject(Router);
   private _pollTimer: ReturnType<typeof setInterval> | null = null;
 
@@ -341,6 +355,29 @@ export class EditLeadNavigation implements OnDestroy {
     const s = this.lead()?.score ?? 0;
     const c = scoreColor(s);
     return `${c.bg} ${c.text}`;
+  }
+
+  public openReassignDrawer(): void {
+    const currentLead = this.lead();
+    if (!currentLead) return;
+
+    const ref = this._sideDrawerService.open(ReassignLeadDrawer, {
+      width: '100%',
+      height: '100%',
+      panelClass: 'side-drawer-panel',
+      data: { lead: currentLead },
+    });
+
+    ref.closed.subscribe((reassigned) => {
+      if (reassigned) {
+        // Reload lead to reflect new assignment
+        this._leadsApiService.getLead(this.id()).pipe(
+          catchError(() => EMPTY),
+        ).subscribe((lead) => {
+          this.lead.set(lead);
+        });
+      }
+    });
   }
 
   public toggleFactorsPanel(): void {
