@@ -1,4 +1,367 @@
-<TasTitle>Ma journée</TasTitle>
-<h1>Hello world!</h1>
+<!-- Header -->
+<div class="flex items-start justify-between mb-5">
+  <div>
+    <h1 class="text-lg font-semibold text-slate-800">Ma journée</h1>
+    <p class="text-sm text-slate-400 mt-0.5">Vos tâches ouvertes, en retard et à venir.</p>
+  </div>
+  <div class="flex items-center gap-2">
+    <div class="flex border border-slate-200 rounded-full overflow-hidden">
+      <button
+        class="px-3 py-1.5 text-xs transition-colors flex items-center gap-1"
+        [class]="viewMode() === 'list'
+          ? 'bg-primary text-white'
+          : 'bg-white text-slate-500 hover:bg-slate-50'"
+        (click)="setViewMode('list')"
+      >
+        <tas-icon iconName="feather:list" class="w-3.5 h-3.5"></tas-icon>
+        Liste
+      </button>
+      <button
+        class="px-3 py-1.5 text-xs transition-colors flex items-center gap-1"
+        [class]="viewMode() === 'kanban'
+          ? 'bg-primary text-white'
+          : 'bg-white text-slate-500 hover:bg-slate-50'"
+        (click)="setViewMode('kanban')"
+      >
+        <tas-icon iconName="feather:columns" class="w-3.5 h-3.5"></tas-icon>
+        Kanban
+      </button>
+    </div>
+  </div>
+</div>
 
-<div class="h-[2000px]"></div>
+<!-- KPI stats -->
+<div class="grid grid-cols-4 gap-3 mb-5">
+  <tas-card>
+    <div class="flex items-center gap-3 p-3">
+      <div class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center shrink-0">
+        <tas-icon iconName="feather:check-square" class="text-slate-500" style="font-size:14px"></tas-icon>
+      </div>
+      <div>
+        <p class="text-xl font-semibold text-slate-800 tabular-nums leading-none">{{ allTasks().length }}</p>
+        <p class="text-xs text-slate-400 mt-0.5">Total</p>
+      </div>
+    </div>
+  </tas-card>
+  <tas-card>
+    <div class="flex items-center gap-3 p-3">
+      <div class="w-8 h-8 rounded-full bg-red-50 flex items-center justify-center shrink-0">
+        <tas-icon iconName="feather:alert-octagon" class="text-red-500" style="font-size:14px"></tas-icon>
+      </div>
+      <div>
+        <p class="text-xl font-semibold tabular-nums leading-none"
+           [class]="overdueCount() > 0 ? 'text-red-600' : 'text-slate-800'">
+          {{ overdueCount() }}
+        </p>
+        <p class="text-xs text-slate-400 mt-0.5">En retard</p>
+      </div>
+    </div>
+  </tas-card>
+  <tas-card>
+    <div class="flex items-center gap-3 p-3">
+      <div class="w-8 h-8 rounded-full bg-amber-50 flex items-center justify-center shrink-0">
+        <tas-icon iconName="feather:clock" class="text-amber-500" style="font-size:14px"></tas-icon>
+      </div>
+      <div>
+        <p class="text-xl font-semibold text-slate-800 tabular-nums leading-none">{{ todayCount() }}</p>
+        <p class="text-xs text-slate-400 mt-0.5">Aujourd'hui</p>
+      </div>
+    </div>
+  </tas-card>
+  <tas-card>
+    <div class="flex items-center gap-3 p-3">
+      <div class="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center shrink-0">
+        <tas-icon iconName="feather:activity" class="text-blue-500" style="font-size:14px"></tas-icon>
+      </div>
+      <div>
+        <p class="text-xl font-semibold text-slate-800 tabular-nums leading-none">{{ openTasks().length }}</p>
+        <p class="text-xs text-slate-400 mt-0.5">Ouvertes</p>
+      </div>
+    </div>
+  </tas-card>
+</div>
+
+<!-- Filter tabs -->
+<div class="flex items-center gap-1 mb-4 p-1 rounded-lg bg-slate-100 w-fit">
+  @for (tab of filterTabs; track tab.key) {
+    <button
+      type="button"
+      class="px-3 py-1.5 rounded-md text-sm font-medium transition-colors"
+      [class.bg-white]="activeFilter() === tab.key"
+      [class.text-slate-800]="activeFilter() === tab.key"
+      [class.shadow-sm]="activeFilter() === tab.key"
+      [class.text-slate-500]="activeFilter() !== tab.key"
+      (click)="setFilter(tab.key)"
+    >
+      {{ tab.label }}
+      <span class="ml-1 text-[10px] font-semibold tabular-nums">{{ tab.count() }}</span>
+    </button>
+  }
+</div>
+
+@if (isLoading()) {
+  <div class="flex justify-center py-24">
+    <tas-spinner size="10" class="text-primary"></tas-spinner>
+  </div>
+} @else {
+
+  <!-- ============ LIST VIEW ============ -->
+  @if (viewMode() === 'list') {
+    <tas-card class="block">
+      @if (filteredTasks().length === 0) {
+        <div class="flex flex-col items-center justify-center py-16 text-center">
+          <tas-icon iconName="feather:check-square" class="text-slate-300 mb-2" style="font-size:32px"></tas-icon>
+          @if (activeFilter() !== 'all') {
+            <p class="text-sm text-slate-400">Aucune tâche ne correspond à ce filtre</p>
+          } @else {
+            <p class="text-sm text-slate-400">Aucune tâche assignée</p>
+          }
+        </div>
+      } @else {
+        <div class="divide-y divide-slate-100">
+          @for (task of filteredTasks(); track task.id) {
+            @let sla = taskSla(task);
+            <div
+              class="p-4 hover:bg-slate-50 transition-colors"
+              [class]="sla.status === 'breach' ? 'bg-red-50/40' : ''"
+            >
+              <div class="flex items-start gap-3">
+                <!-- SLA indicator icon -->
+                <div
+                  class="w-8 h-8 rounded-full flex items-center justify-center shrink-0 mt-0.5"
+                  [class]="sla.status === 'breach'
+                    ? 'bg-red-100 text-red-600'
+                    : sla.status === 'warning'
+                      ? 'bg-amber-100 text-amber-600'
+                      : 'bg-slate-100 text-slate-400'"
+                >
+                  <tas-icon
+                    [iconName]="sla.status === 'breach' ? 'feather:alert-octagon' : sla.status === 'warning' ? 'feather:alert-triangle' : 'feather:check-square'"
+                    style="font-size:14px"
+                  ></tas-icon>
+                </div>
+
+                <!-- Content -->
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center gap-2 mb-0.5 flex-wrap">
+                    <p class="text-sm font-medium text-slate-800 truncate">
+                      {{ task.title ?? typeLabel(task.type) }}
+                    </p>
+                    <tas-tag [severity]="statusMeta(task.status).severity">
+                      {{ statusMeta(task.status).label }}
+                    </tas-tag>
+                    <tas-tag [severity]="priorityMeta(task.priority).severity">
+                      <span class="flex items-center gap-0.5">
+                        <tas-icon [iconName]="priorityMeta(task.priority).icon" style="font-size:8px"></tas-icon>
+                        {{ priorityMeta(task.priority).label }}
+                      </span>
+                    </tas-tag>
+                  </div>
+
+                  @if (task.description) {
+                    <p class="text-xs text-slate-500 mt-0.5 line-clamp-1">{{ task.description }}</p>
+                  }
+
+                  <div class="flex items-center gap-3 mt-1.5 flex-wrap">
+                    <span class="text-[10px] text-slate-400 flex items-center gap-1">
+                      <tas-icon iconName="feather:tag" style="font-size:9px"></tas-icon>
+                      {{ typeLabel(task.type) }}
+                    </span>
+                    @if (task.leadId) {
+                      <button
+                        type="button"
+                        class="text-[10px] text-primary hover:underline flex items-center gap-0.5"
+                        (click)="navigateToLead(task.leadId); $event.stopPropagation()"
+                      >
+                        <tas-icon iconName="feather:external-link" style="font-size:8px"></tas-icon>
+                        Voir le lead
+                      </button>
+                    }
+                    @if (task.dueAt) {
+                      <span class="text-[10px] text-slate-400 flex items-center gap-1">
+                        <tas-icon iconName="feather:calendar" style="font-size:9px"></tas-icon>
+                        {{ task.dueAt | dateTimeAgo }}
+                      </span>
+                    }
+                  </div>
+
+                  <!-- SLA countdown -->
+                  @if (sla.label) {
+                    <div class="mt-1.5 flex items-center gap-1.5">
+                      <tas-icon
+                        [iconName]="sla.icon"
+                        style="font-size:10px"
+                        [class]="sla.status === 'breach' ? 'text-red-500' : sla.status === 'warning' ? 'text-amber-500' : 'text-slate-400'"
+                      ></tas-icon>
+                      <span
+                        class="text-[10px] font-medium"
+                        [class]="sla.status === 'breach' ? 'text-red-600' : sla.status === 'warning' ? 'text-amber-600' : 'text-slate-400'"
+                      >
+                        @if (sla.status === 'breach') {
+                          En retard — {{ sla.label }}
+                        } @else {
+                          SLA : {{ sla.label }}
+                        }
+                      </span>
+                    </div>
+                  }
+                </div>
+
+                <!-- Actions -->
+                <div class="shrink-0 flex items-center gap-1">
+                  @if (task.status === 'Pending') {
+                    <button
+                      tas-outlined-button
+                      color="primary"
+                      type="button"
+                      class="text-xs"
+                      (click)="startTask(task)"
+                      [disabled]="actionInProgress() === task.id"
+                    >
+                      Démarrer
+                    </button>
+                  }
+                  @if (task.status === 'InProgress') {
+                    <button
+                      tas-outlined-button
+                      color="primary"
+                      type="button"
+                      class="text-xs"
+                      (click)="completeTask(task)"
+                      [disabled]="actionInProgress() === task.id"
+                    >
+                      Terminer
+                    </button>
+                  }
+                </div>
+              </div>
+            </div>
+          }
+        </div>
+      }
+    </tas-card>
+  }
+
+  <!-- ============ KANBAN VIEW ============ -->
+  @if (viewMode() === 'kanban') {
+    <div class="flex gap-3 overflow-x-auto pb-4" style="min-height: 50vh">
+      @for (col of kanbanStatuses; track col.key) {
+        <div class="flex-shrink-0 w-[280px] flex flex-col">
+          <!-- Column header -->
+          <div
+            class="flex items-center gap-2 mb-2 px-3 py-2 rounded-lg"
+            [style.background-color]="col.color"
+          >
+            <span class="text-xs font-medium text-white">{{ col.label }}</span>
+            <span class="ml-auto px-1.5 py-0.5 rounded bg-white/20 text-[10px] font-semibold text-white tabular-nums">
+              {{ kanbanTasks(col.key).length }}
+            </span>
+          </div>
+
+          <!-- Cards -->
+          <div class="flex-1 flex flex-col gap-2">
+            @for (task of kanbanTasks(col.key); track task.id) {
+              @let sla = taskSla(task);
+              <div
+                class="bg-white rounded-lg p-3 border transition-shadow hover:shadow-sm"
+                [class]="sla.status === 'breach'
+                  ? 'border-l-[3px] border-l-red-500 border-t-slate-200 border-r-slate-200 border-b-slate-200'
+                  : sla.status === 'warning'
+                    ? 'border-l-[3px] border-l-amber-400 border-t-slate-200 border-r-slate-200 border-b-slate-200'
+                    : 'border-slate-200'"
+              >
+                <div class="flex items-center gap-2 mb-1">
+                  <p class="text-sm font-medium text-slate-800 truncate flex-1">
+                    {{ task.title ?? typeLabel(task.type) }}
+                  </p>
+                  <tas-tag [severity]="priorityMeta(task.priority).severity" class="shrink-0">
+                    <span class="flex items-center gap-0.5">
+                      <tas-icon [iconName]="priorityMeta(task.priority).icon" style="font-size:8px"></tas-icon>
+                      {{ priorityMeta(task.priority).label }}
+                    </span>
+                  </tas-tag>
+                </div>
+
+                @if (task.description) {
+                  <p class="text-xs text-slate-500 line-clamp-2">{{ task.description }}</p>
+                }
+
+                <div class="flex items-center gap-2 mt-2">
+                  <span class="text-[10px] text-slate-400">{{ typeLabel(task.type) }}</span>
+                  @if (task.leadId) {
+                    <button
+                      type="button"
+                      class="text-[10px] text-primary hover:underline"
+                      (click)="navigateToLead(task.leadId)"
+                    >
+                      Voir le lead
+                    </button>
+                  }
+                </div>
+
+                <!-- SLA indicator -->
+                @if (sla.label) {
+                  <div
+                    class="mt-2 px-2 py-1 rounded flex items-center gap-1.5"
+                    [class]="sla.status === 'breach'
+                      ? 'bg-red-50'
+                      : sla.status === 'warning'
+                        ? 'bg-amber-50'
+                        : 'bg-slate-50'"
+                  >
+                    <tas-icon
+                      [iconName]="sla.icon"
+                      style="font-size:10px"
+                      [class]="sla.status === 'breach' ? 'text-red-500' : sla.status === 'warning' ? 'text-amber-500' : 'text-slate-400'"
+                    ></tas-icon>
+                    <span
+                      class="text-[10px] font-medium"
+                      [class]="sla.status === 'breach' ? 'text-red-600' : sla.status === 'warning' ? 'text-amber-600' : 'text-slate-400'"
+                    >
+                      @if (sla.status === 'breach') {
+                        En retard — {{ sla.label }}
+                      } @else {
+                        {{ sla.label }}
+                      }
+                    </span>
+                  </div>
+                }
+
+                <!-- Actions -->
+                <div class="mt-2 flex justify-end">
+                  @if (task.status === 'Pending') {
+                    <button
+                      tas-outlined-button
+                      type="button"
+                      class="text-[10px]"
+                      (click)="startTask(task)"
+                      [disabled]="actionInProgress() === task.id"
+                    >
+                      Démarrer
+                    </button>
+                  }
+                  @if (task.status === 'InProgress') {
+                    <button
+                      tas-outlined-button
+                      type="button"
+                      class="text-[10px]"
+                      (click)="completeTask(task)"
+                      [disabled]="actionInProgress() === task.id"
+                    >
+                      Terminer
+                    </button>
+                  }
+                </div>
+              </div>
+            }
+            @if (kanbanTasks(col.key).length === 0) {
+              <div class="flex-1 border-2 border-dashed border-slate-100 rounded-lg flex items-center justify-center min-h-[100px]">
+                <p class="text-xs text-slate-300">Aucune tâche</p>
+              </div>
+            }
+          </div>
+        </div>
+      }
+    </div>
+  }
+}
