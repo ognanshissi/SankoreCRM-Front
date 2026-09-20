@@ -9,6 +9,7 @@ import { BreadcrumbService } from '@sankore/crm/common';
 import { SideDrawerService } from '@talisoft/ui/side-drawer';
 import { ReassignLeadDrawer } from './reassign-lead-drawer';
 import { ConvertLeadWizard } from './convert-lead-wizard';
+import { NurtureRecycleDrawer } from './nurture-recycle-drawer';
 import { Severity, TasTag } from '@talisoft/ui/tag';
 import { catchError, EMPTY } from 'rxjs';
 
@@ -24,8 +25,10 @@ function leadStatusMeta(status: string | null | undefined): { label: string; sev
     case 'Contacted': return { label: 'Contacté', severity: 'warning' };
     case 'Qualified': return { label: 'Qualifié', severity: 'warning' };
     case 'Converted': return { label: 'Converti', severity: 'success' };
-    case 'Lost':      return { label: 'Perdu',    severity: 'error' };
-    case 'Expired':   return { label: 'Expiré',   severity: 'neutral' };
+    case 'Lost':      return { label: 'Perdu',     severity: 'error' };
+    case 'Expired':   return { label: 'Expiré',    severity: 'neutral' };
+    case 'Nurturing': return { label: 'Nurturing', severity: 'accent' };
+    case 'Recycled':  return { label: 'Recyclé',   severity: 'secondary' };
     default:          return { label: status ?? '—', severity: 'neutral' };
   }
 }
@@ -139,6 +142,15 @@ function parseFactors(factorsJson: string | null | undefined): ScoreFactor[] {
             >
               <tas-icon iconName="feather:user-check" style="font-size:14px"></tas-icon>
               Convertir
+            </button>
+            <button
+              tas-outlined-button
+              type="button"
+              (click)="openNurtureRecycleDrawer()"
+              class="text-xs"
+            >
+              <tas-icon iconName="feather:refresh-cw" style="font-size:14px"></tas-icon>
+              Nurturing / Recycler
             </button>
           }
         }
@@ -369,6 +381,26 @@ export class EditLeadNavigation implements OnDestroy {
     const s = this.lead()?.score ?? 0;
     const c = scoreColor(s);
     return `${c.bg} ${c.text}`;
+  }
+
+  public openNurtureRecycleDrawer(): void {
+    const currentLead = this.lead();
+    if (!currentLead) return;
+
+    const ref = this._sideDrawerService.open(NurtureRecycleDrawer, {
+      width: '100%',
+      height: '100%',
+      panelClass: 'side-drawer-panel',
+      data: { lead: currentLead },
+    });
+
+    ref.closed.subscribe((result: any) => {
+      if (result === 'nurtured' || result === 'recycled') {
+        this._leadsApiService.getLead(this.id()).pipe(
+          catchError(() => EMPTY),
+        ).subscribe((lead) => this.lead.set(lead));
+      }
+    });
   }
 
   public openConvertWizard(): void {
