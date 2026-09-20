@@ -139,6 +139,7 @@ function parseFactors(factorsJson: string | null | undefined): ScoreFactor[] {
           @if (lead()!.status === 'Lost' || lead()!.status === 'Expired' || lead()!.status === 'Recycled') {
             <button
               tas-outlined-button
+              color="primary"
               type="button"
               (click)="reopenLead()"
               class="text-xs"
@@ -151,7 +152,7 @@ function parseFactors(factorsJson: string | null | undefined): ScoreFactor[] {
           }
           @if (lead()!.status !== 'Converted') {
             <button
-              tas-button
+              tas-outlined-button
               color="primary"
               type="button"
               (click)="openConvertWizard()"
@@ -162,6 +163,7 @@ function parseFactors(factorsJson: string | null | undefined): ScoreFactor[] {
             </button>
             <button
               tas-outlined-button
+              color="accent"
               type="button"
               (click)="openNurtureRecycleDrawer()"
               class="text-xs"
@@ -172,6 +174,7 @@ function parseFactors(factorsJson: string | null | undefined): ScoreFactor[] {
             <button
               tas-outlined-button
               type="button"
+              color="warn"
               (click)="closeLead()"
               class="text-xs"
             >
@@ -195,6 +198,7 @@ function parseFactors(factorsJson: string | null | undefined): ScoreFactor[] {
           }
           <button
             tas-outlined-button
+            color="primary"
             type="button"
             (click)="returnToQueue()"
             class="text-xs"

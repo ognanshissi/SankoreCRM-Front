@@ -47,18 +47,18 @@ export class PortalLayoutComponent implements OnInit {
       //   link: '/portal/dashboard',
       // },
       {
+        id: 'leads-analytics',
+        icon: 'feather:bar-chart-2',
+        title: 'Tableau de bord',
+        type: 'basic',
+        link: '/leads/analytics',
+      },
+      {
         id: 'tasks',
         icon: 'feather:grid',
         title: 'Ma journée',
         type: 'basic',
         link: '/tasks/my-day',
-      },
-      {
-        id: 'my-queue',
-        icon: 'feather:inbox',
-        title: 'Ma file',
-        type: 'basic',
-        link: '/settings/workflows/ma-file',
       },
       {
         id: 'contacts',
@@ -95,13 +95,6 @@ export class PortalLayoutComponent implements OnInit {
       //   type: 'basic',
       //   link: '/portal/automation-workflows',
       // },
-      {
-        id: 'leads-analytics',
-        icon: 'feather:bar-chart-2',
-        title: 'Tableau de bord',
-        type: 'basic',
-        link: '/leads/analytics',
-      },
       {
         id: 'workflow-health',
         icon: 'feather:activity',

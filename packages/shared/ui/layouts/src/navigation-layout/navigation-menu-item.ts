@@ -21,6 +21,7 @@ import {
       [routerLink]="path()"
       [routerLinkActive]="'navigation-menu-item__is-active'"
       [queryParams]="queryParams()"
+      [routerLinkActiveOptions]="{exact: true}"
       class="menu-item p-4 flex space-x-2 text-xl items-center rounded-xl cursor-pointer mt-2"
     >
       @if(iconName()) {

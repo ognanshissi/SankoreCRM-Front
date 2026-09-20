@@ -1,4 +1,6 @@
 import { Component, computed, inject, signal, OnInit, OnDestroy } from '@angular/core';
+import { NgClass } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { catchError, EMPTY } from 'rxjs';
 import { TasCard } from '@talisoft/ui/card';
@@ -14,12 +16,17 @@ import {
   CrmTaskDto,
   CrmTaskDtoStatusEnum,
   CrmTaskDtoPriorityEnum,
+  WorkflowInstancesApiService,
+  MyStepDto,
+  CompletedTaskDto,
+  ApproveStepRequest,
+  RejectStepRequest,
 } from '@sankore/crm-api';
 import { AuthenticationService, BreadcrumbService } from '@sankore/crm/common';
 import { CompleteTaskDrawer } from './complete-task-drawer';
 import { DeclineTaskDrawer } from './decline-task-drawer';
 
-// ——— Status / Priority / Type metadata ———
+// ——— Task metadata ———
 
 function statusMeta(status: CrmTaskDtoStatusEnum | string | undefined): { label: string; severity: Severity } {
   switch (status) {
@@ -56,79 +63,57 @@ function typeLabel(type: string | undefined): string {
 
 // ——— SLA helpers ———
 
-interface SlaInfo {
-  status: 'ok' | 'warning' | 'breach';
-  label: string;
-  icon: string;
-  remainingMs: number;
-}
+interface SlaInfo { status: 'ok' | 'warning' | 'breach'; label: string; icon: string; remainingMs: number }
 
 function computeSla(task: CrmTaskDto, now: number): SlaInfo {
   const deadline = task.slaDeadline ?? task.dueAt;
   if (!deadline) return { status: 'ok', label: '', icon: '', remainingMs: Infinity };
-
-  const deadlineMs = new Date(deadline).getTime();
-  const diff = deadlineMs - now;
-
-  if (diff < 0) {
-    const breach = Math.abs(diff);
-    return {
-      status: 'breach',
-      label: `En retard de ${formatDuration(breach)}`,
-      icon: 'feather:alert-octagon',
-      remainingMs: diff,
-    };
-  }
-
-  const oneHour = 3_600_000;
-  if (diff < oneHour) {
-    return {
-      status: 'warning',
-      label: `${formatDuration(diff)} restant`,
-      icon: 'feather:alert-triangle',
-      remainingMs: diff,
-    };
-  }
-
-  return {
-    status: 'ok',
-    label: `${formatDuration(diff)} restant`,
-    icon: 'feather:clock',
-    remainingMs: diff,
-  };
+  const diff = new Date(deadline).getTime() - now;
+  if (diff < 0) return { status: 'breach', label: `En retard de ${fmtDur(Math.abs(diff))}`, icon: 'feather:alert-octagon', remainingMs: diff };
+  if (diff < 3_600_000) return { status: 'warning', label: `${fmtDur(diff)} restant`, icon: 'feather:alert-triangle', remainingMs: diff };
+  return { status: 'ok', label: `${fmtDur(diff)} restant`, icon: 'feather:clock', remainingMs: diff };
 }
 
-function formatDuration(ms: number): string {
-  const totalMinutes = Math.floor(ms / 60_000);
-  if (totalMinutes < 1) return '< 1 min';
-  if (totalMinutes < 60) return `${totalMinutes} min`;
-  const hours = Math.floor(totalMinutes / 60);
-  const minutes = totalMinutes % 60;
-  if (hours < 24) return minutes > 0 ? `${hours}h${String(minutes).padStart(2, '0')}` : `${hours}h`;
-  const days = Math.floor(hours / 24);
-  const remHours = hours % 24;
-  return remHours > 0 ? `${days}j ${remHours}h` : `${days}j`;
+function fmtDur(ms: number): string {
+  const m = Math.floor(ms / 60_000);
+  if (m < 1) return '< 1 min';
+  if (m < 60) return `${m} min`;
+  const h = Math.floor(m / 60); const rm = m % 60;
+  if (h < 24) return rm > 0 ? `${h}h${String(rm).padStart(2, '0')}` : `${h}h`;
+  const d = Math.floor(h / 24); const rh = h % 24;
+  return rh > 0 ? `${d}j ${rh}h` : `${d}j`;
 }
 
-// ——— Kanban columns ———
+// ——— Queue metadata ———
+
+const COMPLETED_STATUS_META: Record<string, { label: string; severity: Severity }> = {
+  Approved: { label: 'Approuvé', severity: 'success' }, Rejected: { label: 'Rejeté', severity: 'error' },
+  TimedOut: { label: 'Expiré', severity: 'warning' }, Cancelled: { label: 'Annulé', severity: 'neutral' },
+  Skipped: { label: 'Sauté', severity: 'neutral' },
+};
+function completedStatusMeta(status: string | null | undefined) {
+  return COMPLETED_STATUS_META[status ?? ''] ?? { label: status ?? '—', severity: 'neutral' as Severity };
+}
+
+// ——— Types ———
+
+type MainTab = 'tasks' | 'queue' | 'done';
+type FilterTab = 'all' | 'overdue' | 'today' | 'upcoming';
 
 const KANBAN_STATUSES = [
-  { key: 'overdue',     label: 'En retard',   color: '#ef4444' },
-  { key: 'Pending',     label: 'En attente',  color: '#94a3b8' },
-  { key: 'InProgress',  label: 'En cours',    color: '#3b82f6' },
-  { key: 'Completed',   label: 'Terminées',   color: '#22c55e' },
+  { key: 'overdue', label: 'En retard', color: '#ef4444' },
+  { key: 'Pending', label: 'En attente', color: '#94a3b8' },
+  { key: 'InProgress', label: 'En cours', color: '#3b82f6' },
+  { key: 'Completed', label: 'Terminées', color: '#22c55e' },
 ];
-
-// ——— Filter tabs ———
-
-type FilterTab = 'all' | 'overdue' | 'today' | 'upcoming';
 
 @Component({
   templateUrl: './dashboard.html',
-  imports: [TasCard, TasSpinner, TasIcon, TasTag, TimeagoPipe, Button],
+  imports: [NgClass, FormsModule, TasCard, TasSpinner, TasIcon, TasTag, TimeagoPipe, Button],
 })
 export class DashboardComponent implements OnInit, OnDestroy {
   private readonly _tasksApi = inject(TasksApiService);
+  private readonly _workflowApi = inject(WorkflowInstancesApiService);
   private readonly _auth = inject(AuthenticationService);
   private readonly _snackbar = inject(SnackbarService);
   private readonly _sideDrawer = inject(SideDrawerService);
@@ -139,212 +124,172 @@ export class DashboardComponent implements OnInit, OnDestroy {
   public readonly priorityMeta = priorityMeta;
   public readonly typeLabel = typeLabel;
   public readonly kanbanStatuses = KANBAN_STATUSES;
+  public readonly completedStatusMeta = completedStatusMeta;
 
+  // ——— Shared state ———
+  public mainTab = signal<MainTab>('tasks');
+  public now = signal(Date.now());
+  private _tickTimer: ReturnType<typeof setInterval> | null = null;
+
+  // ——— Tasks state ———
   public isLoading = signal(true);
   public allTasks = signal<CrmTaskDto[]>([]);
   public viewMode = signal<'list' | 'kanban'>('list');
   public activeFilter = signal<FilterTab>('all');
   public actionInProgress = signal<string | null>(null);
 
-  /** Ticks every 30s to refresh SLA countdowns */
-  public now = signal(Date.now());
-  private _tickTimer: ReturnType<typeof setInterval> | null = null;
-
-  // ——— Computed views ———
-
   public readonly openTasks = computed(() =>
-    this.allTasks().filter((t) =>
-      t.status === CrmTaskDtoStatusEnum.Pending || t.status === CrmTaskDtoStatusEnum.InProgress,
-    ),
+    this.allTasks().filter((t) => t.status === CrmTaskDtoStatusEnum.Pending || t.status === CrmTaskDtoStatusEnum.InProgress),
   );
-
   public readonly filteredTasks = computed(() => {
-    const filter = this.activeFilter();
-    const tasks = this.allTasks();
-    const now = this.now();
-    const todayEnd = new Date();
-    todayEnd.setHours(23, 59, 59, 999);
-    const todayEndMs = todayEnd.getTime();
-
+    const filter = this.activeFilter(); const tasks = this.allTasks(); const n = this.now();
+    const todayEnd = new Date(); todayEnd.setHours(23, 59, 59, 999); const te = todayEnd.getTime();
     switch (filter) {
-      case 'overdue':
-        return tasks.filter((t) => {
-          if (t.status === CrmTaskDtoStatusEnum.Completed || t.status === CrmTaskDtoStatusEnum.Cancelled) return false;
-          const dl = t.slaDeadline ?? t.dueAt;
-          return dl && new Date(dl).getTime() < now;
-        });
-      case 'today':
-        return tasks.filter((t) => {
-          if (t.status === CrmTaskDtoStatusEnum.Completed || t.status === CrmTaskDtoStatusEnum.Cancelled) return false;
-          const dl = t.slaDeadline ?? t.dueAt;
-          return dl && new Date(dl).getTime() <= todayEndMs;
-        });
-      case 'upcoming':
-        return tasks.filter((t) => {
-          if (t.status === CrmTaskDtoStatusEnum.Completed || t.status === CrmTaskDtoStatusEnum.Cancelled) return false;
-          const dl = t.slaDeadline ?? t.dueAt;
-          return dl && new Date(dl).getTime() > todayEndMs;
-        });
-      default:
-        return tasks;
+      case 'overdue': return tasks.filter((t) => { if (t.status === CrmTaskDtoStatusEnum.Completed || t.status === CrmTaskDtoStatusEnum.Cancelled) return false; const dl = t.slaDeadline ?? t.dueAt; return dl && new Date(dl).getTime() < n; });
+      case 'today': return tasks.filter((t) => { if (t.status === CrmTaskDtoStatusEnum.Completed || t.status === CrmTaskDtoStatusEnum.Cancelled) return false; const dl = t.slaDeadline ?? t.dueAt; return dl && new Date(dl).getTime() <= te; });
+      case 'upcoming': return tasks.filter((t) => { if (t.status === CrmTaskDtoStatusEnum.Completed || t.status === CrmTaskDtoStatusEnum.Cancelled) return false; const dl = t.slaDeadline ?? t.dueAt; return dl && new Date(dl).getTime() > te; });
+      default: return tasks;
     }
   });
-
-  public readonly overdueCount = computed(() => {
-    const now = this.now();
-    return this.openTasks().filter((t) => {
-      const dl = t.slaDeadline ?? t.dueAt;
-      return dl && new Date(dl).getTime() < now;
-    }).length;
-  });
-
-  public readonly todayCount = computed(() => {
-    const now = this.now();
-    const todayEnd = new Date();
-    todayEnd.setHours(23, 59, 59, 999);
-    return this.openTasks().filter((t) => {
-      const dl = t.slaDeadline ?? t.dueAt;
-      if (!dl) return false;
-      const dlMs = new Date(dl).getTime();
-      return dlMs >= now && dlMs <= todayEnd.getTime();
-    }).length;
-  });
+  public readonly overdueCount = computed(() => { const n = this.now(); return this.openTasks().filter((t) => { const dl = t.slaDeadline ?? t.dueAt; return dl && new Date(dl).getTime() < n; }).length; });
+  public readonly todayCount = computed(() => { const n = this.now(); const te = new Date(); te.setHours(23,59,59,999); return this.openTasks().filter((t) => { const dl = t.slaDeadline ?? t.dueAt; if (!dl) return false; const d = new Date(dl).getTime(); return d >= n && d <= te.getTime(); }).length; });
 
   public readonly filterTabs: { key: FilterTab; label: string; count: () => number }[] = [
-    { key: 'all',      label: 'Toutes',       count: () => this.allTasks().length },
-    { key: 'overdue',  label: 'En retard',    count: () => this.overdueCount() },
-    { key: 'today',    label: 'Aujourd\'hui',  count: () => this.todayCount() },
-    { key: 'upcoming', label: 'À venir',      count: () => this.openTasks().length - this.overdueCount() - this.todayCount() },
+    { key: 'all', label: 'Toutes', count: () => this.allTasks().length },
+    { key: 'overdue', label: 'En retard', count: () => this.overdueCount() },
+    { key: 'today', label: "Aujourd'hui", count: () => this.todayCount() },
+    { key: 'upcoming', label: 'À venir', count: () => this.openTasks().length - this.overdueCount() - this.todayCount() },
   ];
 
+  // ——— Queue state (from Ma file) ———
+  public queueLoading = signal(true);
+  public queueSteps = signal<MyStepDto[]>([]);
+  public expandedStepId = signal<string | null>(null);
+  public queueActionType = signal<'approve' | 'reject' | null>(null);
+  public actingOnStepId = signal<string | null>(null);
+  public navigatingStepId = signal<string | null>(null);
+  public actionComment = '';
+
+  public readonly queueOverdueCount = computed(() => this.queueSteps().filter((s) => this.isQueueOverdue(s.dueAt)).length);
+  public readonly sortedQueueSteps = computed(() =>
+    [...this.queueSteps()].sort((a, b) => {
+      const aO = this.isQueueOverdue(a.dueAt); const bO = this.isQueueOverdue(b.dueAt);
+      if (aO !== bO) return aO ? -1 : 1;
+      if (a.dueAt && b.dueAt) return new Date(a.dueAt).getTime() - new Date(b.dueAt).getTime();
+      if (a.dueAt) return -1; if (b.dueAt) return 1;
+      return new Date(b.createdAt ?? 0).getTime() - new Date(a.createdAt ?? 0).getTime();
+    }),
+  );
+
+  // ——— Done state ———
+  public doneLoading = signal(false);
+  public doneSteps = signal<CompletedTaskDto[]>([]);
+  public doneTotalCount = signal(0);
+  public doneHasNextPage = signal(false);
+  public doneLoadingMore = signal(false);
+  private _donePage = 1;
+
   // ——— Kanban helpers ———
-
   public kanbanTasks(columnKey: string): CrmTaskDto[] {
-    const tasks = this.filteredTasks();
-    const now = this.now();
-
-    if (columnKey === 'overdue') {
-      return tasks.filter((t) => {
-        if (t.status === CrmTaskDtoStatusEnum.Completed || t.status === CrmTaskDtoStatusEnum.Cancelled) return false;
-        const dl = t.slaDeadline ?? t.dueAt;
-        return dl && new Date(dl).getTime() < now;
-      });
-    }
-    return tasks.filter((t) => {
-      if (columnKey === 'Completed') return t.status === CrmTaskDtoStatusEnum.Completed;
-      if (t.status !== columnKey) return false;
-      // Exclude overdue from their normal column
-      const dl = t.slaDeadline ?? t.dueAt;
-      if (dl && new Date(dl).getTime() < now) return false;
-      return true;
-    });
+    const tasks = this.filteredTasks(); const n = this.now();
+    if (columnKey === 'overdue') return tasks.filter((t) => { if (t.status === CrmTaskDtoStatusEnum.Completed || t.status === CrmTaskDtoStatusEnum.Cancelled) return false; const dl = t.slaDeadline ?? t.dueAt; return dl && new Date(dl).getTime() < n; });
+    return tasks.filter((t) => { if (columnKey === 'Completed') return t.status === CrmTaskDtoStatusEnum.Completed; if (t.status !== columnKey) return false; const dl = t.slaDeadline ?? t.dueAt; if (dl && new Date(dl).getTime() < n) return false; return true; });
   }
-
-  // ——— SLA for a task ———
-
-  public taskSla(task: CrmTaskDto): SlaInfo {
-    return computeSla(task, this.now());
-  }
+  public taskSla(task: CrmTaskDto): SlaInfo { return computeSla(task, this.now()); }
 
   // ——— Lifecycle ———
-
   ngOnInit(): void {
     this._breadcrumbService.set([{ label: 'Ma journée' }]);
     this._loadTasks();
+    this._loadQueue();
     this._tickTimer = setInterval(() => this.now.set(Date.now()), 30_000);
   }
+  ngOnDestroy(): void { if (this._tickTimer) { clearInterval(this._tickTimer); this._tickTimer = null; } }
 
-  ngOnDestroy(): void {
-    if (this._tickTimer) {
-      clearInterval(this._tickTimer);
-      this._tickTimer = null;
-    }
+  // ——— Tab switching ———
+  public setMainTab(tab: MainTab): void {
+    this.mainTab.set(tab);
+    if (tab === 'done' && this.doneSteps().length === 0 && !this.doneLoading()) this._loadDone(1);
   }
+  public setViewMode(mode: 'list' | 'kanban'): void { this.viewMode.set(mode); }
+  public setFilter(tab: FilterTab): void { this.activeFilter.set(tab); }
 
-  // ——— Actions ———
-
-  public setViewMode(mode: 'list' | 'kanban'): void {
-    this.viewMode.set(mode);
-  }
-
-  public setFilter(tab: FilterTab): void {
-    this.activeFilter.set(tab);
-  }
-
+  // ——— Task actions ———
   public startTask(task: CrmTaskDto): void {
     if (!task.id) return;
-
-    // Optimistic update — switch to InProgress immediately
-    this.allTasks.update((list) =>
-      list.map((t) =>
-        t.id === task.id
-          ? { ...t, status: CrmTaskDtoStatusEnum.InProgress, startedAt: new Date().toISOString() }
-          : t,
-      ),
-    );
-
-    // Silent server confirmation
-    this._tasksApi.startCrmTask(task.id).pipe(
-      catchError(() => {
-        // Rollback
-        this.allTasks.update((list) =>
-          list.map((t) =>
-            t.id === task.id ? { ...t, status: CrmTaskDtoStatusEnum.Pending, startedAt: null } : t,
-          ),
-        );
-        this._snackbar.error('Erreur', 'Impossible de démarrer la tâche. Elle a été remise en attente.');
-        return EMPTY;
-      }),
-    ).subscribe();
+    this.allTasks.update((list) => list.map((t) => t.id === task.id ? { ...t, status: CrmTaskDtoStatusEnum.InProgress, startedAt: new Date().toISOString() } : t));
+    this._tasksApi.startCrmTask(task.id).pipe(catchError(() => { this.allTasks.update((list) => list.map((t) => t.id === task.id ? { ...t, status: CrmTaskDtoStatusEnum.Pending, startedAt: null } : t)); this._snackbar.error('Erreur', 'Impossible de démarrer.'); return EMPTY; })).subscribe();
   }
-
   public completeTask(task: CrmTaskDto): void {
     if (!task.id) return;
-
-    const ref = this._sideDrawer.open(CompleteTaskDrawer, {
-      width: '100%',
-      height: '100%',
-      panelClass: 'side-drawer-panel',
-      data: { task },
-    });
-
-    ref.closed.subscribe((result: any) => {
-      if (result && typeof result === 'object' && result.completed) {
-        this._loadTasks();
-      }
-    });
+    const ref = this._sideDrawer.open(CompleteTaskDrawer, { width: '100%', height: '100%', panelClass: 'side-drawer-panel', data: { task } });
+    ref.closed.subscribe((result: any) => { if (result?.completed) this._loadTasks(); });
   }
-
   public declineTask(task: CrmTaskDto): void {
     if (!task.id) return;
+    const ref = this._sideDrawer.open(DeclineTaskDrawer, { width: '100%', height: '100%', panelClass: 'side-drawer-panel', data: { task } });
+    ref.closed.subscribe((declined: any) => { if (declined) this.allTasks.update((list) => list.filter((t) => t.id !== task.id)); });
+  }
+  public navigateToLead(leadId: string | null | undefined): void { if (leadId) this._router.navigate(['/leads', leadId]); }
 
-    const ref = this._sideDrawer.open(DeclineTaskDrawer, {
-      width: '100%',
-      height: '100%',
-      panelClass: 'side-drawer-panel',
-      data: { task },
-    });
+  // ——— Queue actions (from Ma file) ———
+  public isQueueOverdue(dueAt: string | null | undefined): boolean { return !!dueAt && new Date(dueAt) < new Date(); }
 
-    ref.closed.subscribe((declined) => {
-      if (declined) {
-        // Remove immediately from local list
-        this.allTasks.update((list) => list.filter((t) => t.id !== task.id));
-      }
+  public openQueueAction(step: MyStepDto, type: 'approve' | 'reject'): void {
+    this.actionComment = ''; this.queueActionType.set(type); this.expandedStepId.set(step.stepId ?? null);
+  }
+  public closeQueueAction(): void { this.expandedStepId.set(null); this.queueActionType.set(null); this.actionComment = ''; }
+
+  public submitQueueAction(step: MyStepDto): void {
+    if (!step.instanceId) return;
+    const type = this.queueActionType(); if (!type) return;
+    this.actingOnStepId.set(step.stepId ?? null);
+    const comment = this.actionComment.trim() || null;
+    const req$ = type === 'approve'
+      ? this._workflowApi.approveWorkflowStep(step.instanceId, { comment } as ApproveStepRequest)
+      : this._workflowApi.rejectWorkflowStep(step.instanceId, { comment } as RejectStepRequest);
+    req$.subscribe({
+      next: () => { this._snackbar.success('Succès', type === 'approve' ? 'Étape approuvée.' : 'Étape rejetée.'); this.actingOnStepId.set(null); this.closeQueueAction(); this.queueSteps.update((l) => l.filter((s) => s.stepId !== step.stepId)); },
+      error: () => { this._snackbar.error('Erreur', 'Action échouée.'); this.actingOnStepId.set(null); },
     });
   }
 
-  public navigateToLead(leadId: string | null | undefined): void {
-    if (leadId) this._router.navigate(['/leads', leadId]);
+  public navigateToQueueStep(step: MyStepDto | CompletedTaskDto): void {
+    const instanceId = (step as any).instanceId; if (!instanceId) return;
+    this.navigatingStepId.set((step as any).stepId ?? null);
+    this._workflowApi.getWorkflowInstance(instanceId).subscribe({
+      next: (inst: any) => { this.navigatingStepId.set(null); if (inst.templateId) this._router.navigate(['/settings/workflows', inst.templateId, 'instances', instanceId]); },
+      error: () => { this.navigatingStepId.set(null); this._snackbar.error('Erreur', 'Impossible d\'ouvrir l\'instance.'); },
+    });
   }
 
+  // ——— Done actions ———
+  public loadMoreDone(): void { this._loadDone(this._donePage + 1, true); }
+
+  // ——— Private loaders ———
   private _loadTasks(): void {
     this.isLoading.set(true);
     const agentId = this._auth.connectedUser()?.id;
-    this._tasksApi.listCrmTasks(undefined, agentId).pipe(
-      catchError(() => { this.isLoading.set(false); return EMPTY; }),
-    ).subscribe((tasks) => {
-      this.allTasks.set(tasks ?? []);
-      this.isLoading.set(false);
-    });
+    this._tasksApi.listCrmTasks(undefined, agentId).pipe(catchError(() => { this.isLoading.set(false); return EMPTY; }))
+      .subscribe((tasks) => { this.allTasks.set(tasks ?? []); this.isLoading.set(false); });
+  }
+
+  private _loadQueue(): void {
+    this.queueLoading.set(true);
+    this._workflowApi.listMySteps().pipe(catchError(() => { this.queueLoading.set(false); return EMPTY; }))
+      .subscribe((steps: any) => { this.queueSteps.set(steps ?? []); this.queueLoading.set(false); });
+  }
+
+  private _loadDone(page: number, append = false): void {
+    if (append) this.doneLoadingMore.set(true); else this.doneLoading.set(true);
+    this._workflowApi.getMyCompletedTasks(page, 20).pipe(catchError(() => { this.doneLoading.set(false); this.doneLoadingMore.set(false); return EMPTY; }))
+      .subscribe((result: any) => {
+        this._donePage = page;
+        const items = result.items ?? [];
+        this.doneSteps.update((prev) => append ? [...prev, ...items] : items);
+        this.doneTotalCount.set(result.totalCount ?? items.length);
+        this.doneHasNextPage.set(result.hasNextPage ?? false);
+        this.doneLoading.set(false); this.doneLoadingMore.set(false);
+      });
   }
 }
