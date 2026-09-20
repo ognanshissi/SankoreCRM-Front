@@ -273,6 +273,7 @@ export class WorkflowBuilderPage implements OnInit {
         );
         this.transitions.set(this._mapTransitions(transitions ?? [], meta));
         this.isLoading.set(false);
+        this._loadAllActionCounts(transitions ?? []);
       },
       error: () => {
         this._snackbar.error('Erreur', 'Impossible de charger le workflow.');
@@ -296,6 +297,21 @@ export class WorkflowBuilderPage implements OnInit {
     this._api.listWorkflowTransitions(this.id()).subscribe((dtos) => {
       this.transitions.set(this._mapTransitions(dtos ?? [], this._loadMeta()));
     });
+  }
+
+  /** Load action counts for all transitions to display badges */
+  private _loadAllActionCounts(transitions: TransitionDto[]): void {
+    const counts = new Map<string, number>();
+    for (const t of transitions) {
+      if (!t.id) continue;
+      this._api.listWorkflowActions(this.id(), t.id).subscribe({
+        next: (actions) => {
+          counts.set(t.id!, (actions ?? []).length);
+          this.transitionActionCounts.set(new Map(counts));
+        },
+        error: () => { /* silent */ },
+      });
+    }
   }
 
   // ── Palette: add state (WF-006) ───────────────────────────────────────────
@@ -866,6 +882,53 @@ export class WorkflowBuilderPage implements OnInit {
 
   public stateName(id: string | undefined): string {
     return this.states().find((s) => s.id === id)?.name ?? '—';
+  }
+
+  public sourceStateType(id: string | undefined): StateType {
+    return this.states().find((s) => s.id === id)?.type ?? 'Normal';
+  }
+
+  /** Color-code transitions based on target state type */
+  public transitionStrokeColor(t: CanvasTransition, selected: boolean): string {
+    if (selected) return 'rgb(var(--tas-color-primary))';
+    const tgt = this.states().find((s) => s.id === t.targetStateId);
+    if (!tgt) return '#64748b';
+    switch (tgt.type) {
+      case 'Success':   return '#22c55e';
+      case 'Rejected':  return '#ef4444';
+      case 'Cancelled': return '#9ca3af';
+      case 'Expired':   return '#f97316';
+      default:          return '#64748b';
+    }
+  }
+
+  /** Get cached action count for a transition (loaded lazily) */
+  public transitionActionCounts = signal<Map<string, number>>(new Map());
+
+  public getTransitionActionCount(transitionId: string): number {
+    return this.transitionActionCounts().get(transitionId) ?? 0;
+  }
+
+  /** Quick-add a Normal state with just a name (floating + button) */
+  public quickAddName = signal('');
+  public showQuickAdd = signal(false);
+
+  public openQuickAdd(): void {
+    this.showQuickAdd.set(true);
+    this.quickAddName.set('');
+    this.pendingNewState.set(null);
+    this.selectedStateId.set(null);
+    this.selectedTransitionId.set(null);
+  }
+
+  public confirmQuickAdd(): void {
+    const name = this.quickAddName().trim();
+    if (!name) return;
+    this.showQuickAdd.set(false);
+    // Use existing creation flow with Normal type
+    this.openNewStateForm('Normal');
+    this.newStateName.set(name);
+    this.confirmAddState();
   }
 
   private _screenToCanvas(sx: number, sy: number): { x: number; y: number } {

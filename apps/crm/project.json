@@ -26,6 +26,7 @@
           }
         ],
         "styles": [
+          "node_modules/quill/dist/quill.snow.css",
           "packages/shared/ui/styles/src/themes/tailwind.css",
           "packages/shared/ui/styles/src/themes/styles.scss",
           "apps/crm/src/styles.scss"

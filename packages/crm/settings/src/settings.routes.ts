@@ -134,6 +134,21 @@ const settingsRoutes: Routes = [
       import('./containers/pipeline-stages/pipeline-stages'),
   },
   {
+    path: 'email-templates',
+    loadComponent: () =>
+      import('./containers/email-templates/email-templates'),
+  },
+  {
+    path: 'email-templates/create',
+    loadComponent: () =>
+      import('./containers/email-templates/create-email-template'),
+  },
+  {
+    path: 'email-templates/:id/edit',
+    loadComponent: () =>
+      import('./containers/email-templates/edit-email-template'),
+  },
+  {
     path: 'audit',
     loadComponent: () =>
       import('./containers/audit/audit-homepage/audit-homepage'),
