@@ -77,6 +77,8 @@ import { MergeLeadsRequest } from '../model/merge-leads-request.interface';
 // @ts-ignore
 import { NextActionDto } from '../model/next-action-dto.interface';
 // @ts-ignore
+import { NurtureLeadRequest } from '../model/nurture-lead-request.interface';
+// @ts-ignore
 import { OwnerAssignmentDto } from '../model/owner-assignment-dto.interface';
 // @ts-ignore
 import { ProblemDetails } from '../model/problem-details.interface';
@@ -1890,13 +1892,14 @@ export class LeadsApiService {
     /**
      * @param from 
      * @param to 
+     * @param agencyId 
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      */
-    public getLeadStats(from?: string, to?: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<LeadStatsDto>;
-    public getLeadStats(from?: string, to?: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<LeadStatsDto>>;
-    public getLeadStats(from?: string, to?: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<LeadStatsDto>>;
-    public getLeadStats(from?: string, to?: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
+    public getLeadStats(from?: string, to?: string, agencyId?: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<LeadStatsDto>;
+    public getLeadStats(from?: string, to?: string, agencyId?: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<LeadStatsDto>>;
+    public getLeadStats(from?: string, to?: string, agencyId?: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<LeadStatsDto>>;
+    public getLeadStats(from?: string, to?: string, agencyId?: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
 
         let localVarQueryParameters = new HttpParams({encoder: this.encoder});
         if (from !== undefined && from !== null) {
@@ -1906,6 +1909,10 @@ export class LeadsApiService {
         if (to !== undefined && to !== null) {
           localVarQueryParameters = this.addToHttpParams(localVarQueryParameters,
             <any>to, 'to');
+        }
+        if (agencyId !== undefined && agencyId !== null) {
+          localVarQueryParameters = this.addToHttpParams(localVarQueryParameters,
+            <any>agencyId, 'agencyId');
         }
 
         let localVarHeaders = this.defaultHeaders;
@@ -2860,13 +2867,14 @@ export class LeadsApiService {
 
     /**
      * @param leadId 
+     * @param nurtureLeadRequest 
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      */
-    public nurtureLead(leadId: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<any>;
-    public nurtureLead(leadId: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<HttpResponse<any>>;
-    public nurtureLead(leadId: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<HttpEvent<any>>;
-    public nurtureLead(leadId: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<any> {
+    public nurtureLead(leadId: string, nurtureLeadRequest?: NurtureLeadRequest, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<any>;
+    public nurtureLead(leadId: string, nurtureLeadRequest?: NurtureLeadRequest, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<HttpResponse<any>>;
+    public nurtureLead(leadId: string, nurtureLeadRequest?: NurtureLeadRequest, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<HttpEvent<any>>;
+    public nurtureLead(leadId: string, nurtureLeadRequest?: NurtureLeadRequest, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<any> {
         if (leadId === null || leadId === undefined) {
             throw new Error('Required parameter leadId was null or undefined when calling nurtureLead.');
         }
@@ -2897,6 +2905,15 @@ export class LeadsApiService {
         }
 
 
+        // to determine the Content-Type header
+        const consumes: string[] = [
+            'application/json'
+        ];
+        const httpContentTypeSelected: string | undefined = this.configuration.selectHeaderContentType(consumes);
+        if (httpContentTypeSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Content-Type', httpContentTypeSelected);
+        }
+
         let responseType_: 'text' | 'json' | 'blob' = 'json';
         if (localVarHttpHeaderAcceptSelected) {
             if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
@@ -2912,6 +2929,7 @@ export class LeadsApiService {
         return this.httpClient.request<any>('post', `${this.configuration.basePath}${localVarPath}`,
             {
                 context: localVarHttpContext,
+                body: nurtureLeadRequest,
                 responseType: <any>responseType_,
                 withCredentials: this.configuration.withCredentials,
                 headers: localVarHeaders,

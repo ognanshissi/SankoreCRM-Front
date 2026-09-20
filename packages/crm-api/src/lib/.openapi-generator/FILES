@@ -16,8 +16,11 @@ api/leads-analytics.service.ts
 api/leads-bulk.service.ts
 api/leads.service.ts
 api/notification-settings.service.ts
+api/nurturing-sequences.service.ts
+api/opportunities.service.ts
 api/permissions.service.ts
 api/pipeline-stages.service.ts
+api/pipeline.service.ts
 api/products.service.ts
 api/roles.service.ts
 api/scoring-configs.service.ts
@@ -84,6 +87,10 @@ model/create-agency-result.interface.ts
 model/create-dispatching-rule-request.interface.ts
 model/create-email-template-request.interface.ts
 model/create-lead-source-request.interface.ts
+model/create-nurturing-sequence-request.interface.ts
+model/create-opportunity-for-customer-request.interface.ts
+model/create-opportunity-for-customer-result.interface.ts
+model/create-opportunity-request.interface.ts
 model/create-pipeline-stage-request.interface.ts
 model/create-product-request.interface.ts
 model/create-qualification-template-request.interface.ts
@@ -139,11 +146,18 @@ model/move-agency-request.interface.ts
 model/my-step-dto.interface.ts
 model/next-action-dto.interface.ts
 model/notification-settings-dto.interface.ts
+model/nurture-lead-request.interface.ts
+model/nurturing-sequence-dto.interface.ts
+model/nurturing-step-dto.interface.ts
+model/opportunity-dto.interface.ts
 model/overdue-step-dto.interface.ts
 model/owner-assignment-dto.interface.ts
 model/permission-dto.interface.ts
 model/permission-group-dto.interface.ts
+model/pipeline-card.interface.ts
+model/pipeline-column.interface.ts
 model/pipeline-stage-config-dto.interface.ts
+model/pipeline-view.interface.ts
 model/problem-details.interface.ts
 model/product-dto.interface.ts
 model/qualification-answer-input.interface.ts
@@ -195,6 +209,7 @@ model/start-instance-request.interface.ts
 model/status-count.interface.ts
 model/step-bottleneck-dto.interface.ts
 model/step-changed-dto.interface.ts
+model/step-input.interface.ts
 model/step-snapshot-dto.interface.ts
 model/step-stats-dto.interface.ts
 model/steps-diff-dto.interface.ts
@@ -223,6 +238,7 @@ model/update-lead-owner-request.interface.ts
 model/update-lead-request.interface.ts
 model/update-lead-source-request.interface.ts
 model/update-notification-settings-command.interface.ts
+model/update-nurturing-sequence-request.interface.ts
 model/update-pipeline-stage-config-request.interface.ts
 model/update-pipeline-stage-request.interface.ts
 model/update-product-request.interface.ts

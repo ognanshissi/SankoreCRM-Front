@@ -19,11 +19,13 @@ import { CustomHttpParameterCodec }                          from '../encoder';
 import { Observable }                                        from 'rxjs';
 
 // @ts-ignore
-import { AgentPerformanceDto } from '../model/agent-performance-dto.interface';
+import { CreateOpportunityForCustomerRequest } from '../model/create-opportunity-for-customer-request.interface';
 // @ts-ignore
-import { FunnelMetricsDto } from '../model/funnel-metrics-dto.interface';
+import { CreateOpportunityForCustomerResult } from '../model/create-opportunity-for-customer-result.interface';
 // @ts-ignore
-import { SlaBreachDto } from '../model/sla-breach-dto.interface';
+import { CreateOpportunityRequest } from '../model/create-opportunity-request.interface';
+// @ts-ignore
+import { OpportunityDto } from '../model/opportunity-dto.interface';
 
 // @ts-ignore
 import { BASE_PATH, COLLECTION_FORMATS }                     from '../variables';
@@ -34,7 +36,7 @@ import { Configuration }                                     from '../configurat
 @Injectable({
   providedIn: 'root'
 })
-export class LeadsAnalyticsApiService {
+export class OpportunitiesApiService {
 
     protected basePath = 'http://localhost';
     public defaultHeaders = new HttpHeaders();
@@ -96,34 +98,16 @@ export class LeadsAnalyticsApiService {
     }
 
     /**
-     * @param from 
-     * @param to 
-     * @param agentId 
-     * @param agencyId 
+     * @param createOpportunityRequest 
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      */
-    public getAgentPerformance(from?: string, to?: string, agentId?: string, agencyId?: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<Array<AgentPerformanceDto>>;
-    public getAgentPerformance(from?: string, to?: string, agentId?: string, agencyId?: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<Array<AgentPerformanceDto>>>;
-    public getAgentPerformance(from?: string, to?: string, agentId?: string, agencyId?: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<Array<AgentPerformanceDto>>>;
-    public getAgentPerformance(from?: string, to?: string, agentId?: string, agencyId?: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
-
-        let localVarQueryParameters = new HttpParams({encoder: this.encoder});
-        if (from !== undefined && from !== null) {
-          localVarQueryParameters = this.addToHttpParams(localVarQueryParameters,
-            <any>from, 'from');
-        }
-        if (to !== undefined && to !== null) {
-          localVarQueryParameters = this.addToHttpParams(localVarQueryParameters,
-            <any>to, 'to');
-        }
-        if (agentId !== undefined && agentId !== null) {
-          localVarQueryParameters = this.addToHttpParams(localVarQueryParameters,
-            <any>agentId, 'agentId');
-        }
-        if (agencyId !== undefined && agencyId !== null) {
-          localVarQueryParameters = this.addToHttpParams(localVarQueryParameters,
-            <any>agencyId, 'agencyId');
+    public createOpportunity(createOpportunityRequest: CreateOpportunityRequest, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<string>;
+    public createOpportunity(createOpportunityRequest: CreateOpportunityRequest, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<string>>;
+    public createOpportunity(createOpportunityRequest: CreateOpportunityRequest, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<string>>;
+    public createOpportunity(createOpportunityRequest: CreateOpportunityRequest, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
+        if (createOpportunityRequest === null || createOpportunityRequest === undefined) {
+            throw new Error('Required parameter createOpportunityRequest was null or undefined when calling createOpportunity.');
         }
 
         let localVarHeaders = this.defaultHeaders;
@@ -153,6 +137,15 @@ export class LeadsAnalyticsApiService {
         }
 
 
+        // to determine the Content-Type header
+        const consumes: string[] = [
+            'application/json'
+        ];
+        const httpContentTypeSelected: string | undefined = this.configuration.selectHeaderContentType(consumes);
+        if (httpContentTypeSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Content-Type', httpContentTypeSelected);
+        }
+
         let responseType_: 'text' | 'json' | 'blob' = 'json';
         if (localVarHttpHeaderAcceptSelected) {
             if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
@@ -164,11 +157,11 @@ export class LeadsAnalyticsApiService {
             }
         }
 
-        let localVarPath = `/api/v1/leads/agent-performance`;
-        return this.httpClient.request<Array<AgentPerformanceDto>>('get', `${this.configuration.basePath}${localVarPath}`,
+        let localVarPath = `/api/v1/leads/opportunities`;
+        return this.httpClient.request<string>('post', `${this.configuration.basePath}${localVarPath}`,
             {
                 context: localVarHttpContext,
-                params: localVarQueryParameters,
+                body: createOpportunityRequest,
                 responseType: <any>responseType_,
                 withCredentials: this.configuration.withCredentials,
                 headers: localVarHeaders,
@@ -179,29 +172,16 @@ export class LeadsAnalyticsApiService {
     }
 
     /**
-     * @param from 
-     * @param to 
-     * @param agencyId 
+     * @param createOpportunityForCustomerRequest 
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      */
-    public getLeadFunnelMetrics(from?: string, to?: string, agencyId?: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<FunnelMetricsDto>;
-    public getLeadFunnelMetrics(from?: string, to?: string, agencyId?: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<FunnelMetricsDto>>;
-    public getLeadFunnelMetrics(from?: string, to?: string, agencyId?: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<FunnelMetricsDto>>;
-    public getLeadFunnelMetrics(from?: string, to?: string, agencyId?: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
-
-        let localVarQueryParameters = new HttpParams({encoder: this.encoder});
-        if (from !== undefined && from !== null) {
-          localVarQueryParameters = this.addToHttpParams(localVarQueryParameters,
-            <any>from, 'from');
-        }
-        if (to !== undefined && to !== null) {
-          localVarQueryParameters = this.addToHttpParams(localVarQueryParameters,
-            <any>to, 'to');
-        }
-        if (agencyId !== undefined && agencyId !== null) {
-          localVarQueryParameters = this.addToHttpParams(localVarQueryParameters,
-            <any>agencyId, 'agencyId');
+    public createOpportunityForCustomer(createOpportunityForCustomerRequest: CreateOpportunityForCustomerRequest, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<CreateOpportunityForCustomerResult>;
+    public createOpportunityForCustomer(createOpportunityForCustomerRequest: CreateOpportunityForCustomerRequest, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<CreateOpportunityForCustomerResult>>;
+    public createOpportunityForCustomer(createOpportunityForCustomerRequest: CreateOpportunityForCustomerRequest, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<CreateOpportunityForCustomerResult>>;
+    public createOpportunityForCustomer(createOpportunityForCustomerRequest: CreateOpportunityForCustomerRequest, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
+        if (createOpportunityForCustomerRequest === null || createOpportunityForCustomerRequest === undefined) {
+            throw new Error('Required parameter createOpportunityForCustomerRequest was null or undefined when calling createOpportunityForCustomer.');
         }
 
         let localVarHeaders = this.defaultHeaders;
@@ -231,6 +211,15 @@ export class LeadsAnalyticsApiService {
         }
 
 
+        // to determine the Content-Type header
+        const consumes: string[] = [
+            'application/json'
+        ];
+        const httpContentTypeSelected: string | undefined = this.configuration.selectHeaderContentType(consumes);
+        if (httpContentTypeSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Content-Type', httpContentTypeSelected);
+        }
+
         let responseType_: 'text' | 'json' | 'blob' = 'json';
         if (localVarHttpHeaderAcceptSelected) {
             if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
@@ -242,11 +231,11 @@ export class LeadsAnalyticsApiService {
             }
         }
 
-        let localVarPath = `/api/v1/leads/funnel`;
-        return this.httpClient.request<FunnelMetricsDto>('get', `${this.configuration.basePath}${localVarPath}`,
+        let localVarPath = `/api/v1/leads/opportunities/for-customer`;
+        return this.httpClient.request<CreateOpportunityForCustomerResult>('post', `${this.configuration.basePath}${localVarPath}`,
             {
                 context: localVarHttpContext,
-                params: localVarQueryParameters,
+                body: createOpportunityForCustomerRequest,
                 responseType: <any>responseType_,
                 withCredentials: this.configuration.withCredentials,
                 headers: localVarHeaders,
@@ -257,24 +246,16 @@ export class LeadsAnalyticsApiService {
     }
 
     /**
-     * @param agentId 
-     * @param agencyId 
+     * @param id 
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      */
-    public getLeadSlaBreaches(agentId?: string, agencyId?: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<Array<SlaBreachDto>>;
-    public getLeadSlaBreaches(agentId?: string, agencyId?: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<Array<SlaBreachDto>>>;
-    public getLeadSlaBreaches(agentId?: string, agencyId?: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<Array<SlaBreachDto>>>;
-    public getLeadSlaBreaches(agentId?: string, agencyId?: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
-
-        let localVarQueryParameters = new HttpParams({encoder: this.encoder});
-        if (agentId !== undefined && agentId !== null) {
-          localVarQueryParameters = this.addToHttpParams(localVarQueryParameters,
-            <any>agentId, 'agentId');
-        }
-        if (agencyId !== undefined && agencyId !== null) {
-          localVarQueryParameters = this.addToHttpParams(localVarQueryParameters,
-            <any>agencyId, 'agencyId');
+    public getOpportunity(id: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<OpportunityDto>;
+    public getOpportunity(id: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<OpportunityDto>>;
+    public getOpportunity(id: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<OpportunityDto>>;
+    public getOpportunity(id: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
+        if (id === null || id === undefined) {
+            throw new Error('Required parameter id was null or undefined when calling getOpportunity.');
         }
 
         let localVarHeaders = this.defaultHeaders;
@@ -315,8 +296,85 @@ export class LeadsAnalyticsApiService {
             }
         }
 
-        let localVarPath = `/api/v1/leads/sla-breaches`;
-        return this.httpClient.request<Array<SlaBreachDto>>('get', `${this.configuration.basePath}${localVarPath}`,
+        let localVarPath = `/api/v1/leads/opportunities/${this.configuration.encodeParam({name: "id", value: id, in: "path", style: "simple", explode: false, dataType: "string", dataFormat: "uuid"})}`;
+        return this.httpClient.request<OpportunityDto>('get', `${this.configuration.basePath}${localVarPath}`,
+            {
+                context: localVarHttpContext,
+                responseType: <any>responseType_,
+                withCredentials: this.configuration.withCredentials,
+                headers: localVarHeaders,
+                observe: observe,
+                reportProgress: reportProgress
+            }
+        );
+    }
+
+    /**
+     * @param leadId 
+     * @param customerId 
+     * @param stage 
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     */
+    public listOpportunities(leadId?: string, customerId?: string, stage?: 0 | 1 | 2 | 3 | 4 | 5 | 6, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<Array<OpportunityDto>>;
+    public listOpportunities(leadId?: string, customerId?: string, stage?: 0 | 1 | 2 | 3 | 4 | 5 | 6, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<Array<OpportunityDto>>>;
+    public listOpportunities(leadId?: string, customerId?: string, stage?: 0 | 1 | 2 | 3 | 4 | 5 | 6, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<Array<OpportunityDto>>>;
+    public listOpportunities(leadId?: string, customerId?: string, stage?: 0 | 1 | 2 | 3 | 4 | 5 | 6, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
+
+        let localVarQueryParameters = new HttpParams({encoder: this.encoder});
+        if (leadId !== undefined && leadId !== null) {
+          localVarQueryParameters = this.addToHttpParams(localVarQueryParameters,
+            <any>leadId, 'leadId');
+        }
+        if (customerId !== undefined && customerId !== null) {
+          localVarQueryParameters = this.addToHttpParams(localVarQueryParameters,
+            <any>customerId, 'customerId');
+        }
+        if (stage !== undefined && stage !== null) {
+          localVarQueryParameters = this.addToHttpParams(localVarQueryParameters,
+            <any>stage, 'stage');
+        }
+
+        let localVarHeaders = this.defaultHeaders;
+
+        let localVarCredential: string | undefined;
+        // authentication (BearerToken) required
+        localVarCredential = this.configuration.lookupCredential('BearerToken');
+        if (localVarCredential) {
+            localVarHeaders = localVarHeaders.set('Authorization', 'Bearer ' + localVarCredential);
+        }
+
+        let localVarHttpHeaderAcceptSelected: string | undefined = options && options.httpHeaderAccept;
+        if (localVarHttpHeaderAcceptSelected === undefined) {
+            // to determine the Accept header
+            const httpHeaderAccepts: string[] = [
+                'application/json'
+            ];
+            localVarHttpHeaderAcceptSelected = this.configuration.selectHeaderAccept(httpHeaderAccepts);
+        }
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+
+        let localVarHttpContext: HttpContext | undefined = options && options.context;
+        if (localVarHttpContext === undefined) {
+            localVarHttpContext = new HttpContext();
+        }
+
+
+        let responseType_: 'text' | 'json' | 'blob' = 'json';
+        if (localVarHttpHeaderAcceptSelected) {
+            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+                responseType_ = 'text';
+            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+                responseType_ = 'json';
+            } else {
+                responseType_ = 'blob';
+            }
+        }
+
+        let localVarPath = `/api/v1/leads/opportunities`;
+        return this.httpClient.request<Array<OpportunityDto>>('get', `${this.configuration.basePath}${localVarPath}`,
             {
                 context: localVarHttpContext,
                 params: localVarQueryParameters,
