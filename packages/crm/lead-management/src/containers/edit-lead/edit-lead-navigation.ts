@@ -4,8 +4,9 @@ import { TasIcon } from '@talisoft/ui/icon';
 import { TasCard } from '@talisoft/ui/card';
 import { TasSpinner } from '@talisoft/ui/spinner';
 import { Anchor, Button } from '@talisoft/ui/button';
-import { LeadsApiService, LeadDto } from '@sankore/crm-api';
+import { LeadsApiService, LeadDto, NextActionDto } from '@sankore/crm-api';
 import { BreadcrumbService } from '@sankore/crm/common';
+import { SnackbarService } from '@talisoft/ui/snackbar';
 import { SideDrawerService } from '@talisoft/ui/side-drawer';
 import { ReassignLeadDrawer } from './reassign-lead-drawer';
 import { ConvertLeadWizard } from './convert-lead-wizard';
@@ -132,6 +133,19 @@ function parseFactors(factorsJson: string | null | undefined): ScoreFactor[] {
             <tas-icon iconName="feather:user-plus" style="font-size:14px"></tas-icon>
             Réassigner
           </button>
+          @if (lead()!.status === 'Lost' || lead()!.status === 'Expired' || lead()!.status === 'Recycled') {
+            <button
+              tas-outlined-button
+              type="button"
+              (click)="reopenLead()"
+              class="text-xs"
+              [disabled]="isReopening()"
+            >
+              @if (isReopening()) { <tas-spinner size="3" class="text-primary"></tas-spinner> }
+              <tas-icon iconName="feather:rotate-ccw" style="font-size:14px"></tas-icon>
+              Réouvrir
+            </button>
+          }
           @if (lead()!.status !== 'Converted') {
             <button
               tas-button
@@ -255,18 +269,57 @@ function parseFactors(factorsJson: string | null | undefined): ScoreFactor[] {
                           </div>
                         }
                         <div class="px-3 py-2 border-t border-slate-100 bg-slate-50">
-                          <div class="flex items-center justify-between">
-                            <span class="text-[10px] text-slate-400">Température</span>
-                            <span class="inline-flex items-center gap-1 text-xs font-medium">
-                              <span class="w-1.5 h-1.5 rounded-full" [class]="tempMeta().dotClass"></span>
-                              {{ tempMeta().label }}
-                            </span>
+                          <p class="text-[10px] text-slate-400 mb-1.5">Température</p>
+                          <div class="flex items-center gap-1">
+                            @for (lvl of intentLevels; track lvl.value) {
+                              <button
+                                type="button"
+                                class="flex-1 py-1 rounded text-[10px] font-medium transition-colors"
+                                [class]="lead()!.intentLevel === lvl.value
+                                  ? lvl.activeClass
+                                  : 'bg-slate-100 text-slate-400 hover:bg-slate-200'"
+                                (click)="setIntentLevel(lvl.value); $event.stopPropagation()"
+                              >
+                                {{ lvl.label }}
+                              </button>
+                            }
                           </div>
                         </div>
                       </div>
                     }
                   </div>
                 }
+              </div>
+            }
+
+            <!-- Next action widget -->
+            @if (nextAction()) {
+              <div class="p-3 border-b border-gray-100">
+                <div class="p-2.5 rounded-lg border border-primary/20 bg-primary/5">
+                  <div class="flex items-center gap-1.5 mb-1">
+                    <tas-icon iconName="feather:zap" class="text-primary" style="font-size:12px"></tas-icon>
+                    <p class="text-[10px] font-semibold text-primary">Action recommandée</p>
+                  </div>
+                  <p class="text-xs font-medium text-slate-800">{{ nextAction()!.title }}</p>
+                  @if (nextAction()!.detail) {
+                    <p class="text-[10px] text-slate-500 mt-0.5">{{ nextAction()!.detail }}</p>
+                  }
+                  @if (nextAction()!.urgency) {
+                    <p class="text-[10px] text-amber-600 mt-0.5">{{ nextAction()!.urgency }}</p>
+                  }
+                  <div class="flex items-center gap-1 mt-2">
+                    <button
+                      type="button"
+                      class="text-[10px] px-2 py-0.5 rounded bg-primary text-white hover:bg-primary/90"
+                      (click)="acknowledgeNextAction('Accept')"
+                    >Accepter</button>
+                    <button
+                      type="button"
+                      class="text-[10px] px-2 py-0.5 rounded bg-slate-100 text-slate-600 hover:bg-slate-200"
+                      (click)="acknowledgeNextAction('Ignore')"
+                    >Ignorer</button>
+                  </div>
+                </div>
               </div>
             }
 
@@ -304,6 +357,7 @@ export class EditLeadNavigation implements OnDestroy {
   private readonly _leadsApiService = inject(LeadsApiService);
   private readonly _breadcrumbService = inject(BreadcrumbService);
   private readonly _sideDrawerService = inject(SideDrawerService);
+  private readonly _snackbar = inject(SnackbarService);
   private readonly _router = inject(Router);
   private _pollTimer: ReturnType<typeof setInterval> | null = null;
 
@@ -313,9 +367,18 @@ export class EditLeadNavigation implements OnDestroy {
   public lead = signal<LeadDto | null>(null);
   public notFound = signal(false);
   public showFactors = signal(false);
+  public isReopening = signal(false);
+  public nextAction = signal<NextActionDto | null>(null);
   public latestFactorsJson = signal<string | null>(null);
 
   public readonly scoreFactors = computed(() => parseFactors(this.latestFactorsJson()));
+
+  public readonly intentLevels = [
+    { value: '0', label: 'Froid',  activeClass: 'bg-slate-200 text-slate-700' },
+    { value: '1', label: 'Tiède',  activeClass: 'bg-blue-100 text-blue-700' },
+    { value: '2', label: 'Chaud',  activeClass: 'bg-amber-100 text-amber-700' },
+    { value: '3', label: 'Très chaud', activeClass: 'bg-red-100 text-red-700' },
+  ];
 
   public readonly menuItems: LeadMenuItem[] = [
     { label: 'Informations',  icon: 'feather:user',        route: 'informations' },
@@ -324,6 +387,7 @@ export class EditLeadNavigation implements OnDestroy {
     { label: 'Timeline',      icon: 'feather:clock',        route: 'timeline' },
     { label: 'Tâches',        icon: 'feather:check-square', route: 'taches' },
     { label: 'Activités',     icon: 'feather:activity',     route: 'activites' },
+    { label: 'Rappels',      icon: 'feather:bell',         route: 'rappels' },
     { label: 'Opportunités', icon: 'feather:briefcase',    route: 'opportunites' },
     { label: 'Doublons',      icon: 'feather:copy',         route: 'doublons' },
     { label: 'Consentement',  icon: 'feather:shield',       route: 'consentement' },
@@ -352,6 +416,7 @@ export class EditLeadNavigation implements OnDestroy {
           { label: this._displayName(lead) },
         ]);
         this._loadScoreFactors(id);
+        this._loadNextAction(id);
         this._startPolling(id);
       });
     });
@@ -381,6 +446,45 @@ export class EditLeadNavigation implements OnDestroy {
     const s = this.lead()?.score ?? 0;
     const c = scoreColor(s);
     return `${c.bg} ${c.text}`;
+  }
+
+  public acknowledgeNextAction(action: string): void {
+    this._leadsApiService.acknowledgeLeadNextAction(this.id(), { action: action as any }).pipe(
+      catchError(() => EMPTY),
+    ).subscribe(() => {
+      this.nextAction.set(null);
+      if (action === 'Accept') {
+        this._snackbar.success('Action acceptée', 'L\'action recommandée a été prise en charge.');
+      }
+    });
+  }
+
+  public setIntentLevel(level: string): void {
+    const intentMap: Record<string, string> = { '0': 'Cold', '1': 'Warm', '2': 'Hot', '3': 'Hot' };
+    this._leadsApiService.setLeadIntentLevel(this.id(), {
+      intentLevel: intentMap[level] as any,
+    }).pipe(
+      catchError(() => { this._snackbar.error('Erreur', 'Impossible de modifier la température.'); return EMPTY; }),
+    ).subscribe(() => {
+      this.lead.update((l) => l ? { ...l, intentLevel: level } : l);
+      this._snackbar.success('Température mise à jour', `Température modifiée.`);
+    });
+  }
+
+  public reopenLead(): void {
+    this.isReopening.set(true);
+    this._leadsApiService.reopenLead(this.id()).pipe(
+      catchError(() => {
+        this._snackbar.error('Erreur', 'Impossible de réouvrir le lead.');
+        this.isReopening.set(false);
+        return EMPTY;
+      }),
+    ).subscribe(() => {
+      this._snackbar.success('Lead réouvert', 'Le lead est de nouveau actif.');
+      this.isReopening.set(false);
+      this._leadsApiService.getLead(this.id()).pipe(catchError(() => EMPTY))
+        .subscribe((lead) => this.lead.set(lead));
+    });
   }
 
   public openNurtureRecycleDrawer(): void {
@@ -449,6 +553,12 @@ export class EditLeadNavigation implements OnDestroy {
 
   public toggleFactorsPanel(): void {
     this.showFactors.update((v) => !v);
+  }
+
+  private _loadNextAction(leadId: string): void {
+    this._leadsApiService.getLeadNextAction(leadId).pipe(
+      catchError(() => EMPTY),
+    ).subscribe((action) => this.nextAction.set(action ?? null));
   }
 
   private _loadScoreFactors(leadId: string): void {

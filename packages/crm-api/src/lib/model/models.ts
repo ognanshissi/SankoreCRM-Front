@@ -82,6 +82,7 @@ export * from './field-changed-dto.interface';
 export * from './forgot-password-request.interface';
 export * from './forgot-password-result.interface';
 export * from './funnel-metrics-dto.interface';
+export * from './import-lead-row.interface';
 export * from './import-leads-accepted.interface';
 export * from './import-row-failure.interface';
 export * from './lead-dto.interface';

@@ -21,8 +21,6 @@ import {
   LeadsApiService,
   LeadDto,
   ConsentDto,
-  CloseLeadRequestReasonEnum,
-  RecycleLeadRequestNewSourceEnum,
 } from '@sankore/crm-api';
 
 export interface NurtureRecycleDrawerData {
@@ -269,12 +267,7 @@ export class NurtureRecycleDrawer implements OnInit {
     const leadId = this.data.lead.id!;
 
     if (this.mode() === 'nurture') {
-      // Use closeLead with Archived reason to move to nurturing state
-      // (The backend interprets this as nurturing when status context is appropriate)
-      this._leadsApi.closeLead(leadId, {
-        reason: CloseLeadRequestReasonEnum.Archived,
-        detail: 'Placé en séquence de nurturing',
-      }).pipe(
+      this._leadsApi.nurtureLead(leadId).pipe(
         catchError(() => {
           this._snackbar.error('Erreur', 'Impossible de placer le lead en nurturing.');
           this.isSubmitting.set(false);

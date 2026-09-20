@@ -159,6 +159,7 @@ export class LeadHomepage {
   private readonly _router = inject(Router);
 
   public isLoading = signal(false);
+  public isExporting = signal(false);
   public leads = signal<LeadDto[]>([]);
   public searchQuery = signal('');
   public viewMode = signal<'list' | 'kanban'>('list');
@@ -502,6 +503,32 @@ export class LeadHomepage {
       case 1: return 'Entreprise';
       default: return '—';
     }
+  }
+
+  public exportLeads(): void {
+    this.isExporting.set(true);
+    const status = this.filterStatus() ? Number(this.filterStatus()) as any : undefined;
+    const source = this.filterSource() ? Number(this.filterSource()) as any : undefined;
+    const agencyId = this.filterAgencyId() || undefined;
+    const search = this.searchQuery() || undefined;
+
+    this._leadsApiService.exportLeads(status, undefined, source, undefined, agencyId, search).pipe(
+      catchError(() => {
+        this._snackbar.error('Erreur', 'Impossible d\'exporter les leads.');
+        this.isExporting.set(false);
+        return EMPTY;
+      }),
+    ).subscribe((csv) => {
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `leads-export-${new Date().toISOString().slice(0, 10)}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+      this._snackbar.success('Export terminé', 'Le fichier CSV a été téléchargé.');
+      this.isExporting.set(false);
+    });
   }
 
   private _loadAgencies(): void {

@@ -1,10 +1,18 @@
 import { Component, effect, inject, input, signal } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { DecimalPipe } from '@angular/common';
 import { catchError, EMPTY } from 'rxjs';
 import { TasCard } from '@talisoft/ui/card';
 import { TasSpinner } from '@talisoft/ui/spinner';
+import { TasIcon } from '@talisoft/ui/icon';
+import { TasTag } from '@talisoft/ui/tag';
+import { TasInput } from '@talisoft/ui/input';
+import { TasFormField } from '@talisoft/ui/form-field';
+import { Button } from '@talisoft/ui/button';
 import { TimeagoPipe } from '@talisoft/ui/timeago';
-import { LeadsApiService, LeadDto } from '@sankore/crm-api';
+import { SnackbarService } from '@talisoft/ui/snackbar';
+import { LeadsApiService, LeadDto, TagDto } from '@sankore/crm-api';
+import { AuthenticationService } from '@sankore/crm/common';
 
 function sourceLabel(source: string | null | undefined): string {
   switch (source) {
@@ -53,7 +61,7 @@ function intentLabel(level: string | null | undefined): string {
 
 @Component({
   selector: 'lead-informations',
-  imports: [DecimalPipe, TasCard, TasSpinner, TimeagoPipe],
+  imports: [FormsModule, DecimalPipe, TasCard, TasSpinner, TasIcon, TasTag, TasInput, TasFormField, Button, TimeagoPipe],
   template: `
     @if (isLoading()) {
       <div class="flex justify-center py-24">
@@ -241,6 +249,44 @@ function intentLabel(level: string | null | undefined): string {
           </div>
         </tas-card>
 
+        <!-- Tags -->
+        <tas-card>
+          <div class="p-4">
+            <p class="text-xs font-semibold text-slate-400 mb-3">Tags</p>
+            <div class="flex flex-wrap gap-1.5 mb-3">
+              @for (tag of tags(); track tag.id) {
+                <span class="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium">
+                  {{ tag.tag }}
+                  <button type="button" class="hover:text-red-500 transition-colors" (click)="removeTag(tag)">
+                    <tas-icon iconName="feather:x" style="font-size:10px"></tas-icon>
+                  </button>
+                </span>
+              }
+              @if (tags().length === 0 && !showTagInput()) {
+                <span class="text-xs text-slate-400">Aucun tag</span>
+              }
+            </div>
+            @if (showTagInput()) {
+              <div class="flex items-center gap-2">
+                <tas-form-field>
+                  <input tasInput type="text" placeholder="Nouveau tag…"
+                    [ngModel]="newTag()" (ngModelChange)="newTag.set($event)"
+                    (keydown.enter)="addTag()" />
+                </tas-form-field>
+                <button tas-button color="primary" type="button" class="text-xs shrink-0" [disabled]="!newTag().trim() || isAddingTag()" (click)="addTag()">
+                  @if (isAddingTag()) { <tas-spinner size="3" class="text-white"></tas-spinner> }
+                  Ajouter
+                </button>
+                <button type="button" class="text-xs text-slate-400 hover:text-slate-600" (click)="showTagInput.set(false)">Annuler</button>
+              </div>
+            } @else {
+              <button type="button" class="text-xs text-primary hover:underline flex items-center gap-1" (click)="showTagInput.set(true)">
+                <tas-icon iconName="feather:plus" style="font-size:10px"></tas-icon> Ajouter un tag
+              </button>
+            }
+          </div>
+        </tas-card>
+
         <!-- Comment -->
         @if (lead()!.comment) {
           <tas-card>
@@ -257,11 +303,17 @@ function intentLabel(level: string | null | undefined): string {
 })
 export class LeadInformationsPage {
   private readonly _leadsApiService = inject(LeadsApiService);
+  private readonly _snackbar = inject(SnackbarService);
+  private readonly _auth = inject(AuthenticationService);
 
   public readonly id = input.required<string>();
 
   public isLoading = signal(true);
   public lead = signal<LeadDto | null>(null);
+  public tags = signal<TagDto[]>([]);
+  public newTag = signal('');
+  public showTagInput = signal(false);
+  public isAddingTag = signal(false);
 
   public readonly sourceLabel = sourceLabel;
   public readonly pipelineLabel = pipelineLabel;
@@ -270,19 +322,42 @@ export class LeadInformationsPage {
 
   constructor() {
     effect(() => {
+      const leadId = this.id();
       this.isLoading.set(true);
-      this._leadsApiService
-        .getLead(this.id())
-        .pipe(
-          catchError(() => {
-            this.isLoading.set(false);
-            return EMPTY;
-          }),
-        )
-        .subscribe((lead) => {
-          this.lead.set(lead);
-          this.isLoading.set(false);
-        });
+      this._leadsApiService.getLead(leadId).pipe(
+        catchError(() => { this.isLoading.set(false); return EMPTY; }),
+      ).subscribe((lead) => {
+        this.lead.set(lead);
+        this.isLoading.set(false);
+      });
+      this._leadsApiService.listLeadTags(leadId).pipe(
+        catchError(() => EMPTY),
+      ).subscribe((t) => this.tags.set(t ?? []));
+    });
+  }
+
+  public addTag(): void {
+    const tag = this.newTag().trim();
+    if (!tag) return;
+    this.isAddingTag.set(true);
+    this._leadsApiService.addLeadTag(this.id(), {
+      tag,
+      addedBy: this._auth.connectedUser()?.id,
+    }).pipe(
+      catchError(() => { this._snackbar.error('Erreur', 'Impossible d\'ajouter le tag.'); return EMPTY; }),
+    ).subscribe((added) => {
+      this.tags.update((list) => [...list, added]);
+      this.newTag.set('');
+      this.showTagInput.set(false);
+      this.isAddingTag.set(false);
+    });
+  }
+
+  public removeTag(tag: TagDto): void {
+    this._leadsApiService.removeLeadTag(this.id(), tag.id!).pipe(
+      catchError(() => { this._snackbar.error('Erreur', 'Impossible de retirer le tag.'); return EMPTY; }),
+    ).subscribe(() => {
+      this.tags.update((list) => list.filter((t) => t.id !== tag.id));
     });
   }
 }
