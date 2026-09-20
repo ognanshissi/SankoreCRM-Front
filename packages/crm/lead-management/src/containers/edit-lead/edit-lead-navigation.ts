@@ -8,6 +8,7 @@ import { LeadsApiService, LeadDto } from '@sankore/crm-api';
 import { BreadcrumbService } from '@sankore/crm/common';
 import { SideDrawerService } from '@talisoft/ui/side-drawer';
 import { ReassignLeadDrawer } from './reassign-lead-drawer';
+import { ConvertLeadWizard } from './convert-lead-wizard';
 import { Severity, TasTag } from '@talisoft/ui/tag';
 import { catchError, EMPTY } from 'rxjs';
 
@@ -128,6 +129,18 @@ function parseFactors(factorsJson: string | null | undefined): ScoreFactor[] {
             <tas-icon iconName="feather:user-plus" style="font-size:14px"></tas-icon>
             Réassigner
           </button>
+          @if (lead()!.status !== 'Converted') {
+            <button
+              tas-button
+              color="primary"
+              type="button"
+              (click)="openConvertWizard()"
+              class="text-xs"
+            >
+              <tas-icon iconName="feather:user-check" style="font-size:14px"></tas-icon>
+              Convertir
+            </button>
+          }
         }
       </div>
 
@@ -356,6 +369,27 @@ export class EditLeadNavigation implements OnDestroy {
     const s = this.lead()?.score ?? 0;
     const c = scoreColor(s);
     return `${c.bg} ${c.text}`;
+  }
+
+  public openConvertWizard(): void {
+    const currentLead = this.lead();
+    if (!currentLead) return;
+
+    const ref = this._sideDrawerService.open(ConvertLeadWizard, {
+      width: '100%',
+      height: '100%',
+      panelClass: 'side-drawer-panel',
+      data: { lead: currentLead },
+    });
+
+    ref.closed.subscribe((result: any) => {
+      if (result && typeof result === 'object' && result.customerId) {
+        // Reload lead to reflect converted status
+        this._leadsApiService.getLead(this.id()).pipe(
+          catchError(() => EMPTY),
+        ).subscribe((lead) => this.lead.set(lead));
+      }
+    });
   }
 
   public openReassignDrawer(): void {
