@@ -206,7 +206,25 @@ function intentLabel(level: string | null | undefined): string {
                   <span class="text-xs text-slate-500 tabular-nums">
                     {{ ((lead()!.qualificationCompleteness ?? 0) * 100) | number:'1.0-0' }}%
                   </span>
+                  @if (!showQualOverride()) {
+                    <button type="button" class="text-[10px] text-primary hover:underline" (click)="showQualOverride.set(true)">
+                      Modifier
+                    </button>
+                  }
                 </div>
+                @if (showQualOverride()) {
+                  <div class="flex items-center gap-2 mt-2">
+                    <input type="range" min="0" max="100" class="flex-1 accent-primary"
+                      [ngModel]="qualOverrideValue()" (ngModelChange)="qualOverrideValue.set($event)" />
+                    <span class="text-xs text-slate-600 tabular-nums w-8 text-right">{{ qualOverrideValue() }}%</span>
+                    <button tas-button color="primary" type="button" class="text-[10px]"
+                      [disabled]="isSavingQual()" (click)="saveQualificationCompleteness()">
+                      @if (isSavingQual()) { <tas-spinner size="2" class="text-white"></tas-spinner> }
+                      OK
+                    </button>
+                    <button type="button" class="text-[10px] text-slate-400" (click)="showQualOverride.set(false)">Annuler</button>
+                  </div>
+                }
               </div>
             </div>
           </div>
@@ -314,6 +332,9 @@ export class LeadInformationsPage {
   public newTag = signal('');
   public showTagInput = signal(false);
   public isAddingTag = signal(false);
+  public showQualOverride = signal(false);
+  public qualOverrideValue = signal(50);
+  public isSavingQual = signal(false);
 
   public readonly sourceLabel = sourceLabel;
   public readonly pipelineLabel = pipelineLabel;
@@ -333,6 +354,20 @@ export class LeadInformationsPage {
       this._leadsApiService.listLeadTags(leadId).pipe(
         catchError(() => EMPTY),
       ).subscribe((t) => this.tags.set(t ?? []));
+    });
+  }
+
+  public saveQualificationCompleteness(): void {
+    this.isSavingQual.set(true);
+    this._leadsApiService.setLeadQualificationCompleteness(this.id(), {
+      completeness: this.qualOverrideValue() / 100,
+    }).pipe(
+      catchError(() => { this._snackbar.error('Erreur', 'Mise à jour échouée.'); return EMPTY; }),
+    ).subscribe(() => {
+      this.lead.update((l) => l ? { ...l, qualificationCompleteness: this.qualOverrideValue() / 100 } : l);
+      this._snackbar.success('Qualification mise à jour', `Progression définie à ${this.qualOverrideValue()}%.`);
+      this.showQualOverride.set(false);
+      this.isSavingQual.set(false);
     });
   }
 

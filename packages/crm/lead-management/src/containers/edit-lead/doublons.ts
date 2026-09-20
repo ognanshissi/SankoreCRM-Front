@@ -170,6 +170,30 @@ function confidenceColor(score: number | undefined): string {
           }
         }
 
+        <!-- Dismissed duplicates -->
+        @if (dismissals().length > 0) {
+          <tas-card>
+            <div class="p-4 border-b border-slate-100">
+              <p class="font-semibold text-slate-800">Doublons écartés</p>
+              <p class="text-sm text-slate-500 mt-0.5">{{ dismissals().length }} doublon(s) précédemment écarté(s)</p>
+            </div>
+            <div class="divide-y divide-slate-100">
+              @for (d of dismissals(); track d.leadId) {
+                <div class="p-4 flex items-center gap-3 opacity-60">
+                  <div class="flex-1 min-w-0">
+                    <p class="text-sm text-slate-600">{{ d.fullName ?? '—' }}</p>
+                    <div class="flex items-center gap-2 mt-0.5 text-xs text-slate-400">
+                      @if (d.phoneNumber) { <span>{{ d.phoneNumber }}</span> }
+                      @if (d.email) { <span>{{ d.email }}</span> }
+                    </div>
+                  </div>
+                  <tas-tag severity="neutral">Écarté</tas-tag>
+                </div>
+              }
+            </div>
+          </tas-card>
+        }
+
       </div>
     }
   `,
@@ -183,6 +207,7 @@ export class LeadDoublonsPage {
   public isLoading = signal(true);
   public lead = signal<LeadDto | null>(null);
   public duplicates = signal<DuplicateMatchResult[]>([]);
+  public dismissals = signal<DuplicateMatchResult[]>([]);
   public actionInProgress = signal(false);
 
   public readonly statusMeta = statusMeta;
@@ -218,6 +243,9 @@ export class LeadDoublonsPage {
           this.duplicates.set(dups);
           this.isLoading.set(false);
         });
+      // Load dismissed duplicates
+      this._leadsApi.listDismissals(this.id()).pipe(catchError(() => EMPTY))
+        .subscribe((d) => this.dismissals.set(d ?? []));
     });
   }
 

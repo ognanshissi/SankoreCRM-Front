@@ -688,18 +688,44 @@ export class ImportLeadsComponent {
         }),
         finalize(() => this.isSubmitting.set(false)),
       )
-      .subscribe((res) => {
-        this.importResult.set({
-          succeeded: validRows.length,
-          skipped: 0,
-          failed: 0,
-          failures: null,
-        });
-        this._snackbar.success(
-          'Import accepté',
-          `${validRows.length} lead(s) envoyé(s) pour import.`,
-        );
+      .subscribe((res: any) => {
+        const jobId = res?.importJobId;
+        if (jobId) {
+          this._snackbar.info('Import en cours', 'Le traitement a démarré…');
+          this._pollImportStatus(jobId, validRows.length);
+        } else {
+          this.importResult.set({ succeeded: validRows.length, skipped: 0, failed: 0, failures: null });
+          this._snackbar.success('Import accepté', `${validRows.length} lead(s) envoyé(s).`);
+        }
       });
+  }
+
+  // ─── Import status polling ──────────────────────────────────────────────
+
+  private _pollImportStatus(jobId: string, totalSent: number): void {
+    const poll = setInterval(() => {
+      this._leadsApi.getImportStatus(jobId).pipe(
+        catchError(() => EMPTY),
+      ).subscribe((status: any) => {
+        if (status?.status === 'Completed' || status?.status === 'Failed') {
+          clearInterval(poll);
+          this.importResult.set({
+            succeeded: status.succeeded ?? 0,
+            skipped: status.skipped ?? 0,
+            failed: status.failed ?? 0,
+            failures: status.failures ?? null,
+          });
+          if (status.status === 'Completed') {
+            this._snackbar.success('Import terminé', `${status.succeeded ?? 0} lead(s) importé(s).`);
+          } else {
+            this._snackbar.error('Import échoué', 'Le traitement a rencontré une erreur.');
+          }
+        }
+      });
+    }, 3000);
+
+    // Safety: stop polling after 2 minutes
+    setTimeout(() => clearInterval(poll), 120_000);
   }
 
   // ─── Error report export ─────────────────────────────────────────────────

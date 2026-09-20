@@ -21,6 +21,7 @@ import { TimeagoPipe } from '@talisoft/ui/timeago';
 import { SnackbarService } from '@talisoft/ui/snackbar';
 import { CreateLeadComponent } from '../create-lead/create-lead';
 import { ImportLeadsComponent } from '../import-leads/import-leads';
+import { SystemCaptureDrawer } from './system-capture-drawer';
 import { Severity, TasTag } from '@talisoft/ui/tag';
 
 function leadStatusMeta(status: string | null | undefined): { label: string; severity: Severity } {
@@ -503,6 +504,15 @@ export class LeadHomepage {
       case 1: return 'Entreprise';
       default: return '—';
     }
+  }
+
+  public openSystemCaptureDrawer(): void {
+    const ref = this._sideDrawerService.open(SystemCaptureDrawer, {
+      width: '100%', height: '100%', panelClass: 'side-drawer-panel',
+    });
+    ref.closed.subscribe((created: any) => {
+      if (created) { this.reloadCurrentPage(); this._loadStats(); }
+    });
   }
 
   public exportLeads(): void {

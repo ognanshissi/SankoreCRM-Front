@@ -67,7 +67,7 @@ function activityTypeMeta(type: ActivityDtoTypeEnum | undefined): { icon: string
           } @else {
             <div class="divide-y divide-slate-100">
               @for (activity of activities(); track activity.id) {
-                <div class="p-4 hover:bg-slate-50 transition-colors">
+                <div class="p-4 hover:bg-slate-50 transition-colors cursor-pointer" (click)="toggleDetail(activity)">
                   <div class="flex items-start gap-3">
                     <div
                       class="w-8 h-8 rounded-full flex items-center justify-center shrink-0"
@@ -98,6 +98,29 @@ function activityTypeMeta(type: ActivityDtoTypeEnum | undefined): { icon: string
                           </span>
                         }
                       </div>
+                      <!-- Expanded detail (loaded via getLeadActivity) -->
+                      @if (expandedActivityId() === activity.id) {
+                        <div class="mt-3 p-3 rounded-lg bg-slate-50 border border-slate-200 text-xs">
+                          @if (isLoadingDetail()) {
+                            <tas-spinner size="3" class="text-primary"></tas-spinner>
+                          } @else if (activityDetail()) {
+                            <div class="grid grid-cols-2 gap-2">
+                              @if (activityDetail()!.scheduledAt) {
+                                <div><span class="text-slate-400">Prévu le :</span> {{ activityDetail()!.scheduledAt | dateTimeAgo }}</div>
+                              }
+                              @if (activityDetail()!.outcome != null) {
+                                <div><span class="text-slate-400">Résultat :</span> {{ outcomeLabel(activityDetail()!.outcome) }}</div>
+                              }
+                              @if (activityDetail()!.performedBy) {
+                                <div><span class="text-slate-400">Par :</span> {{ activityDetail()!.performedBy }}</div>
+                              }
+                            </div>
+                            @if (activityDetail()!.notes) {
+                              <p class="mt-2 text-slate-600 whitespace-pre-line">{{ activityDetail()!.notes }}</p>
+                            }
+                          }
+                        </div>
+                      }
                     </div>
                   </div>
                 </div>
@@ -136,6 +159,9 @@ export class LeadActivitesPage {
   public isLoadingMore = signal(false);
   public activities = signal<ActivityDto[]>([]);
   public hasMore = signal(false);
+  public expandedActivityId = signal<string | null>(null);
+  public isLoadingDetail = signal(false);
+  public activityDetail = signal<ActivityDto | null>(null);
   private _skip = 0;
   private readonly _limit = 20;
 
@@ -155,6 +181,30 @@ export class LeadActivitesPage {
         this.isLoading.set(false);
       });
     });
+  }
+
+  public toggleDetail(activity: ActivityDto): void {
+    if (this.expandedActivityId() === activity.id) {
+      this.expandedActivityId.set(null);
+      this.activityDetail.set(null);
+      return;
+    }
+    this.expandedActivityId.set(activity.id ?? null);
+    this.isLoadingDetail.set(true);
+    this._leadsApiService.getLeadActivity(this.id(), activity.id!).pipe(
+      catchError(() => { this.isLoadingDetail.set(false); return EMPTY; }),
+    ).subscribe((detail) => {
+      this.activityDetail.set(detail);
+      this.isLoadingDetail.set(false);
+    });
+  }
+
+  public outcomeLabel(outcome: any): string {
+    const labels: Record<number, string> = {
+      0: 'Contacté avec succès', 1: 'Injoignable', 2: 'Messagerie vocale',
+      3: 'Rappel demandé', 4: 'Intéressé', 5: 'Pas intéressé', 6: 'Faux numéro', 7: 'Autre',
+    };
+    return labels[Number(outcome)] ?? String(outcome);
   }
 
   public openLogActivityDrawer(): void {

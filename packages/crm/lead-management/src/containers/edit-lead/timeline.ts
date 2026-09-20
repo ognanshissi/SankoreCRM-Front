@@ -17,7 +17,7 @@ import { TasIcon } from '@talisoft/ui/icon';
 import { TasTag } from '@talisoft/ui/tag';
 import { TimeagoPipe } from '@talisoft/ui/timeago';
 import { Button } from '@talisoft/ui/button';
-import { LeadsApiService, TimelineEvent, TimelineEventKindEnum } from '@sankore/crm-api';
+import { LeadsApiService, TimelineEvent, TimelineEventKindEnum, AssignmentDto, OwnerAssignmentDto } from '@sankore/crm-api';
 
 const PAGE_SIZE = 20;
 
@@ -212,6 +212,58 @@ const FILTER_OPTIONS: { kind: TimelineEventKindEnum; label: string }[] = [
             </div>
           }
         </tas-card>
+
+        <!-- Assignment & Owner History -->
+        @if (assignments().length > 0 || ownerHistory().length > 0) {
+          <div class="mt-4">
+            <button type="button" class="text-xs text-primary hover:underline mb-2 flex items-center gap-1"
+              (click)="showHistory.set(!showHistory())">
+              <tas-icon [iconName]="showHistory() ? 'feather:chevron-up' : 'feather:chevron-down'" style="font-size:12px"></tas-icon>
+              {{ showHistory() ? 'Masquer' : 'Afficher' }} l'historique d'assignation ({{ assignments().length + ownerHistory().length }})
+            </button>
+            @if (showHistory()) {
+              @if (ownerHistory().length > 0) {
+                <tas-card class="block mb-3">
+                  <div class="p-3 border-b border-slate-100">
+                    <p class="text-xs font-semibold text-slate-600">Changements de propriétaire</p>
+                  </div>
+                  <div class="divide-y divide-slate-100">
+                    @for (o of ownerHistory(); track o.id) {
+                      <div class="px-3 py-2 flex items-center gap-2 text-xs">
+                        <tas-icon iconName="feather:arrow-right" class="text-slate-400" style="font-size:10px"></tas-icon>
+                        <span class="text-slate-500">{{ o.previousOwnerId ?? '—' }}</span>
+                        <tas-icon iconName="feather:arrow-right" class="text-slate-300" style="font-size:8px"></tas-icon>
+                        <span class="font-medium text-slate-800">{{ o.newOwnerId }}</span>
+                        @if (o.assignmentMethod) { <tas-tag severity="neutral">{{ o.assignmentMethod }}</tas-tag> }
+                        @if (o.reason) { <span class="text-slate-400">— {{ o.reason }}</span> }
+                        @if (o.assignedAt) { <span class="text-slate-400 ml-auto">{{ o.assignedAt | dateTimeAgo }}</span> }
+                      </div>
+                    }
+                  </div>
+                </tas-card>
+              }
+              @if (assignments().length > 0) {
+                <tas-card class="block">
+                  <div class="p-3 border-b border-slate-100">
+                    <p class="text-xs font-semibold text-slate-600">Historique d'assignation</p>
+                  </div>
+                  <div class="divide-y divide-slate-100">
+                    @for (a of assignments(); track a.id) {
+                      <div class="px-3 py-2 flex items-center gap-3 text-xs">
+                        <span class="font-medium text-slate-800">{{ a.agentId }}</span>
+                        <tas-tag severity="info">{{ a.strategy }}</tas-tag>
+                        @if (a.compatibilityScore) { <span class="tabular-nums text-slate-500">Score {{ a.compatibilityScore }}</span> }
+                        @if (a.slaBreached) { <tas-tag severity="error">SLA dépassé</tas-tag> }
+                        @if (a.wasManualOverride) { <tas-tag severity="warning">Manuel</tas-tag> }
+                        @if (a.createdAt) { <span class="text-slate-400 ml-auto">{{ a.createdAt | dateTimeAgo }}</span> }
+                      </div>
+                    }
+                  </div>
+                </tas-card>
+              }
+            }
+          </div>
+        }
       </div>
     }
   `,
@@ -228,6 +280,9 @@ export class LeadTimelinePage implements AfterViewInit, OnDestroy {
 
   /** All events fetched from API */
   public allEvents = signal<TimelineEvent[]>([]);
+  public assignments = signal<AssignmentDto[]>([]);
+  public ownerHistory = signal<OwnerAssignmentDto[]>([]);
+  public showHistory = signal(false);
 
   /** Active kind filters — empty = show all */
   public activeFilters = signal<Set<TimelineEventKindEnum>>(new Set());
@@ -276,6 +331,11 @@ export class LeadTimelinePage implements AfterViewInit, OnDestroy {
         this.allEvents.set(events ?? []);
         this.isLoading.set(false);
       });
+      // Load assignment & owner history
+      this._leadsApiService.getLeadAssignmentHistory(this.id()).pipe(catchError(() => EMPTY))
+        .subscribe((a) => this.assignments.set(a ?? []));
+      this._leadsApiService.getLeadOwnerHistory(this.id()).pipe(catchError(() => EMPTY))
+        .subscribe((o) => this.ownerHistory.set(o ?? []));
     });
 
     // Re-observe sentinel when it appears/disappears

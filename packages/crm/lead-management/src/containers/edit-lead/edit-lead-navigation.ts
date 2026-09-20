@@ -4,7 +4,8 @@ import { TasIcon } from '@talisoft/ui/icon';
 import { TasCard } from '@talisoft/ui/card';
 import { TasSpinner } from '@talisoft/ui/spinner';
 import { Anchor, Button } from '@talisoft/ui/button';
-import { LeadsApiService, LeadDto, NextActionDto } from '@sankore/crm-api';
+import { LeadsApiService, LeadDto, NextActionDto, LeadIntentLevelDto, CloseLeadRequestReasonEnum } from '@sankore/crm-api';
+import { ConfirmDialogService } from '@talisoft/ui/confirm-dialog';
 import { BreadcrumbService } from '@sankore/crm/common';
 import { SnackbarService } from '@talisoft/ui/snackbar';
 import { SideDrawerService } from '@talisoft/ui/side-drawer';
@@ -12,6 +13,7 @@ import { ReassignLeadDrawer } from './reassign-lead-drawer';
 import { ConvertLeadWizard } from './convert-lead-wizard';
 import { NurtureRecycleDrawer } from './nurture-recycle-drawer';
 import { Severity, TasTag } from '@talisoft/ui/tag';
+import { TimeagoPipe } from '@talisoft/ui/timeago';
 import { catchError, EMPTY } from 'rxjs';
 
 interface LeadMenuItem {
@@ -89,6 +91,7 @@ function parseFactors(factorsJson: string | null | undefined): ScoreFactor[] {
     Anchor,
     Button,
     TasTag,
+    TimeagoPipe,
   ],
   template: `
     @if (notFound()) {
@@ -166,7 +169,41 @@ function parseFactors(factorsJson: string | null | undefined): ScoreFactor[] {
               <tas-icon iconName="feather:refresh-cw" style="font-size:14px"></tas-icon>
               Nurturing / Recycler
             </button>
+            <button
+              tas-outlined-button
+              type="button"
+              (click)="closeLead()"
+              class="text-xs"
+            >
+              <tas-icon iconName="feather:x-square" style="font-size:14px"></tas-icon>
+              Clôturer
+            </button>
           }
+          @if (lead()!.status === 'New' && !lead()!.lastActivityAt) {
+            <button
+              tas-outlined-button
+              color="primary"
+              type="button"
+              (click)="recordFirstContact()"
+              class="text-xs"
+              [disabled]="isRecordingFirstContact()"
+            >
+              @if (isRecordingFirstContact()) { <tas-spinner size="3" class="text-primary"></tas-spinner> }
+              <tas-icon iconName="feather:phone-forwarded" style="font-size:14px"></tas-icon>
+              1er contact
+            </button>
+          }
+          <button
+            tas-outlined-button
+            type="button"
+            (click)="returnToQueue()"
+            class="text-xs"
+            [disabled]="isReturningToQueue()"
+          >
+            @if (isReturningToQueue()) { <tas-spinner size="3" class="text-primary"></tas-spinner> }
+            <tas-icon iconName="feather:corner-down-left" style="font-size:14px"></tas-icon>
+            Remettre en file
+          </button>
         }
       </div>
 
@@ -268,6 +305,19 @@ function parseFactors(factorsJson: string | null | undefined): ScoreFactor[] {
                             }
                           </div>
                         }
+                        <!-- Intent level detail (from getLeadIntentLevel) -->
+                        @if (intentLevelDetail()) {
+                          <div class="px-3 py-2 border-t border-slate-100 flex items-center justify-between">
+                            <span class="text-[10px] text-slate-400">Score d'intention</span>
+                            <span class="text-xs font-semibold tabular-nums text-slate-700">{{ intentLevelDetail()!.score ?? '—' }}</span>
+                          </div>
+                          @if (intentLevelDetail()!.updatedAt) {
+                            <div class="px-3 pb-1 flex items-center justify-between">
+                              <span class="text-[10px] text-slate-400">Mis à jour</span>
+                              <span class="text-[10px] text-slate-400">{{ intentLevelDetail()!.updatedAt | dateTimeAgo }}</span>
+                            </div>
+                          }
+                        }
                         <div class="px-3 py-2 border-t border-slate-100 bg-slate-50">
                           <p class="text-[10px] text-slate-400 mb-1.5">Température</p>
                           <div class="flex items-center gap-1">
@@ -358,6 +408,7 @@ export class EditLeadNavigation implements OnDestroy {
   private readonly _breadcrumbService = inject(BreadcrumbService);
   private readonly _sideDrawerService = inject(SideDrawerService);
   private readonly _snackbar = inject(SnackbarService);
+  private readonly _confirmDialog = inject(ConfirmDialogService);
   private readonly _router = inject(Router);
   private _pollTimer: ReturnType<typeof setInterval> | null = null;
 
@@ -368,7 +419,10 @@ export class EditLeadNavigation implements OnDestroy {
   public notFound = signal(false);
   public showFactors = signal(false);
   public isReopening = signal(false);
+  public isRecordingFirstContact = signal(false);
+  public isReturningToQueue = signal(false);
   public nextAction = signal<NextActionDto | null>(null);
+  public intentLevelDetail = signal<LeadIntentLevelDto | null>(null);
   public latestFactorsJson = signal<string | null>(null);
 
   public readonly scoreFactors = computed(() => parseFactors(this.latestFactorsJson()));
@@ -417,6 +471,7 @@ export class EditLeadNavigation implements OnDestroy {
         ]);
         this._loadScoreFactors(id);
         this._loadNextAction(id);
+        this._loadIntentLevel(id);
         this._startPolling(id);
       });
     });
@@ -446,6 +501,60 @@ export class EditLeadNavigation implements OnDestroy {
     const s = this.lead()?.score ?? 0;
     const c = scoreColor(s);
     return `${c.bg} ${c.text}`;
+  }
+
+  public closeLead(): void {
+    this._confirmDialog.confirm({
+      title: 'Clôturer ce lead ?',
+      message: 'Le lead sera marqué comme perdu. Cette action peut être annulée via « Réouvrir ».',
+      closable: true, showCancelButton: true,
+      acceptButtonProps: { label: 'Clôturer', theme: 'warn' },
+      rejectButtonProps: { label: 'Annuler' },
+      accept: () => {
+        this._leadsApiService.closeLead(this.id(), {
+          reason: CloseLeadRequestReasonEnum.Lost,
+          detail: 'Clôturé manuellement par l\'agent',
+        }).pipe(catchError(() => { this._snackbar.error('Erreur', 'Clôture échouée.'); return EMPTY; }))
+          .subscribe(() => {
+            this._snackbar.success('Lead clôturé', 'Le lead a été marqué comme perdu.');
+            this._leadsApiService.getLead(this.id()).pipe(catchError(() => EMPTY))
+              .subscribe((lead) => this.lead.set(lead));
+          });
+      },
+    });
+  }
+
+  public recordFirstContact(): void {
+    this.isRecordingFirstContact.set(true);
+    this._leadsApiService.recordFirstContact(this.id(), { contactedAt: new Date().toISOString() }).pipe(
+      catchError(() => { this._snackbar.error('Erreur', 'Enregistrement échoué.'); return EMPTY; }),
+    ).subscribe(() => {
+      this._snackbar.success('Premier contact', 'Le premier contact a été enregistré.');
+      this.isRecordingFirstContact.set(false);
+      this._leadsApiService.getLead(this.id()).pipe(catchError(() => EMPTY))
+        .subscribe((lead) => this.lead.set(lead));
+    });
+  }
+
+  public returnToQueue(): void {
+    this._confirmDialog.confirm({
+      title: 'Remettre en file d\'attente ?',
+      message: 'Le lead sera retiré de votre portefeuille et redistribué automatiquement.',
+      closable: true, showCancelButton: true,
+      acceptButtonProps: { label: 'Confirmer', theme: 'primary' },
+      rejectButtonProps: { label: 'Annuler' },
+      accept: () => {
+        this.isReturningToQueue.set(true);
+        this._leadsApiService.returnLeadToQueue(this.id()).pipe(
+          catchError(() => { this._snackbar.error('Erreur', 'Opération échouée.'); return EMPTY; }),
+        ).subscribe(() => {
+          this._snackbar.success('Lead en file', 'Le lead a été remis en file d\'attente.');
+          this.isReturningToQueue.set(false);
+          this._leadsApiService.getLead(this.id()).pipe(catchError(() => EMPTY))
+            .subscribe((lead) => this.lead.set(lead));
+        });
+      },
+    });
   }
 
   public acknowledgeNextAction(action: string): void {
@@ -553,6 +662,12 @@ export class EditLeadNavigation implements OnDestroy {
 
   public toggleFactorsPanel(): void {
     this.showFactors.update((v) => !v);
+  }
+
+  private _loadIntentLevel(leadId: string): void {
+    this._leadsApiService.getLeadIntentLevel(leadId).pipe(
+      catchError(() => EMPTY),
+    ).subscribe((detail) => this.intentLevelDetail.set(detail ?? null));
   }
 
   private _loadNextAction(leadId: string): void {
