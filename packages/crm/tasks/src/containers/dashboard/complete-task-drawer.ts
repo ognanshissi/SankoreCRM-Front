@@ -23,6 +23,7 @@ import {
   CreateTaskRequestTypeEnum,
   CreateTaskRequestPriorityEnum,
 } from '@sankore/crm-api';
+import { TasTitle } from '@talisoft/ui/title';
 
 export interface CompleteTaskDrawerData {
   task: CrmTaskDto;
@@ -107,28 +108,32 @@ function typeLabel(type: string | undefined): string {
     TasError,
     TasInput,
     TasSelect,
+    TasTitle,
   ],
   template: `
     <tas-side-drawer>
       <tas-drawer-title>
-        <div class="flex items-center gap-2">
-          <tas-icon iconName="feather:check-circle" style="font-size:18px"></tas-icon>
-          <span>Terminer la tâche</span>
-        </div>
+        <tas-title>Terminer la tâche</tas-title>
       </tas-drawer-title>
 
       <tas-drawer-content>
         <!-- Task summary -->
         <div class="mb-4 p-3 rounded-lg bg-slate-50 border border-slate-200">
-          <p class="text-sm font-medium text-slate-800">{{ data.task.title ?? typeLabel(data.task.type) }}</p>
+          <p class="text-sm font-medium text-slate-800">
+            {{ data.task.title ?? typeLabel(data.task.type) }}
+          </p>
           <div class="flex items-center gap-2 mt-1">
             <tas-tag severity="info">{{ typeLabel(data.task.type) }}</tas-tag>
             @if (data.task.leadId) {
-              <span class="text-xs text-slate-400">Lead {{ data.task.leadId }}</span>
+              <span class="text-xs text-slate-400"
+                >Lead {{ data.task.leadId }}</span
+              >
             }
           </div>
           @if (data.task.description) {
-            <p class="text-xs text-slate-500 mt-1.5">{{ data.task.description }}</p>
+            <p class="text-xs text-slate-500 mt-1.5">
+              {{ data.task.description }}
+            </p>
           }
         </div>
 
@@ -136,13 +141,19 @@ function typeLabel(type: string | undefined): string {
         @if (requiresResult()) {
           <div class="mb-1">
             <div class="flex items-center gap-1 mb-2">
-              <tas-icon iconName="feather:alert-circle" class="text-amber-500" style="font-size:12px"></tas-icon>
-              <span class="text-xs font-medium text-amber-700">Résultat obligatoire pour ce type de tâche</span>
+              <tas-icon
+                iconName="feather:alert-circle"
+                class="text-amber-500"
+                style="font-size:12px"
+              ></tas-icon>
+              <span class="text-xs font-medium text-amber-700"
+                >Résultat obligatoire pour ce type de tâche</span
+              >
             </div>
           </div>
         }
 
-        <tas-form-field appearance="outline">
+        <tas-form-field>
           <tas-label>
             Résultat
             @if (requiresResult()) {
@@ -158,13 +169,15 @@ function typeLabel(type: string | undefined): string {
             (ngModelChange)="selectedOutcome.set($event)"
           ></tas-select>
           @if (submitted() && requiresResult() && !selectedOutcome()) {
-            <tas-error>Le résultat est obligatoire pour ce type de tâche.</tas-error>
+            <tas-error
+              >Le résultat est obligatoire pour ce type de tâche.</tas-error
+            >
           }
         </tas-form-field>
 
         <!-- Comment -->
         <div class="mt-3">
-          <tas-form-field appearance="outline">
+          <tas-form-field>
             <tas-label>Commentaire</tas-label>
             <textarea
               tasInput
@@ -178,12 +191,22 @@ function typeLabel(type: string | undefined): string {
 
         <!-- Follow-up suggestion (shown after outcome selection) -->
         @if (followUpSuggestion()) {
-          <div class="mt-4 p-3 rounded-lg border border-primary/20 bg-primary/5">
+          <div
+            class="mt-4 p-3 rounded-lg border border-primary/20 bg-primary/5"
+          >
             <div class="flex items-center gap-2 mb-1.5">
-              <tas-icon iconName="feather:fast-forward" class="text-primary" style="font-size:14px"></tas-icon>
-              <p class="text-xs font-semibold text-slate-700">Tâche suivante suggérée</p>
+              <tas-icon
+                iconName="feather:fast-forward"
+                class="text-primary"
+                style="font-size:14px"
+              ></tas-icon>
+              <p class="text-xs font-semibold text-slate-700">
+                Tâche suivante suggérée
+              </p>
             </div>
-            <p class="text-xs text-slate-600 mb-2">{{ followUpSuggestion()!.title }}</p>
+            <p class="text-xs text-slate-600 mb-2">
+              {{ followUpSuggestion()!.title }}
+            </p>
             <div class="flex items-center gap-2">
               <label class="flex items-center gap-1.5 cursor-pointer">
                 <input
@@ -192,7 +215,9 @@ function typeLabel(type: string | undefined): string {
                   [checked]="createFollowUp()"
                   (change)="createFollowUp.set(!createFollowUp())"
                 />
-                <span class="text-xs text-slate-700">Créer cette tâche automatiquement</span>
+                <span class="text-xs text-slate-700"
+                  >Créer cette tâche automatiquement</span
+                >
               </label>
             </div>
           </div>
@@ -200,12 +225,12 @@ function typeLabel(type: string | undefined): string {
       </tas-drawer-content>
 
       <tas-drawer-action>
-        <div class="flex items-center justify-between w-full">
+        <div class="flex items-center space-x-4 w-full">
           <button tas-outlined-button type="button" (click)="close()">
             Annuler
           </button>
           <button
-            tas-button
+            tas-raised-button
             color="primary"
             type="button"
             [disabled]="isSubmitting()"
@@ -223,7 +248,9 @@ function typeLabel(type: string | undefined): string {
 })
 export class CompleteTaskDrawer {
   public readonly data: CompleteTaskDrawerData = inject(DIALOG_DATA);
-  private readonly _dialogRef = inject(DialogRef<CompleteTaskDrawerResult | false>);
+  private readonly _dialogRef = inject(
+    DialogRef<CompleteTaskDrawerResult | false>,
+  );
   private readonly _tasksApi = inject(TasksApiService);
   private readonly _snackbar = inject(SnackbarService);
 
@@ -257,41 +284,56 @@ export class CompleteTaskDrawer {
     const taskId = this.data.task.id!;
 
     // Complete the task
-    this._tasksApi.completeCrmTask(taskId).pipe(
-      catchError(() => {
-        this._snackbar.error('Erreur', 'Impossible de terminer la tâche.');
-        this.isSubmitting.set(false);
-        return EMPTY;
-      }),
-    ).subscribe(() => {
-      // If follow-up requested, create it
-      if (this.createFollowUp() && this.followUpSuggestion()) {
-        const suggestion = this.followUpSuggestion()!;
-        const now = new Date();
-        const dueAt = new Date(now.getTime() + 24 * 60 * 60 * 1000); // +24h
+    this._tasksApi
+      .completeCrmTask(taskId)
+      .pipe(
+        catchError(() => {
+          this._snackbar.error('Erreur', 'Impossible de terminer la tâche.');
+          this.isSubmitting.set(false);
+          return EMPTY;
+        }),
+      )
+      .subscribe(() => {
+        // If follow-up requested, create it
+        if (this.createFollowUp() && this.followUpSuggestion()) {
+          const suggestion = this.followUpSuggestion()!;
+          const now = new Date();
+          const dueAt = new Date(now.getTime() + 24 * 60 * 60 * 1000); // +24h
 
-        this._tasksApi.createCrmTask({
-          type: suggestion.type as any,
-          priority: this.data.task.priority as any ?? CreateTaskRequestPriorityEnum.Medium,
-          title: suggestion.title,
-          leadId: this.data.task.leadId,
-          assignedAgentId: this.data.task.assignedAgentId,
-          dueAt: dueAt.toISOString(),
-          description: `Suite de : ${this.data.task.title ?? typeLabel(this.data.task.type)}. Résultat : ${this.selectedOutcome()}. ${this.comment() ? 'Note : ' + this.comment() : ''}`.trim(),
-        }).pipe(
-          catchError(() => {
-            this._snackbar.info('Tâche terminée', 'La tâche suivante n\'a pas pu être créée.');
-            return EMPTY;
-          }),
-        ).subscribe(() => {
-          this._snackbar.success('Tâche terminée', 'La tâche suivante a été créée automatiquement.');
-          this._dialogRef.close({ completed: true, followUpCreated: true });
-        });
-      } else {
-        this._snackbar.success('Tâche terminée', 'La tâche a été complétée.');
-        this._dialogRef.close({ completed: true, followUpCreated: false });
-      }
-    });
+          this._tasksApi
+            .createCrmTask({
+              type: suggestion.type as any,
+              priority:
+                (this.data.task.priority as any) ??
+                CreateTaskRequestPriorityEnum.Medium,
+              title: suggestion.title,
+              leadId: this.data.task.leadId,
+              assignedAgentId: this.data.task.assignedAgentId,
+              dueAt: dueAt.toISOString(),
+              description:
+                `Suite de : ${this.data.task.title ?? typeLabel(this.data.task.type)}. Résultat : ${this.selectedOutcome()}. ${this.comment() ? 'Note : ' + this.comment() : ''}`.trim(),
+            })
+            .pipe(
+              catchError(() => {
+                this._snackbar.info(
+                  'Tâche terminée',
+                  "La tâche suivante n'a pas pu être créée.",
+                );
+                return EMPTY;
+              }),
+            )
+            .subscribe(() => {
+              this._snackbar.success(
+                'Tâche terminée',
+                'La tâche suivante a été créée automatiquement.',
+              );
+              this._dialogRef.close({ completed: true, followUpCreated: true });
+            });
+        } else {
+          this._snackbar.success('Tâche terminée', 'La tâche a été complétée.');
+          this._dialogRef.close({ completed: true, followUpCreated: false });
+        }
+      });
   }
 
   public close(): void {

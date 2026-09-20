@@ -14,7 +14,7 @@ import {
   CrmTaskDtoStatusEnum,
   CrmTaskDtoPriorityEnum,
 } from '@sankore/crm-api';
-import { CompleteTaskDrawer, DeclineTaskDrawer } from '@sankore/crm/tasks';
+import { CompleteTaskDrawer, DeclineTaskDrawer, CreateTaskDrawer } from '@sankore/crm/tasks';
 
 function statusMeta(status: CrmTaskDtoStatusEnum | undefined): { label: string; severity: Severity } {
   switch (status) {
@@ -65,11 +65,23 @@ function typeLabel(type: string | undefined): string {
               <p class="font-semibold text-slate-800">Tâches</p>
               <p class="text-sm text-slate-500 mt-0.5">Tâches liées à ce lead</p>
             </div>
-            @if (tasks().length > 0) {
-              <span class="px-2 py-0.5 rounded-md bg-slate-100 text-slate-500 text-xs font-medium tabular-nums">
-                {{ tasks().length }}
-              </span>
-            }
+            <div class="flex items-center gap-2">
+              @if (tasks().length > 0) {
+                <span class="px-2 py-0.5 rounded-md bg-slate-100 text-slate-500 text-xs font-medium tabular-nums">
+                  {{ tasks().length }}
+                </span>
+              }
+              <button
+                tas-filled-button
+                color="primary"
+                type="button"
+                class="text-xs"
+                (click)="openCreateTaskDrawer()"
+              >
+                <tas-icon iconName="feather:plus" style="font-size:12px"></tas-icon>
+                Nouvelle tâche
+              </button>
+            </div>
           </div>
 
           @if (tasks().length === 0) {
@@ -121,6 +133,8 @@ function typeLabel(type: string | undefined): string {
                           Démarrer
                         </button>
                         <button
+                          tas-button
+                          iconButton
                           type="button"
                           class="text-slate-400 hover:text-red-500 transition-colors p-1"
                           (click)="declineTask(task)"
@@ -178,6 +192,19 @@ export class LeadTachesPage {
   constructor() {
     effect(() => {
       this._loadTasks();
+    });
+  }
+
+  public openCreateTaskDrawer(): void {
+    const ref = this._sideDrawer.open(CreateTaskDrawer, {
+      width: '100%',
+      height: '100%',
+      panelClass: 'side-drawer-panel',
+      data: { leadId: this.id() },
+    });
+
+    ref.closed.subscribe((created: any) => {
+      if (created) this._loadTasks();
     });
   }
 
