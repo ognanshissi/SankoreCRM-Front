@@ -299,6 +299,7 @@ export class EditLeadNavigation implements OnDestroy {
     { label: 'Timeline',      icon: 'feather:clock',        route: 'timeline' },
     { label: 'Tâches',        icon: 'feather:check-square', route: 'taches' },
     { label: 'Activités',     icon: 'feather:activity',     route: 'activites' },
+    { label: 'Opportunités', icon: 'feather:briefcase',    route: 'opportunites' },
     { label: 'Doublons',      icon: 'feather:copy',         route: 'doublons' },
     { label: 'Consentement',  icon: 'feather:shield',       route: 'consentement' },
   ];

@@ -17,6 +17,7 @@ export const leadManagementRoutes = [
       { path: 'timeline', loadComponent: () => import('./containers/edit-lead/timeline') },
       { path: 'taches', loadComponent: () => import('./containers/edit-lead/taches') },
       { path: 'activites', loadComponent: () => import('./containers/edit-lead/activites') },
+      { path: 'opportunites', loadComponent: () => import('./containers/edit-lead/opportunities/opportunities') },
       { path: 'doublons', loadComponent: () => import('./containers/edit-lead/doublons') },
       { path: 'consentement', loadComponent: () => import('./containers/edit-lead/consentement') },
     ],
