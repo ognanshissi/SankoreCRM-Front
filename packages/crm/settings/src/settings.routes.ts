@@ -89,6 +89,26 @@ const settingsRoutes: Routes = [
     ],
   },
   {
+    path: 'lead-sources',
+    loadComponent: () =>
+      import('./containers/lead-sources/lead-sources'),
+  },
+  {
+    path: 'sla-configs',
+    loadComponent: () =>
+      import('./containers/sla-configs/sla-configs'),
+  },
+  {
+    path: 'scoring-configs',
+    loadComponent: () =>
+      import('./containers/scoring-configs/scoring-configs'),
+  },
+  {
+    path: 'task-types',
+    loadComponent: () =>
+      import('./containers/task-types/task-types'),
+  },
+  {
     path: 'dispatch-rules',
     loadComponent: () =>
       import('./containers/dispatch-rules/dispatch-rules'),

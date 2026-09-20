@@ -113,6 +113,27 @@ export class OverviewComponent {
           link: '/settings/pipeline-stages',
           description: 'Définir, réordonner et activer/désactiver les étapes du pipeline commercial',
         },
+        {
+          title: 'Sources & Campagnes',
+          type: 'basic',
+          id: 'leads_contacts_sources',
+          link: '/settings/lead-sources',
+          description: 'Gérer les sources d\'acquisition et campagnes de leads',
+        },
+        {
+          title: 'Règles de scoring',
+          type: 'basic',
+          id: 'leads_contacts_scoring',
+          link: '/settings/scoring-configs',
+          description: 'Ajuster les poids et seuils du calcul de Lead Score',
+        },
+        {
+          title: 'SLA & Calendrier ouvré',
+          type: 'basic',
+          id: 'leads_contacts_sla',
+          link: '/settings/sla-configs',
+          description: 'Définir les délais SLA par agence et le calendrier ouvré',
+        },
       ],
     },
     {
@@ -128,6 +149,13 @@ export class OverviewComponent {
           link: '/settings/event-types',
           description:
             "Configurer les types d'événements (réunion, appel, démo...)",
+        },
+        {
+          title: 'Types de tâches',
+          type: 'basic',
+          id: 'activities_task_types',
+          link: '/settings/task-types',
+          description: 'Définir les types de tâches, priorités par défaut et résultats obligatoires',
         },
       ],
     },
