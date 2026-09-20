@@ -1,5 +1,5 @@
 import { Component, computed, effect, inject, input, signal, viewChild, OnDestroy } from '@angular/core';
-import { catchError, EMPTY, finalize } from 'rxjs';
+import { catchError, EMPTY, finalize, forkJoin, map, of } from 'rxjs';
 import { TasCard } from '@talisoft/ui/card';
 import { TasSpinner } from '@talisoft/ui/spinner';
 import { TasIcon } from '@talisoft/ui/icon';
@@ -9,6 +9,7 @@ import { Severity, TasTag } from '@talisoft/ui/tag';
 import {
   LeadsApiService,
   LeadDto,
+  ProductsApiService,
   QualificationTemplateDto,
   QualifyLeadResult,
   QualifyLeadResultNextActionEnum,
@@ -20,6 +21,14 @@ import {
 } from '@sankore/crm/common';
 
 type PageState = 'loading' | 'no-product' | 'no-template' | 'form' | 'submitted';
+
+const PRODUCT_TYPE_LABELS: Record<string, string> = {
+  Loan: 'Prêt',
+  Savings: 'Épargne',
+  GroupCredit: 'Crédit groupe',
+  Tontine: 'Tontine',
+  Agriculture: 'Agriculture',
+};
 
 function draftKey(leadId: string, templateId: string, version: number): string {
   return `qualification_draft_${leadId}_${templateId}_v${version}`;
@@ -36,6 +45,35 @@ function nextActionMeta(action: QualifyLeadResultNextActionEnum | undefined): { 
     default:
       return { label: 'Terminé', severity: 'info', icon: 'feather:check-circle' };
   }
+}
+
+function templateToSchema(t: QualificationTemplateDto): DynamicFormSchema {
+  return {
+    sections: (t.sections ?? []).map((s) => ({
+      id: s.id!,
+      title: s.title ?? '',
+      description: s.description,
+      order: s.order ?? 0,
+    })),
+    questions: (t.questions ?? []).map((q) => ({
+      id: q.id!,
+      sectionId: q.sectionId,
+      label: q.label ?? '',
+      helpText: q.helpText,
+      placeholderText: q.placeholderText,
+      type: (q.type as any) ?? 'Text',
+      options: q.options,
+      isRequired: q.isRequired ?? false,
+      order: q.order ?? 0,
+      minValue: q.minValue,
+      maxValue: q.maxValue,
+      rules: (q.rules ?? []).map((r) => ({
+        triggerQuestionId: r.triggerQuestionId!,
+        triggerValue: r.triggerValue ?? '',
+        action: (r.action as any) ?? 'Show',
+      })),
+    })),
+  };
 }
 
 @Component({
@@ -70,11 +108,13 @@ function nextActionMeta(action: QualifyLeadResultNextActionEnum | undefined): { 
             <tas-icon iconName="feather:clipboard" class="text-amber-400" style="font-size:24px"></tas-icon>
           </div>
           <p class="text-sm text-slate-500">Aucun formulaire de qualification actif</p>
-          <p class="text-xs text-slate-400 mt-1">Aucune configuration publiée n'est disponible pour le produit « {{ lead()?.interestedProduct }} ».</p>
+          <p class="text-xs text-slate-400 mt-1">
+            Aucune configuration publiée n'est disponible pour le produit
+            « {{ productLabel(selectedProduct()) }} ».
+          </p>
         </div>
       }
       @case ('submitted') {
-        <!-- Submission result -->
         <tas-card>
           <div class="p-6 text-center">
             <div class="w-16 h-16 rounded-full bg-green-50 flex items-center justify-center mx-auto mb-4">
@@ -84,7 +124,6 @@ function nextActionMeta(action: QualifyLeadResultNextActionEnum | undefined): { 
 
             @if (submissionResult()) {
               <div class="mt-4 flex flex-col items-center gap-3">
-                <!-- Score -->
                 <div class="flex items-center gap-3">
                   <span class="text-sm text-slate-500">Score :</span>
                   <span
@@ -96,7 +135,6 @@ function nextActionMeta(action: QualifyLeadResultNextActionEnum | undefined): { 
                   <span class="text-sm text-slate-400">/ 100</span>
                 </div>
 
-                <!-- Status -->
                 @if (submissionResult()!.status) {
                   <div class="flex items-center gap-2">
                     <span class="text-sm text-slate-500">Statut :</span>
@@ -104,7 +142,6 @@ function nextActionMeta(action: QualifyLeadResultNextActionEnum | undefined): { 
                   </div>
                 }
 
-                <!-- Intent level -->
                 @if (submissionResult()!.intentLevel != null) {
                   <div class="flex items-center gap-2">
                     <span class="text-sm text-slate-500">Température :</span>
@@ -114,7 +151,6 @@ function nextActionMeta(action: QualifyLeadResultNextActionEnum | undefined): { 
                   </div>
                 }
 
-                <!-- Next action -->
                 <div class="mt-2 p-3 rounded-lg bg-slate-50 border border-slate-200 inline-flex items-center gap-2">
                   <tas-icon [iconName]="resultActionMeta().icon" style="font-size:16px"></tas-icon>
                   <span class="text-sm font-medium">{{ resultActionMeta().label }}</span>
@@ -141,9 +177,9 @@ function nextActionMeta(action: QualifyLeadResultNextActionEnum | undefined): { 
       }
       @case ('form') {
         <div class="pb-6">
-          <!-- Form header -->
-          <div class="flex items-center justify-between mb-4">
-            <div>
+          <!-- Product selector + form header -->
+          <div class="flex items-start justify-between gap-4 mb-4">
+            <div class="flex-1 min-w-0">
               <h2 class="text-base font-semibold text-slate-800">{{ template()?.name }}</h2>
               @if (template()?.description) {
                 <p class="text-sm text-slate-500 mt-0.5">{{ template()?.description }}</p>
@@ -160,7 +196,7 @@ function nextActionMeta(action: QualifyLeadResultNextActionEnum | undefined): { 
                 tas-outlined-button
                 type="button"
                 (click)="clearDraft()"
-                class="text-xs"
+                class="text-xs shrink-0"
               >
                 <tas-icon iconName="feather:trash-2" style="font-size:12px"></tas-icon>
                 Effacer le brouillon
@@ -168,7 +204,54 @@ function nextActionMeta(action: QualifyLeadResultNextActionEnum | undefined): { 
             }
           </div>
 
-          <!-- Dynamic form -->
+          <!-- Product tabs (when multiple products available) -->
+          @if (availableProducts().length > 1) {
+            <div class="flex items-center gap-1 mb-4 overflow-x-auto">
+              @for (p of availableProducts(); track p.value) {
+                <button
+                  type="button"
+                  class="px-3 py-1.5 rounded-full text-xs font-medium transition-colors whitespace-nowrap"
+                  [class]="p.value === selectedProduct()
+                    ? 'bg-primary/15 text-primary'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'"
+                  (click)="onProductSwitch(p.value)"
+                >
+                  {{ p.label }}
+                </button>
+              }
+            </div>
+          }
+
+          <!-- Confirm product switch dialog -->
+          @if (showSwitchConfirm()) {
+            <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/30" (click)="cancelSwitch()">
+              <tas-card class="w-full max-w-sm shadow-xl" (click)="$event.stopPropagation()">
+                <div class="p-5">
+                  <div class="flex items-center gap-3 mb-3">
+                    <div class="w-10 h-10 rounded-full bg-amber-50 flex items-center justify-center shrink-0">
+                      <tas-icon iconName="feather:alert-triangle" class="text-amber-500" style="font-size:20px"></tas-icon>
+                    </div>
+                    <div>
+                      <p class="text-sm font-semibold text-slate-800">Changer de produit ?</p>
+                      <p class="text-xs text-slate-500 mt-0.5">
+                        Les réponses saisies pour « {{ productLabel(selectedProduct()) }} » seront perdues.
+                      </p>
+                    </div>
+                  </div>
+                  <div class="flex items-center justify-end gap-2 mt-4">
+                    <button tas-outlined-button type="button" (click)="cancelSwitch()">
+                      Annuler
+                    </button>
+                    <button tas-button color="primary" type="button" (click)="confirmSwitch()">
+                      Changer
+                    </button>
+                  </div>
+                </div>
+              </tas-card>
+            </div>
+          }
+
+          <!-- Dynamic form (product-specific) -->
           <dynamic-form-renderer
             [schema]="formSchema()!"
             [initialAnswers]="restoredAnswers()"
@@ -197,6 +280,7 @@ function nextActionMeta(action: QualifyLeadResultNextActionEnum | undefined): { 
 })
 export class LeadQualificationPage implements OnDestroy {
   private readonly _leadsApiService = inject(LeadsApiService);
+  private readonly _productsApiService = inject(ProductsApiService);
   private readonly _snackbar = inject(SnackbarService);
 
   private readonly _formRenderer = viewChild(DynamicFormRendererComponent);
@@ -211,38 +295,20 @@ export class LeadQualificationPage implements OnDestroy {
   public hasDraft = signal(false);
   public restoredAnswers = signal<DynamicFormAnswers>({});
 
+  /** Product selection */
+  public availableProducts = signal<{ label: string; value: string }[]>([]);
+  public selectedProduct = signal<string>('');
+  public showSwitchConfirm = signal(false);
+  private _pendingProduct: string | null = null;
+  private _currentAnswersSnapshot: DynamicFormAnswers = {};
+
   private _draftKey: string | null = null;
   private _saveTimer: ReturnType<typeof setInterval> | null = null;
 
   public readonly formSchema = computed<DynamicFormSchema | null>(() => {
     const t = this.template();
     if (!t) return null;
-    return {
-      sections: (t.sections ?? []).map((s) => ({
-        id: s.id!,
-        title: s.title ?? '',
-        description: s.description,
-        order: s.order ?? 0,
-      })),
-      questions: (t.questions ?? []).map((q) => ({
-        id: q.id!,
-        sectionId: q.sectionId,
-        label: q.label ?? '',
-        helpText: q.helpText,
-        placeholderText: q.placeholderText,
-        type: (q.type as any) ?? 'Text',
-        options: q.options,
-        isRequired: q.isRequired ?? false,
-        order: q.order ?? 0,
-        minValue: q.minValue,
-        maxValue: q.maxValue,
-        rules: (q.rules ?? []).map((r) => ({
-          triggerQuestionId: r.triggerQuestionId!,
-          triggerValue: r.triggerValue ?? '',
-          action: (r.action as any) ?? 'Show',
-        })),
-      })),
-    };
+    return templateToSchema(t);
   });
 
   public readonly resultActionMeta = computed(() =>
@@ -255,14 +321,45 @@ export class LeadQualificationPage implements OnDestroy {
       this.pageState.set('loading');
       this.submissionResult.set(null);
 
-      this._leadsApiService.getLead(leadId).pipe(
+      forkJoin({
+        lead: this._leadsApiService.getLead(leadId),
+        products: this._productsApiService.listProducts().pipe(
+          catchError(() => of([])),
+        ),
+      }).pipe(
         catchError(() => {
           this.pageState.set('loading');
           return EMPTY;
         }),
-      ).subscribe((lead) => {
+      ).subscribe(({ lead, products }) => {
         this.lead.set(lead);
-        this._loadTemplate(lead);
+
+        // Build list of available product types that have active templates
+        const productOpts = products
+          .filter((p) => p.code && PRODUCT_TYPE_LABELS[p.code])
+          .map((p) => ({
+            label: PRODUCT_TYPE_LABELS[p.code!] ?? p.name ?? p.code!,
+            value: p.code!,
+          }));
+
+        // If no products from API, fall back to the lead's interested product
+        if (productOpts.length === 0 && lead.interestedProduct) {
+          productOpts.push({
+            label: PRODUCT_TYPE_LABELS[lead.interestedProduct] ?? lead.interestedProduct,
+            value: lead.interestedProduct,
+          });
+        }
+
+        this.availableProducts.set(productOpts);
+
+        const initialProduct = lead.interestedProduct;
+        if (!initialProduct) {
+          this.pageState.set('no-product');
+          return;
+        }
+
+        this.selectedProduct.set(initialProduct);
+        this._loadTemplateForProduct(initialProduct);
       });
     });
   }
@@ -271,7 +368,42 @@ export class LeadQualificationPage implements OnDestroy {
     this._stopAutoSave();
   }
 
+  public productLabel(code: string): string {
+    return PRODUCT_TYPE_LABELS[code] ?? code;
+  }
+
+  public onProductSwitch(newProduct: string): void {
+    if (newProduct === this.selectedProduct()) return;
+
+    // Check if current form has answers that would be lost
+    const hasAnswers = Object.values(this._currentAnswersSnapshot).some(
+      (v) => v != null && v !== '' && v !== 'false',
+    );
+
+    if (hasAnswers) {
+      this._pendingProduct = newProduct;
+      this.showSwitchConfirm.set(true);
+    } else {
+      this._switchToProduct(newProduct);
+    }
+  }
+
+  public confirmSwitch(): void {
+    this.showSwitchConfirm.set(false);
+    if (this._pendingProduct) {
+      this._purgeDraft();
+      this._switchToProduct(this._pendingProduct);
+      this._pendingProduct = null;
+    }
+  }
+
+  public cancelSwitch(): void {
+    this.showSwitchConfirm.set(false);
+    this._pendingProduct = null;
+  }
+
   public onAnswersChanged(answers: DynamicFormAnswers): void {
+    this._currentAnswersSnapshot = answers;
     this._saveDraft(answers);
   }
 
@@ -349,13 +481,18 @@ export class LeadQualificationPage implements OnDestroy {
     }
   }
 
-  private _loadTemplate(lead: LeadDto): void {
-    const product = lead.interestedProduct;
-    if (!product) {
-      this.pageState.set('no-product');
-      return;
-    }
+  private _switchToProduct(product: string): void {
+    this._stopAutoSave();
+    this.selectedProduct.set(product);
+    this.template.set(null);
+    this.restoredAnswers.set({});
+    this.hasDraft.set(false);
+    this._currentAnswersSnapshot = {};
+    this.pageState.set('loading');
+    this._loadTemplateForProduct(product);
+  }
 
+  private _loadTemplateForProduct(product: string): void {
     this._leadsApiService.getActiveTemplateForProduct(product as any).pipe(
       catchError((err) => {
         if (err.status === 404) {
