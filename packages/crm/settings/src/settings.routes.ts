@@ -89,6 +89,11 @@ const settingsRoutes: Routes = [
     ],
   },
   {
+    path: 'dispatch-rules',
+    loadComponent: () =>
+      import('./containers/dispatch-rules/dispatch-rules'),
+  },
+  {
     path: 'pipeline-stages',
     loadComponent: () =>
       import('./containers/pipeline-stages/pipeline-stages'),

@@ -48,13 +48,13 @@ export class OverviewComponent {
           description:
             'Définir les étapes de validation appliquées aux leads, contacts et opportunités',
         },
-        // {
-        //   title: 'Rêgles de dispatching',
-        //   type: 'basic',
-        //   id: 'groups_dispatching',
-        //   link: '/settings/dispatch-rules',
-        //   description: 'Gérer les règles de dispatching des leads',
-        // },
+        {
+          title: 'Stratégies d\'affectation',
+          type: 'basic',
+          id: 'groups_dispatching',
+          link: '/settings/dispatch-rules',
+          description: 'Configurer et simuler les stratégies d\'affectation automatique des leads',
+        },
         {
           title: 'Utilisateurs',
           type: 'basic',

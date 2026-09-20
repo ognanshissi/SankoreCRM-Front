@@ -255,7 +255,7 @@ export class LeadHomepage {
 
   // ——— Drag & Drop ———
 
-  public onDrop(event: CdkDragDrop<string>): void {
+  public onDrop(event: CdkDragDrop<UpdatePipelineStageRequestStageEnum>): void {
     if (event.previousContainer === event.container) return;
 
     const lead: LeadDto = event.item.data;
