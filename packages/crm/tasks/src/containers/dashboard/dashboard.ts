@@ -308,7 +308,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
       data: { task },
     });
 
-    ref.closed.subscribe((result) => {
+    ref.closed.subscribe((result: any) => {
       if (result && typeof result === 'object' && result.completed) {
         this._loadTasks();
       }

@@ -6,7 +6,9 @@ import { TasIcon } from '@talisoft/ui/icon';
 import { TasTag, Severity } from '@talisoft/ui/tag';
 import { TimeagoPipe } from '@talisoft/ui/timeago';
 import { Button } from '@talisoft/ui/button';
+import { SideDrawerService } from '@talisoft/ui/side-drawer';
 import { LeadsApiService, ActivityDto, ActivityDtoTypeEnum } from '@sankore/crm-api';
+import { LogActivityDrawer } from './log-activity-drawer';
 
 function activityTypeMeta(type: ActivityDtoTypeEnum | undefined): { icon: string; label: string; severity: Severity } {
   switch (type) {
@@ -38,11 +40,23 @@ function activityTypeMeta(type: ActivityDtoTypeEnum | undefined): { icon: string
               <p class="font-semibold text-slate-800">Activités</p>
               <p class="text-sm text-slate-500 mt-0.5">Interactions enregistrées avec ce lead</p>
             </div>
-            @if (activities().length > 0) {
-              <span class="px-2 py-0.5 rounded-md bg-slate-100 text-slate-500 text-xs font-medium tabular-nums">
-                {{ activities().length }}
-              </span>
-            }
+            <div class="flex items-center gap-2">
+              @if (activities().length > 0) {
+                <span class="px-2 py-0.5 rounded-md bg-slate-100 text-slate-500 text-xs font-medium tabular-nums">
+                  {{ activities().length }}
+                </span>
+              }
+              <button
+                tas-raised-button
+                color="primary"
+                type="button"
+                class="text-xs"
+                (click)="openLogActivityDrawer()"
+              >
+                <tas-icon iconName="feather:plus" style="font-size:12px"></tas-icon>
+                Enregistrer
+              </button>
+            </div>
           </div>
 
           @if (activities().length === 0) {
@@ -113,6 +127,7 @@ function activityTypeMeta(type: ActivityDtoTypeEnum | undefined): { icon: string
 })
 export class LeadActivitesPage {
   private readonly _leadsApiService = inject(LeadsApiService);
+  private readonly _sideDrawer = inject(SideDrawerService);
 
   public readonly id = input.required<string>();
   public readonly typeMeta = activityTypeMeta;
@@ -139,6 +154,25 @@ export class LeadActivitesPage {
         this.hasMore.set((activities ?? []).length >= this._limit);
         this.isLoading.set(false);
       });
+    });
+  }
+
+  public openLogActivityDrawer(): void {
+    const ref = this._sideDrawer.open(LogActivityDrawer, {
+      width: '100%',
+      height: '100%',
+      panelClass: 'side-drawer-panel',
+      data: { leadId: this.id(), leadName: 'Lead' },
+    });
+
+    ref.closed.subscribe((result: any) => {
+      if (result && typeof result === 'object' && 'activity' in result) {
+        // Optimistic insert at the top
+        if (result.activity) {
+          this.activities.update((list) => [result.activity, ...list]);
+
+        }
+      }
     });
   }
 
