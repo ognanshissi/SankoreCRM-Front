@@ -7,6 +7,10 @@ export const leadManagementRoutes = [
     component: LeadHomepage,
   },
   {
+    path: 'analytics',
+    loadComponent: () => import('./containers/analytics/analytics-dashboard'),
+  },
+  {
     path: ':id',
     loadComponent: () => EditLeadNavigation,
     children: [

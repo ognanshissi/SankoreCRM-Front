@@ -96,6 +96,13 @@ export class PortalLayoutComponent implements OnInit {
       //   link: '/portal/automation-workflows',
       // },
       {
+        id: 'leads-analytics',
+        icon: 'feather:bar-chart-2',
+        title: 'Tableau de bord',
+        type: 'basic',
+        link: '/leads/analytics',
+      },
+      {
         id: 'workflow-health',
         icon: 'feather:activity',
         title: 'Analytiques workflows',
