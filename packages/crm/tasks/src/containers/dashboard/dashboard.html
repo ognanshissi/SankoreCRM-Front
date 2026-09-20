@@ -261,6 +261,26 @@
                 @if (step.approverRoleCode) { <span class="text-xs text-slate-400 inline-flex items-center gap-1"><tas-icon iconName="feather:users" style="font-size:10px"></tas-icon> {{ step.approverRoleCode }}</span> }
                 @if (step.dueAt) { <span class="text-xs inline-flex items-center gap-1" [ngClass]="overdue ? 'text-red-600 font-medium' : 'text-amber-600'"><tas-icon iconName="feather:calendar" style="font-size:10px"></tas-icon> {{ step.dueAt | dateTimeAgo }}</span> }
               </div>
+              <!-- Entity context -->
+              @if (queueEntityInfo(step); as entity) {
+                <div class="flex items-center gap-2 mt-1.5">
+                  <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-slate-100 text-[10px] font-medium text-slate-600">
+                    <tas-icon iconName="feather:file-text" style="font-size:9px"></tas-icon>
+                    {{ entity.entityType }}
+                  </span>
+                  @if (entity.templateName) {
+                    <span class="text-[10px] text-slate-400">{{ entity.templateName }}</span>
+                  }
+                  <span class="text-[10px] text-slate-400 font-mono">{{ entity.entityId }}</span>
+                  @if (entity.entityType === 'Lead' || entity.entityType === 'lead') {
+                    <button type="button" class="text-[10px] text-primary hover:underline inline-flex items-center gap-0.5"
+                      (click)="navigateToEntity(entity.entityType, entity.entityId); $event.stopPropagation()">
+                      <tas-icon iconName="feather:external-link" style="font-size:8px"></tas-icon>
+                      Voir le lead
+                    </button>
+                  }
+                </div>
+              }
             </div>
             <div class="flex items-center gap-1.5 shrink-0">
               <button tas-raised-button color="primary" type="button" size="small" [disabled]="isActing" (click)="openQueueAction(step, 'approve')"><tas-icon iconName="feather:check" style="font-size:12px"></tas-icon> Approuver</button>

@@ -2,7 +2,7 @@ import { Component, computed, inject, signal, OnInit, OnDestroy } from '@angular
 import { NgClass } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-import { catchError, EMPTY } from 'rxjs';
+import { catchError, EMPTY, forkJoin, of } from 'rxjs';
 import { TasCard } from '@talisoft/ui/card';
 import { TasSpinner } from '@talisoft/ui/spinner';
 import { TasIcon } from '@talisoft/ui/icon';
@@ -170,6 +170,19 @@ export class DashboardComponent implements OnInit, OnDestroy {
   public navigatingStepId = signal<string | null>(null);
   public actionComment = '';
 
+  /** Map instanceId → entity context resolved from WorkflowInstanceDto */
+  public queueEntityMap = signal<Map<string, { entityType: string; entityId: string; templateName: string }>>(new Map());
+
+  public queueEntityInfo(step: MyStepDto): { entityType: string; entityId: string; templateName: string } | null {
+    return this.queueEntityMap().get(step.instanceId ?? '') ?? null;
+  }
+
+  public navigateToEntity(entityType: string, entityId: string): void {
+    if (entityType === 'Lead' || entityType === 'lead') {
+      this._router.navigate(['/leads', entityId]);
+    }
+  }
+
   public readonly queueOverdueCount = computed(() => this.queueSteps().filter((s) => this.isQueueOverdue(s.dueAt)).length);
   public readonly sortedQueueSteps = computed(() =>
     [...this.queueSteps()].sort((a, b) => {
@@ -277,7 +290,35 @@ export class DashboardComponent implements OnInit, OnDestroy {
   private _loadQueue(): void {
     this.queueLoading.set(true);
     this._workflowApi.listMySteps().pipe(catchError(() => { this.queueLoading.set(false); return EMPTY; }))
-      .subscribe((steps: any) => { this.queueSteps.set(steps ?? []); this.queueLoading.set(false); });
+      .subscribe((steps: any) => {
+        this.queueSteps.set(steps ?? []);
+        this.queueLoading.set(false);
+        this._resolveQueueEntities(steps ?? []);
+      });
+  }
+
+  private _resolveQueueEntities(steps: MyStepDto[]): void {
+    const instanceIds = [...new Set(steps.map((s) => s.instanceId).filter(Boolean) as string[])];
+    if (instanceIds.length === 0) return;
+
+    const calls = instanceIds.reduce((acc, id) => {
+      acc[id] = this._workflowApi.getWorkflowInstance(id).pipe(catchError(() => of(null)));
+      return acc;
+    }, {} as Record<string, any>);
+
+    forkJoin(calls).subscribe((results: any) => {
+      const map = new Map<string, { entityType: string; entityId: string; templateName: string }>();
+      for (const [instanceId, inst] of Object.entries(results)) {
+        if (inst && (inst as any).entityId) {
+          map.set(instanceId, {
+            entityType: (inst as any).entityType ?? '',
+            entityId: (inst as any).entityId ?? '',
+            templateName: (inst as any).templateName ?? '',
+          });
+        }
+      }
+      this.queueEntityMap.set(map);
+    });
   }
 
   private _loadDone(page: number, append = false): void {
