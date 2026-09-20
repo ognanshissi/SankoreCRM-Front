@@ -55,7 +55,7 @@ const DRAFT_STORAGE_KEY = 'pipeline_stages_draft';
     HasPermissionDirective,
   ],
   template: `
-    <ng-container *sankoreHasPermission="'pipeline.configure'">
+    <ng-container *hasPermission="'pipeline.configure'">
       @if (isLoading()) {
         <div class="flex justify-center py-24">
           <tas-spinner size="10" class="text-primary"></tas-spinner>

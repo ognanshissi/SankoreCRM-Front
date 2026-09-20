@@ -2,7 +2,7 @@ import { Directive, effect, inject, input, TemplateRef, ViewContainerRef } from 
 import { AuthenticationService } from '../services/authentification.service';
 
 @Directive({
-  selector: '[sankoreHasPermission]',
+  selector: '[hasPermission]',
   standalone: true,
 })
 export class HasPermissionDirective {
@@ -10,13 +10,13 @@ export class HasPermissionDirective {
   private readonly _templateRef = inject(TemplateRef);
   private readonly _viewContainer = inject(ViewContainerRef);
 
-  public readonly sankoreHasPermission = input.required<string>();
+  public readonly hasPermission = input.required<string>();
 
   private _rendered = false;
 
   constructor() {
     effect(() => {
-      const requiredCode = this.sankoreHasPermission();
+      const requiredCode = this.hasPermission();
       const permissions = this._auth.userPermissions();
       const codes = permissions?.rolePermissionCodes ?? [];
       const hasAccess = codes.includes(requiredCode);
