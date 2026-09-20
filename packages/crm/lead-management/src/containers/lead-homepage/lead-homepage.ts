@@ -1,7 +1,8 @@
 import { Component, computed, inject, signal, Signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
-import { map } from 'rxjs';
+import { catchError, EMPTY, map } from 'rxjs';
+import { CdkDragDrop, DragDropModule, moveItemInArray, transferArrayItem } from '@angular/cdk/drag-drop';
 import { Button } from '@talisoft/ui/button';
 import { TasIcon } from '@talisoft/ui/icon';
 import { TasCard } from '@talisoft/ui/card';
@@ -13,9 +14,11 @@ import {
   LeadDto,
   LeadsApiService,
   LeadStatsDto,
+  UpdatePipelineStageRequestStageEnum,
 } from '@sankore/crm-api';
 import { SideDrawerService } from '@talisoft/ui/side-drawer';
 import { TimeagoPipe } from '@talisoft/ui/timeago';
+import { SnackbarService } from '@talisoft/ui/snackbar';
 import { CreateLeadComponent } from '../create-lead/create-lead';
 import { ImportLeadsComponent } from '../import-leads/import-leads';
 import { Severity, TasTag } from '@talisoft/ui/tag';
@@ -79,6 +82,55 @@ const INTENT_FILTER_OPTIONS = [
   { label: 'Très chaud', value: '3' },
 ];
 
+// ——— Pipeline stages (Kanban columns) ———
+
+export interface PipelineColumn {
+  stage: UpdatePipelineStageRequestStageEnum;
+  label: string;
+  color: string;
+  /** Allowed stages a lead can transition TO from this column (beyond adjacent) */
+  index: number;
+}
+
+const PIPELINE_COLUMNS: PipelineColumn[] = [
+  { stage: UpdatePipelineStageRequestStageEnum.New,                  label: 'Nouveau',            color: '#6366f1', index: 0 },
+  { stage: UpdatePipelineStageRequestStageEnum.ContactAttempted,     label: 'Contact tenté',      color: '#818cf8', index: 1 },
+  { stage: UpdatePipelineStageRequestStageEnum.ContactEstablished,   label: 'Contact établi',     color: '#f59e0b', index: 2 },
+  { stage: UpdatePipelineStageRequestStageEnum.NeedIdentified,       label: 'Besoin identifié',   color: '#f97316', index: 3 },
+  { stage: UpdatePipelineStageRequestStageEnum.Qualified,            label: 'Qualifié',           color: '#8b5cf6', index: 4 },
+  { stage: UpdatePipelineStageRequestStageEnum.ProductProposed,      label: 'Produit proposé',    color: '#3b82f6', index: 5 },
+  { stage: UpdatePipelineStageRequestStageEnum.ApplicationStarted,   label: 'Dossier démarré',    color: '#0ea5e9', index: 6 },
+  { stage: UpdatePipelineStageRequestStageEnum.DocumentCollection,   label: 'Collecte docs',      color: '#06b6d4', index: 7 },
+  { stage: UpdatePipelineStageRequestStageEnum.ApplicationCompleted, label: 'Dossier complet',    color: '#14b8a6', index: 8 },
+  { stage: UpdatePipelineStageRequestStageEnum.ApprovalPending,      label: 'En approbation',     color: '#84cc16', index: 9 },
+  { stage: UpdatePipelineStageRequestStageEnum.Converted,            label: 'Converti',           color: '#22c55e', index: 10 },
+  { stage: UpdatePipelineStageRequestStageEnum.Lost,                 label: 'Perdu',              color: '#ef4444', index: 11 },
+];
+
+const STAGE_INDEX = new Map(PIPELINE_COLUMNS.map((c) => [c.stage, c.index]));
+
+/**
+ * Transition rules: a lead can move forward by up to 2 stages, backward by 1,
+ * or to Lost from any position.
+ */
+function isTransitionAllowed(from: string, to: string): boolean {
+  if (from === to) return false;
+  if (to === UpdatePipelineStageRequestStageEnum.Lost) return true;
+  const fi = STAGE_INDEX.get(from as any);
+  const ti = STAGE_INDEX.get(to as any);
+  if (fi == null || ti == null) return false;
+  const delta = ti - fi;
+  return delta >= -1 && delta <= 2;
+}
+
+function transitionBlockedMessage(from: string, to: string): string {
+  const fromCol = PIPELINE_COLUMNS.find((c) => c.stage === from);
+  const toCol = PIPELINE_COLUMNS.find((c) => c.stage === to);
+  return `Transition non autorisée : « ${fromCol?.label ?? from} » → « ${toCol?.label ?? to} ». Vous pouvez avancer de 2 étapes maximum, reculer de 1, ou passer en Perdu.`;
+}
+
+// ——— Old status-based columns (kept for status-view backward compat) ———
+
 const KANBAN_COLUMNS = [
   { status: 'New',       statusValue: 'New',       label: 'Nouveau',  color: '#6366f1' },
   { status: 'Contacted', statusValue: 'Contacted', label: 'Contacté', color: '#f59e0b' },
@@ -97,12 +149,13 @@ interface StatusTab {
 
 @Component({
   templateUrl: './lead-homepage.html',
-  imports: [FormsModule, Button, TasIcon, TasCard, TasTable, TasTag, TimeagoPipe, TasSelect],
+  imports: [FormsModule, Button, TasIcon, TasCard, TasTable, TasTag, TimeagoPipe, TasSelect, DragDropModule],
 })
 export class LeadHomepage {
   private readonly _leadsApiService = inject(LeadsApiService);
   private readonly _agenciesApiService = inject(AgenciesApiService);
   private readonly _sideDrawerService = inject(SideDrawerService);
+  private readonly _snackbar = inject(SnackbarService);
   private readonly _router = inject(Router);
 
   public isLoading = signal(false);
@@ -123,9 +176,13 @@ export class LeadHomepage {
   public readonly sourceFilterOptions = SOURCE_FILTER_OPTIONS;
   public readonly intentFilterOptions = INTENT_FILTER_OPTIONS;
   public readonly kanbanColumns = KANBAN_COLUMNS;
+  public readonly pipelineColumns = PIPELINE_COLUMNS;
 
   public readonly leadStatusMeta = leadStatusMeta;
   public readonly intentMeta = intentMeta;
+
+  /** Currently keyboard-focused card ID */
+  public focusedCardId = signal<string | null>(null);
 
   // Status tabs with live counts from stats
   public readonly statusTabs: StatusTab[] = [
@@ -157,6 +214,121 @@ export class LeadHomepage {
     this._loadAgencies();
     this._loadStats();
   }
+
+  // ——— Pipeline helpers ———
+
+  public pipelineLeads(stage: string): LeadDto[] {
+    return this.leads().filter((l) => (l.pipelineStage ?? l.status) === stage);
+  }
+
+  public stageCount(stage: string): number {
+    return this.stats().byPipelineStage?.find((s) => s.stage === stage)?.count ?? 0;
+  }
+
+  public stageTotalAmount(stage: string): number {
+    return this.pipelineLeads(stage).reduce((sum, l) => sum + (l.desiredAmount?.amount ?? 0), 0);
+  }
+
+  public stageSlaBreachCount(stage: string): number {
+    const leads = this.pipelineLeads(stage);
+    const now = Date.now();
+    return leads.filter((l) => {
+      if (!l.expiresAt) return false;
+      return new Date(l.expiresAt).getTime() < now;
+    }).length;
+  }
+
+  public formatAmount(amount: number): string {
+    if (amount >= 1_000_000) return (amount / 1_000_000).toFixed(1) + 'M';
+    if (amount >= 1_000) return (amount / 1_000).toFixed(0) + 'K';
+    return amount.toString();
+  }
+
+  public pipelineColumnIds(): string[] {
+    return this.pipelineColumns.map((c) => 'pipeline-' + c.stage);
+  }
+
+  // ——— Drag & Drop ———
+
+  public onDrop(event: CdkDragDrop<string>): void {
+    if (event.previousContainer === event.container) return;
+
+    const lead: LeadDto = event.item.data;
+    const fromStage = event.previousContainer.data;
+    const toStage = event.container.data;
+
+    if (!isTransitionAllowed(fromStage, toStage)) {
+      this._snackbar.error('Transition refusée', transitionBlockedMessage(fromStage, toStage));
+      return;
+    }
+
+    this._moveLeadOptimistic(lead, fromStage, toStage);
+  }
+
+  // ——— Keyboard navigation ———
+
+  public onCardKeydown(event: KeyboardEvent, lead: LeadDto, currentStage: string): void {
+    const currentIdx = STAGE_INDEX.get(currentStage as any);
+    if (currentIdx == null) return;
+
+    let targetStage: string | null = null;
+
+    if (event.key === 'ArrowRight') {
+      const nextCol = PIPELINE_COLUMNS[currentIdx + 1];
+      if (nextCol) targetStage = nextCol.stage;
+    } else if (event.key === 'ArrowLeft') {
+      const prevCol = PIPELINE_COLUMNS[currentIdx - 1];
+      if (prevCol) targetStage = prevCol.stage;
+    } else if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      this.navigateToLead(lead);
+      return;
+    } else {
+      return;
+    }
+
+    event.preventDefault();
+
+    if (!targetStage) return;
+
+    if (!isTransitionAllowed(currentStage, targetStage)) {
+      this._snackbar.error('Transition refusée', transitionBlockedMessage(currentStage, targetStage));
+      return;
+    }
+
+    this._moveLeadOptimistic(lead, currentStage, targetStage);
+  }
+
+  private _moveLeadOptimistic(lead: LeadDto, fromStage: string, toStage: string): void {
+    // Optimistic update
+    this.leads.update((all) =>
+      all.map((l) =>
+        l.id === lead.id ? { ...l, pipelineStage: toStage } : l,
+      ),
+    );
+
+    this._leadsApiService
+      .updateLeadPipelineStage(lead.id!, { stage: toStage as any })
+      .pipe(
+        catchError(() => {
+          // Rollback
+          this.leads.update((all) =>
+            all.map((l) =>
+              l.id === lead.id ? { ...l, pipelineStage: fromStage } : l,
+            ),
+          );
+          this._snackbar.error('Erreur', 'Le serveur a rejeté la transition. La carte a été remise en place.');
+          return EMPTY;
+        }),
+      )
+      .subscribe(() => {
+        const toLabel = PIPELINE_COLUMNS.find((c) => c.stage === toStage)?.label ?? toStage;
+        this._snackbar.success('Lead déplacé', `Déplacé vers « ${toLabel} »`);
+        this._loadStats();
+      });
+  }
+
+  // ——— Existing methods (unchanged) ———
 
   public statusCount(status: string): number {
     return this.stats().byStatus?.find((s) => s.status === status)?.count ?? 0;
