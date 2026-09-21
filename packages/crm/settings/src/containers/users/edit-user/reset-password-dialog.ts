@@ -9,11 +9,10 @@ import {
   TasSideDrawer,
 } from '@talisoft/ui/side-drawer';
 import { Button } from '@talisoft/ui/button';
-import { TasFormField, TasLabel, TasError } from '@talisoft/ui/form-field';
-import { TasInput } from '@talisoft/ui/input';
 import { TasIcon } from '@talisoft/ui/icon';
 import { UsersApiService } from '@sankore/crm-api';
 import { SnackbarService } from '@talisoft/ui/snackbar';
+import { TasInputPassword } from '@talisoft/ui/input-password';
 
 export interface ResetPasswordDialogData {
   userId: string;
@@ -25,15 +24,12 @@ export interface ResetPasswordDialogData {
   imports: [
     TasSideDrawer,
     Button,
-    TasFormField,
-    TasLabel,
-    TasError,
     TasIcon,
     TasDrawerAction,
     TasDrawerContent,
     TasDrawerTitle,
-    TasInput,
     FormsModule,
+    TasInputPassword,
   ],
   templateUrl: 'reset-password-dialog.html',
 })
@@ -43,25 +39,23 @@ export class ResetPasswordDialog {
   private readonly _usersApiService = inject(UsersApiService);
   private readonly _snackbarService = inject(SnackbarService);
 
-  public newPassword = '';
-  public confirmPassword = '';
-  public showNew = signal(false);
-  public showConfirm = signal(false);
+  public newPassword = signal('');
+  public confirmPassword = signal('');
   public submitted = signal(false);
   public isSaving = signal(false);
 
   public passwordsMatch = computed(
     () =>
-      !!this.newPassword &&
-      !!this.confirmPassword &&
-      this.newPassword === this.confirmPassword,
+      !!this.newPassword() &&
+      !!this.confirmPassword() &&
+      this.newPassword() === this.confirmPassword(),
   );
 
   public submit(): void {
     this.submitted.set(true);
     if (
-      !this.newPassword ||
-      this.newPassword.length < 8 ||
+      !this.newPassword() ||
+      this.newPassword().length < 8 ||
       !this.passwordsMatch()
     )
       return;
@@ -69,8 +63,8 @@ export class ResetPasswordDialog {
     this.isSaving.set(true);
     this._usersApiService
       .adminResetPassword(this.data.userId, {
-        newPassword: this.newPassword,
-        confirmPassword: this.confirmPassword,
+        newPassword: this.newPassword(),
+        confirmPassword: this.confirmPassword(),
       })
       .pipe(
         catchError(() => {

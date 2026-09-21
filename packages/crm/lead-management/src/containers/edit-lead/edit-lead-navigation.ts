@@ -141,13 +141,13 @@ function parseFactors(factorsJson: string | null | undefined): ScoreFactor[] {
             </button>
           }
           @if (lead()!.status !== 'Converted' && lead()!.status !== 'Lost' && lead()!.status !== 'Expired') {
-            <button tas-raised-button color="primary" type="button" class="text-xs" (click)="openConvertWizard()">
+            <button tas-raised-button color="primary" type="button" (click)="openConvertWizard()">
               <tas-icon iconName="feather:user-check" style="font-size:14px"></tas-icon>
               Convertir
             </button>
           }
           @if (lead()!.status === 'Lost' || lead()!.status === 'Expired' || lead()!.status === 'Recycled') {
-            <button tas-button color="primary" type="button" class="text-xs"
+            <button tas-button color="primary" type="button"
               [disabled]="isReopening()" (click)="reopenLead()">
               @if (isReopening()) { <tas-spinner size="3" class="text-white"></tas-spinner> }
               <tas-icon iconName="feather:rotate-ccw" style="font-size:14px"></tas-icon>
@@ -156,7 +156,7 @@ function parseFactors(factorsJson: string | null | undefined): ScoreFactor[] {
           }
 
           <!-- Actions menu -->
-          <button tas-outlined-button type="button" class="text-xs" TasMenuTrigger [panel]="actionsMenu">
+          <button tas-outlined-button type="button" TasMenuTrigger [panel]="actionsMenu">
             <tas-icon iconName="feather:more-horizontal" style="font-size:14px"></tas-icon>
             Actions
             <tas-icon iconName="feather:chevron-down" style="font-size:10px"></tas-icon>
@@ -165,26 +165,26 @@ function parseFactors(factorsJson: string | null | undefined): ScoreFactor[] {
           <ng-template #actionsMenu>
             <tas-menu>
               <tas-menu-item>
-                <button type="button" class="w-full flex items-center gap-2 text-xs text-slate-700" (click)="openReassignDrawer()">
+                <button type="button" class="w-full flex items-center gap-2  text-slate-700" (click)="openReassignDrawer()">
                   <tas-icon iconName="feather:user-plus" class="text-slate-400" style="font-size:13px"></tas-icon>
                   Réassigner à un agent
                 </button>
               </tas-menu-item>
               <tas-menu-item [disabled]="isReturningToQueue()">
-                <button type="button" class="w-full flex items-center gap-2 text-xs text-slate-700" (click)="returnToQueue()">
+                <button type="button" class="w-full flex items-center gap-2 text-slate-700" (click)="returnToQueue()">
                   <tas-icon iconName="feather:corner-down-left" class="text-slate-400" style="font-size:13px"></tas-icon>
                   Remettre en file d'attente
                 </button>
               </tas-menu-item>
               @if (lead()!.status !== 'Converted') {
                 <tas-menu-item>
-                  <button type="button" class="w-full flex items-center gap-2 text-xs text-slate-700" (click)="openNurtureRecycleDrawer()">
+                  <button type="button" class="w-full flex items-center gap-2  text-slate-700" (click)="openNurtureRecycleDrawer()">
                     <tas-icon iconName="feather:refresh-cw" class="text-amber-500" style="font-size:13px"></tas-icon>
                     Nurturing / Recycler
                   </button>
                 </tas-menu-item>
                 <tas-menu-item>
-                  <button type="button" class="w-full flex items-center gap-2 text-xs text-red-600" (click)="closeLead()">
+                  <button type="button" class="w-full flex items-center gap-2 text-red-600" (click)="closeLead()">
                     <tas-icon iconName="feather:x-square" class="text-red-400" style="font-size:13px"></tas-icon>
                     Clôturer le lead
                   </button>
