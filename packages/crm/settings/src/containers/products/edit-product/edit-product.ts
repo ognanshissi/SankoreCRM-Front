@@ -22,7 +22,6 @@ import { SnackbarService } from '@talisoft/ui/snackbar';
 import { ConfirmDialogService } from '@talisoft/ui/confirm-dialog';
 import { BreadcrumbService } from '@sankore/crm/common';
 import { ProductParametersEditor } from '../product-parameters-editor';
-import { Linter } from 'eslint';
 
 @Component({
   selector: 'edit-product',

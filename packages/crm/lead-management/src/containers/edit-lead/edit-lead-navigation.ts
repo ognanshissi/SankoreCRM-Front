@@ -14,6 +14,7 @@ import { ConvertLeadWizard } from './convert-lead-wizard';
 import { NurtureRecycleDrawer } from './nurture-recycle-drawer';
 import { Severity, TasTag } from '@talisoft/ui/tag';
 import { TimeagoPipe } from '@talisoft/ui/timeago';
+import { Menu, MenuItem, TasMenuTrigger } from '@talisoft/ui/menu';
 import { catchError, EMPTY } from 'rxjs';
 
 interface LeadMenuItem {
@@ -92,6 +93,9 @@ function parseFactors(factorsJson: string | null | undefined): ScoreFactor[] {
     Button,
     TasTag,
     TimeagoPipe,
+    Menu,
+    MenuItem,
+    TasMenuTrigger,
   ],
   template: `
     @if (notFound()) {
@@ -126,88 +130,68 @@ function parseFactors(factorsJson: string | null | undefined): ScoreFactor[] {
         </div>
         @if (!isLoading() && lead()) {
           <tas-tag [severity]="statusMeta().severity">{{ statusMeta().label }}</tas-tag>
-          <button
-            tas-outlined-button
-            color="primary"
-            type="button"
-            (click)="openReassignDrawer()"
-            class="text-xs"
-          >
-            <tas-icon iconName="feather:user-plus" style="font-size:14px"></tas-icon>
-            Réassigner
-          </button>
-          @if (lead()!.status === 'Lost' || lead()!.status === 'Expired' || lead()!.status === 'Recycled') {
-            <button
-              tas-outlined-button
-              color="primary"
-              type="button"
-              (click)="reopenLead()"
-              class="text-xs"
-              [disabled]="isReopening()"
-            >
-              @if (isReopening()) { <tas-spinner size="3" class="text-primary"></tas-spinner> }
-              <tas-icon iconName="feather:rotate-ccw" style="font-size:14px"></tas-icon>
-              Réouvrir
-            </button>
-          }
-          @if (lead()!.status !== 'Converted') {
-            <button
-              tas-outlined-button
-              color="primary"
-              type="button"
-              (click)="openConvertWizard()"
-              class="text-xs"
-            >
-              <tas-icon iconName="feather:user-check" style="font-size:14px"></tas-icon>
-              Convertir
-            </button>
-            <button
-              tas-outlined-button
-              color="accent"
-              type="button"
-              (click)="openNurtureRecycleDrawer()"
-              class="text-xs"
-            >
-              <tas-icon iconName="feather:refresh-cw" style="font-size:14px"></tas-icon>
-              Nurturing / Recycler
-            </button>
-            <button
-              tas-outlined-button
-              type="button"
-              color="warn"
-              (click)="closeLead()"
-              class="text-xs"
-            >
-              <tas-icon iconName="feather:x-square" style="font-size:14px"></tas-icon>
-              Clôturer
-            </button>
-          }
+
+          <!-- Primary actions (always visible) -->
           @if (lead()!.status === 'New' && !lead()!.lastActivityAt) {
-            <button
-              tas-outlined-button
-              color="primary"
-              type="button"
-              (click)="recordFirstContact()"
-              class="text-xs"
-              [disabled]="isRecordingFirstContact()"
-            >
-              @if (isRecordingFirstContact()) { <tas-spinner size="3" class="text-primary"></tas-spinner> }
+            <button tas-raised-button color="primary" type="button" class="text-xs"
+              [disabled]="isRecordingFirstContact()" (click)="recordFirstContact()">
+              @if (isRecordingFirstContact()) { <tas-spinner size="3" class="text-white"></tas-spinner> }
               <tas-icon iconName="feather:phone-forwarded" style="font-size:14px"></tas-icon>
               1er contact
             </button>
           }
-          <button
-            tas-outlined-button
-            color="primary"
-            type="button"
-            (click)="returnToQueue()"
-            class="text-xs"
-            [disabled]="isReturningToQueue()"
-          >
-            @if (isReturningToQueue()) { <tas-spinner size="3" class="text-primary"></tas-spinner> }
-            <tas-icon iconName="feather:corner-down-left" style="font-size:14px"></tas-icon>
-            Remettre en file
+          @if (lead()!.status !== 'Converted' && lead()!.status !== 'Lost' && lead()!.status !== 'Expired') {
+            <button tas-raised-button color="primary" type="button" class="text-xs" (click)="openConvertWizard()">
+              <tas-icon iconName="feather:user-check" style="font-size:14px"></tas-icon>
+              Convertir
+            </button>
+          }
+          @if (lead()!.status === 'Lost' || lead()!.status === 'Expired' || lead()!.status === 'Recycled') {
+            <button tas-button color="primary" type="button" class="text-xs"
+              [disabled]="isReopening()" (click)="reopenLead()">
+              @if (isReopening()) { <tas-spinner size="3" class="text-white"></tas-spinner> }
+              <tas-icon iconName="feather:rotate-ccw" style="font-size:14px"></tas-icon>
+              Réouvrir
+            </button>
+          }
+
+          <!-- Actions menu -->
+          <button tas-outlined-button type="button" class="text-xs" TasMenuTrigger [panel]="actionsMenu">
+            <tas-icon iconName="feather:more-horizontal" style="font-size:14px"></tas-icon>
+            Actions
+            <tas-icon iconName="feather:chevron-down" style="font-size:10px"></tas-icon>
           </button>
+
+          <ng-template #actionsMenu>
+            <tas-menu>
+              <tas-menu-item>
+                <button type="button" class="w-full flex items-center gap-2 text-xs text-slate-700" (click)="openReassignDrawer()">
+                  <tas-icon iconName="feather:user-plus" class="text-slate-400" style="font-size:13px"></tas-icon>
+                  Réassigner à un agent
+                </button>
+              </tas-menu-item>
+              <tas-menu-item [disabled]="isReturningToQueue()">
+                <button type="button" class="w-full flex items-center gap-2 text-xs text-slate-700" (click)="returnToQueue()">
+                  <tas-icon iconName="feather:corner-down-left" class="text-slate-400" style="font-size:13px"></tas-icon>
+                  Remettre en file d'attente
+                </button>
+              </tas-menu-item>
+              @if (lead()!.status !== 'Converted') {
+                <tas-menu-item>
+                  <button type="button" class="w-full flex items-center gap-2 text-xs text-slate-700" (click)="openNurtureRecycleDrawer()">
+                    <tas-icon iconName="feather:refresh-cw" class="text-amber-500" style="font-size:13px"></tas-icon>
+                    Nurturing / Recycler
+                  </button>
+                </tas-menu-item>
+                <tas-menu-item>
+                  <button type="button" class="w-full flex items-center gap-2 text-xs text-red-600" (click)="closeLead()">
+                    <tas-icon iconName="feather:x-square" class="text-red-400" style="font-size:13px"></tas-icon>
+                    Clôturer le lead
+                  </button>
+                </tas-menu-item>
+              }
+            </tas-menu>
+          </ng-template>
         }
       </div>
 
@@ -240,6 +224,23 @@ function parseFactors(factorsJson: string | null | undefined): ScoreFactor[] {
                     {{ lead()!.source }}
                   </p>
                 }
+                <!-- Status lifecycle -->
+                <div class="mt-3">
+                  <p class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-2">Cycle de vie</p>
+                  <div class="flex items-center gap-0.5">
+                    @for (step of lifecycleSteps; track step.status) {
+                      <div class="flex-1 flex flex-col items-center gap-0.5">
+                        <div class="w-full h-1 rounded-full"
+                          [class]="isLifecycleReached(step.status) ? step.activeColor : 'bg-slate-100'"></div>
+                        <span class="text-[8px] leading-none"
+                          [class]="lead()!.status === step.status ? 'font-bold ' + step.activeText : isLifecycleReached(step.status) ? 'text-slate-500' : 'text-slate-300'">
+                          {{ step.label }}
+                        </span>
+                      </div>
+                    }
+                  </div>
+                </div>
+
                 <!-- Score & Temperature badge -->
                 @if (lead()!.score != null || lead()!.intentLevel != null) {
                   <div class="mt-3 relative">
@@ -430,6 +431,25 @@ export class EditLeadNavigation implements OnDestroy {
   public latestFactorsJson = signal<string | null>(null);
 
   public readonly scoreFactors = computed(() => parseFactors(this.latestFactorsJson()));
+
+  public readonly lifecycleSteps = [
+    { status: 'New',       label: 'Nouveau',  activeColor: 'bg-blue-500',   activeText: 'text-blue-600' },
+    { status: 'Contacted', label: 'Contacté',  activeColor: 'bg-amber-500',  activeText: 'text-amber-600' },
+    { status: 'Qualified', label: 'Qualifié',  activeColor: 'bg-purple-500', activeText: 'text-purple-600' },
+    { status: 'Converted', label: 'Converti',  activeColor: 'bg-green-500',  activeText: 'text-green-600' },
+  ];
+
+  private readonly _lifecycleOrder: Record<string, number> = {
+    New: 0, Contacted: 1, Qualified: 2, Converted: 3,
+    Nurturing: 1, Recycled: 1, Lost: -1, Expired: -1,
+  };
+
+  public isLifecycleReached(stepStatus: string): boolean {
+    const currentStatus = this.lead()?.status ?? '';
+    const currentOrder = this._lifecycleOrder[currentStatus] ?? -1;
+    const stepOrder = this._lifecycleOrder[stepStatus] ?? -1;
+    return stepOrder <= currentOrder;
+  }
 
   public readonly intentLevels = [
     { value: '0', label: 'Froid',  activeClass: 'bg-slate-200 text-slate-700' },
