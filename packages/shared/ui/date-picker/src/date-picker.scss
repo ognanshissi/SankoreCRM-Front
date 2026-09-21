@@ -140,7 +140,7 @@
 }
 
 .tas-date-picker__time-value {
-  @apply flex items-center justify-center w-10 h-10 rounded-lg font-inter text-xl font-semibold text-gray-800;
+  @apply flex items-center justify-center w-10 h-10 rounded-lg text-xl font-semibold text-gray-800;
   background-color: theme('colors.gray.50');
 }
 

@@ -96,8 +96,7 @@ export class ProductsApiService {
     }
 
     /**
-     * Create a product speciality
-     * Creates a new product speciality for the tenant. Code must be unique per tenant. Requires permission: product:create.
+     * Create a financial product
      * @param createProductRequest 
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
@@ -301,14 +300,21 @@ export class ProductsApiService {
     }
 
     /**
-     * List all product specialities for the tenant
+     * List financial products for the tenant
+     * @param activeOnly 
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      */
-    public listProducts(observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<Array<ProductDto>>;
-    public listProducts(observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<Array<ProductDto>>>;
-    public listProducts(observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<Array<ProductDto>>>;
-    public listProducts(observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
+    public listProducts(activeOnly?: boolean, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<Array<ProductDto>>;
+    public listProducts(activeOnly?: boolean, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<Array<ProductDto>>>;
+    public listProducts(activeOnly?: boolean, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<Array<ProductDto>>>;
+    public listProducts(activeOnly?: boolean, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
+
+        let localVarQueryParameters = new HttpParams({encoder: this.encoder});
+        if (activeOnly !== undefined && activeOnly !== null) {
+          localVarQueryParameters = this.addToHttpParams(localVarQueryParameters,
+            <any>activeOnly, 'activeOnly');
+        }
 
         let localVarHeaders = this.defaultHeaders;
 
@@ -352,6 +358,7 @@ export class ProductsApiService {
         return this.httpClient.request<Array<ProductDto>>('get', `${this.configuration.basePath}${localVarPath}`,
             {
                 context: localVarHttpContext,
+                params: localVarQueryParameters,
                 responseType: <any>responseType_,
                 withCredentials: this.configuration.withCredentials,
                 headers: localVarHeaders,

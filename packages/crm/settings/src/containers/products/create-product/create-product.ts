@@ -12,19 +12,34 @@ import {
 } from '@talisoft/ui/side-drawer';
 import { TasFormField, TasLabel, TasError } from '@talisoft/ui/form-field';
 import { TasInput } from '@talisoft/ui/input';
-import { ProductsApiService } from '@sankore/crm-api';
+import { TasSelect } from '@talisoft/ui/select';
+import { TasDatePicker } from '@talisoft/ui/date-picker';
+import { ProductsApiService, CreateProductRequestCategoryEnum } from '@sankore/crm-api';
 import { SnackbarService } from '@talisoft/ui/snackbar';
+import { ProductParametersEditor } from '../product-parameters-editor';
+
+const CATEGORY_OPTIONS = [
+  { label: 'Prêt', value: CreateProductRequestCategoryEnum.Loan },
+  { label: 'Épargne', value: CreateProductRequestCategoryEnum.Savings },
+  { label: 'Tontine', value: CreateProductRequestCategoryEnum.Tontine },
+];
 
 class CreateProductFormModel {
   public name!: string;
   public code!: string;
   public description!: string;
+  public category!: string;
+  public effectiveFrom!: string;
+  public parametersJson!: string;
 
   public static instantiate(): CreateProductFormModel {
     const m = new CreateProductFormModel();
     m.name = '';
     m.code = '';
     m.description = '';
+    m.category = '';
+    m.effectiveFrom = '';
+    m.parametersJson = '';
     return m;
   }
 }
@@ -43,8 +58,11 @@ class CreateProductFormModel {
     TasLabel,
     TasError,
     TasInput,
+    TasSelect,
     FormRoot,
     FormField,
+    ProductParametersEditor,
+    TasDatePicker,
   ],
   template: `
     <tas-side-drawer>
@@ -93,7 +111,41 @@ class CreateProductFormModel {
             />
           </tas-form-field>
 
+          <tas-form-field>
+            <tas-label>Catégorie <span class="text-functional-error">*</span></tas-label>
+            <tas-select
+              [options]="categoryOptions"
+              optionLabel="label"
+              optionValue="value"
+              placeholder="Sélectionnez une catégorie"
+              [formField]="formSchema.category"
+            ></tas-select>
+            @if (formSchema.category().touched() && formSchema.category().invalid()) {
+              <tas-error>{{ formSchema.category().errors()[0].message }}</tas-error>
+            }
+          </tas-form-field>
+
+          <div>
+            <label class="text-xs font-medium text-slate-500 mb-1 block">Date d'effet</label>
+            <tas-date-picker
+              mode="date"
+              placeholder="Sélectionnez une date"
+              [formField]="formSchema.effectiveFrom"
+            ></tas-date-picker>
+            <p class="text-xs text-slate-400 mt-1">Date à partir de laquelle le produit est disponible.</p>
+          </div>
+
         </form>
+
+        <!-- Parameters editor -->
+        <div class="mt-5">
+          <p class="text-sm font-semibold text-slate-700 mb-2">Paramètres du produit</p>
+          <product-parameters-editor
+            [category]="formSchema.category().value()"
+            [initialJson]="''"
+            (parametersJsonChange)="parametersJson.set($event)"
+          ></product-parameters-editor>
+        </div>
       </tas-drawer-content>
 
       <tas-drawer-action>
@@ -122,10 +174,14 @@ export class CreateProductComponent {
   private readonly _snackbarService = inject(SnackbarService);
 
   public model = signal(CreateProductFormModel.instantiate());
+  public parametersJson = signal('');
+
+  public readonly categoryOptions = CATEGORY_OPTIONS;
 
   public formSchema = form(this.model, (schema) => {
     required(schema.name, { message: 'Le nom du produit est obligatoire' });
     required(schema.code, { message: 'Le code du produit est obligatoire' });
+    required(schema.category, { message: 'La catégorie est obligatoire' });
   });
 
   public handleSubmit(): void {
@@ -137,6 +193,9 @@ export class CreateProductComponent {
             name: value.name,
             code: value.code,
             description: value.description || null,
+            category: (value.category as any) || undefined,
+            effectiveFrom: value.effectiveFrom ? new Date(value.effectiveFrom).toISOString() : null,
+            parametersJson: this.parametersJson() || null,
           })
           .pipe(
             catchError(() => {

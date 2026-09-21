@@ -2,6 +2,7 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { Button } from '@talisoft/ui/button';
 import { TasIcon } from '@talisoft/ui/icon';
+import { TasTag, Severity } from '@talisoft/ui/tag';
 import { TasCard } from '@talisoft/ui/card';
 import { TasTable, TableConfig } from '@talisoft/ui/table';
 import { ProductsApiService, ProductDto } from '@sankore/crm-api';
@@ -14,7 +15,7 @@ import { BreadcrumbService } from '@sankore/crm/common';
 
 @Component({
   templateUrl: './products-homepage.html',
-  imports: [Button, TasIcon, TasCard, TasTable],
+  imports: [Button, TasIcon, TasCard, TasTable, TasTag],
 })
 export class ProductsHomePage {
   private readonly _productsApiService = inject(ProductsApiService);
@@ -61,6 +62,15 @@ export class ProductsHomePage {
 
   public onSearchChange(query: string): void {
     this.searchQuery.set(query);
+  }
+
+  public categoryMeta(cat: any): { label: string; severity: Severity } {
+    switch (cat) {
+      case 'Loan': return { label: 'Prêt', severity: 'info' };
+      case 'Savings': return { label: 'Épargne', severity: 'success' };
+      case 'Tontine': return { label: 'Tontine', severity: 'warning' };
+      default: return { label: cat ?? '—', severity: 'neutral' };
+    }
   }
 
   public codeBadge(code: string | null | undefined): string {

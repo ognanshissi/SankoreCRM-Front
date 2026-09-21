@@ -14,6 +14,19 @@
 export interface CreateProductRequest { 
     name?: string | null;
     code?: string | null;
+    /**
+     * One of: Loan, Savings, Tontine
+     */
+    category?: CreateProductRequestCategoryEnum;
     description?: string | null;
+    parametersJson?: string | null;
+    effectiveFrom?: string | null;
 }
+export enum CreateProductRequestCategoryEnum {
+    Loan = 'Loan',
+    Savings = 'Savings',
+    Tontine = 'Tontine'
+};
+
+
 

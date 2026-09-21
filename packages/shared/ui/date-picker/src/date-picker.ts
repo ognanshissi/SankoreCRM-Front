@@ -24,7 +24,7 @@ import {
   DateRangeValue,
 } from './date-picker.types';
 import { TasIcon } from '@talisoft/ui/icon';
-import { FormField, TasLabel, TasSuffix } from '@talisoft/ui/form-field';
+import { TasFormField, TasLabel, TasSuffix } from '@talisoft/ui/form-field';
 import { TasInput } from '@talisoft/ui/input';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -94,7 +94,7 @@ function pad2(n: number): string {
   encapsulation: ViewEncapsulation.None,
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
-    FormField,
+    TasFormField,
     TasLabel,
     TasSuffix,
     TasIcon,
@@ -105,7 +105,6 @@ function pad2(n: number): string {
     TasIcon,
     TasSuffix,
     TasInput,
-    FormField,
     TasLabel,
   ],
   providers: [
@@ -154,14 +153,14 @@ export class TasDatePicker extends AbstractControlValueAccessor<DatePickerValue>
   // ── Computed ─────────────────────────────────────────────────────────────
 
   readonly monthYearLabel = computed(
-    () => `${MONTHS_FR[this.viewMonth()]} ${this.viewYear()}`
+    () => `${MONTHS_FR[this.viewMonth()]} ${this.viewYear()}`,
   );
 
   readonly hourDisplay = computed(() => pad2(this.selectedHour()));
   readonly minuteDisplay = computed(() => pad2(this.selectedMinute()));
 
   readonly prefixIcon = computed(() =>
-    this.mode() === 'time' ? 'feather:clock' : 'feather:calendar'
+    this.mode() === 'time' ? 'feather:clock' : 'feather:calendar',
   );
 
   readonly hasValue = computed(() => {
@@ -393,8 +392,8 @@ export class TasDatePicker extends AbstractControlValueAccessor<DatePickerValue>
         typeof cur === 'string' && cur.includes('T')
           ? cur.split('T')[0]
           : typeof cur === 'string'
-          ? cur
-          : toISODate(new Date());
+            ? cur
+            : toISODate(new Date());
       this._emit(`${datePart}T${h}:${m}`);
     }
     this.isOpen.set(false);

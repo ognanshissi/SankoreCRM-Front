@@ -27,7 +27,9 @@
     <ng-template #header>
       <tr>
         <th>Produit</th>
+        <th>Catégorie</th>
         <th>Description</th>
+        <th>Statut</th>
         <th></th>
       </tr>
     </ng-template>
@@ -56,9 +58,27 @@
           </div>
         </td>
 
+        <!-- Category -->
+        <td>
+          @if (item.category) {
+            <tas-tag [severity]="categoryMeta(item.category).severity">
+              {{ categoryMeta(item.category).label }}
+            </tas-tag>
+          } @else {
+            <span class="text-sm text-slate-400">—</span>
+          }
+        </td>
+
         <!-- Description -->
         <td class="text-sm text-slate-500 max-w-xs">
           <span class="line-clamp-1">{{ item.description ?? '—' }}</span>
+        </td>
+
+        <!-- Status -->
+        <td>
+          <tas-tag [severity]="item.isActive !== false ? 'success' : 'warning'">
+            {{ item.isActive !== false ? 'Actif' : 'Inactif' }}
+          </tas-tag>
         </td>
 
         <!-- Actions — stop propagation so row click doesn't double-fire -->

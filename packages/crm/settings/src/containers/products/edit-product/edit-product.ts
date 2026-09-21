@@ -1,9 +1,11 @@
 import { Component, computed, effect, inject, input, signal } from '@angular/core';
+import { SlicePipe } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
 import { catchError, EMPTY } from 'rxjs';
 import { TasCard } from '@talisoft/ui/card';
 import { Anchor, Button } from '@talisoft/ui/button';
 import { TasIcon } from '@talisoft/ui/icon';
+import { Severity, TasTag } from '@talisoft/ui/tag';
 import { TasFormField, TasLabel } from '@talisoft/ui/form-field';
 import { TasInput } from '@talisoft/ui/input';
 import { TasSpinner } from '@talisoft/ui/spinner';
@@ -11,6 +13,8 @@ import { ProductsApiService, ProductDto } from '@sankore/crm-api';
 import { SnackbarService } from '@talisoft/ui/snackbar';
 import { ConfirmDialogService } from '@talisoft/ui/confirm-dialog';
 import { BreadcrumbService } from '@sankore/crm/common';
+import { ProductParametersEditor } from '../product-parameters-editor';
+import { Linter } from 'eslint';
 
 @Component({
   selector: 'edit-product',
@@ -23,7 +27,10 @@ import { BreadcrumbService } from '@sankore/crm/common';
     TasLabel,
     TasInput,
     TasSpinner,
+    TasTag,
+    SlicePipe,
     Anchor,
+    ProductParametersEditor,
   ],
   template: `
     @if (isLoading()) {
@@ -68,6 +75,31 @@ import { BreadcrumbService } from '@sankore/crm/common';
               </p>
             </div>
             <div>
+              <p class="text-xs text-slate-400 mb-1">Catégorie</p>
+              @if (product()!.category) {
+                <tas-tag [severity]="categoryMeta(product()!.category).severity">
+                  {{ categoryMeta(product()!.category).label }}
+                </tas-tag>
+              } @else {
+                <p class="text-sm text-slate-500">—</p>
+              }
+            </div>
+            <div>
+              <p class="text-xs text-slate-400 mb-1">Statut</p>
+              <tas-tag [severity]="product()!.isActive ? 'success' : 'warning'">
+                {{ product()!.isActive ? 'Actif' : 'Inactif' }}
+              </tas-tag>
+            </div>
+            <div>
+              <p class="text-xs text-slate-400 mb-1">Date d'effet</p>
+              <p class="text-sm text-slate-800">
+                {{ product()!.effectiveFrom ? (product()!.effectiveFrom | slice:0:10) : '—' }}
+                @if (product()!.effectiveTo) {
+                  → {{ product()!.effectiveTo | slice:0:10 }}
+                }
+              </p>
+            </div>
+            <div>
               <p class="text-xs text-slate-400 mb-1">Identifiant</p>
               <p class="font-mono text-xs text-slate-500 truncate">
                 {{ product()!.id }}
@@ -104,6 +136,16 @@ import { BreadcrumbService } from '@sankore/crm/common';
                 (input)="editedDescription.set($any($event.target).value)"
               />
             </tas-form-field>
+
+            <!-- Parameters editor -->
+            <div class="mt-2">
+              <p class="text-sm font-semibold text-slate-700 mb-2">Paramètres du produit</p>
+              <product-parameters-editor
+                [category]="product()!.category ?? ''"
+                [initialJson]="product()!.parametersJson ?? ''"
+                (parametersJsonChange)="editedParametersJson.set($event)"
+              ></product-parameters-editor>
+            </div>
 
             <div class="flex justify-end">
               <button
@@ -174,12 +216,22 @@ export class EditProductPage {
 
   public readonly id = input.required<string>();
 
+  public categoryMeta(cat: any): { label: string; severity: Severity } {
+    switch (cat) {
+      case 'Loan': return { label: 'Prêt', severity: 'info' };
+      case 'Savings': return { label: 'Épargne', severity: 'success' };
+      case 'Tontine': return { label: 'Tontine', severity: 'warning' };
+      default: return { label: cat ?? '—', severity: 'neutral' };
+    }
+  }
+
   public isLoading = signal(true);
   public isSaving = signal(false);
   public isDeleting = signal(false);
   public product = signal<ProductDto | null>(null);
   public editedName = signal('');
   public editedDescription = signal('');
+  public editedParametersJson = signal('');
 
   public codeBadge = computed(() => {
     const code = this.product()?.code;
@@ -198,6 +250,7 @@ export class EditProductPage {
           this.product.set(product);
           this.editedName.set(product.name ?? '');
           this.editedDescription.set(product.description ?? '');
+          this.editedParametersJson.set(product.parametersJson ?? '');
           this.isLoading.set(false);
           this._breadcrumbService.set([
             { label: 'Paramétrage', link: ['/settings'] },
@@ -222,7 +275,8 @@ export class EditProductPage {
       .updateProduct(this.id(), {
         name: this.editedName().trim() || null,
         description: this.editedDescription().trim() || null,
-      })
+        parametersJson: this.editedParametersJson().trim() || null,
+      } as any)
       .pipe(
         catchError(() => {
           this._snackbarService.error(
@@ -241,6 +295,7 @@ export class EditProductPage {
                 ...p,
                 name: this.editedName().trim() || null,
                 description: this.editedDescription().trim() || null,
+                parametersJson: this.editedParametersJson().trim() || null,
               }
             : p,
         );

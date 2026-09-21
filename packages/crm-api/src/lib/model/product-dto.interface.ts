@@ -15,6 +15,21 @@ export interface ProductDto {
     id?: string;
     name?: string | null;
     code?: string | null;
+    /**
+     * One of: Loan, Savings, Tontine
+     */
+    category?: ProductDtoCategoryEnum;
     description?: string | null;
+    parametersJson?: string | null;
+    isActive?: boolean;
+    effectiveFrom?: string | null;
+    effectiveTo?: string | null;
 }
+export enum ProductDtoCategoryEnum {
+    Loan = 'Loan',
+    Savings = 'Savings',
+    Tontine = 'Tontine'
+};
+
+
 
