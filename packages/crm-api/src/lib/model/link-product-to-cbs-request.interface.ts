@@ -11,10 +11,7 @@
  */
 
 
-export interface UpdateProductRequest { 
-    name?: string | null;
-    description?: string | null;
-    parametersJson?: string | null;
+export interface LinkProductToCbsRequest { 
     businessProductId?: string | null;
     businessPlatformName?: string | null;
 }

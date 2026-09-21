@@ -1,4 +1,12 @@
-import { Component, computed, effect, inject, input, signal } from '@angular/core';
+import {
+  Component,
+  computed,
+  effect,
+  inject,
+  input,
+  linkedSignal,
+  signal,
+} from '@angular/core';
 import { SlicePipe } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
 import { catchError, EMPTY } from 'rxjs';
@@ -163,6 +171,52 @@ import { Linter } from 'eslint';
           </div>
         </tas-card>
 
+        <!-- CBS Integration -->
+        <tas-card>
+          <div class="p-4 border-b border-slate-100">
+            <p class="text-sm font-semibold text-slate-700 flex items-center gap-2">
+              <tas-icon iconName="feather:link" class="text-slate-400" style="font-size:14px"></tas-icon>
+              Intégration Core Banking (CBS)
+            </p>
+            <p class="text-xs text-slate-400 mt-0.5">Associez ce produit à son équivalent dans le système bancaire central.</p>
+          </div>
+          <div class="p-4">
+            @if (cbsLinked()) {
+              <div class="flex items-center gap-3 p-3 rounded-lg bg-green-50 border border-green-200 mb-3">
+                <tas-icon iconName="feather:check-circle" class="text-green-500" style="font-size:16px"></tas-icon>
+                <div>
+                  <p class="text-xs font-medium text-green-800">Produit lié au CBS</p>
+                  <p class="text-[10px] text-green-700 mt-0.5">
+                    Plateforme : <span class="font-semibold">{{ cbsPlatform() }}</span>
+                    · ID : <span class="font-mono font-semibold">{{ cbsProductId() }}</span>
+                  </p>
+                </div>
+              </div>
+            }
+            <div class="grid grid-cols-2 gap-3">
+              <tas-form-field>
+                <tas-label>Plateforme CBS</tas-label>
+                <input tasInput type="text" placeholder="Ex : T24, Flexcube, Temenos"
+                  [value]="cbsPlatform()" (input)="cbsPlatform.set($any($event.target).value)" />
+              </tas-form-field>
+              <tas-form-field>
+                <tas-label>ID produit CBS</tas-label>
+                <input tasInput type="text" placeholder="Ex : PROD-001"
+                  [value]="cbsProductId()" (input)="cbsProductId.set($any($event.target).value)" />
+              </tas-form-field>
+            </div>
+            <div class="flex justify-end mt-3">
+              <button tas-outlined-button color="primary" type="button" class="text-xs"
+                [disabled]="isLinkingCbs() || !cbsPlatform().trim() || !cbsProductId().trim()"
+                (click)="linkToCbs()">
+                @if (isLinkingCbs()) { <tas-spinner size="3" class="text-primary"></tas-spinner> }
+                <tas-icon iconName="feather:link" style="font-size:12px"></tas-icon>
+                {{ cbsLinked() ? 'Mettre à jour le lien' : 'Lier au CBS' }}
+              </button>
+            </div>
+          </div>
+        </tas-card>
+
         <!-- Danger zone -->
         <h2 class="text-lg font-semibold text-slate-800">Zone de danger</h2>
 
@@ -233,6 +287,14 @@ export class EditProductPage {
   public editedDescription = signal('');
   public editedParametersJson = signal('');
 
+  // CBS integration
+  public cbsPlatform = signal('');
+  public cbsProductId = signal('');
+  public cbsLinked = linkedSignal(() => {
+    return !!(this.cbsProductId() && this.cbsPlatform());
+  });
+  public isLinkingCbs = signal(false);
+
   public codeBadge = computed(() => {
     const code = this.product()?.code;
     if (!code) return '??';
@@ -249,6 +311,8 @@ export class EditProductPage {
         next: (product) => {
           this.product.set(product);
           this.editedName.set(product.name ?? '');
+          this.cbsPlatform.set(product.businessPlatformName ?? '');
+          this.cbsProductId.set(product.businessProductId ?? '');
           this.editedDescription.set(product.description ?? '');
           this.editedParametersJson.set(product.parametersJson ?? '');
           this.isLoading.set(false);
@@ -301,6 +365,25 @@ export class EditProductPage {
         );
         this.isSaving.set(false);
       });
+  }
+
+  public linkToCbs(): void {
+    if (!this.cbsPlatform().trim() || !this.cbsProductId().trim()) return;
+    this.isLinkingCbs.set(true);
+    this._productsApiService.linkProductToCbs(this.id(), {
+      businessPlatformName: this.cbsPlatform().trim(),
+      businessProductId: this.cbsProductId().trim(),
+    }).pipe(
+      catchError(() => {
+        this._snackbarService.error('Erreur', 'Impossible de lier le produit au CBS.');
+        this.isLinkingCbs.set(false);
+        return EMPTY;
+      }),
+    ).subscribe(() => {
+      this.cbsLinked.set(true);
+      this._snackbarService.success('Produit lié', `Lié à ${this.cbsPlatform()} — ${this.cbsProductId()}.`);
+      this.isLinkingCbs.set(false);
+    });
   }
 
   public confirmDelete(): void {

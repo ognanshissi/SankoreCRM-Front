@@ -131,6 +131,7 @@ model/lead-import-status-response.interface.ts
 model/lead-intent-level-dto.interface.ts
 model/lead-source-dto.interface.ts
 model/lead-stats-dto.interface.ts
+model/link-product-to-cbs-request.interface.ts
 model/list-users-result.interface.ts
 model/log-activity-request.interface.ts
 model/log-activity-result.interface.ts

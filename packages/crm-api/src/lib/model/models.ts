@@ -90,6 +90,7 @@ export * from './lead-import-status-response.interface';
 export * from './lead-intent-level-dto.interface';
 export * from './lead-source-dto.interface';
 export * from './lead-stats-dto.interface';
+export * from './link-product-to-cbs-request.interface';
 export * from './list-users-result.interface';
 export * from './log-activity-request.interface';
 export * from './log-activity-result.interface';

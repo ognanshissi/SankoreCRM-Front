@@ -21,6 +21,8 @@ import { Observable }                                        from 'rxjs';
 // @ts-ignore
 import { CreateProductRequest } from '../model/create-product-request.interface';
 // @ts-ignore
+import { LinkProductToCbsRequest } from '../model/link-product-to-cbs-request.interface';
+// @ts-ignore
 import { ProductDto } from '../model/product-dto.interface';
 // @ts-ignore
 import { UpdateProductRequest } from '../model/update-product-request.interface';
@@ -300,6 +302,85 @@ export class ProductsApiService {
     }
 
     /**
+     * Link a CRM product to a CBS product
+     * Associates the CRM product with an external Core Banking System product identifier. Audited separately from general product updates.
+     * @param id 
+     * @param linkProductToCbsRequest 
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     */
+    public linkProductToCbs(id: string, linkProductToCbsRequest: LinkProductToCbsRequest, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<any>;
+    public linkProductToCbs(id: string, linkProductToCbsRequest: LinkProductToCbsRequest, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<HttpResponse<any>>;
+    public linkProductToCbs(id: string, linkProductToCbsRequest: LinkProductToCbsRequest, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<HttpEvent<any>>;
+    public linkProductToCbs(id: string, linkProductToCbsRequest: LinkProductToCbsRequest, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<any> {
+        if (id === null || id === undefined) {
+            throw new Error('Required parameter id was null or undefined when calling linkProductToCbs.');
+        }
+        if (linkProductToCbsRequest === null || linkProductToCbsRequest === undefined) {
+            throw new Error('Required parameter linkProductToCbsRequest was null or undefined when calling linkProductToCbs.');
+        }
+
+        let localVarHeaders = this.defaultHeaders;
+
+        let localVarCredential: string | undefined;
+        // authentication (BearerToken) required
+        localVarCredential = this.configuration.lookupCredential('BearerToken');
+        if (localVarCredential) {
+            localVarHeaders = localVarHeaders.set('Authorization', 'Bearer ' + localVarCredential);
+        }
+
+        let localVarHttpHeaderAcceptSelected: string | undefined = options && options.httpHeaderAccept;
+        if (localVarHttpHeaderAcceptSelected === undefined) {
+            // to determine the Accept header
+            const httpHeaderAccepts: string[] = [
+            ];
+            localVarHttpHeaderAcceptSelected = this.configuration.selectHeaderAccept(httpHeaderAccepts);
+        }
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+
+        let localVarHttpContext: HttpContext | undefined = options && options.context;
+        if (localVarHttpContext === undefined) {
+            localVarHttpContext = new HttpContext();
+        }
+
+
+        // to determine the Content-Type header
+        const consumes: string[] = [
+            'application/json'
+        ];
+        const httpContentTypeSelected: string | undefined = this.configuration.selectHeaderContentType(consumes);
+        if (httpContentTypeSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Content-Type', httpContentTypeSelected);
+        }
+
+        let responseType_: 'text' | 'json' | 'blob' = 'json';
+        if (localVarHttpHeaderAcceptSelected) {
+            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+                responseType_ = 'text';
+            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+                responseType_ = 'json';
+            } else {
+                responseType_ = 'blob';
+            }
+        }
+
+        let localVarPath = `/api/v1/products/${this.configuration.encodeParam({name: "id", value: id, in: "path", style: "simple", explode: false, dataType: "string", dataFormat: "uuid"})}/link-cbs`;
+        return this.httpClient.request<any>('post', `${this.configuration.basePath}${localVarPath}`,
+            {
+                context: localVarHttpContext,
+                body: linkProductToCbsRequest,
+                responseType: <any>responseType_,
+                withCredentials: this.configuration.withCredentials,
+                headers: localVarHeaders,
+                observe: observe,
+                reportProgress: reportProgress
+            }
+        );
+    }
+
+    /**
      * List financial products for the tenant
      * @param activeOnly 
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
@@ -369,8 +450,7 @@ export class ProductsApiService {
     }
 
     /**
-     * Update a product speciality
-     * Updates name and description. Code is immutable after creation. Requires permission: product:update.
+     * Update a financial product
      * @param id 
      * @param updateProductRequest 
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.

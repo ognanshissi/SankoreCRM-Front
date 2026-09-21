@@ -24,6 +24,8 @@ export interface ProductDto {
     isActive?: boolean;
     effectiveFrom?: string | null;
     effectiveTo?: string | null;
+    businessProductId?: string | null;
+    businessPlatformName?: string | null;
 }
 export enum ProductDtoCategoryEnum {
     Loan = 'Loan',
