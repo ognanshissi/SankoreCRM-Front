@@ -141,7 +141,7 @@ const settingsRoutes: Routes = [
   {
     path: 'email-templates/create',
     loadComponent: () =>
-      import('./containers/email-templates/create-email-template'),
+      import('./containers/email-templates/edit-email-template'),
   },
   {
     path: 'email-templates/:id/edit',
