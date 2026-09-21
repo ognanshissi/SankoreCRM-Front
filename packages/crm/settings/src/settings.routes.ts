@@ -29,10 +29,23 @@ const settingsRoutes: Routes = [
     loadComponent: () => EditUserNavigation,
     children: [
       { path: '', redirectTo: 'informations', pathMatch: 'full' },
-      { path: 'informations', loadComponent: () => import('./containers/users/edit-user/informations') },
-      { path: 'roles', loadComponent: () => import('./containers/users/edit-user/roles') },
-      { path: 'parametrage', loadComponent: () => import('./containers/users/edit-user/parametrage') },
-      { path: 'danger', loadComponent: () => import('./containers/users/edit-user/danger') },
+      {
+        path: 'informations',
+        loadComponent: () =>
+          import('./containers/users/edit-user/informations'),
+      },
+      {
+        path: 'roles',
+        loadComponent: () => import('./containers/users/edit-user/roles'),
+      },
+      {
+        path: 'parametrage',
+        loadComponent: () => import('./containers/users/edit-user/parametrage'),
+      },
+      {
+        path: 'danger',
+        loadComponent: () => import('./containers/users/edit-user/danger'),
+      },
     ],
   },
   {
@@ -57,8 +70,7 @@ const settingsRoutes: Routes = [
   },
   {
     path: 'company',
-    loadComponent: () =>
-      import('./containers/company/company'),
+    loadComponent: () => import('./containers/company/company'),
   },
   {
     path: 'workflows',
@@ -67,25 +79,59 @@ const settingsRoutes: Routes = [
   },
   {
     path: 'workflows/ma-file',
-    loadComponent: () => import('./containers/workflows/edit-workflow-template/my-queue'),
+    loadComponent: () =>
+      import('./containers/workflows/edit-workflow-template/my-queue'),
   },
   {
     path: 'workflows/analytiques',
-    loadComponent: () => import('./containers/workflows/workflow-analytics/workflow-analytics'),
+    loadComponent: () =>
+      import('./containers/workflows/workflow-analytics/workflow-analytics'),
   },
   {
     path: 'workflows/:id',
     loadComponent: () => EditWorkflowTemplateNavigation,
     children: [
       { path: '', redirectTo: 'builder', pathMatch: 'full' },
-      { path: 'builder', loadComponent: () => import('./containers/workflows/edit-workflow-template/builder') },
-      { path: 'informations', loadComponent: () => import('./containers/workflows/edit-workflow-template/informations') },
-      { path: 'etapes', loadComponent: () => import('./containers/workflows/edit-workflow-template/steps') },
-      { path: 'declencheurs', loadComponent: () => import('./containers/workflows/edit-workflow-template/triggers') },
-      { path: 'instances', loadComponent: () => import('./containers/workflows/edit-workflow-template/instances') },
-      { path: 'instances/:instanceId', loadComponent: () => import('./containers/workflows/edit-workflow-template/instance-detail') },
-      { path: 'analytiques', loadComponent: () => import('./containers/workflows/edit-workflow-template/analytics') },
-      { path: 'comparer', loadComponent: () => import('./containers/workflows/edit-workflow-template/compare') },
+      {
+        path: 'builder',
+        loadComponent: () =>
+          import('./containers/workflows/edit-workflow-template/builder'),
+      },
+      {
+        path: 'informations',
+        loadComponent: () =>
+          import('./containers/workflows/edit-workflow-template/informations'),
+      },
+      {
+        path: 'etapes',
+        loadComponent: () =>
+          import('./containers/workflows/edit-workflow-template/steps'),
+      },
+      {
+        path: 'declencheurs',
+        loadComponent: () =>
+          import('./containers/workflows/edit-workflow-template/triggers'),
+      },
+      {
+        path: 'instances',
+        loadComponent: () =>
+          import('./containers/workflows/edit-workflow-template/instances'),
+      },
+      {
+        path: 'instances/:instanceId',
+        loadComponent: () =>
+          import('./containers/workflows/edit-workflow-template/instance-detail'),
+      },
+      {
+        path: 'analytiques',
+        loadComponent: () =>
+          import('./containers/workflows/edit-workflow-template/analytics'),
+      },
+      {
+        path: 'comparer',
+        loadComponent: () =>
+          import('./containers/workflows/edit-workflow-template/compare'),
+      },
     ],
   },
   {
@@ -105,38 +151,49 @@ const settingsRoutes: Routes = [
   },
   {
     path: 'lead-sources',
-    loadComponent: () =>
-      import('./containers/lead-sources/lead-sources'),
+    loadComponent: () => import('./containers/lead-sources/lead-sources'),
   },
   {
     path: 'sla-configs',
-    loadComponent: () =>
-      import('./containers/sla-configs/sla-configs'),
+    loadComponent: () => import('./containers/sla-configs/sla-configs'),
   },
   {
     path: 'scoring-configs',
-    loadComponent: () =>
-      import('./containers/scoring-configs/scoring-configs'),
+    loadComponent: () => import('./containers/scoring-configs/scoring-configs'),
   },
   {
     path: 'task-types',
-    loadComponent: () =>
-      import('./containers/task-types/task-types'),
+    loadComponent: () => import('./containers/task-types/task-types'),
   },
   {
     path: 'dispatch-rules',
-    loadComponent: () =>
-      import('./containers/dispatch-rules/dispatch-rules'),
+    loadComponent: () => import('./containers/dispatch-rules/dispatch-rules'),
   },
   {
     path: 'pipeline-stages',
+    loadComponent: () => import('./containers/pipeline-stages/pipeline-stages'),
+  },
+  {
+    path: 'notifications',
     loadComponent: () =>
-      import('./containers/pipeline-stages/pipeline-stages'),
+      import('./containers/notifications/notification-navigation'),
+    children: [
+      { path: '', redirectTo: 'journal', pathMatch: 'full' as const },
+      {
+        path: 'parametrage',
+        loadComponent: () =>
+          import('./containers/notifications/notification-parametrage'),
+      },
+      {
+        path: 'journal',
+        loadComponent: () =>
+          import('./containers/notifications/notification-journal'),
+      },
+    ],
   },
   {
     path: 'email-templates',
-    loadComponent: () =>
-      import('./containers/email-templates/email-templates'),
+    loadComponent: () => import('./containers/email-templates/email-templates'),
   },
   {
     path: 'email-templates/create',
@@ -163,10 +220,23 @@ const settingsRoutes: Routes = [
     loadComponent: () => EditRoleNavigation,
     children: [
       { path: '', redirectTo: 'informations', pathMatch: 'full' },
-      { path: 'informations', loadComponent: () => import('./containers/roles/edit-role/informations') },
-      { path: 'permissions', loadComponent: () => import('./containers/roles/edit-role/permissions') },
-      { path: 'users', loadComponent: () => import('./containers/roles/edit-role/users') },
-      { path: 'danger', loadComponent: () => import('./containers/roles/edit-role/danger') },
+      {
+        path: 'informations',
+        loadComponent: () =>
+          import('./containers/roles/edit-role/informations'),
+      },
+      {
+        path: 'permissions',
+        loadComponent: () => import('./containers/roles/edit-role/permissions'),
+      },
+      {
+        path: 'users',
+        loadComponent: () => import('./containers/roles/edit-role/users'),
+      },
+      {
+        path: 'danger',
+        loadComponent: () => import('./containers/roles/edit-role/danger'),
+      },
     ],
   },
 ];

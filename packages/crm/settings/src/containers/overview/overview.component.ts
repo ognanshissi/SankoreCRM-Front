@@ -212,11 +212,18 @@ export class OverviewComponent {
         'Gérer vos differents canaux de communication avec vos prospect, clients.',
       children: [
         {
-          title: 'Modeles d\'e-mail',
+          title: 'Configuration notifications',
+          type: 'basic',
+          id: 'channels_notifications',
+          link: '/settings/notifications',
+          description: 'Fournisseur d\'envoi, expéditeur, quota mensuel et journal de livraison',
+        },
+        {
+          title: 'Modèles d\'e-mail',
           type: 'basic',
           id: 'channels_email_templates',
           link: '/settings/email-templates',
-          description: 'Creer et personnaliser les modeles d\'e-mail transactionnels et marketing',
+          description: 'Créer et personnaliser les modèles d\'e-mail transactionnels et marketing',
         },
         {
           title: 'WhatsApp',
