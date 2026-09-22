@@ -16,7 +16,7 @@
 
       <NavigationMenu class="mb-2">
         <NavigationMenuItem iconName="feather:settings" [path]="['/settings']">
-          Paramètres
+          Paramètrages
         </NavigationMenuItem>
       </NavigationMenu>
     </div>
@@ -24,22 +24,66 @@
   <tas-navigation-navbar>
     <div tasNavigationNavbarLeft>
       <p>
-          <span class="text-primary text-xl font-bold">SankoreCRM</span>
+          <span class="text-primary text-xl font-bold">{{ tenantContext?.companyName ?? "SankoreCRM" }}</span>
 <!--        <span class="text-gray-500 text-[10px]">Microfinance</span>-->
       </p>
     </div>
 
     <div tasNavigationNavbarRight>
       <div class="flex space-x-4 items-center">
-        <div>
-          <button tas-raised-button color="primary">
-            <tas-icon iconName="feather:plus" iconSize="md"></tas-icon>
-          </button>
-        </div>
+<!--        <div>-->
+<!--          <button tas-raised-button color="primary">-->
+<!--            <tas-icon iconName="feather:plus" iconSize="md"></tas-icon>-->
+<!--          </button>-->
+<!--        </div>-->
 
-        <button tas-outlined-button color="primary">
-          <tas-icon iconName="feather:user" iconSize="md"></tas-icon>
+        <!-- User menu -->
+        <button
+          tas-button
+          color="primary"
+          TasMenuTrigger
+          [panel]="userMenu"
+        >
+          <div class="flex flex-col">
+            <span> {{ userName() }}</span>
+            <span class="text-[10px]">{{ userRole() }}</span>
+          </div>
+          <tas-icon iconName="feather:chevron-down" iconSize="sm"></tas-icon>
         </button>
+
+        <ng-template #userMenu>
+          <tas-menu>
+            <div class="px-4 py-2 border-b border-slate-100">
+              <p class="text-sm font-medium text-slate-800">{{ userName() }}</p>
+              <span class="text-sm font-semibold text-slate-600">{{ userEmail() }}</span>
+            </div>
+            <tas-menu-item>
+              <a routerLink="/settings/account/profil" class="w-full flex items-center gap-2 text-sm text-slate-700">
+                <tas-icon iconName="feather:user" style="font-size:14px" class="text-slate-400"></tas-icon>
+                Mon profil
+              </a>
+            </tas-menu-item>
+            <tas-menu-item>
+              <a routerLink="/settings/account/securite" class="w-full flex items-center gap-2 text-sm text-slate-700">
+                <tas-icon iconName="feather:lock" style="font-size:14px" class="text-slate-400"></tas-icon>
+                Sécurité
+              </a>
+            </tas-menu-item>
+            <tas-menu-item>
+              <a routerLink="/settings" class="w-full flex items-center gap-2 text-sm text-slate-700">
+                <tas-icon iconName="feather:settings" style="font-size:14px" class="text-slate-400"></tas-icon>
+                Paramètres
+              </a>
+            </tas-menu-item>
+            <div class="my-1 border-t border-slate-100"></div>
+            <tas-menu-item>
+              <button type="button" class="w-full flex items-center gap-2 text-sm text-red-600" (click)="logout()">
+                <tas-icon iconName="feather:log-out" style="font-size:14px" class="text-red-400"></tas-icon>
+                Déconnexion
+              </button>
+            </tas-menu-item>
+          </tas-menu>
+        </ng-template>
       </div>
     </div>
   </tas-navigation-navbar>

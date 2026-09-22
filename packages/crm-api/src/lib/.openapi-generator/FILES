@@ -29,6 +29,7 @@ api/task-generation-rules.service.ts
 api/task-types.service.ts
 api/tasks.service.ts
 api/territories.service.ts
+api/user-import.service.ts
 api/users.service.ts
 api/webhooks.service.ts
 api/workflow-analytics.service.ts
@@ -107,6 +108,7 @@ model/create-territory-result.interface.ts
 model/create-user-request.interface.ts
 model/create-user-result.interface.ts
 model/crm-task-dto.interface.ts
+model/current-user-dto.interface.ts
 model/daily-breach-dto.interface.ts
 model/decline-task-request.interface.ts
 model/delegate-request.interface.ts
@@ -123,6 +125,8 @@ model/field-changed-dto.interface.ts
 model/forgot-password-request.interface.ts
 model/forgot-password-result.interface.ts
 model/funnel-metrics-dto.interface.ts
+model/google-sheet-import-request.interface.ts
+model/import-job-created-result.interface.ts
 model/import-leads-accepted.interface.ts
 model/import-row-failure.interface.ts
 model/lead-dto-paged-result.interface.ts
@@ -135,6 +139,7 @@ model/link-product-to-cbs-request.interface.ts
 model/list-users-result.interface.ts
 model/log-activity-request.interface.ts
 model/log-activity-result.interface.ts
+model/login-history-dto.interface.ts
 model/login-request.interface.ts
 model/login-result.interface.ts
 model/match-reason.interface.ts
@@ -186,6 +191,7 @@ model/revoke-role-request.interface.ts
 model/role-detail-dto.interface.ts
 model/role-dto.interface.ts
 model/role-permission-dto.interface.ts
+model/row-validation-result.interface.ts
 model/rule-dto.interface.ts
 model/rule-input.interface.ts
 model/scoped-permission-dto.interface.ts
@@ -254,9 +260,11 @@ model/update-template-request.interface.ts
 model/update-territory-request.interface.ts
 model/update-user-request.interface.ts
 model/user-dto.interface.ts
+model/user-import-status-dto.interface.ts
 model/user-permissions-dto.interface.ts
 model/user-role-dto.interface.ts
 model/user-status-stats-dto.interface.ts
+model/validate-import-response.interface.ts
 model/verify-token-response.interface.ts
 model/withdraw-consent-request.interface.ts
 model/workflow-audit-entry-dto.interface.ts

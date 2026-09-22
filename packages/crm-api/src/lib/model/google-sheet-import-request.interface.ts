@@ -11,9 +11,7 @@
  */
 
 
-export interface ChangePasswordRequest { 
-    currentPassword?: string | null;
-    newPassword?: string | null;
-    confirmPassword?: string | null;
+export interface GoogleSheetImportRequest { 
+    spreadsheetUrl?: string | null;
 }
 

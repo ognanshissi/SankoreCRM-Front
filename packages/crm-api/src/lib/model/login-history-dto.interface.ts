@@ -11,9 +11,10 @@
  */
 
 
-export interface ChangePasswordRequest { 
-    currentPassword?: string | null;
-    newPassword?: string | null;
-    confirmPassword?: string | null;
+export interface LoginHistoryDto { 
+    id?: string;
+    occuredAt?: string;
+    latitude?: number | null;
+    longitude?: number | null;
 }
 

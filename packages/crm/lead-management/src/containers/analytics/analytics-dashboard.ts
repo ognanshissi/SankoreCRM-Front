@@ -1,23 +1,18 @@
 import { Component, computed, inject, signal, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { catchError, of } from 'rxjs';
-import { TasCard } from '@talisoft/ui/card';
-import { TasSpinner } from '@talisoft/ui/spinner';
 import { TasIcon } from '@talisoft/ui/icon';
-import { TasTag, Severity } from '@talisoft/ui/tag';
-import { Button } from '@talisoft/ui/button';
 import { TasSelect } from '@talisoft/ui/select';
 import {
-  LeadsApiService,
   LeadsAnalyticsApiService,
   AgenciesApiService,
-  LeadStatsDto,
   FunnelMetricsDto,
   AgentPerformanceDto,
   SlaBreachDto,
 } from '@sankore/crm-api';
 import { AuthenticationService, BreadcrumbService } from '@sankore/crm/common';
 import { WidgetWrapper } from './widgets/widget-wrapper';
+import { TasTitle } from '@talisoft/ui/title';
 
 interface PeriodOption { label: string; value: string; from: string; to: string }
 
@@ -38,22 +33,13 @@ function buildPeriods(): PeriodOption[] {
 
 @Component({
   selector: 'analytics-dashboard',
-  imports: [
-    FormsModule,
-    TasCard,
-    TasSpinner,
-    TasIcon,
-    TasTag,
-    Button,
-    TasSelect,
-    WidgetWrapper,
-  ],
+  imports: [FormsModule, TasIcon, TasSelect, WidgetWrapper, TasTitle],
   template: `
     <div class="pb-6">
       <!-- Header -->
       <div class="flex items-start justify-between mb-5">
         <div>
-          <h1 class="text-lg font-semibold text-slate-800">Tableau de bord</h1>
+          <tas-title>Tableau de bord</tas-title>
           <p class="text-sm text-slate-400 mt-0.5">
             Acquisition, conversion et performance agent.
           </p>
@@ -74,6 +60,7 @@ function buildPeriods(): PeriodOption[] {
           <div class="flex border border-slate-200 rounded-lg overflow-hidden">
             @for (p of periods; track p.value) {
               <button
+                tas-text-button
                 type="button"
                 class="px-3 py-1.5 text-xs transition-colors"
                 [class]="

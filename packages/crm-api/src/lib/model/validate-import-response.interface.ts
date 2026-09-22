@@ -9,11 +9,13 @@
  * https://openapi-generator.tech
  * Do not edit the class manually.
  */
+import { RowValidationResult } from './row-validation-result.interface';
 
 
-export interface ChangePasswordRequest { 
-    currentPassword?: string | null;
-    newPassword?: string | null;
-    confirmPassword?: string | null;
+export interface ValidateImportResponse { 
+    totalRows?: number;
+    validRows?: number;
+    invalidRows?: number;
+    rows?: Array<RowValidationResult> | null;
 }
 

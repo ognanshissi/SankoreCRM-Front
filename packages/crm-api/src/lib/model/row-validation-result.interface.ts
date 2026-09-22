@@ -11,9 +11,14 @@
  */
 
 
-export interface ChangePasswordRequest { 
-    currentPassword?: string | null;
-    newPassword?: string | null;
-    confirmPassword?: string | null;
+export interface RowValidationResult { 
+    rowNumber?: number;
+    firstName?: string | null;
+    lastName?: string | null;
+    email?: string | null;
+    agencyCode?: string | null;
+    roleCode?: string | null;
+    isValid?: boolean;
+    errors?: Array<string> | null;
 }
 

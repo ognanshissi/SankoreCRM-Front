@@ -4,11 +4,22 @@ import AgenciesHomePage from './containers/agencies/agencies-homepage/agencies-h
 import EditRoleNavigation from './containers/roles/edit-role/edit-role-navigation';
 import EditUserNavigation from './containers/users/edit-user/edit-user-navigation';
 import EditWorkflowTemplateNavigation from './containers/workflows/edit-workflow-template/edit-workflow-template-navigation';
+import AccountSettings from './containers/account/account-settings';
 
 const settingsRoutes: Routes = [
   {
     path: '',
     loadComponent: () => OverviewComponent,
+  },
+  {
+    path: 'account',
+    loadComponent: () => import('./containers/account/account-navigation'),
+    children: [
+      { path: '', redirectTo: 'profil', pathMatch: 'full' as const },
+      { path: 'profil', loadComponent: () => import('./containers/account/account-profile') },
+      { path: 'securite', loadComponent: () => import('./containers/account/account-security') },
+      { path: 'account-settings', loadComponent: () => AccountSettings }
+    ],
   },
   {
     path: 'agencies',
@@ -148,6 +159,11 @@ const settingsRoutes: Routes = [
     path: 'qualification-templates/:id/edit',
     loadComponent: () =>
       import('./containers/qualification-templates/edit-qualification-template'),
+  },
+  {
+    path: 'import-users',
+    loadComponent: () =>
+      import('./containers/import-users/import-users'),
   },
   {
     path: 'lead-sources',

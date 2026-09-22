@@ -12,6 +12,7 @@ import {
 } from 'rxjs';
 import {
   AuthApiService,
+  CurrentUserDto,
   LoginRequest,
   LoginResult,
   UserDto,
@@ -33,7 +34,7 @@ export class AuthenticationService {
 
   private readonly _router = inject(Router);
   // User signals
-  private readonly _connectedUser = signal<UserDto | null>(null);
+  private readonly _connectedUser = signal<CurrentUserDto | null>(null);
   public connectedUser = this._connectedUser.asReadonly();
 
   private readonly _userPermissions = signal<UserPermissionsDto | null>(null);
@@ -70,7 +71,7 @@ export class AuthenticationService {
           response.refreshToken ?? '',
           response.refreshTokenExpiresAt,
         );
-        return this.getCurrentUserInfo(response.userId ?? '').pipe(
+        return this.getCurrentUserInfo().pipe(
           map(() => {
             return response;
           }),
@@ -83,17 +84,13 @@ export class AuthenticationService {
     );
   }
 
-  public getCurrentUserInfo(userId: string): Observable<any> {
+  public getCurrentUserInfo(): Observable<any> {
     this._loadingUserInfo.set(true);
     this._connectedUser.set(null);
-    return forkJoin([
-      this._usersApiService.getUser(userId),
-      this._usersApiService.getUserPermissions(userId),
-    ]).pipe(
+    return this._usersApiService.getCurrentUser().pipe(
       shareReplay(1),
-      tap(([userDto, userPermissionDto]) => {
-        this._connectedUser.set(userDto);
-        this._userPermissions.set(userPermissionDto);
+      map((currentUser) => {
+        this._connectedUser.set(currentUser);
       }),
       finalize(() => this._loadingUserInfo.set(false)),
     );
@@ -102,8 +99,11 @@ export class AuthenticationService {
   public loadAccessToken(): string | null {
     if (!this._accessToken()) {
       const token = localStorage.getItem(TOKEN_STORAGE_KEY) ?? null;
+
       if (!token) return null;
       this._accessToken.set(token);
+
+      this.getCurrentUserInfo().subscribe()
     }
     return this.accessToken();
   }
@@ -118,6 +118,35 @@ export class AuthenticationService {
 
   public verifyToken(): Observable<boolean> {
     return of(true);
+  }
+
+  /** Attempts to refresh the access token using the stored refresh token. */
+  public refreshAccessToken(): Observable<LoginResult | null> {
+    const refreshToken = localStorage.getItem('refreshToken');
+    if (!refreshToken) return of(null);
+
+    return this._authService.refreshToken({ token: refreshToken }).pipe(
+      tap((result: LoginResult) => {
+        if (result.accessToken) {
+          this.setAccessToken(
+            result.accessToken,
+            result.expiresAt,
+            result.refreshToken ?? refreshToken,
+            result.refreshTokenExpiresAt,
+          );
+        }
+      }),
+      catchError(() => of(null)),
+    );
+  }
+
+  public isTokenExpired(): boolean {
+    const expiresIn = localStorage.getItem('expiresIn');
+    if (!expiresIn) return true;
+    try {
+      const expiresAt = new Date(JSON.parse(expiresIn)).getTime();
+      return Date.now() >= expiresAt;
+    } catch { return true; }
   }
 
   public logout(): void {

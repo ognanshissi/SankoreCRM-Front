@@ -1,5 +1,5 @@
-import { Component, inject, OnInit, signal } from '@angular/core';
-import { RouterOutlet } from '@angular/router';
+import { Component, computed, inject, OnInit, signal } from '@angular/core';
+import { RouterLink, RouterOutlet } from '@angular/router';
 import { ButtonModule } from '@talisoft/ui/button';
 import { TasIcon } from '@talisoft/ui/icon';
 import {
@@ -10,8 +10,9 @@ import {
   TasNavigationNavbar,
   TasNavigationSidebar,
 } from '@talisoft/ui/layouts';
+import { Menu, MenuItem, TasMenuTrigger } from '@talisoft/ui/menu';
 import { BreadcrumbComponent } from '../../breadcrumb/breadcrumb.component';
-import { TenantProvider } from '../../../services';
+import { TenantProvider, AuthenticationService } from '../../../services';
 import { TenantContextResponse } from '@sankore/crm-api';
 
 @Component({
@@ -20,6 +21,7 @@ import { TenantContextResponse } from '@sankore/crm-api';
   templateUrl: 'portal-layout.component.html',
   imports: [
     RouterOutlet,
+    RouterLink,
     ButtonModule,
     TasIcon,
     TasNavigationLayout,
@@ -28,16 +30,38 @@ import { TenantContextResponse } from '@sankore/crm-api';
     TasNavigationMenu,
     TasNavigationMenuItem,
     BreadcrumbComponent,
+    Menu,
+    MenuItem,
+    TasMenuTrigger,
   ],
 })
 export class PortalLayoutComponent implements OnInit {
 
   public navigationItems: NavigationItem[] = [];
   private readonly _tenantProvider = inject(TenantProvider);
+  private readonly _auth = inject(AuthenticationService);
 
   public tenantContext = this._tenantProvider.context();
+  public readonly userName = computed(() => this._auth.connectedUser()?.fullName ?? this._auth.connectedUser()?.email ?? 'Utilisateur');
+  public readonly userEmail = computed(() => this._auth.connectedUser()?.email ?? 'Utilisateur');
+  public readonly userRole = computed(() => {
+    if (this._auth.connectedUser()?.roles?.length) {
+      return (this._auth.connectedUser()?.roles || [])[0] ?? 'No Role';
+    }
+    return "No Role";
+  });
+  public readonly userInitials = computed(() => {
+    const name = this.userName();
+    const parts = name.split(/\s+/);
+    return ((parts[0]?.[0] ?? '') + (parts[1]?.[0] ?? '')).toUpperCase() || '?';
+  });
+
+  public logout(): void {
+    this._auth.logout();
+  }
 
   public ngOnInit() {
+    console.log(this._auth.connectedUser());
     this.navigationItems = [
       // {
       //   id: 'dashboard',
