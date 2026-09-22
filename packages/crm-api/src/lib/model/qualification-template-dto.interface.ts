@@ -17,7 +17,8 @@ export interface QualificationTemplateDto {
     id?: string;
     name?: string | null;
     description?: string | null;
-    productType?: string | null;
+    productCategory?: string | null;
+    productCode?: string | null;
     status?: string | null;
     version?: number;
     publishedAt?: string | null;

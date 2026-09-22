@@ -16,7 +16,7 @@ export interface ProductDto {
     name?: string | null;
     code?: string | null;
     /**
-     * One of: Loan, Savings, Tontine
+     * One of: Loan, Savings, Insurance, HealthInsurance, ForecastInsurance, Tontine, GroupCredit, Agriculture
      */
     category?: ProductDtoCategoryEnum;
     description?: string | null;
@@ -30,7 +30,12 @@ export interface ProductDto {
 export enum ProductDtoCategoryEnum {
     Loan = 'Loan',
     Savings = 'Savings',
-    Tontine = 'Tontine'
+    Insurance = 'Insurance',
+    HealthInsurance = 'HealthInsurance',
+    ForecastInsurance = 'ForecastInsurance',
+    Tontine = 'Tontine',
+    GroupCredit = 'GroupCredit',
+    Agriculture = 'Agriculture'
 };
 
 

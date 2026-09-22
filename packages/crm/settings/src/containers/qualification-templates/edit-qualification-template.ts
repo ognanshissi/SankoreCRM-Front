@@ -20,11 +20,12 @@ import {
   QuestionInputTypeEnum,
   SectionInput,
   RuleInputActionEnum,
+  UpdateQualificationTemplateRequest, CreateQualificationTemplateRequest,
 } from '@sankore/crm-api';
 import { BreadcrumbService, ProductConfigService } from '@sankore/crm/common';
 import {
   EditableQuestion, EditableSection, EditableRule,
-  uid, PRODUCT_TYPE_OPTIONS, QUESTION_TYPE_OPTIONS, RULE_ACTION_OPTIONS,
+  uid, QUESTION_TYPE_OPTIONS, RULE_ACTION_OPTIONS,
   questionTypeLabel, statusLabel,
 } from './qualification-template.models';
 
@@ -40,7 +41,6 @@ import {
     Button,
     TasFormField,
     TasLabel,
-    TasError,
     TasInput,
     TasSelect,
   ],
@@ -761,20 +761,18 @@ export class EditQualificationTemplate implements OnInit {
           : null,
     }));
 
-    const payload = {
+    const base = {
       name: this.editName(),
       description: this.editDescription() || null,
-      productType: this.editProductType()
-        ? (Number(this.editProductType()) as any)
-        : null,
+      productCategory: (this.editProductType() || null) as any,
       sections: sections.length > 0 ? sections : null,
       questions: questions.length > 0 ? questions : null,
     };
 
     const templateId = this.id();
     const obs = templateId
-      ? this._leadsApi.updateQualificationTemplate(templateId, payload)
-      : this._leadsApi.createQualificationTemplate(payload);
+      ? this._leadsApi.updateQualificationTemplate(templateId, base as UpdateQualificationTemplateRequest)
+      : this._leadsApi.createQualificationTemplate(base as CreateQualificationTemplateRequest);
 
     obs
       .pipe(
@@ -812,7 +810,7 @@ export class EditQualificationTemplate implements OnInit {
         this.isReadonly.set(tpl.status === 'Published');
         this.editName.set(tpl.name ?? '');
         this.editDescription.set(tpl.description ?? '');
-        this.editProductType.set(tpl.productType ?? '');
+        this.editProductType.set(tpl.productCategory ?? '');
 
         const sections = (tpl.sections ?? []).sort(
           (a, b) => (a.order ?? 0) - (b.order ?? 0),

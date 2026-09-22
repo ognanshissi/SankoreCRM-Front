@@ -20,7 +20,7 @@ export interface CurrentUserDto {
     isSuperUser?: boolean;
     status?: string | null;
     accountType?: string | null;
-    lastLoginAt?: string;
+    lastLoginAt?: string | null;
     roles?: Array<string> | null;
     permissions?: Array<string> | null;
     defaultLanguage?: string | null;

@@ -308,6 +308,13 @@ export class OverviewComponent {
             'Utiliser des webhooks pour faire parvenir vos données dans differents services',
         },
         {
+          title: 'Intégrations',
+          type: 'basic',
+          id: 'account_settings_integrations',
+          link: '/settings/integrations',
+          description: 'Connecter des services externes (WhatsApp, téléphonie, CBS, webhooks)',
+        },
+        {
           title: 'Plan et Facturation',
           type: 'basic',
           id: 'account_settings_billing',

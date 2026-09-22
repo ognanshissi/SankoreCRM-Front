@@ -12,11 +12,11 @@
 
 
 export interface CreateSlaConfigRequest { 
-    agencyId?: string | null;
     name?: string | null;
     firstContactDeadline?: string;
     qualificationDeadline?: string;
     followUpDeadline?: string;
     escalationDeadline?: string;
+    agencyId?: string | null;
 }
 

@@ -234,6 +234,10 @@ const settingsRoutes: Routes = [
       import('./containers/email-templates/edit-email-template'),
   },
   {
+    path: 'integrations',
+    loadComponent: () => import('./containers/integrations/integrations-hub'),
+  },
+  {
     path: 'audit',
     loadComponent: () =>
       import('./containers/audit/audit-homepage/audit-homepage'),

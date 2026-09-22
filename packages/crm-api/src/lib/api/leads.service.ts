@@ -1310,16 +1310,16 @@ export class LeadsApiService {
     }
 
     /**
-     * @param productType One of: Loan, Savings, GroupCredit, Tontine, Agriculture
+     * @param productCategory One of: Loan, Savings, Insurance, HealthInsurance, ForecastInsurance, Tontine, GroupCredit, Agriculture
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      */
-    public getActiveTemplateForProduct(productType: 'Loan' | 'Savings' | 'GroupCredit' | 'Tontine' | 'Agriculture', observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<QualificationTemplateDto>;
-    public getActiveTemplateForProduct(productType: 'Loan' | 'Savings' | 'GroupCredit' | 'Tontine' | 'Agriculture', observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<QualificationTemplateDto>>;
-    public getActiveTemplateForProduct(productType: 'Loan' | 'Savings' | 'GroupCredit' | 'Tontine' | 'Agriculture', observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<QualificationTemplateDto>>;
-    public getActiveTemplateForProduct(productType: 'Loan' | 'Savings' | 'GroupCredit' | 'Tontine' | 'Agriculture', observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
-        if (productType === null || productType === undefined) {
-            throw new Error('Required parameter productType was null or undefined when calling getActiveTemplateForProduct.');
+    public getActiveTemplateForProduct(productCategory: 'Loan' | 'Savings' | 'Insurance' | 'HealthInsurance' | 'ForecastInsurance' | 'Tontine' | 'GroupCredit' | 'Agriculture', observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<QualificationTemplateDto>;
+    public getActiveTemplateForProduct(productCategory: 'Loan' | 'Savings' | 'Insurance' | 'HealthInsurance' | 'ForecastInsurance' | 'Tontine' | 'GroupCredit' | 'Agriculture', observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<QualificationTemplateDto>>;
+    public getActiveTemplateForProduct(productCategory: 'Loan' | 'Savings' | 'Insurance' | 'HealthInsurance' | 'ForecastInsurance' | 'Tontine' | 'GroupCredit' | 'Agriculture', observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<QualificationTemplateDto>>;
+    public getActiveTemplateForProduct(productCategory: 'Loan' | 'Savings' | 'Insurance' | 'HealthInsurance' | 'ForecastInsurance' | 'Tontine' | 'GroupCredit' | 'Agriculture', observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
+        if (productCategory === null || productCategory === undefined) {
+            throw new Error('Required parameter productCategory was null or undefined when calling getActiveTemplateForProduct.');
         }
 
         let localVarHeaders = this.defaultHeaders;
@@ -1360,7 +1360,7 @@ export class LeadsApiService {
             }
         }
 
-        let localVarPath = `/api/v1/leads/qualification-templates/active/${this.configuration.encodeParam({name: "productType", value: productType, in: "path", style: "simple", explode: false, dataType: "'Loan' | 'Savings' | 'GroupCredit' | 'Tontine' | 'Agriculture'", dataFormat: undefined})}`;
+        let localVarPath = `/api/v1/leads/qualification-templates/active/${this.configuration.encodeParam({name: "productCategory", value: productCategory, in: "path", style: "simple", explode: false, dataType: "'Loan' | 'Savings' | 'Insurance' | 'HealthInsurance' | 'ForecastInsurance' | 'Tontine' | 'GroupCredit' | 'Agriculture'", dataFormat: undefined})}`;
         return this.httpClient.request<QualificationTemplateDto>('get', `${this.configuration.basePath}${localVarPath}`,
             {
                 context: localVarHttpContext,
@@ -2638,23 +2638,23 @@ export class LeadsApiService {
 
     /**
      * @param status 
-     * @param productType 
+     * @param productCategory 
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      */
-    public listQualificationTemplates(status?: 0 | 1 | 2, productType?: 0 | 1 | 2 | 3 | 4, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<Array<QualificationTemplateDto>>;
-    public listQualificationTemplates(status?: 0 | 1 | 2, productType?: 0 | 1 | 2 | 3 | 4, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<Array<QualificationTemplateDto>>>;
-    public listQualificationTemplates(status?: 0 | 1 | 2, productType?: 0 | 1 | 2 | 3 | 4, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<Array<QualificationTemplateDto>>>;
-    public listQualificationTemplates(status?: 0 | 1 | 2, productType?: 0 | 1 | 2 | 3 | 4, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
+    public listQualificationTemplates(status?: 0 | 1 | 2, productCategory?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<Array<QualificationTemplateDto>>;
+    public listQualificationTemplates(status?: 0 | 1 | 2, productCategory?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<Array<QualificationTemplateDto>>>;
+    public listQualificationTemplates(status?: 0 | 1 | 2, productCategory?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<Array<QualificationTemplateDto>>>;
+    public listQualificationTemplates(status?: 0 | 1 | 2, productCategory?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
 
         let localVarQueryParameters = new HttpParams({encoder: this.encoder});
         if (status !== undefined && status !== null) {
           localVarQueryParameters = this.addToHttpParams(localVarQueryParameters,
             <any>status, 'status');
         }
-        if (productType !== undefined && productType !== null) {
+        if (productCategory !== undefined && productCategory !== null) {
           localVarQueryParameters = this.addToHttpParams(localVarQueryParameters,
-            <any>productType, 'productType');
+            <any>productCategory, 'productCategory');
         }
 
         let localVarHeaders = this.defaultHeaders;
@@ -3578,6 +3578,78 @@ export class LeadsApiService {
             {
                 context: localVarHttpContext,
                 body: rescheduleReminderRequest,
+                responseType: <any>responseType_,
+                withCredentials: this.configuration.withCredentials,
+                headers: localVarHeaders,
+                observe: observe,
+                reportProgress: reportProgress
+            }
+        );
+    }
+
+    /**
+     * Resolve the best qualification template for a product code (3-level fallback)
+     * @param productCode 
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     */
+    public resolveQualificationTemplate(productCode: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<QualificationTemplateDto>;
+    public resolveQualificationTemplate(productCode: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<QualificationTemplateDto>>;
+    public resolveQualificationTemplate(productCode: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<QualificationTemplateDto>>;
+    public resolveQualificationTemplate(productCode: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
+        if (productCode === null || productCode === undefined) {
+            throw new Error('Required parameter productCode was null or undefined when calling resolveQualificationTemplate.');
+        }
+
+        let localVarQueryParameters = new HttpParams({encoder: this.encoder});
+        if (productCode !== undefined && productCode !== null) {
+          localVarQueryParameters = this.addToHttpParams(localVarQueryParameters,
+            <any>productCode, 'productCode');
+        }
+
+        let localVarHeaders = this.defaultHeaders;
+
+        let localVarCredential: string | undefined;
+        // authentication (BearerToken) required
+        localVarCredential = this.configuration.lookupCredential('BearerToken');
+        if (localVarCredential) {
+            localVarHeaders = localVarHeaders.set('Authorization', 'Bearer ' + localVarCredential);
+        }
+
+        let localVarHttpHeaderAcceptSelected: string | undefined = options && options.httpHeaderAccept;
+        if (localVarHttpHeaderAcceptSelected === undefined) {
+            // to determine the Accept header
+            const httpHeaderAccepts: string[] = [
+                'application/json'
+            ];
+            localVarHttpHeaderAcceptSelected = this.configuration.selectHeaderAccept(httpHeaderAccepts);
+        }
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+
+        let localVarHttpContext: HttpContext | undefined = options && options.context;
+        if (localVarHttpContext === undefined) {
+            localVarHttpContext = new HttpContext();
+        }
+
+
+        let responseType_: 'text' | 'json' | 'blob' = 'json';
+        if (localVarHttpHeaderAcceptSelected) {
+            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+                responseType_ = 'text';
+            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+                responseType_ = 'json';
+            } else {
+                responseType_ = 'blob';
+            }
+        }
+
+        let localVarPath = `/api/v1/leads/qualification-templates/resolve`;
+        return this.httpClient.request<QualificationTemplateDto>('get', `${this.configuration.basePath}${localVarPath}`,
+            {
+                context: localVarHttpContext,
+                params: localVarQueryParameters,
                 responseType: <any>responseType_,
                 withCredentials: this.configuration.withCredentials,
                 headers: localVarHeaders,

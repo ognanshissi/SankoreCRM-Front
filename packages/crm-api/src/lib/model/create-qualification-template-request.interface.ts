@@ -16,16 +16,20 @@ import { SectionInput } from './section-input.interface';
 export interface CreateQualificationTemplateRequest { 
     name?: string | null;
     description?: string | null;
-    productType?: CreateQualificationTemplateRequestProductTypeEnum | null;
+    productCategory?: CreateQualificationTemplateRequestProductCategoryEnum | null;
+    productCode?: string | null;
     questions?: Array<QuestionInput> | null;
     sections?: Array<SectionInput> | null;
 }
-export enum CreateQualificationTemplateRequestProductTypeEnum {
+export enum CreateQualificationTemplateRequestProductCategoryEnum {
     NUMBER_0 = 0,
     NUMBER_1 = 1,
     NUMBER_2 = 2,
     NUMBER_3 = 3,
-    NUMBER_4 = 4
+    NUMBER_4 = 4,
+    NUMBER_5 = 5,
+    NUMBER_6 = 6,
+    NUMBER_7 = 7
 };
 
 
