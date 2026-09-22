@@ -18,17 +18,10 @@ import {
   DynamicFormRendererComponent,
   DynamicFormSchema,
   DynamicFormAnswers,
+  PRODUCT_TYPE_LABELS,
 } from '@sankore/crm/common';
 
 type PageState = 'loading' | 'no-product' | 'no-template' | 'form' | 'submitted';
-
-const PRODUCT_TYPE_LABELS: Record<string, string> = {
-  Loan: 'Prêt',
-  Savings: 'Épargne',
-  GroupCredit: 'Crédit groupe',
-  Tontine: 'Tontine',
-  Agriculture: 'Agriculture',
-};
 
 function draftKey(leadId: string, templateId: string, version: number): string {
   return `qualification_draft_${leadId}_${templateId}_v${version}`;

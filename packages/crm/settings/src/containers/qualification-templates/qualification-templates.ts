@@ -25,7 +25,7 @@ import { statusSeverity, statusLabel, productLabel } from './qualification-templ
             <h1 class="text-lg font-semibold text-slate-800">Formulaires de qualification</h1>
             <p class="text-sm text-slate-500 mt-0.5">Configurez les formulaires de qualification par produit.</p>
           </div>
-          <button tas-button color="primary" type="button" (click)="navigateToCreate()">
+          <button tas-raised-button color="primary" type="button" (click)="navigateToCreate()">
             <tas-icon iconName="feather:plus" style="font-size:14px"></tas-icon>
             Nouveau formulaire
           </button>

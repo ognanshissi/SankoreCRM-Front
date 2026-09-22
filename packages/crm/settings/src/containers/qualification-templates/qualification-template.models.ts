@@ -1,9 +1,11 @@
 import {
   QuestionInputTypeEnum,
   RuleInputActionEnum,
-  CreateQualificationTemplateRequestProductTypeEnum,
 } from '@sankore/crm-api';
 import { Severity } from '@talisoft/ui/tag';
+import { productCategoryLabel } from '@sankore/crm/common';
+
+// Re-export for existing consumers
 
 // ——— Editable models ———
 
@@ -40,14 +42,6 @@ export function uid(): string { return '__q' + (++_uidCounter); }
 
 // ——— Constants ———
 
-export const PRODUCT_TYPE_OPTIONS = [
-  { label: 'Prêt',          value: String(CreateQualificationTemplateRequestProductTypeEnum.NUMBER_0) },
-  { label: 'Épargne',       value: String(CreateQualificationTemplateRequestProductTypeEnum.NUMBER_1) },
-  { label: 'Crédit groupe', value: String(CreateQualificationTemplateRequestProductTypeEnum.NUMBER_2) },
-  { label: 'Tontine',       value: String(CreateQualificationTemplateRequestProductTypeEnum.NUMBER_3) },
-  { label: 'Agriculture',   value: String(CreateQualificationTemplateRequestProductTypeEnum.NUMBER_4) },
-];
-
 export const QUESTION_TYPE_OPTIONS = [
   { label: 'Oui/Non',          value: QuestionInputTypeEnum.YesNo },
   { label: 'Choix unique',     value: QuestionInputTypeEnum.SingleChoice },
@@ -81,8 +75,7 @@ export function statusLabel(status: string | null | undefined): string {
 }
 
 export function productLabel(type: string | null | undefined): string {
-  const idx = Number(type);
-  return PRODUCT_TYPE_OPTIONS[idx]?.label ?? type ?? '—';
+  return productCategoryLabel(type);
 }
 
 export function questionTypeLabel(type: string): string {

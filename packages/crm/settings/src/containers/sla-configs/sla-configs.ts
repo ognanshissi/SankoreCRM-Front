@@ -1,4 +1,5 @@
 import { Component, computed, inject, signal, OnInit } from '@angular/core';
+import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { catchError, EMPTY, of } from 'rxjs';
 import { TasCard } from '@talisoft/ui/card';
@@ -67,7 +68,7 @@ function sampleDeadline(duration: string, holidays: string[]): string {
               <h1 class="text-lg font-semibold text-slate-800">SLA & Calendrier ouvré</h1>
               <p class="text-sm text-slate-500 mt-0.5">Délais SLA par agence et jours fériés.</p>
             </div>
-            <button tas-button color="primary" type="button" (click)="startCreate()">
+            <button tas-raised-button color="primary" type="button" (click)="navigateToCreate()">
               <tas-icon iconName="feather:plus" style="font-size:14px"></tas-icon> Nouvelle config SLA
             </button>
           </div>
@@ -116,7 +117,7 @@ function sampleDeadline(duration: string, holidays: string[]): string {
               (click)="viewState.set('list')">
               <tas-icon iconName="feather:arrow-left" style="font-size:14px"></tas-icon>
             </button>
-            <h1 class="text-lg font-semibold text-slate-800 flex-1">{{ editId() ? 'Modifier' : 'Nouvelle' }} config SLA</h1>
+            <h1 class="text-lg font-semibold text-slate-800 flex-1">Modifier la config SLA</h1>
             <button tas-button color="primary" type="button" [disabled]="isSaving() || !editName()" (click)="save()">
               @if (isSaving()) { <tas-spinner size="3" class="text-white"></tas-spinner> }
               Enregistrer
@@ -225,6 +226,7 @@ export class SlaConfigsPage implements OnInit {
   private readonly _agenciesApi = inject(AgenciesApiService);
   private readonly _snackbar = inject(SnackbarService);
   private readonly _breadcrumbService = inject(BreadcrumbService);
+  private readonly _router = inject(Router);
 
   public readonly formatDeadline = formatDeadline;
 
@@ -269,11 +271,8 @@ export class SlaConfigsPage implements OnInit {
 
   public removeHoliday(d: string): void { this.holidays.update((h) => h.filter((x) => x !== d)); }
 
-  public startCreate(): void {
-    this.editId.set(null); this.editName.set(''); this.editAgencyId.set('');
-    this.editFirstContact.set('04:00:00'); this.editQualification.set('24:00:00');
-    this.editFollowUp.set('48:00:00'); this.editEscalation.set('72:00:00');
-    this.holidays.set([]); this.viewState.set('form');
+  public navigateToCreate(): void {
+    this._router.navigate(['/settings/sla-configs/create']);
   }
 
   public startEdit(cfg: SlaConfigDto): void {
@@ -303,10 +302,8 @@ export class SlaConfigsPage implements OnInit {
       firstContactDeadline: this.editFirstContact(), qualificationDeadline: this.editQualification(),
       followUpDeadline: this.editFollowUp(), escalationDeadline: this.editEscalation(),
     };
-    const obs = this.editId()
-      ? this._api.updateSlaConfig(this.editId()!, payload)
-      : this._api.createSlaConfig(payload);
-    obs.pipe(catchError(() => { this._snackbar.error('Erreur', 'Sauvegarde échouée.'); return EMPTY; }))
+    this._api.updateSlaConfig(this.editId()!, payload).pipe(
+      catchError(() => { this._snackbar.error('Erreur', 'Sauvegarde échouée.'); return EMPTY; }))
       .subscribe({ next: () => {
         this._snackbar.success('Enregistré', 'Configuration SLA sauvegardée.');
         this.viewState.set('list'); this._load();

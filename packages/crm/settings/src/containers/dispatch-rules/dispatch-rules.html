@@ -1,0 +1,94 @@
+<ng-container>
+
+  <!-- ============ LIST VIEW ============ -->
+    @if (isLoading()) {
+      <div class="flex justify-center py-24">
+        <tas-spinner size="10" class="text-primary"></tas-spinner>
+      </div>
+    } @else {
+      <div class="pb-6">
+        <div class="flex items-start justify-between mb-6">
+          <div>
+            <h1 class="text-lg font-semibold text-slate-800">Stratégies d'affectation</h1>
+            <p class="text-sm text-slate-500 mt-0.5">
+              Configurez comment les leads sont automatiquement assignés aux agents.
+            </p>
+          </div>
+          <button tas-raised-button color="primary" type="button" (click)="navigateToCreate()">
+            <tas-icon iconName="feather:plus" style="font-size:14px"></tas-icon>
+            Nouvelle règle
+          </button>
+        </div>
+
+        @if (rules().length === 0) {
+          <tas-card class="block">
+            <div class="flex flex-col items-center justify-center py-16 text-center">
+              <div class="w-14 h-14 rounded-full bg-slate-100 flex items-center justify-center mb-3">
+                <tas-icon iconName="feather:shuffle" class="text-slate-400" style="font-size:24px"></tas-icon>
+              </div>
+              <p class="text-sm text-slate-500">Aucune règle d'affectation configurée</p>
+              <p class="text-xs text-slate-400 mt-1">Créez votre première stratégie pour automatiser l'assignation des leads.</p>
+            </div>
+          </tas-card>
+        } @else {
+          <div class="flex flex-col gap-3">
+            @for (rule of rules(); track rule.id) {
+              <tas-card class="block">
+                <div class="p-4 flex items-center gap-4">
+                  <!-- Status -->
+                  <tas-switch
+                    [checked]="rule.isActive ?? false"
+                    [ariaLabel]="(rule.isActive ? 'Désactiver' : 'Activer') + ' ' + (rule.name ?? '')"
+                    [isLoading]="togglingRuleId() === rule.id"
+                    (toggle)="toggleRuleActive(rule, $event)"
+                  ></tas-switch>
+
+                  <!-- Info -->
+                  <button class="flex-1 min-w-0 cursor-pointer" (click)="startEdit(rule)">
+                    <div class="flex items-center gap-2">
+                      <p class="text-sm font-semibold text-slate-800">{{ rule.name }}</p>
+                      <tas-tag [severity]="strategySeverity(rule.strategy)">
+                        {{ strategyLabel(rule.strategy) }}
+                      </tas-tag>
+                      @if (rule.isActive) {
+                        <tas-tag severity="success">Active</tas-tag>
+                      }
+                    </div>
+                    <div class="flex items-center gap-4 mt-1 text-xs text-slate-400">
+                      @if (rule.maxLeadsPerAgent) {
+                        <span>Max {{ rule.maxLeadsPerAgent }} leads/agent</span>
+                      }
+                      @if (rule.firstContactSla) {
+                        <span>SLA {{ rule.firstContactSla }}</span>
+                      }
+                      @if (rule.priority !== null) {
+                        <span>Priorité {{ rule.priority }}</span>
+                      }
+                    </div>
+                  </button>
+
+                  <!-- Actions -->
+                  <button
+                    tas-outlined-button
+                    type="button"
+                    (click)="startEdit(rule)"
+                    class="text-xs shrink-0"
+                  >
+                    <tas-icon iconName="feather:edit-2" style="font-size:12px"></tas-icon>
+                    Modifier
+                  </button>
+                  <button
+                    type="button"
+                    class="text-slate-300 hover:text-red-500 transition-colors shrink-0"
+                    (click)="deleteRule(rule)"
+                  >
+                    <tas-icon iconName="feather:trash-2" style="font-size:16px"></tas-icon>
+                  </button>
+                </div>
+              </tas-card>
+            }
+          </div>
+        }
+      </div>
+    }
+</ng-container>

@@ -17,12 +17,7 @@ import { TasDatePicker } from '@talisoft/ui/date-picker';
 import { ProductsApiService, CreateProductRequestCategoryEnum } from '@sankore/crm-api';
 import { SnackbarService } from '@talisoft/ui/snackbar';
 import { ProductParametersEditor } from '../product-parameters-editor';
-
-const CATEGORY_OPTIONS = [
-  { label: 'Prêt', value: CreateProductRequestCategoryEnum.Loan },
-  { label: 'Épargne', value: CreateProductRequestCategoryEnum.Savings },
-  { label: 'Tontine', value: CreateProductRequestCategoryEnum.Tontine },
-];
+import { ProductConfigService } from '@sankore/crm/common';
 
 class CreateProductFormModel {
   public name!: string;
@@ -31,6 +26,8 @@ class CreateProductFormModel {
   public category!: string;
   public effectiveFrom!: string;
   public parametersJson!: string;
+
+  public productConfig = inject(ProductConfigService)
 
   public static instantiate(): CreateProductFormModel {
     const m = new CreateProductFormModel();
@@ -68,14 +65,18 @@ class CreateProductFormModel {
     <tas-side-drawer>
       <tas-drawer-title>
         <p class="text-base font-semibold text-slate-800">Nouveau produit</p>
-        <p class="text-xs text-slate-400 mt-0.5">Les produits servent de spécialités pour les utilisateurs et les territoires.</p>
+        <p class="text-xs text-slate-400 mt-0.5">
+          Les produits servent de spécialités pour les utilisateurs et les
+          territoires.
+        </p>
       </tas-drawer-title>
 
       <tas-drawer-content>
         <form [formRoot]="formSchema" class="flex flex-col gap-5">
-
           <tas-form-field>
-            <tas-label>Nom <span class="text-functional-error">*</span></tas-label>
+            <tas-label
+              >Nom <span class="text-functional-error">*</span></tas-label
+            >
             <input
               tasInput
               type="text"
@@ -88,14 +89,19 @@ class CreateProductFormModel {
           </tas-form-field>
 
           <tas-form-field>
-            <tas-label>Code <span class="text-functional-error">*</span></tas-label>
+            <tas-label
+              >Code <span class="text-functional-error">*</span></tas-label
+            >
             <input
               tasInput
               type="text"
               placeholder="ex: ASS_VIE"
               [formField]="formSchema.code"
             />
-            <p class="text-xs text-slate-400 mt-1">Identifiant technique unique. Ne pourra plus être modifié après création.</p>
+            <p class="text-xs text-slate-400 mt-1">
+              Identifiant technique unique. Ne pourra plus être modifié après
+              création.
+            </p>
             @if (formSchema.code().touched() && formSchema.code().invalid()) {
               <tas-error>{{ formSchema.code().errors()[0].message }}</tas-error>
             }
@@ -112,34 +118,45 @@ class CreateProductFormModel {
           </tas-form-field>
 
           <tas-form-field>
-            <tas-label>Catégorie <span class="text-functional-error">*</span></tas-label>
+            <tas-label
+              >Catégorie <span class="text-functional-error">*</span></tas-label
+            >
             <tas-select
-              [options]="categoryOptions"
+              [options]="productConfig.categories"
               optionLabel="label"
               optionValue="value"
               placeholder="Sélectionnez une catégorie"
               [formField]="formSchema.category"
             ></tas-select>
-            @if (formSchema.category().touched() && formSchema.category().invalid()) {
-              <tas-error>{{ formSchema.category().errors()[0].message }}</tas-error>
+            @if (
+              formSchema.category().touched() && formSchema.category().invalid()
+            ) {
+              <tas-error>{{
+                formSchema.category().errors()[0].message
+              }}</tas-error>
             }
           </tas-form-field>
 
           <div>
-            <label class="text-xs font-medium text-slate-500 mb-1 block">Date d'effet</label>
+            <label class="text-xs font-medium text-slate-500 mb-1 block"
+              >Date d'effet</label
+            >
             <tas-date-picker
               mode="date"
               placeholder="Sélectionnez une date"
               [formField]="formSchema.effectiveFrom"
             ></tas-date-picker>
-            <p class="text-xs text-slate-400 mt-1">Date à partir de laquelle le produit est disponible.</p>
+            <p class="text-xs text-slate-400 mt-1">
+              Date à partir de laquelle le produit est disponible.
+            </p>
           </div>
-
         </form>
 
         <!-- Parameters editor -->
         <div class="mt-5">
-          <p class="text-sm font-semibold text-slate-700 mb-2">Paramètres du produit</p>
+          <p class="text-sm font-semibold text-slate-700 mb-2">
+            Paramètres du produit
+          </p>
           <product-parameters-editor
             [category]="formSchema.category().value()"
             [initialJson]="''"
@@ -149,7 +166,12 @@ class CreateProductFormModel {
       </tas-drawer-content>
 
       <tas-drawer-action>
-        <button tas-outlined-button color="primary" type="button" (click)="close()">
+        <button
+          tas-outlined-button
+          color="primary"
+          type="button"
+          (click)="close()"
+        >
           <tas-icon iconName="feather:x" iconSize="sm"></tas-icon>
           Annuler
         </button>
@@ -172,11 +194,9 @@ export class CreateProductComponent {
   private readonly _dialogRef = inject(DialogRef);
   private readonly _productsApiService = inject(ProductsApiService);
   private readonly _snackbarService = inject(SnackbarService);
-
+  public readonly productConfig = inject(ProductConfigService);
   public model = signal(CreateProductFormModel.instantiate());
   public parametersJson = signal('');
-
-  public readonly categoryOptions = CATEGORY_OPTIONS;
 
   public formSchema = form(this.model, (schema) => {
     required(schema.name, { message: 'Le nom du produit est obligatoire' });
@@ -194,12 +214,17 @@ export class CreateProductComponent {
             code: value.code,
             description: value.description || null,
             category: (value.category as any) || undefined,
-            effectiveFrom: value.effectiveFrom ? new Date(value.effectiveFrom).toISOString() : null,
+            effectiveFrom: value.effectiveFrom
+              ? new Date(value.effectiveFrom).toISOString()
+              : null,
             parametersJson: this.parametersJson() || null,
           })
           .pipe(
             catchError(() => {
-              this._snackbarService.error('Erreur', 'Impossible de créer le produit.');
+              this._snackbarService.error(
+                'Erreur',
+                'Impossible de créer le produit.',
+              );
               return EMPTY;
             }),
           ),

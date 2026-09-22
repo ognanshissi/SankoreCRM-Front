@@ -55,7 +55,7 @@ const DRAFT_STORAGE_KEY = 'pipeline_stages_draft';
     HasPermissionDirective,
   ],
   template: `
-    <ng-container *hasPermission="'pipeline.configure'">
+    <ng-container>
       @if (isLoading()) {
         <div class="flex justify-center py-24">
           <tas-spinner size="10" class="text-primary"></tas-spinner>
@@ -65,9 +65,12 @@ const DRAFT_STORAGE_KEY = 'pipeline_stages_draft';
           <!-- Header -->
           <div class="flex items-start justify-between mb-6">
             <div>
-              <h1 class="text-lg font-semibold text-slate-800">Étapes du pipeline</h1>
+              <h1 class="text-lg font-semibold text-slate-800">
+                Étapes du pipeline
+              </h1>
               <p class="text-sm text-slate-500 mt-0.5">
-                Définissez, réordonnez et activez/désactivez les étapes du pipeline commercial.
+                Définissez, réordonnez et activez/désactivez les étapes du
+                pipeline commercial.
               </p>
             </div>
             <div class="flex items-center gap-2">
@@ -81,7 +84,7 @@ const DRAFT_STORAGE_KEY = 'pipeline_stages_draft';
                 </button>
               }
               <button
-                tas-button
+                tas-raised-button
                 color="primary"
                 type="button"
                 [disabled]="!isDirty() || isSaving()"
@@ -101,9 +104,11 @@ const DRAFT_STORAGE_KEY = 'pipeline_stages_draft';
               <button
                 type="button"
                 class="px-3 py-1.5 rounded-full text-xs font-medium transition-colors"
-                [class]="selectedProduct() === ''
-                  ? 'bg-primary/15 text-primary'
-                  : 'bg-slate-100 text-slate-500 hover:bg-slate-200'"
+                [class]="
+                  selectedProduct() === ''
+                    ? 'bg-primary/15 text-primary'
+                    : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+                "
                 (click)="selectedProduct.set('')"
               >
                 Tous les produits
@@ -112,9 +117,11 @@ const DRAFT_STORAGE_KEY = 'pipeline_stages_draft';
                 <button
                   type="button"
                   class="px-3 py-1.5 rounded-full text-xs font-medium transition-colors"
-                  [class]="selectedProduct() === p.code
-                    ? 'bg-primary/15 text-primary'
-                    : 'bg-slate-100 text-slate-500 hover:bg-slate-200'"
+                  [class]="
+                    selectedProduct() === p.code
+                      ? 'bg-primary/15 text-primary'
+                      : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+                  "
                   (click)="selectedProduct.set(p.code ?? '')"
                 >
                   {{ p.name }}
@@ -126,11 +133,17 @@ const DRAFT_STORAGE_KEY = 'pipeline_stages_draft';
           <!-- Pipeline preview -->
           <tas-card class="mb-4 block">
             <div class="p-4 border-b border-slate-100">
-              <p class="text-sm font-semibold text-slate-700">Aperçu du pipeline</p>
+              <p class="text-sm font-semibold text-slate-700">
+                Aperçu du pipeline
+              </p>
             </div>
             <div class="p-4">
               <div class="flex items-center gap-1 overflow-x-auto">
-                @for (stage of enabledStages(); track stage.key; let last = $last) {
+                @for (
+                  stage of enabledStages();
+                  track stage.key;
+                  let last = $last
+                ) {
                   <div class="flex items-center gap-1 shrink-0">
                     <div
                       class="px-2.5 py-1 rounded text-[10px] font-medium text-white whitespace-nowrap"
@@ -139,7 +152,11 @@ const DRAFT_STORAGE_KEY = 'pipeline_stages_draft';
                       {{ stage.label }}
                     </div>
                     @if (!last) {
-                      <tas-icon iconName="feather:chevron-right" class="text-slate-300" style="font-size:12px"></tas-icon>
+                      <tas-icon
+                        iconName="feather:chevron-right"
+                        class="text-slate-300"
+                        style="font-size:12px"
+                      ></tas-icon>
                     }
                   </div>
                 }
@@ -151,14 +168,19 @@ const DRAFT_STORAGE_KEY = 'pipeline_stages_draft';
           <tas-card class="block">
             <div class="p-4 border-b border-slate-100">
               <div class="flex items-center justify-between">
-                <p class="text-sm font-semibold text-slate-700">Configuration des étapes</p>
+                <p class="text-sm font-semibold text-slate-700">
+                  Configuration des étapes
+                </p>
                 <span class="text-xs text-slate-400">
-                  {{ enabledStages().length }} active{{ enabledStages().length > 1 ? 's' : '' }}
+                  {{ enabledStages().length }} active{{
+                    enabledStages().length > 1 ? 's' : ''
+                  }}
                   sur {{ stages().length }}
                 </span>
               </div>
               <p class="text-xs text-slate-400 mt-0.5">
-                Glissez-déposez pour réordonner. Utilisez le switch pour activer/désactiver.
+                Glissez-déposez pour réordonner. Utilisez le switch pour
+                activer/désactiver.
               </p>
             </div>
 
@@ -174,34 +196,51 @@ const DRAFT_STORAGE_KEY = 'pipeline_stages_draft';
                   [class.opacity-50]="!stage.enabled"
                 >
                   <!-- Drag handle -->
-                  <div cdkDragHandle class="cursor-grab active:cursor-grabbing text-slate-300 hover:text-slate-500">
-                    <tas-icon iconName="feather:menu" style="font-size:16px"></tas-icon>
+                  <div
+                    cdkDragHandle
+                    class="cursor-grab active:cursor-grabbing text-slate-300 hover:text-slate-500"
+                  >
+                    <tas-icon
+                      iconName="feather:menu"
+                      style="font-size:16px"
+                    ></tas-icon>
                   </div>
 
                   <!-- Drag placeholder -->
-                  <div cdkDragPlaceholder class="bg-primary/5 border-2 border-dashed border-primary/30 rounded h-12 w-full"></div>
-
-                  <!-- Color indicator -->
                   <div
-                    class="w-3 h-3 rounded-full shrink-0"
-                    [style.background-color]="stage.color"
-                  ></div>
+                    cdkDragPlaceholder
+                    class="flex items-center space-x-4 pl-4 bg-primary/5 border-2 border-dashed border-primary/30 rounded h-12 w-full"
+                  >
+                    <!-- Color indicator -->
+                    <div
+                      class="w-3 h-3 rounded-full shrink-0"
+                      [style.background-color]="stage.color"
+                    ></div>
 
-                  <!-- Label + key -->
-                  <div class="flex-1 min-w-0">
-                    <p class="text-sm font-medium text-slate-800">{{ stage.label }}</p>
-                    <p class="text-[10px] text-slate-400 font-mono">{{ stage.key }}</p>
+                    <!-- Label + key -->
+                    <div class="flex min-w-0 w-[400px] space-x-4">
+                      <p class="text-sm font-medium text-slate-800">
+                        {{ stage.label }}
+                      </p>
+                      <p class="text-[10px] text-slate-400 font-mono">
+                        {{ stage.key }}
+                      </p>
+                    </div>
                   </div>
 
                   <!-- Lead count -->
                   @if (stage.leadCount > 0) {
                     <span class="text-xs text-slate-400 tabular-nums shrink-0">
-                      {{ stage.leadCount }} lead{{ stage.leadCount > 1 ? 's' : '' }}
+                      {{ stage.leadCount }} lead{{
+                        stage.leadCount > 1 ? 's' : ''
+                      }}
                     </span>
                   }
 
                   <!-- Order badge -->
-                  <span class="w-6 h-6 rounded-full bg-slate-100 text-[10px] font-semibold text-slate-500 flex items-center justify-center tabular-nums shrink-0">
+                  <span
+                    class="w-6 h-6 rounded-full bg-slate-100 text-[10px] font-semibold text-slate-500 flex items-center justify-center tabular-nums shrink-0"
+                  >
                     {{ $index + 1 }}
                   </span>
 
@@ -209,7 +248,11 @@ const DRAFT_STORAGE_KEY = 'pipeline_stages_draft';
                   <div class="shrink-0" (click)="$event.stopPropagation()">
                     <tas-switch
                       [checked]="stage.enabled"
-                      [ariaLabel]="stage.enabled ? 'Désactiver ' + stage.label : 'Activer ' + stage.label"
+                      [ariaLabel]="
+                        stage.enabled
+                          ? 'Désactiver ' + stage.label
+                          : 'Activer ' + stage.label
+                      "
                       (toggle)="onToggleStage(stage, $event)"
                     ></tas-switch>
                   </div>
@@ -219,10 +262,17 @@ const DRAFT_STORAGE_KEY = 'pipeline_stages_draft';
           </tas-card>
 
           @if (isDirty()) {
-            <div class="mt-4 p-3 rounded-lg bg-amber-50 border border-amber-200 flex items-center gap-2">
-              <tas-icon iconName="feather:info" class="text-amber-500 shrink-0" style="font-size:14px"></tas-icon>
+            <div
+              class="mt-4 p-3 rounded-lg bg-amber-50 border border-amber-200 flex items-center gap-2"
+            >
+              <tas-icon
+                iconName="feather:info"
+                class="text-amber-500 shrink-0"
+                style="font-size:14px"
+              ></tas-icon>
               <p class="text-xs text-amber-700">
-                Des modifications non enregistrées sont en attente. Cliquez sur « Enregistrer » pour appliquer.
+                Des modifications non enregistrées sont en attente. Cliquez sur
+                « Enregistrer » pour appliquer.
               </p>
             </div>
           }
@@ -257,7 +307,11 @@ export class PipelineStagesConfig implements OnInit {
     if (current.length !== this._savedSnapshot.length) return true;
     return current.some((s, i) => {
       const saved = this._savedSnapshot[i];
-      return s.key !== saved.key || s.enabled !== saved.enabled || s.order !== saved.order;
+      return (
+        s.key !== saved.key ||
+        s.enabled !== saved.enabled ||
+        s.order !== saved.order
+      );
     });
   });
 
@@ -314,9 +368,15 @@ export class PipelineStagesConfig implements OnInit {
         JSON.stringify(payload),
       );
       this._savedSnapshot = this.stages().map((s) => ({ ...s }));
-      this._snackbar.success('Pipeline enregistré', 'La configuration du pipeline a été sauvegardée.');
+      this._snackbar.success(
+        'Pipeline enregistré',
+        'La configuration du pipeline a été sauvegardée.',
+      );
     } catch {
-      this._snackbar.error('Erreur', 'Impossible de sauvegarder la configuration.');
+      this._snackbar.error(
+        'Erreur',
+        'Impossible de sauvegarder la configuration.',
+      );
     } finally {
       this.isSaving.set(false);
     }
@@ -336,8 +396,12 @@ export class PipelineStagesConfig implements OnInit {
     this.isLoading.set(true);
 
     forkJoin({
-      stats: this._leadsApiService.getLeadStats().pipe(catchError(() => of({} as LeadStatsDto))),
-      products: this._productsApiService.listProducts().pipe(catchError(() => of([] as ProductDto[]))),
+      stats: this._leadsApiService
+        .getLeadStats()
+        .pipe(catchError(() => of({} as LeadStatsDto))),
+      products: this._productsApiService
+        .listProducts()
+        .pipe(catchError(() => of([] as ProductDto[]))),
     }).subscribe({
       next: ({ stats, products }) => {
         this.products.set(products ?? []);
@@ -347,18 +411,25 @@ export class PipelineStagesConfig implements OnInit {
         const productKey = this.selectedProduct() || '__default__';
         let savedConfig: any[] | null = null;
         try {
-          const raw = localStorage.getItem(`${DRAFT_STORAGE_KEY}_${productKey}`);
+          const raw = localStorage.getItem(
+            `${DRAFT_STORAGE_KEY}_${productKey}`,
+          );
           if (raw) savedConfig = JSON.parse(raw);
-        } catch { /* ignore */ }
+        } catch {
+          /* ignore */
+        }
 
-        const stages: PipelineStage[] = (savedConfig ?? DEFAULT_STAGES).map((s: any, i: number) => ({
-          key: s.key,
-          label: s.label,
-          color: s.color,
-          enabled: s.enabled ?? true,
-          order: s.order ?? i,
-          leadCount: stageStats.find((sc: any) => sc.stage === s.key)?.count ?? 0,
-        }));
+        const stages: PipelineStage[] = (savedConfig ?? DEFAULT_STAGES).map(
+          (s: any, i: number) => ({
+            key: s.key,
+            label: s.label,
+            color: s.color,
+            enabled: s.enabled ?? true,
+            order: s.order ?? i,
+            leadCount:
+              stageStats.find((sc: any) => sc.stage === s.key)?.count ?? 0,
+          }),
+        );
 
         stages.sort((a, b) => a.order - b.order);
         this.stages.set(stages);

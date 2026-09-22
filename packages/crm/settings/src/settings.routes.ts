@@ -174,6 +174,10 @@ const settingsRoutes: Routes = [
     loadComponent: () => import('./containers/sla-configs/sla-configs'),
   },
   {
+    path: 'sla-configs/create',
+    loadComponent: () => import('./containers/sla-configs/create-sla-config'),
+  },
+  {
     path: 'scoring-configs',
     loadComponent: () => import('./containers/scoring-configs/scoring-configs'),
   },
@@ -184,6 +188,14 @@ const settingsRoutes: Routes = [
   {
     path: 'dispatch-rules',
     loadComponent: () => import('./containers/dispatch-rules/dispatch-rules'),
+  },
+  {
+    path: 'dispatch-rules/create',
+    loadComponent: () => import('./containers/dispatch-rules/create-dispatch-rule'),
+  },
+  {
+    path: 'dispatch-rules/:id/edit',
+    loadComponent: () => import('./containers/dispatch-rules/edit-dispatch-rule'),
   },
   {
     path: 'pipeline-stages',
