@@ -51,7 +51,7 @@ import { statusSeverity, statusLabel, productLabel } from './qualification-templ
                       <span class="text-[10px] text-slate-400">v{{ tpl.version }}</span>
                     </div>
                     <div class="flex items-center gap-3 mt-1 text-xs text-slate-400">
-                      <span>Produit : {{ productLabel(tpl.productType) }}</span>
+                      <span>Produit : {{ productLabel(tpl.productCategory) }}</span>
                       <span>{{ (tpl.questions ?? []).length }} question(s)</span>
                       <span>{{ (tpl.sections ?? []).length }} section(s)</span>
                     </div>

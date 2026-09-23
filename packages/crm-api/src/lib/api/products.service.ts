@@ -381,20 +381,25 @@ export class ProductsApiService {
     }
 
     /**
-     * List financial products for the tenant
+     * List financial products for the tenant, optionally filtered by category
      * @param activeOnly 
+     * @param category 
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      */
-    public listProducts(activeOnly?: boolean, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<Array<ProductDto>>;
-    public listProducts(activeOnly?: boolean, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<Array<ProductDto>>>;
-    public listProducts(activeOnly?: boolean, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<Array<ProductDto>>>;
-    public listProducts(activeOnly?: boolean, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
+    public listProducts(activeOnly?: boolean, category?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<Array<ProductDto>>;
+    public listProducts(activeOnly?: boolean, category?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<Array<ProductDto>>>;
+    public listProducts(activeOnly?: boolean, category?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<Array<ProductDto>>>;
+    public listProducts(activeOnly?: boolean, category?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
 
         let localVarQueryParameters = new HttpParams({encoder: this.encoder});
         if (activeOnly !== undefined && activeOnly !== null) {
           localVarQueryParameters = this.addToHttpParams(localVarQueryParameters,
             <any>activeOnly, 'activeOnly');
+        }
+        if (category !== undefined && category !== null) {
+          localVarQueryParameters = this.addToHttpParams(localVarQueryParameters,
+            <any>category, 'category');
         }
 
         let localVarHeaders = this.defaultHeaders;
