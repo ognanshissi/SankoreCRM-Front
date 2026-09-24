@@ -9,12 +9,49 @@
  * https://openapi-generator.tech
  * Do not edit the class manually.
  */
+import { SourceSettings } from './source-settings.interface';
 
 
 export interface CreateLeadSourceRequest { 
     code?: string | null;
     label?: string | null;
+    /**
+     * One of: WebForm, InboundWebhook, ExternalApiPull, FacebookLeadAds, InstagramLeadAds, LinkedInLeadGen, WhatsAppInbound, SocialEngagement, MobileAgent, WalkIn, SmsUssdCampaign, Referral, FileImport, InboundCall
+     */
+    channelType?: CreateLeadSourceRequestChannelTypeEnum;
     displayOrder?: number;
+    integrationMode?: CreateLeadSourceRequestIntegrationModeEnum | null;
     description?: string | null;
+    settings?: SourceSettings;
+    platformConnectionId?: string | null;
+    dedupWindowDays?: number;
+    costPerLead?: number | null;
+    costCurrency?: string | null;
 }
+export enum CreateLeadSourceRequestChannelTypeEnum {
+    WebForm = 'WebForm',
+    InboundWebhook = 'InboundWebhook',
+    ExternalApiPull = 'ExternalApiPull',
+    FacebookLeadAds = 'FacebookLeadAds',
+    InstagramLeadAds = 'InstagramLeadAds',
+    LinkedInLeadGen = 'LinkedInLeadGen',
+    WhatsAppInbound = 'WhatsAppInbound',
+    SocialEngagement = 'SocialEngagement',
+    MobileAgent = 'MobileAgent',
+    WalkIn = 'WalkIn',
+    SmsUssdCampaign = 'SmsUssdCampaign',
+    Referral = 'Referral',
+    FileImport = 'FileImport',
+    InboundCall = 'InboundCall'
+};
+export enum CreateLeadSourceRequestIntegrationModeEnum {
+    NUMBER_0 = 0,
+    NUMBER_1 = 1,
+    NUMBER_2 = 2,
+    NUMBER_3 = 3,
+    NUMBER_4 = 4,
+    NUMBER_5 = 5
+};
+
+
 

@@ -9,18 +9,19 @@
  * https://openapi-generator.tech
  * Do not edit the class manually.
  */
-import { SourceSettings } from './source-settings.interface';
 
 
-export interface UpdateLeadSourceRequest { 
-    version?: number;
+export interface SourceQualityDto { 
+    sourceId?: string;
+    code?: string | null;
     label?: string | null;
-    displayOrder?: number;
-    description?: string | null;
-    settings?: SourceSettings;
-    platformConnectionId?: string | null;
-    dedupWindowDays?: number | null;
-    costPerLead?: number | null;
+    received?: number;
+    rejected?: number;
+    duplicates?: number;
+    contacted?: number;
+    converted?: number;
+    totalCost?: number;
     costCurrency?: string | null;
+    costPerConvertedLead?: number | null;
 }
 

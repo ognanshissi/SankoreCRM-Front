@@ -11,15 +11,12 @@
  */
 
 
-export interface LeadSourceDto { 
-    id?: string;
-    tenantId?: string;
-    code?: string | null;
+export interface WebFormFieldDto { 
+    name?: string | null;
     label?: string | null;
-    description?: string | null;
-    isActive?: boolean;
-    isSystem?: boolean;
-    displayOrder?: number;
-    createdAt?: string;
+    type?: string | null;
+    isRequired?: boolean;
+    placeholder?: string | null;
+    options?: Array<string> | null;
 }
 
