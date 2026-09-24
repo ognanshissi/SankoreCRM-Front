@@ -6,7 +6,8 @@ export * from './utils';
 export * from './services';
 
 export * from './models/environment-config';
-export * from './guards/authorized.guard'
+export * from './guards/authorized.guard';
+export * from './guards/permission.guard';
 
 export * from './models';
 export * from './directives/has-permission.directive';

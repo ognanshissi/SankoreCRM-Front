@@ -1,0 +1,200 @@
+/**
+ * FE-01 — Types TypeScript pour les sources de leads.
+ *
+ * Unions de chaines alignees sur le contrat API, gardes de type exhaustives,
+ * pas de secret en clair dans les modeles de lecture.
+ */
+
+import {
+  LeadSourceListDto,
+  LeadSourceListDtoChannelTypeEnum,
+  LeadSourceListDtoModeEnum,
+  LeadSourceListDtoStatusEnum,
+  LeadSourceListDtoHealthEnum,
+  SourceMetadataResponse,
+  ChannelMetadata,
+} from '@sankore/crm-api';
+import { Severity } from '@talisoft/ui/tag';
+
+// ——— String union types (aligned with backend enums) ———
+
+export type LeadChannelType = `${LeadSourceListDtoChannelTypeEnum}`;
+export type IntegrationMode = `${LeadSourceListDtoModeEnum}`;
+export type LeadSourceStatus = `${LeadSourceListDtoStatusEnum}`;
+export type SourceHealth = `${LeadSourceListDtoHealthEnum}`;
+
+// ——— Re-export generated enums as const objects for iteration ———
+
+export const LeadChannelType = LeadSourceListDtoChannelTypeEnum;
+export const IntegrationMode = LeadSourceListDtoModeEnum;
+export const LeadSourceStatus = LeadSourceListDtoStatusEnum;
+export const SourceHealth = LeadSourceListDtoHealthEnum;
+
+// ——— Exhaustive guard helper ———
+
+export function assertNever(x: never): never {
+  throw new Error(`Unexpected value: ${x}`);
+}
+
+// ——— Channel labels ———
+
+const CHANNEL_LABELS: Record<LeadChannelType, string> = {
+  WebForm: 'Formulaire web',
+  InboundWebhook: 'Webhook entrant',
+  ExternalApiPull: 'API externe (pull)',
+  FacebookLeadAds: 'Facebook Lead Ads',
+  InstagramLeadAds: 'Instagram Lead Ads',
+  LinkedInLeadGen: 'LinkedIn Lead Gen',
+  WhatsAppInbound: 'WhatsApp entrant',
+  SocialEngagement: 'Réseaux sociaux',
+  MobileAgent: 'Agent mobile',
+  WalkIn: 'Visite agence',
+  SmsUssdCampaign: 'SMS / USSD',
+  Referral: 'Parrainage',
+  FileImport: 'Import fichier',
+  InboundCall: 'Appel entrant',
+};
+
+export function channelLabel(type: LeadChannelType | string | null | undefined): string {
+  return CHANNEL_LABELS[type as LeadChannelType] ?? type ?? '—';
+}
+
+// ——— Mode labels ———
+
+const MODE_LABELS: Record<IntegrationMode, string> = {
+  EmbeddedScript: 'Script embarqué',
+  ServerWebhook: 'Webhook serveur',
+  ScheduledPull: 'Collecte planifiée',
+  PlatformConnection: 'Connexion plateforme',
+  SocialTracking: 'Suivi social',
+  Internal: 'Interne',
+};
+
+export function modeLabel(mode: IntegrationMode | string | null | undefined): string {
+  return MODE_LABELS[mode as IntegrationMode] ?? mode ?? '—';
+}
+
+// ——— Status labels + severity ———
+
+const STATUS_LABELS: Record<LeadSourceStatus, string> = {
+  Draft: 'Brouillon',
+  Testing: 'Test',
+  Active: 'Active',
+  Paused: 'En pause',
+  Error: 'Erreur',
+  Archived: 'Archivée',
+};
+
+export function statusLabel(status: LeadSourceStatus | string | null | undefined): string {
+  return STATUS_LABELS[status as LeadSourceStatus] ?? status ?? '—';
+}
+
+export function statusSeverity(status: LeadSourceStatus | string | null | undefined): Severity {
+  switch (status) {
+    case 'Active': return 'success';
+    case 'Testing': return 'info';
+    case 'Draft': return 'neutral';
+    case 'Paused': return 'warning';
+    case 'Error': return 'error';
+    case 'Archived': return 'neutral';
+    default: return 'neutral';
+  }
+}
+
+// ——— Health labels + icon ———
+
+export function healthIcon(health: SourceHealth | string | null | undefined): string {
+  switch (health) {
+    case 'Ok': return 'feather:check-circle';
+    case 'Stale': return 'feather:alert-triangle';
+    case 'Error': return 'feather:x-circle';
+    default: return 'feather:minus-circle';
+  }
+}
+
+export function healthColor(health: SourceHealth | string | null | undefined): string {
+  switch (health) {
+    case 'Ok': return 'text-green-500';
+    case 'Stale': return 'text-amber-500';
+    case 'Error': return 'text-red-500';
+    default: return 'text-slate-300';
+  }
+}
+
+export function healthTooltip(health: SourceHealth | string | null | undefined): string {
+  switch (health) {
+    case 'Ok': return 'Fonctionnement normal';
+    case 'Stale': return 'Aucun lead reçu depuis plus de 7 jours';
+    case 'Error': return 'Erreur détectée';
+    default: return 'Inconnu';
+  }
+}
+
+// ——— Channel icon ———
+
+export function channelIcon(type: LeadChannelType | string | null | undefined): string {
+  switch (type) {
+    case 'WebForm': return 'feather:globe';
+    case 'InboundWebhook': return 'feather:zap';
+    case 'ExternalApiPull': return 'feather:download-cloud';
+    case 'FacebookLeadAds': return 'feather:facebook';
+    case 'InstagramLeadAds': return 'feather:instagram';
+    case 'LinkedInLeadGen': return 'feather:linkedin';
+    case 'WhatsAppInbound': return 'feather:message-circle';
+    case 'SocialEngagement': return 'feather:share-2';
+    case 'MobileAgent': return 'feather:smartphone';
+    case 'WalkIn': return 'feather:home';
+    case 'SmsUssdCampaign': return 'feather:phone';
+    case 'Referral': return 'feather:users';
+    case 'FileImport': return 'feather:upload';
+    case 'InboundCall': return 'feather:phone-incoming';
+    default: return 'feather:radio';
+  }
+}
+
+// ——— Filter option builders (from metadata) ———
+
+export function buildChannelOptions(metadata: SourceMetadataResponse | null): { label: string; value: string }[] {
+  return (metadata?.channels ?? []).map((ch: ChannelMetadata) => ({
+    label: channelLabel(ch.code),
+    value: ch.code ?? '',
+  }));
+}
+
+export function buildModeOptions(metadata: SourceMetadataResponse | null): { label: string; value: string }[] {
+  return (metadata?.modes ?? []).map((m: string) => ({
+    label: modeLabel(m),
+    value: m,
+  }));
+}
+
+export function buildStatusOptions(): { label: string; value: string }[] {
+  return Object.values(LeadSourceStatus).map((s) => ({
+    label: statusLabel(s),
+    value: s,
+  }));
+}
+
+// ——— Numeric enum mapping for API filter params ———
+// The API uses numeric enums for query params (0-based)
+
+const CHANNEL_TYPE_INDEX: Record<string, number> = {};
+Object.values(LeadChannelType).forEach((v, i) => { CHANNEL_TYPE_INDEX[v] = i; });
+
+const MODE_INDEX: Record<string, number> = {};
+Object.values(IntegrationMode).forEach((v, i) => { MODE_INDEX[v] = i; });
+
+const STATUS_INDEX: Record<string, number> = {};
+Object.values(LeadSourceStatus).forEach((v, i) => { STATUS_INDEX[v] = i; });
+
+export function channelTypeToNumeric(value: string | null): number | undefined {
+  return value ? CHANNEL_TYPE_INDEX[value] : undefined;
+}
+
+export function modeToNumeric(value: string | null): number | undefined {
+  return value ? MODE_INDEX[value] : undefined;
+}
+
+export function statusToNumeric(value: string | null): number | undefined {
+  return value ? STATUS_INDEX[value] : undefined;
+}

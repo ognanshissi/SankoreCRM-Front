@@ -17,9 +17,8 @@ export class HasPermissionDirective {
   constructor() {
     effect(() => {
       const requiredCode = this.hasPermission();
-      const permissions = this._auth.userPermissions();
-      const codes = permissions?.rolePermissionCodes ?? [];
-      const hasAccess = codes.includes(requiredCode);
+      const permissions = this._auth.connectedUser()?.permissions;
+      const hasAccess = (permissions ?? []).includes(requiredCode);
 
       if (hasAccess && !this._rendered) {
         this._viewContainer.createEmbeddedView(this._templateRef);

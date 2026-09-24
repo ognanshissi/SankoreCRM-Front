@@ -1,10 +1,12 @@
 import OverviewComponent from './containers/overview/overview.component';
 import { Routes } from '@angular/router';
+// import { hasPermissionGuard } from '@sankore/crm/common';
 import AgenciesHomePage from './containers/agencies/agencies-homepage/agencies-homepage';
 import EditRoleNavigation from './containers/roles/edit-role/edit-role-navigation';
 import EditUserNavigation from './containers/users/edit-user/edit-user-navigation';
 import EditWorkflowTemplateNavigation from './containers/workflows/edit-workflow-template/edit-workflow-template-navigation';
 import AccountSettings from './containers/account/account-settings';
+import { hasPermissionGuard } from '@sankore/crm/common';
 
 const settingsRoutes: Routes = [
   {
@@ -16,9 +18,15 @@ const settingsRoutes: Routes = [
     loadComponent: () => import('./containers/account/account-navigation'),
     children: [
       { path: '', redirectTo: 'profil', pathMatch: 'full' as const },
-      { path: 'profil', loadComponent: () => import('./containers/account/account-profile') },
-      { path: 'securite', loadComponent: () => import('./containers/account/account-security') },
-      { path: 'account-settings', loadComponent: () => AccountSettings }
+      {
+        path: 'profil',
+        loadComponent: () => import('./containers/account/account-profile'),
+      },
+      {
+        path: 'securite',
+        loadComponent: () => import('./containers/account/account-security'),
+      },
+      { path: 'account-settings', loadComponent: () => AccountSettings },
     ],
   },
   {
@@ -162,12 +170,27 @@ const settingsRoutes: Routes = [
   },
   {
     path: 'import-users',
-    loadComponent: () =>
-      import('./containers/import-users/import-users'),
+    loadComponent: () => import('./containers/import-users/import-users'),
   },
   {
     path: 'lead-sources',
+    canActivate: [hasPermissionGuard('lead:source:read')],
     loadComponent: () => import('./containers/lead-sources/lead-sources'),
+  },
+  {
+    path: 'lead-sources/create',
+    canActivate: [hasPermissionGuard('lead:source:manage')],
+    loadComponent: () => import('./containers/lead-sources/create-lead-source'),
+  },
+  {
+    path: 'lead-sources/quality',
+    canActivate: [hasPermissionGuard('lead:source:read')],
+    loadComponent: () => import('./containers/lead-sources/source-quality'),
+  },
+  {
+    path: 'lead-sources/:id',
+    canActivate: [hasPermissionGuard('lead:source:read')],
+    loadComponent: () => import('./containers/lead-sources/edit-lead-source'),
   },
   {
     path: 'sla-configs',
@@ -191,11 +214,13 @@ const settingsRoutes: Routes = [
   },
   {
     path: 'dispatch-rules/create',
-    loadComponent: () => import('./containers/dispatch-rules/create-dispatch-rule'),
+    loadComponent: () =>
+      import('./containers/dispatch-rules/create-dispatch-rule'),
   },
   {
     path: 'dispatch-rules/:id/edit',
-    loadComponent: () => import('./containers/dispatch-rules/edit-dispatch-rule'),
+    loadComponent: () =>
+      import('./containers/dispatch-rules/edit-dispatch-rule'),
   },
   {
     path: 'pipeline-stages',
