@@ -3,6 +3,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { AbstractControl, FormGroup } from '@angular/forms';
 import { catchError, Observable, tap, throwError } from 'rxjs';
 import { SnackbarService } from '@talisoft/ui/snackbar';
+import { ChannelTypeParam, ModeParam, StatusParam } from './lead-source.types';
 import {
   LeadSourcesApiService,
   LeadSourceDetailDto,
@@ -41,19 +42,37 @@ export class LeadSourcesService {
   /** Set to true during a version conflict — consumers show reload prompt */
   public readonly versionConflict = signal(false);
 
+  /**
+   * FE-02 — Erreurs de validation du serveur, indexees par chemin normalise
+   * (`settings.allowedOrigins.0`). Les ecrans « sources » sont bases sur des
+   * signals et non sur des `FormGroup` : la projection sur des controles ne
+   * les atteindrait pas. Ils lisent ce signal via `errorFor(path)`.
+   */
+  public readonly serverErrors = signal<Record<string, string>>({});
+
+  /** Message d'erreur serveur pour un champ, ou `null`. */
+  public errorFor(path: string): string | null {
+    return this.serverErrors()[path] ?? null;
+  }
+
+  /** A appeler avant une nouvelle soumission. */
+  public clearServerErrors(): void {
+    this.serverErrors.set({});
+  }
+
   // ——— List ———
 
   public list(
-    channelType?: number,
-    mode?: number,
-    status?: number,
+    channelType?: ChannelTypeParam,
+    mode?: ModeParam,
+    status?: StatusParam,
     q?: string,
     page?: number,
     pageSize?: number,
   ): Observable<LeadSourceListDtoPagedResult> {
-    return this._api.listLeadSources(
-      channelType as any, mode as any, status as any, q, page, pageSize,
-    ).pipe(this._handleErrors());
+    return this._api
+      .listLeadSources(channelType, mode, status, q, page, pageSize)
+      .pipe(this._handleErrors());
   }
 
   // ——— Detail ———
@@ -69,6 +88,7 @@ export class LeadSourcesService {
     request: CreateLeadSourceRequest,
     form?: FormGroup,
   ): Observable<string> {
+    this.clearServerErrors();
     return this._api.createLeadSource(request).pipe(
       this._handleErrors(form),
     );
@@ -81,6 +101,7 @@ export class LeadSourcesService {
     request: UpdateLeadSourceRequest,
     form?: FormGroup,
   ): Observable<any> {
+    this.clearServerErrors();
     return this._api.updateLeadSource(id, request).pipe(
       this._handleErrors(form),
     );
@@ -187,6 +208,14 @@ export class LeadSourcesService {
     const validationErrors: Record<string, string[]> = body?.errors ?? {};
     const hasFieldErrors = Object.keys(validationErrors).length > 0;
 
+    // Toujours exposer les erreurs par chemin : c'est ce que consomment les
+    // ecrans a base de signals, avec ou sans `FormGroup`.
+    const byPath: Record<string, string> = {};
+    for (const [path, messages] of Object.entries(validationErrors)) {
+      byPath[this._normalizePath(path)] = messages.join('. ');
+    }
+    this.serverErrors.set(byPath);
+
     if (form && hasFieldErrors) {
       for (const [path, messages] of Object.entries(validationErrors)) {
         const control = this._resolveControl(form, path);
@@ -230,7 +259,11 @@ export class LeadSourcesService {
    * e.g. "settings.allowedOrigins[0]" → form.get("settings.allowedOrigins.0")
    */
   private _resolveControl(form: FormGroup, path: string): AbstractControl | null {
-    const normalized = path.replace(/\[(\d+)]/g, '.$1');
-    return form.get(normalized);
+    return form.get(this._normalizePath(path));
+  }
+
+  /** `settings.allowedOrigins[0]` → `settings.allowedOrigins.0` */
+  private _normalizePath(path: string): string {
+    return path.replace(/\[(\d+)]/g, '.$1');
   }
 }

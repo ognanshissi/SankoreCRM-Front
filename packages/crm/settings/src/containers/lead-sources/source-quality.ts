@@ -1,7 +1,7 @@
 import { Component, inject, signal, computed, OnInit } from '@angular/core';
 import { DecimalPipe, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { catchError, EMPTY } from 'rxjs';
 import { TasCard } from '@talisoft/ui/card';
 import { TasSpinner } from '@talisoft/ui/spinner';
@@ -12,6 +12,9 @@ import { TasFormField, TasLabel } from '@talisoft/ui/form-field';
 import { TasSelect } from '@talisoft/ui/select';
 import { SnackbarService } from '@talisoft/ui/snackbar';
 import { SourceQualityDto } from '@sankore/crm-api';
+
+/** Valeur du statut « Doublon » attendue par le filtre des réceptions. */
+const DUPLICATE_STATUS = '2';
 import { BreadcrumbService } from '@sankore/crm/common';
 import { LeadSourcesService } from './lead-sources.service';
 
@@ -135,12 +138,18 @@ const PERIOD_OPTIONS = [
                     </span>
                   </div>
 
-                  <!-- Duplicates -->
+                  <!-- Duplicates — FE-23 AC2 : ouvre la liste des ingestions en doublon -->
                   <div class="w-[10%] text-right text-xs">
-                    <span class="text-amber-600 cursor-pointer hover:underline"
-                          (click)="exportDuplicates(src)">
-                      {{ src.duplicates ?? 0 | number }}
-                    </span>
+                    @if ((src.duplicates ?? 0) > 0) {
+                      <button type="button"
+                              class="text-amber-600 hover:underline"
+                              [title]="'Voir les ' + src.duplicates + ' réception(s) en doublon'"
+                              (click)="openDuplicates(src)">
+                        {{ src.duplicates ?? 0 | number }}
+                      </button>
+                    } @else {
+                      <span class="text-slate-400">0</span>
+                    }
                   </div>
 
                   <!-- Contacted -->
@@ -184,6 +193,7 @@ const PERIOD_OPTIONS = [
 })
 export class SourceQuality implements OnInit {
   private readonly _sourcesService = inject(LeadSourcesService);
+  private readonly _router = inject(Router);
   private readonly _snackbar = inject(SnackbarService);
   private readonly _breadcrumb = inject(BreadcrumbService);
 
@@ -232,6 +242,18 @@ export class SourceQuality implements OnInit {
     return (src.received ?? 0) > 0
       ? ((src.converted ?? 0) / (src.received ?? 1)) * 100
       : 0;
+  }
+
+  /**
+   * FE-23 AC2 — ouvre l'onglet « Réceptions » de la source, filtre sur les
+   * doublons. L'export CSV y est proposé, pour contestation auprès du
+   * fournisseur.
+   */
+  public openDuplicates(src: SourceQualityDto): void {
+    if (!src.sourceId) return;
+    this._router.navigate(['/settings/lead-sources', src.sourceId], {
+      queryParams: { tab: 'ingestions', status: DUPLICATE_STATUS },
+    });
   }
 
   public exportDuplicates(src: SourceQualityDto): void {

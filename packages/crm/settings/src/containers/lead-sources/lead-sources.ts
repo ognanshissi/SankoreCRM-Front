@@ -1,8 +1,9 @@
-import { Component, computed, inject, signal, OnInit } from '@angular/core';
+import { Component, computed, DestroyRef, inject, signal, OnInit } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
-import { catchError, EMPTY, Observable } from 'rxjs';
+import { catchError, debounceTime, EMPTY, Observable, Subject } from 'rxjs';
 import { TasCard } from '@talisoft/ui/card';
 import { TasSpinner } from '@talisoft/ui/spinner';
 import { TasIcon } from '@talisoft/ui/icon';
@@ -17,6 +18,7 @@ import { Menu, MenuItem, TasMenuTrigger } from '@talisoft/ui/menu';
 import {
   LeadSourcesApiService,
   LeadSourceListDto,
+  LeadSourceListDtoStatusEnum,
 } from '@sankore/crm-api';
 import { AuthenticationService, BreadcrumbService } from '@sankore/crm/common';
 import { LeadSourcesService } from './lead-sources.service';
@@ -47,12 +49,12 @@ import { TimeagoPipe } from '@talisoft/ui/timeago';
   ],
   template: `
     <ng-container>
-      @if (isLoading()) {
-        <div class="flex justify-center py-24">
-          <tas-spinner size="10" class="text-primary"></tas-spinner>
-        </div>
-      } @else {
-        <div class="pb-6">
+      <!--
+        Le spinner ne recouvre QUE la liste. Auparavant il remplaçait tout
+        l'écran, filtres compris : chaque frappe détruisait le champ de
+        recherche (perte du focus) et recréait les <tas-select>.
+      -->
+      <div class="pb-6">
           <!-- Header -->
           <div class="flex items-start justify-between mb-6">
             <div>
@@ -99,7 +101,7 @@ import { TimeagoPipe } from '@talisoft/ui/timeago';
                     type="text"
                     placeholder="Nom ou code..."
                     [ngModel]="filterQuery()"
-                    (ngModelChange)="onFilterChange('q', $event)"
+                    (ngModelChange)="onSearchChange($event)"
                   />
                 </tas-form-field>
                 <tas-form-field>
@@ -152,7 +154,11 @@ import { TimeagoPipe } from '@talisoft/ui/timeago';
               >
             </div>
 
-            @if (sources().length === 0) {
+            @if (isLoading()) {
+              <div class="flex justify-center py-24">
+                <tas-spinner size="10" class="text-primary"></tas-spinner>
+              </div>
+            } @else if (nonSystemCount() === 0) {
               <div
                 class="flex flex-col items-center justify-center py-16 text-center"
               >
@@ -328,13 +334,13 @@ import { TimeagoPipe } from '@talisoft/ui/timeago';
               }
             }
           </tas-card>
-        </div>
-      }
+      </div>
     </ng-container>
   `,
 })
 export class LeadSourcesConfig implements OnInit {
   private readonly _api = inject(LeadSourcesApiService);
+  private readonly _destroyRef = inject(DestroyRef);
   private readonly _sourcesService = inject(LeadSourcesService);
   private readonly _snackbar = inject(SnackbarService);
   private readonly _confirm = inject(ConfirmDialogService);
@@ -364,6 +370,14 @@ export class LeadSourcesConfig implements OnInit {
   public filterMode = signal<string | null>(null);
   public filterStatus = signal<string | null>(null);
 
+  /** FE-04 AC5 — l'état vide ignore les sources système, créées par défaut. */
+  public readonly nonSystemCount = computed(
+    () => this.sources().filter((s) => !s.isSystem).length,
+  );
+
+  /** Frappes de recherche, regroupées avant l'appel réseau. */
+  private readonly _search$ = new Subject<void>();
+
   // Pagination
   private _page = 1;
   private readonly _pageSize = 25;
@@ -388,6 +402,10 @@ export class LeadSourcesConfig implements OnInit {
     // Load metadata cache
     this.metadataService.load();
 
+    this._search$
+      .pipe(debounceTime(300), takeUntilDestroyed(this._destroyRef))
+      .subscribe(() => this._applyFilters());
+
     // Restore filters from URL
     const params = this._route.snapshot.queryParams;
     if (params['q']) this.filterQuery.set(params['q']);
@@ -396,6 +414,15 @@ export class LeadSourcesConfig implements OnInit {
     if (params['status']) this.filterStatus.set(params['status']);
 
     this._load(true);
+  }
+
+  /**
+   * La recherche texte passe par un debounce : sans lui, chaque frappe
+   * déclenchait un appel HTTP. Les listes déroulantes restent immédiates.
+   */
+  public onSearchChange(value: string | null): void {
+    this.filterQuery.set(value ?? '');
+    this._search$.next();
   }
 
   public onFilterChange(key: string, value: string | null): void {
@@ -414,6 +441,10 @@ export class LeadSourcesConfig implements OnInit {
         break;
     }
 
+    this._applyFilters();
+  }
+
+  private _applyFilters(): void {
     // Persist filters in URL
     this._router.navigate([], {
       relativeTo: this._route,
@@ -453,9 +484,9 @@ export class LeadSourcesConfig implements OnInit {
 
     this._api
       .listLeadSources(
-        channelTypeToNumeric(this.filterChannel()) as any,
-        modeToNumeric(this.filterMode()) as any,
-        statusToNumeric(this.filterStatus()) as any,
+        channelTypeToNumeric(this.filterChannel()),
+        modeToNumeric(this.filterMode()),
+        statusToNumeric(this.filterStatus()),
         this.filterQuery() || undefined,
         this._page,
         this._pageSize,
@@ -467,7 +498,14 @@ export class LeadSourcesConfig implements OnInit {
         }),
       )
       .subscribe((result) => {
-        const items = result.items ?? [];
+        // FE-09 AC3 — une source archivée n'apparaît qu'avec le filtre
+        // « Archivées ». L'API n'expose pas de paramètre `includeArchived` :
+        // le retrait est donc fait ici, et `totalCount` reste celui du serveur
+        // (cf. dépendance back #5).
+        const showArchivedOnly = this.filterStatus() === 'Archived';
+        const items = (result.items ?? []).filter(
+          (s) => showArchivedOnly || s.status !== 'Archived',
+        );
         if (reset) {
           this.sources.set(items);
         } else {
@@ -489,7 +527,7 @@ export class LeadSourcesConfig implements OnInit {
       showCancelButton: true,
       acceptButtonProps: { label: 'Activer', theme: 'primary' },
       rejectButtonProps: { label: 'Annuler' },
-      accept: () => this._doAction(src.id!, this._sourcesService.activate(src.id!), 'Activée', 'Active'),
+      accept: () => this._doAction(src.id!, this._sourcesService.activate(src.id!), 'Activée', LeadSourceListDtoStatusEnum.Active),
     });
   }
 
@@ -508,7 +546,7 @@ export class LeadSourcesConfig implements OnInit {
       showCancelButton: true,
       acceptButtonProps: { label: 'Mettre en pause', theme: 'warn' },
       rejectButtonProps: { label: 'Annuler' },
-      accept: () => this._doAction(src.id!, this._sourcesService.pause(src.id!), 'En pause', 'Paused'),
+      accept: () => this._doAction(src.id!, this._sourcesService.pause(src.id!), 'En pause', LeadSourceListDtoStatusEnum.Paused),
     });
   }
 
@@ -520,11 +558,16 @@ export class LeadSourcesConfig implements OnInit {
       showCancelButton: true,
       acceptButtonProps: { label: 'Archiver', theme: 'warn' },
       rejectButtonProps: { label: 'Annuler' },
-      accept: () => this._doAction(src.id!, this._sourcesService.archive(src.id!), 'Archivée', 'Archived'),
+      accept: () => this._doAction(src.id!, this._sourcesService.archive(src.id!), 'Archivée', LeadSourceListDtoStatusEnum.Archived),
     });
   }
 
-  private _doAction(id: string, obs: Observable<any>, successLabel: string, newStatus: string): void {
+  private _doAction(
+    id: string,
+    obs: Observable<any>,
+    successLabel: string,
+    newStatus: LeadSourceListDtoStatusEnum,
+  ): void {
     this.actionInProgress.set(id);
     obs.pipe(
       catchError(() => {
@@ -534,7 +577,7 @@ export class LeadSourcesConfig implements OnInit {
       }),
     ).subscribe(() => {
       this.sources.update((list) =>
-        list.map((s) => s.id === id ? { ...s, status: newStatus as any } : s),
+        list.map((s) => (s.id === id ? { ...s, status: newStatus } : s)),
       );
       this._snackbar.success('Succès', `Source ${successLabel.toLowerCase()}.`);
       this.actionInProgress.set(null);

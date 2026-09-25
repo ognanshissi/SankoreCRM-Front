@@ -12,7 +12,11 @@ import { TasInputPassword } from '@talisoft/ui/input-password';
 import { SnackbarService } from '@talisoft/ui/snackbar';
 import { ConfirmDialogService } from '@talisoft/ui/confirm-dialog';
 import { SecretHintDto, LeadSourceDetailDto } from '@sankore/crm-api';
+import { ENVIRONMENT_CONFIG } from '@sankore/crm/common';
 import { LeadSourcesService } from './lead-sources.service';
+import { SourceSecrets } from './source-secrets/source-secrets';
+import { JSONPATH_HINT, isValidIpOrCidr, isValidJsonPath } from './lead-source-validators';
+import { isWebhookSettings, readSettings, writeSettings } from './lead-source-settings.types';
 
 /**
  * FE-17 — Paramétrer une source webhook et remettre les accès au fournisseur
@@ -23,7 +27,7 @@ import { LeadSourcesService } from './lead-sources.service';
   standalone: true,
   imports: [
     FormsModule, TasCard, TasSpinner, TasIcon, TasTag, Button,
-    TasFormField, TasLabel, TasInput, TasInputPassword,
+    TasFormField, TasLabel, TasInput, TasInputPassword, SourceSecrets,
   ],
   template: `
     <div class="max-w-3xl flex flex-col gap-4">
@@ -112,61 +116,16 @@ import { LeadSourcesService } from './lead-sources.service';
         </div>
       </tas-card>
 
-      <!-- Other Secrets (API key, password, etc.) -->
-      <tas-card class="block">
-        <div class="p-4 border-b border-slate-100">
-          <p class="text-sm font-semibold text-slate-700 flex items-center gap-2">
-            <tas-icon iconName="feather:lock" class="text-slate-400" style="font-size:14px"></tas-icon>
-            Secrets supplémentaires
-          </p>
-        </div>
-        <div class="p-4 flex flex-col gap-3">
-          @for (secret of otherSecrets(); track secret.name) {
-            <div class="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
-              <div>
-                <p class="text-xs font-medium text-slate-700">{{ secret.name }}</p>
-                <p class="text-xs text-slate-400 font-mono">{{ secret.hint }}</p>
-                @if (secret.expiresAt) {
-                  <p class="text-[10px] text-amber-500 mt-0.5">Expire : {{ secret.expiresAt }}</p>
-                }
-              </div>
-              @if (canManageSecrets()) {
-                <button tas-outlined-button type="button" class="text-xs"
-                        (click)="showReplaceSecret(secret.name!)">
-                  <tas-icon iconName="feather:edit-2" style="font-size:10px"></tas-icon>
-                  Remplacer
-                </button>
-              }
-            </div>
-          }
-
-          <!-- Replace secret form -->
-          @if (replacingSecretName()) {
-            <div class="p-3 border border-slate-200 rounded-lg flex flex-col gap-3">
-              <p class="text-xs font-medium text-slate-700">
-                Remplacer le secret « {{ replacingSecretName() }} »
-              </p>
-              <tas-input-password placeholder="Nouvelle valeur" [(value)]="newSecretValue">
-                Valeur
-              </tas-input-password>
-              <tas-form-field>
-                <tas-label>Expiration (optionnel)</tas-label>
-                <input tasInput type="datetime-local"
-                       [ngModel]="newSecretExpiry()" (ngModelChange)="newSecretExpiry.set($event)" />
-              </tas-form-field>
-              <div class="flex justify-end gap-2">
-                <button tas-outlined-button type="button" (click)="cancelReplaceSecret()">Annuler</button>
-                <button tas-raised-button color="primary" type="button"
-                        [disabled]="isSettingSecret() || !newSecretValue()"
-                        [isLoading]="isSettingSecret()"
-                        (click)="confirmReplaceSecret()">
-                  Enregistrer
-                </button>
-              </div>
-            </div>
-          }
-        </div>
-      </tas-card>
+      <!-- Secrets supplémentaires (FE-18) — formulaire partagé avec le mode pull -->
+      <source-secrets
+        [sourceId]="source().id!"
+        [secrets]="source().secrets ?? []"
+        [ignore]="['hmac']"
+        [canManage]="canManageSecrets()"
+        [readonly]="readonly()"
+        title="Secrets supplémentaires"
+        (secretSaved)="settingsSaved.emit()"
+      ></source-secrets>
 
       <!-- IP Allowlist -->
       <tas-card class="block">
@@ -221,6 +180,9 @@ import { LeadSourcesService } from './lead-sources.service';
             <p class="text-xs text-slate-400 mt-1">
               Chemin dans le payload JSON pour extraire l'identifiant unique du lead chez le fournisseur.
             </p>
+            @if (externalIdPathInvalid()) {
+              <p class="text-xs text-red-500 mt-1">{{ jsonPathHint }}</p>
+            }
           </tas-form-field>
         </div>
       </tas-card>
@@ -251,7 +213,7 @@ import { LeadSourcesService } from './lead-sources.service';
       @if (!readonly()) {
         <div class="flex justify-end">
           <button tas-raised-button color="primary" type="button"
-                  [disabled]="isSaving() || invalidIps().length > 0"
+                  [disabled]="isSaving() || invalidIps().length > 0 || externalIdPathInvalid()"
                   [isLoading]="isSaving()"
                   (click)="save()">
             <tas-icon iconName="feather:save" style="font-size:14px"></tas-icon>
@@ -264,6 +226,7 @@ import { LeadSourcesService } from './lead-sources.service';
 })
 export class WebhookConnection implements OnInit {
   private readonly _sourcesService = inject(LeadSourcesService);
+  private readonly _env = inject(ENVIRONMENT_CONFIG);
   private readonly _snackbar = inject(SnackbarService);
   private readonly _confirm = inject(ConfirmDialogService);
 
@@ -275,9 +238,13 @@ export class WebhookConnection implements OnInit {
   // Webhook URL
   public readonly webhookUrl = computed(() => {
     const pk = this.source().publicKey;
-    return `https://ingest.sankore-crm.com/api/ingest/hooks/${pk ?? '???'}`;
+    // FE-17 — l'hote vient de l'environnement : en dev/recette l'URL remise au
+    // fournisseur doit pointer sur l'instance courante, pas sur la prod.
+    const host = (this._env.ingestUrl || this._env.apiUrl || '').replace(/\/+$/, '');
+    return `${host}/api/ingest/hooks/${pk ?? '???'}`;
   });
   public urlCopied = signal(false);
+  public readonly jsonPathHint = JSONPATH_HINT;
 
   // HMAC secret
   public revealedHmacSecret = signal<string | null>(null);
@@ -287,16 +254,6 @@ export class WebhookConnection implements OnInit {
   public readonly hmacHint = computed((): SecretHintDto | null => {
     return (this.source().secrets ?? []).find((s) => s.name === 'hmac') ?? null;
   });
-
-  public readonly otherSecrets = computed((): SecretHintDto[] => {
-    return (this.source().secrets ?? []).filter((s) => s.name !== 'hmac');
-  });
-
-  // Replace secret form (FE-18)
-  public replacingSecretName = signal<string | null>(null);
-  public newSecretValue = signal('');
-  public newSecretExpiry = signal('');
-  public isSettingSecret = signal(false);
 
   // IP allowlist
   public allowedIps = signal<string[]>([]);
@@ -311,9 +268,12 @@ export class WebhookConnection implements OnInit {
   public isSaving = signal(false);
 
   ngOnInit(): void {
-    const settings = this.source().settings as any ?? {};
-    this.allowedIps.set(settings.allowedIps ?? []);
-    this.externalIdPath.set(settings.externalIdPath ?? '');
+    const src = this.source();
+    const settings = readSettings(src.settings, src.mode);
+    if (isWebhookSettings(settings)) {
+      this.allowedIps.set(settings.allowedIps);
+      this.externalIdPath.set(settings.externalIdPath ?? '');
+    }
   }
 
   // ——— Copy ———
@@ -358,39 +318,6 @@ export class WebhookConnection implements OnInit {
     });
   }
 
-  // ——— FE-18: Replace other secret ———
-
-  public showReplaceSecret(name: string): void {
-    this.replacingSecretName.set(name);
-    this.newSecretValue.set('');
-    this.newSecretExpiry.set('');
-  }
-
-  public cancelReplaceSecret(): void {
-    this.replacingSecretName.set(null);
-  }
-
-  public confirmReplaceSecret(): void {
-    const name = this.replacingSecretName();
-    if (!name || !this.newSecretValue()) return;
-
-    this.isSettingSecret.set(true);
-    this._sourcesService.setSecret(this.source().id!, name, {
-      value: this.newSecretValue(),
-      expiresAt: this.newSecretExpiry() || null,
-    }).pipe(
-      catchError(() => {
-        this.isSettingSecret.set(false);
-        return EMPTY;
-      }),
-    ).subscribe(() => {
-      this._snackbar.success('Secret mis à jour', `Le secret « ${name} » a été remplacé.`);
-      this.isSettingSecret.set(false);
-      this.replacingSecretName.set(null);
-      this.settingsSaved.emit();
-    });
-  }
-
   // ——— IP allowlist ———
 
   public addIp(): void {
@@ -406,13 +333,13 @@ export class WebhookConnection implements OnInit {
   }
 
   public invalidIps(): string[] {
-    const ipv4 = /^(\d{1,3}\.){3}\d{1,3}(\/\d{1,2})?$/;
-    const ipv6 = /^[0-9a-fA-F:]+(\/(12[0-8]|[1-9]\d?))?$/;
-    return this.allowedIps().filter((ip) => {
-      if (!ip) return false;
-      return !ipv4.test(ip) && !ipv6.test(ip);
-    });
+    return this.allowedIps().filter((ip) => !!ip && !isValidIpOrCidr(ip));
   }
+
+  /** FE-17 AC5 — le chemin de l'identifiant externe doit etre un JSONPath. */
+  public readonly externalIdPathInvalid = computed(
+    () => !!this.externalIdPath() && !isValidJsonPath(this.externalIdPath()),
+  );
 
   // ——— Provider doc ———
 
@@ -444,11 +371,10 @@ export class WebhookConnection implements OnInit {
     this._sourcesService.update(src.id!, {
       version: src.version,
       label: src.label,
-      settings: {
-        ...(src.settings ?? {}),
+      settings: writeSettings(src.settings, src.mode, {
         allowedIps: this.allowedIps().filter(Boolean),
         externalIdPath: this.externalIdPath() || null,
-      } as any,
+      }),
     }).pipe(
       catchError(() => {
         this.isSaving.set(false);

@@ -1,0 +1,227 @@
+<div class="grid grid-cols-2 gap-4 items-start">
+  <!-- ——— Composition ——— -->
+  <div class="flex flex-col gap-4">
+    <tas-card class="block">
+      <div class="p-4 border-b border-slate-100">
+        <p class="text-sm font-semibold text-slate-700 flex items-center gap-2">
+          <tas-icon iconName="feather:layout" class="text-slate-400" style="font-size:14px"></tas-icon>
+          Champs du formulaire
+        </p>
+        <p class="text-xs text-slate-400 mt-0.5">
+          Glissez pour réordonner. Le téléphone est obligatoire et ne peut pas être retiré.
+        </p>
+      </div>
+
+      <div class="p-4 flex flex-col gap-3">
+        @for (field of config().fields; track field.name; let i = $index) {
+          <div class="border border-slate-200 rounded-lg"
+               [class.opacity-50]="draggedIndex() === i"
+               [attr.draggable]="readonly() ? null : true"
+               (dragstart)="onDragStart(i)"
+               (dragover)="onDragOver($event)"
+               (drop)="onDrop(i)">
+            <div class="flex items-center gap-2 p-3 bg-slate-50 rounded-t-lg">
+              <tas-icon iconName="feather:menu" class="text-slate-300 cursor-grab" style="font-size:14px"></tas-icon>
+              <span class="text-xs font-medium text-slate-700 flex-1">{{ field.label || field.name }}</span>
+              <span class="text-[10px] text-slate-400 font-mono">{{ field.name }}</span>
+
+              @if (!readonly()) {
+                <!-- Réordonnancement accessible au clavier -->
+                <button tas-icon-button type="button" [disabled]="i === 0"
+                        [attr.aria-label]="'Monter ' + field.label" (click)="moveUp(i)">
+                  <tas-icon iconName="feather:chevron-up" style="font-size:12px"></tas-icon>
+                </button>
+                <button tas-icon-button type="button" [disabled]="i === config().fields.length - 1"
+                        [attr.aria-label]="'Descendre ' + field.label" (click)="moveDown(i)">
+                  <tas-icon iconName="feather:chevron-down" style="font-size:12px"></tas-icon>
+                </button>
+                @if (!isLocked(field)) {
+                  <button tas-icon-button type="button"
+                          [attr.aria-label]="'Retirer ' + field.label" (click)="removeField(i)">
+                    <tas-icon iconName="feather:trash-2" class="text-red-400" style="font-size:12px"></tas-icon>
+                  </button>
+                }
+              }
+            </div>
+
+            <div class="p-3 grid grid-cols-2 gap-3">
+              <tas-form-field>
+                <tas-label>Libellé</tas-label>
+                <input tasInput type="text" [ngModel]="field.label"
+                       (ngModelChange)="updateField(i, { label: $event })" [disabled]="readonly()" />
+              </tas-form-field>
+              <tas-form-field>
+                <tas-label>Texte d'aide</tas-label>
+                <input tasInput type="text" [ngModel]="field.placeholder"
+                       (ngModelChange)="updateField(i, { placeholder: $event })" [disabled]="readonly()" />
+              </tas-form-field>
+
+              <div class="col-span-2 flex items-center justify-between">
+                <span class="text-xs text-slate-600">Obligatoire</span>
+                @if (isLocked(field)) {
+                  <span class="text-[10px] text-slate-400">Toujours obligatoire</span>
+                } @else {
+                  <tas-switch [checked]="field.isRequired"
+                              (toggle)="setRequired(i, $event)" [disabled]="readonly()"></tas-switch>
+                }
+              </div>
+
+              @if (field.type === 'select') {
+                <div class="col-span-2 flex flex-col gap-2">
+                  <span class="text-xs text-slate-600">Options</span>
+                  @for (option of field.options; track $index; let j = $index) {
+                    <div class="flex items-center gap-2">
+                      <input tasInput type="text" class="flex-1" [ngModel]="option"
+                             (ngModelChange)="updateOption(i, j, $event)" [disabled]="readonly()" />
+                      @if (!readonly()) {
+                        <button tas-icon-button type="button"
+                                [attr.aria-label]="'Retirer l\'option ' + (j + 1)"
+                                (click)="removeOption(i, j)">
+                          <tas-icon iconName="feather:x" style="font-size:12px"></tas-icon>
+                        </button>
+                      }
+                    </div>
+                  }
+                  @if (!readonly()) {
+                    <button tas-outlined-button type="button" class="text-xs self-start" (click)="addOption(i)">
+                      <tas-icon iconName="feather:plus" style="font-size:10px"></tas-icon>
+                      Ajouter une option
+                    </button>
+                  }
+                </div>
+              }
+            </div>
+          </div>
+        }
+
+        @if (!readonly() && availableFields().length > 0) {
+          <div class="flex flex-wrap gap-1.5 pt-1">
+            <span class="text-xs text-slate-400 self-center">Ajouter :</span>
+            @for (template of availableFields(); track template.name) {
+              <button tas-outlined-button type="button" class="text-xs" (click)="addField(template)">
+                <tas-icon iconName="feather:plus" style="font-size:10px"></tas-icon>
+                {{ template.label }}
+              </button>
+            }
+          </div>
+        }
+      </div>
+    </tas-card>
+
+    <!-- Consentement et apparence -->
+    <tas-card class="block">
+      <div class="p-4 border-b border-slate-100">
+        <p class="text-sm font-semibold text-slate-700">Consentement et apparence</p>
+      </div>
+      <div class="p-4 flex flex-col gap-3">
+        <tas-form-field>
+          <tas-label>Texte de consentement</tas-label>
+          <input tasInput type="text" [ngModel]="config().consentText"
+                 (ngModelChange)="updateConfig('consentText', $event)" [disabled]="readonly()" />
+        </tas-form-field>
+        <div class="grid grid-cols-2 gap-3">
+          <tas-form-field>
+            <tas-label>Version du texte</tas-label>
+            <input tasInput type="text" [ngModel]="config().consentVersion"
+                   (ngModelChange)="updateConfig('consentVersion', $event)" [disabled]="readonly()" />
+          </tas-form-field>
+          <tas-form-field>
+            <tas-label>Libellé du bouton</tas-label>
+            <input tasInput type="text" [ngModel]="config().submitLabel"
+                   (ngModelChange)="updateConfig('submitLabel', $event)" [disabled]="readonly()" />
+          </tas-form-field>
+          <tas-form-field>
+            <tas-label>Couleur d'accent</tas-label>
+            <input tasInput type="color" [ngModel]="config().accentColor"
+                   (ngModelChange)="updateConfig('accentColor', $event)" [disabled]="readonly()" />
+          </tas-form-field>
+          <tas-form-field>
+            <tas-label>Police</tas-label>
+            <input tasInput type="text" placeholder="inherit" [ngModel]="config().fontFamily"
+                   (ngModelChange)="updateConfig('fontFamily', $event)" [disabled]="readonly()" />
+          </tas-form-field>
+        </div>
+        <p class="text-xs text-slate-400">
+          Couleur et police sont exposées au site hôte via des variables CSS, qu'il peut surcharger.
+        </p>
+      </div>
+    </tas-card>
+
+    @if (!readonly()) {
+      <div class="flex justify-end">
+        <button tas-raised-button color="primary" type="button"
+                [disabled]="!canSave()" (click)="save()">
+          <tas-icon iconName="feather:save" style="font-size:14px"></tas-icon>
+          Enregistrer le formulaire
+        </button>
+      </div>
+    }
+  </div>
+
+  <!-- ——— Aperçu en direct (FE-16 AC2) ——— -->
+  <tas-card class="block sticky top-4">
+    <div class="p-4 border-b border-slate-100 flex items-center justify-between">
+      <p class="text-sm font-semibold text-slate-700 flex items-center gap-2">
+        <tas-icon iconName="feather:eye" class="text-slate-400" style="font-size:14px"></tas-icon>
+        Aperçu
+      </p>
+      <div class="flex items-center gap-1">
+        <button tas-outlined-button type="button" class="text-xs"
+                [class.border-primary]="previewWidth() === 'desktop'"
+                (click)="previewWidth.set('desktop')">
+          <tas-icon iconName="feather:monitor" style="font-size:10px"></tas-icon>
+          Bureau
+        </button>
+        <button tas-outlined-button type="button" class="text-xs"
+                [class.border-primary]="previewWidth() === 'mobile'"
+                (click)="previewWidth.set('mobile')">
+          <tas-icon iconName="feather:smartphone" style="font-size:10px"></tas-icon>
+          Mobile
+        </button>
+      </div>
+    </div>
+
+    <div class="p-4 bg-slate-50 flex justify-center">
+      <div class="bg-white rounded-lg shadow-sm p-4 w-full transition-all"
+           [style.max-width]="previewWidth() === 'mobile' ? '360px' : '100%'"
+           [style.font-family]="config().fontFamily || 'inherit'">
+        @for (field of config().fields; track field.name) {
+          <div class="mb-3">
+            <label class="block text-xs font-medium text-slate-700 mb-1">
+              {{ field.label || field.name }}
+              @if (field.isRequired) { <span class="text-red-500">*</span> }
+            </label>
+            @switch (field.type) {
+              @case ('textarea') {
+                <textarea class="w-full border border-slate-300 rounded px-2 py-1.5 text-xs"
+                          rows="3" [attr.placeholder]="field.placeholder" disabled></textarea>
+              }
+              @case ('select') {
+                <select class="w-full border border-slate-300 rounded px-2 py-1.5 text-xs" disabled>
+                  @for (option of field.options; track $index) {
+                    <option>{{ option }}</option>
+                  }
+                </select>
+              }
+              @default {
+                <input class="w-full border border-slate-300 rounded px-2 py-1.5 text-xs"
+                       [attr.type]="field.type" [attr.placeholder]="field.placeholder" disabled />
+              }
+            }
+          </div>
+        }
+
+        <label class="flex items-start gap-2 mb-3">
+          <input type="checkbox" disabled class="mt-0.5" />
+          <span class="text-[11px] text-slate-600">{{ config().consentText }}</span>
+        </label>
+
+        <button type="button" disabled
+                class="w-full rounded px-3 py-2 text-xs font-medium text-white"
+                [style.background-color]="config().accentColor">
+          {{ config().submitLabel }}
+        </button>
+      </div>
+    </div>
+  </tas-card>
+</div>

@@ -15,12 +15,14 @@ import { SourceSettings } from './source-settings.interface';
 export interface UpdateLeadSourceRequest { 
     version?: number;
     label?: string | null;
-    displayOrder?: number;
+    displayOrder?: number | null;
     description?: string | null;
     settings?: SourceSettings;
     platformConnectionId?: string | null;
     dedupWindowDays?: number | null;
     costPerLead?: number | null;
     costCurrency?: string | null;
+    defaultAgencyId?: string | null;
+    defaultDispatchingRuleId?: string | null;
 }
 

@@ -7,13 +7,27 @@ import {
   healthIcon, healthColor, channelIcon,
 } from '../lead-source.types';
 import { FieldMappingEditor } from '../field-mapping-editor/field-mapping-editor';
-import { emptyRule, MappingRule } from '../field-mapping.types';
-import { ConsentPolicyEditor, ConsentConfig } from '../consent-policy-editor/consent-policy-editor';
-import { ScriptWizard, ScriptConfig } from '../script-wizard';
+import { MappingRule, missingRequiredFields } from '../field-mapping.types';
+import {
+  ConsentConfig,
+  HostedFormConfig,
+  LeadSourceSettings,
+  PullConfig,
+  ScriptConfig,
+  isPullSettings,
+  isScriptSettings,
+  readSettings,
+  toPersistedRules,
+  writeSettings,
+} from '../lead-source-settings.types';
+import { ConsentPolicyEditor } from '../consent-policy-editor/consent-policy-editor';
+import { ScriptWizard } from '../script-wizard';
+import { HostedFormEditor } from '../hosted-form-editor/hosted-form-editor';
 import { ScriptInstaller } from '../script-installer';
 import { ScriptVerifier } from '../script-verifier';
 import { WebhookConnection } from '../webhook-connection';
-import { PullWizard, PullConfig } from '../pull-wizard/pull-wizard';
+import { PullWizard } from '../pull-wizard/pull-wizard';
+import { PullConnection } from '../pull-connection';
 import { PullDryRun } from '../pull-dry-run';
 import { RunHistory } from '../run-history';
 import { IngestionList } from '../ingestion-list';
@@ -44,10 +58,12 @@ import { LeadSourceDetailDto } from '@sankore/crm-api';
     FieldMappingEditor,
     ConsentPolicyEditor,
     ScriptWizard,
+    HostedFormEditor,
     ScriptInstaller,
     ScriptVerifier,
     WebhookConnection,
     PullWizard,
+    PullConnection,
     PullDryRun,
     RunHistory,
     IngestionList,
@@ -78,8 +94,12 @@ export class EditLeadSource implements OnInit {
     ];
     const mode = this.source()?.mode;
     if (mode === 'EmbeddedScript') {
+      base.push({ id: 'script-config', label: 'Formulaire' });
+      // FE-16 — l'éditeur n'a de sens que si le script doit rendre le formulaire.
+      if (this.scriptConfig()?.formMode === 'hosted') {
+        base.push({ id: 'hosted-form', label: 'Champs du formulaire' });
+      }
       base.push(
-        { id: 'script-config', label: 'Formulaire' },
         { id: 'script-install', label: 'Installer le script' },
         { id: 'script-verify', label: 'Vérification' },
       );
@@ -90,6 +110,7 @@ export class EditLeadSource implements OnInit {
     if (mode === 'ScheduledPull') {
       base.push(
         { id: 'pull-config', label: 'API fournisseur' },
+        { id: 'pull-connection', label: 'Connexion' },
         { id: 'pull-test', label: 'Tester' },
         { id: 'pull-history', label: 'Historique' },
       );
@@ -129,26 +150,26 @@ export class EditLeadSource implements OnInit {
   // ——— FE-09: Activation prerequisites ———
 
   public readonly activationChecks = computed(() => {
-    const src = this.source();
-    if (!src) return [];
-    const settings = (src.settings as any) ?? {};
-    const consent: ConsentConfig | null = settings.consent ?? null;
-    const mappings: any[] = settings.FieldMappings ?? [];
+    const settings = this.settings();
+    if (!settings) return [];
+    const src = this.source()!;
+    const consent = settings.consent;
+    const mappings = settings.fieldMappings;
 
+    // FE-07 — la regle d'obligation vient de `field-mapping.types` : l'editeur
+    // de correspondance et cette checklist ne peuvent plus diverger.
+    const missing = missingRequiredFields(mappings);
     const checks = [
       {
         label: 'Correspondance des champs configurée',
         ok: mappings.length > 0,
       },
       {
-        label: 'Champs obligatoires mappés (prénom ou nom, téléphone)',
-        ok:
-          mappings.some(
-            (m: any) =>
-              m.TargetField === 'firstName' ||
-              m.TargetField === 'lastName' ||
-              m.TargetField === 'fullName',
-          ) && mappings.some((m: any) => m.TargetField === 'phoneNumber'),
+        label:
+          missing.length > 0
+            ? `Champs obligatoires non mappés : ${missing.map((g) => g.label).join(', ')}`
+            : 'Champs obligatoires mappés',
+        ok: missing.length === 0,
       },
     ];
 
@@ -177,44 +198,37 @@ export class EditLeadSource implements OnInit {
     return this.activationChecks().every((c) => c.ok);
   });
 
+  /**
+   * FE-01 — Lecture unique des settings : `readSettings` normalise le sac libre
+   * de l'API (casse comprise) en union discriminée sur `$mode`. Les vues
+   * ci-dessous n'en sont que des projections ; plus aucun `as any`.
+   */
+  public readonly settings = computed((): LeadSourceSettings | null => {
+    const src = this.source();
+    return src ? readSettings(src.settings, src.mode) : null;
+  });
+
   public readonly consentConfig = computed((): ConsentConfig | null => {
-    const settings = this.source()?.settings as any;
-    if (!settings?.consent) return null;
-    return settings.consent as ConsentConfig;
+    return this.settings()?.consent ?? null;
   });
 
   public readonly scriptConfig = computed((): ScriptConfig | null => {
-    const settings = this.source()?.settings as any;
-    if (!settings?.script) return null;
-    return settings.script as ScriptConfig;
+    const s = this.settings();
+    return s && isScriptSettings(s) ? s.script : null;
   });
 
   public readonly pullConfig = computed((): PullConfig | null => {
-    const settings = this.source()?.settings as any;
-    if (!settings?.pull) return null;
-    return settings.pull as PullConfig;
+    const s = this.settings();
+    return s && isPullSettings(s) ? s.pull : null;
   });
 
   public readonly mappingRules = computed((): MappingRule[] => {
-    const settings = this.source()?.settings as any;
-    console.log({ settings });
-    const raw = settings?.FieldMappings;
-    if (!Array.isArray(raw)) return [];
-    // Les règles persistées stockent `null` pour les options non utilisées
-    // (cf. onMappingSaved) : on retombe sur les valeurs par défaut.
-    return raw.map((m: any) => {
-      const base = emptyRule();
-      return {
-        ...base,
-        sourceField: m.SourceField ?? base.sourceField,
-        targetField: m.TargetField ?? base.targetField,
-        transformation: m.Transformation ?? base.transformation,
-        defaultValue: m.DefaultValue ?? base.defaultValue,
-        e164Country: m.E164Country ?? base.e164Country,
-        mapEntries: m.PapEntries ?? base.mapEntries,
-        concatSeparator: m.ConcatSeparator ?? base.concatSeparator,
-      };
-    });
+    return this.settings()?.fieldMappings ?? [];
+  });
+
+  public readonly hostedFormConfig = computed((): HostedFormConfig | null => {
+    const s = this.settings();
+    return s && isScriptSettings(s) ? s.hostedForm : null;
   });
 
   ngOnInit(): void {
@@ -224,7 +238,38 @@ export class EditLeadSource implements OnInit {
       { label: 'Sources & Campagnes', link: ['/settings/lead-sources'] },
       { label: 'Détail' },
     ]);
+    // FE-05 — `?tab=` permet d'ouvrir directement l'assistant du mode apres la
+    // creation. L'onglet n'est retenu que s'il existe pour ce mode (verifie une
+    // fois la source chargee, `tabs()` en dependant).
+    this._requestedTab = this._route.snapshot.queryParamMap.get('tab');
+    // FE-23 AC2 — statut pre-filtre lorsqu'on arrive depuis le tableau qualite.
+    this.requestedIngestionStatus.set(this._route.snapshot.queryParamMap.get('status'));
     this._load(id);
+  }
+
+  /** Onglet demandé par l'URL, appliqué une fois la source chargée. */
+  private _requestedTab: string | null = null;
+
+  /** Statut de réception demandé par l'URL (FE-23). */
+  public requestedIngestionStatus = signal<string | null>(null);
+
+  /** Etape sur laquelle ouvrir l'assistant pull (renvoi depuis le test a blanc). */
+  public pullWizardStep = signal(0);
+
+  /** FE-20 AC3 — le test a blanc renvoie sur l'etape fautive de l'assistant. */
+  public onDryRunGoToStep(step: number): void {
+    this.pullWizardStep.set(step);
+    this.selectTab('pull-config');
+  }
+
+  public selectTab(id: string): void {
+    this.activeTab.set(id);
+    this._router.navigate([], {
+      relativeTo: this._route,
+      queryParams: { tab: id },
+      queryParamsHandling: 'merge',
+      replaceUrl: true,
+    });
   }
 
   // ——— FE-09: Lifecycle actions ———
@@ -302,7 +347,7 @@ export class EditLeadSource implements OnInit {
       .update(src.id!, {
         version: src.version,
         label: src.label,
-        settings: { ...(src.settings ?? {}), pull } as any,
+        settings: writeSettings(src.settings, src.mode, { pull }),
         costPerLead: pull.costPerLead,
         costCurrency: pull.costCurrency || null,
       })
@@ -316,6 +361,23 @@ export class EditLeadSource implements OnInit {
       });
   }
 
+  public onHostedFormSaved(hostedForm: HostedFormConfig): void {
+    const src = this.source();
+    if (!src) return;
+
+    this._sourcesService
+      .update(src.id!, {
+        version: src.version,
+        label: src.label,
+        settings: writeSettings(src.settings, src.mode, { hostedForm }),
+      })
+      .pipe(catchError(() => EMPTY))
+      .subscribe(() => {
+        this._snackbar.success('Enregistré', 'Le formulaire hébergé a été mis à jour.');
+        this._load(src.id!);
+      });
+  }
+
   public onScriptConfigSaved(script: ScriptConfig): void {
     const src = this.source();
     if (!src) return;
@@ -324,10 +386,7 @@ export class EditLeadSource implements OnInit {
       .update(src.id!, {
         version: src.version,
         label: src.label,
-        settings: {
-          ...(src.settings ?? {}),
-          script,
-        } as any,
+        settings: writeSettings(src.settings, src.mode, { script }),
       })
       .pipe(catchError(() => EMPTY))
       .subscribe(() => {
@@ -351,10 +410,7 @@ export class EditLeadSource implements OnInit {
       .update(src.id!, {
         version: src.version,
         label: src.label,
-        settings: {
-          ...(src.settings ?? {}),
-          consent,
-        } as any,
+        settings: writeSettings(src.settings, src.mode, { consent }),
       })
       .pipe(catchError(() => EMPTY))
       .subscribe(() => {
@@ -374,20 +430,9 @@ export class EditLeadSource implements OnInit {
       .update(src.id!, {
         version: src.version,
         label: src.label,
-        settings: {
-          ...(src.settings ?? {}),
-          $mode: src.mode,
-          fieldMappings: rules.map((r) => ({
-            sourceField: r.sourceField,
-            targetField: r.targetField,
-            transformation: r.transformation,
-            defaultValue: r.defaultValue || null,
-            e164Country: r.transformation === 'e164' ? r.e164Country : null,
-            mapEntries: r.transformation === 'map' ? r.mapEntries : null,
-            concatSeparator:
-              r.transformation === 'concat' ? r.concatSeparator : null,
-          })),
-        } as any,
+        settings: writeSettings(src.settings, src.mode, {
+          fieldMappings: toPersistedRules(rules),
+        }),
       })
       .pipe(catchError(() => EMPTY))
       .subscribe(() => {
@@ -411,6 +456,11 @@ export class EditLeadSource implements OnInit {
       )
       .subscribe((detail) => {
         this.source.set(detail);
+        if (this._requestedTab) {
+          const exists = this.tabs().some((t) => t.id === this._requestedTab);
+          if (exists) this.activeTab.set(this._requestedTab);
+          this._requestedTab = null;
+        }
         this._breadcrumb.set([
           { label: 'Paramétrage', link: ['/settings'] },
           { label: 'Sources & Campagnes', link: ['/settings/lead-sources'] },

@@ -5,7 +5,7 @@ import { LeadSourcesService } from '../lead-sources.service';
 import {
   MappingRule, MapEntry,
   LEAD_TARGET_FIELDS, TRANSFORMATION_OPTIONS, E164_COUNTRY_OPTIONS,
-  emptyRule, missingRequiredFields, uid,
+  emptyRule, missingRequiredFields, isRequiredTargetField, uid,
 } from '../field-mapping.types';
 import { PreviewMappingResult } from '@sankore/crm-api';
 import { TasCard } from '@talisoft/ui/card';
@@ -147,7 +147,7 @@ export class FieldMappingEditor implements OnInit {
   }
 
   public isRequiredField(key: string): boolean {
-    return LEAD_TARGET_FIELDS.some((f) => f.key === key && f.required);
+    return isRequiredTargetField(key);
   }
 
   // ——— Preview ———

@@ -74,6 +74,19 @@ export function modeLabel(mode: IntegrationMode | string | null | undefined): st
   return MODE_LABELS[mode as IntegrationMode] ?? mode ?? '—';
 }
 
+/**
+ * FE-05 — Onglet du detail sur lequel ouvrir une source selon son mode, pour
+ * enchainer directement sur l'assistant apres la creation.
+ */
+export function tabForMode(mode: IntegrationMode | string | null | undefined): string {
+  switch (mode) {
+    case 'EmbeddedScript': return 'script-config';
+    case 'ServerWebhook': return 'webhook';
+    case 'ScheduledPull': return 'pull-config';
+    default: return 'general';
+  }
+}
+
 // ——— Status labels + severity ———
 
 const STATUS_LABELS: Record<LeadSourceStatus, string> = {
@@ -176,25 +189,61 @@ export function buildStatusOptions(): { label: string; value: string }[] {
 }
 
 // ——— Numeric enum mapping for API filter params ———
-// The API uses numeric enums for query params (0-based)
+//
+// L'API attend des index numeriques pour les filtres. Ils sont ecrits
+// explicitement (et non derives de la position dans l'enum genere) : une
+// insertion ou un reordonnancement cote OpenAPI casserait silencieusement
+// tous les filtres. Les `Record` complets forcent le compilateur a signaler
+// toute valeur ajoutee au contrat.
 
-const CHANNEL_TYPE_INDEX: Record<string, number> = {};
-Object.values(LeadChannelType).forEach((v, i) => { CHANNEL_TYPE_INDEX[v] = i; });
+export type ChannelTypeParam =
+  | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13;
+export type ModeParam = 0 | 1 | 2 | 3 | 4 | 5;
+export type StatusParam = 0 | 1 | 2 | 3 | 4 | 5;
 
-const MODE_INDEX: Record<string, number> = {};
-Object.values(IntegrationMode).forEach((v, i) => { MODE_INDEX[v] = i; });
+const CHANNEL_TYPE_PARAM: Record<LeadChannelType, ChannelTypeParam> = {
+  WebForm: 0,
+  InboundWebhook: 1,
+  ExternalApiPull: 2,
+  FacebookLeadAds: 3,
+  InstagramLeadAds: 4,
+  LinkedInLeadGen: 5,
+  WhatsAppInbound: 6,
+  SocialEngagement: 7,
+  MobileAgent: 8,
+  WalkIn: 9,
+  SmsUssdCampaign: 10,
+  Referral: 11,
+  FileImport: 12,
+  InboundCall: 13,
+};
 
-const STATUS_INDEX: Record<string, number> = {};
-Object.values(LeadSourceStatus).forEach((v, i) => { STATUS_INDEX[v] = i; });
+const MODE_PARAM: Record<IntegrationMode, ModeParam> = {
+  EmbeddedScript: 0,
+  ServerWebhook: 1,
+  ScheduledPull: 2,
+  PlatformConnection: 3,
+  SocialTracking: 4,
+  Internal: 5,
+};
 
-export function channelTypeToNumeric(value: string | null): number | undefined {
-  return value ? CHANNEL_TYPE_INDEX[value] : undefined;
+const STATUS_PARAM: Record<LeadSourceStatus, StatusParam> = {
+  Draft: 0,
+  Testing: 1,
+  Active: 2,
+  Paused: 3,
+  Error: 4,
+  Archived: 5,
+};
+
+export function channelTypeToNumeric(value: string | null | undefined): ChannelTypeParam | undefined {
+  return value ? CHANNEL_TYPE_PARAM[value as LeadChannelType] : undefined;
 }
 
-export function modeToNumeric(value: string | null): number | undefined {
-  return value ? MODE_INDEX[value] : undefined;
+export function modeToNumeric(value: string | null | undefined): ModeParam | undefined {
+  return value ? MODE_PARAM[value as IntegrationMode] : undefined;
 }
 
-export function statusToNumeric(value: string | null): number | undefined {
-  return value ? STATUS_INDEX[value] : undefined;
+export function statusToNumeric(value: string | null | undefined): StatusParam | undefined {
+  return value ? STATUS_PARAM[value as LeadSourceStatus] : undefined;
 }

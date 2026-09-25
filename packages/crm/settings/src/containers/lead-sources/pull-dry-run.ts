@@ -1,4 +1,4 @@
-import { Component, inject, input, signal } from '@angular/core';
+import { Component, computed, inject, input, output, signal } from '@angular/core';
 import { catchError, EMPTY } from 'rxjs';
 import { TasCard } from '@talisoft/ui/card';
 import { TasSpinner } from '@talisoft/ui/spinner';
@@ -23,15 +23,18 @@ import { LeadSourcesService } from './lead-sources.service';
           <h2 class="text-sm font-semibold text-slate-700">Test de l'API (exécution à blanc)</h2>
           <p class="text-xs text-slate-400 mt-0.5">
             Appelle l'API du fournisseur sans créer de leads. Permet de valider la configuration.
+            Délai maximal : {{ timeoutSeconds }} secondes.
           </p>
         </div>
-        <button tas-raised-button color="primary" type="button"
-                [disabled]="isRunning()"
-                [isLoading]="isRunning()"
-                (click)="runTest()">
-          <tas-icon iconName="feather:play" style="font-size:14px"></tas-icon>
-          Tester
-        </button>
+        @if (!readonly()) {
+          <button tas-raised-button color="primary" type="button"
+                  [disabled]="isRunning()"
+                  [isLoading]="isRunning()"
+                  (click)="runTest()">
+            <tas-icon iconName="feather:play" style="font-size:14px"></tas-icon>
+            Tester
+          </button>
+        }
       </div>
 
       @if (isRunning()) {
@@ -49,9 +52,15 @@ import { LeadSourcesService } from './lead-sources.service';
         <div class="p-4 bg-red-50 border border-red-200 rounded-lg">
           <p class="text-sm font-medium text-red-800 flex items-center gap-2">
             <tas-icon iconName="feather:x-circle" class="text-red-500" style="font-size:14px"></tas-icon>
-            Échec du test
+            Échec du test — étape « {{ failedStage()!.label }} »
           </p>
           <p class="text-xs text-red-600 mt-1">{{ error() }}</p>
+          <p class="text-xs text-red-500 mt-1">{{ failedStage()!.advice }}</p>
+          <button tas-outlined-button type="button" class="text-xs mt-2"
+                  (click)="goToFailedStage()">
+            <tas-icon iconName="feather:arrow-left" style="font-size:10px"></tas-icon>
+            Corriger cette étape
+          </button>
         </div>
       }
 
@@ -140,13 +149,53 @@ export class PullDryRun {
   private readonly _sourcesService = inject(LeadSourcesService);
 
   public readonly sourceId = input.required<string>();
+  /** FE-03 — un utilisateur en lecture seule ne doit pas pouvoir tester. */
+  public readonly readonly = input(false);
+
+  /** Renvoie vers l'etape fautive de l'assistant (FE-20 AC3). */
+  public readonly goToStep = output<number>();
+
+  /** Delai maximal annonce a l'utilisateur avant le lancement (FE-20 AC1). */
+  public readonly timeoutSeconds = 30;
 
   public isRunning = signal(false);
   public result = signal<DryRunResult | null>(null);
   public error = signal<string | null>(null);
   public responseExpanded = signal(false);
 
+  /**
+   * FE-20 AC3 — rattache l'echec a une etape de l'assistant. Le back ne renvoie
+   * pas d'etape structuree : on la deduit du message, ce qui reste bien plus
+   * utile qu'un « erreur inattendue » nu.
+   */
+  public readonly failedStage = computed(() => {
+    const msg = (this.error() ?? '').toLowerCase();
+    const has = (...needles: string[]) => needles.some((n) => msg.includes(n));
+
+    if (has('401', '403', 'unauthorized', 'forbidden', 'auth', 'token', 'credential')) {
+      return { step: 0, label: 'Connexion', advice: "L'authentification a été refusée : vérifiez le type d'authentification et le secret saisi dans l'onglet « Connexion »." };
+    }
+    if (has('ssrf', 'adresse', 'host', 'dns', 'resolve', 'refus')) {
+      return { step: 0, label: 'Connexion', advice: "L'adresse a été refusée : vérifiez l'URL de base (https:// et hôte public)." };
+    }
+    if (has('timeout', 'délai', 'delai', 'timed out')) {
+      return { step: 1, label: 'Requête', advice: 'Le fournisseur n\'a pas répondu dans le délai imparti : vérifiez le chemin et les paramètres.' };
+    }
+    if (has('404', '405', '400', 'bad request', 'not found')) {
+      return { step: 1, label: 'Requête', advice: 'Le fournisseur a rejeté la requête : vérifiez la méthode, le chemin et les paramètres.' };
+    }
+    if (has('jsonpath', 'chemin', 'aucun résultat', 'aucun resultat', 'extraction')) {
+      return { step: 3, label: 'Extraction', advice: 'Un JSONPath n\'a rien retourné : vérifiez les chemins de la liste, de l\'identifiant et de la date.' };
+    }
+    return { step: 1, label: 'Requête', advice: 'Reprenez la configuration de la requête puis relancez le test.' };
+  });
+
+  public goToFailedStage(): void {
+    this.goToStep.emit(this.failedStage().step);
+  }
+
   public runTest(): void {
+    if (this.readonly()) return;
     this.isRunning.set(true);
     this.result.set(null);
     this.error.set(null);

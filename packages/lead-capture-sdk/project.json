@@ -1,0 +1,42 @@
+{
+  "name": "lead-capture-sdk",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "packages/lead-capture-sdk/src",
+  "projectType": "library",
+  "tags": [],
+  "targets": {
+    "build": {
+      "executor": "nx:run-commands",
+      "outputs": [
+        "{workspaceRoot}/dist/packages/lead-capture-sdk"
+      ],
+      "cache": true,
+      "options": {
+        "command": "node packages/lead-capture-sdk/tools/build.mjs",
+        "cwd": "{workspaceRoot}"
+      },
+      "configurations": {
+        "watch": {
+          "command": "node packages/lead-capture-sdk/tools/build.mjs --watch"
+        }
+      },
+      "dependsOn": [
+        "typecheck"
+      ]
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint"
+    },
+    "typecheck": {
+      "executor": "nx:run-commands",
+      "cache": true,
+      "options": {
+        "command": "tsc -p packages/lead-capture-sdk/tsconfig.lib.json --noEmit",
+        "cwd": "{workspaceRoot}"
+      }
+    },
+    "test": {
+      "executor": "@nx/vitest:test"
+    }
+  }
+}

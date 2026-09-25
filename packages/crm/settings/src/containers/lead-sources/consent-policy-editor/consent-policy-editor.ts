@@ -8,26 +8,16 @@ import { TasFormField, TasLabel } from '@talisoft/ui/form-field';
 import { TasInput } from '@talisoft/ui/input';
 import { TasSelect } from '@talisoft/ui/select';
 
-/**
- * FE-08 — Consent policy types
- */
-export type ConsentPolicy = 'CollectedByForm' | 'ProviderAttested' | 'LegitimateInterest' | 'None';
+import {
+  ConsentConfig,
+  ConsentPolicy,
+  emptyConsentConfig,
+} from '../lead-source-settings.types';
 
-export interface ConsentConfig {
-  policy: ConsentPolicy;
-  consentFieldPath: string;
-  consentTextVersion: string;
-  providerContractRef: string;
-}
-
-export function emptyConsentConfig(): ConsentConfig {
-  return {
-    policy: 'None',
-    consentFieldPath: '',
-    consentTextVersion: '',
-    providerContractRef: '',
-  };
-}
+// FE-01 : les types de consentement vivent dans le module de settings.
+// Reexportes ici pour les consommateurs historiques de ce composant.
+export type { ConsentConfig, ConsentPolicy };
+export { emptyConsentConfig };
 
 const POLICY_OPTIONS: { label: string; value: ConsentPolicy }[] = [
   { value: 'CollectedByForm', label: 'Collecté par le formulaire' },

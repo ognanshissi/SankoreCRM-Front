@@ -231,7 +231,7 @@
                   ? 'border-primary text-primary'
                   : 'border-transparent text-slate-500 hover:text-slate-700'
               "
-          (click)="activeTab.set(tab.id)"
+          (click)="selectTab(tab.id)"
         >
           {{ tab.label }}
         </button>
@@ -356,12 +356,25 @@
         <script-wizard
           [initialConfig]="scriptConfig()"
           [readonly]="!canWrite()"
+          [sourceStatus]="source()!.status ?? null"
           (saved)="onScriptConfigSaved($event)"
         ></script-wizard>
       }
 
+      @case ('hosted-form') {
+        <hosted-form-editor
+          [initialConfig]="hostedFormConfig()"
+          [readonly]="!canWrite()"
+          (saved)="onHostedFormSaved($event)"
+        ></hosted-form-editor>
+      }
+
       @case ('script-install') {
-        <script-installer [sourceId]="source()!.id!"></script-installer>
+        <script-installer
+          [sourceId]="source()!.id!"
+          [canManageSecrets]="canManageSecrets()"
+          (keyRotated)="onSourceActivated()"
+        ></script-installer>
       }
 
       @case ('script-verify') {
@@ -384,13 +397,27 @@
       @case ('pull-config') {
         <pull-wizard
           [initialConfig]="pullConfig()"
+          [initialStep]="pullWizardStep()"
           [readonly]="!canWrite()"
           (saved)="onPullConfigSaved($event)"
         ></pull-wizard>
       }
 
+      @case ('pull-connection') {
+        <pull-connection
+          [source]="source()!"
+          [canManageSecrets]="canManageSecrets()"
+          [readonly]="!canWrite()"
+          (secretSaved)="onSourceActivated()"
+        ></pull-connection>
+      }
+
       @case ('pull-test') {
-        <pull-dry-run [sourceId]="source()!.id!"></pull-dry-run>
+        <pull-dry-run
+          [sourceId]="source()!.id!"
+          [readonly]="!canWrite()"
+          (goToStep)="onDryRunGoToStep($event)"
+        ></pull-dry-run>
       }
 
       @case ('pull-history') {
@@ -406,6 +433,7 @@
           [sourceId]="source()!.id!"
           [canViewPayload]="canViewPayload()"
           [canReplay]="canReplayIngestion()"
+          [initialStatus]="requestedIngestionStatus()"
         ></ingestion-list>
       }
     }

@@ -1,4 +1,4 @@
-import { Component, inject, input, output, signal, OnInit, OnDestroy } from '@angular/core';
+import { Component, computed, inject, input, output, signal, OnInit, OnDestroy } from '@angular/core';
 import { catchError, EMPTY, Observable } from 'rxjs';
 import { TasCard } from '@talisoft/ui/card';
 import { TasSpinner } from '@talisoft/ui/spinner';
@@ -7,7 +7,7 @@ import { TasTag } from '@talisoft/ui/tag';
 import { Button } from '@talisoft/ui/button';
 import { SnackbarService } from '@talisoft/ui/snackbar';
 import { ConfirmDialogService } from '@talisoft/ui/confirm-dialog';
-import { LeadSourceDetailDto } from '@sankore/crm-api';
+import { IngestionDto, IngestionsApiService, LeadSourceDetailDto } from '@sankore/crm-api';
 import { LeadSourcesService } from './lead-sources.service';
 
 /**
@@ -135,16 +135,21 @@ type DetectionStatus = 'waiting' | 'detected' | 'error' | 'idle';
               </div>
             } @else {
               <div class="space-y-2">
-                @for (lead of testLeads(); track $index) {
+                @for (ing of testLeads(); track ing.id) {
                   <div class="flex items-center gap-3 p-2 bg-slate-50 rounded-lg">
                     <tas-icon iconName="feather:user" class="text-slate-400" style="font-size:14px"></tas-icon>
                     <div class="flex-1 min-w-0">
-                      <p class="text-xs font-medium text-slate-700 truncate">{{ lead.fullName ?? '—' }}</p>
-                      <p class="text-[10px] text-slate-400">{{ lead.phoneNumber ?? lead.email ?? '—' }}</p>
+                      <p class="text-xs font-medium text-slate-700 truncate">
+                        {{ ing.externalId || 'Soumission ' + (ing.id ?? '').slice(0, 8) }}
+                      </p>
+                      <p class="text-[10px] text-slate-400">{{ ing.ingestedAt }}</p>
+                      @if (ing.rejectionReason) {
+                        <p class="text-[10px] text-red-500">{{ ing.rejectionReason }}</p>
+                      }
                     </div>
                     <tas-tag severity="info">Test</tas-tag>
-                    @if (lead.error) {
-                      <tas-tag severity="error">Erreur</tas-tag>
+                    @if (ing.status !== 'Accepted') {
+                      <tas-tag severity="error">{{ ing.status }}</tas-tag>
                     }
                   </div>
                 }
@@ -154,12 +159,12 @@ type DetectionStatus = 'waiting' | 'detected' | 'error' | 'idle';
         </tas-card>
 
         <!-- Activate button -->
-        @if (sourceStatus() === 'Testing' && testLeads().length > 0) {
+        @if (sourceStatus() === 'Testing' && acceptedCount() > 0) {
           <div class="p-4 bg-green-50 border border-green-200 rounded-lg flex items-center justify-between">
             <div>
               <p class="text-sm font-medium text-green-800">Prêt pour l'activation</p>
               <p class="text-xs text-green-600 mt-0.5">
-                {{ testLeads().length }} lead(s) de test reçu(s) sans erreur. Vous pouvez activer la source.
+                {{ acceptedCount() }} lead(s) de test reçu(s) sans erreur. Vous pouvez activer la source.
               </p>
             </div>
             <button tas-raised-button color="primary" type="button"
@@ -177,6 +182,7 @@ type DetectionStatus = 'waiting' | 'detected' | 'error' | 'idle';
 })
 export class ScriptVerifier implements OnInit, OnDestroy {
   private readonly _sourcesService = inject(LeadSourcesService);
+  private readonly _ingestionsApi = inject(IngestionsApiService);
   private readonly _snackbar = inject(SnackbarService);
   private readonly _confirm = inject(ConfirmDialogService);
 
@@ -192,7 +198,15 @@ export class ScriptVerifier implements OnInit, OnDestroy {
   private _pollTimer: ReturnType<typeof setInterval> | null = null;
 
   // Test leads
-  public testLeads = signal<{ fullName?: string | null; phoneNumber?: string | null; email?: string | null; error?: string | null }[]>([]);
+  /**
+   * FE-12 AC3 — vraies receptions de la source, et non les leads simules du
+   * dry-run : l'ecran doit prouver que la chaine complete fonctionne.
+   */
+  public testLeads = signal<IngestionDto[]>([]);
+
+  public readonly acceptedCount = computed(
+    () => this.testLeads().filter((i) => i.status === 'Accepted').length,
+  );
   public isLoadingLeads = signal(false);
   public isActivating = signal(false);
 
@@ -245,14 +259,13 @@ export class ScriptVerifier implements OnInit, OnDestroy {
 
   public refreshTestLeads(): void {
     this.isLoadingLeads.set(true);
-    // Use dry-run to get simulated/test leads
-    this._sourcesService.dryRun(this.sourceId()).pipe(
+    this._ingestionsApi.listIngestions(this.sourceId(), undefined, 1, 20).pipe(
       catchError(() => {
         this.isLoadingLeads.set(false);
         return EMPTY;
       }),
     ).subscribe((result) => {
-      this.testLeads.set(result.simulatedLeads ?? []);
+      this.testLeads.set(result.items ?? []);
       this.isLoadingLeads.set(false);
     });
   }

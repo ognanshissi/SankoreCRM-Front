@@ -42,6 +42,8 @@ export interface LeadSourceDetailDto {
     platformConnectionId?: string | null;
     dedupWindowDays?: number;
     costPerLead?: Money;
+    defaultAgencyId?: string | null;
+    defaultDispatchingRuleId?: string | null;
     isSystem?: boolean;
     displayOrder?: number;
     version?: number;

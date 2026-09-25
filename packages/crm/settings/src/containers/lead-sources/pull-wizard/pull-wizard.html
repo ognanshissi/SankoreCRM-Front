@@ -100,7 +100,28 @@
           <tas-label>Paramètres de requête</tas-label>
           <input tasInput type="text" [placeholder]="requestParamsPlaceholder"
                  [ngModel]="config().requestParams" (ngModelChange)="set('requestParams', $event)" [disabled]="readonly()" />
-          <p class="text-xs text-slate-400 mt-1">Variables disponibles : {{ variableHints }}</p>
+          @if (!readonly()) {
+            <div class="flex items-center gap-1.5 mt-2 flex-wrap">
+              <span class="text-xs text-slate-400">Insérer :</span>
+              @for (v of templateVariables; track v) {
+                <button type="button"
+                        class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+                        (click)="insertVariable('requestParams', v)">
+                  {{ v }}
+                </button>
+              }
+            </div>
+          }
+          @if (usedVariables(config().requestParams).length > 0) {
+            <p class="text-xs text-slate-500 mt-1">
+              Variables utilisées : <span class="font-mono text-primary">{{ usedVariables(config().requestParams).join(' ') }}</span>
+            </p>
+          }
+          @if (unknownVariables(config().requestParams).length > 0) {
+            <p class="text-xs text-red-500 mt-1">
+              Variable inconnue : <span class="font-mono">{{ unknownVariables(config().requestParams).join(' ') }}</span>
+            </p>
+          }
         </tas-form-field>
       </div>
     </tas-card>
@@ -149,6 +170,9 @@
               <tas-label>JSONPath du curseur suivant</tas-label>
               <input tasInput type="text" placeholder="$.meta.nextCursor" class="font-mono"
                      [ngModel]="config().cursorJsonPath" (ngModelChange)="set('cursorJsonPath', $event)" [disabled]="readonly()" />
+              @if (jsonPathInvalid(config().cursorJsonPath)) {
+                <p class="text-xs text-red-500 mt-1">{{ jsonPathHint }}</p>
+              }
             </tas-form-field>
           }
           @case ('Since') {
@@ -174,17 +198,26 @@
           <tas-label>JSONPath de la liste <span class="text-red-500">*</span></tas-label>
           <input tasInput type="text" placeholder="$.data" class="font-mono"
                  [ngModel]="config().dataJsonPath" (ngModelChange)="set('dataJsonPath', $event)" [disabled]="readonly()" />
+          @if (jsonPathInvalid(config().dataJsonPath)) {
+            <p class="text-xs text-red-500 mt-1">{{ jsonPathHint }}</p>
+          }
         </tas-form-field>
         <div class="grid grid-cols-2 gap-3">
           <tas-form-field>
             <tas-label>JSONPath de l'identifiant</tas-label>
             <input tasInput type="text" placeholder="$.id" class="font-mono"
                    [ngModel]="config().idJsonPath" (ngModelChange)="set('idJsonPath', $event)" [disabled]="readonly()" />
+            @if (jsonPathInvalid(config().idJsonPath)) {
+              <p class="text-xs text-red-500 mt-1">{{ jsonPathHint }}</p>
+            }
           </tas-form-field>
           <tas-form-field>
             <tas-label>JSONPath de la date</tas-label>
             <input tasInput type="text" placeholder="$.createdAt" class="font-mono"
                    [ngModel]="config().dateJsonPath" (ngModelChange)="set('dateJsonPath', $event)" [disabled]="readonly()" />
+            @if (jsonPathInvalid(config().dateJsonPath)) {
+              <p class="text-xs text-red-500 mt-1">{{ jsonPathHint }}</p>
+            }
           </tas-form-field>
         </div>
       </div>
@@ -203,6 +236,14 @@
           <tas-select [options]="schedulePresets" optionLabel="label" optionValue="value"
                       [ngModel]="config().schedulePreset" (ngModelChange)="onScheduleChange($event)" [disabled]="readonly()"></tas-select>
         </tas-form-field>
+        @if (config().schedulePreset === 'daily') {
+          <tas-form-field>
+            <tas-label>Heure de la collecte</tas-label>
+            <input tasInput type="number" min="0" max="23" placeholder="6"
+                   [ngModel]="config().dailyHour" (ngModelChange)="onDailyHourChange($event)" [disabled]="readonly()" />
+            <p class="text-xs text-slate-400 mt-1">Heure locale du serveur, entre 0 et 23.</p>
+          </tas-form-field>
+        }
         @if (config().schedulePreset === 'custom') {
           <tas-form-field>
             <tas-label>Expression cron</tas-label>
@@ -234,7 +275,23 @@
                      [ngModel]="config().ackPath" (ngModelChange)="set('ackPath', $event)" [disabled]="readonly()" />
             </tas-form-field>
           </div>
-          <p class="text-xs text-slate-400">La variable <code class="bg-slate-100 px-1 rounded">{{ '{{ids}}' }}</code> sera remplacée par les IDs des leads traités.</p>
+          <div class="flex items-center gap-1.5 flex-wrap">
+            <span class="text-xs text-slate-400">
+              La variable <code class="bg-slate-100 px-1 rounded">{{ '{{ids}}' }}</code> sera remplacée par les IDs des leads traités.
+            </span>
+            @if (!readonly()) {
+              <button type="button"
+                      class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+                      (click)="insertAckVariable()">
+                {{ '{{ids}}' }}
+              </button>
+            }
+          </div>
+          @if (config().ackEnabled && !config().ackPath.includes('{{ids}}')) {
+            <p class="text-xs text-amber-600">
+              Sans <code class="bg-slate-100 px-1 rounded">{{ '{{ids}}' }}</code>, le fournisseur ne saura pas quels leads ont été traités.
+            </p>
+          }
         </div>
       }
     </tas-card>
@@ -247,8 +304,11 @@
       <div class="p-4 grid grid-cols-2 gap-3">
         <tas-form-field>
           <tas-label>Montant</tas-label>
-          <input tasInput type="number" placeholder="0"
+          <input tasInput type="number" min="0" placeholder="0"
                  [ngModel]="config().costPerLead" (ngModelChange)="set('costPerLead', $event)" [disabled]="readonly()" />
+          @if (costInvalid()) {
+            <p class="text-xs text-red-500 mt-1">Le montant doit être positif.</p>
+          }
         </tas-form-field>
         <tas-form-field>
           <tas-label>Devise</tas-label>

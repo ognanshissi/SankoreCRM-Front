@@ -27,6 +27,8 @@ export interface CreateLeadSourceRequest {
     dedupWindowDays?: number;
     costPerLead?: number | null;
     costCurrency?: string | null;
+    defaultAgencyId?: string | null;
+    defaultDispatchingRuleId?: string | null;
 }
 export enum CreateLeadSourceRequestChannelTypeEnum {
     WebForm = 'WebForm',

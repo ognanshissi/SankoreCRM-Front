@@ -5,4 +5,5 @@ export const environment: EnvironmentConfig = {
   apiUrl: 'http://localhost:5000', // https://lotchen-crm-api-9dc791e0816f.herokuapp.com
   apiKey: '',
   tenantId: '',
+  ingestUrl: '', // vide → retombe sur apiUrl
 };

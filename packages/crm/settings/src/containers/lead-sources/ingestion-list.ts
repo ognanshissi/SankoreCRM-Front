@@ -6,6 +6,7 @@ import { catchError, EMPTY } from 'rxjs';
 import { TasCard } from '@talisoft/ui/card';
 import { TasSpinner } from '@talisoft/ui/spinner';
 import { TasIcon } from '@talisoft/ui/icon';
+import { LeadSourcesService } from './lead-sources.service';
 import { TasTag, Severity } from '@talisoft/ui/tag';
 import { Button } from '@talisoft/ui/button';
 import { TasFormField, TasLabel } from '@talisoft/ui/form-field';
@@ -66,8 +67,18 @@ const STATUS_OPTIONS = [
             [ngModel]="filterStatus()" (ngModelChange)="onFilterChange($event)"
           ></tas-select>
         </tas-form-field>
-        <div class="flex items-end">
+        <div class="flex items-end justify-between gap-2">
           <span class="text-xs text-slate-400">{{ totalCount() }} réception(s)</span>
+          <!-- FE-23 AC2 — la liste des doublons est exportable pour contestation -->
+          @if (filterStatus() === DUPLICATE_STATUS) {
+            <button tas-outlined-button type="button" class="text-xs"
+                    [disabled]="isExporting()"
+                    [isLoading]="isExporting()"
+                    (click)="exportDuplicates()">
+              <tas-icon iconName="feather:download" style="font-size:10px"></tas-icon>
+              Exporter CSV
+            </button>
+          }
         </div>
       </div>
 
@@ -197,11 +208,14 @@ const STATUS_OPTIONS = [
 })
 export class IngestionList implements OnInit {
   private readonly _ingestionsApi = inject(IngestionsApiService);
+  private readonly _sourcesService = inject(LeadSourcesService);
   private readonly _snackbar = inject(SnackbarService);
   private readonly _confirm = inject(ConfirmDialogService);
 
   public readonly sourceId = input.required<string>();
   public readonly canViewPayload = input(false);
+  /** FE-23 AC2 — statut pre-selectionne lorsqu'on arrive depuis le tableau qualite. */
+  public readonly initialStatus = input<string | null>(null);
   public readonly canReplay = input(false);
 
   public isLoading = signal(true);
@@ -209,6 +223,29 @@ export class IngestionList implements OnInit {
   public totalCount = signal(0);
   public hasMore = signal(false);
   public filterStatus = signal('');
+  public isExporting = signal(false);
+
+  /** Valeur du statut « Doublon » dans le filtre (enum numerique de l'API). */
+  public readonly DUPLICATE_STATUS = '2';
+
+  public exportDuplicates(): void {
+    this.isExporting.set(true);
+    this._sourcesService.exportDuplicates(this.sourceId()).pipe(
+      catchError(() => {
+        this.isExporting.set(false);
+        return EMPTY;
+      }),
+    ).subscribe((blob: Blob) => {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `doublons-${this.sourceId()}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+      this.isExporting.set(false);
+      this._snackbar.success('Export', 'Fichier CSV téléchargé.');
+    });
+  }
 
   // Expand payload
   public expandedId = signal<string | null>(null);
@@ -223,6 +260,8 @@ export class IngestionList implements OnInit {
   private _page = 1;
 
   ngOnInit(): void {
+    const initial = this.initialStatus();
+    if (initial) this.filterStatus.set(initial);
     this._load(true);
   }
 

@@ -1,4 +1,4 @@
-import { Component, input, output, signal, OnInit } from '@angular/core';
+import { Component, computed, input, output, signal, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { TasCard } from '@talisoft/ui/card';
 import { TasIcon } from '@talisoft/ui/icon';
@@ -14,37 +14,19 @@ import { TasSwitch } from '@talisoft/ui/switch';
  * Multi-step wizard: Site → Formulaire → Protection → Après envoi
  */
 
-export interface ScriptConfig {
-  allowedOrigins: string[];
-  formMode: 'existing' | 'hosted';
-  formSelector: string;
-  captchaProvider: 'None' | 'Turnstile' | 'HCaptcha' | 'RecaptchaV3';
-  captchaSiteKey: string;
-  honeypot: boolean;
-  minFillTimeSeconds: number;
-  afterSubmit: 'message' | 'redirect';
-  successMessage: string;
-  redirectUrl: string;
-  preventDefaultSubmit: boolean;
-}
+import { isValidOrigin, originHint } from './lead-source-validators';
+import {
+  CaptchaProvider,
+  ScriptConfig,
+  defaultScriptConfig,
+} from './lead-source-settings.types';
 
-export function defaultScriptConfig(): ScriptConfig {
-  return {
-    allowedOrigins: [''],
-    formMode: 'existing',
-    formSelector: '',
-    captchaProvider: 'None',
-    captchaSiteKey: '',
-    honeypot: true,
-    minFillTimeSeconds: 3,
-    afterSubmit: 'message',
-    successMessage: 'Merci, votre demande a bien été envoyée.',
-    redirectUrl: '',
-    preventDefaultSubmit: true,
-  };
-}
+// FE-01 : la forme de `settings.script` vit dans le module de settings.
+export type { ScriptConfig, CaptchaProvider };
+export { defaultScriptConfig };
 
-const CAPTCHA_OPTIONS = [
+const CAPTCHA_OPTIONS: { label: string; value: CaptchaProvider }[] = [
+
   { label: 'Aucun', value: 'None' },
   { label: 'Cloudflare Turnstile', value: 'Turnstile' },
   { label: 'hCaptcha', value: 'HCaptcha' },
@@ -119,7 +101,7 @@ const AFTER_SUBMIT_OPTIONS = [
             }
             @if (invalidOrigins().length > 0) {
               <p class="text-xs text-red-500">
-                Seules les origines https:// sans chemin sont acceptées.
+                {{ originHintText() }}
               </p>
             }
           </div>
@@ -162,6 +144,19 @@ const AFTER_SUBMIT_OPTIONS = [
                   Exemples : <code class="bg-slate-100 px-1 rounded">#contact-form</code>,
                   <code class="bg-slate-100 px-1 rounded">.lead-form</code>,
                   <code class="bg-slate-100 px-1 rounded">form[name="contact"]</code>
+                </p>
+              </tas-form-field>
+
+              <!-- FE-10 AC2 — noms des champs du formulaire existant -->
+              <tas-form-field>
+                <tas-label>Noms des champs du formulaire</tas-label>
+                <input tasInput type="text" placeholder="nom, email, telephone, message"
+                       [ngModel]="config().formFieldNames"
+                       (ngModelChange)="updateConfig('formFieldNames', $event)"
+                       [disabled]="readonly()" />
+                <p class="text-xs text-slate-400 mt-1">
+                  Attribut <code class="bg-slate-100 px-1 rounded">name</code> de chaque champ, séparés par des virgules.
+                  Ils alimentent la correspondance des champs ; laissez vide pour envoyer tout le formulaire.
                 </p>
               </tas-form-field>
             }
@@ -327,6 +322,8 @@ export class ScriptWizard implements OnInit {
   ];
 
   public readonly captchaOptions = CAPTCHA_OPTIONS;
+  /** Statut de la source : conditionne l'acceptation de http://localhost. */
+  public readonly sourceStatus = input<string | null>(null);
   public readonly afterSubmitOptions = AFTER_SUBMIT_OPTIONS;
 
   ngOnInit(): void {
@@ -356,16 +353,21 @@ export class ScriptWizard implements OnInit {
     }));
   }
 
+  /**
+   * FE-10 AC1 — `http://localhost` n'est accepte qu'en statut « Test » : une
+   * source active ne doit pas accepter de soumissions depuis un poste de dev.
+   */
+  public readonly allowsLocalhost = computed(() => this.sourceStatus() === 'Testing');
+
+  public readonly originHintText = computed(() =>
+    originHint({ allowLocalhost: this.allowsLocalhost() }),
+  );
+
   public invalidOrigins(): string[] {
-    return this.config().allowedOrigins.filter((o) => {
-      if (!o) return false;
-      try {
-        const url = new URL(o);
-        return url.protocol !== 'https:' || url.pathname !== '/';
-      } catch {
-        return true;
-      }
-    });
+    const rules = { allowLocalhost: this.allowsLocalhost() };
+    return this.config().allowedOrigins.filter(
+      (o) => !!o && !isValidOrigin(o, rules),
+    );
   }
 
   public canProceed(): boolean {

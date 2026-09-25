@@ -1,0 +1,7 @@
+{
+  "name": "@sankore/lead-capture-sdk",
+  "version": "1.0.0",
+  "private": true,
+  "description": "SDK navigateur de capture de leads (forms.js) — sans dépendance",
+  "type": "module"
+}

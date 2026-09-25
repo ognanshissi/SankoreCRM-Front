@@ -16,11 +16,20 @@ import {
   ProductsApiService,
   AgenciesApiService,
   DispatchingRulesApiService,
+  CreateLeadSourceRequestChannelTypeEnum,
+  CreateLeadSourceRequestIntegrationModeEnum,
 } from '@sankore/crm-api';
 import { BreadcrumbService } from '@sankore/crm/common';
 import { LeadSourcesService } from './lead-sources.service';
+import { writeSettings } from './lead-source-settings.types';
 import { LeadSourceMetadataService } from './lead-source-metadata.service';
-import { modeLabel, modeToNumeric, channelIcon } from './lead-source.types';
+import {
+  IntegrationMode,
+  modeLabel,
+  modeToNumeric,
+  channelIcon,
+  tabForMode,
+} from './lead-source.types';
 
 // ——— FE-05: Business case definitions ———
 
@@ -206,6 +215,9 @@ const BUSINESS_CASES: BusinessCase[] = [
                   <tas-label>Libellé <span class="text-red-500">*</span></tas-label>
                   <input tasInput type="text" placeholder="Ex : Site vitrine contact"
                          [ngModel]="label()" (ngModelChange)="onLabelChange($event)" />
+                  @if (serverError('label'); as msg) {
+                    <tas-error>{{ msg }}</tas-error>
+                  }
                 </tas-form-field>
                 <tas-form-field>
                   <tas-label>Code <span class="text-red-500">*</span></tas-label>
@@ -219,6 +231,9 @@ const BUSINESS_CASES: BusinessCase[] = [
                     <tas-error>Code déjà utilisé</tas-error>
                   } @else if (codeStatus() === 'available') {
                     <p class="text-xs text-green-500 mt-1">Code disponible</p>
+                  }
+                  @if (serverError('code'); as msg) {
+                    <tas-error>{{ msg }}</tas-error>
                   }
                 </tas-form-field>
               </div>
@@ -364,6 +379,15 @@ export class CreateLeadSourcePage implements OnInit {
     this._setupCodeCheck();
   }
 
+  /**
+   * FE-02 — Erreur de validation renvoyee par le serveur pour ce champ.
+   * Les ecrans « sources » sont bases sur des signals : la projection sur des
+   * controles reactifs ne les atteindrait pas.
+   */
+  public serverError(path: string): string | null {
+    return this._sourcesService.errorFor(path);
+  }
+
   // ——— FE-05: Business case selection ———
 
   public selectCase(bc: BusinessCase): void {
@@ -412,24 +436,42 @@ export class CreateLeadSourcePage implements OnInit {
     if (!this.code() || !this.label() || this.codeStatus() === 'taken') return;
     this.isSaving.set(true);
 
+    const mode = this.integrationMode() as IntegrationMode | null;
+
     this._sourcesService.create({
       code: this.code(),
       label: this.label(),
       description: this.description() || null,
-      channelType: this.channelType() as any,
-      integrationMode: modeToNumeric(this.integrationMode()) as any,
+      channelType: this.channelType() as CreateLeadSourceRequestChannelTypeEnum,
+      integrationMode: modeToNumeric(mode) as CreateLeadSourceRequestIntegrationModeEnum,
       dedupWindowDays: this.dedupWindowDays(),
       costPerLead: this.costPerLead(),
       costCurrency: this.costCurrency() || null,
+      // FE-06 — orientation commerciale : ces champs étaient saisis puis perdus.
+      defaultAgencyId: this.defaultAgencyId(),
+      defaultDispatchingRuleId: this.defaultDispatchRuleId(),
+      // `defaultProductCode` n'a pas encore de champ au contrat : il est rangé
+      // dans le sac de settings en attendant (dépendance back #1).
+      settings: writeSettings(null, mode, {
+        defaultProductCode: this.defaultProductCode(),
+      }),
     }).pipe(
       catchError(() => {
         // Error already handled by LeadSourcesService (400/403/409)
         this.isSaving.set(false);
         return EMPTY;
       }),
-    ).subscribe(() => {
+    ).subscribe((id) => {
       this._snackbar.success('Source créée', `« ${this.label()} » a été créée en brouillon.`);
-      this._router.navigate(['/settings/lead-sources']);
+      // FE-05 AC3 / FE-06 AC5 — on ouvre le détail directement sur l'onglet du
+      // mode choisi, pour enchaîner sur l'assistant sans passer par la liste.
+      if (id) {
+        this._router.navigate(['/settings/lead-sources', id], {
+          queryParams: { tab: tabForMode(mode) },
+        });
+      } else {
+        this._router.navigate(['/settings/lead-sources']);
+      }
     });
   }
 

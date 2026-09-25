@@ -7,13 +7,16 @@
 export interface LeadTargetField {
   key: string;
   label: string;
+  /** Obligatoire a lui seul. */
   required: boolean;
+  /** Appartient a un groupe dont UN membre au moins doit etre mappe. */
+  requiredGroup?: string;
 }
 
 export const LEAD_TARGET_FIELDS: LeadTargetField[] = [
-  { key: 'fullName',        label: 'Nom complet',        required: false },
-  { key: 'firstName',       label: 'Prénom',             required: true },
-  { key: 'lastName',        label: 'Nom',                required: true },
+  { key: 'fullName',        label: 'Nom complet',        required: false, requiredGroup: 'identity' },
+  { key: 'firstName',       label: 'Prénom',             required: false, requiredGroup: 'identity' },
+  { key: 'lastName',        label: 'Nom',                required: false, requiredGroup: 'identity' },
   { key: 'phoneNumber',     label: 'Téléphone',          required: true },
   { key: 'email',           label: 'E-mail',             required: false },
   { key: 'city',            label: 'Ville',              required: false },
@@ -94,8 +97,35 @@ export function emptyRule(): MappingRule {
   };
 }
 
-/** Check which required lead fields are not mapped */
-export function missingRequiredFields(rules: MappingRule[]): LeadTargetField[] {
+/**
+ * Obligations de mapping, exprimees en groupes.
+ *
+ * L'AC de FE-07 dit « nom OU prenom, telephone » : exiger `firstName` ET
+ * `lastName` separement bloquait a tort. Cette liste est l'unique source de
+ * verite — l'editeur de correspondance ET la checklist d'activation (FE-09)
+ * la consomment, elles ne peuvent donc plus diverger.
+ */
+export interface RequiredFieldGroup {
+  /** Libelle affiche quand le groupe n'est pas satisfait. */
+  label: string;
+  /** Au moins une de ces cles doit etre mappee. */
+  keys: string[];
+}
+
+export const REQUIRED_FIELD_GROUPS: RequiredFieldGroup[] = [
+  { label: 'Nom ou prénom', keys: ['firstName', 'lastName', 'fullName'] },
+  { label: 'Téléphone', keys: ['phoneNumber'] },
+];
+
+/** Groupes d'obligation non satisfaits par les regles fournies. */
+export function missingRequiredFields(rules: MappingRule[]): RequiredFieldGroup[] {
   const mapped = new Set(rules.map((r) => r.targetField).filter(Boolean));
-  return LEAD_TARGET_FIELDS.filter((f) => f.required && !mapped.has(f.key));
+  return REQUIRED_FIELD_GROUPS.filter((g) => !g.keys.some((k) => mapped.has(k)));
+}
+
+/** Vrai si ce champ cible participe a une obligation (seul ou en groupe). */
+export function isRequiredTargetField(key: string): boolean {
+  return LEAD_TARGET_FIELDS.some(
+    (f) => f.key === key && (f.required || !!f.requiredGroup),
+  );
 }
