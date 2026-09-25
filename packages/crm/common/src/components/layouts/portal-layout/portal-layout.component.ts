@@ -41,7 +41,9 @@ export class PortalLayoutComponent implements OnInit {
   private readonly _tenantProvider = inject(TenantProvider);
   private readonly _auth = inject(AuthenticationService);
 
-  public tenantContext = this._tenantProvider.context();
+  public companyName = computed(() => {
+    return this._tenantProvider.context()?.companyName
+  });
   public readonly userName = computed(() => this._auth.connectedUser()?.fullName ?? this._auth.connectedUser()?.email ?? 'Utilisateur');
   public readonly userEmail = computed(() => this._auth.connectedUser()?.email ?? 'Utilisateur');
   public readonly userRole = computed(() => {
@@ -49,11 +51,6 @@ export class PortalLayoutComponent implements OnInit {
       return (this._auth.connectedUser()?.roles || [])[0] ?? 'No Role';
     }
     return "No Role";
-  });
-  public readonly userInitials = computed(() => {
-    const name = this.userName();
-    const parts = name.split(/\s+/);
-    return ((parts[0]?.[0] ?? '') + (parts[1]?.[0] ?? '')).toUpperCase() || '?';
   });
 
   public logout(): void {

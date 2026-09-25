@@ -77,9 +77,8 @@ export interface MapEntry {
   target: string;
 }
 
-let _uid = 0;
 export function uid(): string {
-  return '__mr' + (++_uid);
+  return '__mr_' + (crypto.randomUUID());
 }
 
 export function emptyRule(): MappingRule {

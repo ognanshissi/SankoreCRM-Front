@@ -7,7 +7,7 @@ export const serverRoutes: ServerRoute[] = [
   },
   {
     path: 'auth/**',
-    renderMode: RenderMode.Prerender,
+    renderMode: RenderMode.Client,
   },
   // Authenticated routes must be client-only — the server has no access to
   // localStorage, so tokens can't be read, API calls return 401, and the

@@ -190,7 +190,7 @@ const settingsRoutes: Routes = [
   {
     path: 'lead-sources/:id',
     canActivate: [hasPermissionGuard('lead:source:read')],
-    loadComponent: () => import('./containers/lead-sources/edit-lead-source'),
+    loadComponent: () => import('./containers/lead-sources/edit-lead-source/edit-lead-source'),
   },
   {
     path: 'sla-configs',

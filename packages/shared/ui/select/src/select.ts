@@ -6,6 +6,7 @@ import {
   ContentChild,
   forwardRef,
   input,
+  linkedSignal,
   OnChanges,
   OnInit,
   signal,
@@ -55,7 +56,7 @@ export class TasSelect<T>
 
   public optionLabel = input<string>('label');
 
-  public searchable = input<boolean>(true);
+  public searchable = input<boolean>(false);
 
   @ContentChild('labelTemplate', { descendants: true })
   labelTemplate!: TemplateRef<any>;
@@ -65,6 +66,8 @@ export class TasSelect<T>
   public isDropdownOpened = signal(false);
 
   public searchKey = signal('');
+
+  public isSearchable = linkedSignal(() => this.searchable())
 
   public selectControl = new FormControl(null);
 
@@ -83,6 +86,7 @@ export class TasSelect<T>
     if (changes['options']?.currentValue) {
       if (changes['options'].currentValue.length > 10) {
         // enable search
+        this.isSearchable.set(true);
       }
     }
   }

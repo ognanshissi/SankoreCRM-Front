@@ -1,5 +1,6 @@
-import { Component } from '@angular/core';
+import { Component, computed, inject } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
+import { TenantProvider } from '../../../services';
 
 @Component({
   selector: 'core-auth-layout',
@@ -8,4 +9,13 @@ import { RouterOutlet } from '@angular/router';
   styleUrl: './auth-layout.component.scss',
   imports: [RouterOutlet],
 })
-export class AuthLayoutComponent {}
+export class AuthLayoutComponent {
+
+  private readonly _tenantProvider = inject(TenantProvider);
+
+  public companyName = computed(() => {
+    return this._tenantProvider.context()?.companyName;
+  })
+
+
+}
