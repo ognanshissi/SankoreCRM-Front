@@ -82,6 +82,7 @@
           <tas-label>Catégorie de produit</tas-label>
           <tas-select
             [options]="productConfig.categories"
+            [readonly]="isReadonly()"
             optionLabel="label"
             optionValue="value"
             placeholder="Sélectionnez"
@@ -95,6 +96,7 @@
             placeholder="Sélectionnez"
           [options]="productsOptions()"
           [ngModel]="editProductCode()"
+            [readonly]="isReadonly()"
           (ngModelChange)="editProductCode.set($event)"></tas-select>
         </tas-form-field>
       </div>
@@ -300,6 +302,7 @@
                         optionLabel="label"
                         optionValue="value"
                         [ngModel]="q.type"
+                        [readonly]="isReadonly()"
                         (ngModelChange)="q.type = $event"
                       ></tas-select>
                     </tas-form-field>
@@ -322,6 +325,7 @@
                       <tas-form-field>
                         <tas-label>Section</tas-label>
                         <tas-select
+                          [readonly]="isReadonly()"
                           [options]="sectionOptions()"
                           optionLabel="label"
                           optionValue="value"
@@ -446,6 +450,7 @@
                           <tas-form-field>
                             <tas-label>Question déclencheur</tas-label>
                             <tas-select
+                              [readonly]="isReadonly()"
                               [options]="questionUidOptions(q._uid)"
                               optionLabel="label"
                               optionValue="value"
@@ -466,6 +471,7 @@
                           <tas-form-field>
                             <tas-label>Action</tas-label>
                             <tas-select
+                              [readonly]="isReadonly()"
                               [options]="ruleActionOptions"
                               optionLabel="label"
                               optionValue="value"

@@ -58,6 +58,8 @@ export class TasSelect<T>
 
   public searchable = input<boolean>(false);
 
+  public readonly = input<boolean>(false);
+
   @ContentChild('labelTemplate', { descendants: true })
   labelTemplate!: TemplateRef<any>;
 
@@ -156,6 +158,9 @@ export class TasSelect<T>
   }
 
   public toggleDropdown(): void {
+    if (this.readonly()) {
+      return;
+    }
     this.isDropdownOpened.set(!this.isDropdownOpened());
   }
 
@@ -201,4 +206,6 @@ export class TasSelect<T>
       }
     });
   }
+
+  protected readonly resizeBy = resizeBy;
 }

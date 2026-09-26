@@ -1,9 +1,13 @@
 <div (click)="$event.stopPropagation()">
   <button
-    class="relative block justify-between items-center py-2 px-2 text-left bg-transparent w-full"
+    class="relative block justify-between items-center py-2 px-2 text-left w-full rounded-lg"
     aria-haspopup="listbox"
+    [class.bg-gray-50]="readonly()"
+    [class.bg-transparent]="!readonly()"
+    [class.cursor-not-allowed]="readonly()"
     aria-expanded="true"
     type="button"
+    [disabled]="readonly()"
     (click)="toggleDropdown()"
     aria-labelledby="listbox-label"
   >
