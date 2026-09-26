@@ -1,0 +1,78 @@
+<tas-side-drawer>
+  <tas-drawer-title>
+    <TasTitle class="text-lg">Nouveau formulaire de qualification</TasTitle>
+  </tas-drawer-title>
+
+  <tas-drawer-content>
+    <form [formRoot]="formSchema" class="flex flex-col gap-5">
+
+      <tas-form-field>
+        <tas-label>Nom du formulaire <span class="text-functional-error">*</span></tas-label>
+        <input
+          tasInput
+          type="text"
+          placeholder="Ex : Qualification Prêt v2"
+          [formField]="formSchema.name"
+        />
+        @if (formSchema.name().touched() && formSchema.name().invalid()) {
+          <tas-error>{{ formSchema.name().errors()[0].message }}</tas-error>
+        }
+      </tas-form-field>
+
+      <tas-form-field>
+        <tas-label>Description</tas-label>
+        <input
+          tasInput
+          type="text"
+          placeholder="À quoi sert ce formulaire ?"
+          [formField]="formSchema.description"
+        />
+      </tas-form-field>
+
+      <tas-form-field>
+        <tas-label>Catégorie de produit</tas-label>
+        <tas-select
+          [options]="productConfig.categories"
+          optionLabel="label"
+          optionValue="value"
+          placeholder="Sélectionnez"
+          [formField]="formSchema.productCategory"
+        ></tas-select>
+        <tas-hint>Détermine les produits proposés ci-dessous.</tas-hint>
+      </tas-form-field>
+
+      <tas-form-field>
+        <tas-label>Produit</tas-label>
+        <tas-select
+          [options]="productsOptions()"
+          placeholder="Sélectionnez"
+          [formField]="formSchema.productCode"
+        ></tas-select>
+        <tas-hint>Optionnel : laissez vide pour couvrir toute la catégorie.</tas-hint>
+      </tas-form-field>
+
+      <div class="rounded-lg border border-slate-200 bg-slate-50 p-4 flex gap-3">
+        <tas-icon iconName="feather:sliders" iconSize="sm" class="text-slate-400 flex-shrink-0 mt-0.5"></tas-icon>
+        <p class="text-sm text-slate-500">
+          Le formulaire est créé en brouillon. Vous ajouterez ses sections et ses
+          questions à l'écran suivant, puis le publierez quand il sera prêt.
+        </p>
+      </div>
+
+    </form>
+  </tas-drawer-content>
+
+  <tas-drawer-action>
+    <button tas-outlined-button color="primary" type="button" (click)="close()">Annuler</button>
+    <button
+      tas-raised-button
+      color="primary"
+      type="button"
+      (click)="handleSubmit()"
+      [disabled]="formSchema().invalid() || formSchema().submitting()"
+      [isLoading]="formSchema().submitting()"
+    >
+      Créer le formulaire
+    </button>
+  </tas-drawer-action>
+</tas-side-drawer>

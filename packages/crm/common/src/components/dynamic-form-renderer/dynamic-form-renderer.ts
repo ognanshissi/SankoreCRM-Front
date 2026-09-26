@@ -106,7 +106,7 @@ interface SectionView {
                     }
                   }
                   @case ('SingleChoice') {
-                    <tas-form-field appearance="outline">
+                    <tas-form-field>
                       <tas-label>
                         {{ q.label }}
                         @if (isFieldRequired(q)) {
@@ -129,7 +129,7 @@ interface SectionView {
                     </tas-form-field>
                   }
                   @case ('MultiChoice') {
-                    <tas-form-field appearance="outline">
+                    <tas-form-field>
                       <tas-label>
                         {{ q.label }}
                         @if (isFieldRequired(q)) {
@@ -153,7 +153,7 @@ interface SectionView {
                     </tas-form-field>
                   }
                   @case ('Numeric') {
-                    <tas-form-field appearance="outline">
+                    <tas-form-field>
                       <tas-label>
                         {{ q.label }}
                         @if (isFieldRequired(q)) {
@@ -184,7 +184,7 @@ interface SectionView {
                   }
                   @default {
                     <!-- Text -->
-                    <tas-form-field appearance="outline">
+                    <tas-form-field>
                       <tas-label>
                         {{ q.label }}
                         @if (isFieldRequired(q)) {
@@ -238,7 +238,7 @@ interface SectionView {
                     }
                   }
                   @case ('SingleChoice') {
-                    <tas-form-field appearance="outline">
+                    <tas-form-field>
                       <tas-label>
                         {{ q.label }}
                         @if (isFieldRequired(q)) {
@@ -285,7 +285,7 @@ interface SectionView {
                     </tas-form-field>
                   }
                   @case ('Numeric') {
-                    <tas-form-field appearance="outline">
+                    <tas-form-field>
                       <tas-label>
                         {{ q.label }}
                         @if (isFieldRequired(q)) {
@@ -309,7 +309,7 @@ interface SectionView {
                     </tas-form-field>
                   }
                   @default {
-                    <tas-form-field appearance="outline">
+                    <tas-form-field>
                       <tas-label>
                         {{ q.label }}
                         @if (isFieldRequired(q)) {

@@ -217,7 +217,7 @@ function templateToSchema(t: QualificationTemplateDto): DynamicFormSchema {
 
           <!-- Confirm product switch dialog -->
           @if (showSwitchConfirm()) {
-            <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/30" (click)="cancelSwitch()">
+            <button class="fixed inset-0 z-50 flex items-center justify-center bg-black/30" (click)="cancelSwitch()">
               <tas-card class="w-full max-w-sm shadow-xl" (click)="$event.stopPropagation()">
                 <div class="p-5">
                   <div class="flex items-center gap-3 mb-3">
@@ -241,7 +241,7 @@ function templateToSchema(t: QualificationTemplateDto): DynamicFormSchema {
                   </div>
                 </div>
               </tas-card>
-            </div>
+            </button>
           }
 
           <!-- Dynamic form (product-specific) -->
@@ -257,7 +257,7 @@ function templateToSchema(t: QualificationTemplateDto): DynamicFormSchema {
               <tas-spinner size="4" class="text-primary"></tas-spinner>
             }
             <button
-              tas-button
+              tas-outlined-button
               color="primary"
               type="button"
               [disabled]="isSubmitting()"
@@ -486,7 +486,7 @@ export class LeadQualificationPage implements OnDestroy {
   }
 
   private _loadTemplateForProduct(product: string): void {
-    this._leadsApiService.getActiveTemplateForProduct(product as any).pipe(
+    this._leadsApiService.resolveQualificationTemplate(product as any).pipe(
       catchError((err) => {
         if (err.status === 404) {
           this.pageState.set('no-template');

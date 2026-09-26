@@ -15,5 +15,6 @@ export interface UpdateLeadOwnerRequest {
     ownerId?: string;
     reason?: string | null;
     assignmentMethod?: string | null;
+    expectedUpdatedAt?: string | null;
 }
 

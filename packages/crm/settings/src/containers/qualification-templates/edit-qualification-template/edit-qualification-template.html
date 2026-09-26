@@ -15,7 +15,7 @@
         ></tas-icon>
       </button>
       <h1 class="text-lg font-semibold text-slate-800 flex-1">
-        {{ isCreate() ? 'Nouveau formulaire' : isReadonly() ? 'Formulaire (lecture seule)' : 'Modifier le formulaire' }}
+        {{ isReadonly() ? 'Formulaire (lecture seule)' : 'Modifier le formulaire' }}
       </h1>
       @if (!isReadonly()) {
         <button

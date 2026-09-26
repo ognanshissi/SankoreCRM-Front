@@ -27,6 +27,7 @@ export interface UpdateLeadRequest {
     latitude?: number | null;
     longitude?: number | null;
     preferredAgencyId?: string | null;
+    expectedUpdatedAt?: string | null;
 }
 export enum UpdateLeadRequestGenderEnum {
     NUMBER_0 = 0,

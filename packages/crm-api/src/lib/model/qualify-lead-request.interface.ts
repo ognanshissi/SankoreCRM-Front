@@ -17,5 +17,6 @@ export interface QualifyLeadRequest {
     answers?: Array<QualificationAnswerInput> | null;
     score?: number | null;
     triggerEvent?: string | null;
+    expectedUpdatedAt?: string | null;
 }
 

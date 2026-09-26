@@ -16,6 +16,7 @@ export interface UpdatePipelineStageRequest {
      * One of: New, ContactAttempted, ContactEstablished, NeedIdentified, Qualified, ProductProposed, ApplicationStarted, DocumentCollection, ApplicationCompleted, ApprovalPending, Converted, Lost
      */
     stage?: UpdatePipelineStageRequestStageEnum;
+    expectedUpdatedAt?: string | null;
 }
 export enum UpdatePipelineStageRequestStageEnum {
     New = 'New',

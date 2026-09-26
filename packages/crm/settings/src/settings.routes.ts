@@ -159,14 +159,9 @@ const settingsRoutes: Routes = [
       import('./containers/qualification-templates/qualification-templates'),
   },
   {
-    path: 'qualification-templates/create',
-    loadComponent: () =>
-      import('./containers/qualification-templates/edit-qualification-template'),
-  },
-  {
     path: 'qualification-templates/:id/edit',
     loadComponent: () =>
-      import('./containers/qualification-templates/edit-qualification-template'),
+      import('./containers/qualification-templates/edit-qualification-template/edit-qualification-template'),
   },
   {
     path: 'import-users',

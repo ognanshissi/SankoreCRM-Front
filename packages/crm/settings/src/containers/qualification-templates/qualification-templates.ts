@@ -8,8 +8,10 @@ import { TasTag } from '@talisoft/ui/tag';
 import { Button } from '@talisoft/ui/button';
 import { SnackbarService } from '@talisoft/ui/snackbar';
 import { ConfirmDialogService } from '@talisoft/ui/confirm-dialog';
+import { SideDrawerService } from '@talisoft/ui/side-drawer';
 import { LeadsApiService, QualificationTemplateDto } from '@sankore/crm-api';
 import { BreadcrumbService } from '@sankore/crm/common';
+import { CreateQualificationTemplateComponent } from './create-qualification-template/create-qualification-template';
 import { statusSeverity, statusLabel, productLabel } from './qualification-template.models';
 
 @Component({
@@ -68,7 +70,7 @@ import { statusSeverity, statusLabel, productLabel } from './qualification-templ
                   }
                   <button tas-outlined-button type="button" class="text-xs shrink-0" (click)="navigateToEdit(tpl)">
                     <tas-icon iconName="feather:edit-2" style="font-size:12px"></tas-icon>
-                    {{ tpl.status === 'Published' ? 'Voir' : 'Modifier' }}
+                    {{ isReadonly(tpl) ? 'Voir' : 'Modifier' }}
                   </button>
                 </div>
               </tas-card>
@@ -83,6 +85,7 @@ export class QualificationTemplatesList implements OnInit {
   private readonly _leadsApi = inject(LeadsApiService);
   private readonly _snackbar = inject(SnackbarService);
   private readonly _confirmDialog = inject(ConfirmDialogService);
+  private readonly _sideDrawerService = inject(SideDrawerService);
   private readonly _breadcrumbService = inject(BreadcrumbService);
   private readonly _router = inject(Router);
 
@@ -101,12 +104,39 @@ export class QualificationTemplatesList implements OnInit {
     this._load();
   }
 
+  /**
+   * La création se limite aux informations générales, dans un drawer : les
+   * sections et les questions se configurent ensuite dans l'écran d'édition,
+   * où l'on dispose de l'id du brouillon.
+   */
   public navigateToCreate(): void {
-    this._router.navigate(['/settings/qualification-templates/create']);
+    const ref = this._sideDrawerService.open<
+      string,
+      unknown,
+      CreateQualificationTemplateComponent
+    >(CreateQualificationTemplateComponent, {
+      width: '100%',
+      height: '100%',
+      panelClass: 'side-drawer-panel',
+    });
+
+    ref.closed.subscribe((templateId) => {
+      if (!templateId) return;
+      this._router.navigate([
+        '/settings/qualification-templates',
+        templateId,
+        'edit',
+      ]);
+    });
   }
 
   public navigateToEdit(tpl: QualificationTemplateDto): void {
     this._router.navigate(['/settings/qualification-templates', tpl.id, 'edit']);
+  }
+
+  /** Même règle que dans l'écran d'édition : Published et Archived sont figés. */
+  public isReadonly(tpl: QualificationTemplateDto): boolean {
+    return tpl.status === 'Published' || tpl.status === 'Archived';
   }
 
   public publish(tpl: QualificationTemplateDto): void {

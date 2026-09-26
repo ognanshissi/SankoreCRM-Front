@@ -22,5 +22,6 @@ export interface PipelineCard {
     ownerId?: string | null;
     createdAt?: string;
     lastActivityAt?: string | null;
+    updatedAt?: string;
 }
 

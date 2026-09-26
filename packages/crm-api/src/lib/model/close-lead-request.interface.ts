@@ -17,6 +17,7 @@ export interface CloseLeadRequest {
      */
     reason?: CloseLeadRequestReasonEnum;
     detail?: string | null;
+    expectedUpdatedAt?: string | null;
 }
 export enum CloseLeadRequestReasonEnum {
     Lost = 'Lost',

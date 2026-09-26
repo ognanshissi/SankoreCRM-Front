@@ -8,7 +8,7 @@ import { TasSpinner } from '@talisoft/ui/spinner';
 import { TasIcon } from '@talisoft/ui/icon';
 import { TasTag } from '@talisoft/ui/tag';
 import { Button } from '@talisoft/ui/button';
-import { TasFormField, TasLabel, TasError } from '@talisoft/ui/form-field';
+import { TasFormField, TasLabel } from '@talisoft/ui/form-field';
 import { TasInput } from '@talisoft/ui/input';
 import { TasSelect } from '@talisoft/ui/select';
 import { SnackbarService } from '@talisoft/ui/snackbar';
@@ -20,7 +20,6 @@ import {
   SectionInput,
   RuleInputActionEnum,
   UpdateQualificationTemplateRequest,
-  CreateQualificationTemplateRequest,
   ProductsApiService,
 } from '@sankore/crm-api';
 import { BreadcrumbService, ProductConfigService } from '@sankore/crm/common';
@@ -28,7 +27,7 @@ import {
   EditableQuestion, EditableSection,
   uid, QUESTION_TYPE_OPTIONS, RULE_ACTION_OPTIONS,
   questionTypeLabel,
-} from './qualification-template.models';
+} from '../qualification-template.models';
 
 @Component({
   selector: 'edit-qualification-template',
@@ -81,7 +80,6 @@ export class EditQualificationTemplate implements OnInit {
   public isLoading = signal(false);
   public isSaving = signal(false);
   public isReadonly = signal(false);
-  public isCreate = signal(true);
 
   public editName = signal('');
   public editDescription = signal('');
@@ -89,6 +87,10 @@ export class EditQualificationTemplate implements OnInit {
   public editProductCode = signal('');
   public editSections = signal<EditableSection[]>([]);
   public editQuestions = signal<EditableQuestion[]>([]);
+
+  /** `RuleInput.triggerQuestionId` est un `uuid` côté API : les ids locaux (`__q1`) sont refusés. */
+  private static readonly UUID_PATTERN =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
   public readonly sectionOptions = computed(() => [
     { label: '(aucune section)', value: '-1' },
@@ -99,16 +101,21 @@ export class EditQualificationTemplate implements OnInit {
   ]);
 
   ngOnInit(): void {
-    const templateId = this.id();
-    if (templateId) {
-      this.isCreate.set(false);
-      this._loadTemplate(templateId);
-    }
     this._breadcrumbService.set([
       { label: 'Paramétrage', link: ['/settings'] },
       { label: 'Formulaires', link: ['/settings/qualification-templates'] },
-      { label: templateId ? 'Modifier' : 'Nouveau' },
+      { label: 'Modifier' },
     ]);
+
+    // La création passe désormais par le drawer de la liste : cet écran
+    // n'édite qu'un formulaire existant.
+    const templateId = this.id();
+    if (!templateId) {
+      this._snackbar.error('Erreur', 'Formulaire introuvable.');
+      this.goBack();
+      return;
+    }
+    this._loadTemplate(templateId);
   }
 
   public questionUidOptions(
@@ -199,38 +206,74 @@ export class EditQualificationTemplate implements OnInit {
     if (!this.editName()) return;
     this.isSaving.set(true);
 
-    const sections: SectionInput[] = this.editSections().map((s) => ({
-      title: s.title || null,
-      description: s.description || null,
-      questions: null,
-    }));
+    const allQuestions = this.editQuestions();
+    const sectionList = this.editSections();
+    let droppedRules = 0;
 
-    const questions: QuestionInput[] = this.editQuestions().map((q) => ({
-      label: q.label || null,
-      type: q.type,
-      weight: q.weight,
-      isRequired: q.isRequired,
-      options:
-        q.type === QuestionInputTypeEnum.SingleChoice ||
-        q.type === QuestionInputTypeEnum.MultiChoice
-          ? q.options
-              .split(',')
-              .map((o) => o.trim())
-              .filter(Boolean)
-          : null,
-      helpText: q.helpText || null,
-      placeholderText: q.placeholderText || null,
-      minValue: q.type === QuestionInputTypeEnum.Numeric ? q.minValue : null,
-      maxValue: q.type === QuestionInputTypeEnum.Numeric ? q.maxValue : null,
-      rules:
-        q.rules.length > 0
-          ? q.rules.map((r) => ({
-              triggerQuestionId: r.triggerQuestionUid,
-              triggerValue: r.triggerValue || null,
-              action: r.action,
-            }))
-          : null,
-    }));
+    const buildQuestion = (q: EditableQuestion): QuestionInput => {
+      // Une règle qui déclenche sur une question tout juste ajoutée (pas
+      // encore enregistrée) n'a qu'un id local (`__q1`) : ce n'est pas un
+      // GUID, l'API le rejette. On l'écarte plutôt que de faire échouer toute
+      // la question, et on prévient l'utilisateur une fois la sauvegarde faite.
+      const rules = q.rules.filter((r) => {
+        const isValid = EditQualificationTemplate.UUID_PATTERN.test(
+          r.triggerQuestionUid,
+        );
+        if (!isValid) droppedRules++;
+        return isValid;
+      });
+
+      return {
+        label: q.label || null,
+        type: q.type,
+        weight: q.weight,
+        isRequired: q.isRequired,
+        options:
+          q.type === QuestionInputTypeEnum.SingleChoice ||
+          q.type === QuestionInputTypeEnum.MultiChoice
+            ? q.options
+                .split(',')
+                .map((o) => o.trim())
+                .filter(Boolean)
+            : null,
+        helpText: q.helpText || null,
+        placeholderText: q.placeholderText || null,
+        minValue: q.type === QuestionInputTypeEnum.Numeric ? q.minValue : null,
+        maxValue: q.type === QuestionInputTypeEnum.Numeric ? q.maxValue : null,
+        rules:
+          rules.length > 0
+            ? rules.map((r) => ({
+                triggerQuestionId: r.triggerQuestionUid,
+                triggerValue: r.triggerValue || null,
+                action: r.action,
+              }))
+            : null,
+      };
+    };
+
+    // `QuestionInput` ne porte aucun `sectionId` : le seul moyen que l'API
+    // rattache une question à sa section est de l'imbriquer dans
+    // `SectionInput.questions`. Le code précédent envoyait systématiquement
+    // `questions: null` pour chaque section et poussait toutes les questions
+    // à la racine, ce qui ignorait totalement la section choisie dans l'UI.
+    const sections: SectionInput[] = sectionList.map((s, i) => {
+      const sectionQuestions = allQuestions
+        .filter((q) => q.sectionIndex === i)
+        .map(buildQuestion);
+      return {
+        title: s.title || null,
+        description: s.description || null,
+        questions: sectionQuestions.length > 0 ? sectionQuestions : null,
+      };
+    });
+
+    // Les questions racine ne sont que celles restées sans section
+    // (sectionIndex -1, ou une section depuis supprimée).
+    const orphanQuestions = allQuestions
+      .filter(
+        (q) => q.sectionIndex < 0 || q.sectionIndex >= sectionList.length,
+      )
+      .map(buildQuestion);
 
     const base = {
       name: this.editName(),
@@ -238,15 +281,20 @@ export class EditQualificationTemplate implements OnInit {
       productCode: this.editProductCode() || null,
       productCategory: (this.editProductType() || null) as any,
       sections: sections.length > 0 ? sections : null,
-      questions: questions.length > 0 ? questions : null,
+      questions: orphanQuestions.length > 0 ? orphanQuestions : null,
     };
 
     const templateId = this.id();
-    const obs = templateId
-      ? this._leadsApi.updateQualificationTemplate(templateId, base as UpdateQualificationTemplateRequest)
-      : this._leadsApi.createQualificationTemplate(base as CreateQualificationTemplateRequest);
+    if (!templateId) {
+      this.isSaving.set(false);
+      return;
+    }
 
-    obs
+    this._leadsApi
+      .updateQualificationTemplate(
+        templateId,
+        base as UpdateQualificationTemplateRequest,
+      )
       .pipe(
         catchError(() => {
           this._snackbar.error('Erreur', 'Sauvegarde échouée.');
@@ -259,6 +307,12 @@ export class EditQualificationTemplate implements OnInit {
             'Enregistré',
             'Formulaire de qualification sauvegardé.',
           );
+          if (droppedRules > 0) {
+            this._snackbar.info(
+              'Règles ignorées',
+              `${droppedRules} règle(s) pointaient vers une question pas encore enregistrée et n'ont pas été sauvegardées. Enregistrez d'abord la question déclencheuse, puis reconfigurez la règle.`,
+            );
+          }
           // this._router.navigate(['/settings/qualification-templates']);
         },
         complete: () => this.isSaving.set(false),
@@ -279,7 +333,14 @@ export class EditQualificationTemplate implements OnInit {
         }),
       )
       .subscribe((tpl) => {
-        this.isReadonly.set(tpl.status === 'Published');
+        // Published : figé pour ne pas modifier un formulaire déjà actif.
+        // Archived : fin de vie, aucune transition ne permet de le
+        // réactiver (voir qualification-templates.ts) — donc pas modifiable
+        // non plus, pour ne pas laisser croire qu'un changement sera pris
+        // en compte.
+        this.isReadonly.set(
+          tpl.status === 'Published' || tpl.status === 'Archived',
+        );
         this.editName.set(tpl.name ?? '');
         this.editDescription.set(tpl.description ?? '');
         this.editProductType.set(tpl.productCategory ?? '');
