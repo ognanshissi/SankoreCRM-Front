@@ -11,13 +11,17 @@ import { ConfirmDialogService } from '@talisoft/ui/confirm-dialog';
 import { SnackbarService } from '@talisoft/ui/snackbar';
 import { catchError, EMPTY } from 'rxjs';
 import { CreateProductComponent } from '../create-product/create-product';
-import { BreadcrumbService } from '@sankore/crm/common';
+import { BreadcrumbService, PermissionsService } from '@sankore/crm/common';
 
 @Component({
   templateUrl: './products-homepage.html',
   imports: [Button, TasIcon, TasCard, TasTable, TasTag],
 })
 export class ProductsHomePage {
+  private readonly _permissions = inject(PermissionsService);
+  public readonly canCreate = this._permissions.can('product:create');
+  public readonly canDelete = this._permissions.can('product:delete');
+
   private readonly _productsApiService = inject(ProductsApiService);
   private readonly _sideDrawerService = inject(SideDrawerService);
   private readonly _confirmDialogService = inject(ConfirmDialogService);

@@ -12,7 +12,7 @@ import { TasInput } from '@talisoft/ui/input';
 import { SnackbarService } from '@talisoft/ui/snackbar';
 import { ConfirmDialogService } from '@talisoft/ui/confirm-dialog';
 import { ScoringConfigsApiService, ScoringConfigDto } from '@sankore/crm-api';
-import { BreadcrumbService, HasPermissionDirective } from '@sankore/crm/common';
+import { BreadcrumbService, HasPermissionDirective, PermissionsService } from '@sankore/crm/common';
 
 type ViewState = 'list' | 'form';
 
@@ -42,9 +42,11 @@ const WEIGHT_FIELDS: WeightField[] = [
               <h1 class="text-lg font-semibold text-slate-800">Règles de scoring</h1>
               <p class="text-sm text-slate-500 mt-0.5">Ajustez les poids et seuils du Lead Score.</p>
             </div>
-            <button tas-button color="primary" type="button" (click)="startCreate()">
-              <tas-icon iconName="feather:plus" style="font-size:14px"></tas-icon> Nouvelle version
-            </button>
+            @if (canManage()) {
+              <button tas-button color="primary" type="button" (click)="startCreate()">
+                <tas-icon iconName="feather:plus" style="font-size:14px"></tas-icon> Nouvelle version
+              </button>
+            }
           </div>
 
           @if (configs().length === 0) {
@@ -59,7 +61,7 @@ const WEIGHT_FIELDS: WeightField[] = [
               @for (cfg of configs(); track cfg.id) {
                 <tas-card class="block">
                   <div class="p-4 flex items-center gap-4">
-                    <div class="flex-1 min-w-0 cursor-pointer" (click)="startEdit(cfg)">
+                    <div class="flex-1 min-w-0" [class.cursor-pointer]="canManage()" (click)="canManage() && startEdit(cfg)">
                       <div class="flex items-center gap-2">
                         <p class="text-sm font-semibold text-slate-800">{{ cfg.name }}</p>
                         <span class="text-[10px] text-slate-400">v{{ cfg.version }}</span>
@@ -71,13 +73,17 @@ const WEIGHT_FIELDS: WeightField[] = [
                       </p>
                     </div>
                     @if (!cfg.isActive) {
-                      <button tas-outlined-button type="button" class="text-xs shrink-0" (click)="activate(cfg)">
-                        <tas-icon iconName="feather:zap" style="font-size:12px"></tas-icon> Activer
+                      @if (canManage()) {
+                        <button tas-outlined-button type="button" class="text-xs shrink-0" (click)="activate(cfg)">
+                          <tas-icon iconName="feather:zap" style="font-size:12px"></tas-icon> Activer
+                        </button>
+                      }
+                    }
+                    @if (canManage()) {
+                      <button tas-outlined-button type="button" class="text-xs shrink-0" (click)="startEdit(cfg)">
+                        <tas-icon iconName="feather:eye" style="font-size:12px"></tas-icon> {{ cfg.isActive ? 'Voir' : 'Modifier' }}
                       </button>
                     }
-                    <button tas-outlined-button type="button" class="text-xs shrink-0" (click)="startEdit(cfg)">
-                      <tas-icon iconName="feather:eye" style="font-size:12px"></tas-icon> {{ cfg.isActive ? 'Voir' : 'Modifier' }}
-                    </button>
                   </div>
                 </tas-card>
               }
@@ -96,10 +102,12 @@ const WEIGHT_FIELDS: WeightField[] = [
               {{ editId() ? (editReadonly() ? 'Version archivée' : 'Modifier') : 'Nouvelle version' }}
             </h1>
             @if (!editReadonly()) {
-              <button tas-button color="primary" type="button" [disabled]="isSaving() || !editName()" (click)="save()">
-                @if (isSaving()) { <tas-spinner size="3" class="text-white"></tas-spinner> }
-                Enregistrer
-              </button>
+              @if (canManage()) {
+                <button tas-button color="primary" type="button" [disabled]="isSaving() || !editName()" (click)="save()">
+                  @if (isSaving()) { <tas-spinner size="3" class="text-white"></tas-spinner> }
+                  Enregistrer
+                </button>
+              }
             }
           </div>
 
@@ -145,6 +153,9 @@ const WEIGHT_FIELDS: WeightField[] = [
   `,
 })
 export class ScoringConfigsPage implements OnInit {
+  private readonly _permissions = inject(PermissionsService);
+  public readonly canManage = this._permissions.can('lead:scoring-config:manage');
+
   private readonly _api = inject(ScoringConfigsApiService);
   private readonly _snackbar = inject(SnackbarService);
   private readonly _confirmDialog = inject(ConfirmDialogService);

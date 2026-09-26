@@ -12,7 +12,7 @@ import { TasInput } from '@talisoft/ui/input';
 import { SnackbarService } from '@talisoft/ui/snackbar';
 import { ConfirmDialogService } from '@talisoft/ui/confirm-dialog';
 import { TaskTypesApiService, TaskTypeDto } from '@sankore/crm-api';
-import { BreadcrumbService, HasPermissionDirective } from '@sankore/crm/common';
+import { BreadcrumbService, HasPermissionDirective, PermissionsService } from '@sankore/crm/common';
 
 @Component({
   selector: 'task-types-config',
@@ -49,10 +49,12 @@ import { BreadcrumbService, HasPermissionDirective } from '@sankore/crm/common';
                   <input tasInput type="text" placeholder="Ex : Visite terrain" [ngModel]="newLabel()" (ngModelChange)="newLabel.set($event)" />
                 </tas-form-field>
                 <div class="flex items-end">
-                  <button tas-button color="primary" type="button" [disabled]="isCreating() || !newCode() || !newLabel()" (click)="create()">
-                    @if (isCreating()) { <tas-spinner size="3" class="text-white"></tas-spinner> }
-                    Ajouter
-                  </button>
+                  @if (canManage()) {
+                    <button tas-button color="primary" type="button" [disabled]="isCreating() || !newCode() || !newLabel()" (click)="create()">
+                      @if (isCreating()) { <tas-spinner size="3" class="text-white"></tas-spinner> }
+                      Ajouter
+                    </button>
+                  }
                 </div>
               </div>
               <div class="mt-2">
@@ -115,6 +117,9 @@ import { BreadcrumbService, HasPermissionDirective } from '@sankore/crm/common';
   `,
 })
 export class TaskTypesConfig implements OnInit {
+  private readonly _permissions = inject(PermissionsService);
+  public readonly canManage = this._permissions.can('lead:task-type:manage');
+
   private readonly _api = inject(TaskTypesApiService);
   private readonly _snackbar = inject(SnackbarService);
   private readonly _confirmDialog = inject(ConfirmDialogService);

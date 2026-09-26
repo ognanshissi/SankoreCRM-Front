@@ -60,13 +60,6 @@ export class PortalLayoutComponent implements OnInit {
   public ngOnInit() {
     console.log(this._auth.connectedUser());
     this.navigationItems = [
-      // {
-      //   id: 'dashboard',
-      //   icon: 'feather:grid',
-      //   title: 'Tableau de bord',
-      //   type: 'basic',
-      //   link: '/portal/dashboard',
-      // },
       {
         id: 'leads-analytics',
         icon: 'feather:bar-chart-2',
@@ -88,13 +81,6 @@ export class PortalLayoutComponent implements OnInit {
         type: 'basic',
         link: '/leads',
       },
-      // {
-      //   id: 'leads',
-      //   icon: 'feather:target',
-      //   title: 'Leads',
-      //   type: 'basic',
-      //   link: '/portal/leads',
-      // },
       {
         id: 'customers',
         icon: 'feather:user',

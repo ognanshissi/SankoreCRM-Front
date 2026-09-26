@@ -108,16 +108,18 @@
         </form>
 
         <div class="flex justify-end pt-2">
-          <button
-            tas-raised-button
-            color="primary"
-            type="button"
-            [disabled]="formSchema().submitting()"
-            [isLoading]="formSchema().submitting()"
-            (click)="handleUpdate()">
-            <tas-icon iconName="feather:save" size="sm"></tas-icon> &nbsp;
-            Enregistrer
-          </button>
+          @if (canUpdate()) {
+            <button
+              tas-raised-button
+              color="primary"
+              type="button"
+              [disabled]="formSchema().submitting()"
+              [isLoading]="formSchema().submitting()"
+              (click)="handleUpdate()">
+              <tas-icon iconName="feather:save" size="sm"></tas-icon> &nbsp;
+              Enregistrer
+            </button>
+          }
         </div>
       </div>
     </tas-card>
@@ -129,17 +131,19 @@
         <p class="text-sm text-slate-500 mb-4">
           La désactivation d'un territoire le retire de toutes les listes actives. Cette action est réversible via l'API.
         </p>
-        <button
-          tas-outlined-button
-          color="warn"
-          type="button"
-          [disabled]="isDeleting()"
-          [isLoading]="isDeleting()"
-          (click)="openDeleteDialog()"
-        >
-          <tas-icon iconName="feather:trash-2"></tas-icon>
-          Désactiver le territoire
-        </button>
+        @if (canDelete()) {
+          <button
+            tas-outlined-button
+            color="warn"
+            type="button"
+            [disabled]="isDeleting()"
+            [isLoading]="isDeleting()"
+            (click)="openDeleteDialog()"
+          >
+            <tas-icon iconName="feather:trash-2"></tas-icon>
+            Désactiver le territoire
+          </button>
+        }
       </div>
     </tas-card>
 

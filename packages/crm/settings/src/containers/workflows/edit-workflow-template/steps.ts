@@ -21,6 +21,7 @@ import {
 } from '@sankore/crm-api';
 import { SnackbarService } from '@talisoft/ui/snackbar';
 import { ConfirmDialogService } from '@talisoft/ui/confirm-dialog';
+import { PermissionsService } from '@sankore/crm/common';
 import {
   NO_VALUE_OPERATORS,
   RULE_OPERATOR_OPTIONS,
@@ -98,6 +99,7 @@ class EditStepFormModel {
                 tas-outlined-button
                 color="primary"
                 type="button"
+                [disabled]="!canManageSteps()"
                 (click)="toggleAddStepForm()"
                 class="shrink-0"
               >
@@ -188,16 +190,18 @@ class EditStepFormModel {
 
                           <div class="flex justify-end gap-2 pt-1">
                             <button tas-text-button type="button" (click)="cancelEditStepForm()">Annuler</button>
-                            <button
-                              tas-raised-button
-                              color="primary"
-                              type="button"
-                              (click)="handleEditStep(step.id!)"
-                              [disabled]="editStepFormSchema().invalid() || isEditingStep()"
-                              [isLoading]="isEditingStep()"
-                            >
-                              Enregistrer
-                            </button>
+                            @if (canManageSteps()) {
+                              <button
+                                tas-raised-button
+                                color="primary"
+                                type="button"
+                                (click)="handleEditStep(step.id!)"
+                                [disabled]="editStepFormSchema().invalid() || isEditingStep()"
+                                [isLoading]="isEditingStep()"
+                              >
+                                Enregistrer
+                              </button>
+                            }
                           </div>
                         </form>
                       } @else {
@@ -225,27 +229,31 @@ class EditStepFormModel {
                           @if (!template()?.isActive) {
                             <div class="flex items-center gap-1 shrink-0">
                               <!-- Edit button -->
-                              <button
-                                tas-button
-                                iconButton
-                                type="button"
-                                title="Modifier l'étape"
-                                [disabled]="removingStepId() === step.id || isEditingStep()"
-                                (click)="openEditStepForm(step)"
-                              >
-                                <tas-icon iconName="feather:edit-2" iconSize="sm" class="text-slate-400"></tas-icon>
-                              </button>
+                              @if (canManageSteps()) {
+                                <button
+                                  tas-button
+                                  iconButton
+                                  type="button"
+                                  title="Modifier l'étape"
+                                  [disabled]="removingStepId() === step.id || isEditingStep()"
+                                  (click)="openEditStepForm(step)"
+                                >
+                                  <tas-icon iconName="feather:edit-2" iconSize="sm" class="text-slate-400"></tas-icon>
+                                </button>
+                              }
                               <!-- Delete button -->
-                              <button
-                                tas-button
-                                iconButton
-                                type="button"
-                                title="Supprimer l'étape"
-                                [disabled]="removingStepId() === step.id || isEditingStep()"
-                                (click)="removeStep(step.id)"
-                              >
-                                <tas-icon iconName="feather:trash-2" iconSize="sm" class="text-functional-error"></tas-icon>
-                              </button>
+                              @if (canManageSteps()) {
+                                <button
+                                  tas-button
+                                  iconButton
+                                  type="button"
+                                  title="Supprimer l'étape"
+                                  [disabled]="removingStepId() === step.id || isEditingStep()"
+                                  (click)="removeStep(step.id)"
+                                >
+                                  <tas-icon iconName="feather:trash-2" iconSize="sm" class="text-functional-error"></tas-icon>
+                                </button>
+                              }
                             </div>
                           }
                         </div>
@@ -296,15 +304,17 @@ class EditStepFormModel {
                                       </p>
                                     </div>
                                     @if (!template()?.isActive) {
-                                      <button
-                                        type="button"
-                                        class="text-slate-300 hover:text-red-500 transition-colors shrink-0"
-                                        title="Supprimer la règle"
-                                        [disabled]="removingRuleId() === rule.id"
-                                        (click)="removeRule(step.id!, rule.id!)"
-                                      >
-                                        <tas-icon iconName="feather:trash-2" style="font-size:11px"></tas-icon>
-                                      </button>
+                                      @if (canManageSteps()) {
+                                        <button
+                                          type="button"
+                                          class="text-slate-300 hover:text-red-500 transition-colors shrink-0"
+                                          title="Supprimer la règle"
+                                          [disabled]="removingRuleId() === rule.id"
+                                          (click)="removeRule(step.id!, rule.id!)"
+                                        >
+                                          <tas-icon iconName="feather:trash-2" style="font-size:11px"></tas-icon>
+                                        </button>
+                                      }
                                     }
                                   </div>
                                 }
@@ -363,15 +373,17 @@ class EditStepFormModel {
                                     </div>
                                   }
                                   <div class="flex items-center gap-2 pt-1">
-                                    <button
-                                      tas-raised-button
-                                      color="primary"
-                                      type="button"
-                                      [disabled]="isAddingRule() || !newRuleField().trim()"
-                                      (click)="addRule(step.id!)"
-                                    >
-                                      Ajouter
-                                    </button>
+                                    @if (canManageSteps()) {
+                                      <button
+                                        tas-raised-button
+                                        color="primary"
+                                        type="button"
+                                        [disabled]="isAddingRule() || !newRuleField().trim()"
+                                        (click)="addRule(step.id!)"
+                                      >
+                                        Ajouter
+                                      </button>
+                                    }
                                     <button
                                       tas-text-button
                                       type="button"
@@ -442,16 +454,18 @@ class EditStepFormModel {
 
                 <div class="flex justify-end gap-2 pt-1">
                   <button tas-text-button type="button" (click)="toggleAddStepForm()">Annuler</button>
-                  <button
-                    tas-raised-button
-                    color="primary"
-                    type="button"
-                    (click)="handleAddStep()"
-                    [disabled]="addStepFormSchema().invalid() || isAddingStep()"
-                    [isLoading]="isAddingStep()"
-                  >
-                    Ajouter l'étape
-                  </button>
+                  @if (canManageSteps()) {
+                    <button
+                      tas-raised-button
+                      color="primary"
+                      type="button"
+                      (click)="handleAddStep()"
+                      [disabled]="addStepFormSchema().invalid() || isAddingStep()"
+                      [isLoading]="isAddingStep()"
+                    >
+                      Ajouter l'étape
+                    </button>
+                  }
                 </div>
               </form>
             }
@@ -462,6 +476,9 @@ class EditStepFormModel {
   `,
 })
 export class WorkflowStepsPage {
+  private readonly _permissions = inject(PermissionsService);
+  public readonly canManageSteps = this._permissions.can('workflow:manage-steps');
+
   private readonly _workflowTemplatesApiService = inject(WorkflowTemplatesApiService);
   private readonly _rolesApiService = inject(RolesApiService);
   private readonly _snackbarService = inject(SnackbarService);

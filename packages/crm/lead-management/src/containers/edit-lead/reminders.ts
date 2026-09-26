@@ -11,7 +11,7 @@ import { TasInput } from '@talisoft/ui/input';
 import { TimeagoPipe } from '@talisoft/ui/timeago';
 import { SnackbarService } from '@talisoft/ui/snackbar';
 import { LeadsApiService, ReminderDto, ReminderDtoStatusEnum } from '@sankore/crm-api';
-import { AuthenticationService } from '@sankore/crm/common';
+import { AuthenticationService, PermissionsService } from '@sankore/crm/common';
 
 function reminderStatusMeta(r: ReminderDto): { label: string; severity: Severity; icon: string } {
   if (r.status === ReminderDtoStatusEnum.Completed) return { label: 'Terminé', severity: 'success', icon: 'feather:check-circle' };
@@ -45,11 +45,13 @@ function reminderStatusMeta(r: ReminderDto): { label: string; severity: Severity
                 <input tasInput type="datetime-local" [ngModel]="newDueAt()" (ngModelChange)="newDueAt.set($event)" />
               </tas-form-field>
               <div class="flex items-end">
-                <button tas-button color="primary" type="button" class="text-xs"
-                  [disabled]="isCreating() || !newTitle().trim() || !newDueAt()" (click)="create()">
-                  @if (isCreating()) { <tas-spinner size="3" class="text-white"></tas-spinner> }
-                  <tas-icon iconName="feather:bell" style="font-size:12px"></tas-icon> Créer
-                </button>
+                @if (canManageReminder()) {
+                  <button tas-button color="primary" type="button" class="text-xs"
+                    [disabled]="isCreating() || !newTitle().trim() || !newDueAt()" (click)="create()">
+                    @if (isCreating()) { <tas-spinner size="3" class="text-white"></tas-spinner> }
+                    <tas-icon iconName="feather:bell" style="font-size:12px"></tas-icon> Créer
+                  </button>
+                }
               </div>
             </div>
             <div class="mt-2">
@@ -100,22 +102,30 @@ function reminderStatusMeta(r: ReminderDto): { label: string; severity: Severity
                       <div class="flex items-center gap-2 mt-2">
                         <input type="datetime-local" class="text-xs border border-slate-200 rounded px-2 py-1"
                           [ngModel]="rescheduleDate()" (ngModelChange)="rescheduleDate.set($event)" />
-                        <button tas-button color="primary" type="button" class="text-xs" [disabled]="!rescheduleDate()" (click)="confirmReschedule(r)">OK</button>
+                        @if (canManageReminder()) {
+                          <button tas-button color="primary" type="button" class="text-xs" [disabled]="!rescheduleDate()" (click)="confirmReschedule(r)">OK</button>
+                        }
                         <button type="button" class="text-xs text-slate-400" (click)="reschedulingId.set(null)">Annuler</button>
                       </div>
                     }
                   </div>
                   @if (r.status === 'Pending') {
                     <div class="flex items-center gap-1 shrink-0">
-                      <button type="button" class="p-1 text-green-500 hover:text-green-700" title="Terminer" (click)="complete(r)">
-                        <tas-icon iconName="feather:check" style="font-size:14px"></tas-icon>
-                      </button>
-                      <button type="button" class="p-1 text-amber-500 hover:text-amber-700" title="Reporter" (click)="startReschedule(r)">
-                        <tas-icon iconName="feather:calendar" style="font-size:14px"></tas-icon>
-                      </button>
-                      <button type="button" class="p-1 text-slate-400 hover:text-red-500" title="Écarter" (click)="dismiss(r)">
-                        <tas-icon iconName="feather:x" style="font-size:14px"></tas-icon>
-                      </button>
+                      @if (canManageReminder()) {
+                        <button type="button" class="p-1 text-green-500 hover:text-green-700" title="Terminer" (click)="complete(r)">
+                          <tas-icon iconName="feather:check" style="font-size:14px"></tas-icon>
+                        </button>
+                      }
+                      @if (canManageReminder()) {
+                        <button type="button" class="p-1 text-amber-500 hover:text-amber-700" title="Reporter" (click)="startReschedule(r)">
+                          <tas-icon iconName="feather:calendar" style="font-size:14px"></tas-icon>
+                        </button>
+                      }
+                      @if (canManageReminder()) {
+                        <button type="button" class="p-1 text-slate-400 hover:text-red-500" title="Écarter" (click)="dismiss(r)">
+                          <tas-icon iconName="feather:x" style="font-size:14px"></tas-icon>
+                        </button>
+                      }
                     </div>
                   }
                 </div>
@@ -128,6 +138,9 @@ function reminderStatusMeta(r: ReminderDto): { label: string; severity: Severity
   `,
 })
 export class LeadRemindersPage {
+  private readonly _permissions = inject(PermissionsService);
+  public readonly canManageReminder = this._permissions.can('lead:reminder:manage');
+
   private readonly _leadsApi = inject(LeadsApiService);
   private readonly _snackbar = inject(SnackbarService);
   private readonly _auth = inject(AuthenticationService);

@@ -8,7 +8,7 @@ import { TableConfig, TasTable } from '@talisoft/ui/table';
 import { SideDrawerService } from '@talisoft/ui/side-drawer';
 import { TimeagoPipe } from '@talisoft/ui/timeago';
 import { WorkflowTemplateDto, WorkflowTemplatesApiService } from '@sankore/crm-api';
-import { BreadcrumbService } from '@sankore/crm/common';
+import { BreadcrumbService, PermissionsService } from '@sankore/crm/common';
 import { CreateWorkflowTemplateComponent } from '../create-workflow-template/create-workflow-template';
 import { entityTypeLabel } from '../workflow-shared';
 
@@ -19,6 +19,9 @@ type StatusFilter = 'all' | 'active' | 'draft';
   imports: [RouterLink, Button, Anchor, TasIcon, TasCard, TasTag, TasTable, TimeagoPipe],
 })
 export class WorkflowsHomePage {
+  private readonly _permissions = inject(PermissionsService);
+  public readonly canCreate = this._permissions.can('workflow:create');
+
   private readonly _workflowTemplatesApiService = inject(WorkflowTemplatesApiService);
   private readonly _sideDrawerService = inject(SideDrawerService);
   private readonly _router = inject(Router);

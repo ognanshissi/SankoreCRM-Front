@@ -11,6 +11,7 @@ import { TasIcon } from '@talisoft/ui/icon';
 import { WorkflowTemplateDto, WorkflowTemplatesApiService } from '@sankore/crm-api';
 import { SnackbarService } from '@talisoft/ui/snackbar';
 import { entityTypeLabel } from '../workflow-shared';
+import { PermissionsService } from '@sankore/crm/common';
 
 class EditTemplateFormModel {
   public name!: string;
@@ -104,17 +105,19 @@ class EditTemplateFormModel {
               </tas-form-field>
             </form>
             <div class="flex justify-end">
-              <button
-                tas-raised-button
-                color="primary"
-                type="button"
-                (click)="handleSave()"
-                [disabled]="updateFormSchema().invalid() || updateFormSchema().submitting()"
-                [isLoading]="updateFormSchema().submitting()"
-              >
-                <tas-icon iconName="feather:save" iconSize="sm"></tas-icon>
-                Enregistrer
-              </button>
+              @if (canUpdate()) {
+                <button
+                  tas-raised-button
+                  color="primary"
+                  type="button"
+                  (click)="handleSave()"
+                  [disabled]="updateFormSchema().invalid() || updateFormSchema().submitting()"
+                  [isLoading]="updateFormSchema().submitting()"
+                >
+                  <tas-icon iconName="feather:save" iconSize="sm"></tas-icon>
+                  Enregistrer
+                </button>
+              }
             </div>
           </div>
         </tas-card>
@@ -145,17 +148,19 @@ class EditTemplateFormModel {
 <!--                </p>-->
 <!--              </div>-->
 <!--            </div>-->
-<!--            <button-->
-<!--              [attr.tas-outlined-button]="template()!.isActive ? '' : null"-->
-<!--              [attr.tas-filled-button]="!template()!.isActive ? '' : null"-->
-<!--              color="primary"-->
-<!--              type="button"-->
-<!--              [disabled]="isTogglingStatus()"-->
-<!--              (click)="toggleStatus()"-->
-<!--              class="shrink-0"-->
-<!--            >-->
-<!--              {{ template()!.isActive ? 'Désactiver' : 'Activer' }}-->
-<!--            </button>-->
+<!--            @if (canActivateWorkflow()) {
+  <button-->
+  <!--              [attr.tas-outlined-button]="template()!.isActive ? '' : null"-->
+  <!--              [attr.tas-filled-button]="!template()!.isActive ? '' : null"-->
+  <!--              color="primary"-->
+  <!--              type="button"-->
+  <!--              [disabled]="isTogglingStatus()"-->
+  <!--              (click)="toggleStatus()"-->
+  <!--              class="shrink-0"-->
+  <!--            >-->
+  <!--              {{ template()!.isActive ? 'Désactiver' : 'Activer' }}-->
+  <!--            </button>
+}-->
 <!--          </div>-->
 <!--        </tas-card>-->
 
@@ -174,16 +179,18 @@ class EditTemplateFormModel {
 <!--                  </p>-->
 <!--                </div>-->
 <!--              </div>-->
-<!--              <button-->
-<!--                tas-outlined-button-->
-<!--                color="primary"-->
-<!--                type="button"-->
-<!--                [disabled]="isCreatingDraft()"-->
-<!--                (click)="createDraft()"-->
-<!--                class="shrink-0"-->
-<!--              >-->
-<!--                Créer un brouillon-->
-<!--              </button>-->
+<!--              @if (canUpdate()) {
+  <button-->
+  <!--                tas-outlined-button-->
+  <!--                color="primary"-->
+  <!--                type="button"-->
+  <!--                [disabled]="isCreatingDraft()"-->
+  <!--                (click)="createDraft()"-->
+  <!--                class="shrink-0"-->
+  <!--              >-->
+  <!--                Créer un brouillon-->
+  <!--              </button>
+}-->
 <!--            </div>-->
 <!--          </tas-card>-->
 <!--        }-->
@@ -193,6 +200,10 @@ class EditTemplateFormModel {
   `,
 })
 export class WorkflowInformationsPage {
+  private readonly _permissions = inject(PermissionsService);
+  public readonly canUpdate = this._permissions.can('workflow:update');
+  public readonly canActivateWorkflow = this._permissions.can('workflow:activate');
+
   private readonly _workflowTemplatesApiService = inject(WorkflowTemplatesApiService);
   private readonly _snackbarService = inject(SnackbarService);
   private readonly _router = inject(Router);

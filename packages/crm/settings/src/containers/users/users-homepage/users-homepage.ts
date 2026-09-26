@@ -16,7 +16,7 @@ import {
 type UserStatus = 0 | 1 | 2 | 3;
 import { CreateUserComponent } from '../create-user/create-user';
 import { TimeagoPipe } from '@talisoft/ui/timeago';
-import { BreadcrumbService, InitialsPipe } from '@sankore/crm/common';
+import { BreadcrumbService, InitialsPipe, PermissionsService } from '@sankore/crm/common';
 import { TasTag } from '@talisoft/ui/tag';
 
 const AVATAR_COLORS = [
@@ -40,6 +40,9 @@ const AVATAR_COLORS = [
   ],
 })
 export class UsersHomePage {
+  private readonly _permissions = inject(PermissionsService);
+  public readonly canCreate = this._permissions.can('user:create');
+
   private readonly _usersApiService = inject(UsersApiService);
   private readonly _sideDrawerService = inject(SideDrawerService);
   private readonly _router = inject(Router);

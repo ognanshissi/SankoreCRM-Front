@@ -1,12 +1,23 @@
-import { Component, computed, inject, signal, Signal } from '@angular/core';
-import { Router } from '@angular/router';
+import {
+  Component,
+  computed,
+  DestroyRef,
+  inject,
+  OnInit,
+  signal,
+  Signal,
+} from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { ActivatedRoute, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
-import { catchError, EMPTY, map } from 'rxjs';
+import { catchError, debounceTime, EMPTY, map, Subject } from 'rxjs';
 import { CdkDragDrop, DragDropModule } from '@angular/cdk/drag-drop';
 import { Button } from '@talisoft/ui/button';
 import { TasIcon } from '@talisoft/ui/icon';
 import { TasCard } from '@talisoft/ui/card';
 import { TableConfig, TasTable } from '@talisoft/ui/table';
+import { TasFormField, TasLabel } from '@talisoft/ui/form-field';
+import { TasInput } from '@talisoft/ui/input';
 import { TasSelect } from '@talisoft/ui/select';
 import { PageEvent } from '@angular/material/paginator';
 import {
@@ -24,6 +35,7 @@ import { ImportLeadsComponent } from '../import-leads/import-leads';
 import { SystemCaptureDrawer } from './system-capture-drawer';
 import { CreateTaskDrawer } from '@sankore/crm/tasks';
 import { Severity, TasTag } from '@talisoft/ui/tag';
+import { PermissionsService } from '@sankore/crm/common';
 
 function leadStatusMeta(status: string | null | undefined): { label: string; severity: Severity } {
   switch (status) {
@@ -151,14 +163,38 @@ interface StatusTab {
 
 @Component({
   templateUrl: './lead-homepage.html',
-  imports: [FormsModule, Button, TasIcon, TasCard, TasTable, TasTag, TimeagoPipe, TasSelect, DragDropModule],
+  imports: [
+    FormsModule,
+    Button,
+    TasIcon,
+    TasCard,
+    TasTable,
+    TasTag,
+    TimeagoPipe,
+    TasFormField,
+    TasLabel,
+    TasInput,
+    TasSelect,
+    DragDropModule,
+  ],
 })
-export class LeadHomepage {
+export class LeadHomepage implements OnInit {
+  private readonly _permissions = inject(PermissionsService);
+  public readonly canCreate = this._permissions.can('lead:create');
+  public readonly canExport = this._permissions.can('lead:export');
+  public readonly canImport = this._permissions.can('lead:import');
+  public readonly canAssign = this._permissions.can('lead:assign');
+
   private readonly _leadsApiService = inject(LeadsApiService);
   private readonly _agenciesApiService = inject(AgenciesApiService);
   private readonly _sideDrawerService = inject(SideDrawerService);
   private readonly _snackbar = inject(SnackbarService);
+  private readonly _destroyRef = inject(DestroyRef);
+  private readonly _route = inject(ActivatedRoute);
   private readonly _router = inject(Router);
+
+  /** Frappes de recherche, regroupées avant l'appel réseau. */
+  private readonly _search$ = new Subject<void>();
 
   public isLoading = signal(false);
   public isExporting = signal(false);
@@ -223,7 +259,20 @@ export class LeadHomepage {
   });
 
   ngOnInit(): void {
-    this.loadLeads(0, 10);
+    this._search$
+      .pipe(debounceTime(300), takeUntilDestroyed(this._destroyRef))
+      .subscribe(() => this._applyFilters());
+
+    // Restauration des filtres depuis l'URL : un lien partagé ou un
+    // rafraîchissement retrouve la même vue.
+    const params = this._route.snapshot.queryParams;
+    if (params['q']) this.searchQuery.set(params['q']);
+    if (params['status']) this.filterStatus.set(params['status']);
+    if (params['source']) this.filterSource.set(params['source']);
+    if (params['agency']) this.filterAgencyId.set(params['agency']);
+    if (params['intent']) this.filterIntent.set(params['intent']);
+
+    this.loadLeads(0, this.tableConfig().pagination.pageSize);
     this._loadAgencies();
     this._loadStats();
   }
@@ -427,13 +476,13 @@ export class LeadHomepage {
     this.loadLeads(event.pageIndex, event.pageSize);
   }
 
-  public onSearchChange(q: string): void {
-    this.searchQuery.set(q);
-    this.tableConfig.update((c) => ({
-      ...c,
-      pagination: { ...c.pagination, pageIndex: 0 },
-    }));
-    this.loadLeads(0, this.tableConfig().pagination.pageSize);
+  /**
+   * La recherche texte passe par un debounce : sans lui, chaque frappe
+   * déclenchait un appel HTTP. Les listes déroulantes restent immédiates.
+   */
+  public onSearchChange(value: string | null): void {
+    this.searchQuery.set(value ?? '');
+    this._search$.next();
   }
 
   public onFilterChange(filter: 'status' | 'source' | 'agency' | 'intent', value: string): void {
@@ -443,18 +492,34 @@ export class LeadHomepage {
       case 'agency':  this.filterAgencyId.set(value); break;
       case 'intent':  this.filterIntent.set(value); break;
     }
-    this.tableConfig.update((c) => ({
-      ...c,
-      pagination: { ...c.pagination, pageIndex: 0 },
-    }));
-    const pageSize = this.viewMode() === 'kanban' ? 200 : this.tableConfig().pagination.pageSize;
-    this.loadLeads(0, pageSize);
+    this._applyFilters();
   }
 
   public clearSecondaryFilters(): void {
     this.filterSource.set('');
     this.filterAgencyId.set('');
     this.filterIntent.set('');
+    this._applyFilters();
+  }
+
+  /**
+   * Point de passage unique des filtres : persiste l'état dans l'URL, remet la
+   * pagination à la première page, puis recharge.
+   */
+  private _applyFilters(): void {
+    this._router.navigate([], {
+      relativeTo: this._route,
+      queryParams: {
+        q: this.searchQuery() || null,
+        status: this.filterStatus() || null,
+        source: this.filterSource() || null,
+        agency: this.filterAgencyId() || null,
+        intent: this.filterIntent() || null,
+      },
+      queryParamsHandling: 'merge',
+      replaceUrl: true,
+    });
+
     this.tableConfig.update((c) => ({
       ...c,
       pagination: { ...c.pagination, pageIndex: 0 },

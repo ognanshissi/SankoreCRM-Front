@@ -82,7 +82,7 @@ function urlIncludeNotSecuredPaths(url: string): boolean {
     'login',
     'logout',
     'forgot-password',
-    'reset-password',
+    'auth/reset-password',
     'refresh-token',
     'webforms-generated',
     'assets/',

@@ -10,13 +10,17 @@ import { ConfirmDialogService } from '@talisoft/ui/confirm-dialog';
 import { SnackbarService } from '@talisoft/ui/snackbar';
 import { catchError, EMPTY } from 'rxjs';
 import { CreateRoleComponent } from '../create-role/create-role';
-import { BreadcrumbService } from '@sankore/crm/common';
+import { BreadcrumbService, PermissionsService } from '@sankore/crm/common';
 
 @Component({
   templateUrl: './roles-homepage.html',
   imports: [Button, TasIcon, TasTable, TasTag],
 })
 export class RolesHomePage {
+  private readonly _permissions = inject(PermissionsService);
+  public readonly canCreate = this._permissions.can('role:create');
+  public readonly canDelete = this._permissions.can('role:delete');
+
   private readonly _rolesApiService = inject(RolesApiService);
   private readonly _router = inject(Router);
   private readonly _sideDrawerService = inject(SideDrawerService);

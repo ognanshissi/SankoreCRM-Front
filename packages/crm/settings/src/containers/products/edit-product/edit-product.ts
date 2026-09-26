@@ -20,7 +20,7 @@ import { TasSpinner } from '@talisoft/ui/spinner';
 import { ProductsApiService, ProductDto } from '@sankore/crm-api';
 import { SnackbarService } from '@talisoft/ui/snackbar';
 import { ConfirmDialogService } from '@talisoft/ui/confirm-dialog';
-import { BreadcrumbService } from '@sankore/crm/common';
+import { BreadcrumbService, PermissionsService } from '@sankore/crm/common';
 import { ProductParametersEditor } from '../product-parameters-editor';
 
 @Component({
@@ -155,17 +155,19 @@ import { ProductParametersEditor } from '../product-parameters-editor';
             </div>
 
             <div class="flex justify-end">
-              <button
-                tas-raised-button
-                color="primary"
-                type="button"
-                [disabled]="isSaving()"
-                [isLoading]="isSaving()"
-                (click)="save()"
-              >
-                <tas-icon iconName="feather:save" iconSize="sm"></tas-icon>
-                Enregistrer
-              </button>
+              @if (canUpdate()) {
+                <button
+                  tas-raised-button
+                  color="primary"
+                  type="button"
+                  [disabled]="isSaving()"
+                  [isLoading]="isSaving()"
+                  (click)="save()"
+                >
+                  <tas-icon iconName="feather:save" iconSize="sm"></tas-icon>
+                  Enregistrer
+                </button>
+              }
             </div>
           </div>
         </tas-card>
@@ -205,13 +207,15 @@ import { ProductParametersEditor } from '../product-parameters-editor';
               </tas-form-field>
             </div>
             <div class="flex justify-end mt-3">
-              <button tas-outlined-button color="primary" type="button" class="text-xs"
-                [disabled]="isLinkingCbs() || !cbsPlatform().trim() || !cbsProductId().trim()"
-                (click)="linkToCbs()">
-                @if (isLinkingCbs()) { <tas-spinner size="3" class="text-primary"></tas-spinner> }
-                <tas-icon iconName="feather:link" style="font-size:12px"></tas-icon>
-                {{ cbsLinked() ? 'Mettre à jour le lien' : 'Lier au CBS' }}
-              </button>
+              @if (canUpdate()) {
+                <button tas-outlined-button color="primary" type="button" class="text-xs"
+                  [disabled]="isLinkingCbs() || !cbsPlatform().trim() || !cbsProductId().trim()"
+                  (click)="linkToCbs()">
+                  @if (isLinkingCbs()) { <tas-spinner size="3" class="text-primary"></tas-spinner> }
+                  <tas-icon iconName="feather:link" style="font-size:12px"></tas-icon>
+                  {{ cbsLinked() ? 'Mettre à jour le lien' : 'Lier au CBS' }}
+                </button>
+              }
             </div>
           </div>
         </tas-card>
@@ -242,18 +246,20 @@ import { ProductParametersEditor } from '../product-parameters-editor';
                 </p>
               </div>
             </div>
-            <button
-              tas-outlined-button
-              color="warn"
-              type="button"
-              [disabled]="isDeleting()"
-              [isLoading]="isDeleting()"
-              (click)="confirmDelete()"
-              class="shrink-0"
-            >
-              <tas-icon iconName="feather:trash-2" iconSize="sm"></tas-icon>
-              Supprimer
-            </button>
+            @if (canDelete()) {
+              <button
+                tas-outlined-button
+                color="warn"
+                type="button"
+                [disabled]="isDeleting()"
+                [isLoading]="isDeleting()"
+                (click)="confirmDelete()"
+                class="shrink-0"
+              >
+                <tas-icon iconName="feather:trash-2" iconSize="sm"></tas-icon>
+                Supprimer
+              </button>
+            }
           </div>
         </tas-card>
       </div>
@@ -261,6 +267,10 @@ import { ProductParametersEditor } from '../product-parameters-editor';
   `,
 })
 export class EditProductPage {
+  private readonly _permissions = inject(PermissionsService);
+  public readonly canUpdate = this._permissions.can('product:update');
+  public readonly canDelete = this._permissions.can('product:delete');
+
   private readonly _productsApiService = inject(ProductsApiService);
   private readonly _snackbarService = inject(SnackbarService);
   private readonly _confirmDialogService = inject(ConfirmDialogService);

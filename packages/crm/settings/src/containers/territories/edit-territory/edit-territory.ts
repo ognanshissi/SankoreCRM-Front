@@ -22,7 +22,7 @@ import { TasSpinner } from '@talisoft/ui/spinner';
 import { TerritoriesApiService, ProductsApiService, TerritoryDto } from '@sankore/crm-api';
 import { SnackbarService } from '@talisoft/ui/snackbar';
 import { DeleteTerritoryDialog } from './delete-territory-dialog';
-import { BreadcrumbService } from '@sankore/crm/common';
+import { BreadcrumbService, PermissionsService } from '@sankore/crm/common';
 
 class EditTerritoryFormModel {
   public name!: string;
@@ -65,6 +65,10 @@ class EditTerritoryFormModel {
   ],
 })
 export class EditTerritoryPage {
+  private readonly _permissions = inject(PermissionsService);
+  public readonly canUpdate = this._permissions.can('territory:update');
+  public readonly canDelete = this._permissions.can('territory:delete');
+
   private readonly _territoriesApiService = inject(TerritoriesApiService);
   private readonly _productsApiService = inject(ProductsApiService);
   private readonly _snackbarService = inject(SnackbarService);

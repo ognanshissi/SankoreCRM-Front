@@ -42,15 +42,17 @@
           </div>
 
           @if (inst.status === 'InProgress') {
-            <button
-              type="button"
-              tas-button
-              color="warn"
-              [disabled]="isActing()"
-              (click)="cancelInstance()"
-            >
-              Annuler l'instance
-            </button>
+            @if (canCancel()) {
+              <button
+                type="button"
+                tas-button
+                color="warn"
+                [disabled]="isActing()"
+                (click)="cancelInstance()"
+              >
+                Annuler l'instance
+              </button>
+            }
           }
         </div>
       </div>
@@ -174,15 +176,17 @@
                 (input)="approveComment.set($any($event.target).value)"
               ></textarea>
               <div class="flex items-center gap-2 mt-2">
-                <button
-                  type="button"
-                  tas-button
-                  size="small"
-                  [disabled]="isActing()"
-                  (click)="approve()"
-                >
-                  Approuver
-                </button>
+                @if (canApprove()) {
+                  <button
+                    type="button"
+                    tas-button
+                    size="small"
+                    [disabled]="isActing()"
+                    (click)="approve()"
+                  >
+                    Approuver
+                  </button>
+                }
                 <button
                   type="button"
                   tas-outlined-button
@@ -208,16 +212,18 @@
                 (input)="rejectComment.set($any($event.target).value)"
               ></textarea>
               <div class="flex items-center gap-2 mt-2">
-                <button
-                  type="button"
-                  tas-button
-                  color="warn"
-                  size="small"
-                  [disabled]="isActing()"
-                  (click)="reject()"
-                >
-                  Rejeter
-                </button>
+                @if (canApprove()) {
+                  <button
+                    type="button"
+                    tas-button
+                    color="warn"
+                    size="small"
+                    [disabled]="isActing()"
+                    (click)="reject()"
+                  >
+                    Rejeter
+                  </button>
+                }
                 <button
                   type="button"
                   tas-outlined-button
@@ -252,15 +258,17 @@
                 </select>
               }
               <div class="flex items-center gap-2 mt-2">
-                <button
-                  type="button"
-                  tas-button
-                  size="small"
-                  [disabled]="isActing() || !assignUserId()"
-                  (click)="assign()"
-                >
-                  Assigner
-                </button>
+                @if (canAssign()) {
+                  <button
+                    type="button"
+                    tas-button
+                    size="small"
+                    [disabled]="isActing() || !assignUserId()"
+                    (click)="assign()"
+                  >
+                    Assigner
+                  </button>
+                }
                 <button
                   type="button"
                   tas-outlined-button
@@ -302,15 +310,17 @@
                 (input)="delegateComment.set($any($event.target).value)"
               ></textarea>
               <div class="flex items-center gap-2 mt-2">
-                <button
-                  type="button"
-                  tas-button
-                  size="small"
-                  [disabled]="isActing() || !delegateUserId()"
-                  (click)="delegate()"
-                >
-                  Déléguer
-                </button>
+                @if (canAssign()) {
+                  <button
+                    type="button"
+                    tas-button
+                    size="small"
+                    [disabled]="isActing() || !delegateUserId()"
+                    (click)="delegate()"
+                  >
+                    Déléguer
+                  </button>
+                }
                 <button
                   type="button"
                   tas-outlined-button
@@ -346,24 +356,28 @@
                 <tas-icon iconName="feather:x" style="font-size:14px"></tas-icon>
                 Rejeter
               </button>
-              <button
-                type="button"
-                tas-outlined-button
-                [disabled]="isActing()"
-                (click)="openAssignForm()"
-              >
-                <tas-icon iconName="feather:user-check" style="font-size:14px"></tas-icon>
-                Assigner
-              </button>
-              <button
-                type="button"
-                tas-outlined-button
-                [disabled]="isActing()"
-                (click)="openDelegateForm()"
-              >
-                <tas-icon iconName="feather:share-2" style="font-size:14px"></tas-icon>
-                Déléguer
-              </button>
+              @if (canAssign()) {
+                <button
+                  type="button"
+                  tas-outlined-button
+                  [disabled]="isActing()"
+                  (click)="openAssignForm()"
+                >
+                  <tas-icon iconName="feather:user-check" style="font-size:14px"></tas-icon>
+                  Assigner
+                </button>
+              }
+              @if (canAssign()) {
+                <button
+                  type="button"
+                  tas-outlined-button
+                  [disabled]="isActing()"
+                  (click)="openDelegateForm()"
+                >
+                  <tas-icon iconName="feather:share-2" style="font-size:14px"></tas-icon>
+                  Déléguer
+                </button>
+              }
             </div>
           }
 
@@ -407,26 +421,30 @@
                 </div>
                 <div class="flex items-center gap-2 shrink-0">
                   @if (task.status === 'Pending' || task.status === 'InProgress') {
-                    <button
-                      type="button"
-                      tas-filled-button
-                      color="primary"
-                      size="small"
-                      [disabled]="completingTaskId() === task.id"
-                      (click)="completeTask(task)"
-                    >
-                      Compléter
-                    </button>
-                    <button
-                      type="button"
-                      tas-button
-                      size="small"
-                      color="warn"
-                      [disabled]="cancellingTaskId() === task.id"
-                      (click)="cancelTask(task)"
-                    >
-                      Annuler
-                    </button>
+                    @if (canCompleteTask()) {
+                      <button
+                        type="button"
+                        tas-filled-button
+                        color="primary"
+                        size="small"
+                        [disabled]="completingTaskId() === task.id"
+                        (click)="completeTask(task)"
+                      >
+                        Compléter
+                      </button>
+                    }
+                    @if (canCompleteTask()) {
+                      <button
+                        type="button"
+                        tas-button
+                        size="small"
+                        color="warn"
+                        [disabled]="cancellingTaskId() === task.id"
+                        (click)="cancelTask(task)"
+                      >
+                        Annuler
+                      </button>
+                    }
                   }
                   <button
                     type="button"

@@ -12,6 +12,7 @@ import { TasIcon } from '@talisoft/ui/icon';
 import { UsersApiService, AgenciesApiService, AuthApiService, UserDto, AgencyDto } from '@sankore/crm-api';
 import { SnackbarService } from '@talisoft/ui/snackbar';
 import { TimeagoPipe } from '@talisoft/ui/timeago';
+import { PermissionsService } from '@sankore/crm/common';
 
 class EditUserFormModel {
   public fullName!: string;
@@ -109,17 +110,19 @@ class EditUserFormModel {
               </tas-form-field>
             </form>
             <div class="flex justify-end">
-              <button
-                tas-raised-button
-                color="primary"
-                type="button"
-                [disabled]="formSchema().submitting()"
-                [isLoading]="formSchema().submitting()"
-                (click)="save()"
-              >
-                <tas-icon iconName="feather:save" iconSize="sm"></tas-icon>
-                Enregistrer
-              </button>
+              @if (canUpdate()) {
+                <button
+                  tas-raised-button
+                  color="primary"
+                  type="button"
+                  [disabled]="formSchema().submitting()"
+                  [isLoading]="formSchema().submitting()"
+                  (click)="save()"
+                >
+                  <tas-icon iconName="feather:save" iconSize="sm"></tas-icon>
+                  Enregistrer
+                </button>
+              }
             </div>
           </div>
         </tas-card>
@@ -188,20 +191,22 @@ class EditUserFormModel {
                   </p>
                 </div>
               </div>
-              <button
-                tas-outlined-button
-                color="primary"
-                type="button"
-                [isLoading]="isSendingPasswordReset()"
-                [disabled]="
-                  user()!.status !== 'Active' || isSendingPasswordReset()
-                "
-                (click)="sendPasswordReset()"
-                class="shrink-0"
-              >
-                <tas-icon iconName="feather:send" iconSize="sm"></tas-icon>
-                Envoyer
-              </button>
+              @if (canResetPassword()) {
+                <button
+                  tas-outlined-button
+                  color="primary"
+                  type="button"
+                  [isLoading]="isSendingPasswordReset()"
+                  [disabled]="
+                    user()!.status !== 'Active' || isSendingPasswordReset()
+                  "
+                  (click)="sendPasswordReset()"
+                  class="shrink-0"
+                >
+                  <tas-icon iconName="feather:send" iconSize="sm"></tas-icon>
+                  Envoyer
+                </button>
+              }
             </div>
           </div>
         </tas-card>
@@ -210,6 +215,10 @@ class EditUserFormModel {
   `,
 })
 export class UserInformationsPage {
+  private readonly _permissions = inject(PermissionsService);
+  public readonly canUpdate = this._permissions.can('user:update');
+  public readonly canResetPassword = this._permissions.can('user:reset-password');
+
   private readonly _usersApiService = inject(UsersApiService);
   private readonly _agenciesApiService = inject(AgenciesApiService);
   private readonly _authApiService = inject(AuthApiService);

@@ -11,10 +11,12 @@
     </div>
     <p class="text-sm text-slate-400 mt-0.5">Définissez les zones géographiques de couverture de votre organisation.</p>
   </div>
-  <button tas-filled-button [color]="'primary'" (click)="openCreateDrawer()">
-    <tas-icon iconName="feather:plus"></tas-icon>
-    Ajouter un territoire
-  </button>
+  @if (canCreate()) {
+    <button tas-filled-button [color]="'primary'" (click)="openCreateDrawer()">
+      <tas-icon iconName="feather:plus"></tas-icon>
+      Ajouter un territoire
+    </button>
+  }
 </div>
 
 <!-- Search bar -->

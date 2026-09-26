@@ -22,6 +22,7 @@ import { AuthenticationWrapper } from '../../components/authentication-wrapper';
 import { AuthenticationService } from '@sankore/crm/common';
 import { catchError, firstValueFrom, throwError } from 'rxjs';
 import { SnackbarService } from '@talisoft/ui/snackbar';
+import { TasInputPassword } from '@talisoft/ui/input-password';
 
 @Component({
   templateUrl: 'login.html',
@@ -38,8 +39,9 @@ import { SnackbarService } from '@talisoft/ui/snackbar';
     AuthenticationWrapper,
     Anchor,
     TasError,
-    FormRoot
-],
+    FormRoot,
+    TasInputPassword,
+  ],
   encapsulation: ViewEncapsulation.None,
 })
 export class Login {
@@ -50,30 +52,41 @@ export class Login {
 
   public loginForm = signal(LoginModel.instantiate());
 
-  public loginFormSchema = form(this.loginForm, (schema) => {
-    required(schema.email, {
-      message: "L'adresse éléctronique est obligatoire",
-    });
-    email(schema.email, { message: "L'adresse éléctronique n'est pas valide" });
-    required(schema.password, { message: 'Le mot de passe est obligatoire' });
-  }, {
-    submission: {
-      action: async (field) => {
-        const result = await firstValueFrom(this._authenticationService.login(field()?.value()).pipe(
-          catchError(error => {
-            this._snackbarService.error("Erreur", "Une erreur est survenue lors de la connexion");
-            return throwError(error);
-          }),
-        ));
-        if (result) {
-          const redirectPath =
-            this._activatedRoute.snapshot.queryParamMap.get('redirectPath') ??
-            '/tasks/my-day';
-          this._router.navigate([redirectPath]).then();
-        }
-      }
-    }
-  });
+  public loginFormSchema = form(
+    this.loginForm,
+    (schema) => {
+      required(schema.email, {
+        message: "L'adresse éléctronique est obligatoire",
+      });
+      email(schema.email, {
+        message: "L'adresse éléctronique n'est pas valide",
+      });
+      required(schema.password, { message: 'Le mot de passe est obligatoire' });
+    },
+    {
+      submission: {
+        action: async (field) => {
+          const result = await firstValueFrom(
+            this._authenticationService.login(field()?.value()).pipe(
+              catchError((error) => {
+                this._snackbarService.error(
+                  'Erreur',
+                  'Une erreur est survenue lors de la connexion',
+                );
+                return throwError(error);
+              }),
+            ),
+          );
+          if (result) {
+            const redirectPath =
+              this._activatedRoute.snapshot.queryParamMap.get('redirectPath') ??
+              '/tasks/my-day';
+            this._router.navigate([redirectPath]).then();
+          }
+        },
+      },
+    },
+  );
 }
 
 

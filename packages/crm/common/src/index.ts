@@ -6,6 +6,7 @@ export * from './utils';
 export * from './services';
 
 export * from './models/environment-config';
+export * from './models/permissions';
 export * from './guards/authorized.guard';
 export * from './guards/permission.guard';
 

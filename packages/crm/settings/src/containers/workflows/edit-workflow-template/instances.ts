@@ -14,6 +14,7 @@ import { SnackbarService } from '@talisoft/ui/snackbar';
 import { ConfirmDialogService } from '@talisoft/ui/confirm-dialog';
 import { TimeagoPipe } from '@talisoft/ui/timeago';
 import { entityTypeLabel, instanceStatusMeta } from '../workflow-shared';
+import { PermissionsService } from '@sankore/crm/common';
 
 @Component({
   selector: 'workflow-instances',
@@ -32,15 +33,17 @@ import { entityTypeLabel, instanceStatusMeta } from '../workflow-shared';
               </p>
             </div>
             @if (!showStartForm()) {
-              <button
-                tas-raised-button
-                color="primary"
-                type="button"
-                (click)="openStartForm()"
-              >
-                <tas-icon iconName="feather:play" iconSize="sm"></tas-icon>
-                Démarrer
-              </button>
+              @if (canStart()) {
+                <button
+                  tas-raised-button
+                  color="primary"
+                  type="button"
+                  (click)="openStartForm()"
+                >
+                  <tas-icon iconName="feather:play" iconSize="sm"></tas-icon>
+                  Démarrer
+                </button>
+              }
             }
           </div>
 
@@ -75,16 +78,18 @@ import { entityTypeLabel, instanceStatusMeta } from '../workflow-shared';
                 >
                   Annuler
                 </button>
-                <button
-                  tas-raised-button
-                  color="primary"
-                  type="button"
-                  (click)="startInstance()"
-                  [disabled]="isStarting()"
-                  [isLoading]="isStarting()"
-                >
-                  Démarrer l'instance
-                </button>
+                @if (canStart()) {
+                  <button
+                    tas-raised-button
+                    color="primary"
+                    type="button"
+                    (click)="startInstance()"
+                    [disabled]="isStarting()"
+                    [isLoading]="isStarting()"
+                  >
+                    Démarrer l'instance
+                  </button>
+                }
               </div>
             </div>
           }
@@ -129,16 +134,18 @@ import { entityTypeLabel, instanceStatusMeta } from '../workflow-shared';
                       {{ instanceStatusMeta(instance.status).label }}
                     </tas-tag>
                     @if (instance.status === 'InProgress') {
-                      <button
-                        tas-button
-                        iconButton
-                        type="button"
-                        title="Annuler l'instance"
-                        [disabled]="cancellingInstanceId() === instance.id"
-                        (click)="cancelInstance(instance); $event.stopPropagation()"
-                      >
-                        <tas-icon iconName="feather:x-circle" iconSize="sm" class="text-functional-error"></tas-icon>
-                      </button>
+                      @if (canCancel()) {
+                        <button
+                          tas-button
+                          iconButton
+                          type="button"
+                          title="Annuler l'instance"
+                          [disabled]="cancellingInstanceId() === instance.id"
+                          (click)="cancelInstance(instance); $event.stopPropagation()"
+                        >
+                          <tas-icon iconName="feather:x-circle" iconSize="sm" class="text-functional-error"></tas-icon>
+                        </button>
+                      }
                     }
                     <tas-icon iconName="feather:chevron-right" class="text-slate-300" style="font-size:14px"></tas-icon>
                   </div>
@@ -152,6 +159,10 @@ import { entityTypeLabel, instanceStatusMeta } from '../workflow-shared';
   `,
 })
 export class WorkflowInstancesPage {
+  private readonly _permissions = inject(PermissionsService);
+  public readonly canStart = this._permissions.can('workflow:start');
+  public readonly canCancel = this._permissions.can('workflow:cancel');
+
   private readonly _workflowInstancesApiService = inject(WorkflowInstancesApiService);
   private readonly _workflowTemplatesApiService = inject(WorkflowTemplatesApiService);
   private readonly _snackbarService = inject(SnackbarService);

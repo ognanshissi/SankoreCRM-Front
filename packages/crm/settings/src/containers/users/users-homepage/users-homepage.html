@@ -4,10 +4,12 @@
     <h1 class="text-lg font-semibold text-slate-800">Utilisateurs</h1>
     <p class="text-sm text-slate-400 mt-0.5">Gérez les accès et profils des membres de votre organisation.</p>
   </div>
-  <button tas-filled-button [color]="'primary'" (click)="openCreateDrawer()">
-    <tas-icon iconName="feather:user-plus"></tas-icon>
-    Ajouter un utilisateur
-  </button>
+  @if (canCreate()) {
+    <button tas-filled-button [color]="'primary'" (click)="openCreateDrawer()">
+      <tas-icon iconName="feather:user-plus"></tas-icon>
+      Ajouter un utilisateur
+    </button>
+  }
 </div>
 
 <!-- KPI stats row -->

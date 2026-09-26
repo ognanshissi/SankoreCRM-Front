@@ -14,10 +14,12 @@
               Configurez comment les leads sont automatiquement assignés aux agents.
             </p>
           </div>
-          <button tas-raised-button color="primary" type="button" (click)="navigateToCreate()">
-            <tas-icon iconName="feather:plus" style="font-size:14px"></tas-icon>
-            Nouvelle règle
-          </button>
+          @if (canManage()) {
+            <button tas-raised-button color="primary" type="button" (click)="navigateToCreate()">
+              <tas-icon iconName="feather:plus" style="font-size:14px"></tas-icon>
+              Nouvelle règle
+            </button>
+          }
         </div>
 
         @if (rules().length === 0) {
@@ -44,7 +46,7 @@
                   ></tas-switch>
 
                   <!-- Info -->
-                  <button class="flex-1 min-w-0 cursor-pointer" (click)="startEdit(rule)">
+                  <button class="flex-1 min-w-0" [class.cursor-pointer]="canManage()" [disabled]="!canManage()" (click)="startEdit(rule)">
                     <div class="flex items-center gap-2">
                       <p class="text-sm font-semibold text-slate-800">{{ rule.name }}</p>
                       <tas-tag [severity]="strategySeverity(rule.strategy)">
@@ -68,22 +70,26 @@
                   </button>
 
                   <!-- Actions -->
-                  <button
-                    tas-outlined-button
-                    type="button"
-                    (click)="startEdit(rule)"
-                    class="text-xs shrink-0"
-                  >
-                    <tas-icon iconName="feather:edit-2" style="font-size:12px"></tas-icon>
-                    Modifier
-                  </button>
-                  <button
-                    type="button"
-                    class="text-slate-300 hover:text-red-500 transition-colors shrink-0"
-                    (click)="deleteRule(rule)"
-                  >
-                    <tas-icon iconName="feather:trash-2" style="font-size:16px"></tas-icon>
-                  </button>
+                  @if (canManage()) {
+                    <button
+                      tas-outlined-button
+                      type="button"
+                      (click)="startEdit(rule)"
+                      class="text-xs shrink-0"
+                    >
+                      <tas-icon iconName="feather:edit-2" style="font-size:12px"></tas-icon>
+                      Modifier
+                    </button>
+                  }
+                  @if (canManage()) {
+                    <button
+                      type="button"
+                      class="text-slate-300 hover:text-red-500 transition-colors shrink-0"
+                      (click)="deleteRule(rule)"
+                    >
+                      <tas-icon iconName="feather:trash-2" style="font-size:16px"></tas-icon>
+                    </button>
+                  }
                 </div>
               </tas-card>
             }

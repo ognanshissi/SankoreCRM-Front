@@ -18,10 +18,12 @@
       <tas-icon iconName="feather:activity" iconSize="sm"></tas-icon>
       Analytiques
     </a>
-    <button tas-filled-button color="primary" (click)="openCreateDrawer()">
-      <tas-icon iconName="feather:plus"></tas-icon>
-      Nouveau modèle
-    </button>
+    @if (canCreate()) {
+      <button tas-filled-button color="primary" (click)="openCreateDrawer()">
+        <tas-icon iconName="feather:plus"></tas-icon>
+        Nouveau modèle
+      </button>
+    }
   </div>
 </div>
 
@@ -36,10 +38,12 @@
       <p class="text-sm text-slate-400 mt-1 max-w-sm">
         Créez un modèle pour déclencher une chaîne de validations à chaque fois qu'un lead, un contact ou une opportunité franchit une étape clé.
       </p>
-      <button tas-filled-button color="primary" class="mt-5" (click)="openCreateDrawer()">
-        <tas-icon iconName="feather:plus"></tas-icon>
-        Créer mon premier modèle
-      </button>
+      @if (canCreate()) {
+        <button tas-filled-button color="primary" class="mt-5" (click)="openCreateDrawer()">
+          <tas-icon iconName="feather:plus"></tas-icon>
+          Créer mon premier modèle
+        </button>
+      }
     </div>
   </tas-card>
 } @else {

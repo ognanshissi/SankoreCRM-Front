@@ -6,18 +6,16 @@
   <div class="col-span-1 p-2">
     <div class="space-y-2 flex flex-col">
       @for (item of menus(); track item.id) {
-      <button
-        class="p-2 hover:shadow border border-gray-300 hover:cursor-pointer hover:bg-primary/50 rounded-lg bg-white text-left min-h-[80px]"
-        [ngClass]="{
-          'menu-group__active shadow border-gray-100':
-            item.id === selectedMenu().id
-        }"
-        *ngIf="item.type === 'group'"
-        (click)="toggleSelectedMenuGroup(item)"
-      >
-        <p class="font-semibold">{{ item.title }}</p>
-        <tas-text>{{ item.description }}</tas-text>
-      </button>
+        @if (item.type === 'group') {
+          <button
+            class="p-2 hover:shadow border border-gray-300 hover:cursor-pointer hover:bg-primary/50 rounded-lg bg-white text-left min-h-[80px]"
+            [ngClass]="{'menu-group__active shadow border-gray-100': item.id === selectedMenu().id }"
+            (click)="toggleSelectedMenuGroup(item)"
+          >
+            <p class="font-semibold">{{ item.title }}</p>
+            <tas-text>{{ item.description }}</tas-text>
+          </button>
+        }
       }
     </div>
   </div>

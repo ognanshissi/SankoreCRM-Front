@@ -22,6 +22,7 @@ import { SnackbarService } from '@talisoft/ui/snackbar';
 import { ConfirmDialogService } from '@talisoft/ui/confirm-dialog';
 import Users from '../../roles/edit-role/users';
 import { TimeagoPipe } from '@talisoft/ui/timeago';
+import { PermissionsService } from '@sankore/crm/common';
 
 @Component({
   selector: 'user-roles',
@@ -73,18 +74,20 @@ import { TimeagoPipe } from '@talisoft/ui/timeago';
                   ></tas-select>
                 </tas-form-field>
               </div>
-              <button
-                tas-raised-button
-                color="primary"
-                type="button"
-                [disabled]="!selectedRoleId() || isAssigning()"
-                [isLoading]="isAssigning()"
-                (click)="assign()"
-                class="shrink-0"
-              >
-                <tas-icon iconName="feather:plus" iconSize="sm"></tas-icon>
-                Assigner
-              </button>
+              @if (canAssignRole()) {
+                <button
+                  tas-raised-button
+                  color="primary"
+                  type="button"
+                  [disabled]="!selectedRoleId() || isAssigning()"
+                  [isLoading]="isAssigning()"
+                  (click)="assign()"
+                  class="shrink-0"
+                >
+                  <tas-icon iconName="feather:plus" iconSize="sm"></tas-icon>
+                  Assigner
+                </button>
+              }
             </div>
           </div>
         </tas-card>
@@ -146,17 +149,19 @@ import { TimeagoPipe } from '@talisoft/ui/timeago';
                     <tas-tag [severity]="role.isSystem ? 'neutral' : 'info'">
                       {{ role.isSystem ? 'Système' : 'Personnalisé' }}
                     </tas-tag>
-                    <button
-                      tas-outlined-button
-                      color="warn"
-                      type="button"
-                      [disabled]="revokingRoleId() === role.id"
-                      [isLoading]="revokingRoleId() === role.id"
-                      (click)="revoke(role)"
-                    >
-                      <tas-icon iconName="feather:x" iconSize="sm"></tas-icon>
-                      Révoquer
-                    </button>
+                    @if (canRevokeRole()) {
+                      <button
+                        tas-outlined-button
+                        color="warn"
+                        type="button"
+                        [disabled]="revokingRoleId() === role.id"
+                        [isLoading]="revokingRoleId() === role.id"
+                        (click)="revoke(role)"
+                      >
+                        <tas-icon iconName="feather:x" iconSize="sm"></tas-icon>
+                        Révoquer
+                      </button>
+                    }
                   </div>
                 </div>
               }
@@ -230,17 +235,19 @@ import { TimeagoPipe } from '@talisoft/ui/timeago';
               </tas-form-field>
             </div>
             <div class="flex justify-end">
-              <button
-                tas-raised-button
-                color="primary"
-                type="button"
-                [disabled]="!newPermissionCode() || isAssigningPermission()"
-                [isLoading]="isAssigningPermission()"
-                (click)="assignScopedPermission()"
-              >
-                <tas-icon iconName="feather:plus" iconSize="sm"></tas-icon>
-                Attribuer
-              </button>
+              @if (canAssignPermission()) {
+                <button
+                  tas-raised-button
+                  color="primary"
+                  type="button"
+                  [disabled]="!newPermissionCode() || isAssigningPermission()"
+                  [isLoading]="isAssigningPermission()"
+                  (click)="assignScopedPermission()"
+                >
+                  <tas-icon iconName="feather:plus" iconSize="sm"></tas-icon>
+                  Attribuer
+                </button>
+              }
             </div>
           </div>
         </tas-card>
@@ -278,17 +285,19 @@ import { TimeagoPipe } from '@talisoft/ui/timeago';
                       }
                     </div>
                   </div>
-                  <button
-                    tas-outlined-button
-                    color="warn"
-                    type="button"
-                    [disabled]="revokingPermissionId() === perm.id"
-                    [isLoading]="revokingPermissionId() === perm.id"
-                    (click)="revokeScopedPermission(perm)"
-                  >
-                    <tas-icon iconName="feather:x" iconSize="sm"></tas-icon>
-                    Révoquer
-                  </button>
+                  @if (canRevokePermission()) {
+                    <button
+                      tas-outlined-button
+                      color="warn"
+                      type="button"
+                      [disabled]="revokingPermissionId() === perm.id"
+                      [isLoading]="revokingPermissionId() === perm.id"
+                      (click)="revokeScopedPermission(perm)"
+                    >
+                      <tas-icon iconName="feather:x" iconSize="sm"></tas-icon>
+                      Révoquer
+                    </button>
+                  }
                 </div>
               }
             </div>
@@ -299,6 +308,12 @@ import { TimeagoPipe } from '@talisoft/ui/timeago';
   `,
 })
 export class UserRolesPage {
+  private readonly _permissions = inject(PermissionsService);
+  public readonly canAssignRole = this._permissions.can('user:assign-role');
+  public readonly canRevokeRole = this._permissions.can('user:revoke-role');
+  public readonly canAssignPermission = this._permissions.can('user:assign-permission');
+  public readonly canRevokePermission = this._permissions.can('user:revoke-permission');
+
   private readonly _usersApiService = inject(UsersApiService);
   private readonly _rolesApiService = inject(RolesApiService);
   private readonly _permissionsApiService = inject(PermissionsApiService);

@@ -16,7 +16,7 @@ import {
   SLAConfigsApiService, SlaConfigDto,
   AgenciesApiService,
 } from '@sankore/crm-api';
-import { BreadcrumbService, HasPermissionDirective } from '@sankore/crm/common';
+import { BreadcrumbService, HasPermissionDirective, PermissionsService } from '@sankore/crm/common';
 
 type ViewState = 'list' | 'form';
 
@@ -68,9 +68,11 @@ function sampleDeadline(duration: string, holidays: string[]): string {
               <h1 class="text-lg font-semibold text-slate-800">SLA & Calendrier ouvré</h1>
               <p class="text-sm text-slate-500 mt-0.5">Délais SLA par agence et jours fériés.</p>
             </div>
-            <button tas-raised-button color="primary" type="button" (click)="navigateToCreate()">
-              <tas-icon iconName="feather:plus" style="font-size:14px"></tas-icon> Nouvelle config SLA
-            </button>
+            @if (canManage()) {
+              <button tas-raised-button color="primary" type="button" (click)="navigateToCreate()">
+                <tas-icon iconName="feather:plus" style="font-size:14px"></tas-icon> Nouvelle config SLA
+              </button>
+            }
           </div>
 
           @if (configs().length === 0) {
@@ -87,7 +89,7 @@ function sampleDeadline(duration: string, holidays: string[]): string {
                   <div class="p-4 flex items-center gap-4">
                     <tas-switch [checked]="cfg.isActive ?? false" [isLoading]="togglingId() === cfg.id"
                       (toggle)="toggleActive(cfg, $event)"></tas-switch>
-                    <div class="flex-1 min-w-0 cursor-pointer" (click)="startEdit(cfg)">
+                    <div class="flex-1 min-w-0" [class.cursor-pointer]="canManage()" (click)="canManage() && startEdit(cfg)">
                       <div class="flex items-center gap-2">
                         <p class="text-sm font-semibold text-slate-800">{{ cfg.name }}</p>
                         @if (cfg.isActive) { <tas-tag severity="success">Active</tas-tag> }
@@ -100,9 +102,11 @@ function sampleDeadline(duration: string, holidays: string[]): string {
                         <span>Relance : {{ formatDeadline(cfg.followUpDeadline) }}</span>
                       </div>
                     </div>
-                    <button tas-outlined-button type="button" class="text-xs shrink-0" (click)="startEdit(cfg)">
-                      <tas-icon iconName="feather:edit-2" style="font-size:12px"></tas-icon> Modifier
-                    </button>
+                    @if (canManage()) {
+                      <button tas-outlined-button type="button" class="text-xs shrink-0" (click)="startEdit(cfg)">
+                        <tas-icon iconName="feather:edit-2" style="font-size:12px"></tas-icon> Modifier
+                      </button>
+                    }
                   </div>
                 </tas-card>
               }
@@ -118,10 +122,12 @@ function sampleDeadline(duration: string, holidays: string[]): string {
               <tas-icon iconName="feather:arrow-left" style="font-size:14px"></tas-icon>
             </button>
             <h1 class="text-lg font-semibold text-slate-800 flex-1">Modifier la config SLA</h1>
-            <button tas-button color="primary" type="button" [disabled]="isSaving() || !editName()" (click)="save()">
-              @if (isSaving()) { <tas-spinner size="3" class="text-white"></tas-spinner> }
-              Enregistrer
-            </button>
+            @if (canManage()) {
+              <button tas-button color="primary" type="button" [disabled]="isSaving() || !editName()" (click)="save()">
+                @if (isSaving()) { <tas-spinner size="3" class="text-white"></tas-spinner> }
+                Enregistrer
+              </button>
+            }
           </div>
 
           <tas-card class="mb-4 block">
@@ -222,6 +228,9 @@ function sampleDeadline(duration: string, holidays: string[]): string {
   `,
 })
 export class SlaConfigsPage implements OnInit {
+  private readonly _permissions = inject(PermissionsService);
+  public readonly canManage = this._permissions.can('lead:sla-config:manage');
+
   private readonly _api = inject(SLAConfigsApiService);
   private readonly _agenciesApi = inject(AgenciesApiService);
   private readonly _snackbar = inject(SnackbarService);

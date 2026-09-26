@@ -17,15 +17,14 @@
         }
       </tas-form-field>
 
-      <tas-form-field>
-        <tas-label>Mot de passe</tas-label>
-        <input type="password" tasInput placeholder="Saisissez votre mot de passe"  [formField]="loginFormSchema.password" />
-        @if (loginFormSchema.password().touched() && loginFormSchema.password().invalid()) {
-          @for(error of loginFormSchema.password().errors(); track $index) {
-            <tas-error>{{ error.message }}</tas-error>
-          }
+      <tas-input-password [formField]="loginFormSchema.password" placeholder="Saisissez votre mot de passe">
+        Mot de passe
+      </tas-input-password>
+      @if (loginFormSchema.password().touched() && loginFormSchema.password().invalid()) {
+        @for(error of loginFormSchema.password().errors(); track $index) {
+          <tas-error>{{ error.message }}</tas-error>
         }
-      </tas-form-field>
+      }
 
       <div class="mt-[2rem]" >
         <button tas-raised-button type="submit" size="large" color="primary" class="w-full" [disabled]="loginFormSchema().pending()" [isLoading]="loginFormSchema().submitting()">

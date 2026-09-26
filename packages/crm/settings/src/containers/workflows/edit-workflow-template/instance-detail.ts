@@ -23,6 +23,7 @@ import {
   WorkflowTemplatesApiService,
 } from '@sankore/crm-api';
 import { entityTypeLabel, instanceStatusMeta, stepStatusMeta } from '../workflow-shared';
+import { PermissionsService } from '@sankore/crm/common';
 
 function taskStatusMeta(status: string | undefined): {
   label: string;
@@ -53,6 +54,12 @@ function taskPriorityLabel(priority: string | undefined): string {
   imports: [NgClass, TasCard, Button, TasTag, TasSpinner, TasIcon, TimeagoPipe],
 })
 export class WorkflowInstanceDetailPage implements OnInit {
+  private readonly _permissions = inject(PermissionsService);
+  public readonly canApprove = this._permissions.can('workflow:approve');
+  public readonly canAssign = this._permissions.can('workflow:step:assign');
+  public readonly canCancel = this._permissions.can('workflow:cancel');
+  public readonly canCompleteTask = this._permissions.can('workflow:task:complete');
+
   private readonly _api = inject(WorkflowInstancesApiService);
   private readonly _templateApi = inject(WorkflowTemplatesApiService);
   private readonly _tasksApi = inject(WorkflowTasksApiService);

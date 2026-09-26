@@ -14,7 +14,7 @@ import {
   ProductsApiService,
   ProductDto,
 } from '@sankore/crm-api';
-import { BreadcrumbService, HasPermissionDirective } from '@sankore/crm/common';
+import { BreadcrumbService, HasPermissionDirective, PermissionsService } from '@sankore/crm/common';
 
 interface PipelineStage {
   key: string;
@@ -75,26 +75,30 @@ const DRAFT_STORAGE_KEY = 'pipeline_stages_draft';
             </div>
             <div class="flex items-center gap-2">
               @if (isDirty()) {
+                @if (canManage()) {
+                  <button
+                    tas-outlined-button
+                    type="button"
+                    (click)="resetChanges()"
+                  >
+                    Annuler
+                  </button>
+                }
+              }
+              @if (canManage()) {
                 <button
-                  tas-outlined-button
+                  tas-raised-button
+                  color="primary"
                   type="button"
-                  (click)="resetChanges()"
+                  [disabled]="!isDirty() || isSaving()"
+                  (click)="saveAll()"
                 >
-                  Annuler
+                  @if (isSaving()) {
+                    <tas-spinner size="3" class="text-white"></tas-spinner>
+                  }
+                  Enregistrer
                 </button>
               }
-              <button
-                tas-raised-button
-                color="primary"
-                type="button"
-                [disabled]="!isDirty() || isSaving()"
-                (click)="saveAll()"
-              >
-                @if (isSaving()) {
-                  <tas-spinner size="3" class="text-white"></tas-spinner>
-                }
-                Enregistrer
-              </button>
             </div>
           </div>
 
@@ -282,6 +286,9 @@ const DRAFT_STORAGE_KEY = 'pipeline_stages_draft';
   `,
 })
 export class PipelineStagesConfig implements OnInit {
+  private readonly _permissions = inject(PermissionsService);
+  public readonly canManage = this._permissions.can('lead:pipeline-stage:manage');
+
   private readonly _leadsApiService = inject(LeadsApiService);
   private readonly _productsApiService = inject(ProductsApiService);
   private readonly _snackbar = inject(SnackbarService);

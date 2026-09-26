@@ -12,6 +12,7 @@ import {
   LeadDto,
   DuplicateMatchResult,
 } from '@sankore/crm-api';
+import { PermissionsService } from '@sankore/crm/common';
 
 function statusMeta(status: string | null | undefined): { label: string; severity: Severity } {
   switch (status) {
@@ -146,23 +147,27 @@ function confidenceColor(score: number | undefined): string {
 
                   <!-- Actions -->
                   <div class="flex flex-col gap-1.5 flex-shrink-0">
-                    <button
-                      tas-outlined-button
-                      color="primary"
-                      (click)="merge(dup)"
-                      [disabled]="actionInProgress()"
-                    >
-                      <tas-icon iconName="feather:git-merge"></tas-icon>
-                      Fusionner
-                    </button>
-                    <button
-                      tas-outlined-button
-                      (click)="dismiss(dup)"
-                      [disabled]="actionInProgress()"
-                    >
-                      <tas-icon iconName="feather:x"></tas-icon>
-                      Ignorer
-                    </button>
+                    @if (canMerge()) {
+                      <button
+                        tas-outlined-button
+                        color="primary"
+                        (click)="merge(dup)"
+                        [disabled]="actionInProgress()"
+                      >
+                        <tas-icon iconName="feather:git-merge"></tas-icon>
+                        Fusionner
+                      </button>
+                    }
+                    @if (canDismissDuplicate()) {
+                      <button
+                        tas-outlined-button
+                        (click)="dismiss(dup)"
+                        [disabled]="actionInProgress()"
+                      >
+                        <tas-icon iconName="feather:x"></tas-icon>
+                        Ignorer
+                      </button>
+                    }
                   </div>
                 </div>
               </div>
@@ -199,6 +204,10 @@ function confidenceColor(score: number | undefined): string {
   `,
 })
 export class LeadDoublonsPage {
+  private readonly _permissions = inject(PermissionsService);
+  public readonly canMerge = this._permissions.can('lead:merge');
+  public readonly canDismissDuplicate = this._permissions.can('lead:duplicate:dismiss');
+
   private readonly _leadsApi = inject(LeadsApiService);
   private readonly _snackbar = inject(SnackbarService);
 

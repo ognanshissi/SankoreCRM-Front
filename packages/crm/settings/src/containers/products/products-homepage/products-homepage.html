@@ -11,10 +11,12 @@
     </div>
     <p class="text-sm text-slate-400 mt-0.5">Gérez les produits disponibles comme spécialités pour vos utilisateurs et territoires.</p>
   </div>
-  <button tas-filled-button [color]="'primary'" (click)="openCreateDrawer()">
-    <tas-icon iconName="feather:plus"></tas-icon>
-    Nouveau produit
-  </button>
+  @if (canCreate()) {
+    <button tas-filled-button [color]="'primary'" (click)="openCreateDrawer()">
+      <tas-icon iconName="feather:plus"></tas-icon>
+      Nouveau produit
+    </button>
+  }
 </div>
 
 <!-- Table -->
@@ -93,17 +95,19 @@
             >
               <tas-icon iconName="feather:edit-2" iconSize="sm"></tas-icon>
             </button>
-            <button
-              tas-button
-              iconButton
-              color="warn"
-              type="button"
-              [disabled]="deletingId() === item.id"
-              (click)="confirmDelete(item)"
-              title="Supprimer"
-            >
-              <tas-icon iconName="feather:trash-2" iconSize="sm"></tas-icon>
-            </button>
+            @if (canDelete()) {
+              <button
+                tas-button
+                iconButton
+                color="warn"
+                type="button"
+                [disabled]="deletingId() === item.id"
+                (click)="confirmDelete(item)"
+                title="Supprimer"
+              >
+                <tas-icon iconName="feather:trash-2" iconSize="sm"></tas-icon>
+              </button>
+            }
           </div>
         </td>
       </tr>

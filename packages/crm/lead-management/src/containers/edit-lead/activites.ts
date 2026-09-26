@@ -9,6 +9,7 @@ import { Button } from '@talisoft/ui/button';
 import { SideDrawerService } from '@talisoft/ui/side-drawer';
 import { LeadsApiService, ActivityDto, ActivityDtoTypeEnum } from '@sankore/crm-api';
 import { LogActivityDrawer } from './log-activity-drawer';
+import { PermissionsService } from '@sankore/crm/common';
 
 function activityTypeMeta(type: ActivityDtoTypeEnum | undefined): { icon: string; label: string; severity: Severity } {
   switch (type) {
@@ -46,16 +47,18 @@ function activityTypeMeta(type: ActivityDtoTypeEnum | undefined): { icon: string
                   {{ activities().length }}
                 </span>
               }
-              <button
-                tas-raised-button
-                color="primary"
-                type="button"
-                class="text-xs"
-                (click)="openLogActivityDrawer()"
-              >
-                <tas-icon iconName="feather:plus" style="font-size:12px"></tas-icon>
-                Enregistrer
-              </button>
+              @if (canLogActivity()) {
+                <button
+                  tas-raised-button
+                  color="primary"
+                  type="button"
+                  class="text-xs"
+                  (click)="openLogActivityDrawer()"
+                >
+                  <tas-icon iconName="feather:plus" style="font-size:12px"></tas-icon>
+                  Enregistrer
+                </button>
+              }
             </div>
           </div>
 
@@ -149,6 +152,9 @@ function activityTypeMeta(type: ActivityDtoTypeEnum | undefined): { icon: string
   `,
 })
 export class LeadActivitesPage {
+  private readonly _permissions = inject(PermissionsService);
+  public readonly canLogActivity = this._permissions.can('lead:activity:log');
+
   private readonly _leadsApiService = inject(LeadsApiService);
   private readonly _sideDrawer = inject(SideDrawerService);
 

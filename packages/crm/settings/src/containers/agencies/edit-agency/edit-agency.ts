@@ -24,7 +24,7 @@ import { AgenciesApiService, AgencyDto, UpdateAgencyRequestAgencyTypeEnum } from
 import { SnackbarService } from '@talisoft/ui/snackbar';
 import { ConfirmDialogService } from '@talisoft/ui/confirm-dialog';
 import { DeleteAgencyDialog } from './delete-agency-dialog';
-import { BreadcrumbService } from '@sankore/crm/common';
+import { BreadcrumbService, PermissionsService } from '@sankore/crm/common';
 
 class EditAgencyFormModel {
   public name!: string;
@@ -88,6 +88,11 @@ const AGENCY_TYPE_OPTIONS = [
   ],
 })
 export class EditAgencyPage {
+  private readonly _permissions = inject(PermissionsService);
+  public readonly canUpdate = this._permissions.can('agency:update');
+  public readonly canMove = this._permissions.can('agency:move');
+  public readonly canDelete = this._permissions.can('agency:delete');
+
   private readonly _agenciesApiService = inject(AgenciesApiService);
   private readonly _snackbarService = inject(SnackbarService);
   private readonly _confirmDialogService = inject(ConfirmDialogService);

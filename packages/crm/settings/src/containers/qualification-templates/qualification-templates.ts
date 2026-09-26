@@ -10,7 +10,7 @@ import { SnackbarService } from '@talisoft/ui/snackbar';
 import { ConfirmDialogService } from '@talisoft/ui/confirm-dialog';
 import { SideDrawerService } from '@talisoft/ui/side-drawer';
 import { LeadsApiService, QualificationTemplateDto } from '@sankore/crm-api';
-import { BreadcrumbService } from '@sankore/crm/common';
+import { BreadcrumbService, PermissionsService } from '@sankore/crm/common';
 import { CreateQualificationTemplateComponent } from './create-qualification-template/create-qualification-template';
 import { statusSeverity, statusLabel, productLabel } from './qualification-template.models';
 
@@ -27,10 +27,12 @@ import { statusSeverity, statusLabel, productLabel } from './qualification-templ
             <h1 class="text-lg font-semibold text-slate-800">Formulaires de qualification</h1>
             <p class="text-sm text-slate-500 mt-0.5">Configurez les formulaires de qualification par produit.</p>
           </div>
-          <button tas-raised-button color="primary" type="button" (click)="navigateToCreate()">
-            <tas-icon iconName="feather:plus" style="font-size:14px"></tas-icon>
-            Nouveau formulaire
-          </button>
+          @if (canManage()) {
+            <button tas-raised-button color="primary" type="button" (click)="navigateToCreate()">
+              <tas-icon iconName="feather:plus" style="font-size:14px"></tas-icon>
+              Nouveau formulaire
+            </button>
+          }
         </div>
 
         @if (templates().length === 0) {
@@ -59,14 +61,18 @@ import { statusSeverity, statusLabel, productLabel } from './qualification-templ
                     </div>
                   </div>
                   @if (tpl.status === 'Draft') {
-                    <button tas-outlined-button type="button" class="text-xs shrink-0" (click)="publish(tpl)">
-                      <tas-icon iconName="feather:send" style="font-size:12px"></tas-icon> Publier
-                    </button>
+                    @if (canManage()) {
+                      <button tas-outlined-button type="button" class="text-xs shrink-0" (click)="publish(tpl)">
+                        <tas-icon iconName="feather:send" style="font-size:12px"></tas-icon> Publier
+                      </button>
+                    }
                   }
                   @if (tpl.status === 'Published') {
-                    <button tas-outlined-button type="button" class="text-xs shrink-0" (click)="archive(tpl)">
-                      <tas-icon iconName="feather:archive" style="font-size:12px"></tas-icon> Archiver
-                    </button>
+                    @if (canManage()) {
+                      <button tas-outlined-button type="button" class="text-xs shrink-0" (click)="archive(tpl)">
+                        <tas-icon iconName="feather:archive" style="font-size:12px"></tas-icon> Archiver
+                      </button>
+                    }
                   }
                   <button tas-outlined-button type="button" class="text-xs shrink-0" (click)="navigateToEdit(tpl)">
                     <tas-icon iconName="feather:edit-2" style="font-size:12px"></tas-icon>
@@ -82,6 +88,9 @@ import { statusSeverity, statusLabel, productLabel } from './qualification-templ
   `,
 })
 export class QualificationTemplatesList implements OnInit {
+  private readonly _permissions = inject(PermissionsService);
+  public readonly canManage = this._permissions.can('lead:qualification-template:manage');
+
   private readonly _leadsApi = inject(LeadsApiService);
   private readonly _snackbar = inject(SnackbarService);
   private readonly _confirmDialog = inject(ConfirmDialogService);

@@ -134,17 +134,19 @@
 
     <!-- Save -->
     <div class="flex justify-end">
-      <button
-        tas-raised-button
-        color="primary"
-        type="button"
-        [disabled]="isSaving()"
-        [isLoading]="isSaving()"
-        (click)="handleSave()"
-      >
-        <tas-icon iconName="feather:save" iconSize="sm"></tas-icon>
-        Enregistrer
-      </button>
+      @if (canUpdate()) {
+        <button
+          tas-raised-button
+          color="primary"
+          type="button"
+          [disabled]="isSaving()"
+          [isLoading]="isSaving()"
+          (click)="handleSave()"
+        >
+          <tas-icon iconName="feather:save" iconSize="sm"></tas-icon>
+          Enregistrer
+        </button>
+      }
     </div>
 
   </form>

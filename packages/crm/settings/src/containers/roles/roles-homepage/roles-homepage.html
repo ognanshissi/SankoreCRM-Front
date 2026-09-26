@@ -11,10 +11,12 @@
     </div>
     <p class="text-sm text-slate-400 mt-0.5">Gérez les rôles et leurs permissions dans votre organisation.</p>
   </div>
-  <button tas-filled-button [color]="'primary'" (click)="openCreateDrawer()">
-    <tas-icon iconName="feather:plus"></tas-icon>
-    Nouveau rôle
-  </button>
+  @if (canCreate()) {
+    <button tas-filled-button [color]="'primary'" (click)="openCreateDrawer()">
+      <tas-icon iconName="feather:plus"></tas-icon>
+      Nouveau rôle
+    </button>
+  }
 </div>
 
 <!-- Table -->
@@ -89,7 +91,7 @@
             >
               <tas-icon iconName="feather:eye" iconSize="sm"></tas-icon>
             </button>
-            @if (!item.isSystem) {
+            @if (!item.isSystem && canDelete()) {
               <button
                 tas-button
                 iconButton

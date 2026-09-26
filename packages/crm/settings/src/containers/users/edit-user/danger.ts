@@ -9,6 +9,7 @@ import { ConfirmDialogService } from '@talisoft/ui/confirm-dialog';
 import { SideDrawerService } from '@talisoft/ui/side-drawer';
 import { ResetPasswordDialog } from './reset-password-dialog';
 import { TasCard } from '@talisoft/ui/card';
+import { PermissionsService } from '@sankore/crm/common';
 
 @Component({
   selector: 'user-danger',
@@ -44,14 +45,16 @@ import { TasCard } from '@talisoft/ui/card';
                   Le changement prend effet immédiatement.
                 </p>
               </div>
-              <button
-                tas-outlined-button
-                type="button"
-                (click)="openChangePasswordDialog()"
-                class="shrink-0 mt-0.5"
-              >
-                Modifier
-              </button>
+              @if (canResetPassword()) {
+                <button
+                  tas-outlined-button
+                  type="button"
+                  (click)="openChangePasswordDialog()"
+                  class="shrink-0 mt-0.5"
+                >
+                  Modifier
+                </button>
+              }
             </div>
 
             <!-- Envoyer lien de réinitialisation -->
@@ -90,18 +93,20 @@ import { TasCard } from '@talisoft/ui/card';
                   lien.
                 </p>
               </div>
-              <button
-                tas-outlined-button
-                type="button"
-                [disabled]="
-                  (status() !== '1' && status() !== '0') || isSendingReset()
-                "
-                [isLoading]="isSendingReset()"
-                (click)="confirmResetPassword()"
-                class="shrink-0 mt-0.5"
-              >
-                Envoyer
-              </button>
+              @if (canResetPassword()) {
+                <button
+                  tas-outlined-button
+                  type="button"
+                  [disabled]="
+                    (status() !== '1' && status() !== '0') || isSendingReset()
+                  "
+                  [isLoading]="isSendingReset()"
+                  (click)="confirmResetPassword()"
+                  class="shrink-0 mt-0.5"
+                >
+                  Envoyer
+                </button>
+              }
             </div>
 
             <!-- Réactiver -->
@@ -136,17 +141,19 @@ import { TasCard } from '@talisoft/ui/card';
                   les comptes désactivés.
                 </p>
               </div>
-              <button
-                tas-outlined-button
-                color="primary"
-                type="button"
-                [disabled]="status() !== '2' || isReactivating()"
-                [isLoading]="isReactivating()"
-                (click)="confirmReactivate()"
-                class="shrink-0 mt-0.5"
-              >
-                Réactiver
-              </button>
+              @if (canReactivate()) {
+                <button
+                  tas-outlined-button
+                  color="primary"
+                  type="button"
+                  [disabled]="status() !== '2' || isReactivating()"
+                  [isLoading]="isReactivating()"
+                  (click)="confirmReactivate()"
+                  class="shrink-0 mt-0.5"
+                >
+                  Réactiver
+                </button>
+              }
             </div>
           </div>
 
@@ -194,17 +201,19 @@ import { TasCard } from '@talisoft/ui/card';
                 automatiquement.
               </p>
             </div>
-            <button
-              tas-outlined-button
-              color="warn"
-              type="button"
-              [disabled]="status() !== '1' || isDeactivating()"
-              [isLoading]="isDeactivating()"
-              (click)="confirmDeactivate()"
-              class="shrink-0 mt-0.5"
-            >
-              Désactiver
-            </button>
+            @if (canDeactivate()) {
+              <button
+                tas-outlined-button
+                color="warn"
+                type="button"
+                [disabled]="status() !== '1' || isDeactivating()"
+                [isLoading]="isDeactivating()"
+                (click)="confirmDeactivate()"
+                class="shrink-0 mt-0.5"
+              >
+                Désactiver
+              </button>
+            }
           </div>
         </div>
       }
@@ -212,6 +221,11 @@ import { TasCard } from '@talisoft/ui/card';
   `,
 })
 export class UserDangerPage {
+  private readonly _permissions = inject(PermissionsService);
+  public readonly canResetPassword = this._permissions.can('user:reset-password');
+  public readonly canDeactivate = this._permissions.can('user:deactivate');
+  public readonly canReactivate = this._permissions.can('user:reactivate');
+
   private readonly _usersApiService = inject(UsersApiService);
   private readonly _authApiService = inject(AuthApiService);
   private readonly _snackbarService = inject(SnackbarService);

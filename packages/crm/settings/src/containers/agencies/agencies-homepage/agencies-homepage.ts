@@ -9,7 +9,7 @@ import { SideDrawerService } from '@talisoft/ui/side-drawer';
 import { CreateAgencyComponent } from '../create-agency/create-agency';
 import { NgClass } from '@angular/common';
 import { TimeagoPipe } from '@talisoft/ui/timeago';
-import { BreadcrumbService } from '@sankore/crm/common';
+import { BreadcrumbService, PermissionsService } from '@sankore/crm/common';
 
 @Component({
   templateUrl: './agencies-homepage.html',
@@ -22,6 +22,9 @@ import { BreadcrumbService } from '@sankore/crm/common';
   ],
 })
 export class AgenciesHomePage {
+  private readonly _permissions = inject(PermissionsService);
+  public readonly canCreate = this._permissions.can('agency:create');
+
   private readonly _agenciesApiService = inject(AgenciesApiService);
   private readonly _sideDrawerService = inject(SideDrawerService);
   private readonly _router = inject(Router);

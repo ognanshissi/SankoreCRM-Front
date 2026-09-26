@@ -1,5 +1,5 @@
 import { Route } from '@angular/router';
-import { AuthLayoutComponent, AdminLayoutComponent, PortalLayoutComponent, authorized } from '@sankore/crm/common';
+import { AuthLayoutComponent, PortalLayoutComponent, authorized } from '@sankore/crm/common';
 
 export const appRoutes: Route[] = [
   {

@@ -10,6 +10,7 @@ import {
   OPPORTUNITY_STAGES,
 } from './opportunity.model';
 import { CreateOpportunityDrawer } from './create-opportunity-drawer';
+import { PermissionsService } from '@sankore/crm/common';
 
 function stageSeverity(stage: string): Severity {
   switch (stage) {
@@ -54,16 +55,18 @@ function formatMoney(opp: OpportunityDto): string {
                 {{ opportunities().length }}
               </span>
             }
-            <button
-              tas-button
-              color="primary"
-              type="button"
-              class="text-xs"
-              (click)="openCreateDrawer()"
-            >
-              <tas-icon iconName="feather:plus" style="font-size:12px"></tas-icon>
-              Nouvelle
-            </button>
+            @if (canManageOpportunity()) {
+              <button
+                tas-button
+                color="primary"
+                type="button"
+                class="text-xs"
+                (click)="openCreateDrawer()"
+              >
+                <tas-icon iconName="feather:plus" style="font-size:12px"></tas-icon>
+                Nouvelle
+              </button>
+            }
           </div>
         </div>
 
@@ -145,6 +148,9 @@ function formatMoney(opp: OpportunityDto): string {
   `,
 })
 export class LeadOpportunitiesPage implements OnInit {
+  private readonly _permissions = inject(PermissionsService);
+  public readonly canManageOpportunity = this._permissions.can('lead:opportunity:manage');
+
   private readonly _sideDrawer = inject(SideDrawerService);
 
   public readonly id = input.required<string>();

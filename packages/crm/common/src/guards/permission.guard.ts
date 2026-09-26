@@ -1,25 +1,53 @@
 import { inject } from '@angular/core';
-import { CanActivateFn, Router } from '@angular/router';
+import { CanActivateFn, Router, RouterStateSnapshot } from '@angular/router';
 import { AuthenticationService } from '../services';
-import { SnackbarService } from '@talisoft/ui/snackbar';
+import { PermissionCode } from '../models/permissions';
+import { AccessDeniedService } from '../components/access-denied/access-denied.service';
 
 /**
- * FE-03 — Garde de permission route.
- * Usage dans les routes :
- *   canActivate: [hasPermissionGuard('leads.sources.read')]
+ * Refus commun aux deux gardes : on signale à `AccessDeniedService`, qui
+ * alimente la bannière globale, puis on renvoie l'utilisateur à l'accueil.
+ *
+ * Le message passait auparavant par un snackbar d'erreur. Une bannière
+ * d'information est plus juste — ce n'est pas une anomalie mais une règle
+ * d'accès — et elle peut nommer la permission manquante, ce qui fait gagner du
+ * temps à l'administrateur qui diagnostique un rôle.
  */
-export function hasPermissionGuard(permission: string): CanActivateFn {
-  return () => {
-    const auth = inject(AuthenticationService);
-    const router = inject(Router);
-    const snackbar = inject(SnackbarService);
+function deny(
+  state: RouterStateSnapshot,
+  permissions: PermissionCode[],
+): ReturnType<Router['createUrlTree']> {
+  inject(AccessDeniedService).notify(state.url, permissions);
+  return inject(Router).createUrlTree(['/tasks/my-day']);
+}
 
-    const codes = auth.connectedUser()?.permissions ?? [];
-    if (codes.includes(permission)) {
+/**
+ * Garde de route par permission.
+ *
+ * Plusieurs codes signifient « au moins un » : c'est ce dont on a besoin pour
+ * un écran accessible aussi bien en lecture qu'en gestion.
+ *
+ *   canActivate: [hasPermissionGuard('lead:source:read')]
+ *   canActivate: [hasPermissionGuard('role:read', 'role:update')]
+ */
+export function hasPermissionGuard(...permissions: PermissionCode[]): CanActivateFn {
+  return (_route, state) => {
+    const codes = inject(AuthenticationService).connectedUser()?.permissions ?? [];
+    if (permissions.some((p) => codes.includes(p))) {
       return true;
     }
+    return deny(state, permissions);
+  };
+}
 
-    snackbar.error('Accès refusé', 'Vous n\'avez pas la permission d\'accéder à cette page.');
-    return router.createUrlTree(['/tasks/my-day']);
+/** Variante exigeant TOUTES les permissions listées. */
+export function hasAllPermissionsGuard(...permissions: PermissionCode[]): CanActivateFn {
+  return (_route, state) => {
+    const codes = inject(AuthenticationService).connectedUser()?.permissions ?? [];
+    if (permissions.every((p) => codes.includes(p))) {
+      return true;
+    }
+    const missing = permissions.filter((p) => !codes.includes(p));
+    return deny(state, missing);
   };
 }

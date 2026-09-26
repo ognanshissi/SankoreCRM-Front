@@ -15,6 +15,7 @@ import {
   WorkflowTemplatesApiService,
 } from '@sankore/crm-api';
 import { TRIGGER_TYPE_OPTIONS, triggerTypeLabel } from '../workflow-shared';
+import { PermissionsService } from '@sankore/crm/common';
 
 @Component({
   selector: 'workflow-triggers',
@@ -51,7 +52,7 @@ import { TRIGGER_TYPE_OPTIONS, triggerTypeLabel } from '../workflow-shared';
                 tas-outlined-button
                 color="primary"
                 type="button"
-                [disabled]="isSaving()"
+                [disabled]="isSaving() || !canManageTriggers()"
                 (click)="toggleAddForm()"
                 class="shrink-0"
               >
@@ -96,16 +97,18 @@ import { TRIGGER_TYPE_OPTIONS, triggerTypeLabel } from '../workflow-shared';
                         {{ trigger.isActive ? 'Actif' : 'Inactif' }}
                       </tas-tag>
                       @if (!template()?.isActive) {
-                        <button
-                          tas-button
-                          iconButton
-                          type="button"
-                          title="Supprimer le déclencheur"
-                          [disabled]="removingId() === trigger.id || isSaving()"
-                          (click)="removeTrigger(trigger)"
-                        >
-                          <tas-icon iconName="feather:trash-2" iconSize="sm" class="text-functional-error"></tas-icon>
-                        </button>
+                        @if (canManageTriggers()) {
+                          <button
+                            tas-button
+                            iconButton
+                            type="button"
+                            title="Supprimer le déclencheur"
+                            [disabled]="removingId() === trigger.id || isSaving()"
+                            (click)="removeTrigger(trigger)"
+                          >
+                            <tas-icon iconName="feather:trash-2" iconSize="sm" class="text-functional-error"></tas-icon>
+                          </button>
+                        }
                       }
                     </div>
                   </div>
@@ -145,15 +148,17 @@ import { TRIGGER_TYPE_OPTIONS, triggerTypeLabel } from '../workflow-shared';
                 }
 
                 <div class="flex items-center gap-2 pt-1">
-                  <button
-                    tas-raised-button
-                    color="primary"
-                    type="button"
-                    [disabled]="isSaving() || (newTriggerType() === AddTriggerRequestTriggerTypeEnum.EntityEvent && !newEventName().trim())"
-                    (click)="addTrigger()"
-                  >
-                    Ajouter le déclencheur
-                  </button>
+                  @if (canManageTriggers()) {
+                    <button
+                      tas-raised-button
+                      color="primary"
+                      type="button"
+                      [disabled]="isSaving() || (newTriggerType() === AddTriggerRequestTriggerTypeEnum.EntityEvent && !newEventName().trim())"
+                      (click)="addTrigger()"
+                    >
+                      Ajouter le déclencheur
+                    </button>
+                  }
                   <button
                     tas-text-button
                     type="button"
@@ -173,6 +178,9 @@ import { TRIGGER_TYPE_OPTIONS, triggerTypeLabel } from '../workflow-shared';
   `,
 })
 export class WorkflowTriggersPage {
+  private readonly _permissions = inject(PermissionsService);
+  public readonly canManageTriggers = this._permissions.can('workflow:trigger:manage');
+
   private readonly _api = inject(WorkflowTemplatesApiService);
   private readonly _snackbar = inject(SnackbarService);
   private readonly _confirm = inject(ConfirmDialogService);

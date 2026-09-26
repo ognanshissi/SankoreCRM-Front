@@ -13,6 +13,7 @@ import { TasInput } from '@talisoft/ui/input';
 import { TasSelect } from '@talisoft/ui/select';
 import { SnackbarService } from '@talisoft/ui/snackbar';
 import { NotificationSettingsApiService, NotificationSettingsDto } from '@sankore/crm-api';
+import { PermissionsService } from '@sankore/crm/common';
 
 const EMAIL_PROVIDER_OPTIONS = [
   { label: 'Plateforme (défaut)', value: 'Platform' },
@@ -42,11 +43,13 @@ const SMS_PROVIDER_OPTIONS = [
       <div class="pb-6 flex flex-col gap-4">
         <!-- Save button -->
         <div class="flex justify-end">
-          <button tas-raised-button color="primary" type="button" [disabled]="isSaving()" (click)="save()">
-            @if (isSaving()) { <tas-spinner size="3" class="text-white"></tas-spinner> }
-            <tas-icon iconName="feather:save" style="font-size:14px"></tas-icon>
-            Enregistrer
-          </button>
+          @if (canManageSettings()) {
+            <button tas-raised-button color="primary" type="button" [disabled]="isSaving()" (click)="save()">
+              @if (isSaving()) { <tas-spinner size="3" class="text-white"></tas-spinner> }
+              <tas-icon iconName="feather:save" style="font-size:14px"></tas-icon>
+              Enregistrer
+            </button>
+          }
         </div>
 
         <!-- Email provider -->
@@ -127,11 +130,13 @@ const SMS_PROVIDER_OPTIONS = [
                 <input tasInput type="number" min="0" placeholder="10000"
                   [ngModel]="quotaLimit()" (ngModelChange)="quotaLimit.set($event)" />
               </tas-form-field>
-              <button tas-outlined-button color="primary" type="button" class="text-xs mb-1"
-                [disabled]="isSavingQuota()" (click)="saveQuota()">
-                @if (isSavingQuota()) { <tas-spinner size="3" class="text-primary"></tas-spinner> }
-                Mettre à jour
-              </button>
+              @if (canSetQuota()) {
+                <button tas-outlined-button color="primary" type="button" class="text-xs mb-1"
+                  [disabled]="isSavingQuota()" (click)="saveQuota()">
+                  @if (isSavingQuota()) { <tas-spinner size="3" class="text-primary"></tas-spinner> }
+                  Mettre à jour
+                </button>
+              }
             </div>
             @if (quotaLimit()) {
               <div class="flex items-center gap-3">
@@ -197,6 +202,10 @@ const SMS_PROVIDER_OPTIONS = [
   `,
 })
 export class NotificationParametrage implements OnInit {
+  private readonly _permissions = inject(PermissionsService);
+  public readonly canManageSettings = this._permissions.can('notification:settings:manage');
+  public readonly canSetQuota = this._permissions.can('notification:settings:quota');
+
   private readonly _api = inject(NotificationSettingsApiService);
   private readonly _snackbar = inject(SnackbarService);
 

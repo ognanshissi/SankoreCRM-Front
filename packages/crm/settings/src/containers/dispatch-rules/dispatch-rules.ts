@@ -13,7 +13,7 @@ import {
   DispatchingRulesApiService,
   DispatchingRuleDto,
 } from '@sankore/crm-api';
-import { BreadcrumbService } from '@sankore/crm/common';
+import { BreadcrumbService, PermissionsService } from '@sankore/crm/common';
 import { strategySeverity, strategyLabel } from './dispatch-rules.shared';
 
 @Component({
@@ -22,6 +22,9 @@ import { strategySeverity, strategyLabel } from './dispatch-rules.shared';
   templateUrl: 'dispatch-rules.html',
 })
 export class DispatchRulesConfig implements OnInit {
+  private readonly _permissions = inject(PermissionsService);
+  public readonly canManage = this._permissions.can('lead:dispatching-rule:manage');
+
   private readonly _dispatchApi = inject(DispatchingRulesApiService);
   private readonly _snackbar = inject(SnackbarService);
   private readonly _confirmDialog = inject(ConfirmDialogService);

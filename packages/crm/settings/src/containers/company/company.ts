@@ -11,7 +11,7 @@ import { TasSelect } from '@talisoft/ui/select';
 import { TasSpinner } from '@talisoft/ui/spinner';
 import { CompanyInfoApiService, CompanyInfoDto, UpdateCompanyInfoCommandDefaultLanguageEnum } from '@sankore/crm-api';
 import { SnackbarService } from '@talisoft/ui/snackbar';
-import { BreadcrumbService, TenantProvider } from '@sankore/crm/common';
+import { BreadcrumbService, TenantProvider, PermissionsService } from '@sankore/crm/common';
 
 class CompanyFormModel {
   public name!: string;
@@ -51,6 +51,9 @@ class CompanyFormModel {
   ],
 })
 export class CompanyPage {
+  private readonly _permissions = inject(PermissionsService);
+  public readonly canUpdate = this._permissions.can('company:update');
+
   private readonly _companyInfoApiService = inject(CompanyInfoApiService);
   private readonly _tenantProvider = inject(TenantProvider);
   private readonly _snackbarService = inject(SnackbarService);

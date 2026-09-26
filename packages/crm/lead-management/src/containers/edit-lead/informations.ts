@@ -12,7 +12,7 @@ import { Button } from '@talisoft/ui/button';
 import { TimeagoPipe } from '@talisoft/ui/timeago';
 import { SnackbarService } from '@talisoft/ui/snackbar';
 import { LeadsApiService, LeadDto, TagDto } from '@sankore/crm-api';
-import { AuthenticationService } from '@sankore/crm/common';
+import { AuthenticationService, PermissionsService } from '@sankore/crm/common';
 
 function sourceLabel(source: string | null | undefined): string {
   switch (source) {
@@ -217,11 +217,13 @@ function intentLabel(level: string | null | undefined): string {
                     <input type="range" min="0" max="100" class="flex-1 accent-primary"
                       [ngModel]="qualOverrideValue()" (ngModelChange)="qualOverrideValue.set($event)" />
                     <span class="text-xs text-slate-600 tabular-nums w-8 text-right">{{ qualOverrideValue() }}%</span>
-                    <button tas-button color="primary" type="button" class="text-[10px]"
-                      [disabled]="isSavingQual()" (click)="saveQualificationCompleteness()">
-                      @if (isSavingQual()) { <tas-spinner size="2" class="text-white"></tas-spinner> }
-                      OK
-                    </button>
+                    @if (canUpdate()) {
+                      <button tas-button color="primary" type="button" class="text-[10px]"
+                        [disabled]="isSavingQual()" (click)="saveQualificationCompleteness()">
+                        @if (isSavingQual()) { <tas-spinner size="2" class="text-white"></tas-spinner> }
+                        OK
+                      </button>
+                    }
                     <button type="button" class="text-[10px] text-slate-400" (click)="showQualOverride.set(false)">Annuler</button>
                   </div>
                 }
@@ -275,9 +277,11 @@ function intentLabel(level: string | null | undefined): string {
               @for (tag of tags(); track tag.id) {
                 <span class="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium">
                   {{ tag.tag }}
-                  <button type="button" class="hover:text-red-500 transition-colors" (click)="removeTag(tag)">
-                    <tas-icon iconName="feather:x" style="font-size:10px"></tas-icon>
-                  </button>
+                  @if (canTag()) {
+                    <button type="button" class="hover:text-red-500 transition-colors" (click)="removeTag(tag)">
+                      <tas-icon iconName="feather:x" style="font-size:10px"></tas-icon>
+                    </button>
+                  }
                 </span>
               }
               @if (tags().length === 0 && !showTagInput()) {
@@ -291,10 +295,12 @@ function intentLabel(level: string | null | undefined): string {
                     [ngModel]="newTag()" (ngModelChange)="newTag.set($event)"
                     (keydown.enter)="addTag()" />
                 </tas-form-field>
-                <button tas-button color="primary" type="button" class="text-xs shrink-0" [disabled]="!newTag().trim() || isAddingTag()" (click)="addTag()">
-                  @if (isAddingTag()) { <tas-spinner size="3" class="text-white"></tas-spinner> }
-                  Ajouter
-                </button>
+                @if (canTag()) {
+                  <button tas-button color="primary" type="button" class="text-xs shrink-0" [disabled]="!newTag().trim() || isAddingTag()" (click)="addTag()">
+                    @if (isAddingTag()) { <tas-spinner size="3" class="text-white"></tas-spinner> }
+                    Ajouter
+                  </button>
+                }
                 <button type="button" class="text-xs text-slate-400 hover:text-slate-600" (click)="showTagInput.set(false)">Annuler</button>
               </div>
             } @else {
@@ -320,6 +326,10 @@ function intentLabel(level: string | null | undefined): string {
   `,
 })
 export class LeadInformationsPage {
+  private readonly _permissions = inject(PermissionsService);
+  public readonly canTag = this._permissions.can('lead:tag');
+  public readonly canUpdate = this._permissions.can('lead:update');
+
   private readonly _leadsApiService = inject(LeadsApiService);
   private readonly _snackbar = inject(SnackbarService);
   private readonly _auth = inject(AuthenticationService);

@@ -14,12 +14,7 @@ import {
   QualifyLeadResult,
   QualifyLeadResultNextActionEnum,
 } from '@sankore/crm-api';
-import {
-  DynamicFormRendererComponent,
-  DynamicFormSchema,
-  DynamicFormAnswers,
-  PRODUCT_TYPE_LABELS,
-} from '@sankore/crm/common';
+import { DynamicFormRendererComponent, DynamicFormSchema, DynamicFormAnswers, PRODUCT_TYPE_LABELS, PermissionsService } from '@sankore/crm/common';
 
 type PageState = 'loading' | 'no-product' | 'no-template' | 'form' | 'submitted';
 
@@ -185,15 +180,17 @@ function templateToSchema(t: QualificationTemplateDto): DynamicFormSchema {
               </p>
             </div>
             @if (hasDraft()) {
-              <button
-                tas-outlined-button
-                type="button"
-                (click)="clearDraft()"
-                class="text-xs shrink-0"
-              >
-                <tas-icon iconName="feather:trash-2" style="font-size:12px"></tas-icon>
-                Effacer le brouillon
-              </button>
+              @if (canQualify()) {
+                <button
+                  tas-outlined-button
+                  type="button"
+                  (click)="clearDraft()"
+                  class="text-xs shrink-0"
+                >
+                  <tas-icon iconName="feather:trash-2" style="font-size:12px"></tas-icon>
+                  Effacer le brouillon
+                </button>
+              }
             }
           </div>
 
@@ -256,15 +253,17 @@ function templateToSchema(t: QualificationTemplateDto): DynamicFormSchema {
             @if (isSubmitting()) {
               <tas-spinner size="4" class="text-primary"></tas-spinner>
             }
-            <button
-              tas-outlined-button
-              color="primary"
-              type="button"
-              [disabled]="isSubmitting()"
-              (click)="handleSubmit()"
-            >
-              Soumettre la qualification
-            </button>
+            @if (canQualify()) {
+              <button
+                tas-outlined-button
+                color="primary"
+                type="button"
+                [disabled]="isSubmitting()"
+                (click)="handleSubmit()"
+              >
+                Soumettre la qualification
+              </button>
+            }
           </div>
         </div>
       }
@@ -272,6 +271,9 @@ function templateToSchema(t: QualificationTemplateDto): DynamicFormSchema {
   `,
 })
 export class LeadQualificationPage implements OnDestroy {
+  private readonly _permissions = inject(PermissionsService);
+  public readonly canQualify = this._permissions.can('lead:qualify');
+
   private readonly _leadsApiService = inject(LeadsApiService);
   private readonly _productsApiService = inject(ProductsApiService);
   private readonly _snackbar = inject(SnackbarService);

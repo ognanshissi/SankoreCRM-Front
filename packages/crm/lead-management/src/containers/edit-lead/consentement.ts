@@ -18,6 +18,7 @@ import {
   RecordConsentRequestTypeEnum,
   RecordConsentRequestChannelEnum,
 } from '@sankore/crm-api';
+import { PermissionsService } from '@sankore/crm/common';
 
 const TYPE_OPTIONS = [
   { label: 'Marketing',              value: RecordConsentRequestTypeEnum.Marketing },
@@ -81,11 +82,13 @@ function statusInfo(c: ConsentDto): { label: string; severity: Severity } {
               </tas-form-field>
             </div>
             <div class="mt-3 flex justify-end">
-              <button tas-button color="primary" type="button" class="text-xs"
-                [disabled]="isSaving() || !newType() || !newChannel()" (click)="record()">
-                @if (isSaving()) { <tas-spinner size="3" class="text-white"></tas-spinner> }
-                Enregistrer
-              </button>
+              @if (canRecordConsent()) {
+                <button tas-button color="primary" type="button" class="text-xs"
+                  [disabled]="isSaving() || !newType() || !newChannel()" (click)="record()">
+                  @if (isSaving()) { <tas-spinner size="3" class="text-white"></tas-spinner> }
+                  Enregistrer
+                </button>
+              }
             </div>
           </div>
         </tas-card>
@@ -126,9 +129,11 @@ function statusInfo(c: ConsentDto): { label: string; severity: Severity } {
                     }
                   </div>
                   @if (!c.withdrawnAt && c.status === 'Granted') {
-                    <button type="button" class="text-slate-400 hover:text-red-500 transition-colors shrink-0" (click)="withdraw(c)">
-                      <tas-icon iconName="feather:x-circle" style="font-size:16px"></tas-icon>
-                    </button>
+                    @if (canWithdrawConsent()) {
+                      <button type="button" class="text-slate-400 hover:text-red-500 transition-colors shrink-0" (click)="withdraw(c)">
+                        <tas-icon iconName="feather:x-circle" style="font-size:16px"></tas-icon>
+                      </button>
+                    }
                   }
                 </div>
               }
@@ -140,6 +145,10 @@ function statusInfo(c: ConsentDto): { label: string; severity: Severity } {
   `,
 })
 export class LeadConsentementPage {
+  private readonly _permissions = inject(PermissionsService);
+  public readonly canRecordConsent = this._permissions.can('lead:consent:record');
+  public readonly canWithdrawConsent = this._permissions.can('lead:consent:withdraw');
+
   private readonly _leadsApi = inject(LeadsApiService);
   private readonly _snackbar = inject(SnackbarService);
   private readonly _confirmDialog = inject(ConfirmDialogService);

@@ -15,6 +15,7 @@ import {
   CrmTaskDtoPriorityEnum,
 } from '@sankore/crm-api';
 import { CompleteTaskDrawer, DeclineTaskDrawer, CreateTaskDrawer } from '@sankore/crm/tasks';
+import { PermissionsService } from '@sankore/crm/common';
 
 function statusMeta(status: CrmTaskDtoStatusEnum | undefined): { label: string; severity: Severity } {
   switch (status) {
@@ -71,16 +72,18 @@ function typeLabel(type: string | undefined): string {
                   {{ tasks().length }}
                 </span>
               }
-              <button
-                tas-filled-button
-                color="primary"
-                type="button"
-                class="text-xs"
-                (click)="openCreateTaskDrawer()"
-              >
-                <tas-icon iconName="feather:plus" style="font-size:12px"></tas-icon>
-                Nouvelle tâche
-              </button>
+              @if (canManageTask()) {
+                <button
+                  tas-filled-button
+                  color="primary"
+                  type="button"
+                  class="text-xs"
+                  (click)="openCreateTaskDrawer()"
+                >
+                  <tas-icon iconName="feather:plus" style="font-size:12px"></tas-icon>
+                  Nouvelle tâche
+                </button>
+              }
             </div>
           </div>
 
@@ -123,20 +126,23 @@ function typeLabel(type: string | undefined): string {
 
                     @if (task.status === 'Pending') {
                       <div class="flex items-center gap-1 shrink-0">
-                        <button
-                          tas-outlined-button
-                          color="primary"
-                          type="button"
-                          (click)="startTask(task)"
-                          [disabled]="actionInProgress() === task.id"
-                        >
-                          Démarrer
-                        </button>
+                        @if (canManageTask()) {
+                          <button
+                            tas-outlined-button
+                            color="primary"
+                            type="button"
+                            (click)="startTask(task)"
+                            [disabled]="actionInProgress() === task.id"
+                          >
+                            Démarrer
+                          </button>
+                        }
                         <button
                           tas-button
                           iconButton
                           type="button"
                           class="text-slate-400 hover:text-red-500 transition-colors p-1"
+                          [disabled]="!canManageTask()"
                           (click)="declineTask(task)"
                           title="Refuser cette tâche"
                         >
@@ -146,18 +152,21 @@ function typeLabel(type: string | undefined): string {
                     }
                     @if (task.status === 'InProgress') {
                       <div class="flex items-center gap-1 shrink-0">
-                        <button
-                          tas-outlined-button
-                          color="primary"
-                          type="button"
-                          (click)="completeTask(task)"
-                          [disabled]="actionInProgress() === task.id"
-                        >
-                          Terminer
-                        </button>
+                        @if (canManageTask()) {
+                          <button
+                            tas-outlined-button
+                            color="primary"
+                            type="button"
+                            (click)="completeTask(task)"
+                            [disabled]="actionInProgress() === task.id"
+                          >
+                            Terminer
+                          </button>
+                        }
                         <button
                           type="button"
                           class="text-slate-400 hover:text-red-500 transition-colors p-1"
+                          [disabled]="!canManageTask()"
                           (click)="declineTask(task)"
                           title="Refuser cette tâche"
                         >
@@ -176,6 +185,9 @@ function typeLabel(type: string | undefined): string {
   `,
 })
 export class LeadTachesPage {
+  private readonly _permissions = inject(PermissionsService);
+  public readonly canManageTask = this._permissions.can('lead:task:manage');
+
   private readonly _tasksApi = inject(TasksApiService);
   private readonly _snackbar = inject(SnackbarService);
   private readonly _sideDrawer = inject(SideDrawerService);

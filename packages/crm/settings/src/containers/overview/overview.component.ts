@@ -1,16 +1,27 @@
-import { Component, inject, signal } from '@angular/core';
+import {
+  Component,
+  computed,
+  effect,
+  inject,
+  OnInit,
+  signal,
+} from '@angular/core';
 import { TasTitle } from '@talisoft/ui/title';
 import { TasText } from '@talisoft/ui/text';
 import { NgClass, NgIf } from '@angular/common';
 import { RouterLink } from '@angular/router';
-import { SnackbarService } from '@talisoft/ui/snackbar';
-import { BreadcrumbService } from '@sankore/crm/common';
+import {
+  BreadcrumbService,
+  PermissionCode,
+  PermissionsService,
+} from '@sankore/crm/common';
 
 export interface MenuItem {
   title: string;
   icon?: string;
   id: string;
   link?: string;
+  permission?: PermissionCode | PermissionCode[];
   type: 'basic' | 'group';
   description?: string;
   isActive?: boolean;
@@ -30,9 +41,9 @@ export interface MenuItem {
       }
     `,
   ],
-  imports: [TasTitle, TasText, NgIf, NgClass, RouterLink],
+  imports: [TasTitle, TasText, NgClass, RouterLink, NgIf],
 })
-export class OverviewComponent {
+export class OverviewComponent implements OnInit {
   private readonly menuData: MenuItem[] = [
     {
       title: 'Agences & utilisateurs',
@@ -45,21 +56,25 @@ export class OverviewComponent {
           type: 'basic',
           id: 'groups_workflows',
           link: '/settings/workflows',
+          permission: 'workflow:read',
           description:
             'Définir les étapes de validation appliquées aux leads, contacts et opportunités',
         },
         {
-          title: 'Stratégies d\'affectation',
+          title: "Stratégies d'affectation",
           type: 'basic',
           id: 'groups_dispatching',
           link: '/settings/dispatch-rules',
-          description: 'Configurer et simuler les stratégies d\'affectation automatique des leads',
+          permission: 'lead:dispatching-rule:read',
+          description:
+            "Configurer et simuler les stratégies d'affectation automatique des leads",
         },
         {
           title: 'Utilisateurs',
           type: 'basic',
           id: 'teams_territories_users',
           link: '/settings/users',
+          permission: 'user:read',
           description: 'Gestion des utilisateurs et groupes par territoires',
         },
         {
@@ -67,6 +82,7 @@ export class OverviewComponent {
           type: 'basic',
           id: 'teams_territories_roles',
           link: '/settings/roles',
+          permission: 'role:read',
           description: 'Gestion des utilisateurs et groupes par territoires',
         },
         {
@@ -74,6 +90,7 @@ export class OverviewComponent {
           type: 'basic',
           id: 'teams_territories_agencies',
           link: '/settings/agencies',
+          permission: 'agency:read',
           description: "Gestion des agences de l'organisation",
         },
         {
@@ -81,6 +98,7 @@ export class OverviewComponent {
           type: 'basic',
           id: 'teams_territories_territory',
           link: '/settings/territories',
+          permission: 'territory:read',
           description: 'Gestion des utilisateurs et groupes par territoires',
         },
       ],
@@ -92,39 +110,37 @@ export class OverviewComponent {
       id: 'leads_contacts_compte',
       children: [
         {
-          title: 'Capture de leads',
+          title: 'Sources & Campagnes',
           type: 'basic',
-          id: 'leads_contacts_capture',
-          link: '/settings/lead-capture',
-          description:
-            'Configurer les intégrations pour capturer des leads (site web, LinkedIn, etc.)',
+          id: 'leads_contacts_sources',
+          link: '/settings/lead-sources',
+          permission: 'lead:source:read',
+          description: "Gérer les sources d'acquisition et campagnes de leads",
         },
         {
           title: 'Formulaires de qualification',
           type: 'basic',
           id: 'leads_contacts_qualification_templates',
           link: '/settings/qualification-templates',
-          description: 'Configurer les formulaires de qualification par produit (sections, questions, règles conditionnelles)',
+          permission: 'lead:qualification-template:manage',
+          description:
+            'Configurer les formulaires de qualification par produit (sections, questions, règles conditionnelles)',
         },
         {
           title: 'Étapes du pipeline',
           type: 'basic',
           id: 'leads_contacts_pipeline_stages',
           link: '/settings/pipeline-stages',
-          description: 'Définir, réordonner et activer/désactiver les étapes du pipeline commercial',
-        },
-        {
-          title: 'Sources & Campagnes',
-          type: 'basic',
-          id: 'leads_contacts_sources',
-          link: '/settings/lead-sources',
-          description: 'Gérer les sources d\'acquisition et campagnes de leads',
+          permission: 'lead:pipeline-stage:read',
+          description:
+            'Définir, réordonner et activer/désactiver les étapes du pipeline commercial',
         },
         {
           title: 'Règles de scoring',
           type: 'basic',
           id: 'leads_contacts_scoring',
           link: '/settings/scoring-configs',
+          permission: 'lead:scoring-config:read',
           description: 'Ajuster les poids et seuils du calcul de Lead Score',
         },
         {
@@ -132,30 +148,18 @@ export class OverviewComponent {
           type: 'basic',
           id: 'leads_contacts_sla',
           link: '/settings/sla-configs',
-          description: 'Définir les délais SLA par agence et le calendrier ouvré',
-        },
-      ],
-    },
-    {
-      title: 'Activités & Événements',
-      type: 'group',
-      id: 'activities_events',
-      description: "Configurer les types d'événements et activités",
-      children: [
-        {
-          title: "Types d'événements",
-          type: 'basic',
-          id: 'activities_event_types',
-          link: '/settings/event-types',
+          permission: 'lead:sla-config:read',
           description:
-            "Configurer les types d'événements (réunion, appel, démo...)",
+            'Définir les délais SLA par agence et le calendrier ouvré',
         },
         {
           title: 'Types de tâches',
           type: 'basic',
           id: 'activities_task_types',
           link: '/settings/task-types',
-          description: 'Définir les types de tâches, priorités par défaut et résultats obligatoires',
+          permission: 'lead:task-type:read',
+          description:
+            'Définir les types de tâches, priorités par défaut et résultats obligatoires',
         },
       ],
     },
@@ -170,6 +174,7 @@ export class OverviewComponent {
           type: 'basic',
           id: 'products_services_products',
           link: '/settings/products',
+          permission: 'product:read',
           description: 'Gérer les produits et services des votre entreprise',
         },
       ],
@@ -186,10 +191,11 @@ export class OverviewComponent {
           type: 'basic',
           id: 'data_import_users',
           link: '/settings/import-users',
+          permission: 'user:create',
           description: 'Importer les utilisateurs depuis différentes sources',
         },
         {
-          title: 'Importer les contacts',
+          title: 'Importer les leads / contacts',
           type: 'basic',
           id: 'data_import_contacts',
           link: '/settings/import-contacts',
@@ -212,39 +218,39 @@ export class OverviewComponent {
         'Gérer vos differents canaux de communication avec vos prospect, clients.',
       children: [
         {
-          title: 'Configuration notifications',
+          title: 'Fournisseur Email',
           type: 'basic',
           id: 'channels_notifications',
           link: '/settings/notifications',
-          description: 'Fournisseur d\'envoi, expéditeur, quota mensuel et journal de livraison',
+          permission: [
+            'notification:settings:read',
+            'notification:outbox:read',
+          ],
+          description:
+            "Fournisseur d'envoi, expéditeur, quota mensuel et journal de livraison",
         },
         {
-          title: 'Modèles d\'e-mail',
+          title: "Modèles d'e-mail",
           type: 'basic',
           id: 'channels_email_templates',
           link: '/settings/email-templates',
-          description: 'Créer et personnaliser les modèles d\'e-mail transactionnels et marketing',
+          permission: 'notification:template:read',
+          description:
+            "Créer et personnaliser les modèles d'e-mail transactionnels et marketing",
         },
         {
-          title: 'WhatsApp',
+          title: 'WhatsApp Business',
           type: 'basic',
           id: 'communication_channels_whatsapp',
           link: '/settings/whatsapp-configuration',
           description: 'Configurer votre compte whatsapp entreprise.',
         },
         {
-          title: 'LinkedIn',
+          title: 'Fournisseur SMS',
           type: 'basic',
-          id: 'communication_channels_linkedin',
-          link: '/settings/lead-capture',
-          description: 'Récuperer les leads depuis vos posts LinkedIn.',
-        },
-        {
-          title: 'Site internet',
-          type: 'basic',
-          id: 'communication_channels_website',
-          link: '/settings/lead-capture',
-          description: 'Créer des formulaires et les intégrer sur votre site.',
+          id: 'communication_channels_sms_provider',
+          link: '/settings/whatsapp-configuration',
+          description: "Configurer votre compte entreprise afin d'envoyer les sms a vos prospects et clients.",
         },
         {
           title: 'Téléphonie',
@@ -260,14 +266,17 @@ export class OverviewComponent {
       title: 'Sécurité & Conformité',
       type: 'group',
       id: 'security_compliance',
-      description: "Supervision des activités et traçabilité des actions sur l'organisation",
+      description:
+        "Supervision des activités et traçabilité des actions sur l'organisation",
       children: [
         {
           title: "Journal d'audit",
           type: 'basic',
           id: 'security_audit',
           link: '/settings/audit',
-          description: "Consulter l'historique des actions effectuées par les utilisateurs",
+          permission: 'audit:read',
+          description:
+            "Consulter l'historique des actions effectuées par les utilisateurs",
         },
       ],
     },
@@ -283,7 +292,9 @@ export class OverviewComponent {
           type: 'basic',
           id: 'account_settings_company',
           link: '/settings/company',
-          description: "Nom, logo, langue par défaut et couleurs de l'organisation",
+          permission: 'company:read',
+          description:
+            "Nom, logo, langue par défaut et couleurs de l'organisation",
         },
         {
           title: 'Monnaie',
@@ -300,19 +311,13 @@ export class OverviewComponent {
           description: "Gérer l'ensemble des tags",
         },
         {
-          title: 'Webhooks',
-          type: 'basic',
-          id: 'account_settings_webhooks',
-          link: '/settings/webhooks',
-          description:
-            'Utiliser des webhooks pour faire parvenir vos données dans differents services',
-        },
-        {
           title: 'Intégrations',
           type: 'basic',
           id: 'account_settings_integrations',
           link: '/settings/integrations',
-          description: 'Connecter des services externes (WhatsApp, téléphonie, CBS, webhooks)',
+          permission: 'lead:source:read',
+          description:
+            'Connecter des services externes (WhatsApp, téléphonie, CBS, webhooks)',
         },
         {
           title: 'Plan et Facturation',
@@ -325,14 +330,41 @@ export class OverviewComponent {
     },
   ];
 
-  private readonly _snackbarService = inject(SnackbarService);
   private readonly _breadcrumbService = inject(BreadcrumbService);
+  private readonly _permissions = inject(PermissionsService);
 
-  public menus = signal<MenuItem[]>(this.menuData);
+  public menus = computed<MenuItem[]>(() => {
+    const granted = this._permissions.granted();
+    const allowed = (item: MenuItem): boolean => {
+      if (!item.permission) return true;
+      const codes = Array.isArray(item.permission)
+        ? item.permission
+        : [item.permission];
+      return codes.some((c) => granted.has(c));
+    };
+
+    return this.menuData
+      .map((group) => ({
+        ...group,
+        children: (group.children ?? []).filter(allowed),
+      }))
+      .filter((group) => allowed(group) && group.children.length > 0);
+  });
 
   public selectedMenu = signal<MenuItem>(this.menuData[0]);
 
-  ngOnInit(): void {
+  constructor() {
+    // Le groupe sélectionné doit rester un groupe visible.
+    effect(() => {
+      const visible = this.menus();
+      if (visible.length === 0) return;
+      if (!visible.some((g) => g.id === this.selectedMenu().id)) {
+        this.selectedMenu.set(visible[0]);
+      }
+    });
+  }
+
+  public ngOnInit(): void {
     this._breadcrumbService.set([{ label: 'Paramétrage' }]);
   }
 

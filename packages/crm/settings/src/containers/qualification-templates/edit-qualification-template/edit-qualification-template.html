@@ -462,6 +462,7 @@
                             <tas-label>Valeur</tas-label>
                             <input
                               tasInput
+                              [disabled]="isReadonly()"
                               type="text"
                               placeholder="Ex : Oui"
                               [ngModel]="rule.triggerValue"
@@ -502,6 +503,7 @@
                     <div class="mt-3 flex justify-end">
                       <button
                         tas-filled-button
+                        color="warn"
                         type="button"
                         class="text-xs text-red-400 hover:text-red-600"
                         (click)="removeQuestion(qi)"

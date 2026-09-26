@@ -3,6 +3,8 @@ export * from './layouts/auth-layout/auth-layout.component';
 export * from './layouts/admin-layout/admin-layout.component';
 export * from './navigation/navigation';
 export * from './loading';
+export * from './access-denied/access-denied.service';
+export * from './access-denied/access-denied.component';
 export * from './breadcrumb/breadcrumb.component';
 export * from './duplicate-warning-banner/duplicate-warning-banner';
 export * from './dynamic-form-renderer/dynamic-form-renderer';

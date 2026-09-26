@@ -13,7 +13,7 @@ import { TasInput } from '@talisoft/ui/input';
 import { TasSelect } from '@talisoft/ui/select';
 import { SnackbarService } from '@talisoft/ui/snackbar';
 import { EmailTemplatesApiService } from '@sankore/crm-api';
-import { BreadcrumbService } from '@sankore/crm/common';
+import { BreadcrumbService, PermissionsService } from '@sankore/crm/common';
 
 export interface EmailTemplate {
   id?: string;
@@ -74,6 +74,7 @@ const LOCALE_FILTER_OPTIONS = [
               tas-raised-button
               color="primary"
               type="button"
+              [disabled]="!canManage()"
               (click)="navigateToCreate()"
             >
               <tas-icon
@@ -171,15 +172,17 @@ const LOCALE_FILTER_OPTIONS = [
                         </div>
                       </div>
                       <div class="flex items-center gap-2">
-                        <button tas-outlined-button type="button" class="text-xs" (click)="navigateToEdit(tpl)">
+                        <button tas-outlined-button type="button" class="text-xs" [disabled]="!canManage()" (click)="navigateToEdit(tpl)">
                           <tas-icon iconName="feather:eye" style="font-size:12px"></tas-icon> Aperçu
                         </button>
-                        <button tas-outlined-button color="primary" type="button" class="text-xs"
-                          [disabled]="copyingId() === tpl.id" (click)="copyAndCustomize(tpl)">
-                          @if (copyingId() === tpl.id) { <tas-spinner size="3" class="text-primary"></tas-spinner> }
-                          @else { <tas-icon iconName="feather:copy" style="font-size:12px"></tas-icon> }
-                          Copier et personnaliser
-                        </button>
+                        @if (canManage()) {
+                          <button tas-outlined-button color="primary" type="button" class="text-xs"
+                            [disabled]="copyingId() === tpl.id" (click)="copyAndCustomize(tpl)">
+                            @if (copyingId() === tpl.id) { <tas-spinner size="3" class="text-primary"></tas-spinner> }
+                            @else { <tas-icon iconName="feather:copy" style="font-size:12px"></tas-icon> }
+                            Copier et personnaliser
+                          </button>
+                        }
                       </div>
                     </div>
                   }
@@ -207,9 +210,11 @@ const LOCALE_FILTER_OPTIONS = [
                     <button tas-outlined-button type="button" (click)="activeTab.set('system')">
                       Voir les modèles système
                     </button>
-                    <button tas-outlined-button color="primary" type="button" (click)="navigateToCreate()">
-                      Créer un modèle
-                    </button>
+                    @if (canManage()) {
+                      <button tas-outlined-button color="primary" type="button" (click)="navigateToCreate()">
+                        Créer un modèle
+                      </button>
+                    }
                   </div>
                 </div>
               } @else {
@@ -236,7 +241,7 @@ const LOCALE_FILTER_OPTIONS = [
                         <tas-switch [checked]="tpl.isActive ?? false"
                           [ariaLabel]="(tpl.isActive ? 'Désactiver' : 'Activer') + ' ' + (tpl.templateKey ?? '')"
                           [isLoading]="togglingId() === tpl.id" (toggle)="toggleActive(tpl)"></tas-switch>
-                        <button tas-outlined-button type="button" class="text-xs" (click)="navigateToEdit(tpl)">
+                        <button tas-outlined-button type="button" class="text-xs" [disabled]="!canManage()" (click)="navigateToEdit(tpl)">
                           <tas-icon iconName="feather:edit-2" style="font-size:12px"></tas-icon> Modifier
                         </button>
                       </div>
@@ -253,6 +258,9 @@ const LOCALE_FILTER_OPTIONS = [
   `,
 })
 export class EmailTemplatesHomepage implements OnInit {
+  private readonly _permissions = inject(PermissionsService);
+  public readonly canManage = this._permissions.can('notification:template:manage');
+
   private readonly _api = inject(EmailTemplatesApiService);
   private readonly _snackbar = inject(SnackbarService);
   private readonly _breadcrumbService = inject(BreadcrumbService);
