@@ -11,24 +11,21 @@
  */
 
 
-export interface GoogleSheetImportRequest { 
-    spreadsheetUrl?: string | null;
-    interestedProduct?: string | null;
+export interface UpdateClientRequest { 
+    expectedVersion?: number;
+    profession?: string | null;
+    employer?: string | null;
+    maritalStatus?: UpdateClientRequestMaritalStatusEnum | null;
+    declaredIncome?: number | null;
+    declaredIncomeCurrency?: string | null;
     preferredLanguage?: string | null;
-    source?: GoogleSheetImportRequestSourceEnum | null;
 }
-export enum GoogleSheetImportRequestSourceEnum {
+export enum UpdateClientRequestMaritalStatusEnum {
     NUMBER_0 = 0,
     NUMBER_1 = 1,
     NUMBER_2 = 2,
     NUMBER_3 = 3,
-    NUMBER_4 = 4,
-    NUMBER_5 = 5,
-    NUMBER_6 = 6,
-    NUMBER_7 = 7,
-    NUMBER_8 = 8,
-    NUMBER_9 = 9,
-    NUMBER_10 = 10
+    NUMBER_4 = 4
 };
 
 

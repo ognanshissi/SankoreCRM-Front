@@ -18,6 +18,10 @@ export interface LeadImportStatusResponse {
      * One of: Pending, Processing, Completed, Failed
      */
     status?: LeadImportStatusResponseStatusEnum;
+    /**
+     * One of: File, GoogleSheet, GoogleContacts
+     */
+    sourceType?: LeadImportStatusResponseSourceTypeEnum;
     originalFileName?: string | null;
     totalRows?: number;
     succeeded?: number;
@@ -33,6 +37,11 @@ export enum LeadImportStatusResponseStatusEnum {
     Processing = 'Processing',
     Completed = 'Completed',
     Failed = 'Failed'
+};
+export enum LeadImportStatusResponseSourceTypeEnum {
+    File = 'File',
+    GoogleSheet = 'GoogleSheet',
+    GoogleContacts = 'GoogleContacts'
 };
 
 

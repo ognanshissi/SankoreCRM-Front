@@ -2170,15 +2170,27 @@ export class LeadsApiService {
 
     /**
      * @param file 
+     * @param interestedProduct 
+     * @param preferredLanguage 
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      */
-    public importLeads(file: Blob, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<ImportLeadsAccepted>;
-    public importLeads(file: Blob, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<ImportLeadsAccepted>>;
-    public importLeads(file: Blob, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<ImportLeadsAccepted>>;
-    public importLeads(file: Blob, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
+    public importLeads(file: Blob, interestedProduct?: string, preferredLanguage?: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<ImportLeadsAccepted>;
+    public importLeads(file: Blob, interestedProduct?: string, preferredLanguage?: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<ImportLeadsAccepted>>;
+    public importLeads(file: Blob, interestedProduct?: string, preferredLanguage?: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<ImportLeadsAccepted>>;
+    public importLeads(file: Blob, interestedProduct?: string, preferredLanguage?: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
         if (file === null || file === undefined) {
             throw new Error('Required parameter file was null or undefined when calling importLeads.');
+        }
+
+        let localVarQueryParameters = new HttpParams({encoder: this.encoder});
+        if (interestedProduct !== undefined && interestedProduct !== null) {
+          localVarQueryParameters = this.addToHttpParams(localVarQueryParameters,
+            <any>interestedProduct, 'interestedProduct');
+        }
+        if (preferredLanguage !== undefined && preferredLanguage !== null) {
+          localVarQueryParameters = this.addToHttpParams(localVarQueryParameters,
+            <any>preferredLanguage, 'preferredLanguage');
         }
 
         let localVarHeaders = this.defaultHeaders;
@@ -2246,6 +2258,7 @@ export class LeadsApiService {
             {
                 context: localVarHttpContext,
                 body: localVarConvertFormParamsToString ? localVarFormParams.toString() : localVarFormParams,
+                params: localVarQueryParameters,
                 responseType: <any>responseType_,
                 withCredentials: this.configuration.withCredentials,
                 headers: localVarHeaders,

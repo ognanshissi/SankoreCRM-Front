@@ -19,13 +19,17 @@ import { CustomHttpParameterCodec }                          from '../encoder';
 import { Observable }                                        from 'rxjs';
 
 // @ts-ignore
-import { ImportJobCreatedResult } from '../model/import-job-created-result.interface';
+import { ClientLoyaltyScoreDto } from '../model/client-loyalty-score-dto.interface';
 // @ts-ignore
-import { UserGoogleSheetImportRequest } from '../model/user-google-sheet-import-request.interface';
+import { ClientTimelineEntryDtoPagedResult } from '../model/client-timeline-entry-dto-paged-result.interface';
 // @ts-ignore
-import { UserImportStatusDto } from '../model/user-import-status-dto.interface';
+import { SegmentDistributionDto } from '../model/segment-distribution-dto.interface';
 // @ts-ignore
-import { ValidateImportResponse } from '../model/validate-import-response.interface';
+import { SegmentRulesDto } from '../model/segment-rules-dto.interface';
+// @ts-ignore
+import { UpdateSegmentRulesRequest } from '../model/update-segment-rules-request.interface';
+// @ts-ignore
+import { UpdateSegmentRulesResult } from '../model/update-segment-rules-result.interface';
 
 // @ts-ignore
 import { BASE_PATH, COLLECTION_FORMATS }                     from '../variables';
@@ -36,7 +40,7 @@ import { Configuration }                                     from '../configurat
 @Injectable({
   providedIn: 'root'
 })
-export class UserImportApiService {
+export class ClientTimelineSegmentsApiService {
 
     protected basePath = 'http://localhost';
     public defaultHeaders = new HttpHeaders();
@@ -60,19 +64,6 @@ export class UserImportApiService {
         this.encoder = this.configuration.encoder || new CustomHttpParameterCodec();
     }
 
-    /**
-     * @param consumes string[] mime-types
-     * @return true: consumes contains 'multipart/form-data', false: otherwise
-     */
-    private canConsumeForm(consumes: string[]): boolean {
-        const form = 'multipart/form-data';
-        for (const consume of consumes) {
-            if (form === consume) {
-                return true;
-            }
-        }
-        return false;
-    }
 
     // @ts-ignore
     private addToHttpParams(httpParams: HttpParams, value: any, key?: string): HttpParams {
@@ -111,16 +102,28 @@ export class UserImportApiService {
     }
 
     /**
-     * @param id 
+     * Read a client\&#39;s loyalty score and its history
+     * Returns the latest score (0..100) with its full breakdown, plus the previous computations newest first (historyLimit, default 12, max 50). isProvisional&#x3D;true means the client is younger than 90 days: tenure and regularity cannot be measured meaningfully yet, so the score is indicative. unavailableComponents lists the components that contributed 0 because their module is not wired yet (volume → M03 Savings, products → M04 Credit); the score is normalized over the available weights, not capped by the missing ones. Answers 404 both for an unknown client and for one outside the caller\&#39;s agency perimeter. Requires permission: customers:read.
+     * @param clientId 
+     * @param historyLimit 
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      */
-    public getUserImportStatus(id: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<UserImportStatusDto>;
-    public getUserImportStatus(id: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<UserImportStatusDto>>;
-    public getUserImportStatus(id: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<UserImportStatusDto>>;
-    public getUserImportStatus(id: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
-        if (id === null || id === undefined) {
-            throw new Error('Required parameter id was null or undefined when calling getUserImportStatus.');
+    public getClientLoyaltyScore(clientId: string, historyLimit: number, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<ClientLoyaltyScoreDto>;
+    public getClientLoyaltyScore(clientId: string, historyLimit: number, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<ClientLoyaltyScoreDto>>;
+    public getClientLoyaltyScore(clientId: string, historyLimit: number, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<ClientLoyaltyScoreDto>>;
+    public getClientLoyaltyScore(clientId: string, historyLimit: number, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
+        if (clientId === null || clientId === undefined) {
+            throw new Error('Required parameter clientId was null or undefined when calling getClientLoyaltyScore.');
+        }
+        if (historyLimit === null || historyLimit === undefined) {
+            throw new Error('Required parameter historyLimit was null or undefined when calling getClientLoyaltyScore.');
+        }
+
+        let localVarQueryParameters = new HttpParams({encoder: this.encoder});
+        if (historyLimit !== undefined && historyLimit !== null) {
+          localVarQueryParameters = this.addToHttpParams(localVarQueryParameters,
+            <any>historyLimit, 'historyLimit');
         }
 
         let localVarHeaders = this.defaultHeaders;
@@ -161,10 +164,11 @@ export class UserImportApiService {
             }
         }
 
-        let localVarPath = `/api/v1/users/import/${this.configuration.encodeParam({name: "id", value: id, in: "path", style: "simple", explode: false, dataType: "string", dataFormat: "uuid"})}/status`;
-        return this.httpClient.request<UserImportStatusDto>('get', `${this.configuration.basePath}${localVarPath}`,
+        let localVarPath = `/api/v1/clients/${this.configuration.encodeParam({name: "clientId", value: clientId, in: "path", style: "simple", explode: false, dataType: "string", dataFormat: "uuid"})}/loyalty-score`;
+        return this.httpClient.request<ClientLoyaltyScoreDto>('get', `${this.configuration.basePath}${localVarPath}`,
             {
                 context: localVarHttpContext,
+                params: localVarQueryParameters,
                 responseType: <any>responseType_,
                 withCredentials: this.configuration.withCredentials,
                 headers: localVarHeaders,
@@ -175,100 +179,15 @@ export class UserImportApiService {
     }
 
     /**
-     * @param file 
+     * Client count per commercial segment
+     * Returns how many live clients sit in each segment, plus each segment\&#39;s share. Archived and merged clients are excluded. The caller\&#39;s agency perimeter applies, so two users of different branches legitimately see different totals. Clients no rule has classified yet appear as a last bucket with a null segmentCode. Requires permission: customers:read.
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      */
-    public importUsersFromFile(file: Blob, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<ImportJobCreatedResult>;
-    public importUsersFromFile(file: Blob, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<ImportJobCreatedResult>>;
-    public importUsersFromFile(file: Blob, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<ImportJobCreatedResult>>;
-    public importUsersFromFile(file: Blob, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
-        if (file === null || file === undefined) {
-            throw new Error('Required parameter file was null or undefined when calling importUsersFromFile.');
-        }
-
-        let localVarHeaders = this.defaultHeaders;
-
-        let localVarCredential: string | undefined;
-        // authentication (BearerToken) required
-        localVarCredential = this.configuration.lookupCredential('BearerToken');
-        if (localVarCredential) {
-            localVarHeaders = localVarHeaders.set('Authorization', 'Bearer ' + localVarCredential);
-        }
-
-        let localVarHttpHeaderAcceptSelected: string | undefined = options && options.httpHeaderAccept;
-        if (localVarHttpHeaderAcceptSelected === undefined) {
-            // to determine the Accept header
-            const httpHeaderAccepts: string[] = [
-                'application/json'
-            ];
-            localVarHttpHeaderAcceptSelected = this.configuration.selectHeaderAccept(httpHeaderAccepts);
-        }
-        if (localVarHttpHeaderAcceptSelected !== undefined) {
-            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
-        }
-
-        let localVarHttpContext: HttpContext | undefined = options && options.context;
-        if (localVarHttpContext === undefined) {
-            localVarHttpContext = new HttpContext();
-        }
-
-        // to determine the Content-Type header
-        const consumes: string[] = [
-            'multipart/form-data'
-        ];
-
-        const canConsumeForm = this.canConsumeForm(consumes);
-
-        let localVarFormParams: { append(param: string, value: any): any; };
-        let localVarUseForm = false;
-        let localVarConvertFormParamsToString = false;
-        // use FormData to transmit files using content-type "multipart/form-data"
-        // see https://stackoverflow.com/questions/4007969/application-x-www-form-urlencoded-or-multipart-form-data
-        localVarUseForm = canConsumeForm;
-        if (localVarUseForm) {
-            localVarFormParams = new FormData();
-        } else {
-            localVarFormParams = new HttpParams({encoder: this.encoder});
-        }
-
-        if (file !== undefined) {
-            localVarFormParams = localVarFormParams.append('file', <any>file) as any || localVarFormParams;
-        }
-
-        let responseType_: 'text' | 'json' | 'blob' = 'json';
-        if (localVarHttpHeaderAcceptSelected) {
-            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
-                responseType_ = 'text';
-            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
-                responseType_ = 'json';
-            } else {
-                responseType_ = 'blob';
-            }
-        }
-
-        let localVarPath = `/api/v1/users/import/file`;
-        return this.httpClient.request<ImportJobCreatedResult>('post', `${this.configuration.basePath}${localVarPath}`,
-            {
-                context: localVarHttpContext,
-                body: localVarConvertFormParamsToString ? localVarFormParams.toString() : localVarFormParams,
-                responseType: <any>responseType_,
-                withCredentials: this.configuration.withCredentials,
-                headers: localVarHeaders,
-                observe: observe,
-                reportProgress: reportProgress
-            }
-        );
-    }
-
-    /**
-     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
-     * @param reportProgress flag to report request and response progress.
-     */
-    public importUsersFromGoogleContacts(observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<ImportJobCreatedResult>;
-    public importUsersFromGoogleContacts(observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<ImportJobCreatedResult>>;
-    public importUsersFromGoogleContacts(observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<ImportJobCreatedResult>>;
-    public importUsersFromGoogleContacts(observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
+    public getClientSegmentDistribution(observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<SegmentDistributionDto>;
+    public getClientSegmentDistribution(observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<SegmentDistributionDto>>;
+    public getClientSegmentDistribution(observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<SegmentDistributionDto>>;
+    public getClientSegmentDistribution(observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
 
         let localVarHeaders = this.defaultHeaders;
 
@@ -308,8 +227,8 @@ export class UserImportApiService {
             }
         }
 
-        let localVarPath = `/api/v1/users/import/google-contacts`;
-        return this.httpClient.request<ImportJobCreatedResult>('post', `${this.configuration.basePath}${localVarPath}`,
+        let localVarPath = `/api/v1/clients/segments`;
+        return this.httpClient.request<SegmentDistributionDto>('get', `${this.configuration.basePath}${localVarPath}`,
             {
                 context: localVarHttpContext,
                 responseType: <any>responseType_,
@@ -322,16 +241,175 @@ export class UserImportApiService {
     }
 
     /**
-     * @param userGoogleSheetImportRequest 
+     * Read the tenant\&#39;s segmentation rules
+     * Returns the rules stored in the tenant setting segment-rules-json, ordered by ascending priority — the exact order the nightly job evaluates them in, first match wins. Each rule carries isEvaluable: false means the rule is stored but NEVER applied because it needs outstanding balances or product holdings from M03 (Savings) / M04 (Credit), which expose no contract yet (notEvaluableReason &#x3D; OUTSTANDING_DATA_UNAVAILABLE). isValid: false with a parseError means the stored JSON is malformed and NO rule runs. Requires permission: customers:read.
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      */
-    public importUsersFromGoogleSheet(userGoogleSheetImportRequest: UserGoogleSheetImportRequest, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<ImportJobCreatedResult>;
-    public importUsersFromGoogleSheet(userGoogleSheetImportRequest: UserGoogleSheetImportRequest, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<ImportJobCreatedResult>>;
-    public importUsersFromGoogleSheet(userGoogleSheetImportRequest: UserGoogleSheetImportRequest, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<ImportJobCreatedResult>>;
-    public importUsersFromGoogleSheet(userGoogleSheetImportRequest: UserGoogleSheetImportRequest, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
-        if (userGoogleSheetImportRequest === null || userGoogleSheetImportRequest === undefined) {
-            throw new Error('Required parameter userGoogleSheetImportRequest was null or undefined when calling importUsersFromGoogleSheet.');
+    public getClientSegmentRules(observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<SegmentRulesDto>;
+    public getClientSegmentRules(observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<SegmentRulesDto>>;
+    public getClientSegmentRules(observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<SegmentRulesDto>>;
+    public getClientSegmentRules(observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
+
+        let localVarHeaders = this.defaultHeaders;
+
+        let localVarCredential: string | undefined;
+        // authentication (BearerToken) required
+        localVarCredential = this.configuration.lookupCredential('BearerToken');
+        if (localVarCredential) {
+            localVarHeaders = localVarHeaders.set('Authorization', 'Bearer ' + localVarCredential);
+        }
+
+        let localVarHttpHeaderAcceptSelected: string | undefined = options && options.httpHeaderAccept;
+        if (localVarHttpHeaderAcceptSelected === undefined) {
+            // to determine the Accept header
+            const httpHeaderAccepts: string[] = [
+                'application/json'
+            ];
+            localVarHttpHeaderAcceptSelected = this.configuration.selectHeaderAccept(httpHeaderAccepts);
+        }
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+
+        let localVarHttpContext: HttpContext | undefined = options && options.context;
+        if (localVarHttpContext === undefined) {
+            localVarHttpContext = new HttpContext();
+        }
+
+
+        let responseType_: 'text' | 'json' | 'blob' = 'json';
+        if (localVarHttpHeaderAcceptSelected) {
+            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+                responseType_ = 'text';
+            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+                responseType_ = 'json';
+            } else {
+                responseType_ = 'blob';
+            }
+        }
+
+        let localVarPath = `/api/v1/clients/segments/rules`;
+        return this.httpClient.request<SegmentRulesDto>('get', `${this.configuration.basePath}${localVarPath}`,
+            {
+                context: localVarHttpContext,
+                responseType: <any>responseType_,
+                withCredentials: this.configuration.withCredentials,
+                headers: localVarHeaders,
+                observe: observe,
+                reportProgress: reportProgress
+            }
+        );
+    }
+
+    /**
+     * Read the unified timeline of a client
+     * Returns the client\&#39;s timeline, most recent fact first, paginated. Aggregates every module feeding the read model: Customers (lifecycle, transfers, merges, segment changes, group memberships) and Leads (the commercial history imported at conversion); M02/M03/M04/M08 appear here as soon as they publish, with no change to this contract. Pass sourceModule&#x3D;&lt;Customers|Leads|…&gt; and/or entryType&#x3D;&lt;CLIENT_ACTIVATED|…&gt; to filter. Summaries never contain a sensitive value (identity document number, phone, e-mail, date of birth) — use the audited reveal endpoint for those. Answers 404 both when the client does not exist and when it is outside the caller\&#39;s agency perimeter, so the reply never discloses existence. Requires permission: customers:read.
+     * @param clientId 
+     * @param page 
+     * @param pageSize 
+     * @param sourceModule 
+     * @param entryType 
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     */
+    public getClientTimeline(clientId: string, page: number, pageSize: number, sourceModule?: string, entryType?: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<ClientTimelineEntryDtoPagedResult>;
+    public getClientTimeline(clientId: string, page: number, pageSize: number, sourceModule?: string, entryType?: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<ClientTimelineEntryDtoPagedResult>>;
+    public getClientTimeline(clientId: string, page: number, pageSize: number, sourceModule?: string, entryType?: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<ClientTimelineEntryDtoPagedResult>>;
+    public getClientTimeline(clientId: string, page: number, pageSize: number, sourceModule?: string, entryType?: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
+        if (clientId === null || clientId === undefined) {
+            throw new Error('Required parameter clientId was null or undefined when calling getClientTimeline.');
+        }
+        if (page === null || page === undefined) {
+            throw new Error('Required parameter page was null or undefined when calling getClientTimeline.');
+        }
+        if (pageSize === null || pageSize === undefined) {
+            throw new Error('Required parameter pageSize was null or undefined when calling getClientTimeline.');
+        }
+
+        let localVarQueryParameters = new HttpParams({encoder: this.encoder});
+        if (sourceModule !== undefined && sourceModule !== null) {
+          localVarQueryParameters = this.addToHttpParams(localVarQueryParameters,
+            <any>sourceModule, 'sourceModule');
+        }
+        if (entryType !== undefined && entryType !== null) {
+          localVarQueryParameters = this.addToHttpParams(localVarQueryParameters,
+            <any>entryType, 'entryType');
+        }
+        if (page !== undefined && page !== null) {
+          localVarQueryParameters = this.addToHttpParams(localVarQueryParameters,
+            <any>page, 'page');
+        }
+        if (pageSize !== undefined && pageSize !== null) {
+          localVarQueryParameters = this.addToHttpParams(localVarQueryParameters,
+            <any>pageSize, 'pageSize');
+        }
+
+        let localVarHeaders = this.defaultHeaders;
+
+        let localVarCredential: string | undefined;
+        // authentication (BearerToken) required
+        localVarCredential = this.configuration.lookupCredential('BearerToken');
+        if (localVarCredential) {
+            localVarHeaders = localVarHeaders.set('Authorization', 'Bearer ' + localVarCredential);
+        }
+
+        let localVarHttpHeaderAcceptSelected: string | undefined = options && options.httpHeaderAccept;
+        if (localVarHttpHeaderAcceptSelected === undefined) {
+            // to determine the Accept header
+            const httpHeaderAccepts: string[] = [
+                'application/json'
+            ];
+            localVarHttpHeaderAcceptSelected = this.configuration.selectHeaderAccept(httpHeaderAccepts);
+        }
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+
+        let localVarHttpContext: HttpContext | undefined = options && options.context;
+        if (localVarHttpContext === undefined) {
+            localVarHttpContext = new HttpContext();
+        }
+
+
+        let responseType_: 'text' | 'json' | 'blob' = 'json';
+        if (localVarHttpHeaderAcceptSelected) {
+            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+                responseType_ = 'text';
+            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+                responseType_ = 'json';
+            } else {
+                responseType_ = 'blob';
+            }
+        }
+
+        let localVarPath = `/api/v1/clients/${this.configuration.encodeParam({name: "clientId", value: clientId, in: "path", style: "simple", explode: false, dataType: "string", dataFormat: "uuid"})}/timeline`;
+        return this.httpClient.request<ClientTimelineEntryDtoPagedResult>('get', `${this.configuration.basePath}${localVarPath}`,
+            {
+                context: localVarHttpContext,
+                params: localVarQueryParameters,
+                responseType: <any>responseType_,
+                withCredentials: this.configuration.withCredentials,
+                headers: localVarHeaders,
+                observe: observe,
+                reportProgress: reportProgress
+            }
+        );
+    }
+
+    /**
+     * Replace the tenant\&#39;s segmentation rules
+     * Replaces the whole rule set (a rule set is an ordered decision list, so it is written as a set, never patched rule by rule). Rules are evaluated by ascending priority and the first match wins; a rule with no criterion matches everyone and is how a catch-all segment is expressed. A rule with requiresOutstandingData&#x3D;true is accepted and stored but stays INACTIVE until M03 (Savings) / M04 (Credit) expose a contract — the response reports how many. Changes take effect on the next nightly run of the segmentation job. Requires permission: customers:update_sensitive.
+     * @param updateSegmentRulesRequest 
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     */
+    public updateClientSegmentRules(updateSegmentRulesRequest: UpdateSegmentRulesRequest, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<UpdateSegmentRulesResult>;
+    public updateClientSegmentRules(updateSegmentRulesRequest: UpdateSegmentRulesRequest, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<UpdateSegmentRulesResult>>;
+    public updateClientSegmentRules(updateSegmentRulesRequest: UpdateSegmentRulesRequest, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<UpdateSegmentRulesResult>>;
+    public updateClientSegmentRules(updateSegmentRulesRequest: UpdateSegmentRulesRequest, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
+        if (updateSegmentRulesRequest === null || updateSegmentRulesRequest === undefined) {
+            throw new Error('Required parameter updateSegmentRulesRequest was null or undefined when calling updateClientSegmentRules.');
         }
 
         let localVarHeaders = this.defaultHeaders;
@@ -381,99 +459,11 @@ export class UserImportApiService {
             }
         }
 
-        let localVarPath = `/api/v1/users/import/google-sheet`;
-        return this.httpClient.request<ImportJobCreatedResult>('post', `${this.configuration.basePath}${localVarPath}`,
+        let localVarPath = `/api/v1/clients/segments/rules`;
+        return this.httpClient.request<UpdateSegmentRulesResult>('put', `${this.configuration.basePath}${localVarPath}`,
             {
                 context: localVarHttpContext,
-                body: userGoogleSheetImportRequest,
-                responseType: <any>responseType_,
-                withCredentials: this.configuration.withCredentials,
-                headers: localVarHeaders,
-                observe: observe,
-                reportProgress: reportProgress
-            }
-        );
-    }
-
-    /**
-     * Validate an import file without creating users
-     * @param file 
-     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
-     * @param reportProgress flag to report request and response progress.
-     */
-    public validateUserImport(file: Blob, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<ValidateImportResponse>;
-    public validateUserImport(file: Blob, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<ValidateImportResponse>>;
-    public validateUserImport(file: Blob, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<ValidateImportResponse>>;
-    public validateUserImport(file: Blob, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
-        if (file === null || file === undefined) {
-            throw new Error('Required parameter file was null or undefined when calling validateUserImport.');
-        }
-
-        let localVarHeaders = this.defaultHeaders;
-
-        let localVarCredential: string | undefined;
-        // authentication (BearerToken) required
-        localVarCredential = this.configuration.lookupCredential('BearerToken');
-        if (localVarCredential) {
-            localVarHeaders = localVarHeaders.set('Authorization', 'Bearer ' + localVarCredential);
-        }
-
-        let localVarHttpHeaderAcceptSelected: string | undefined = options && options.httpHeaderAccept;
-        if (localVarHttpHeaderAcceptSelected === undefined) {
-            // to determine the Accept header
-            const httpHeaderAccepts: string[] = [
-                'application/json'
-            ];
-            localVarHttpHeaderAcceptSelected = this.configuration.selectHeaderAccept(httpHeaderAccepts);
-        }
-        if (localVarHttpHeaderAcceptSelected !== undefined) {
-            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
-        }
-
-        let localVarHttpContext: HttpContext | undefined = options && options.context;
-        if (localVarHttpContext === undefined) {
-            localVarHttpContext = new HttpContext();
-        }
-
-        // to determine the Content-Type header
-        const consumes: string[] = [
-            'multipart/form-data'
-        ];
-
-        const canConsumeForm = this.canConsumeForm(consumes);
-
-        let localVarFormParams: { append(param: string, value: any): any; };
-        let localVarUseForm = false;
-        let localVarConvertFormParamsToString = false;
-        // use FormData to transmit files using content-type "multipart/form-data"
-        // see https://stackoverflow.com/questions/4007969/application-x-www-form-urlencoded-or-multipart-form-data
-        localVarUseForm = canConsumeForm;
-        if (localVarUseForm) {
-            localVarFormParams = new FormData();
-        } else {
-            localVarFormParams = new HttpParams({encoder: this.encoder});
-        }
-
-        if (file !== undefined) {
-            localVarFormParams = localVarFormParams.append('file', <any>file) as any || localVarFormParams;
-        }
-
-        let responseType_: 'text' | 'json' | 'blob' = 'json';
-        if (localVarHttpHeaderAcceptSelected) {
-            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
-                responseType_ = 'text';
-            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
-                responseType_ = 'json';
-            } else {
-                responseType_ = 'blob';
-            }
-        }
-
-        let localVarPath = `/api/v1/users/import/validate`;
-        return this.httpClient.request<ValidateImportResponse>('post', `${this.configuration.basePath}${localVarPath}`,
-            {
-                context: localVarHttpContext,
-                body: localVarConvertFormParamsToString ? localVarFormParams.toString() : localVarFormParams,
+                body: updateSegmentRulesRequest,
                 responseType: <any>responseType_,
                 withCredentials: this.configuration.withCredentials,
                 headers: localVarHeaders,

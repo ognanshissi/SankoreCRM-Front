@@ -19,13 +19,13 @@ import { CustomHttpParameterCodec }                          from '../encoder';
 import { Observable }                                        from 'rxjs';
 
 // @ts-ignore
-import { ImportJobCreatedResult } from '../model/import-job-created-result.interface';
+import { GoogleContactsImportRequest } from '../model/google-contacts-import-request.interface';
 // @ts-ignore
-import { UserGoogleSheetImportRequest } from '../model/user-google-sheet-import-request.interface';
+import { GoogleSheetImportRequest } from '../model/google-sheet-import-request.interface';
 // @ts-ignore
-import { UserImportStatusDto } from '../model/user-import-status-dto.interface';
+import { ImportLeadsAccepted } from '../model/import-leads-accepted.interface';
 // @ts-ignore
-import { ValidateImportResponse } from '../model/validate-import-response.interface';
+import { ValidateLeadImportResponse } from '../model/validate-lead-import-response.interface';
 
 // @ts-ignore
 import { BASE_PATH, COLLECTION_FORMATS }                     from '../variables';
@@ -36,7 +36,7 @@ import { Configuration }                                     from '../configurat
 @Injectable({
   providedIn: 'root'
 })
-export class UserImportApiService {
+export class LeadImportApiService {
 
     protected basePath = 'http://localhost';
     public defaultHeaders = new HttpHeaders();
@@ -111,80 +111,33 @@ export class UserImportApiService {
     }
 
     /**
-     * @param id 
-     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
-     * @param reportProgress flag to report request and response progress.
-     */
-    public getUserImportStatus(id: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<UserImportStatusDto>;
-    public getUserImportStatus(id: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<UserImportStatusDto>>;
-    public getUserImportStatus(id: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<UserImportStatusDto>>;
-    public getUserImportStatus(id: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
-        if (id === null || id === undefined) {
-            throw new Error('Required parameter id was null or undefined when calling getUserImportStatus.');
-        }
-
-        let localVarHeaders = this.defaultHeaders;
-
-        let localVarCredential: string | undefined;
-        // authentication (BearerToken) required
-        localVarCredential = this.configuration.lookupCredential('BearerToken');
-        if (localVarCredential) {
-            localVarHeaders = localVarHeaders.set('Authorization', 'Bearer ' + localVarCredential);
-        }
-
-        let localVarHttpHeaderAcceptSelected: string | undefined = options && options.httpHeaderAccept;
-        if (localVarHttpHeaderAcceptSelected === undefined) {
-            // to determine the Accept header
-            const httpHeaderAccepts: string[] = [
-                'application/json'
-            ];
-            localVarHttpHeaderAcceptSelected = this.configuration.selectHeaderAccept(httpHeaderAccepts);
-        }
-        if (localVarHttpHeaderAcceptSelected !== undefined) {
-            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
-        }
-
-        let localVarHttpContext: HttpContext | undefined = options && options.context;
-        if (localVarHttpContext === undefined) {
-            localVarHttpContext = new HttpContext();
-        }
-
-
-        let responseType_: 'text' | 'json' | 'blob' = 'json';
-        if (localVarHttpHeaderAcceptSelected) {
-            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
-                responseType_ = 'text';
-            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
-                responseType_ = 'json';
-            } else {
-                responseType_ = 'blob';
-            }
-        }
-
-        let localVarPath = `/api/v1/users/import/${this.configuration.encodeParam({name: "id", value: id, in: "path", style: "simple", explode: false, dataType: "string", dataFormat: "uuid"})}/status`;
-        return this.httpClient.request<UserImportStatusDto>('get', `${this.configuration.basePath}${localVarPath}`,
-            {
-                context: localVarHttpContext,
-                responseType: <any>responseType_,
-                withCredentials: this.configuration.withCredentials,
-                headers: localVarHeaders,
-                observe: observe,
-                reportProgress: reportProgress
-            }
-        );
-    }
-
-    /**
      * @param file 
+     * @param interestedProduct 
+     * @param preferredLanguage 
+     * @param source 
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      */
-    public importUsersFromFile(file: Blob, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<ImportJobCreatedResult>;
-    public importUsersFromFile(file: Blob, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<ImportJobCreatedResult>>;
-    public importUsersFromFile(file: Blob, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<ImportJobCreatedResult>>;
-    public importUsersFromFile(file: Blob, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
+    public importLeadsFromFile(file: Blob, interestedProduct?: string, preferredLanguage?: string, source?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<ImportLeadsAccepted>;
+    public importLeadsFromFile(file: Blob, interestedProduct?: string, preferredLanguage?: string, source?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<ImportLeadsAccepted>>;
+    public importLeadsFromFile(file: Blob, interestedProduct?: string, preferredLanguage?: string, source?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<ImportLeadsAccepted>>;
+    public importLeadsFromFile(file: Blob, interestedProduct?: string, preferredLanguage?: string, source?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
         if (file === null || file === undefined) {
-            throw new Error('Required parameter file was null or undefined when calling importUsersFromFile.');
+            throw new Error('Required parameter file was null or undefined when calling importLeadsFromFile.');
+        }
+
+        let localVarQueryParameters = new HttpParams({encoder: this.encoder});
+        if (interestedProduct !== undefined && interestedProduct !== null) {
+          localVarQueryParameters = this.addToHttpParams(localVarQueryParameters,
+            <any>interestedProduct, 'interestedProduct');
+        }
+        if (preferredLanguage !== undefined && preferredLanguage !== null) {
+          localVarQueryParameters = this.addToHttpParams(localVarQueryParameters,
+            <any>preferredLanguage, 'preferredLanguage');
+        }
+        if (source !== undefined && source !== null) {
+          localVarQueryParameters = this.addToHttpParams(localVarQueryParameters,
+            <any>source, 'source');
         }
 
         let localVarHeaders = this.defaultHeaders;
@@ -247,11 +200,12 @@ export class UserImportApiService {
             }
         }
 
-        let localVarPath = `/api/v1/users/import/file`;
-        return this.httpClient.request<ImportJobCreatedResult>('post', `${this.configuration.basePath}${localVarPath}`,
+        let localVarPath = `/api/v1/leads/import/file`;
+        return this.httpClient.request<ImportLeadsAccepted>('post', `${this.configuration.basePath}${localVarPath}`,
             {
                 context: localVarHttpContext,
                 body: localVarConvertFormParamsToString ? localVarFormParams.toString() : localVarFormParams,
+                params: localVarQueryParameters,
                 responseType: <any>responseType_,
                 withCredentials: this.configuration.withCredentials,
                 headers: localVarHeaders,
@@ -262,76 +216,16 @@ export class UserImportApiService {
     }
 
     /**
+     * @param googleContactsImportRequest 
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      */
-    public importUsersFromGoogleContacts(observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<ImportJobCreatedResult>;
-    public importUsersFromGoogleContacts(observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<ImportJobCreatedResult>>;
-    public importUsersFromGoogleContacts(observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<ImportJobCreatedResult>>;
-    public importUsersFromGoogleContacts(observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
-
-        let localVarHeaders = this.defaultHeaders;
-
-        let localVarCredential: string | undefined;
-        // authentication (BearerToken) required
-        localVarCredential = this.configuration.lookupCredential('BearerToken');
-        if (localVarCredential) {
-            localVarHeaders = localVarHeaders.set('Authorization', 'Bearer ' + localVarCredential);
-        }
-
-        let localVarHttpHeaderAcceptSelected: string | undefined = options && options.httpHeaderAccept;
-        if (localVarHttpHeaderAcceptSelected === undefined) {
-            // to determine the Accept header
-            const httpHeaderAccepts: string[] = [
-                'application/json'
-            ];
-            localVarHttpHeaderAcceptSelected = this.configuration.selectHeaderAccept(httpHeaderAccepts);
-        }
-        if (localVarHttpHeaderAcceptSelected !== undefined) {
-            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
-        }
-
-        let localVarHttpContext: HttpContext | undefined = options && options.context;
-        if (localVarHttpContext === undefined) {
-            localVarHttpContext = new HttpContext();
-        }
-
-
-        let responseType_: 'text' | 'json' | 'blob' = 'json';
-        if (localVarHttpHeaderAcceptSelected) {
-            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
-                responseType_ = 'text';
-            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
-                responseType_ = 'json';
-            } else {
-                responseType_ = 'blob';
-            }
-        }
-
-        let localVarPath = `/api/v1/users/import/google-contacts`;
-        return this.httpClient.request<ImportJobCreatedResult>('post', `${this.configuration.basePath}${localVarPath}`,
-            {
-                context: localVarHttpContext,
-                responseType: <any>responseType_,
-                withCredentials: this.configuration.withCredentials,
-                headers: localVarHeaders,
-                observe: observe,
-                reportProgress: reportProgress
-            }
-        );
-    }
-
-    /**
-     * @param userGoogleSheetImportRequest 
-     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
-     * @param reportProgress flag to report request and response progress.
-     */
-    public importUsersFromGoogleSheet(userGoogleSheetImportRequest: UserGoogleSheetImportRequest, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<ImportJobCreatedResult>;
-    public importUsersFromGoogleSheet(userGoogleSheetImportRequest: UserGoogleSheetImportRequest, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<ImportJobCreatedResult>>;
-    public importUsersFromGoogleSheet(userGoogleSheetImportRequest: UserGoogleSheetImportRequest, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<ImportJobCreatedResult>>;
-    public importUsersFromGoogleSheet(userGoogleSheetImportRequest: UserGoogleSheetImportRequest, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
-        if (userGoogleSheetImportRequest === null || userGoogleSheetImportRequest === undefined) {
-            throw new Error('Required parameter userGoogleSheetImportRequest was null or undefined when calling importUsersFromGoogleSheet.');
+    public importLeadsFromGoogleContacts(googleContactsImportRequest: GoogleContactsImportRequest, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<ImportLeadsAccepted>;
+    public importLeadsFromGoogleContacts(googleContactsImportRequest: GoogleContactsImportRequest, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<ImportLeadsAccepted>>;
+    public importLeadsFromGoogleContacts(googleContactsImportRequest: GoogleContactsImportRequest, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<ImportLeadsAccepted>>;
+    public importLeadsFromGoogleContacts(googleContactsImportRequest: GoogleContactsImportRequest, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
+        if (googleContactsImportRequest === null || googleContactsImportRequest === undefined) {
+            throw new Error('Required parameter googleContactsImportRequest was null or undefined when calling importLeadsFromGoogleContacts.');
         }
 
         let localVarHeaders = this.defaultHeaders;
@@ -381,11 +275,11 @@ export class UserImportApiService {
             }
         }
 
-        let localVarPath = `/api/v1/users/import/google-sheet`;
-        return this.httpClient.request<ImportJobCreatedResult>('post', `${this.configuration.basePath}${localVarPath}`,
+        let localVarPath = `/api/v1/leads/import/google-contacts`;
+        return this.httpClient.request<ImportLeadsAccepted>('post', `${this.configuration.basePath}${localVarPath}`,
             {
                 context: localVarHttpContext,
-                body: userGoogleSheetImportRequest,
+                body: googleContactsImportRequest,
                 responseType: <any>responseType_,
                 withCredentials: this.configuration.withCredentials,
                 headers: localVarHeaders,
@@ -396,17 +290,108 @@ export class UserImportApiService {
     }
 
     /**
-     * Validate an import file without creating users
-     * @param file 
+     * @param googleSheetImportRequest 
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      */
-    public validateUserImport(file: Blob, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<ValidateImportResponse>;
-    public validateUserImport(file: Blob, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<ValidateImportResponse>>;
-    public validateUserImport(file: Blob, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<ValidateImportResponse>>;
-    public validateUserImport(file: Blob, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
+    public importLeadsFromGoogleSheet(googleSheetImportRequest: GoogleSheetImportRequest, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<ImportLeadsAccepted>;
+    public importLeadsFromGoogleSheet(googleSheetImportRequest: GoogleSheetImportRequest, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<ImportLeadsAccepted>>;
+    public importLeadsFromGoogleSheet(googleSheetImportRequest: GoogleSheetImportRequest, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<ImportLeadsAccepted>>;
+    public importLeadsFromGoogleSheet(googleSheetImportRequest: GoogleSheetImportRequest, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
+        if (googleSheetImportRequest === null || googleSheetImportRequest === undefined) {
+            throw new Error('Required parameter googleSheetImportRequest was null or undefined when calling importLeadsFromGoogleSheet.');
+        }
+
+        let localVarHeaders = this.defaultHeaders;
+
+        let localVarCredential: string | undefined;
+        // authentication (BearerToken) required
+        localVarCredential = this.configuration.lookupCredential('BearerToken');
+        if (localVarCredential) {
+            localVarHeaders = localVarHeaders.set('Authorization', 'Bearer ' + localVarCredential);
+        }
+
+        let localVarHttpHeaderAcceptSelected: string | undefined = options && options.httpHeaderAccept;
+        if (localVarHttpHeaderAcceptSelected === undefined) {
+            // to determine the Accept header
+            const httpHeaderAccepts: string[] = [
+                'application/json'
+            ];
+            localVarHttpHeaderAcceptSelected = this.configuration.selectHeaderAccept(httpHeaderAccepts);
+        }
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+
+        let localVarHttpContext: HttpContext | undefined = options && options.context;
+        if (localVarHttpContext === undefined) {
+            localVarHttpContext = new HttpContext();
+        }
+
+
+        // to determine the Content-Type header
+        const consumes: string[] = [
+            'application/json'
+        ];
+        const httpContentTypeSelected: string | undefined = this.configuration.selectHeaderContentType(consumes);
+        if (httpContentTypeSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Content-Type', httpContentTypeSelected);
+        }
+
+        let responseType_: 'text' | 'json' | 'blob' = 'json';
+        if (localVarHttpHeaderAcceptSelected) {
+            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+                responseType_ = 'text';
+            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+                responseType_ = 'json';
+            } else {
+                responseType_ = 'blob';
+            }
+        }
+
+        let localVarPath = `/api/v1/leads/import/google-sheet`;
+        return this.httpClient.request<ImportLeadsAccepted>('post', `${this.configuration.basePath}${localVarPath}`,
+            {
+                context: localVarHttpContext,
+                body: googleSheetImportRequest,
+                responseType: <any>responseType_,
+                withCredentials: this.configuration.withCredentials,
+                headers: localVarHeaders,
+                observe: observe,
+                reportProgress: reportProgress
+            }
+        );
+    }
+
+    /**
+     * Validate an import file without capturing any lead
+     * @param file 
+     * @param interestedProduct 
+     * @param preferredLanguage 
+     * @param source 
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     */
+    public validateLeadImport(file: Blob, interestedProduct?: string, preferredLanguage?: string, source?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<ValidateLeadImportResponse>;
+    public validateLeadImport(file: Blob, interestedProduct?: string, preferredLanguage?: string, source?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<ValidateLeadImportResponse>>;
+    public validateLeadImport(file: Blob, interestedProduct?: string, preferredLanguage?: string, source?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<ValidateLeadImportResponse>>;
+    public validateLeadImport(file: Blob, interestedProduct?: string, preferredLanguage?: string, source?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
         if (file === null || file === undefined) {
-            throw new Error('Required parameter file was null or undefined when calling validateUserImport.');
+            throw new Error('Required parameter file was null or undefined when calling validateLeadImport.');
+        }
+
+        let localVarQueryParameters = new HttpParams({encoder: this.encoder});
+        if (interestedProduct !== undefined && interestedProduct !== null) {
+          localVarQueryParameters = this.addToHttpParams(localVarQueryParameters,
+            <any>interestedProduct, 'interestedProduct');
+        }
+        if (preferredLanguage !== undefined && preferredLanguage !== null) {
+          localVarQueryParameters = this.addToHttpParams(localVarQueryParameters,
+            <any>preferredLanguage, 'preferredLanguage');
+        }
+        if (source !== undefined && source !== null) {
+          localVarQueryParameters = this.addToHttpParams(localVarQueryParameters,
+            <any>source, 'source');
         }
 
         let localVarHeaders = this.defaultHeaders;
@@ -469,11 +454,12 @@ export class UserImportApiService {
             }
         }
 
-        let localVarPath = `/api/v1/users/import/validate`;
-        return this.httpClient.request<ValidateImportResponse>('post', `${this.configuration.basePath}${localVarPath}`,
+        let localVarPath = `/api/v1/leads/import/validate`;
+        return this.httpClient.request<ValidateLeadImportResponse>('post', `${this.configuration.basePath}${localVarPath}`,
             {
                 context: localVarHttpContext,
                 body: localVarConvertFormParamsToString ? localVarFormParams.toString() : localVarFormParams,
+                params: localVarQueryParameters,
                 responseType: <any>responseType_,
                 withCredentials: this.configuration.withCredentials,
                 headers: localVarHeaders,

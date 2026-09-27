@@ -11,13 +11,12 @@
  */
 
 
-export interface GoogleSheetImportRequest { 
-    spreadsheetUrl?: string | null;
+export interface GoogleContactsImportRequest { 
     interestedProduct?: string | null;
     preferredLanguage?: string | null;
-    source?: GoogleSheetImportRequestSourceEnum | null;
+    source?: GoogleContactsImportRequestSourceEnum | null;
 }
-export enum GoogleSheetImportRequestSourceEnum {
+export enum GoogleContactsImportRequestSourceEnum {
     NUMBER_0 = 0,
     NUMBER_1 = 1,
     NUMBER_2 = 2,

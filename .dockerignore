@@ -1,0 +1,27 @@
+# Le contexte de build est la racine du monorepo : tout ce qui suit est soit
+# reconstruit dans l'image, soit inutile, soit assez volumineux pour doubler
+# la durée du `docker build` s'il est envoyé au daemon.
+node_modules
+**/node_modules
+dist
+tmp
+.nx
+.angular
+.verdaccio
+
+.git
+.github
+.vscode
+.idea
+.DS_Store
+
+# Le build de l'image ne lance ni tests ni lint.
+**/*.spec.ts
+**/*.test.ts
+playwright.config.ts
+vitest.config.ts
+vitest.workspace.ts
+
+Dockerfile
+.dockerignore
+*.md
