@@ -46,7 +46,6 @@ function handle401(
     return authService.refreshAccessToken().pipe(
       switchMap((result) => {
         isRefreshing = false;
-
         if (result?.accessToken) {
           refreshSubject.next(result.accessToken);
           return next(addToken(req, result.accessToken));

@@ -6,7 +6,7 @@ import {
   TemplateRef,
   ViewContainerRef,
 } from '@angular/core';
-import { AuthenticationService } from '../services/authentification.service';
+import { PermissionsService } from '../services/permissions.service';
 import { PermissionCode } from '../models/permissions';
 
 /**
@@ -23,7 +23,7 @@ import { PermissionCode } from '../models/permissions';
   standalone: true,
 })
 export class HasPermissionDirective {
-  private readonly _auth = inject(AuthenticationService);
+  private readonly _permissions = inject(PermissionsService);
   private readonly _templateRef = inject(TemplateRef);
   private readonly _viewContainer = inject(ViewContainerRef);
 
@@ -34,9 +34,11 @@ export class HasPermissionDirective {
   constructor() {
     effect(() => {
       const required = this.hasPermission();
-      const codes = [...(Array.isArray(required) ? required : [required])];
-      const granted = this._auth.connectedUser()?.permissions ?? [];
-      const hasAccess = codes.some((c) => granted.includes(c));
+      const codes = Array.isArray(required) ? required : [required];
+      // `granted()` est un signal : l'effet se réexécute à la reconnexion ou au
+      // changement de rôle, sans que la directive relise l'utilisateur.
+      const granted = this._permissions.granted();
+      const hasAccess = codes.some((c) => granted.has(c));
 
       if (hasAccess && !this._rendered) {
         this._viewContainer.createEmbeddedView(this._templateRef);

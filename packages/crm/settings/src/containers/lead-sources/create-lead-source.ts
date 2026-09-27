@@ -4,7 +4,6 @@ import { FormsModule } from '@angular/forms';
 import { catchError, debounceTime, EMPTY, of, Subject, switchMap } from 'rxjs';
 import { TasCard } from '@talisoft/ui/card';
 import { TasIcon } from '@talisoft/ui/icon';
-import { TasTag } from '@talisoft/ui/tag';
 import { TasSpinner } from '@talisoft/ui/spinner';
 import { Button } from '@talisoft/ui/button';
 import { TasFormField, TasLabel, TasError } from '@talisoft/ui/form-field';
@@ -25,7 +24,6 @@ import { writeSettings } from './lead-source-settings.types';
 import { LeadSourceMetadataService } from './lead-source-metadata.service';
 import {
   IntegrationMode,
-  modeLabel,
   modeToNumeric,
   channelIcon,
   tabForMode,
@@ -127,7 +125,7 @@ const BUSINESS_CASES: BusinessCase[] = [
 @Component({
   selector: 'create-lead-source',
   imports: [
-    FormsModule, RouterLink, TasCard, TasIcon, TasTag, TasSpinner, Button,
+    FormsModule, RouterLink, TasCard, TasIcon, TasSpinner, Button,
     TasFormField, TasLabel, TasError, TasInput, TasSelect,
   ],
   template: `

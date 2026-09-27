@@ -1,4 +1,4 @@
-import { inject, Injectable, signal } from '@angular/core';
+import { computed, inject, Injectable, signal } from '@angular/core';
 import { DOCUMENT } from '@angular/common';
 import { TenantContextResponse } from '@sankore/crm-api';
 
@@ -9,6 +9,17 @@ export class TenantProvider {
   private readonly _document = inject(DOCUMENT);
   private readonly _context = signal<TenantContextResponse | null>(null);
   public readonly context = this._context.asReadonly();
+
+  /**
+   * Vrai une fois le contexte du tenant chargé.
+   *
+   * `provideTenantInitializer` avale l'échec de `getTenantContext`
+   * (`catchError(() => of(null))`) et laisse donc le contexte à `null` : c'est
+   * la seule marque disponible pour distinguer un tenant inconnu d'un
+   * démarrage réussi. Exposer le prédicat ici évite que chaque appelant
+   * réinvente le test de nullité.
+   */
+  public readonly isLoaded = computed(() => this._context() !== null);
 
   public setContext(ctx: TenantContextResponse): void {
     this._context.set(ctx);

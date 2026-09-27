@@ -32,8 +32,9 @@ export class UnknownTenantComponent {
 
   public readonly currentOrigin = this._tenantProvider.getFqdn();
 
+  // Reload the application by redirecting to login page
   public retry(): void {
-    window.location.reload();
+    window.location.pathname = "/auth/login"
   }
 }
 

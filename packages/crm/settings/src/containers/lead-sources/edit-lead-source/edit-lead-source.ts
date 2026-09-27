@@ -39,7 +39,7 @@ import { Anchor, Button } from '@talisoft/ui/button';
 import { Menu, MenuItem, TasMenuTrigger } from '@talisoft/ui/menu';
 import { SnackbarService } from '@talisoft/ui/snackbar';
 import { ConfirmDialogService } from '@talisoft/ui/confirm-dialog';
-import { AuthenticationService, BreadcrumbService } from '@sankore/crm/common';
+import { BreadcrumbService, PermissionsService } from '@sankore/crm/common';
 import { LeadSourceDetailDto } from '@sankore/crm-api';
 
 @Component({
@@ -78,7 +78,7 @@ export class EditLeadSource implements OnInit {
   private readonly _snackbar = inject(SnackbarService);
   private readonly _confirm = inject(ConfirmDialogService);
   private readonly _breadcrumb = inject(BreadcrumbService);
-  private readonly _auth = inject(AuthenticationService);
+  private readonly _permissions = inject(PermissionsService);
 
   public isLoading = signal(true);
   public actionLoading = signal(false);
@@ -127,25 +127,10 @@ export class EditLeadSource implements OnInit {
   public getHealthIcon = healthIcon;
   public getHealthColor = healthColor;
 
-  public readonly canWrite = computed(() => {
-    const perms = this._auth.connectedUser()?.permissions ?? [];
-    return perms.includes('lead:source:manage');
-  });
-
-  public readonly canManageSecrets = computed(() => {
-    const perms = this._auth.connectedUser()?.permissions ?? [];
-    return perms.includes('lead:source:credentials');
-  });
-
-  public readonly canViewPayload = computed(() => {
-    const perms = this._auth.connectedUser()?.permissions ?? [];
-    return perms.includes('lead:ingestion:payload:read');
-  });
-
-  public readonly canReplayIngestion = computed(() => {
-    const perms = this._auth.connectedUser()?.permissions ?? [];
-    return perms.includes('lead:ingestion:replay');
-  });
+  public readonly canWrite = this._permissions.can('lead:source:manage');
+  public readonly canManageSecrets = this._permissions.can('lead:source:credentials');
+  public readonly canViewPayload = this._permissions.can('lead:ingestion:payload:read');
+  public readonly canReplayIngestion = this._permissions.can('lead:ingestion:replay');
 
   // ——— FE-09: Activation prerequisites ———
 

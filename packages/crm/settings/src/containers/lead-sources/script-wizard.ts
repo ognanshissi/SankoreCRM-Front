@@ -2,17 +2,11 @@ import { Component, computed, input, output, signal, OnInit } from '@angular/cor
 import { FormsModule } from '@angular/forms';
 import { TasCard } from '@talisoft/ui/card';
 import { TasIcon } from '@talisoft/ui/icon';
-import { TasTag } from '@talisoft/ui/tag';
 import { Button } from '@talisoft/ui/button';
 import { TasFormField, TasLabel } from '@talisoft/ui/form-field';
 import { TasInput } from '@talisoft/ui/input';
 import { TasSelect } from '@talisoft/ui/select';
 import { TasSwitch } from '@talisoft/ui/switch';
-
-/**
- * FE-10 — Assistant « Formulaire de mon site »
- * Multi-step wizard: Site → Formulaire → Protection → Après envoi
- */
 
 import { isValidOrigin, originHint } from './lead-source-validators';
 import {
@@ -42,7 +36,7 @@ const AFTER_SUBMIT_OPTIONS = [
   selector: 'script-wizard',
   standalone: true,
   imports: [
-    FormsModule, TasCard, TasIcon, TasTag, Button,
+    FormsModule, TasCard, TasIcon, Button,
     TasFormField, TasLabel, TasInput, TasSelect, TasSwitch,
   ],
   template: `

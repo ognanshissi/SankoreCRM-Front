@@ -20,7 +20,7 @@ import {
   LeadSourceListDto,
   LeadSourceListDtoStatusEnum,
 } from '@sankore/crm-api';
-import { AuthenticationService, BreadcrumbService } from '@sankore/crm/common';
+import { BreadcrumbService, PermissionsService } from '@sankore/crm/common';
 import { LeadSourcesService } from './lead-sources.service';
 import { LeadSourceMetadataService } from './lead-source-metadata.service';
 import {
@@ -345,16 +345,13 @@ export class LeadSourcesConfig implements OnInit {
   private readonly _snackbar = inject(SnackbarService);
   private readonly _confirm = inject(ConfirmDialogService);
   private readonly _breadcrumb = inject(BreadcrumbService);
-  private readonly _auth = inject(AuthenticationService);
+  private readonly _permissions = inject(PermissionsService);
   private readonly _route = inject(ActivatedRoute);
   private readonly _router = inject(Router);
   public readonly metadataService = inject(LeadSourceMetadataService);
 
   // Permissions (FE-03)
-  public readonly canWrite = computed(() => {
-    const perms = this._auth.connectedUser()?.permissions ?? [];
-    return perms.includes('lead:source:manage');
-  });
+  public readonly canWrite = this._permissions.can('lead:source:manage');
 
   // Lifecycle action in progress (FE-09)
   public actionInProgress = signal<string | null>(null);

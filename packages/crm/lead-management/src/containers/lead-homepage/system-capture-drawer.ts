@@ -6,7 +6,7 @@ import { TasIcon } from '@talisoft/ui/icon';
 import { TasSpinner } from '@talisoft/ui/spinner';
 import { TasTag } from '@talisoft/ui/tag';
 import { Button } from '@talisoft/ui/button';
-import { TasFormField, TasLabel, TasError } from '@talisoft/ui/form-field';
+import { TasFormField, TasLabel } from '@talisoft/ui/form-field';
 import { TasInput } from '@talisoft/ui/input';
 import { TasSelect } from '@talisoft/ui/select';
 import {
@@ -34,7 +34,7 @@ const SOURCE_OPTIONS = [
   selector: 'system-capture-drawer',
   imports: [
     FormsModule, TasSideDrawer, TasDrawerTitle, TasDrawerContent, TasDrawerAction,
-    TasIcon, TasSpinner, TasTag, Button, TasFormField, TasLabel, TasError, TasInput, TasSelect, TasTitle,
+    TasIcon, TasSpinner, TasTag, Button, TasFormField, TasLabel, TasInput, TasSelect, TasTitle,
   ],
   template: `
     <tas-side-drawer>

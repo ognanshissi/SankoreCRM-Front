@@ -4,7 +4,6 @@ import { catchError, EMPTY } from 'rxjs';
 import { TasCard } from '@talisoft/ui/card';
 import { TasSpinner } from '@talisoft/ui/spinner';
 import { TasIcon } from '@talisoft/ui/icon';
-import { TasTag } from '@talisoft/ui/tag';
 import { Button } from '@talisoft/ui/button';
 import { TasFormField, TasLabel } from '@talisoft/ui/form-field';
 import { TasInput } from '@talisoft/ui/input';
@@ -20,7 +19,7 @@ import { LeadSourcesService } from './lead-sources.service';
   selector: 'script-installer',
   standalone: true,
   imports: [
-    FormsModule, TasCard, TasSpinner, TasIcon, TasTag, Button,
+    FormsModule, TasCard, TasSpinner, TasIcon, Button,
     TasFormField, TasLabel, TasInput,
   ],
   template: `

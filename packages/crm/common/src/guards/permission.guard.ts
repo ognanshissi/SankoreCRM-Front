@@ -1,6 +1,6 @@
 import { inject } from '@angular/core';
 import { CanActivateFn, Router, RouterStateSnapshot } from '@angular/router';
-import { AuthenticationService } from '../services';
+import { PermissionsService } from '../services';
 import { PermissionCode } from '../models/permissions';
 import { AccessDeniedService } from '../components/access-denied/access-denied.service';
 
@@ -32,8 +32,7 @@ function deny(
  */
 export function hasPermissionGuard(...permissions: PermissionCode[]): CanActivateFn {
   return (_route, state) => {
-    const codes = inject(AuthenticationService).connectedUser()?.permissions ?? [];
-    if (permissions.some((p) => codes.includes(p))) {
+    if (inject(PermissionsService).has(...permissions)) {
       return true;
     }
     return deny(state, permissions);
@@ -43,11 +42,12 @@ export function hasPermissionGuard(...permissions: PermissionCode[]): CanActivat
 /** Variante exigeant TOUTES les permissions listées. */
 export function hasAllPermissionsGuard(...permissions: PermissionCode[]): CanActivateFn {
   return (_route, state) => {
-    const codes = inject(AuthenticationService).connectedUser()?.permissions ?? [];
-    if (permissions.every((p) => codes.includes(p))) {
+    const granted = inject(PermissionsService).granted();
+    if (permissions.every((p) => granted.has(p))) {
       return true;
     }
-    const missing = permissions.filter((p) => !codes.includes(p));
-    return deny(state, missing);
+    // Ne nommer que ce qui manque réellement : la bannière sert à diagnostiquer
+    // un rôle, lister les permissions déjà accordées brouille le message.
+    return deny(state, permissions.filter((p) => !granted.has(p)));
   };
 }

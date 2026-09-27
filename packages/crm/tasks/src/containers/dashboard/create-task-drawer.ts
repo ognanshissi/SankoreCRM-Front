@@ -2,7 +2,6 @@ import { Component, inject, signal, OnInit } from '@angular/core';
 import { DIALOG_DATA, DialogRef } from '@angular/cdk/dialog';
 import { FormsModule } from '@angular/forms';
 import { catchError, EMPTY, of } from 'rxjs';
-import { TasIcon } from '@talisoft/ui/icon';
 import { TasSpinner } from '@talisoft/ui/spinner';
 import { Button } from '@talisoft/ui/button';
 import { TasFormField, TasLabel, TasError } from '@talisoft/ui/form-field';
@@ -51,7 +50,7 @@ const PRIORITY_OPTIONS = [
   imports: [
     FormsModule,
     TasSideDrawer, TasDrawerTitle, TasDrawerContent, TasDrawerAction,
-    TasIcon, TasSpinner, Button,
+    TasSpinner, Button,
     TasFormField, TasLabel, TasError, TasInput, TasSelect, TasTitle,
   ],
   template: `

@@ -1,5 +1,4 @@
 import {
-  HttpContext,
   HttpContextToken,
   HttpEvent,
   HttpHandlerFn,
@@ -25,7 +24,6 @@ export const loadingInterceptor: HttpInterceptorFn = (req: HttpRequest<unknown>,
     req.method === 'PATCH' ||
     req.method === 'GET') {
     loading.set(true);
-
     return next(req).pipe(
       finalize(() => loading.set(false))
     );

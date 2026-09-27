@@ -3,7 +3,6 @@ import { Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { catchError, EMPTY, of } from 'rxjs';
 import { TasCard } from '@talisoft/ui/card';
-import { TasSpinner } from '@talisoft/ui/spinner';
 import { TasIcon } from '@talisoft/ui/icon';
 import { Anchor, Button } from '@talisoft/ui/button';
 import { TasFormField, TasLabel } from '@talisoft/ui/form-field';
@@ -31,7 +30,6 @@ import {
     FormsModule,
     RouterLink,
     TasCard,
-    TasSpinner,
     TasIcon,
     Button,
     TasFormField,

@@ -86,6 +86,12 @@ export const PERMISSIONS = {
   LEAD_SOURCE_MANAGE: 'lead:source:manage',
   LEAD_SOURCE_CREDENTIALS: 'lead:source:credentials',
 
+  // Ces deux codes étaient utilisés en littéral dans `edit-lead-source.ts`
+  // sans figurer au catalogue : à confirmer côté API, car si le serveur ne les
+  // accorde jamais, les deux actions correspondantes restent inaccessibles.
+  LEAD_INGESTION_PAYLOAD_READ: 'lead:ingestion:payload:read',
+  LEAD_INGESTION_REPLAY: 'lead:ingestion:replay',
+
   LEAD_DISPATCHING_RULE_READ: 'lead:dispatching-rule:read',
   LEAD_DISPATCHING_RULE_MANAGE: 'lead:dispatching-rule:manage',
 

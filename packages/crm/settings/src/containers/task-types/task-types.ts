@@ -7,18 +7,18 @@ import { TasIcon } from '@talisoft/ui/icon';
 import { TasTag } from '@talisoft/ui/tag';
 import { Button } from '@talisoft/ui/button';
 import { TasSwitch } from '@talisoft/ui/switch';
-import { TasFormField, TasLabel, TasError } from '@talisoft/ui/form-field';
+import { TasFormField, TasLabel } from '@talisoft/ui/form-field';
 import { TasInput } from '@talisoft/ui/input';
 import { SnackbarService } from '@talisoft/ui/snackbar';
 import { ConfirmDialogService } from '@talisoft/ui/confirm-dialog';
 import { TaskTypesApiService, TaskTypeDto } from '@sankore/crm-api';
-import { BreadcrumbService, HasPermissionDirective, PermissionsService } from '@sankore/crm/common';
+import { BreadcrumbService, PermissionsService } from '@sankore/crm/common';
 
 @Component({
   selector: 'task-types-config',
   imports: [
     FormsModule, TasCard, TasSpinner, TasIcon, TasTag, Button, TasSwitch,
-    TasFormField, TasLabel, TasError, TasInput, HasPermissionDirective,
+    TasFormField, TasLabel, TasInput,
   ],
   template: `
     <ng-container>

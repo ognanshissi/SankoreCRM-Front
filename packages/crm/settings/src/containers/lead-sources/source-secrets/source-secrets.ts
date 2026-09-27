@@ -39,7 +39,7 @@ interface SecretRow {
   standalone: true,
   imports: [
     FormsModule, TasCard, TasIcon, Button,
-    TasFormField, TasLabel, TasInput, TasInputPassword,
+    TasFormField, TasLabel, TasInputPassword,
   ],
   template: `
     <tas-card class="block">
