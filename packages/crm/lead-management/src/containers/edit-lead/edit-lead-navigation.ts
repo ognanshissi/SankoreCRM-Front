@@ -6,10 +6,11 @@ import { TasSpinner } from '@talisoft/ui/spinner';
 import { Anchor, Button } from '@talisoft/ui/button';
 import { LeadsApiService, LeadDto, NextActionDto, LeadIntentLevelDto, CloseLeadRequestReasonEnum } from '@sankore/crm-api';
 import { ConfirmDialogService } from '@talisoft/ui/confirm-dialog';
-import { BreadcrumbService } from '@sankore/crm/common';
+import { BreadcrumbService, PermissionsService } from '@sankore/crm/common';
 import { SnackbarService } from '@talisoft/ui/snackbar';
 import { SideDrawerService } from '@talisoft/ui/side-drawer';
 import { ReassignLeadDrawer } from './reassign-lead-drawer';
+import { EditLeadInfoDrawer } from './edit-lead-info-drawer';
 import { ConvertLeadWizard } from './convert-lead-wizard';
 import { NurtureRecycleDrawer } from './nurture-recycle-drawer';
 import { Severity, TasTag } from '@talisoft/ui/tag';
@@ -164,6 +165,14 @@ function parseFactors(factorsJson: string | null | undefined): ScoreFactor[] {
 
           <ng-template #actionsMenu>
             <tas-menu>
+              @if (canUpdate()) {
+                <tas-menu-item>
+                  <button type="button" class="w-full flex items-center gap-2 text-slate-700" (click)="openEditInfoDrawer()">
+                    <tas-icon iconName="feather:edit-2" class="text-slate-400" style="font-size:13px"></tas-icon>
+                    Modifier les informations
+                  </button>
+                </tas-menu-item>
+              }
               <tas-menu-item>
                 <button type="button" class="w-full flex items-center gap-2  text-slate-700" (click)="openReassignDrawer()">
                   <tas-icon iconName="feather:user-plus" class="text-slate-400" style="font-size:13px"></tas-icon>
@@ -409,6 +418,9 @@ function parseFactors(factorsJson: string | null | undefined): ScoreFactor[] {
   ],
 })
 export class EditLeadNavigation implements OnDestroy {
+  private readonly _permissions = inject(PermissionsService);
+  public readonly canUpdate = this._permissions.can('lead:update');
+
   private readonly _leadsApiService = inject(LeadsApiService);
   private readonly _breadcrumbService = inject(BreadcrumbService);
   private readonly _sideDrawerService = inject(SideDrawerService);
@@ -661,6 +673,32 @@ export class EditLeadNavigation implements OnDestroy {
     });
   }
 
+  public openEditInfoDrawer(): void {
+    const currentLead = this.lead();
+    if (!currentLead) return;
+
+    const ref = this._sideDrawerService.open(EditLeadInfoDrawer, {
+      width: '100%',
+      height: '100%',
+      panelClass: 'side-drawer-panel',
+      data: { lead: currentLead },
+    });
+
+    ref.closed.subscribe((updated) => {
+      if (updated) {
+        this._leadsApiService.getLead(this.id()).pipe(
+          catchError(() => EMPTY),
+        ).subscribe((lead) => {
+          this.lead.set(lead);
+          this._breadcrumbService.set([
+            { label: 'Leads', link: ['/leads'] },
+            { label: this._displayName(lead) },
+          ]);
+        });
+      }
+    });
+  }
+
   public openReassignDrawer(): void {
     const currentLead = this.lead();
     if (!currentLead) return;
@@ -716,7 +754,11 @@ export class EditLeadNavigation implements OnDestroy {
         catchError(() => EMPTY),
       ).subscribe((lead) => {
         const current = this.lead();
-        if (current && (current.score !== lead.score || current.intentLevel !== lead.intentLevel)) {
+        // `updatedAt` est dans la condition pour que l'en-tête (nom, badges) rattrape aussi une
+        // modification faite depuis l'onglet Informations, qui tient son propre signal.
+        if (current && (current.score !== lead.score
+            || current.intentLevel !== lead.intentLevel
+            || current.updatedAt !== lead.updatedAt)) {
           this.lead.set(lead);
           this._loadScoreFactors(leadId);
         }

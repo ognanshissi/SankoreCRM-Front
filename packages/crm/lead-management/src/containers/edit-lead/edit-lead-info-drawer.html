@@ -1,0 +1,161 @@
+<tas-side-drawer>
+  <tas-drawer-title>
+    <div class="flex items-center gap-2">
+      <tas-icon iconName="feather:edit-2" style="font-size:18px"></tas-icon>
+      <span>Modifier les informations</span>
+    </div>
+  </tas-drawer-title>
+
+  <tas-drawer-content>
+    <form [formRoot]="formSchema" class="flex flex-col gap-5">
+
+      <!-- Identity -->
+      <div>
+        <p class="text-sm font-medium text-slate-600 mb-3">Identité</p>
+        <div class="flex flex-col gap-4">
+          <div class="grid grid-cols-2 gap-3">
+            <tas-form-field>
+              <tas-label>Prénom</tas-label>
+              <input tasInput type="text" placeholder="Prénom" [formField]="formSchema.firstName" />
+            </tas-form-field>
+
+            <tas-form-field>
+              <tas-label>Nom</tas-label>
+              <input tasInput type="text" placeholder="Nom de famille" [formField]="formSchema.lastName" />
+            </tas-form-field>
+          </div>
+
+          <tas-form-field>
+            <tas-label>E-mail</tas-label>
+            <input tasInput type="email" placeholder="exemple@domaine.com" [formField]="formSchema.email" />
+            @if (formSchema.email().touched() && formSchema.email().invalid()) {
+              <tas-error>{{ formSchema.email().errors()[0].message }}</tas-error>
+            }
+          </tas-form-field>
+
+          <div class="grid grid-cols-2 gap-3">
+            <tas-form-field>
+              <tas-label>Genre</tas-label>
+              <tas-select
+                [options]="genderOptions"
+                placeholder="Sélectionnez un genre"
+                [formField]="formSchema.gender"
+              ></tas-select>
+            </tas-form-field>
+
+            <div>
+              <tas-form-field>
+                <tas-label>Date de naissance</tas-label>
+                <tas-date-picker
+                  mode="date"
+                  placeholder="Sélectionnez une date"
+                  [formField]="formSchema.dateOfBirth"
+                ></tas-date-picker>
+                @if (formSchema.dateOfBirth().touched() && formSchema.dateOfBirth().invalid()) {
+                  <tas-error>{{ formSchema.dateOfBirth().errors()[0].message }}</tas-error>
+                }
+              </tas-form-field>
+            </div>
+          </div>
+
+          <p class="text-xs text-slate-400">
+            Le téléphone, la pièce d'identité et les informations d'entreprise ne sont pas
+            modifiables ici : ils ne font pas partie du contrat de mise à jour.
+          </p>
+        </div>
+      </div>
+
+      <!-- Commercial interest -->
+      <div class="border-t border-gray-200 pt-4">
+        <p class="text-sm font-medium text-slate-600 mb-3">Intérêt commercial</p>
+        <div class="flex flex-col gap-4">
+          <tas-form-field>
+            <tas-label>Produit d'intérêt</tas-label>
+            <tas-select
+              [options]="productOptions()"
+              placeholder="Produit souhaité"
+              [formField]="formSchema.interestedProduct"
+            ></tas-select>
+          </tas-form-field>
+
+          <div class="grid grid-cols-2 gap-3">
+            <tas-form-field>
+              <tas-label>Montant souhaité</tas-label>
+              <input tasInput type="number" placeholder="0" [formField]="formSchema.desiredAmount" />
+              @if (formSchema.desiredAmount().touched() && formSchema.desiredAmount().invalid()) {
+                <tas-error>{{ formSchema.desiredAmount().errors()[0].message }}</tas-error>
+              }
+            </tas-form-field>
+
+            <tas-form-field>
+              <tas-label>Devise</tas-label>
+              <tas-select
+                [options]="currencyOptions"
+                placeholder="Devise"
+                [formField]="formSchema.desiredCurrency"
+              ></tas-select>
+              @if (formSchema.desiredCurrency().touched() && formSchema.desiredCurrency().invalid()) {
+                <tas-error>{{ formSchema.desiredCurrency().errors()[0].message }}</tas-error>
+              }
+            </tas-form-field>
+          </div>
+
+          <tas-form-field>
+            <tas-label>Campagne</tas-label>
+            <input tasInput type="text" placeholder="Nom de la campagne" [formField]="formSchema.campaign" />
+          </tas-form-field>
+        </div>
+      </div>
+
+      <!-- Preferences -->
+      <div class="border-t border-gray-200 pt-4">
+        <p class="text-sm font-medium text-slate-600 mb-3">Préférences</p>
+        <div class="flex flex-col gap-4">
+          <tas-form-field>
+            <tas-label>Langue préférée</tas-label>
+            <tas-select
+              [options]="languageOptions"
+              placeholder="Langue de contact"
+              [formField]="formSchema.preferredLanguage"
+            ></tas-select>
+          </tas-form-field>
+
+          <tas-form-field>
+            <tas-label>Agence préférée</tas-label>
+            <tas-select
+              [options]="agencies()"
+              placeholder="Sélectionnez une agence"
+              [formField]="formSchema.preferredAgencyId"
+            ></tas-select>
+            <tas-hint>Agence souhaitée par le prospect, distincte de l'agence d'affectation.</tas-hint>
+          </tas-form-field>
+
+          <tas-form-field>
+            <tas-label>Commentaire</tas-label>
+            <textarea
+              tasInput
+              rows="3"
+              placeholder="Informations complémentaires…"
+              [formField]="formSchema.comment"
+            ></textarea>
+          </tas-form-field>
+        </div>
+      </div>
+
+    </form>
+  </tas-drawer-content>
+
+  <tas-drawer-action>
+    <button tas-outlined-button color="primary" type="button" (click)="close()">Annuler</button>
+    <button
+      tas-raised-button
+      color="primary"
+      type="button"
+      (click)="handleSubmit()"
+      [disabled]="formSchema().invalid() || formSchema().submitting()"
+      [isLoading]="formSchema().submitting()"
+    >
+      Enregistrer
+    </button>
+  </tas-drawer-action>
+</tas-side-drawer>

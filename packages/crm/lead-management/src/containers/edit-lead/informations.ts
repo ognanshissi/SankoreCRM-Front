@@ -13,6 +13,8 @@ import { TimeagoPipe } from '@talisoft/ui/timeago';
 import { SnackbarService } from '@talisoft/ui/snackbar';
 import { LeadsApiService, LeadDto, TagDto } from '@sankore/crm-api';
 import { AuthenticationService, PermissionsService } from '@sankore/crm/common';
+import { SideDrawerService } from '@talisoft/ui/side-drawer';
+import { EditLeadInfoDrawer, genderLabel } from './edit-lead-info-drawer';
 
 function sourceLabel(source: string | null | undefined): string {
   switch (source) {
@@ -73,7 +75,16 @@ function intentLabel(level: string | null | undefined): string {
         <!-- Identity -->
         <tas-card>
           <div class="p-4">
-            <p class="text-xs font-semibold text-slate-400 mb-3">Identité</p>
+            <div class="flex items-center justify-between mb-3">
+              <p class="text-xs font-semibold text-slate-400">Identité</p>
+              @if (canUpdate()) {
+                <button type="button" class="text-xs text-primary hover:underline flex items-center gap-1"
+                  (click)="openEditInfoDrawer()">
+                  <tas-icon iconName="feather:edit-2" style="font-size:10px"></tas-icon>
+                  Modifier
+                </button>
+              }
+            </div>
             <div class="grid grid-cols-2 gap-x-6 gap-y-4">
               <div>
                 <p class="text-xs text-slate-400 mb-1">Nom complet</p>
@@ -100,7 +111,7 @@ function intentLabel(level: string | null | undefined): string {
               @if (lead()!.gender) {
                 <div>
                   <p class="text-xs text-slate-400 mb-1">Genre</p>
-                  <p class="text-sm font-medium text-slate-800">{{ lead()!.gender }}</p>
+                  <p class="text-sm font-medium text-slate-800">{{ genderLabel(lead()!.gender) }}</p>
                 </div>
               }
               @if (lead()!.nationalId) {
@@ -333,6 +344,7 @@ export class LeadInformationsPage {
   private readonly _leadsApiService = inject(LeadsApiService);
   private readonly _snackbar = inject(SnackbarService);
   private readonly _auth = inject(AuthenticationService);
+  private readonly _sideDrawerService = inject(SideDrawerService);
 
   public readonly id = input.required<string>();
 
@@ -350,6 +362,7 @@ export class LeadInformationsPage {
   public readonly pipelineLabel = pipelineLabel;
   public readonly prospectTypeLabel = prospectTypeLabel;
   public readonly intentLabel = intentLabel;
+  public readonly genderLabel = genderLabel;
 
   constructor() {
     effect(() => {
@@ -364,6 +377,29 @@ export class LeadInformationsPage {
       this._leadsApiService.listLeadTags(leadId).pipe(
         catchError(() => EMPTY),
       ).subscribe((t) => this.tags.set(t ?? []));
+    });
+  }
+
+  public openEditInfoDrawer(): void {
+    const currentLead = this.lead();
+    if (!currentLead) return;
+
+    const ref = this._sideDrawerService.open(EditLeadInfoDrawer, {
+      width: '100%',
+      height: '100%',
+      panelClass: 'side-drawer-panel',
+      data: { lead: currentLead },
+    });
+
+    ref.closed.subscribe((updated) => {
+      if (updated) {
+        // On recharge plutôt que de recopier le formulaire : le serveur recalcule fullName,
+        // desiredAmount et updatedAt, et le prochain enregistrement a besoin du updatedAt à jour
+        // pour l'optimistic locking.
+        this._leadsApiService.getLead(this.id()).pipe(
+          catchError(() => EMPTY),
+        ).subscribe((lead) => this.lead.set(lead));
+      }
     });
   }
 
