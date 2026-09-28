@@ -1,0 +1,40 @@
+# Application Angular en rendu serveur (SSR).
+#
+# L'image embarque le serveur Express généré par @angular/build et tourne sous Node :
+# nginx ne conviendrait pas ici, il ne sait pas exécuter ce bundle.
+#
+#   docker compose up --build
+#   http://localhost:4000
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: sankore-crm:latest
+    container_name: sankore-crm
+    ports:
+      - "${WEB_PORT:-4000}:4000"
+    environment:
+      # Angular 22 valide l'en-tête Host des requêtes rendues côté serveur (protection
+      # SSRF) et répond 400 pour tout hôte hors liste. Sans cette variable, le conteneur
+      # ne sert rien. En déploiement, remplacer par le ou les domaines publics, séparés
+      # par des virgules.
+      NG_ALLOWED_HOSTS: "${NG_ALLOWED_HOSTS:-localhost}"
+      # Derrière un reverse proxy qui termine TLS, décommenter pour que le rendu voie le
+      # schéma et l'hôte d'origine :
+      # NG_TRUST_PROXY_HEADERS: "x-forwarded-proto,x-forwarded-host"
+    restart: unless-stopped
+    healthcheck:
+      # Sonde sur un fichier statique : express.static est monté avant le handler Angular,
+      # donc la réponse ne dépend pas de NG_ALLOWED_HOSTS et ne déclenche pas un rendu SSR
+      # complet à chaque intervalle.
+      test:
+        - CMD
+        - node
+        - -e
+        - "require('http').get({host:'127.0.0.1',port:process.env.PORT||4000,path:'/favicon.ico'},r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"
+      interval: 30s
+      timeout: 5s
+      start_period: 20s
+      retries: 3

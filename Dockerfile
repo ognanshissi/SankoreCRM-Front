@@ -47,6 +47,7 @@ ENV PORT=4000
 # par défaut rend le conteneur testable en local ; en déploiement, passer le ou les domaines
 # publics séparés par des virgules (`-e NG_ALLOWED_HOSTS=crm.example.com`).
 ENV NG_ALLOWED_HOSTS=localhost
+ENV NG_API_URL=http://localhost:5000
 
 # Derrière un reverse proxy qui termine TLS, décommenter pour que le rendu voie le schéma et
 # l'hôte d'origine : ENV NG_TRUST_PROXY_HEADERS=x-forwarded-proto,x-forwarded-host
