@@ -227,18 +227,18 @@
             }
           </tas-form-field>
 
-          <tas-form-field>
-            <tas-label>Date de naissance <span class="text-functional-error">*</span></tas-label>
+
             <tas-date-picker
               mode="date"
               placeholder="Sélectionnez une date"
               [formField]="formSchema.dateOfBirth"
-            ></tas-date-picker>
+            >
+              Date de naissance <span class="text-functional-error">*</span>
+            </tas-date-picker>
             <tas-hint>Le module Clients refuse un client sous l'âge minimum du tenant.</tas-hint>
             @if (formSchema.dateOfBirth().touched() && formSchema.dateOfBirth().invalid()) {
               <tas-error>{{ formSchema.dateOfBirth().errors()[0].message }}</tas-error>
             }
-          </tas-form-field>
         </div>
       </form>
     }

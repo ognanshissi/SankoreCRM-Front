@@ -119,6 +119,14 @@
           </form>
         </tas-card>
 
+        <!-- Responsable de l'agence -->
+        <agency-manager-card
+          [agencyId]="id()"
+          [managerUserId]="agency()!.managerUserId"
+          [managerFullName]="agency()!.managerFullName"
+          (managerChanged)="onManagerChanged($event)"
+        ></agency-manager-card>
+
         <!-- Organisation hiérarchique -->
         <tas-card>
           <card-header>
@@ -191,6 +199,43 @@
 
           </div>
         </tas-card>
+
+        <!-- Réactivation : symétrique de la suppression douce, proposée uniquement
+             sur une agence inactive -->
+        @if (agency()!.isActive === false) {
+          <tas-card>
+            <card-header>
+              <p class="font-semibold text-slate-800">Statut de l'agence</p>
+              <p class="text-sm text-slate-500 mt-0.5">Remettre cette agence en service</p>
+            </card-header>
+
+            <div class="px-4 pb-4">
+              <div class="flex items-start justify-between gap-4 p-4 rounded-lg border border-slate-200 bg-slate-50">
+                <div>
+                  <p class="font-medium text-slate-800">Réactiver l'agence</p>
+                  <p class="text-sm text-slate-500 mt-1">
+                    Cette agence est inactive. La réactiver annule sa suppression : elle
+                    redevient active et cesse d'être marquée comme supprimée.
+                  </p>
+                </div>
+                @if (canActivate()) {
+                  <button
+                    tas-raised-button
+                    color="primary"
+                    type="button"
+                    [disabled]="activatingId() !== null"
+                    [isLoading]="activatingId() === agency()!.id"
+                    (click)="activateAgency()"
+                    class="shrink-0"
+                  >
+                    <tas-icon iconName="feather:rotate-ccw" iconSize="sm"></tas-icon>
+                    Réactiver
+                  </button>
+                }
+              </div>
+            </div>
+          </tas-card>
+        }
 
         <!-- Danger zone -->
         <tas-card>

@@ -413,7 +413,7 @@ export class AnalyticsDashboard implements OnInit {
 
   public fmtPct(rate: number | undefined | null): string {
     if (rate == null) return '—';
-    return (rate * 100).toFixed(1) + '%';
+    return (rate).toFixed(1) + '%';
   }
 
   public onPeriodChange(value: string): void {

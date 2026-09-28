@@ -67,6 +67,14 @@ const settingsRoutes: Routes = [
         loadComponent: () => import('./containers/users/edit-user/parametrage'),
       },
       {
+        // `GET /api/v1/users/{userId}/login-history` ne déclare aucune
+        // permission : la garde reprend `user:read`, le droit déjà exigé par la
+        // fiche utilisateur, au lieu d'un code inventé.
+        path: 'connexions',
+        canActivate: [hasPermissionGuard('user:read')],
+        loadComponent: () => import('./containers/users/edit-user/connexions'),
+      },
+      {
         path: 'danger',
         canActivate: [hasPermissionGuard('user:deactivate', 'user:reactivate', 'user:reset-password')],
         loadComponent: () => import('./containers/users/edit-user/danger'),

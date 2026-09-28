@@ -10,6 +10,7 @@ import { TasInputPassword } from '@talisoft/ui/input-password';
 import { UsersApiService } from '@sankore/crm-api';
 import { AuthenticationService } from '@sankore/crm/common';
 import { TimeagoPipe } from '@talisoft/ui/timeago';
+import { LoginHistoryList } from '../users/edit-user/login-history-list';
 
 @Component({
   selector: 'account-security',
@@ -21,6 +22,7 @@ import { TimeagoPipe } from '@talisoft/ui/timeago';
     Button,
     TasInputPassword,
     TimeagoPipe,
+    LoginHistoryList,
   ],
   template: `
     <div class="pb-6 flex flex-col gap-4">
@@ -169,6 +171,12 @@ import { TimeagoPipe } from '@talisoft/ui/timeago';
           </button>
         </div>
       </tas-card>
+
+      <!--
+        Sans userId, le composant interroge /users/me/login-history :
+        l'historique de l'utilisateur connecté, sans droit particulier.
+      -->
+      <user-login-history></user-login-history>
     </div>
   `,
 })

@@ -29,5 +29,7 @@ export interface AgencyDto {
     longitude?: number | null;
     createdAt?: string;
     updatedAt?: string | null;
+    managerUserId?: string | null;
+    managerFullName?: string | null;
 }
 

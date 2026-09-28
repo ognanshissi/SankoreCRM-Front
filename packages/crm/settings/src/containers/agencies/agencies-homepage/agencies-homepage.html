@@ -3,9 +3,15 @@
   <div>
     <div class="flex items-center gap-2.5">
       <h1 class="text-lg font-semibold text-slate-800">Agences</h1>
-      @if ((tableConfig().pagination.totalElements ?? 0) > 0) {
+      @if (viewMode() === 'list') {
+        @if ((tableConfig().pagination.totalElements ?? 0) > 0) {
+          <span class="px-2 py-0.5 rounded-md bg-slate-100 text-slate-500 text-xs font-medium tabular-nums">
+            {{ tableConfig().pagination.totalElements }}
+          </span>
+        }
+      } @else if (treeNodeCount() > 0) {
         <span class="px-2 py-0.5 rounded-md bg-slate-100 text-slate-500 text-xs font-medium tabular-nums">
-          {{ tableConfig().pagination.totalElements }}
+          {{ treeNodeCount() }}
         </span>
       }
     </div>
@@ -19,8 +25,77 @@
   }
 </div>
 
-<!-- Table (built-in search via searchInputChange) -->
-<tas-table
+<!-- Bascule Liste / Arborescence -->
+<div class="flex items-center justify-between gap-3 mb-4">
+  <div class="flex items-center gap-1 p-1 rounded-lg bg-slate-100 w-fit">
+    <button
+      type="button"
+      class="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors"
+      [ngClass]="{
+        'bg-white text-slate-800 shadow-sm': viewMode() === 'list',
+        'text-slate-500': viewMode() !== 'list'
+      }"
+      (click)="setViewMode('list')"
+    >
+      <tas-icon iconName="feather:list" iconSize="sm"></tas-icon>
+      Liste
+    </button>
+    @if (canRead()) {
+      <button
+        type="button"
+        class="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors"
+        [ngClass]="{
+          'bg-white text-slate-800 shadow-sm': viewMode() === 'tree',
+          'text-slate-500': viewMode() !== 'tree'
+        }"
+        (click)="setViewMode('tree')"
+      >
+        <tas-icon iconName="feather:git-merge" iconSize="sm"></tas-icon>
+        Arborescence
+      </button>
+    }
+  </div>
+
+  @if (viewMode() === 'tree') {
+    <div class="flex items-center gap-2">
+      <button tas-text-button type="button" (click)="expandAll()">
+        <tas-icon iconName="feather:chevrons-down" iconSize="sm"></tas-icon>
+        Tout déplier
+      </button>
+      <button tas-text-button type="button" (click)="collapseAll()">
+        <tas-icon iconName="feather:chevrons-up" iconSize="sm"></tas-icon>
+        Tout replier
+      </button>
+      <button
+        tas-outlined-button
+        type="button"
+        [color]="includeDeleted() ? 'primary' : 'neutral'"
+        [disabled]="isTreeLoading()"
+        (click)="toggleIncludeDeleted()"
+      >
+        <tas-icon
+          [iconName]="includeDeleted() ? 'feather:check-square' : 'feather:square'"
+          iconSize="sm"
+        ></tas-icon>
+        Inclure les agences supprimées
+      </button>
+      <button
+        tas-button
+        iconButton
+        type="button"
+        title="Rafraîchir l'arborescence"
+        [disabled]="isTreeLoading()"
+        (click)="loadTree()"
+      >
+        <tas-icon iconName="feather:refresh-cw" iconSize="sm"></tas-icon>
+      </button>
+    </div>
+  }
+</div>
+
+@if (viewMode() === 'list') {
+  <!-- Table (built-in search via searchInputChange) -->
+  <tas-table
     [data]="agencies()"
     [config]="tableConfig()"
     [hasCaption]="true"
@@ -111,3 +186,131 @@
       </tr>
     </ng-template>
   </tas-table>
+} @else {
+  <!-- Arborescence des agences -->
+  <tas-card class="block">
+    <div class="px-4 pt-4 pb-2 border-b border-slate-100">
+      <p class="font-semibold text-slate-800">Hiérarchie des agences</p>
+      <p class="text-sm text-slate-500 mt-0.5">
+        Dépliez un nœud pour voir les agences qui lui sont rattachées. Le siège est signalé par
+        une étiquette, les agences inactives sont grisées.
+        @if (includeDeleted()) {
+          Les agences supprimées sont incluses : le contrat ne les distingue pas des agences
+          simplement inactives dans l'arbre, elles apparaissent donc comme « Inactive ».
+        }
+      </p>
+    </div>
+
+    @if (isTreeLoading()) {
+      <div class="flex justify-center py-16">
+        <tas-spinner size="10" class="text-primary"></tas-spinner>
+      </div>
+    } @else if (treeRows().length === 0) {
+      <div class="flex flex-col items-center gap-2 py-16 text-center">
+        <tas-icon iconName="feather:git-merge" iconSize="2xl" class="text-slate-300"></tas-icon>
+        <p class="text-sm text-slate-500">Aucune agence à afficher dans l'arborescence.</p>
+      </div>
+    } @else {
+      <div class="divide-y divide-slate-100">
+        @for (row of treeRows(); track row.key) {
+          <div
+            class="flex items-center gap-3 py-2.5 pr-4 hover:bg-slate-50 transition-colors"
+            [ngClass]="{ 'opacity-60': row.node.isActive === false }"
+            [style.paddingLeft.px]="12 + row.depth * 22"
+          >
+            <!-- Chevron de dépliage : présent seulement si le nœud a des enfants -->
+            @if (row.hasChildren) {
+              <button
+                tas-button
+                iconButton
+                type="button"
+                [title]="row.isExpanded ? 'Replier' : 'Déplier'"
+                (click)="toggleNode(row)"
+              >
+                <tas-icon
+                  [iconName]="row.isExpanded ? 'feather:chevron-down' : 'feather:chevron-right'"
+                  iconSize="sm"
+                ></tas-icon>
+              </button>
+            } @else {
+              <span class="w-9 shrink-0"></span>
+            }
+
+            <div
+              class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold shrink-0 select-none"
+              [ngClass]="{
+                'bg-primary/10 text-primary': row.node.isHeadQuarterAgency,
+                'bg-amber-100 text-amber-700': !row.node.isHeadQuarterAgency
+              }"
+            >
+              {{ codeBadge(row.node.code, row.node.name) }}
+            </div>
+
+            <div
+              class="min-w-0 flex-1 cursor-pointer"
+              (click)="navigateToEdit(row.node)"
+            >
+              <div class="flex items-center gap-2 flex-wrap">
+                <span class="font-medium text-slate-800 text-sm leading-tight truncate">
+                  {{ row.node.name ?? '—' }}
+                </span>
+                @if (row.node.code) {
+                  <span class="px-1.5 py-0.5 rounded text-xs font-mono bg-slate-100 text-slate-500 shrink-0">
+                    {{ row.node.code }}
+                  </span>
+                }
+                @if (row.node.isHeadQuarterAgency) {
+                  <tas-tag severity="primary">Siège</tas-tag>
+                }
+                @if (row.node.isActive === false) {
+                  <tas-tag severity="error">Inactive</tas-tag>
+                }
+                @if (row.hasChildren) {
+                  <span
+                    class="px-1.5 py-0.5 rounded-md bg-slate-100 text-slate-500 text-xs font-medium tabular-nums shrink-0"
+                    [title]="row.childCount + ' agence(s) rattachée(s)'"
+                  >
+                    {{ row.childCount }}
+                  </span>
+                }
+              </div>
+              @if (row.node.description) {
+                <div class="text-xs text-slate-400 mt-0.5 truncate">{{ row.node.description }}</div>
+              }
+            </div>
+
+            <span class="text-xs text-slate-500 shrink-0 w-16 text-right">
+              {{ agencyTypeLabel(row.node.agencyType) }}
+            </span>
+
+            <div class="flex items-center gap-1 shrink-0">
+              @if (row.node.isActive === false && canActivate()) {
+                <button
+                  tas-outlined-button
+                  color="primary"
+                  type="button"
+                  size="small"
+                  [disabled]="activatingId() !== null"
+                  [isLoading]="activatingId() === row.node.id"
+                  (click)="activateFromTree(row.node)"
+                >
+                  <tas-icon iconName="feather:rotate-ccw" iconSize="sm"></tas-icon>
+                  Réactiver
+                </button>
+              }
+              <button
+                tas-button
+                iconButton
+                type="button"
+                title="Voir / modifier"
+                (click)="navigateToEdit(row.node)"
+              >
+                <tas-icon iconName="feather:edit-2" iconSize="sm"></tas-icon>
+              </button>
+            </div>
+          </div>
+        }
+      </div>
+    }
+  </tas-card>
+}

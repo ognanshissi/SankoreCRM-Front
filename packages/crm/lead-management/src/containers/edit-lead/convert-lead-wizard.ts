@@ -218,14 +218,14 @@ export class ConvertLeadWizard {
         : `Le lead doit être au moins « Contacté » (actuellement : ${status || '—'})`,
     });
 
-    const completeness = lead.qualificationCompleteness ?? 0;
-    const qualOk = completeness >= 50;
+    const completeness = lead.qualificationCompleteness?? 0;
+    const qualOk = (completeness * 100) >= 50;
     checks.push({
       label: 'Qualification',
       passed: qualOk,
       detail: qualOk
-        ? `Qualification à ${completeness}%`
-        : `Qualification insuffisante (${completeness}% — minimum 50% requis)`,
+        ? `Qualification à ${completeness * 100}%`
+        : `Qualification insuffisante (${completeness * 100}% — minimum 50% requis)`,
     });
 
     const hasContact = !!(lead.phoneNumber || lead.email);

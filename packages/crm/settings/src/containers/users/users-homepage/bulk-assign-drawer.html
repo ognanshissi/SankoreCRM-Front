@@ -1,0 +1,176 @@
+<tas-side-drawer>
+  <tas-drawer-title>
+    <TasTitle class="text-lg">
+      {{ isAgencyMode ? 'Affecter à une agence' : 'Attribuer un rôle' }}
+    </TasTitle>
+  </tas-drawer-title>
+
+  <tas-drawer-content>
+    @if (report() === null) {
+      <!-- Phase 1 : choix de la cible -->
+      <form [formRoot]="formSchema" class="flex flex-col gap-5">
+        <p class="text-sm text-slate-500">
+          @if (isAgencyMode) {
+            Les {{ selectedCount }} utilisateur(s) sélectionné(s) rejoindront l'agence choisie.
+          } @else {
+            Les {{ selectedCount }} utilisateur(s) sélectionné(s) recevront le rôle choisi, en plus
+            de ceux qu'ils détiennent déjà.
+          }
+        </p>
+
+        @if (isLoadingOptions()) {
+          <div class="flex justify-center py-10">
+            <tas-spinner size="8" class="text-primary"></tas-spinner>
+          </div>
+        } @else {
+          <tas-form-field>
+            <tas-label>
+              {{ isAgencyMode ? 'Agence de destination' : 'Rôle à attribuer' }}
+              <span class="text-functional-error">*</span>
+            </tas-label>
+            <tas-select
+              [options]="options()"
+              optionLabel="label"
+              optionValue="value"
+              [searchable]="true"
+              [placeholder]="isAgencyMode ? 'Choisissez une agence' : 'Choisissez un rôle'"
+              [formField]="formSchema.targetId"
+            ></tas-select>
+            <tas-hint>
+              @if (isAgencyMode) {
+                Le serveur ignore un utilisateur déjà rattaché à cette agence, ainsi qu'un
+                utilisateur qui dirige une autre agence.
+              } @else {
+                Le serveur ignore un utilisateur qui détient déjà ce rôle. Le rôle ne prend effet
+                dans ses droits qu'à sa prochaine connexion.
+              }
+            </tas-hint>
+          </tas-form-field>
+        }
+
+        @if (alreadyAssignedCount() > 0) {
+          <div class="flex items-start gap-2 rounded-lg bg-amber-50 border border-amber-200 p-3">
+            <tas-icon
+              iconName="feather:alert-triangle"
+              class="text-amber-500 shrink-0"
+              style="font-size: 14px"
+            ></tas-icon>
+            <p class="text-xs text-amber-800">
+              {{ alreadyAssignedCount() }} utilisateur(s) de la sélection
+              {{ isAgencyMode ? 'appartiennent déjà à cette agence' : 'détiennent déjà ce rôle' }}
+              : le serveur les ignorera. L'envoi reste possible, le compte rendu les listera.
+            </p>
+          </div>
+        }
+
+        <!-- Rappel de la sélection : l'opérateur voit qui part dans l'envoi. -->
+        <div class="rounded-lg border border-slate-200">
+          <div class="border-b border-slate-100 px-4 py-2 text-xs text-slate-500">
+            Sélection · {{ selectedCount }} utilisateur(s)
+          </div>
+          <ul class="max-h-60 divide-y divide-slate-100 overflow-y-auto">
+            @for (user of data.users; track user.id) {
+              <li class="px-4 py-2">
+                <p class="text-sm font-medium text-slate-800">{{ user.fullName || '—' }}</p>
+                <p class="text-xs text-slate-400">{{ user.email }}</p>
+              </li>
+            }
+          </ul>
+        </div>
+      </form>
+    } @else {
+      <!-- Phase 2 : compte rendu. Le contrat répond 200 même quand des lignes
+           sont ignorées : les trois compteurs et les motifs sont donc affichés
+           tels quels, sans les résumer en « Opération réussie ». -->
+      <div class="flex flex-col gap-5">
+        <div class="grid grid-cols-3 gap-3">
+          <div class="rounded-lg border border-slate-200 p-3">
+            <p class="text-xl font-semibold text-slate-800 tabular-nums leading-none">
+              {{ requestedCount() }}
+            </p>
+            <p class="text-xs text-slate-400 mt-1">Demandés</p>
+          </div>
+          <div class="rounded-lg border border-slate-200 p-3">
+            <p class="text-xl font-semibold text-green-600 tabular-nums leading-none">
+              {{ appliedCount() }}
+            </p>
+            <p class="text-xs text-slate-400 mt-1">Affectés</p>
+          </div>
+          <div class="rounded-lg border border-slate-200 p-3">
+            <p
+              class="text-xl font-semibold tabular-nums leading-none"
+              [class]="skippedCount() > 0 ? 'text-amber-600' : 'text-slate-800'"
+            >
+              {{ skippedCount() }}
+            </p>
+            <p class="text-xs text-slate-400 mt-1">Ignorés</p>
+          </div>
+        </div>
+
+        <p class="text-sm text-slate-600">
+          @if (skippedCount() === 0) {
+            {{ appliedCount() }} utilisateur(s) sur {{ requestedCount() }}
+            {{ isAgencyMode ? "ont rejoint l'agence" : 'ont reçu le rôle' }}.
+          } @else {
+            {{ appliedCount() }} sur {{ requestedCount() }} affecté(s),
+            {{ skippedCount() }} ignoré(s).
+          }
+        </p>
+
+        @if (skippedRows().length > 0) {
+          <div class="rounded-lg border border-slate-200">
+            <div class="border-b border-slate-100 px-4 py-2 text-xs font-medium text-slate-600">
+              Utilisateurs ignorés
+            </div>
+            <ul class="divide-y divide-slate-100">
+              @for (row of skippedRows(); track $index) {
+                <li class="px-4 py-3">
+                  <p class="text-sm font-medium text-slate-800">{{ row.name }}</p>
+                  @if (row.email) {
+                    <p class="text-xs text-slate-400">{{ row.email }}</p>
+                  }
+                  <p class="mt-1 text-xs text-amber-700">{{ row.reason }}</p>
+                </li>
+              }
+            </ul>
+          </div>
+
+          <!-- Le motif vient du serveur et n'est pas traduit côté front : le
+               contrat n'énumère pas les codes exacts. Ce rappel dit, en
+               français, les cas que l'API documente. -->
+          <div class="rounded-lg bg-slate-50 border border-slate-200 p-3">
+            <p class="text-xs font-medium text-slate-600">Cas d'exclusion prévus par l'API</p>
+            <ul class="mt-1 list-disc pl-4 text-xs text-slate-500">
+              <li>L'utilisateur n'existe pas.</li>
+              <li>Il s'agit du compte système.</li>
+              @if (isAgencyMode) {
+                <li>L'utilisateur appartient déjà à cette agence.</li>
+                <li>L'utilisateur dirige une autre agence : libérez ce poste d'abord.</li>
+              } @else {
+                <li>L'utilisateur détient déjà ce rôle.</li>
+              }
+            </ul>
+          </div>
+        }
+      </div>
+    }
+  </tas-drawer-content>
+
+  <tas-drawer-action>
+    @if (report() === null) {
+      <button tas-outlined-button color="primary" type="button" (click)="close()">Annuler</button>
+      <button
+        tas-raised-button
+        color="primary"
+        type="button"
+        (click)="handleSubmit()"
+        [disabled]="isLoadingOptions() || formSchema().invalid() || formSchema().submitting()"
+        [isLoading]="formSchema().submitting()"
+      >
+        {{ isAgencyMode ? 'Affecter la sélection' : 'Attribuer le rôle' }}
+      </button>
+    } @else {
+      <button tas-raised-button color="primary" type="button" (click)="close()">Fermer</button>
+    }
+  </tas-drawer-action>
+</tas-side-drawer>

@@ -25,6 +25,8 @@ import { SnackbarService } from '@talisoft/ui/snackbar';
 import { ConfirmDialogService } from '@talisoft/ui/confirm-dialog';
 import { DeleteAgencyDialog } from './delete-agency-dialog';
 import { BreadcrumbService, PermissionsService } from '@sankore/crm/common';
+import { AgencyActivationService } from '../agency-activation.service';
+import { AgencyManagerCard, AgencyManagerChange } from './agency-manager-card';
 
 class EditAgencyFormModel {
   public name!: string;
@@ -85,6 +87,7 @@ const AGENCY_TYPE_OPTIONS = [
     TasSpinner,
     FormRoot,
     FormField,
+    AgencyManagerCard,
   ],
 })
 export class EditAgencyPage {
@@ -92,6 +95,10 @@ export class EditAgencyPage {
   public readonly canUpdate = this._permissions.can('agency:update');
   public readonly canMove = this._permissions.can('agency:move');
   public readonly canDelete = this._permissions.can('agency:delete');
+  public readonly canActivate = this._permissions.can('agency:activate');
+
+  private readonly _agencyActivationService = inject(AgencyActivationService);
+  public readonly activatingId = this._agencyActivationService.activatingId;
 
   private readonly _agenciesApiService = inject(AgenciesApiService);
   private readonly _snackbarService = inject(SnackbarService);
@@ -227,6 +234,30 @@ export class EditAgencyPage {
         a ? { ...a, parentAgencyId: newParentAgencyId } : a,
       );
     });
+  }
+
+  /**
+   * Réactivation — POST /agencies/{id}/activate. Symétrique de la suppression
+   * douce, donc proposée au même endroit et uniquement quand l'agence est
+   * inactive : sur une agence active, l'endpoint n'aurait rien à faire.
+   */
+  public activateAgency(): void {
+    const agency = this.agency();
+    if (!agency) return;
+    this._agencyActivationService.confirmAndActivate(agency, () => {
+      // Le 204 ne renvoie pas l'agence : on recharge plutôt que de deviner
+      // l'état résultant, pour que la fiche affiche ce que le serveur a
+      // réellement enregistré.
+      this.loadAgency(this.id());
+    });
+  }
+
+  public onManagerChanged(change: AgencyManagerChange): void {
+    this.agency.update((a) =>
+      a
+        ? { ...a, managerUserId: change.userId, managerFullName: change.fullName }
+        : a,
+    );
   }
 
   public openDeleteDialog(): void {

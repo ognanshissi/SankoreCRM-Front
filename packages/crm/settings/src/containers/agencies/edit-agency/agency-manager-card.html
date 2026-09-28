@@ -1,0 +1,128 @@
+<tas-card class="block">
+  <card-header>
+    <p class="font-semibold text-slate-800">Responsable</p>
+    <p class="text-sm text-slate-500 mt-0.5">
+      Désignez l'utilisateur en charge de cette agence, ou laissez le poste vacant
+    </p>
+  </card-header>
+
+  <div class="px-4 pb-4 flex flex-col gap-5">
+
+    <!-- Responsable actuel -->
+    <div class="flex items-center justify-between gap-4 p-4 rounded-lg border border-slate-200 bg-slate-50">
+      @if (hasManager()) {
+        <div class="flex items-center gap-3 min-w-0">
+          <div class="w-9 h-9 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0">
+            <tas-icon iconName="feather:user-check" iconSize="sm"></tas-icon>
+          </div>
+          <div class="min-w-0">
+            <p class="font-medium text-slate-800 truncate">
+              {{ currentManagerFullName() ?? 'Responsable' }}
+            </p>
+            <p class="text-xs text-slate-500 mt-0.5">Responsable de cette agence</p>
+          </div>
+        </div>
+        @if (canAssignManager()) {
+          <button
+            tas-outlined-button
+            color="warn"
+            type="button"
+            [disabled]="isRemoving()"
+            [isLoading]="isRemoving()"
+            (click)="confirmRemove()"
+            class="shrink-0"
+          >
+            <tas-icon iconName="feather:user-x" iconSize="sm"></tas-icon>
+            Retirer le responsable
+          </button>
+        }
+      } @else {
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 rounded-full bg-slate-200 text-slate-500 flex items-center justify-center shrink-0">
+            <tas-icon iconName="feather:user" iconSize="sm"></tas-icon>
+          </div>
+          <div>
+            <p class="font-medium text-slate-800">Aucun responsable</p>
+            <p class="text-xs text-slate-500 mt-0.5">
+              Le poste est vacant pour cette agence.
+            </p>
+          </div>
+        </div>
+      }
+    </div>
+
+    <!-- Rôle accordé par le serveur lors de la dernière désignation -->
+    @if (grantedRoleNotice(); as notice) {
+      <div class="flex gap-3 p-3 rounded-lg bg-blue-50 border border-blue-200">
+        <tas-icon iconName="feather:shield" class="text-blue-700 shrink-0 mt-0.5" iconSize="sm"></tas-icon>
+        <div class="text-sm text-slate-700">
+          <p>
+            En nommant {{ notice.userFullName }}, le serveur lui a accordé le rôle
+            <tas-tag severity="info">{{ notice.role }}</tas-tag>.
+          </p>
+          <p class="text-xs text-slate-500 mt-1">
+            Ce rôle élargit ses droits dans l'application : vérifiez-le si ce n'était pas voulu.
+          </p>
+        </div>
+      </div>
+    }
+
+    <!-- Désignation -->
+    @if (canAssignManager()) {
+      <div class="p-4 rounded-lg border border-slate-200">
+        <p class="font-medium text-slate-800 mb-1">
+          {{ hasManager() ? 'Changer de responsable' : 'Désigner un responsable' }}
+        </p>
+        <p class="text-sm text-slate-500 mb-4">
+          Seuls les utilisateurs actifs rattachés à cette agence peuvent être désignés.
+        </p>
+
+        @if (isLoadingCandidates()) {
+          <div class="flex items-center gap-2 py-3">
+            <tas-spinner size="5" class="text-primary"></tas-spinner>
+            <span class="text-sm text-slate-500">Chargement des utilisateurs de l'agence…</span>
+          </div>
+        } @else if (candidates().length === 0) {
+          <div class="flex gap-3 p-3 rounded-lg bg-slate-50 border border-slate-200">
+            <tas-icon iconName="feather:info" class="text-slate-500 shrink-0 mt-0.5" iconSize="sm"></tas-icon>
+            <p class="text-sm text-slate-600">
+              Aucun utilisateur actif n'est rattaché à cette agence. Rattachez-y un utilisateur
+              actif avant de désigner un responsable.
+            </p>
+          </div>
+        } @else {
+          <form [formRoot]="assignFormSchema" class="flex gap-3 items-start">
+            <div class="flex-1">
+              <tas-form-field>
+                <tas-label>Utilisateur</tas-label>
+                <tas-select
+                  [options]="candidates()"
+                  placeholder="Sélectionnez un utilisateur"
+                  [filter]="true"
+                  [formField]="assignFormSchema.managerUserId"
+                ></tas-select>
+                <tas-hint>Utilisateurs actifs rattachés à cette agence</tas-hint>
+                @if (assignFormSchema.managerUserId().touched() && assignFormSchema.managerUserId().invalid()) {
+                  <tas-error>{{ assignFormSchema.managerUserId().errors()[0].message }}</tas-error>
+                }
+              </tas-form-field>
+            </div>
+            <button
+              tas-raised-button
+              color="primary"
+              type="button"
+              [disabled]="!assignFormSchema.managerUserId().value() || assignFormSchema().submitting()"
+              [isLoading]="assignFormSchema().submitting()"
+              (click)="handleAssign()"
+              class="shrink-0"
+            >
+              <tas-icon iconName="feather:user-check" iconSize="sm"></tas-icon>
+              Désigner responsable
+            </button>
+          </form>
+        }
+      </div>
+    }
+
+  </div>
+</tas-card>

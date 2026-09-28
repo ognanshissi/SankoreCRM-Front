@@ -14,6 +14,10 @@ export const PERMISSIONS = {
   AGENCY_DELETE: 'agency:delete',
   AGENCY_MOVE: 'agency:move',
   AGENCY_ACTIVATE: 'agency:activate',
+  // Déclaré par `PUT` et `DELETE /api/v1/agencies/{id}/manager` dans leur description.
+  // Distinct d'`agency:update` : désigner le responsable d'une agence peut accorder un
+  // rôle à l'utilisateur visé (`AssignAgencyManagerResult.grantedRole`).
+  AGENCY_ASSIGN_MANAGER: 'agency:assign-manager',
 
   USER_READ: 'user:read',
   USER_CREATE: 'user:create',
@@ -22,6 +26,9 @@ export const PERMISSIONS = {
   USER_REACTIVATE: 'user:reactivate',
   USER_RESET_PASSWORD: 'user:reset-password',
   USER_ASSIGN_ROLE: 'user:assign-role',
+  // Déclaré par `POST /api/v1/users/bulk/agency`. Distinct d'`user:update` : déplacer un
+  // utilisateur d'agence change son périmètre de données, pas seulement sa fiche.
+  USER_ASSIGN_AGENCY: 'user:assign-agency',
   USER_REVOKE_ROLE: 'user:revoke-role',
   USER_ASSIGN_PERMISSION: 'user:assign-permission',
   USER_REVOKE_PERMISSION: 'user:revoke-permission',

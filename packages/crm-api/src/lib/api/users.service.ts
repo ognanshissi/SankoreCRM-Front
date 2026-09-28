@@ -25,6 +25,12 @@ import { AssignRoleRequest } from '../model/assign-role-request.interface';
 // @ts-ignore
 import { AssignScopedPermissionRequest } from '../model/assign-scoped-permission-request.interface';
 // @ts-ignore
+import { BulkAssignAgencyRequest } from '../model/bulk-assign-agency-request.interface';
+// @ts-ignore
+import { BulkAssignResult } from '../model/bulk-assign-result.interface';
+// @ts-ignore
+import { BulkAssignRoleRequest } from '../model/bulk-assign-role-request.interface';
+// @ts-ignore
 import { ChangePasswordRequest } from '../model/change-password-request.interface';
 // @ts-ignore
 import { CreateUserRequest } from '../model/create-user-request.interface';
@@ -349,6 +355,158 @@ export class UsersApiService {
             {
                 context: localVarHttpContext,
                 body: assignScopedPermissionRequest,
+                responseType: <any>responseType_,
+                withCredentials: this.configuration.withCredentials,
+                headers: localVarHeaders,
+                observe: observe,
+                reportProgress: reportProgress
+            }
+        );
+    }
+
+    /**
+     * Give the same role to a selection of users
+     * Grants one role to every selected user, through ASP.NET Identity so it reaches their next token, and records the grant against the operator. Per-user outcomes as above; skipped when the user does not exist, is the system account, or already holds the role. At most 200 users per request. Requires permission: user:assign-role.
+     * @param bulkAssignRoleRequest 
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     */
+    public bulkAssignRoleToUsers(bulkAssignRoleRequest: BulkAssignRoleRequest, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<BulkAssignResult>;
+    public bulkAssignRoleToUsers(bulkAssignRoleRequest: BulkAssignRoleRequest, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<BulkAssignResult>>;
+    public bulkAssignRoleToUsers(bulkAssignRoleRequest: BulkAssignRoleRequest, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<BulkAssignResult>>;
+    public bulkAssignRoleToUsers(bulkAssignRoleRequest: BulkAssignRoleRequest, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
+        if (bulkAssignRoleRequest === null || bulkAssignRoleRequest === undefined) {
+            throw new Error('Required parameter bulkAssignRoleRequest was null or undefined when calling bulkAssignRoleToUsers.');
+        }
+
+        let localVarHeaders = this.defaultHeaders;
+
+        let localVarCredential: string | undefined;
+        // authentication (BearerToken) required
+        localVarCredential = this.configuration.lookupCredential('BearerToken');
+        if (localVarCredential) {
+            localVarHeaders = localVarHeaders.set('Authorization', 'Bearer ' + localVarCredential);
+        }
+
+        let localVarHttpHeaderAcceptSelected: string | undefined = options && options.httpHeaderAccept;
+        if (localVarHttpHeaderAcceptSelected === undefined) {
+            // to determine the Accept header
+            const httpHeaderAccepts: string[] = [
+                'application/json'
+            ];
+            localVarHttpHeaderAcceptSelected = this.configuration.selectHeaderAccept(httpHeaderAccepts);
+        }
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+
+        let localVarHttpContext: HttpContext | undefined = options && options.context;
+        if (localVarHttpContext === undefined) {
+            localVarHttpContext = new HttpContext();
+        }
+
+
+        // to determine the Content-Type header
+        const consumes: string[] = [
+            'application/json'
+        ];
+        const httpContentTypeSelected: string | undefined = this.configuration.selectHeaderContentType(consumes);
+        if (httpContentTypeSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Content-Type', httpContentTypeSelected);
+        }
+
+        let responseType_: 'text' | 'json' | 'blob' = 'json';
+        if (localVarHttpHeaderAcceptSelected) {
+            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+                responseType_ = 'text';
+            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+                responseType_ = 'json';
+            } else {
+                responseType_ = 'blob';
+            }
+        }
+
+        let localVarPath = `/api/v1/users/bulk/role`;
+        return this.httpClient.request<BulkAssignResult>('post', `${this.configuration.basePath}${localVarPath}`,
+            {
+                context: localVarHttpContext,
+                body: bulkAssignRoleRequest,
+                responseType: <any>responseType_,
+                withCredentials: this.configuration.withCredentials,
+                headers: localVarHeaders,
+                observe: observe,
+                reportProgress: reportProgress
+            }
+        );
+    }
+
+    /**
+     * Assign a selection of users to one agency
+     * Moves every selected user into the given agency. The request succeeds even when some users are skipped — each one carries its own outcome and reason, so a single ineligible row in a grid selection does not force the operator to start again. Skipped when: the user does not exist, is the system account, already belongs to that agency, or currently manages another agency (vacate that post first). At most 200 users per request. Requires permission: user:assign-agency.
+     * @param bulkAssignAgencyRequest 
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     */
+    public bulkAssignUsersToAgency(bulkAssignAgencyRequest: BulkAssignAgencyRequest, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<BulkAssignResult>;
+    public bulkAssignUsersToAgency(bulkAssignAgencyRequest: BulkAssignAgencyRequest, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<BulkAssignResult>>;
+    public bulkAssignUsersToAgency(bulkAssignAgencyRequest: BulkAssignAgencyRequest, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<BulkAssignResult>>;
+    public bulkAssignUsersToAgency(bulkAssignAgencyRequest: BulkAssignAgencyRequest, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
+        if (bulkAssignAgencyRequest === null || bulkAssignAgencyRequest === undefined) {
+            throw new Error('Required parameter bulkAssignAgencyRequest was null or undefined when calling bulkAssignUsersToAgency.');
+        }
+
+        let localVarHeaders = this.defaultHeaders;
+
+        let localVarCredential: string | undefined;
+        // authentication (BearerToken) required
+        localVarCredential = this.configuration.lookupCredential('BearerToken');
+        if (localVarCredential) {
+            localVarHeaders = localVarHeaders.set('Authorization', 'Bearer ' + localVarCredential);
+        }
+
+        let localVarHttpHeaderAcceptSelected: string | undefined = options && options.httpHeaderAccept;
+        if (localVarHttpHeaderAcceptSelected === undefined) {
+            // to determine the Accept header
+            const httpHeaderAccepts: string[] = [
+                'application/json'
+            ];
+            localVarHttpHeaderAcceptSelected = this.configuration.selectHeaderAccept(httpHeaderAccepts);
+        }
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+
+        let localVarHttpContext: HttpContext | undefined = options && options.context;
+        if (localVarHttpContext === undefined) {
+            localVarHttpContext = new HttpContext();
+        }
+
+
+        // to determine the Content-Type header
+        const consumes: string[] = [
+            'application/json'
+        ];
+        const httpContentTypeSelected: string | undefined = this.configuration.selectHeaderContentType(consumes);
+        if (httpContentTypeSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Content-Type', httpContentTypeSelected);
+        }
+
+        let responseType_: 'text' | 'json' | 'blob' = 'json';
+        if (localVarHttpHeaderAcceptSelected) {
+            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+                responseType_ = 'text';
+            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+                responseType_ = 'json';
+            } else {
+                responseType_ = 'blob';
+            }
+        }
+
+        let localVarPath = `/api/v1/users/bulk/agency`;
+        return this.httpClient.request<BulkAssignResult>('post', `${this.configuration.basePath}${localVarPath}`,
+            {
+                context: localVarHttpContext,
+                body: bulkAssignAgencyRequest,
                 responseType: <any>responseType_,
                 withCredentials: this.configuration.withCredentials,
                 headers: localVarHeaders,

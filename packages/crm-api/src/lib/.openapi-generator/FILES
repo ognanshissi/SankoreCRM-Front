@@ -84,6 +84,8 @@ model/approve-client-merge-request.interface.ts
 model/approve-step-request.interface.ts
 model/archive-client-request.interface.ts
 model/assign-advisor-request.interface.ts
+model/assign-agency-manager-request.interface.ts
+model/assign-agency-manager-result.interface.ts
 model/assign-office-role-request.interface.ts
 model/assign-office-role-result.interface.ts
 model/assign-permission-to-role-request.interface.ts
@@ -97,12 +99,16 @@ model/audit-entry-dto.interface.ts
 model/backfill-phonetic-keys-result.interface.ts
 model/beneficial-owner-dto.interface.ts
 model/beneficial-owner-input.interface.ts
+model/bulk-assign-agency-request.interface.ts
 model/bulk-assign-owner-request.interface.ts
+model/bulk-assign-result.interface.ts
+model/bulk-assign-role-request.interface.ts
 model/bulk-close-request.interface.ts
 model/bulk-failure.interface.ts
 model/bulk-operation-result.interface.ts
 model/bulk-recycle-request.interface.ts
 model/bulk-tag-request.interface.ts
+model/bulk-user-outcome.interface.ts
 model/capture-lead-request.interface.ts
 model/capture-lead-result.interface.ts
 model/change-password-request.interface.ts

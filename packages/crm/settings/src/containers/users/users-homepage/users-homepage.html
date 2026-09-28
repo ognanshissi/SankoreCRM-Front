@@ -114,6 +114,40 @@
   </button>
 </div>
 
+<!--
+  Barre d'actions en masse. Elle n'apparaît qu'avec au moins un utilisateur
+  sélectionné, et dit explicitement que la sélection se limite à la page
+  affichée : la liste est paginée côté serveur, « tout sélectionner » ne peut
+  donc pas viser le tenant entier.
+-->
+@if (selectedCount() > 0) {
+  <div class="mb-4 p-3 rounded-lg bg-primary/5 border border-primary/20 flex items-center justify-between gap-3">
+    <div class="flex items-baseline gap-2 min-w-0">
+      <span class="text-sm font-medium text-primary tabular-nums">
+        {{ selectedCount() }} utilisateur(s) sélectionné(s)
+      </span>
+      <span class="text-xs text-slate-400">sur cette page</span>
+      <button type="button" class="text-xs text-slate-400 hover:text-slate-600" (click)="clearSelection()">
+        Désélectionner
+      </button>
+    </div>
+    <div class="flex items-center gap-2 shrink-0">
+      @if (canAssignAgency()) {
+        <button tas-button color="primary" type="button" class="text-xs" (click)="openBulkAssignDrawer('agency')">
+          <tas-icon iconName="feather:home" style="font-size:12px"></tas-icon>
+          Affecter à une agence
+        </button>
+      }
+      @if (canAssignRole()) {
+        <button tas-button color="primary" type="button" class="text-xs" (click)="openBulkAssignDrawer('role')">
+          <tas-icon iconName="feather:shield" style="font-size:12px"></tas-icon>
+          Attribuer un rôle
+        </button>
+      }
+    </div>
+  </div>
+}
+
 <!-- Table -->
 <tas-table
   [data]="users()"
@@ -125,6 +159,16 @@
 >
   <ng-template #header>
     <tr>
+      <th class="w-10">
+        <input
+          type="checkbox"
+          class="form-checkbox accent-primary cursor-pointer"
+          [checked]="allOnPageSelected()"
+          [indeterminate]="someOnPageSelected()"
+          [title]="'Sélectionner les ' + users().length + ' utilisateur(s) de cette page'"
+          (change)="toggleAllOnPage()"
+        />
+      </th>
       <th>Membre</th>
       <th>Agence</th>
       <th>Type</th>
@@ -138,8 +182,19 @@
   <ng-template #body let-item>
     <tr
       class="cursor-pointer hover:bg-slate-50 transition-colors"
+      [class]="selectedIds().has(item.id) ? 'bg-primary/5' : ''"
       (click)="navigateToEdit(item)"
     >
+      <!-- Sélection : le clic ne doit pas ouvrir la fiche -->
+      <td class="py-3 w-10" (click)="$event.stopPropagation()">
+        <input
+          type="checkbox"
+          class="form-checkbox accent-primary cursor-pointer"
+          [checked]="selectedIds().has(item.id)"
+          (change)="toggleUser(item)"
+        />
+      </td>
+
       <!-- Identity: avatar + name + email + MFA -->
       <td class="py-3">
         <div class="flex items-center gap-3">

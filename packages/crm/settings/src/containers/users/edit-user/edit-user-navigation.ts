@@ -78,6 +78,7 @@ export class EditUserNavigation {
     { label: 'Informations', icon: 'feather:user', route: 'informations', active: true },
     { label: 'Rôles', icon: 'feather:shield', route: 'roles', active: true },
     { label: 'Paramétrage', icon: 'feather:settings', route: 'parametrage', active: true },
+    { label: 'Connexions', icon: 'feather:log-in', route: 'connexions', active: true },
     { label: 'Zone de danger', icon: 'feather:alert-triangle', route: 'danger', active: true },
   ]);
 
