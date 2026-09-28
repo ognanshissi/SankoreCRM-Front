@@ -1,4 +1,5 @@
 import { Component, inject, input, signal, OnInit } from '@angular/core';
+import { HttpErrorResponse } from '@angular/common/http';
 import { catchError, EMPTY } from 'rxjs';
 import { TasCard } from '@talisoft/ui/card';
 import { TasSpinner } from '@talisoft/ui/spinner';
@@ -7,7 +8,7 @@ import { TasTag, Severity } from '@talisoft/ui/tag';
 import { Button } from '@talisoft/ui/button';
 import { SnackbarService } from '@talisoft/ui/snackbar';
 import { ConfirmDialogService } from '@talisoft/ui/confirm-dialog';
-import { RunDto } from '@sankore/crm-api';
+import { LeadSourcesApiService, RunDto } from '@sankore/crm-api';
 import { LeadSourcesService } from './lead-sources.service';
 import { DatePipe } from '@angular/common';
 
@@ -109,14 +110,18 @@ import { DatePipe } from '@angular/common';
                   <div class="w-[10%] text-right text-xs text-amber-600">{{ run.duplicateCount ?? 0 }}</div>
                   <div class="w-[10%] text-right text-xs text-red-500">{{ run.rejectedCount ?? 0 }}</div>
 
-                  <!-- Expand error -->
+                  <!-- Expand error — le chevron ne s'affiche que si le panneau
+                       a quelque chose à montrer : un échec sans message donnait
+                       un chevron qui ne faisait rien. -->
                   <div class="w-[10%] flex justify-end">
-                    @if (run.status === 'Failed') {
+                    @if (run.status === 'Failed' && run.errorMessage) {
                       <button tas-icon-button type="button"
                               (click)="toggleExpand(run.id!)">
                         <tas-icon [iconName]="expandedId() === run.id ? 'feather:chevron-up' : 'feather:chevron-down'"
                                   style="font-size:12px"></tas-icon>
                       </button>
+                    } @else if (run.status === 'Failed') {
+                      <span class="text-[10px] text-slate-400 italic">Sans détail</span>
                     }
                   </div>
                 </div>
@@ -146,6 +151,14 @@ import { DatePipe } from '@angular/common';
 })
 export class RunHistory implements OnInit {
   private readonly _sourcesService = inject(LeadSourcesService);
+  /**
+   * La collecte manuelle passe par l'API générée et non par `LeadSourcesService` :
+   * le contrat documente `409 = collecte déjà en cours` sur
+   * `POST /lead-sources/{id}/pull`, alors que le service route tout 409 vers
+   * « Conflit de version — rechargez ». Le message était donc faux et ne disait
+   * pas qu'une collecte tournait déjà. Les autres statuts sont traités ici.
+   */
+  private readonly _leadSourcesApi = inject(LeadSourcesApiService);
   private readonly _snackbar = inject(SnackbarService);
   private readonly _confirm = inject(ConfirmDialogService);
 
@@ -169,9 +182,12 @@ export class RunHistory implements OnInit {
     this._load(true);
   }
 
+  /**
+   * `_page` n'avance qu'en cas de succès : incrémenté avant l'appel, un échec
+   * réseau laissait le compteur en avance et le clic suivant sautait une page.
+   */
   public loadMore(): void {
-    this._page++;
-    this._load(false);
+    this._load(false, this._page + 1);
   }
 
   public toggleExpand(id: string): void {
@@ -188,9 +204,10 @@ export class RunHistory implements OnInit {
       rejectButtonProps: { label: 'Annuler' },
       accept: () => {
         this.isPulling.set(true);
-        this._sourcesService.manualPull(this.sourceId()).pipe(
-          catchError(() => {
+        this._leadSourcesApi.manualPullLeadSource(this.sourceId()).pipe(
+          catchError((err: HttpErrorResponse) => {
             this.isPulling.set(false);
+            this._handlePullError(err);
             return EMPTY;
           }),
         ).subscribe(() => {
@@ -200,6 +217,38 @@ export class RunHistory implements OnInit {
         });
       },
     });
+  }
+
+  /** Statuts documentés par le contrat sur `POST /lead-sources/{id}/pull`. */
+  private _handlePullError(err: HttpErrorResponse): void {
+    switch (err?.status) {
+      case 409:
+        this._snackbar.info(
+          'Collecte déjà en cours',
+          'Une collecte est déjà en cours sur cette source. Attendez qu\'elle se termine avant d\'en lancer une autre.',
+        );
+        // La liste montre alors l'exécution qui tourne : l'utilisateur voit
+        // immédiatement de quoi il s'agit.
+        this.refresh();
+        break;
+      case 404:
+        this._snackbar.error(
+          'Source introuvable',
+          'Cette source a été supprimée ou archivée. Rechargez la page.',
+        );
+        break;
+      case 403:
+        this._snackbar.error(
+          'Accès refusé',
+          'Vous n\'êtes pas autorisé à lancer une collecte sur cette source.',
+        );
+        break;
+      default:
+        this._snackbar.error(
+          'Erreur',
+          err?.error?.detail ?? err?.error?.title ?? 'La collecte n\'a pas pu être lancée.',
+        );
+    }
   }
 
   // ——— Helpers ———
@@ -233,14 +282,15 @@ export class RunHistory implements OnInit {
     return `${Math.floor(s / 60)}m ${s % 60}s`;
   }
 
-  private _load(reset: boolean): void {
+  private _load(reset: boolean, page: number = this._page): void {
     if (reset) this.isLoading.set(true);
-    this._sourcesService.listRuns(this.sourceId(), this._page, 20).pipe(
+    this._sourcesService.listRuns(this.sourceId(), page, 20).pipe(
       catchError(() => {
         this.isLoading.set(false);
         return EMPTY;
       }),
     ).subscribe((result) => {
+      this._page = page;
       const items = result.items ?? [];
       if (reset) {
         this.runs.set(items);

@@ -1,4 +1,4 @@
-import { Component, inject, input, signal, output, OnInit, computed } from '@angular/core';
+import { Component, inject, input, signal, output, OnInit, computed, effect } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { catchError, EMPTY } from 'rxjs';
 import { LeadSourcesService } from '../lead-sources.service';
@@ -12,10 +12,17 @@ import { TasCard } from '@talisoft/ui/card';
 import { TasIcon } from '@talisoft/ui/icon';
 import { TasTag } from '@talisoft/ui/tag';
 import { Button } from '@talisoft/ui/button';
-import { TasFormField, TasLabel } from '@talisoft/ui/form-field';
+import { TasFormField, TasHint, TasLabel } from '@talisoft/ui/form-field';
 import { TasInput } from '@talisoft/ui/input';
 import { TasSelect } from '@talisoft/ui/select';
 import { SnackbarService } from '@talisoft/ui/snackbar';
+
+/** Empreinte d'une liste de regles, `_uid` (purement UI) exclu. */
+function rulesSignature(rules: MappingRule[]): string {
+  return JSON.stringify(
+    rules.map(({ _uid, ...rest }) => rest),
+  );
+}
 
 @Component({
   selector: 'field-mapping-editor',
@@ -28,6 +35,7 @@ import { SnackbarService } from '@talisoft/ui/snackbar';
     Button,
     TasFormField,
     TasLabel,
+    TasHint,
     TasInput,
     TasSelect,
   ],
@@ -51,6 +59,13 @@ export class FieldMappingEditor implements OnInit {
   public samplePayload = signal('');
   public isPreviewing = signal(false);
   public isSaving = signal(false);
+
+  /**
+   * Incrémenté par le parent quand le serveur refuse l'enregistrement. Sans ce signal,
+   * l'enfant ne sait jamais que sa sauvegarde a échoué — le parent avale l'erreur — et
+   * le bouton reste désactivé jusqu'à ce qu'un changement d'onglet détruise le composant.
+   */
+  public readonly saveFailedAt = input(0);
   public previewResult = signal<PreviewMappingResult | null>(null);
 
   // Options
@@ -77,6 +92,17 @@ export class FieldMappingEditor implements OnInit {
     return (r?.fieldErrors?.length ?? 0) + (r?.validationErrors?.length ?? 0);
   });
 
+  /**
+   * `PreviewMappingRequest` ne transporte que `samplePayloadJson` : le serveur
+   * applique donc la correspondance PERSISTEE, jamais celle en cours d'edition.
+   * On compare a `initialRules` (reactif : le parent recharge la source apres
+   * l'enregistrement) pour prevenir l'utilisateur au lieu de lui laisser croire
+   * qu'il teste ses modifications.
+   */
+  public readonly rulesChangedSinceSave = computed(
+    () => rulesSignature(this.rules()) !== rulesSignature(this.initialRules()),
+  );
+
   ngOnInit(): void {
     const initial = this.initialRules();
     if (initial.length > 0) {
@@ -88,10 +114,12 @@ export class FieldMappingEditor implements OnInit {
 
   public addRule(): void {
     this.rules.update((list) => [...list, emptyRule()]);
+    this._invalidatePreview();
   }
 
   public removeRule(index: number): void {
     this.rules.update((list) => list.filter((_, i) => i !== index));
+    this._invalidatePreview();
   }
 
   public updateField(
@@ -102,6 +130,16 @@ export class FieldMappingEditor implements OnInit {
     this.rules.update((list) =>
       list.map((r, i) => (i === index ? { ...r, [field]: value } : r)),
     );
+    this._invalidatePreview();
+  }
+
+  /**
+   * Un resultat de previsualisation ne vaut que pour la correspondance qui l'a
+   * produit. Le garder affiche apres une modification faisait passer l'ancienne
+   * configuration pour la nouvelle.
+   */
+  private _invalidatePreview(): void {
+    if (this.previewResult()) this.previewResult.set(null);
   }
 
   // ——— Map entries ———
@@ -114,6 +152,7 @@ export class FieldMappingEditor implements OnInit {
           : r,
       ),
     );
+    this._invalidatePreview();
   }
 
   public removeMapEntry(ruleIndex: number, entryIndex: number): void {
@@ -127,6 +166,7 @@ export class FieldMappingEditor implements OnInit {
           : r,
       ),
     );
+    this._invalidatePreview();
   }
 
   public updateMapEntry(
@@ -144,6 +184,7 @@ export class FieldMappingEditor implements OnInit {
         return { ...r, mapEntries: entries };
       }),
     );
+    this._invalidatePreview();
   }
 
   public isRequiredField(key: string): boolean {
@@ -175,6 +216,9 @@ export class FieldMappingEditor implements OnInit {
 
   public save(): void {
     if (this.missingFields().length > 0) return;
+    // L'enregistrement est asynchrone chez le parent : sans ce verrou, un
+    // double-clic envoyait deux PUT avec la meme version -> 409.
+    this.isSaving.set(true);
     this.saved.emit(this.rules());
   }
 }

@@ -1,13 +1,14 @@
 import { Component, computed, inject, input, output, signal, OnInit, OnDestroy } from '@angular/core';
-import { catchError, EMPTY, Observable } from 'rxjs';
+import { catchError, EMPTY } from 'rxjs';
 import { TasCard } from '@talisoft/ui/card';
+import { TimeagoPipe } from '@talisoft/ui/timeago';
 import { TasSpinner } from '@talisoft/ui/spinner';
 import { TasIcon } from '@talisoft/ui/icon';
 import { TasTag } from '@talisoft/ui/tag';
 import { Button } from '@talisoft/ui/button';
 import { SnackbarService } from '@talisoft/ui/snackbar';
 import { ConfirmDialogService } from '@talisoft/ui/confirm-dialog';
-import { IngestionDto, IngestionsApiService, LeadSourceDetailDto } from '@sankore/crm-api';
+import { IngestionDto, IngestionsApiService } from '@sankore/crm-api';
 import { LeadSourcesService } from './lead-sources.service';
 
 /**
@@ -19,7 +20,7 @@ type DetectionStatus = 'waiting' | 'detected' | 'error' | 'idle';
 @Component({
   selector: 'script-verifier',
   standalone: true,
-  imports: [TasCard, TasSpinner, TasIcon, TasTag, Button],
+  imports: [TasCard, TasSpinner, TasIcon, TasTag, Button, TimeagoPipe],
   template: `
     <div class="max-w-3xl flex flex-col gap-4">
       <!-- Detection status -->
@@ -48,10 +49,16 @@ type DetectionStatus = 'waiting' | 'detected' | 'error' | 'idle';
                 </div>
               </div>
               @if (!autoRefreshActive()) {
-                <button tas-outlined-button type="button" class="mt-3" (click)="startPolling()">
-                  <tas-icon iconName="feather:refresh-cw" style="font-size:12px"></tas-icon>
-                  Vérifier maintenant
-                </button>
+                <div class="flex items-center gap-2 mt-3">
+                  <button tas-outlined-button type="button" (click)="checkOnce()">
+                    <tas-icon iconName="feather:refresh-cw" style="font-size:12px"></tas-icon>
+                    Vérifier maintenant
+                  </button>
+                  <button tas-text-button type="button" (click)="startPolling()">
+                    <tas-icon iconName="feather:repeat" style="font-size:12px"></tas-icon>
+                    Relancer la vérification automatique
+                  </button>
+                </div>
               }
             }
             @case ('detected') {
@@ -62,10 +69,10 @@ type DetectionStatus = 'waiting' | 'detected' | 'error' | 'idle';
                 <div>
                   <p class="text-sm font-medium text-green-700">Script détecté</p>
                   <p class="text-xs text-slate-400 mt-0.5">
-                    @if (detectedOrigin()) {
-                      Détecté sur <strong>{{ detectedOrigin() }}</strong>.
-                    }
                     La source est passée en mode Test.
+                    @if (lastReceivedAt()) {
+                      Dernière réception <strong>{{ lastReceivedAt() | dateTimeAgo }}</strong>.
+                    }
                   </p>
                 </div>
               </div>
@@ -109,14 +116,22 @@ type DetectionStatus = 'waiting' | 'detected' | 'error' | 'idle';
         </div>
       </tas-card>
 
-      <!-- Test leads panel -->
-      @if (sourceStatus() === 'Testing' || sourceStatus() === 'Active') {
+      <!-- Test leads panel — FE-12 AC3 : reserve au statut « Test ». Sur une source
+           active, ces receptions sont de vrais leads : les etiqueter « Test » induisait
+           en erreur, et le contrat ne porte aucun drapeau de test (cf. IngestionDto). -->
+      @if (sourceStatus() === 'Testing') {
         <tas-card class="block">
           <div class="p-4 border-b border-slate-100 flex items-center justify-between">
-            <p class="text-sm font-semibold text-slate-700 flex items-center gap-2">
-              <tas-icon iconName="feather:users" class="text-slate-400" style="font-size:14px"></tas-icon>
-              Leads de test
-            </p>
+            <div>
+              <p class="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                <tas-icon iconName="feather:users" class="text-slate-400" style="font-size:14px"></tas-icon>
+                Leads de test
+              </p>
+              <p class="text-xs text-slate-400 mt-0.5">
+                Ces soumissions ne sont pas dispatchées : aucune règle d'affectation ne s'applique
+                tant que la source reste en mode Test.
+              </p>
+            </div>
             <button tas-outlined-button type="button" class="text-xs" (click)="refreshTestLeads()">
               <tas-icon iconName="feather:refresh-cw" style="font-size:10px"></tas-icon>
               Rafraîchir
@@ -126,6 +141,14 @@ type DetectionStatus = 'waiting' | 'detected' | 'error' | 'idle';
             @if (isLoadingLeads()) {
               <div class="flex justify-center py-6">
                 <tas-spinner size="5"></tas-spinner>
+              </div>
+            } @else if (leadsError()) {
+              <div class="flex flex-col items-center py-8 text-center">
+                <tas-icon iconName="feather:alert-triangle" class="text-red-400 mb-2" style="font-size:24px"></tas-icon>
+                <p class="text-sm text-red-600">Chargement impossible</p>
+                <p class="text-xs text-slate-400 mt-1">
+                  Nous n'avons pas pu lire les réceptions de cette source. Réessayez avec « Rafraîchir ».
+                </p>
               </div>
             } @else if (testLeads().length === 0) {
               <div class="flex flex-col items-center py-8 text-center">
@@ -142,12 +165,14 @@ type DetectionStatus = 'waiting' | 'detected' | 'error' | 'idle';
                       <p class="text-xs font-medium text-slate-700 truncate">
                         {{ ing.externalId || 'Soumission ' + (ing.id ?? '').slice(0, 8) }}
                       </p>
-                      <p class="text-[10px] text-slate-400">{{ ing.ingestedAt }}</p>
+                      <p class="text-[10px] text-slate-400">{{ ing.ingestedAt | dateTimeAgo }}</p>
                       @if (ing.rejectionReason) {
                         <p class="text-[10px] text-red-500">{{ ing.rejectionReason }}</p>
                       }
                     </div>
-                    <tas-tag severity="info">Test</tas-tag>
+                    @if (sourceStatus() === 'Testing') {
+                      <tas-tag severity="info">Test</tas-tag>
+                    }
                     @if (ing.status !== 'Accepted') {
                       <tas-tag severity="error">{{ ing.status }}</tas-tag>
                     }
@@ -159,7 +184,7 @@ type DetectionStatus = 'waiting' | 'detected' | 'error' | 'idle';
         </tas-card>
 
         <!-- Activate button -->
-        @if (sourceStatus() === 'Testing' && acceptedCount() > 0) {
+        @if (sourceStatus() === 'Testing' && acceptedCount() > 0 && !readonly()) {
           <div class="p-4 bg-green-50 border border-green-200 rounded-lg flex items-center justify-between">
             <div>
               <p class="text-sm font-medium text-green-800">Prêt pour l'activation</p>
@@ -188,11 +213,20 @@ export class ScriptVerifier implements OnInit, OnDestroy {
 
   public readonly sourceId = input.required<string>();
   public readonly sourceStatus = input<string | null>(null);
+  /** Masque « Activer la source » quand l'utilisateur n'a pas le droit d'agir. */
+  public readonly readonly = input(false);
   public readonly activated = output<void>();
+  /**
+   * FE-12 — `sourceStatus` est une entree du parent : sans cette sortie, le
+   * passage en « Test » constate ici ne remontait jamais, et le panneau des
+   * leads de test comme le bouton d'activation restaient invisibles.
+   */
+  public readonly detected = output<void>();
 
   // Detection
   public detectionStatus = signal<DetectionStatus>('idle');
-  public detectedOrigin = signal<string | null>(null);
+  /** FE-12 AC2 — date de la derniere reception. L'origine n'existe nulle part au contrat. */
+  public lastReceivedAt = signal<string | null>(null);
   public autoRefreshActive = signal(false);
   public remainingChecks = signal(0);
   private _pollTimer: ReturnType<typeof setInterval> | null = null;
@@ -208,6 +242,7 @@ export class ScriptVerifier implements OnInit, OnDestroy {
     () => this.testLeads().filter((i) => i.status === 'Accepted').length,
   );
   public isLoadingLeads = signal(false);
+  public leadsError = signal(false);
   public isActivating = signal(false);
 
   ngOnInit(): void {
@@ -217,7 +252,8 @@ export class ScriptVerifier implements OnInit, OnDestroy {
       this.startPolling();
     } else if (status === 'Testing') {
       this.detectionStatus.set('detected');
-      this.refreshTestLeads();
+      // `checkOnce()` recharge le detail (donc `lastReceivedAt`) et enchaine sur les leads.
+      this.checkOnce();
     } else if (status === 'Active') {
       this.detectionStatus.set('idle');
     }
@@ -239,6 +275,10 @@ export class ScriptVerifier implements OnInit, OnDestroy {
       }
       this.checkOnce();
     }, 10_000);
+    // Sans cet appel, la premiere verification n'avait lieu qu'a t+10 s : le bouton
+    // « Verifier maintenant » ne verifiait rien pendant dix secondes. Il vient apres
+    // l'armement du timer, pour que `_stopPolling()` puisse l'annuler.
+    this.checkOnce();
   }
 
   public checkOnce(): void {
@@ -249,23 +289,45 @@ export class ScriptVerifier implements OnInit, OnDestroy {
         return EMPTY;
       }),
     ).subscribe((detail) => {
+      // L'appel a abouti : rien ne levait l'etat « Erreur de detection », et une
+      // coupure reseau d'une seconde laissait le panneau rouge affiche pour de bon
+      // alors que le sondage continuait derriere.
+      if (this.detectionStatus() === 'error') {
+        this.detectionStatus.set(this.autoRefreshActive() ? 'waiting' : 'idle');
+      }
+
+      this.lastReceivedAt.set(detail.lastReceivedAt ?? null);
+      const statusChanged = detail.status !== this.sourceStatus();
+
       if (detail.status === 'Testing' || detail.status === 'Active') {
         this.detectionStatus.set('detected');
         this._stopPolling();
         this.refreshTestLeads();
       }
+
+      // Le parent recharge la source, ce qui rafraichit l'entree `sourceStatus`.
+      if (statusChanged) this.detected.emit();
     });
   }
 
   public refreshTestLeads(): void {
     this.isLoadingLeads.set(true);
+    this.leadsError.set(false);
+    // Cet appel passe en direct par l'API generee, donc sans la gestion d'erreur
+    // de `LeadSourcesService` : un 500 s'affichait comme « Aucun lead de test recu ».
     this._ingestionsApi.listIngestions(this.sourceId(), undefined, 1, 20).pipe(
       catchError(() => {
+        this.leadsError.set(true);
         this.isLoadingLeads.set(false);
+        this._snackbar.error(
+          'Erreur',
+          'Impossible de charger les leads de test de cette source.',
+        );
         return EMPTY;
       }),
     ).subscribe((result) => {
       this.testLeads.set(result.items ?? []);
+      this.leadsError.set(false);
       this.isLoadingLeads.set(false);
     });
   }

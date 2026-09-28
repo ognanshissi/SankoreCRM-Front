@@ -20,6 +20,7 @@ import {
   toPersistedRules,
   writeSettings,
 } from '../lead-source-settings.types';
+import { isValidJsonPath } from '../lead-source-validators';
 import { ConsentPolicyEditor } from '../consent-policy-editor/consent-policy-editor';
 import { ScriptWizard } from '../script-wizard';
 import { HostedFormEditor } from '../hosted-form-editor/hosted-form-editor';
@@ -80,10 +81,30 @@ export class EditLeadSource implements OnInit {
   private readonly _breadcrumb = inject(BreadcrumbService);
   private readonly _permissions = inject(PermissionsService);
 
+  /** Premier chargement uniquement : le spinner remplace tout l'écran. */
   public isLoading = signal(true);
+  /**
+   * Rechargement d'une source déjà affichée. Distinct d'`isLoading` : repasser
+   * `isLoading` à `true` après chaque enregistrement démontait l'en-tête, les
+   * onglets et l'onglet courant, ce qui réinitialisait l'état local des enfants
+   * (filtres de réceptions, résultat du test à blanc, sondage du vérificateur).
+   */
+  public isRefreshing = signal(false);
   public actionLoading = signal(false);
   public source = signal<LeadSourceDetailDto | null>(null);
   public activeTab = signal('general');
+
+  /** Identifiant courant, conservé pour pouvoir recharger sans la source. */
+  private _sourceId: string | null = null;
+
+  /** Conflit de version signalé par le service (409). */
+  public readonly versionConflict = this._sourcesService.versionConflict;
+
+  /**
+   * FE-11 — vrai après une régénération de clé publique : l'installeur affiche
+   * alors l'avertissement « l'ancien script ne fonctionne plus ».
+   */
+  public keyWasRegenerated = signal(false);
 
   public readonly tabs = computed(() => {
     const base = [
@@ -127,13 +148,35 @@ export class EditLeadSource implements OnInit {
   public getHealthIcon = healthIcon;
   public getHealthColor = healthColor;
 
-  public readonly canWrite = this._permissions.can('lead:source:manage');
-  public readonly canManageSecrets = this._permissions.can('lead:source:credentials');
+  /**
+   * FE-02 — La permission locale ne suffit pas : un 403 serveur ne change rien
+   * à `PermissionsService`, le bouton restait donc cliquable indéfiniment. On
+   * combine les deux. `get()` remet `forbidden` à `false`, un rechargement
+   * réussi restaure donc les actions.
+   */
+  public readonly canWrite = computed(
+    () => this._permissions.has('lead:source:manage') && !this._sourcesService.forbidden(),
+  );
+  public readonly canManageSecrets = computed(
+    () =>
+      this._permissions.has('lead:source:credentials') &&
+      !this._sourcesService.forbidden(),
+  );
   public readonly canViewPayload = this._permissions.can('lead:ingestion:payload:read');
   public readonly canReplayIngestion = this._permissions.can('lead:ingestion:replay');
 
   // ——— FE-09: Activation prerequisites ———
 
+  /**
+   * Prérequis d'activation.
+   *
+   * La checklist ne portait que sur la correspondance des champs : une collecte
+   * planifiée sans URL ni authentification, un script sans origine autorisée ou
+   * une connexion plateforme sans connexion s'activaient sans un mot. Les
+   * prérequis par mode ci-dessous sont **déduits des US** (FE-09, FE-10, FE-17,
+   * FE-19) et restent **à confirmer côté API** : seul le serveur refuse pour de
+   * bon une activation, cette liste ne fait que l'anticiper côté écran.
+   */
   public readonly activationChecks = computed(() => {
     const settings = this.settings();
     if (!settings) return [];
@@ -144,7 +187,7 @@ export class EditLeadSource implements OnInit {
     // FE-07 — la regle d'obligation vient de `field-mapping.types` : l'editeur
     // de correspondance et cette checklist ne peuvent plus diverger.
     const missing = missingRequiredFields(mappings);
-    const checks = [
+    const checks: { label: string; ok: boolean }[] = [
       {
         label: 'Correspondance des champs configurée',
         ok: mappings.length > 0,
@@ -157,6 +200,15 @@ export class EditLeadSource implements OnInit {
         ok: missing.length === 0,
       },
     ];
+
+    // FE-08 — controle inconditionnel : `consent` absent (onglet jamais ouvert)
+    // ou politique `None` veut dire « aucune base legale », c'est l'inverse d'un
+    // consentement valide. Sans ce controle, ne pas configurer le consentement
+    // etait le moyen le plus simple d'activer une source.
+    checks.push({
+      label: 'Base légale de consentement définie',
+      ok: !!consent && consent.policy !== 'None',
+    });
 
     // Consent check depends on mode
     if (src.mode === 'EmbeddedScript') {
@@ -174,6 +226,58 @@ export class EditLeadSource implements OnInit {
         label: 'Référence contrat fournisseur renseignée',
         ok: !!consent.providerContractRef,
       });
+    }
+
+    // Prerequis propres au mode. On commute sur `settings.$mode` — resolu depuis
+    // `src.mode` par `readSettings` — pour que l'union discriminee narrow les
+    // champs specifiques sans garde ni cast.
+    switch (settings.$mode) {
+      case 'EmbeddedScript': {
+        const origins = settings.script?.allowedOrigins ?? [];
+        checks.push({
+          label: 'Au moins une origine autorisée',
+          ok: origins.some((o) => !!o?.trim()),
+        });
+        break;
+      }
+      case 'ServerWebhook': {
+        // Rien d'obligatoire au contrat : un webhook sans filtrage d'IP et sans
+        // identifiant externe reste valide. En revanche, un chemin renseigne
+        // mais invalide casserait la deduplication a la premiere reception.
+        const path = settings.externalIdPath;
+        if (path?.trim()) {
+          checks.push({
+            label: "Chemin de l'identifiant externe valide",
+            ok: isValidJsonPath(path),
+          });
+        }
+        break;
+      }
+      case 'ScheduledPull': {
+        const pull = settings.pull;
+        const baseUrl = pull?.baseUrl?.trim() ?? '';
+        checks.push({
+          label: "URL de base de l'API fournisseur en https://",
+          ok: baseUrl.startsWith('https://'),
+        });
+        checks.push({
+          label: "Type d'authentification choisi",
+          ok: !!pull && pull.authType !== 'None',
+        });
+        break;
+      }
+      case 'PlatformConnection': {
+        checks.push({
+          label: 'Connexion plateforme associée',
+          ok: !!src.platformConnectionId,
+        });
+        break;
+      }
+      case 'SocialTracking':
+      case 'Internal':
+        // Aucun prerequis supplementaire : ces modes n'ont pas de connexion
+        // technique a configurer.
+        break;
     }
 
     return checks;
@@ -209,6 +313,17 @@ export class EditLeadSource implements OnInit {
 
   public readonly mappingRules = computed((): MappingRule[] => {
     return this.settings()?.fieldMappings ?? [];
+  });
+
+  /**
+   * FE-08 AC3 — l'editeur de consentement ne peut bloquer l'enregistrement que
+   * s'il sait qu'une regle persistee alimente reellement `consentGiven` : une
+   * regle dont le champ source est vide ne collecte rien.
+   */
+  public readonly hasConsentMapping = computed((): boolean => {
+    return this.mappingRules().some(
+      (r) => r.targetField === 'consentGiven' && !!r.sourceField?.trim(),
+    );
   });
 
   public readonly hostedFormConfig = computed((): HostedFormConfig | null => {
@@ -380,12 +495,39 @@ export class EditLeadSource implements OnInit {
           'La configuration du formulaire a été mise à jour.',
         );
         this._load(src.id!);
+        // FE-10 AC5 — la fin de l'assistant enchaine sur l'ecran d'installation.
+        this.selectTab('script-install');
       });
   }
 
   public onSourceActivated(): void {
-    this._load(this.source()!.id!);
+    this.reloadSource();
   }
+
+  /**
+   * FE-11 — la regeneration de cle invalide le script deja installe : on
+   * recharge la source ET on memorise l'evenement pour que l'installeur puisse
+   * l'annoncer.
+   */
+  public onKeyRotated(): void {
+    this.keyWasRegenerated.set(true);
+    this.reloadSource();
+  }
+
+  /**
+   * Rechargement déclenché par l'utilisateur : conflit de version (409) ou
+   * échec du chargement initial.
+   */
+  public reloadSource(): void {
+    if (this._sourceId) this._load(this._sourceId);
+  }
+
+  /**
+   * Incrémenté à chaque refus serveur d'un onglet éditeur. Les enfants s'y abonnent pour
+   * relâcher leur bouton « Enregistrer » : ils ne voient pas l'erreur, que le service
+   * traite et que ce composant avale.
+   */
+  public readonly saveFailedAt = signal(0);
 
   public onConsentSaved(consent: ConsentConfig): void {
     const src = this.source();
@@ -397,7 +539,12 @@ export class EditLeadSource implements OnInit {
         label: src.label,
         settings: writeSettings(src.settings, src.mode, { consent }),
       })
-      .pipe(catchError(() => EMPTY))
+      .pipe(
+        catchError(() => {
+          this.saveFailedAt.update((n) => n + 1);
+          return EMPTY;
+        }),
+      )
       .subscribe(() => {
         this._snackbar.success(
           'Enregistré',
@@ -419,7 +566,12 @@ export class EditLeadSource implements OnInit {
           fieldMappings: toPersistedRules(rules),
         }),
       })
-      .pipe(catchError(() => EMPTY))
+      .pipe(
+        catchError(() => {
+          this.saveFailedAt.update((n) => n + 1);
+          return EMPTY;
+        }),
+      )
       .subscribe(() => {
         this._snackbar.success(
           'Enregistré',
@@ -430,12 +582,18 @@ export class EditLeadSource implements OnInit {
   }
 
   private _load(id: string): void {
-    this.isLoading.set(true);
+    this._sourceId = id;
+    // Le spinner plein ecran est reserve au PREMIER chargement : un rechargement
+    // apres enregistrement doit laisser l'en-tete, les onglets et l'onglet
+    // courant montes, sinon l'etat local des enfants repart de zero.
+    if (this.source()) this.isRefreshing.set(true);
+    else this.isLoading.set(true);
     this._sourcesService
       .get(id)
       .pipe(
         catchError(() => {
           this.isLoading.set(false);
+          this.isRefreshing.set(false);
           return EMPTY;
         }),
       )
@@ -452,6 +610,7 @@ export class EditLeadSource implements OnInit {
           { label: detail.label ?? detail.code ?? 'Détail' },
         ]);
         this.isLoading.set(false);
+        this.isRefreshing.set(false);
       });
   }
 }

@@ -115,7 +115,7 @@
                 [disabled]="readonly()"
               ></tas-select>
               @if (isRequiredField(rule.targetField)) {
-                <span class="text-[10px] text-red-500">Obligatoire</span>
+                <tas-hint class="text-red-500">Obligatoire</tas-hint>
               }
             </tas-form-field>
           </div>
@@ -128,7 +128,7 @@
                 optionLabel="label"
                 optionValue="value"
                 placeholder="Aucune"
-                [ngModel]="rule.transformation.toLowerCase()"
+                [ngModel]="rule.transformation"
                 (ngModelChange)="updateField(i, 'transformation', $event)"
                 [disabled]="readonly()"
               ></tas-select>
@@ -291,20 +291,28 @@
             Testez la correspondance avec un exemple de payload.
           </p>
         </div>
-        <button
-          tas-raised-button
-          color="primary"
-          type="button"
-          [disabled]="isPreviewing() || !samplePayload()"
-          [isLoading]="isPreviewing()"
-          (click)="preview()"
-        >
-          <tas-icon
-            iconName="feather:play"
-            style="font-size:12px"
-          ></tas-icon>
-          Prévisualiser
-        </button>
+        <div class="flex flex-col items-end gap-2">
+          @if (rulesChangedSinceSave()) {
+            <p class="text-xs text-amber-600 text-right max-w-xs">
+              La prévisualisation applique la correspondance <strong>enregistrée</strong>,
+              pas vos modifications en cours. Enregistrez d'abord pour les tester.
+            </p>
+          }
+          <button
+            tas-raised-button
+            color="primary"
+            type="button"
+            [disabled]="isPreviewing() || !samplePayload()"
+            [isLoading]="isPreviewing()"
+            (click)="preview()"
+          >
+            <tas-icon
+              iconName="feather:play"
+              style="font-size:12px"
+            ></tas-icon>
+            Prévisualiser
+          </button>
+        </div>
       </div>
       <div class="p-4">
         <tas-form-field>

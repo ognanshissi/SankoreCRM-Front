@@ -1,12 +1,15 @@
 <div class="max-w-3xl flex flex-col gap-4">
-  <!-- Step indicator -->
+  <!-- Step indicator — un saut n'est permis que vers une étape déjà franchie -->
   <div class="flex items-center gap-1 mb-2 flex-wrap">
     @for (s of steps; track s.id; let i = $index) {
-      <button class="flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium transition-colors"
+      <button type="button"
+              class="flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-60"
               [class]="currentStep() === i
                     ? 'bg-primary text-white'
                     : i < currentStep() ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'"
-              (click)="currentStep.set(i)">
+              [disabled]="i > maxVisitedStep()"
+              [title]="i > maxVisitedStep() ? 'Complétez les étapes précédentes pour accéder à celle-ci.' : s.label"
+              (click)="goToStep(i)">
         @if (i < currentStep()) {
           <tas-icon iconName="feather:check" style="font-size:9px"></tas-icon>
         }
@@ -26,14 +29,18 @@
       </div>
       <div class="p-4 flex flex-col gap-4">
         <tas-form-field>
-          <tas-label>URL de base <span class="text-red-500">*</span></tas-label>
+          <tas-label>URL de base <span class="text-functional-error">*</span></tas-label>
           <input tasInput type="url" placeholder="https://api.fournisseur.com"
                  [ngModel]="config().baseUrl" (ngModelChange)="set('baseUrl', $event)" [disabled]="readonly()" />
+          <tas-hint class="text-slate-400">Adresse https:// de l'API du fournisseur.</tas-hint>
+          @if (config().baseUrl && !canProceedFrom(0)) {
+            <tas-error>L'URL de base doit commencer par https://.</tas-error>
+          }
         </tas-form-field>
         <tas-form-field>
           <tas-label>Authentification</tas-label>
           <tas-select [options]="authOptions" optionLabel="label" optionValue="value"
-                      [ngModel]="config().authType" (ngModelChange)="set('authType', $event)" [disabled]="readonly()"></tas-select>
+                      [ngModel]="config().authType" (ngModelChange)="set('authType', $event)" [readonly]="readonly()"></tas-select>
         </tas-form-field>
 
         @if (config().authType === 'ApiKey') {
@@ -46,7 +53,7 @@
             <tas-form-field>
               <tas-label>Emplacement</tas-label>
               <tas-select [options]="headerLocationOptions" optionLabel="label" optionValue="value"
-                          [ngModel]="config().authHeaderLocation" (ngModelChange)="set('authHeaderLocation', $event)" [disabled]="readonly()"></tas-select>
+                          [ngModel]="config().authHeaderLocation" (ngModelChange)="set('authHeaderLocation', $event)" [readonly]="readonly()"></tas-select>
             </tas-form-field>
           </div>
         }
@@ -70,6 +77,19 @@
           </div>
         }
 
+        @if (config().authType === 'Basic') {
+          <tas-form-field>
+            <tas-label>Nom d'utilisateur <span class="text-functional-error">*</span></tas-label>
+            <input tasInput type="text" autocomplete="off"
+                   [ngModel]="config().basicUsername" (ngModelChange)="set('basicUsername', $event)"
+                   [disabled]="readonly()" />
+            <tas-hint>Le mot de passe se saisit dans l'onglet « Connexion ».</tas-hint>
+            @if (!config().basicUsername) {
+              <tas-error>Sans nom d'utilisateur, l'appel au fournisseur échouera en 401.</tas-error>
+            }
+          </tas-form-field>
+        }
+
         <p class="text-xs text-slate-400">
           Les secrets (clé API, secret OAuth, mot de passe) sont saisis séparément dans l'onglet Connexion pour ne jamais être stockés en clair.
         </p>
@@ -88,20 +108,61 @@
           <tas-form-field>
             <tas-label>Méthode</tas-label>
             <tas-select [options]="methodOptions" optionLabel="label" optionValue="value"
-                        [ngModel]="config().requestMethod" (ngModelChange)="set('requestMethod', $event)" [disabled]="readonly()"></tas-select>
+                        [ngModel]="config().requestMethod" (ngModelChange)="set('requestMethod', $event)" [readonly]="readonly()"></tas-select>
           </tas-form-field>
-          <tas-form-field class="col-span-2">
-            <tas-label>Chemin</tas-label>
-            <input tasInput type="text" placeholder="/api/v1/leads"
-                   [ngModel]="config().requestPath" (ngModelChange)="set('requestPath', $event)" [disabled]="readonly()" />
-          </tas-form-field>
+
+          <!-- Le menu d'insertion vit HORS du tas-form-field : celui-ci ne projette
+               que le contrôle, tas-label, tas-hint et tas-error — tout autre nœud
+               placé à l'intérieur disparaissait du DOM sans erreur. -->
+          <div class="col-span-2 flex flex-col gap-1">
+            <tas-form-field>
+              <tas-label>Chemin <span class="text-functional-error">*</span></tas-label>
+              <input tasInput type="text" placeholder="/api/v1/leads"
+                     [ngModel]="config().requestPath" (ngModelChange)="set('requestPath', $event)" [disabled]="readonly()" />
+              @if (usedVariables(config().requestPath).length > 0) {
+                <tas-hint class="text-slate-500">
+                  Variables utilisées : <span class="font-mono text-primary">{{ usedVariables(config().requestPath).join(' ') }}</span>
+                </tas-hint>
+              }
+              @if (unknownVariables(config().requestPath).length > 0) {
+                <tas-error>
+                  Variable inconnue : <span class="font-mono">{{ unknownVariables(config().requestPath).join(' ') }}</span>. Variables acceptées : {{ variableHints }}.
+                </tas-error>
+              }
+            </tas-form-field>
+            @if (!readonly()) {
+              <div class="flex items-center gap-1.5 flex-wrap">
+                <span class="text-xs text-slate-400">Insérer :</span>
+                @for (v of templateVariables; track v) {
+                  <button type="button"
+                          class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+                          (click)="insertVariable('requestPath', v)">
+                    {{ v }}
+                  </button>
+                }
+              </div>
+            }
+          </div>
         </div>
-        <tas-form-field>
-          <tas-label>Paramètres de requête</tas-label>
-          <input tasInput type="text" [placeholder]="requestParamsPlaceholder"
-                 [ngModel]="config().requestParams" (ngModelChange)="set('requestParams', $event)" [disabled]="readonly()" />
+
+        <div class="flex flex-col gap-1">
+          <tas-form-field>
+            <tas-label>Paramètres de requête</tas-label>
+            <input tasInput type="text" [placeholder]="requestParamsPlaceholder"
+                   [ngModel]="config().requestParams" (ngModelChange)="set('requestParams', $event)" [disabled]="readonly()" />
+            @if (usedVariables(config().requestParams).length > 0) {
+              <tas-hint class="text-slate-500">
+                Variables utilisées : <span class="font-mono text-primary">{{ usedVariables(config().requestParams).join(' ') }}</span>
+              </tas-hint>
+            }
+            @if (unknownVariables(config().requestParams).length > 0) {
+              <tas-error>
+                Variable inconnue : <span class="font-mono">{{ unknownVariables(config().requestParams).join(' ') }}</span>. Variables acceptées : {{ variableHints }}.
+              </tas-error>
+            }
+          </tas-form-field>
           @if (!readonly()) {
-            <div class="flex items-center gap-1.5 mt-2 flex-wrap">
+            <div class="flex items-center gap-1.5 flex-wrap">
               <span class="text-xs text-slate-400">Insérer :</span>
               @for (v of templateVariables; track v) {
                 <button type="button"
@@ -112,17 +173,7 @@
               }
             </div>
           }
-          @if (usedVariables(config().requestParams).length > 0) {
-            <p class="text-xs text-slate-500 mt-1">
-              Variables utilisées : <span class="font-mono text-primary">{{ usedVariables(config().requestParams).join(' ') }}</span>
-            </p>
-          }
-          @if (unknownVariables(config().requestParams).length > 0) {
-            <p class="text-xs text-red-500 mt-1">
-              Variable inconnue : <span class="font-mono">{{ unknownVariables(config().requestParams).join(' ') }}</span>
-            </p>
-          }
-        </tas-form-field>
+        </div>
       </div>
     </tas-card>
   }
@@ -137,7 +188,7 @@
         <tas-form-field>
           <tas-label>Stratégie</tas-label>
           <tas-select [options]="paginationOptions" optionLabel="label" optionValue="value"
-                      [ngModel]="config().paginationStrategy" (ngModelChange)="set('paginationStrategy', $event)" [disabled]="readonly()"></tas-select>
+                      [ngModel]="config().paginationStrategy" (ngModelChange)="set('paginationStrategy', $event)" [readonly]="readonly()"></tas-select>
         </tas-form-field>
 
         @switch (config().paginationStrategy) {
@@ -171,7 +222,7 @@
               <input tasInput type="text" placeholder="$.meta.nextCursor" class="font-mono"
                      [ngModel]="config().cursorJsonPath" (ngModelChange)="set('cursorJsonPath', $event)" [disabled]="readonly()" />
               @if (jsonPathInvalid(config().cursorJsonPath)) {
-                <p class="text-xs text-red-500 mt-1">{{ jsonPathHint }}</p>
+                <tas-error>{{ jsonPathHint }}</tas-error>
               }
             </tas-form-field>
           }
@@ -195,11 +246,15 @@
       </div>
       <div class="p-4 flex flex-col gap-4">
         <tas-form-field>
-          <tas-label>JSONPath de la liste <span class="text-red-500">*</span></tas-label>
+          <tas-label>JSONPath de la liste <span class="text-functional-error">*</span></tas-label>
           <input tasInput type="text" placeholder="$.data" class="font-mono"
                  [ngModel]="config().dataJsonPath" (ngModelChange)="set('dataJsonPath', $event)" [disabled]="readonly()" />
           @if (jsonPathInvalid(config().dataJsonPath)) {
-            <p class="text-xs text-red-500 mt-1">{{ jsonPathHint }}</p>
+            <tas-error>{{ jsonPathHint }}</tas-error>
+          } @else if (!config().dataJsonPath) {
+            <tas-error>Le chemin de la liste est obligatoire. {{ jsonPathHint }}</tas-error>
+          } @else {
+            <tas-hint class="text-slate-400">{{ jsonPathHint }}</tas-hint>
           }
         </tas-form-field>
         <div class="grid grid-cols-2 gap-3">
@@ -208,7 +263,7 @@
             <input tasInput type="text" placeholder="$.id" class="font-mono"
                    [ngModel]="config().idJsonPath" (ngModelChange)="set('idJsonPath', $event)" [disabled]="readonly()" />
             @if (jsonPathInvalid(config().idJsonPath)) {
-              <p class="text-xs text-red-500 mt-1">{{ jsonPathHint }}</p>
+              <tas-error>{{ jsonPathHint }}</tas-error>
             }
           </tas-form-field>
           <tas-form-field>
@@ -216,7 +271,7 @@
             <input tasInput type="text" placeholder="$.createdAt" class="font-mono"
                    [ngModel]="config().dateJsonPath" (ngModelChange)="set('dateJsonPath', $event)" [disabled]="readonly()" />
             @if (jsonPathInvalid(config().dateJsonPath)) {
-              <p class="text-xs text-red-500 mt-1">{{ jsonPathHint }}</p>
+              <tas-error>{{ jsonPathHint }}</tas-error>
             }
           </tas-form-field>
         </div>
@@ -234,22 +289,25 @@
         <tas-form-field>
           <tas-label>Fréquence</tas-label>
           <tas-select [options]="schedulePresets" optionLabel="label" optionValue="value"
-                      [ngModel]="config().schedulePreset" (ngModelChange)="onScheduleChange($event)" [disabled]="readonly()"></tas-select>
+                      [ngModel]="config().schedulePreset" (ngModelChange)="onScheduleChange($event)" [readonly]="readonly()"></tas-select>
         </tas-form-field>
         @if (config().schedulePreset === 'daily') {
           <tas-form-field>
             <tas-label>Heure de la collecte</tas-label>
             <input tasInput type="number" min="0" max="23" placeholder="6"
                    [ngModel]="config().dailyHour" (ngModelChange)="onDailyHourChange($event)" [disabled]="readonly()" />
-            <p class="text-xs text-slate-400 mt-1">Heure locale du serveur, entre 0 et 23.</p>
+            <tas-hint class="text-slate-400">Heure locale du serveur, entre 0 et 23.</tas-hint>
           </tas-form-field>
         }
         @if (config().schedulePreset === 'custom') {
           <tas-form-field>
-            <tas-label>Expression cron</tas-label>
+            <tas-label>Expression cron <span class="text-functional-error">*</span></tas-label>
             <input tasInput type="text" placeholder="*/15 * * * *" class="font-mono"
                    [ngModel]="config().cronExpression" (ngModelChange)="set('cronExpression', $event)" [disabled]="readonly()" />
-            <p class="text-xs text-slate-400 mt-1">Format : minute heure jour_mois mois jour_semaine</p>
+            <tas-hint class="text-slate-400">Format : minute heure jour_mois mois jour_semaine</tas-hint>
+            @if (!config().cronExpression) {
+              <tas-error>Saisissez une expression cron ou choisissez un préréglage.</tas-error>
+            }
           </tas-form-field>
         }
       </div>
@@ -267,7 +325,7 @@
             <tas-form-field>
               <tas-label>Méthode</tas-label>
               <tas-select [options]="ackMethodOptions" optionLabel="label" optionValue="value"
-                          [ngModel]="config().ackMethod" (ngModelChange)="set('ackMethod', $event)" [disabled]="readonly()"></tas-select>
+                          [ngModel]="config().ackMethod" (ngModelChange)="set('ackMethod', $event)" [readonly]="readonly()"></tas-select>
             </tas-form-field>
             <tas-form-field class="col-span-2">
               <tas-label>Chemin</tas-label>
@@ -287,7 +345,8 @@
               </button>
             }
           </div>
-          @if (config().ackEnabled && !config().ackPath.includes('{{ids}}')) {
+          <!-- `ackPath` peut valoir null dans le sac stocké : `.includes` levait. -->
+          @if (!ackPathHasIds()) {
             <p class="text-xs text-amber-600">
               Sans <code class="bg-slate-100 px-1 rounded">{{ '{{ids}}' }}</code>, le fournisseur ne saura pas quels leads ont été traités.
             </p>
@@ -307,7 +366,7 @@
           <input tasInput type="number" min="0" placeholder="0"
                  [ngModel]="config().costPerLead" (ngModelChange)="set('costPerLead', $event)" [disabled]="readonly()" />
           @if (costInvalid()) {
-            <p class="text-xs text-red-500 mt-1">Le montant doit être positif.</p>
+            <tas-error>Le montant doit être positif.</tas-error>
           }
         </tas-form-field>
         <tas-form-field>
@@ -320,27 +379,35 @@
   }
 
   <!-- Navigation -->
-  <div class="flex items-center justify-between">
-    <div>
-      @if (currentStep() > 0) {
-        <button tas-outlined-button type="button" (click)="currentStep.update(s => s - 1)">
-          <tas-icon iconName="feather:arrow-left" style="font-size:12px"></tas-icon>
-          Précédent
-        </button>
-      }
+  <div class="flex flex-col gap-2">
+    <div class="flex items-center justify-between">
+      <div>
+        @if (currentStep() > 0) {
+          <button tas-outlined-button type="button" (click)="previousStep()">
+            <tas-icon iconName="feather:arrow-left" style="font-size:12px"></tas-icon>
+            Précédent
+          </button>
+        }
+      </div>
+      <div>
+        @if (currentStep() < steps.length - 1) {
+          <button tas-raised-button color="primary" type="button" [disabled]="!canProceed()" (click)="nextStep()">
+            Suivant
+            <tas-icon iconName="feather:arrow-right" style="font-size:12px"></tas-icon>
+          </button>
+        } @else if (!readonly()) {
+          <button tas-raised-button color="primary" type="button"
+                  [disabled]="!allStepsValid()" (click)="onSave()">
+            <tas-icon iconName="feather:save" style="font-size:14px"></tas-icon>
+            Enregistrer
+          </button>
+        }
+      </div>
     </div>
-    <div>
-      @if (currentStep() < steps.length - 1) {
-        <button tas-raised-button color="primary" type="button" [disabled]="!canProceed()" (click)="currentStep.update(s => s + 1)">
-          Suivant
-          <tas-icon iconName="feather:arrow-right" style="font-size:12px"></tas-icon>
-        </button>
-      } @else if (!readonly()) {
-        <button tas-raised-button color="primary" type="button" (click)="onSave()">
-          <tas-icon iconName="feather:save" style="font-size:14px"></tas-icon>
-          Enregistrer
-        </button>
-      }
-    </div>
+    @if (currentStep() === steps.length - 1 && !readonly() && !allStepsValid()) {
+      <p class="text-xs text-functional-error text-right">
+        L'étape « {{ steps[firstInvalidStep()].label }} » est incomplète : corrigez-la pour enregistrer.
+      </p>
+    }
   </div>
 </div>

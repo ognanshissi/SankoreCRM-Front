@@ -1,7 +1,6 @@
 import { inject, Injectable, signal } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
-import { AbstractControl, FormGroup } from '@angular/forms';
-import { catchError, Observable, tap, throwError } from 'rxjs';
+import { catchError, Observable, throwError } from 'rxjs';
 import { SnackbarService } from '@talisoft/ui/snackbar';
 import { ChannelTypeParam, ModeParam, StatusParam } from './lead-source.types';
 import {
@@ -26,7 +25,11 @@ import {
 /**
  * FE-02 — Service d'accès aux sources avec gestion structurée des erreurs.
  *
- * - 400 ProblemDetails : projette les erreurs de validation sur les contrôles du formulaire
+ * - 400 / 422 ProblemDetails : expose les erreurs de validation par chemin de champ
+ *   (le contrat déclare 422 sur la création et sur activate/pause/archive ;
+ *   traiter le seul 400 laissait `serverErrors` vide et les blocs d'erreur des
+ *   écrans inertes)
+ * - 404 Not Found      : la source a disparu entre l'affichage et l'action
  * - 409 Conflict       : signale un conflit de version sans perdre la saisie
  * - 403 Forbidden      : signale l'action non autorisée, expose `forbidden` pour masquer les boutons
  * - Transmet rowVersion à chaque modification
@@ -36,7 +39,12 @@ export class LeadSourcesService {
   private readonly _api = inject(LeadSourcesApiService);
   private readonly _snackbar = inject(SnackbarService);
 
-  /** Set to true after a 403 — consumers hide actions accordingly */
+  /**
+   * Passe à `true` après un 403 — les écrans masquent les actions en conséquence.
+   * Le service est `providedIn: 'root'` : sans remise à zéro au chargement
+   * (`get()` / `list()`), un seul refus masquait les boutons de toutes les
+   * sources jusqu'au rechargement complet de la page.
+   */
   public readonly forbidden = signal(false);
 
   /** Set to true during a version conflict — consumers show reload prompt */
@@ -70,6 +78,7 @@ export class LeadSourcesService {
     page?: number,
     pageSize?: number,
   ): Observable<LeadSourceListDtoPagedResult> {
+    this.forbidden.set(false);
     return this._api
       .listLeadSources(channelType, mode, status, q, page, pageSize)
       .pipe(this._handleErrors());
@@ -79,19 +88,15 @@ export class LeadSourcesService {
 
   public get(id: string): Observable<LeadSourceDetailDto> {
     this.versionConflict.set(false);
+    this.forbidden.set(false);
     return this._api.getLeadSource(id).pipe(this._handleErrors());
   }
 
   // ——— Create ———
 
-  public create(
-    request: CreateLeadSourceRequest,
-    form?: FormGroup,
-  ): Observable<string> {
+  public create(request: CreateLeadSourceRequest): Observable<string> {
     this.clearServerErrors();
-    return this._api.createLeadSource(request).pipe(
-      this._handleErrors(form),
-    );
+    return this._api.createLeadSource(request).pipe(this._handleErrors());
   }
 
   // ——— Update (auto-sends version) ———
@@ -99,12 +104,9 @@ export class LeadSourcesService {
   public update(
     id: string,
     request: UpdateLeadSourceRequest,
-    form?: FormGroup,
   ): Observable<any> {
     this.clearServerErrors();
-    return this._api.updateLeadSource(id, request).pipe(
-      this._handleErrors(form),
-    );
+    return this._api.updateLeadSource(id, request).pipe(this._handleErrors());
   }
 
   // ——— Lifecycle ———
@@ -177,16 +179,23 @@ export class LeadSourcesService {
 
   // ——— Error handling pipeline ———
 
-  private _handleErrors<T>(form?: FormGroup): (source: Observable<T>) => Observable<T> {
+  private _handleErrors<T>(): (source: Observable<T>) => Observable<T> {
     return (source: Observable<T>) =>
       source.pipe(
         catchError((err: HttpErrorResponse) => {
           switch (err.status) {
+            // Le contrat déclare 422 (ValidationProblemDetails) sur la création
+            // et sur activate/pause/archive : sans ce cas, les erreurs de champ
+            // tombaient dans `default` et n'atteignaient jamais `serverErrors`.
             case 400:
-              this._handle400(err, form);
+            case 422:
+              this._handleValidationError(err);
               break;
             case 403:
               this._handle403();
+              break;
+            case 404:
+              this._handle404();
               break;
             case 409:
               this._handle409();
@@ -200,40 +209,27 @@ export class LeadSourcesService {
   }
 
   /**
-   * 400 — ProblemDetails with validation errors.
-   * Maps `errors` object keys (e.g. "settings.allowedOrigins[0]") to form controls.
+   * 400 / 422 — (Validation)ProblemDetails.
+   * Expose les erreurs par chemin normalisé (`settings.allowedOrigins.0`), que
+   * les écrans lisent via `errorFor(path)`, et les répète dans le snackbar :
+   * la branche précédente ne gardait que `detail`, presque toujours nul sur un
+   * ValidationProblemDetails, donc les messages du serveur étaient perdus.
    */
-  private _handle400(err: HttpErrorResponse, form?: FormGroup): void {
+  private _handleValidationError(err: HttpErrorResponse): void {
     const body = err.error;
     const validationErrors: Record<string, string[]> = body?.errors ?? {};
-    const hasFieldErrors = Object.keys(validationErrors).length > 0;
 
-    // Toujours exposer les erreurs par chemin : c'est ce que consomment les
-    // ecrans a base de signals, avec ou sans `FormGroup`.
     const byPath: Record<string, string> = {};
     for (const [path, messages] of Object.entries(validationErrors)) {
-      byPath[this._normalizePath(path)] = messages.join('. ');
+      byPath[this._normalizePath(path)] = (messages ?? []).join('. ');
     }
     this.serverErrors.set(byPath);
 
-    if (form && hasFieldErrors) {
-      for (const [path, messages] of Object.entries(validationErrors)) {
-        const control = this._resolveControl(form, path);
-        if (control) {
-          control.setErrors({ server: messages.join('. ') });
-          control.markAsTouched();
-        }
-      }
-      this._snackbar.error(
-        'Validation',
-        body?.detail ?? 'Veuillez corriger les erreurs indiquées.',
-      );
-    } else {
-      this._snackbar.error(
-        'Erreur de validation',
-        body?.detail ?? 'Les données envoyées sont invalides.',
-      );
-    }
+    const collected = Object.values(byPath).filter(Boolean).join(' ');
+    this._snackbar.error(
+      'Erreur de validation',
+      collected || body?.detail || body?.title || 'Les données envoyées sont invalides.',
+    );
   }
 
   /** 403 — Forbidden: mark as forbidden and notify */
@@ -245,6 +241,14 @@ export class LeadSourcesService {
     );
   }
 
+  /** 404 — la source a disparu entre l'affichage de la liste et l'action */
+  private _handle404(): void {
+    this._snackbar.error(
+      'Source introuvable',
+      'Cette source n\'existe plus. Rechargez la liste pour voir l\'état à jour.',
+    );
+  }
+
   /** 409 — Conflict: the source was modified by another user */
   private _handle409(): void {
     this.versionConflict.set(true);
@@ -252,14 +256,6 @@ export class LeadSourcesService {
       'Conflit de version',
       'Cette source a été modifiée par un autre utilisateur. Rechargez pour voir les dernières modifications.',
     );
-  }
-
-  /**
-   * Resolves a form control from a dot/bracket path.
-   * e.g. "settings.allowedOrigins[0]" → form.get("settings.allowedOrigins.0")
-   */
-  private _resolveControl(form: FormGroup, path: string): AbstractControl | null {
-    return form.get(this._normalizePath(path));
   }
 
   /** `settings.allowedOrigins[0]` → `settings.allowedOrigins.0` */

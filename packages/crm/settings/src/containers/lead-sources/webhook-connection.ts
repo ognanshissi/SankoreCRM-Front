@@ -1,4 +1,5 @@
 import { Component, inject, input, output, signal, OnInit, computed } from '@angular/core';
+import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { catchError, EMPTY } from 'rxjs';
 import { TasCard } from '@talisoft/ui/card';
@@ -6,7 +7,7 @@ import { TasSpinner } from '@talisoft/ui/spinner';
 import { TasIcon } from '@talisoft/ui/icon';
 import { TasTag } from '@talisoft/ui/tag';
 import { Button } from '@talisoft/ui/button';
-import { TasFormField, TasLabel } from '@talisoft/ui/form-field';
+import { TasFormField, TasLabel, TasHint, TasError } from '@talisoft/ui/form-field';
 import { TasInput } from '@talisoft/ui/input';
 import { TasInputPassword } from '@talisoft/ui/input-password';
 import { SnackbarService } from '@talisoft/ui/snackbar';
@@ -26,8 +27,8 @@ import { isWebhookSettings, readSettings, writeSettings } from './lead-source-se
   selector: 'webhook-connection',
   standalone: true,
   imports: [
-    FormsModule, TasCard, TasSpinner, TasIcon, TasTag, Button,
-    TasFormField, TasLabel, TasInput, TasInputPassword, SourceSecrets,
+    FormsModule, DatePipe, TasCard, TasSpinner, TasIcon, TasTag, Button,
+    TasFormField, TasLabel, TasHint, TasError, TasInput, TasInputPassword, SourceSecrets,
   ],
   template: `
     <div class="max-w-3xl flex flex-col gap-4">
@@ -43,15 +44,23 @@ import { isWebhookSettings, readSettings, writeSettings } from './lead-source-se
           </p>
         </div>
         <div class="p-4">
-          <div class="flex items-center gap-2">
-            <div class="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 font-mono text-xs text-slate-700 select-all overflow-x-auto">
-              {{ webhookUrl() }}
+          @if (webhookUrl(); as url) {
+            <div class="flex items-center gap-2">
+              <div class="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 font-mono text-xs text-slate-700 select-all overflow-x-auto">
+                {{ url }}
+              </div>
+              <button tas-outlined-button type="button" class="shrink-0" (click)="copyUrl()">
+                <tas-icon [iconName]="urlCopied() ? 'feather:check' : 'feather:copy'" style="font-size:12px"></tas-icon>
+                {{ urlCopied() ? 'Copié' : 'Copier' }}
+              </button>
             </div>
-            <button tas-outlined-button type="button" class="shrink-0" (click)="copyUrl()">
-              <tas-icon [iconName]="urlCopied() ? 'feather:check' : 'feather:copy'" style="font-size:12px"></tas-icon>
-              {{ urlCopied() ? 'Copié' : 'Copier' }}
-            </button>
-          </div>
+          } @else {
+            <p class="text-xs text-amber-600 flex items-center gap-1">
+              <tas-icon iconName="feather:alert-triangle" style="font-size:12px"></tas-icon>
+              La clé publique de cette source n'est pas encore générée : l'URL du webhook
+              apparaîtra ici dès que le serveur l'aura attribuée.
+            </p>
+          }
         </div>
       </tas-card>
 
@@ -71,7 +80,7 @@ import { isWebhookSettings, readSettings, writeSettings } from './lead-source-se
           @if (revealedHmacSecret()) {
             <div class="p-3 bg-green-50 border border-green-200 rounded-lg">
               <p class="text-xs font-medium text-green-800 mb-1">
-                Nouveau secret généré — copiez-le maintenant, il ne sera plus affiché.
+                Secret généré — copiez-le maintenant, il ne sera plus affiché.
               </p>
               <div class="flex items-center gap-2">
                 <code class="flex-1 bg-white border border-green-300 rounded px-2 py-1 text-xs font-mono select-all">
@@ -84,7 +93,7 @@ import { isWebhookSettings, readSettings, writeSettings } from './lead-source-se
               </div>
               @if (hmacOldExpiresAt()) {
                 <p class="text-xs text-amber-600 mt-2">
-                  L'ancien secret reste accepté jusqu'au {{ hmacOldExpiresAt() }}.
+                  L'ancien secret reste accepté jusqu'au {{ hmacOldExpiresAt() | date:'dd/MM/yyyy HH:mm' }}.
                 </p>
               }
             </div>
@@ -97,7 +106,9 @@ import { isWebhookSettings, readSettings, writeSettings } from './lead-source-se
                 <p class="text-xs text-slate-400">Secret actuel</p>
                 <p class="text-sm text-slate-700 font-mono">{{ hmacHint()!.hint }}</p>
                 @if (hmacHint()!.updatedAt) {
-                  <p class="text-[10px] text-slate-400 mt-0.5">Mis à jour : {{ hmacHint()!.updatedAt }}</p>
+                  <p class="text-[10px] text-slate-400 mt-0.5">
+                    Mis à jour : {{ hmacHint()!.updatedAt | date:'dd/MM/yyyy HH:mm' }}
+                  </p>
                 }
               </div>
               @if (canManageSecrets()) {
@@ -111,7 +122,21 @@ import { isWebhookSettings, readSettings, writeSettings } from './lead-source-se
               }
             </div>
           } @else {
-            <p class="text-xs text-slate-400">Aucun secret HMAC configuré.</p>
+            <!-- FE-17 AC2 — la premiere generation doit etre accessible : le bouton
+                 « Remplacer » vivait dans la branche « un secret existe », donc une
+                 source neuve n'offrait aucun moyen d'en creer un. -->
+            <div class="flex items-center justify-between gap-3">
+              <p class="text-xs text-slate-400">Aucun secret HMAC configuré.</p>
+              @if (canManageSecrets()) {
+                <button tas-outlined-button type="button" class="text-xs shrink-0"
+                        [disabled]="isRotatingHmac()"
+                        [isLoading]="isRotatingHmac()"
+                        (click)="rotateHmac()">
+                  <tas-icon iconName="feather:key" style="font-size:10px"></tas-icon>
+                  Générer le secret de signature
+                </button>
+              }
+            </div>
           }
         </div>
       </tas-card>
@@ -177,11 +202,14 @@ import { isWebhookSettings, readSettings, writeSettings } from './lead-source-se
             <input tasInput type="text" placeholder="$.data.id"
                    [ngModel]="externalIdPath()" (ngModelChange)="externalIdPath.set($event)"
                    [disabled]="readonly()" class="font-mono" />
-            <p class="text-xs text-slate-400 mt-1">
+            <!-- tas-form-field ne projette que tas-label, tas-hint, tas-error et ses
+                 controles : en simples paragraphes, l'aide ET l'erreur disparaissaient
+                 du DOM, laissant le bouton Enregistrer desactive sans motif visible. -->
+            <tas-hint class="text-slate-400">
               Chemin dans le payload JSON pour extraire l'identifiant unique du lead chez le fournisseur.
-            </p>
+            </tas-hint>
             @if (externalIdPathInvalid()) {
-              <p class="text-xs text-red-500 mt-1">{{ jsonPathHint }}</p>
+              <tas-error>{{ jsonPathHint }}</tas-error>
             }
           </tas-form-field>
         </div>
@@ -236,12 +264,17 @@ export class WebhookConnection implements OnInit {
   public readonly settingsSaved = output<void>();
 
   // Webhook URL
-  public readonly webhookUrl = computed(() => {
+  /**
+   * `null` tant que la source n'a pas de cle publique : l'ecran affichait
+   * `…/hooks/???` et « Copier » recopiait cette URL inutilisable sans prevenir.
+   */
+  public readonly webhookUrl = computed((): string | null => {
     const pk = this.source().publicKey;
+    if (!pk) return null;
     // FE-17 — l'hote vient de l'environnement : en dev/recette l'URL remise au
     // fournisseur doit pointer sur l'instance courante, pas sur la prod.
     const host = (this._env.ingestUrl || this._env.apiUrl || '').replace(/\/+$/, '');
-    return `${host}/api/ingest/hooks/${pk ?? '???'}`;
+    return `${host}/api/ingest/hooks/${pk}`;
   });
   public urlCopied = signal(false);
   public readonly jsonPathHint = JSONPATH_HINT;
@@ -279,7 +312,9 @@ export class WebhookConnection implements OnInit {
   // ——— Copy ———
 
   public copyUrl(): void {
-    navigator.clipboard.writeText(this.webhookUrl()).then(() => {
+    const url = this.webhookUrl();
+    if (!url) return;
+    navigator.clipboard.writeText(url).then(() => {
       this.urlCopied.set(true);
       setTimeout(() => this.urlCopied.set(false), 2000);
     });
@@ -294,12 +329,19 @@ export class WebhookConnection implements OnInit {
   // ——— FE-18: Rotate HMAC ———
 
   public rotateHmac(): void {
+    // FE-17 AC2 / FE-18 — le meme appel sert a la premiere generation et au
+    // remplacement : a la premiere generation il n'y a pas d'ancien secret, donc
+    // on n'annonce pas la periode de tolerance de 7 jours.
+    const isFirstGeneration = !this.hmacHint();
+
     this._confirm.confirm({
-      title: 'Remplacer le secret HMAC ?',
-      message: 'L\'ancien secret restera accepté pendant 7 jours. Le nouveau secret ne sera affiché qu\'une seule fois.',
+      title: isFirstGeneration ? 'Générer le secret de signature ?' : 'Remplacer le secret HMAC ?',
+      message: isFirstGeneration
+        ? 'Le CRM génère le secret et ne l\'affiche qu\'une seule fois : copiez-le et remettez-le au fournisseur avant de quitter cette page.'
+        : 'L\'ancien secret restera accepté pendant 7 jours. Le nouveau secret ne sera affiché qu\'une seule fois.',
       closable: true,
       showCancelButton: true,
-      acceptButtonProps: { label: 'Remplacer', theme: 'warn' },
+      acceptButtonProps: { label: isFirstGeneration ? 'Générer' : 'Remplacer', theme: 'warn' },
       rejectButtonProps: { label: 'Annuler' },
       accept: () => {
         this.isRotatingHmac.set(true);
@@ -312,7 +354,14 @@ export class WebhookConnection implements OnInit {
           this.revealedHmacSecret.set(result.secret ?? null);
           this.hmacOldExpiresAt.set(result.oldExpiresAt ?? null);
           this.isRotatingHmac.set(false);
-          this._snackbar.success('Secret remplacé', 'Copiez le nouveau secret avant de quitter cette page.');
+          this._snackbar.success(
+            isFirstGeneration ? 'Secret généré' : 'Secret remplacé',
+            'Copiez le secret avant de quitter cette page.',
+          );
+          // Sans ce rechargement l'indice affiche reste celui de l'ancien secret
+          // et `source().version` est perimee : l'enregistrement suivant repart
+          // avec une version obsolete et peut echouer en 409.
+          this.settingsSaved.emit();
         });
       },
     });
@@ -364,16 +413,20 @@ export class WebhookConnection implements OnInit {
   // ——— Save settings (IPs + external ID path) ———
 
   public save(): void {
-    if (this.invalidIps().length > 0) return;
+    if (this.invalidIps().length > 0 || this.externalIdPathInvalid()) return;
     this.isSaving.set(true);
 
     const src = this.source();
+    // Les validateurs comparent la valeur `trim()` mais l'enregistrement partait
+    // brut : ` $.data.id ` collé depuis un mail passait pour valide et cassait
+    // silencieusement la deduplication cote back.
+    const externalIdPath = this.externalIdPath().trim();
     this._sourcesService.update(src.id!, {
       version: src.version,
       label: src.label,
       settings: writeSettings(src.settings, src.mode, {
-        allowedIps: this.allowedIps().filter(Boolean),
-        externalIdPath: this.externalIdPath() || null,
+        allowedIps: this.allowedIps().map((ip) => ip.trim()).filter(Boolean),
+        externalIdPath: externalIdPath || null,
       }),
     }).pipe(
       catchError(() => {

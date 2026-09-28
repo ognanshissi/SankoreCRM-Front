@@ -26,19 +26,60 @@ export const JSONPATH_HINT =
 
 // ——— Adresses IP et plages CIDR (FE-17 AC4) ———
 
+/** Entier decimal sans zero de tete : `0`, `8`, `255` — mais pas `01` ni `008`. */
+const DECIMAL_RE = /^(?:0|[1-9]\d{0,2})$/;
+
+/**
+ * Les zeros de tete sont refuses volontairement : `01.02.03.04` etait accepte,
+ * or beaucoup de piles reseau interpretent `010` en octal. Une liste blanche
+ * d'IP qui ne designe pas la meme adresse que le serveur ne protege rien.
+ */
 function isValidIpv4(value: string): boolean {
   const parts = value.split('.');
   if (parts.length !== 4) return false;
-  return parts.every((p) => /^\d{1,3}$/.test(p) && Number(p) <= 255);
+  return parts.every((p) => DECIMAL_RE.test(p) && Number(p) <= 255);
 }
 
+/**
+ * IPv6 stricte. L'implementation precedente n'imposait aucun nombre de groupes
+ * et comptait les `::` par expression reguliere : elle acceptait `cafe`, `a:b`
+ * ou `2001:db8:::1` et refusait `::ffff:192.0.2.1`. Un administrateur croyait
+ * donc restreindre son webhook alors que la valeur enregistree ne designait
+ * aucune adresse.
+ */
 function isValidIpv6(value: string): boolean {
-  // Forme compressee acceptee, une seule occurrence de `::`.
-  if (!/^[0-9a-fA-F:]+$/.test(value)) return false;
-  if ((value.match(/::/g) ?? []).length > 1) return false;
-  const groups = value.split(':').filter((g) => g !== '');
-  if (groups.length === 0 || groups.length > 8) return false;
-  return groups.every((g) => /^[0-9a-fA-F]{1,4}$/.test(g));
+  if (!/^[0-9a-fA-F:.]+$/.test(value)) return false;
+  // `:::` n'est pas une sequence compressee valide, et `x::y::z` en compte deux.
+  if (value.includes(':::')) return false;
+  const halves = value.split('::');
+  if (halves.length > 2) return false;
+  const compressed = halves.length === 2;
+
+  // Un suffixe IPv4 (`::ffff:192.0.2.1`) n'est tolere qu'en derniere position
+  // et occupe deux groupes de 16 bits.
+  let ipv4Groups = 0;
+  if (value.includes('.')) {
+    const segments = halves[halves.length - 1].split(':');
+    const tail = segments.pop() ?? '';
+    if (!tail.includes('.') || !isValidIpv4(tail)) return false;
+    ipv4Groups = 2;
+    halves[halves.length - 1] = segments.join(':');
+  }
+
+  const groupsOf = (half: string): string[] | null => {
+    if (half === '') return [];
+    const groups = half.split(':');
+    return groups.every((g) => /^[0-9a-fA-F]{1,4}$/.test(g)) ? groups : null;
+  };
+
+  const head = groupsOf(halves[0]);
+  const tail = compressed ? groupsOf(halves[1]) : [];
+  if (head === null || tail === null) return false;
+
+  const total = head.length + tail.length + ipv4Groups;
+  // Sans `::` l'adresse doit etre complete ; avec, `::` remplace au moins un
+  // groupe de zeros, donc le reste doit tenir dans 7 groupes.
+  return compressed ? total <= 7 : total === 8;
 }
 
 export function isValidIpOrCidr(value: string | null | undefined): boolean {
@@ -51,7 +92,8 @@ export function isValidIpOrCidr(value: string | null | undefined): boolean {
   if (!v4 && !v6) return false;
 
   if (prefix === undefined) return true;
-  if (!/^\d{1,3}$/.test(prefix)) return false;
+  // `008` ou `032` etaient acceptes : un prefixe CIDR n'a pas de zero de tete.
+  if (!DECIMAL_RE.test(prefix)) return false;
   const max = v4 ? 32 : 128;
   return Number(prefix) <= max;
 }

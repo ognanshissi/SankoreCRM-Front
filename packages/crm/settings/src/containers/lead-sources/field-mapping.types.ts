@@ -119,7 +119,15 @@ export const REQUIRED_FIELD_GROUPS: RequiredFieldGroup[] = [
 
 /** Groupes d'obligation non satisfaits par les regles fournies. */
 export function missingRequiredFields(rules: MappingRule[]): RequiredFieldGroup[] {
-  const mapped = new Set(rules.map((r) => r.targetField).filter(Boolean));
+  // Une regle sans champ source ne mappe rien. Ne tester que `targetField`
+  // faisait disparaitre l'avertissement des l'instant ou l'utilisateur
+  // choisissait « Telephone » dans la liste, source vide comprise : la source
+  // devenait activable sans numero de telephone.
+  const mapped = new Set(
+    rules
+      .filter((r) => r.sourceField?.trim() && r.targetField)
+      .map((r) => r.targetField),
+  );
   return REQUIRED_FIELD_GROUPS.filter((g) => !g.keys.some((k) => mapped.has(k)));
 }
 

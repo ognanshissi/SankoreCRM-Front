@@ -17,6 +17,7 @@ import {
   emptyRule,
   MapEntry,
   MappingRule,
+  TRANSFORMATION_OPTIONS,
   TransformationType,
 } from './field-mapping.types';
 
@@ -108,6 +109,12 @@ export interface PullConfig {
   authType: PullAuthType;
   authHeaderName: string;
   authHeaderLocation: PullAuthLocation;
+  /**
+   * FE-19 — nom d'utilisateur Basic Auth. Le mot de passe est un secret et passe par
+   * l'endpoint dédié (`basicPassword`), jamais par les settings. Sans ce champ, le
+   * serveur n'avait jamais d'utilisateur et l'appel échouait systématiquement en 401.
+   */
+  basicUsername: string;
   oauthTokenUrl: string;
   oauthClientId: string;
   oauthScope: string;
@@ -139,6 +146,7 @@ export function defaultPullConfig(): PullConfig {
     authType: 'None',
     authHeaderName: 'X-API-Key',
     authHeaderLocation: 'header',
+    basicUsername: '',
     oauthTokenUrl: '',
     oauthClientId: '',
     oauthScope: '',
@@ -273,6 +281,26 @@ export function toPersistedRules(rules: MappingRule[]): PersistedMappingRule[] {
   }));
 }
 
+/**
+ * La casse de `transformation` n'est pas garantie par le stockage (`E164` vu en
+ * base, `e164` cote front). Le template et `toPersistedRules` comparent la
+ * valeur BRUTE : avec `'E164'`, le sous-bloc « Pays par defaut » ne s'affichait
+ * jamais et l'enregistrement suivant ecrivait `e164Country: null` — le pays
+ * configure etait perdu en silence (idem `mapEntries` et `concatSeparator`).
+ * On normalise donc une seule fois, ici, a la lecture ; plus aucun
+ * `toLowerCase()` d'affichage ailleurs.
+ */
+function readTransformation(
+  value: unknown,
+  fallback: TransformationType,
+): TransformationType {
+  if (typeof value !== 'string') return fallback;
+  const normalized = value.toLowerCase();
+  return TRANSFORMATION_OPTIONS.some((o) => o.value === normalized)
+    ? (normalized as TransformationType)
+    : fallback;
+}
+
 export function toEditableRules(raw: unknown): MappingRule[] {
   if (!Array.isArray(raw)) return [];
   return raw.map((entry) => {
@@ -282,7 +310,7 @@ export function toEditableRules(raw: unknown): MappingRule[] {
       ...base,
       sourceField: m.sourceField ?? base.sourceField,
       targetField: m.targetField ?? base.targetField,
-      transformation: m.transformation ?? base.transformation,
+      transformation: readTransformation(m.transformation, base.transformation),
       defaultValue: m.defaultValue ?? base.defaultValue,
       e164Country: m.e164Country ?? base.e164Country,
       mapEntries: m.mapEntries ?? base.mapEntries,

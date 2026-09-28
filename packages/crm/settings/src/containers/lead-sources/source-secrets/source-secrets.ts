@@ -1,10 +1,11 @@
 import { Component, computed, inject, input, output, signal } from '@angular/core';
+import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { catchError, EMPTY } from 'rxjs';
 import { TasCard } from '@talisoft/ui/card';
 import { TasIcon } from '@talisoft/ui/icon';
 import { Button } from '@talisoft/ui/button';
-import { TasFormField, TasLabel } from '@talisoft/ui/form-field';
+import { TasFormField, TasLabel, TasHint, TasError } from '@talisoft/ui/form-field';
 import { TasInput } from '@talisoft/ui/input';
 import { TasInputPassword } from '@talisoft/ui/input-password';
 import { SnackbarService } from '@talisoft/ui/snackbar';
@@ -38,8 +39,8 @@ interface SecretRow {
   selector: 'source-secrets',
   standalone: true,
   imports: [
-    FormsModule, TasCard, TasIcon, Button,
-    TasFormField, TasLabel, TasInputPassword,
+    FormsModule, DatePipe, TasCard, TasIcon, Button,
+    TasFormField, TasLabel, TasHint, TasError, TasInput, TasInputPassword,
   ],
   template: `
     <tas-card class="block">
@@ -68,7 +69,9 @@ interface SecretRow {
               @if (row.hint) {
                 <p class="text-xs text-slate-500 font-mono mt-1">{{ row.hint.hint }}</p>
                 @if (row.hint.expiresAt) {
-                  <p class="text-[10px] text-amber-500 mt-0.5">Expire : {{ row.hint.expiresAt }}</p>
+                  <p class="text-[10px] text-amber-500 mt-0.5">
+                    Expire : {{ row.hint.expiresAt | date:'dd/MM/yyyy HH:mm' }}
+                  </p>
                 }
               } @else {
                 <p class="text-[10px] text-amber-600 mt-1 flex items-center gap-1">
@@ -118,6 +121,12 @@ interface SecretRow {
               <tas-label>Expiration (optionnel)</tas-label>
               <input tasInput type="datetime-local"
                      [ngModel]="secretExpiry()" (ngModelChange)="secretExpiry.set($event)" />
+              <tas-hint class="text-slate-400">
+                Laissez vide pour un secret sans échéance.
+              </tas-hint>
+              @if (expiryInvalid()) {
+                <tas-error>Choisissez une date d'expiration future.</tas-error>
+              }
             </tas-form-field>
 
             <div class="flex justify-end gap-2">
@@ -183,8 +192,24 @@ export class SourceSecrets {
     () => !!this.secretConfirm() && this.secretValue() !== this.secretConfirm(),
   );
 
+  /**
+   * L'`input[type=datetime-local]` rend une date locale sans fuseau
+   * (`2026-10-05T09:00`) : elle est convertie en ISO a l'envoi, et une date deja
+   * passee est refusee ici plutot que d'enregistrer un secret expire d'emblee.
+   */
+  public readonly expiryInvalid = computed(() => {
+    const raw = this.secretExpiry();
+    if (!raw) return false;
+    const at = new Date(raw).getTime();
+    return Number.isNaN(at) || at <= Date.now();
+  });
+
   public readonly canSubmit = computed(
-    () => !this.isSaving() && !!this.secretValue() && this.secretValue() === this.secretConfirm(),
+    () =>
+      !this.isSaving() &&
+      !!this.secretValue() &&
+      this.secretValue() === this.secretConfirm() &&
+      !this.expiryInvalid(),
   );
 
   public hintFor(name: string): SecretHintDto | null {
@@ -200,6 +225,11 @@ export class SourceSecrets {
 
   public cancel(): void {
     this.editingSlot.set(null);
+    // La valeur saisie ne doit pas rester dans l'etat du composant apres
+    // fermeture : c'est un secret en clair.
+    this.secretValue.set('');
+    this.secretConfirm.set('');
+    this.secretExpiry.set('');
   }
 
   /** FE-18 AC2 — valeur aleatoire pour les secrets que nous emettons. */
@@ -215,10 +245,19 @@ export class SourceSecrets {
     const slot = this.editingSlot();
     if (!slot || !this.canSubmit()) return;
 
+    const expiry = this.secretExpiry();
+    // `canSubmit()` est memorise : sur un formulaire reste ouvert longtemps, la
+    // date pouvait devenir passee sans qu'il soit recalcule. On revalide ici.
+    const expiresAt = expiry ? new Date(expiry) : null;
+    if (expiresAt && (Number.isNaN(expiresAt.getTime()) || expiresAt.getTime() <= Date.now())) {
+      this._snackbar.error('Date invalide', "Choisissez une date d'expiration future.");
+      return;
+    }
+
     this.isSaving.set(true);
     this._sourcesService.setSecret(this.sourceId(), slot.name, {
       value: this.secretValue(),
-      expiresAt: this.secretExpiry() || null,
+      expiresAt: expiresAt ? expiresAt.toISOString() : null,
     }).pipe(
       catchError(() => {
         this.isSaving.set(false);
@@ -230,6 +269,7 @@ export class SourceSecrets {
       this.editingSlot.set(null);
       this.secretValue.set('');
       this.secretConfirm.set('');
+      this.secretExpiry.set('');
       this.secretSaved.emit(slot.name);
     });
   }

@@ -3,7 +3,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
-import { catchError, debounceTime, EMPTY, Observable, Subject } from 'rxjs';
+import { catchError, debounceTime, EMPTY, map, Observable, Subject, switchMap } from 'rxjs';
 import { TasCard } from '@talisoft/ui/card';
 import { TasSpinner } from '@talisoft/ui/spinner';
 import { TasIcon } from '@talisoft/ui/icon';
@@ -76,18 +76,23 @@ import { TimeagoPipe } from '@talisoft/ui/timeago';
                 ></tas-icon>
                 Qualité
               </button>
-              <button
-                tas-raised-button
-                color="primary"
-                type="button"
-                (click)="navigateToCreate()"
-              >
-                <tas-icon
-                  iconName="feather:plus"
-                  style="font-size:14px"
-                ></tas-icon>
-                Ajouter une source
-              </button>
+              <!-- La route de création exige la permission lead:source:manage :
+                   le bouton d'en-tête n'était pas gardé, contrairement à celui
+                   de l'état vide. -->
+              @if (canWrite()) {
+                <button
+                  tas-raised-button
+                  color="primary"
+                  type="button"
+                  (click)="navigateToCreate()"
+                >
+                  <tas-icon
+                    iconName="feather:plus"
+                    style="font-size:14px"
+                  ></tas-icon>
+                  Ajouter une source
+                </button>
+              }
           </div>
 
           <!-- Filters -->
@@ -158,35 +163,66 @@ import { TimeagoPipe } from '@talisoft/ui/timeago';
               <div class="flex justify-center py-24">
                 <tas-spinner size="10" class="text-primary"></tas-spinner>
               </div>
-            } @else if (nonSystemCount() === 0) {
+            } @else if (sources().length === 0) {
+              <!--
+                L'état vide se déclenchait sur le nombre de sources NON système :
+                tant qu'aucune source personnalisée n'existait, les sources
+                système chargées n'étaient jamais rendues (badge « Système »
+                invisible dans le cas le plus courant).
+              -->
               <div
                 class="flex flex-col items-center justify-center py-16 text-center"
               >
-                <tas-icon
-                  iconName="feather:globe"
-                  class="text-slate-300 mb-3"
-                  style="font-size:32px"
-                ></tas-icon>
-                <p class="text-sm font-medium text-slate-500 mb-1">
-                  Aucune source configurée
-                </p>
-                <p class="text-xs text-slate-400 mb-4">
-                  Ajoutez votre première source pour commencer à capturer des
-                  leads.
-                </p>
-                @if (canWrite()) {
+                @if (hasActiveFilters()) {
+                  <tas-icon
+                    iconName="feather:filter"
+                    class="text-slate-300 mb-3"
+                    style="font-size:32px"
+                  ></tas-icon>
+                  <p class="text-sm font-medium text-slate-500 mb-1">
+                    Aucun résultat pour ces filtres
+                  </p>
+                  <p class="text-xs text-slate-400 mb-4">
+                    Élargissez votre recherche ou réinitialisez les filtres.
+                  </p>
                   <button
-                    tas-button
-                    color="primary"
+                    tas-outlined-button
                     type="button"
-                    (click)="navigateToCreate()"
+                    (click)="resetFilters()"
                   >
                     <tas-icon
-                      iconName="feather:plus"
+                      iconName="feather:x"
                       style="font-size:14px"
                     ></tas-icon>
-                    Ajouter une source
+                    Réinitialiser les filtres
                   </button>
+                } @else {
+                  <tas-icon
+                    iconName="feather:globe"
+                    class="text-slate-300 mb-3"
+                    style="font-size:32px"
+                  ></tas-icon>
+                  <p class="text-sm font-medium text-slate-500 mb-1">
+                    Aucune source configurée
+                  </p>
+                  <p class="text-xs text-slate-400 mb-4">
+                    Ajoutez votre première source pour commencer à capturer des
+                    leads.
+                  </p>
+                  @if (canWrite()) {
+                    <button
+                      tas-button
+                      color="primary"
+                      type="button"
+                      (click)="navigateToCreate()"
+                    >
+                      <tas-icon
+                        iconName="feather:plus"
+                        style="font-size:14px"
+                      ></tas-icon>
+                      Ajouter une source
+                    </button>
+                  }
                 }
               </div>
             } @else {
@@ -244,9 +280,9 @@ import { TimeagoPipe } from '@talisoft/ui/timeago';
                     </div>
 
                     <!-- Health -->
-                    <div class="w-[6%] text-center" [title]="getHealthTooltip(src.health)">
-                      <tas-icon [iconName]="getHealthIcon(src.health)"
-                                [class]="getHealthColor(src.health)"
+                    <div class="w-[6%] text-center" [title]="getHealthTooltip(rowHealth(src))">
+                      <tas-icon [iconName]="getHealthIcon(rowHealth(src))"
+                                [class]="getHealthColor(rowHealth(src))"
                                 style="font-size:14px"></tas-icon>
                     </div>
 
@@ -257,7 +293,9 @@ import { TimeagoPipe } from '@talisoft/ui/timeago';
 
                     <!-- Cost per lead -->
                     <div class="w-[10%] text-right">
-                      @if (src.costPerLead?.amount) {
+                      <!-- Tester la seule vérité de amount était faux pour 0 :
+                           un coût nul explicitement saisi s'affichait « — ». -->
+                      @if (src.costPerLead?.amount != null) {
                         <span class="text-xs text-slate-700">
                           {{ (src.costPerLead?.amount ?? 0) | number: '1.0-0' }}
                           {{ src.costPerLead?.currency ?? 'XOF' }}
@@ -319,19 +357,25 @@ import { TimeagoPipe } from '@talisoft/ui/timeago';
                   </div>
                 }
               </div>
+            }
 
-              <!-- Pagination -->
-              @if (hasMore()) {
-                <div class="p-4 border-t border-slate-100 flex justify-center">
-                  <button
-                    tas-outlined-button
-                    type="button"
-                    (click)="loadMore()"
-                  >
-                    Charger plus
-                  </button>
-                </div>
-              }
+            <!--
+              La pagination vivait dans la branche « liste » de l'état vide :
+              quand la page 1 ne contenait que des sources système, la page 2
+              devenait inatteignable alors que le compteur annonçait davantage.
+            -->
+            @if (!isLoading() && hasMore()) {
+              <div class="p-4 border-t border-slate-100 flex justify-center">
+                <button
+                  tas-outlined-button
+                  type="button"
+                  [disabled]="isLoadingMore()"
+                  [isLoading]="isLoadingMore()"
+                  (click)="loadMore()"
+                >
+                  Charger plus
+                </button>
+              </div>
             }
           </tas-card>
       </div>
@@ -358,6 +402,7 @@ export class LeadSourcesConfig implements OnInit {
 
   // State
   public isLoading = signal(true);
+  public isLoadingMore = signal(false);
   public sources = signal<LeadSourceListDto[]>([]);
   public totalCount = signal(0);
 
@@ -367,13 +412,26 @@ export class LeadSourcesConfig implements OnInit {
   public filterMode = signal<string | null>(null);
   public filterStatus = signal<string | null>(null);
 
-  /** FE-04 AC5 — l'état vide ignore les sources système, créées par défaut. */
-  public readonly nonSystemCount = computed(
-    () => this.sources().filter((s) => !s.isSystem).length,
+  /** Un filtre est actif : l'état vide parle alors de résultats, pas de configuration. */
+  public readonly hasActiveFilters = computed(
+    () =>
+      !!this.filterQuery().trim() ||
+      !!this.filterChannel() ||
+      !!this.filterMode() ||
+      !!this.filterStatus(),
   );
 
   /** Frappes de recherche, regroupées avant l'appel réseau. */
   private readonly _search$ = new Subject<void>();
+
+  /**
+   * Chargements de la liste. Chaque appel avait son propre `.subscribe()` :
+   * deux changements de filtre rapprochés pouvaient laisser gagner la réponse
+   * du filtre précédent, et « Charger plus » suivi d'un changement de filtre
+   * concaténait l'ancien filtre à la nouvelle page 1 — avec des `track src.id`
+   * en double (NG0955). `switchMap` annule la requête devenue obsolète.
+   */
+  private readonly _load$ = new Subject<boolean>();
 
   // Pagination
   private _page = 1;
@@ -402,6 +460,8 @@ export class LeadSourcesConfig implements OnInit {
     this._search$
       .pipe(debounceTime(300), takeUntilDestroyed(this._destroyRef))
       .subscribe(() => this._applyFilters());
+
+    this._setupLoader();
 
     // Restore filters from URL
     const params = this._route.snapshot.queryParams;
@@ -455,13 +515,30 @@ export class LeadSourcesConfig implements OnInit {
       replaceUrl: true,
     });
 
-    this._page = 1;
     this._load(true);
   }
 
+  public resetFilters(): void {
+    this.filterQuery.set('');
+    this.filterChannel.set(null);
+    this.filterMode.set(null);
+    this.filterStatus.set(null);
+    this._applyFilters();
+  }
+
   public loadMore(): void {
+    if (this.isLoadingMore()) return;
     this._page++;
     this._load(false);
+  }
+
+  /**
+   * FE-04 AC2 — la pastille de santé ne dépendait que de `health` : une source
+   * en statut « Error » restait grise quand le serveur ne remplissait pas
+   * `health`. Le statut prime donc ici.
+   */
+  public rowHealth(src: LeadSourceListDto): string | null | undefined {
+    return src.status === 'Error' ? 'Error' : src.health;
   }
 
   public navigateToCreate(): void {
@@ -477,24 +554,40 @@ export class LeadSourcesConfig implements OnInit {
   }
 
   private _load(reset: boolean): void {
-    if (reset) this.isLoading.set(true);
+    if (reset) {
+      this._page = 1;
+      this.isLoading.set(true);
+    } else {
+      this.isLoadingMore.set(true);
+    }
+    this._load$.next(reset);
+  }
 
-    this._api
-      .listLeadSources(
-        channelTypeToNumeric(this.filterChannel()),
-        modeToNumeric(this.filterMode()),
-        statusToNumeric(this.filterStatus()),
-        this.filterQuery() || undefined,
-        this._page,
-        this._pageSize,
-      )
+  private _setupLoader(): void {
+    this._load$
       .pipe(
-        catchError(() => {
-          this.isLoading.set(false);
-          return EMPTY;
-        }),
+        switchMap((reset) =>
+          this._api
+            .listLeadSources(
+              channelTypeToNumeric(this.filterChannel()),
+              modeToNumeric(this.filterMode()),
+              statusToNumeric(this.filterStatus()),
+              this.filterQuery().trim() || undefined,
+              this._page,
+              this._pageSize,
+            )
+            .pipe(
+              map((result) => ({ reset, result })),
+              catchError(() => {
+                this.isLoading.set(false);
+                this.isLoadingMore.set(false);
+                return EMPTY;
+              }),
+            ),
+        ),
+        takeUntilDestroyed(this._destroyRef),
       )
-      .subscribe((result) => {
+      .subscribe(({ reset, result }) => {
         // FE-09 AC3 — une source archivée n'apparaît qu'avec le filtre
         // « Archivées ». L'API n'expose pas de paramètre `includeArchived` :
         // le retrait est donc fait ici, et `totalCount` reste celui du serveur
@@ -506,11 +599,17 @@ export class LeadSourcesConfig implements OnInit {
         if (reset) {
           this.sources.set(items);
         } else {
-          this.sources.update((prev) => [...prev, ...items]);
+          // Garde-fou contre un doublon de clé `track src.id` (NG0955) si la
+          // même source revient sur deux pages.
+          this.sources.update((prev) => {
+            const known = new Set(prev.map((s) => s.id));
+            return [...prev, ...items.filter((s) => !known.has(s.id))];
+          });
         }
         this.totalCount.set(result.totalCount ?? 0);
         this.hasMore.set(result.hasNextPage ?? false);
         this.isLoading.set(false);
+        this.isLoadingMore.set(false);
       });
   }
 

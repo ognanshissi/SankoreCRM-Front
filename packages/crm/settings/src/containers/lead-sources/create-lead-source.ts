@@ -1,12 +1,12 @@
-import { Component, inject, signal, OnInit } from '@angular/core';
+import { Component, computed, inject, signal, OnInit } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
-import { catchError, debounceTime, EMPTY, of, Subject, switchMap } from 'rxjs';
+import { catchError, debounceTime, EMPTY, map, of, Subject, switchMap } from 'rxjs';
 import { TasCard } from '@talisoft/ui/card';
 import { TasIcon } from '@talisoft/ui/icon';
 import { TasSpinner } from '@talisoft/ui/spinner';
 import { Button } from '@talisoft/ui/button';
-import { TasFormField, TasLabel, TasError } from '@talisoft/ui/form-field';
+import { TasFormField, TasLabel, TasError, TasHint } from '@talisoft/ui/form-field';
 import { TasInput } from '@talisoft/ui/input';
 import { TasSelect } from '@talisoft/ui/select';
 import { SnackbarService } from '@talisoft/ui/snackbar';
@@ -41,6 +41,12 @@ interface BusinessCase {
   question?: string;
   choices?: { label: string; mode: string }[];
 }
+
+/** Valeur imposée par le contrat : `dedupWindowDays` est un entier non nullable. */
+const DEFAULT_DEDUP_WINDOW_DAYS = 30;
+
+/** Nombre de lignes demandées au contrôle d'unicité du code (cf. `_setupCodeCheck`). */
+const CODE_CHECK_PAGE_SIZE = 25;
 
 const BUSINESS_CASES: BusinessCase[] = [
   {
@@ -126,7 +132,7 @@ const BUSINESS_CASES: BusinessCase[] = [
   selector: 'create-lead-source',
   imports: [
     FormsModule, RouterLink, TasCard, TasIcon, TasSpinner, Button,
-    TasFormField, TasLabel, TasError, TasInput, TasSelect,
+    TasFormField, TasLabel, TasError, TasHint, TasInput, TasSelect,
   ],
   template: `
     <div class="pb-6">
@@ -221,14 +227,22 @@ const BUSINESS_CASES: BusinessCase[] = [
                   <tas-label>Code <span class="text-red-500">*</span></tas-label>
                   <input tasInput type="text" placeholder="AUTO-GENERE"
                          [ngModel]="code()" (ngModelChange)="onCodeChange($event)" />
+                  <!--
+                    FE-06 AC2 — ces retours doivent être des <tas-hint> :
+                    <tas-form-field> ne projette que ses slots connus, et un <p>
+                    placé là était retiré du DOM sans erreur — la vérification
+                    d'unicité n'affichait donc rien du tout.
+                  -->
                   @if (codeStatus() === 'checking') {
-                    <p class="text-xs text-slate-400 mt-1 flex items-center gap-1">
-                      <tas-spinner size="3"></tas-spinner> Vérification...
-                    </p>
+                    <tas-hint class="text-slate-400 mt-1">
+                      <span class="inline-flex items-center gap-1">
+                        <tas-spinner size="3"></tas-spinner> Vérification...
+                      </span>
+                    </tas-hint>
                   } @else if (codeStatus() === 'taken') {
                     <tas-error>Code déjà utilisé</tas-error>
                   } @else if (codeStatus() === 'available') {
-                    <p class="text-xs text-green-500 mt-1">Code disponible</p>
+                    <tas-hint class="text-green-600 mt-1">Code disponible</tas-hint>
                   }
                   @if (serverError('code'); as msg) {
                     <tas-error>{{ msg }}</tas-error>
@@ -279,9 +293,11 @@ const BUSINESS_CASES: BusinessCase[] = [
               </tas-form-field>
               <tas-form-field>
                 <tas-label>Fenêtre de déduplication (jours)</tas-label>
-                <input tasInput type="number" placeholder="30"
-                       [ngModel]="dedupWindowDays()" (ngModelChange)="dedupWindowDays.set($event)" />
-                <p class="text-[10px] text-slate-400 mt-1">Un lead identique reçu dans cette fenêtre sera détecté. 30 jours par défaut.</p>
+                <input tasInput type="number" min="0" placeholder="30"
+                       [ngModel]="dedupWindowDays()" (ngModelChange)="onDedupWindowChange($event)" />
+                <tas-hint class="text-slate-400 mt-1">
+                  Un lead identique reçu dans cette fenêtre sera détecté. 30 jours par défaut.
+                </tas-hint>
               </tas-form-field>
             </div>
           </tas-card>
@@ -309,7 +325,7 @@ const BUSINESS_CASES: BusinessCase[] = [
           <div class="flex items-center justify-end gap-3">
             <a [routerLink]="['/settings/lead-sources']" tas-outlined-button color="primary">Annuler</a>
             <button tas-raised-button color="primary" type="button"
-                    [disabled]="isSaving() || !code() || !label() || codeStatus() === 'taken'"
+                    [disabled]="!canSubmit()"
                     [isLoading]="isSaving()"
                     (click)="create()">
               <tas-icon iconName="feather:save" style="font-size:14px"></tas-icon>
@@ -346,7 +362,7 @@ export class CreateLeadSourcePage implements OnInit {
   public description = signal('');
   public channelType = signal<string | null>(null);
   public integrationMode = signal<string | null>(null);
-  public dedupWindowDays = signal<number>(30);
+  public dedupWindowDays = signal<number>(DEFAULT_DEDUP_WINDOW_DAYS);
   public costPerLead = signal<number | null>(null);
   public costCurrency = signal('XOF');
 
@@ -364,7 +380,27 @@ export class CreateLeadSourcePage implements OnInit {
   public codeStatus = signal<'idle' | 'checking' | 'available' | 'taken'>('idle');
   private readonly _codeCheck$ = new Subject<string>();
 
+  /**
+   * FE-06 AC1 — le code est « modifiable » : dès que l'utilisateur l'édite,
+   * le libellé cesse de le régénérer. Sans ce drapeau, corriger une faute dans
+   * le libellé écrasait le code raccourci à la main, sans avertissement.
+   */
+  private _codeEditedManually = false;
+
   public isSaving = signal(false);
+
+  /**
+   * La soumission attend la fin du contrôle d'unicité : elle était permise
+   * pendant l'appel, et une suite d'espaces passait le garde `!code()`.
+   */
+  public readonly canSubmit = computed(
+    () =>
+      !this.isSaving() &&
+      this.code().trim().length > 0 &&
+      this.label().trim().length > 0 &&
+      this.codeStatus() !== 'taken' &&
+      this.codeStatus() !== 'checking',
+  );
 
   ngOnInit(): void {
     this._breadcrumb.set([
@@ -408,38 +444,60 @@ export class CreateLeadSourcePage implements OnInit {
 
   public onLabelChange(value: string): void {
     this.label.set(value);
-    if (value) {
-      const generated = value
-        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-        .toUpperCase()
-        .replace(/[^A-Z0-9]+/g, '-')
-        .replace(/^-|-$/g, '');
-      this.code.set(generated);
-      this._codeCheck$.next(generated);
-    }
-  }
+    // Le code n'est plus dérivé du libellé dès que l'utilisateur l'a édité.
+    if (this._codeEditedManually) return;
 
-  public onCodeChange(value: string): void {
-    this.code.set(value);
-    if (value) {
-      this._codeCheck$.next(value);
+    const generated = this._slugify(value);
+    this.code.set(generated);
+    if (generated) {
+      this._codeCheck$.next(generated);
     } else {
       this.codeStatus.set('idle');
     }
   }
 
+  public onCodeChange(value: string): void {
+    const trimmed = (value ?? '').trim();
+    this.code.set(value ?? '');
+    // Vider complètement le champ rend la main au libellé.
+    this._codeEditedManually = trimmed.length > 0;
+
+    if (trimmed) {
+      this._codeCheck$.next(trimmed);
+    } else {
+      this.codeStatus.set('idle');
+    }
+  }
+
+  /**
+   * FE-06 — `dedupWindowDays` est un entier non nullable au contrat : vider le
+   * champ y écrivait `null` et la création était rejetée côté serveur.
+   */
+  public onDedupWindowChange(value: number | string | null): void {
+    const parsed = typeof value === 'number' ? value : Number(value);
+    if (value === null || value === '' || !Number.isFinite(parsed)) {
+      this.dedupWindowDays.set(DEFAULT_DEDUP_WINDOW_DAYS);
+      return;
+    }
+    this.dedupWindowDays.set(Math.max(0, Math.trunc(parsed)));
+  }
+
   // ——— Create ———
 
   public create(): void {
-    if (!this.code() || !this.label() || this.codeStatus() === 'taken') return;
+    if (!this.canSubmit()) return;
     this.isSaving.set(true);
 
     const mode = this.integrationMode() as IntegrationMode | null;
+    const code = this.code().trim();
+    const label = this.label().trim();
+    this.code.set(code);
+    this.label.set(label);
 
     this._sourcesService.create({
-      code: this.code(),
-      label: this.label(),
-      description: this.description() || null,
+      code,
+      label,
+      description: this.description().trim() || null,
       channelType: this.channelType() as CreateLeadSourceRequestChannelTypeEnum,
       integrationMode: modeToNumeric(mode) as CreateLeadSourceRequestIntegrationModeEnum,
       dedupWindowDays: this.dedupWindowDays(),
@@ -475,6 +533,14 @@ export class CreateLeadSourcePage implements OnInit {
 
   // ——— Private ———
 
+  private _slugify(value: string): string {
+    return (value ?? '')
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .toUpperCase()
+      .replace(/[^A-Z0-9]+/g, '-')
+      .replace(/^-|-$/g, '');
+  }
+
   private _loadDropdowns(): void {
     this._productsApi.listProducts(true).pipe(
       catchError(() => of([])),
@@ -506,15 +572,25 @@ export class CreateLeadSourcePage implements OnInit {
       debounceTime(400),
       switchMap((code) => {
         this.codeStatus.set('checking');
-        return this._api.listLeadSources(undefined, undefined, undefined, code, 1, 1).pipe(
-          catchError(() => of({ items: [] })),
-        );
+        // `q` cherche sur le libellé OU le code : avec une seule ligne demandée,
+        // une source dont seul le libellé contenait la chaîne masquait un code
+        // déjà pris, et le code était annoncé disponible.
+        return this._api
+          .listLeadSources(undefined, undefined, undefined, code, 1, CODE_CHECK_PAGE_SIZE)
+          .pipe(
+            map((result) => result.items ?? []),
+            // Une coupure réseau ou un 500 concluait « disponible » : faux
+            // positif silencieux. On revient à `idle` — ni disponible, ni pris.
+            catchError(() => {
+              this.codeStatus.set('idle');
+              return EMPTY;
+            }),
+          );
       }),
-    ).subscribe((result) => {
-      const match = (result.items ?? []).find(
-        (s) => s.code?.toUpperCase() === this.code().toUpperCase(),
-      );
-      this.codeStatus.set(match ? 'taken' : 'available');
+    ).subscribe((items) => {
+      const current = this.code().trim().toUpperCase();
+      const taken = items.some((s) => s.code?.toUpperCase() === current);
+      this.codeStatus.set(taken ? 'taken' : 'available');
     });
   }
 }

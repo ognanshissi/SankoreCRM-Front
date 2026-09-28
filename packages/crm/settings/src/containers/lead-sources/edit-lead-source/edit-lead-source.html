@@ -37,6 +37,15 @@
         </p>
       </div>
 
+      <!-- Le rechargement n'affiche plus de spinner plein ecran : il se signale
+           ici, l'onglet courant restant monte. -->
+      @if (isRefreshing()) {
+        <span class="flex items-center gap-1.5 text-xs text-slate-400">
+          <tas-spinner size="3"></tas-spinner>
+          Actualisation…
+        </span>
+      }
+
       <!-- Lifecycle actions (FE-09) -->
       @if (canWrite() && !source()!.isSystem) {
         <div class="flex items-center gap-2">
@@ -93,6 +102,8 @@
                   tas-raised-button
                   color="primary"
                   type="button"
+                  [disabled]="!canActivateSource()"
+                  [title]="canActivateSource() ? '' : 'Des prérequis ne sont plus remplis : consultez la liste de contrôle.'"
                   (click)="activateSource()"
                 >
                   <tas-icon
@@ -107,6 +118,8 @@
                   tas-raised-button
                   color="primary"
                   type="button"
+                  [disabled]="!canActivateSource()"
+                  [title]="canActivateSource() ? '' : 'Des prérequis ne sont plus remplis : consultez la liste de contrôle.'"
                   (click)="activateSource()"
                 >
                   <tas-icon
@@ -142,6 +155,46 @@
       }
     </div>
 
+    <!-- Version conflict banner (FE-02) -->
+    @if (versionConflict()) {
+      <div
+        class="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-start gap-2"
+      >
+        <tas-icon
+          iconName="feather:git-merge"
+          class="text-amber-500 shrink-0 mt-0.5"
+          style="font-size:14px"
+        ></tas-icon>
+        <div class="flex-1">
+          <p class="text-xs font-medium text-amber-800">
+            Un autre utilisateur a modifié cette source
+          </p>
+          <p class="text-xs text-amber-700 mt-0.5">
+            Votre enregistrement a été refusé car la version affichée n'est plus
+            la dernière. Rechargez la source pour repartir de la version à jour,
+            puis appliquez vos changements.
+          </p>
+        </div>
+        <button
+          tas-outlined-button
+          color="warn"
+          type="button"
+          [disabled]="isRefreshing()"
+          (click)="reloadSource()"
+        >
+          @if (isRefreshing()) {
+            <tas-spinner size="3"></tas-spinner>
+          } @else {
+            <tas-icon
+              iconName="feather:refresh-cw"
+              style="font-size:12px"
+            ></tas-icon>
+          }
+          Recharger la source
+        </button>
+      </div>
+    }
+
     <!-- Error banner -->
     @if (source()!.status === 'Error') {
       <div
@@ -164,7 +217,10 @@
 
     <!-- Activation prerequisites checklist (Draft/Testing) -->
     @if (
-      (source()!.status === 'Draft' || source()!.status === 'Testing') &&
+      (source()!.status === 'Draft' ||
+        source()!.status === 'Testing' ||
+        source()!.status === 'Paused' ||
+        source()!.status === 'Error') &&
       !canActivateSource()
       ) {
       <div class="mb-4 p-4 bg-amber-50 border border-amber-200 rounded-lg">
@@ -335,6 +391,7 @@
 
       @case ('mapping') {
         <field-mapping-editor
+          [saveFailedAt]="saveFailedAt()"
           [initialRules]="mappingRules()"
           [sourceId]="source()!.id!"
           [mode]="source()!.mode ?? null"
@@ -345,9 +402,11 @@
 
       @case ('consent') {
         <consent-policy-editor
+          [saveFailedAt]="saveFailedAt()"
           [mode]="source()!.mode ?? null"
           [readonly]="!canWrite()"
           [initialConfig]="consentConfig()"
+          [hasConsentMapping]="hasConsentMapping()"
           (configSaved)="onConsentSaved($event)"
         ></consent-policy-editor>
       }
@@ -373,7 +432,8 @@
         <script-installer
           [sourceId]="source()!.id!"
           [canManageSecrets]="canManageSecrets()"
-          (keyRotated)="onSourceActivated()"
+          [wasRegenerated]="keyWasRegenerated()"
+          (keyRotated)="onKeyRotated()"
         ></script-installer>
       }
 
@@ -381,6 +441,8 @@
         <script-verifier
           [sourceId]="source()!.id!"
           [sourceStatus]="source()!.status ?? null"
+          [readonly]="!canWrite() || !canActivateSource()"
+          (detected)="onSourceActivated()"
           (activated)="onSourceActivated()"
         ></script-verifier>
       }
@@ -398,6 +460,7 @@
         <pull-wizard
           [initialConfig]="pullConfig()"
           [initialStep]="pullWizardStep()"
+          [source]="source()"
           [readonly]="!canWrite()"
           (saved)="onPullConfigSaved($event)"
         ></pull-wizard>
@@ -415,6 +478,7 @@
       @case ('pull-test') {
         <pull-dry-run
           [sourceId]="source()!.id!"
+          [authHeaderName]="pullConfig()?.authHeaderName ?? null"
           [readonly]="!canWrite()"
           (goToStep)="onDryRunGoToStep($event)"
         ></pull-dry-run>
@@ -437,5 +501,31 @@
         ></ingestion-list>
       }
     }
+  </div>
+} @else {
+  <!-- Le GET a échoué (404, 403, réseau) : sans cette branche, l'écran restait
+       vide, sans message ni recours. -->
+  <div class="flex flex-col items-center justify-center gap-3 py-24 text-center">
+    <tas-icon
+      iconName="feather:alert-circle"
+      class="text-slate-300"
+      style="font-size:32px"
+    ></tas-icon>
+    <p class="text-sm font-medium text-slate-700">
+      Source introuvable ou inaccessible
+    </p>
+    <p class="text-xs text-slate-400 max-w-sm">
+      Cette source n'existe plus, ou vous n'avez pas les droits pour la
+      consulter. Réessayez, puis revenez à la liste si le problème persiste.
+    </p>
+    <div class="flex items-center gap-2 mt-1">
+      <button tas-raised-button color="primary" type="button" (click)="reloadSource()">
+        <tas-icon iconName="feather:refresh-cw" style="font-size:14px"></tas-icon>
+        Réessayer
+      </button>
+      <a [routerLink]="['/settings/lead-sources']" tas-outlined-button>
+        Retour à la liste
+      </a>
+    </div>
   </div>
 }

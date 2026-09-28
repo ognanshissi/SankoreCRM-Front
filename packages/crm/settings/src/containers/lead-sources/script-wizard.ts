@@ -3,7 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { TasCard } from '@talisoft/ui/card';
 import { TasIcon } from '@talisoft/ui/icon';
 import { Button } from '@talisoft/ui/button';
-import { TasFormField, TasLabel } from '@talisoft/ui/form-field';
+import { TasFormField, TasHint, TasLabel } from '@talisoft/ui/form-field';
 import { TasInput } from '@talisoft/ui/input';
 import { TasSelect } from '@talisoft/ui/select';
 import { TasSwitch } from '@talisoft/ui/switch';
@@ -37,7 +37,7 @@ const AFTER_SUBMIT_OPTIONS = [
   standalone: true,
   imports: [
     FormsModule, TasCard, TasIcon, Button,
-    TasFormField, TasLabel, TasInput, TasSelect, TasSwitch,
+    TasFormField, TasLabel, TasHint, TasInput, TasSelect, TasSwitch,
   ],
   template: `
     <div class="max-w-3xl flex flex-col gap-4">
@@ -47,8 +47,10 @@ const AFTER_SUBMIT_OPTIONS = [
           <button class="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors"
                   [class]="currentStep() === i
                     ? 'bg-primary text-white'
-                    : i < currentStep() ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'"
-                  (click)="currentStep.set(i)">
+                    : i < currentStep() ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500 cursor-not-allowed'"
+                  type="button"
+                  [disabled]="i > currentStep()"
+                  (click)="goToStep(i)">
             @if (i < currentStep()) {
               <tas-icon iconName="feather:check" style="font-size:10px"></tas-icon>
             }
@@ -134,11 +136,12 @@ const AFTER_SUBMIT_OPTIONS = [
                        [ngModel]="config().formSelector"
                        (ngModelChange)="updateConfig('formSelector', $event)"
                        [disabled]="readonly()" />
-                <p class="text-xs text-slate-400 mt-1">
+                <tas-hint class="text-slate-400 mt-1">
                   Exemples : <code class="bg-slate-100 px-1 rounded">#contact-form</code>,
                   <code class="bg-slate-100 px-1 rounded">.lead-form</code>,
-                  <code class="bg-slate-100 px-1 rounded">form[name="contact"]</code>
-                </p>
+                  <code class="bg-slate-100 px-1 rounded">form[name="contact"]</code>.
+                  Le sélecteur doit désigner la balise <code class="bg-slate-100 px-1 rounded">&lt;form&gt;</code> elle-même.
+                </tas-hint>
               </tas-form-field>
 
               <!-- FE-10 AC2 — noms des champs du formulaire existant -->
@@ -148,10 +151,10 @@ const AFTER_SUBMIT_OPTIONS = [
                        [ngModel]="config().formFieldNames"
                        (ngModelChange)="updateConfig('formFieldNames', $event)"
                        [disabled]="readonly()" />
-                <p class="text-xs text-slate-400 mt-1">
+                <tas-hint class="text-slate-400 mt-1">
                   Attribut <code class="bg-slate-100 px-1 rounded">name</code> de chaque champ, séparés par des virgules.
                   Ils alimentent la correspondance des champs ; laissez vide pour envoyer tout le formulaire.
-                </p>
+                </tas-hint>
               </tas-form-field>
             }
           </div>
@@ -203,11 +206,13 @@ const AFTER_SUBMIT_OPTIONS = [
 
             <tas-form-field>
               <tas-label>Délai minimal de saisie (secondes)</tas-label>
-              <input tasInput type="number" placeholder="3"
+              <input tasInput type="number" min="0" placeholder="3"
                      [ngModel]="config().minFillTimeSeconds"
-                     (ngModelChange)="updateConfig('minFillTimeSeconds', $event)"
+                     (ngModelChange)="updateMinFillTime($event)"
                      [disabled]="readonly()" />
-              <p class="text-xs text-slate-400 mt-1">Soumissions plus rapides seront rejetées. 3 secondes par défaut.</p>
+              <tas-hint class="text-slate-400 mt-1">
+                Le script rejette les soumissions plus rapides. 3 secondes par défaut ; laissez vide pour revenir à 3.
+              </tas-hint>
             </tas-form-field>
           </div>
         </tas-card>
@@ -270,6 +275,11 @@ const AFTER_SUBMIT_OPTIONS = [
       }
 
       <!-- Navigation -->
+      @if (!readonly() && currentStep() === steps.length - 1 && !canSave()) {
+        <p class="text-xs text-red-500">
+          Complétez {{ invalidStepLabels() }} avant d'enregistrer : le script ne capterait aucun formulaire.
+        </p>
+      }
       <div class="flex items-center justify-between">
         <div>
           @if (currentStep() > 0) {
@@ -289,7 +299,7 @@ const AFTER_SUBMIT_OPTIONS = [
             </button>
           } @else if (!readonly()) {
             <button tas-raised-button color="primary" type="button"
-                    [disabled]="!canProceed()"
+                    [disabled]="!canSave()"
                     (click)="onSave()">
               <tas-icon iconName="feather:save" style="font-size:14px"></tas-icon>
               Enregistrer
@@ -329,6 +339,28 @@ export class ScriptWizard implements OnInit {
     this.config.update((c) => ({ ...c, [field]: value }));
   }
 
+  /**
+   * Vider le champ ecrivait `null` dans `minFillTimeSeconds`, et une valeur
+   * negative partait telle quelle au serveur : on retombe sur la valeur par defaut.
+   */
+  public updateMinFillTime(value: unknown): void {
+    const parsed = Number(value);
+    const valid =
+      value !== null && value !== undefined && value !== '' &&
+      Number.isFinite(parsed) && parsed >= 0;
+    this.updateConfig('minFillTimeSeconds', valid ? Math.floor(parsed) : 3);
+  }
+
+  /**
+   * Le saut direct sur une pastille rendait la derniere etape atteignable en un
+   * clic : on enregistrait alors `allowedOrigins: ['']` et `formSelector: ''`,
+   * soit un script qui n'ecoute aucun formulaire. Seules les etapes deja
+   * atteintes restent accessibles.
+   */
+  public goToStep(index: number): void {
+    if (index <= this.currentStep()) this.currentStep.set(index);
+  }
+
   public addOrigin(): void {
     this.config.update((c) => ({ ...c, allowedOrigins: [...c.allowedOrigins, ''] }));
   }
@@ -364,24 +396,52 @@ export class ScriptWizard implements OnInit {
     );
   }
 
-  public canProceed(): boolean {
+  public canProceedAt(step: number): boolean {
     const c = this.config();
-    switch (this.currentStep()) {
+    const filled = (v: string | null | undefined): boolean => !!(v ?? '').trim();
+    switch (step) {
       case 0:
-        return c.allowedOrigins.some((o) => !!o) && this.invalidOrigins().length === 0;
+        return c.allowedOrigins.some(filled) && this.invalidOrigins().length === 0;
       case 1:
-        return c.formMode === 'hosted' || !!c.formSelector;
+        return c.formMode === 'hosted' || filled(c.formSelector);
       case 2:
-        return c.captchaProvider === 'None' || !!c.captchaSiteKey;
+        return c.captchaProvider === 'None' || filled(c.captchaSiteKey);
       case 3:
-        return c.afterSubmit === 'message' ? !!c.successMessage : !!c.redirectUrl;
+        return c.afterSubmit === 'message' ? filled(c.successMessage) : filled(c.redirectUrl);
       default:
         return true;
     }
   }
 
+  public canProceed(): boolean {
+    return this.canProceedAt(this.currentStep());
+  }
+
+  /**
+   * `canProceed()` n'evalue que l'etape affichee : l'enregistrement doit porter
+   * sur les quatre etapes, sinon une configuration incomplete part au serveur
+   * et l'ecran affiche « Enregistre ».
+   */
+  public canSave(): boolean {
+    return this.steps.every((_, i) => this.canProceedAt(i));
+  }
+
+  public invalidStepLabels(): string {
+    const labels = this.steps
+      .filter((_, i) => !this.canProceedAt(i))
+      .map((s) => `« ${s.label} »`);
+    if (labels.length <= 1) return labels[0] ?? '';
+    return `${labels.slice(0, -1).join(', ')} et ${labels[labels.length - 1]}`;
+  }
+
   public onSave(): void {
-    this.saved.emit(this.config());
+    if (!this.canSave()) return;
+    const c = this.config();
+    this.saved.emit({
+      ...c,
+      // Les champs d'origine vides restaient dans le tableau envoye au serveur.
+      allowedOrigins: c.allowedOrigins.map((o) => (o ?? '').trim()).filter((o) => !!o),
+    });
   }
 }
 

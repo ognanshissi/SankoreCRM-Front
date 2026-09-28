@@ -33,9 +33,16 @@ import { LeadSourcesService } from './lead-sources.service';
         @if (showRegeneratedWarning()) {
           <div class="p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-start gap-2">
             <tas-icon iconName="feather:alert-triangle" class="text-amber-500 shrink-0 mt-0.5" style="font-size:14px"></tas-icon>
-            <p class="text-xs text-amber-700">
-              La clé publique a été régénérée. L'ancien script ne fonctionne plus et doit être remplacé sur votre site.
-            </p>
+            <div class="text-xs text-amber-700">
+              <p class="font-semibold">
+                L'ancien script installé sur votre site a cessé de fonctionner.
+              </p>
+              <p class="mt-0.5">
+                La clé publique a été régénérée : copiez le nouveau snippet ci-dessous et remplacez-le sur
+                toutes les pages de votre site. Tant que l'ancien snippet reste en place, le site n'envoie
+                plus aucun lead.
+              </p>
+            </div>
           </div>
         }
 
@@ -195,6 +202,11 @@ export class ScriptInstaller implements OnInit {
   private readonly _confirm = inject(ConfirmDialogService);
 
   public readonly sourceId = input.required<string>();
+  /**
+   * FE-18 AC3 — rotation vue par le parent. `_justRegenerated` est un etat local
+   * detruit par le rechargement declenche par `keyRotated` : seule cette entree
+   * fait survivre le bandeau a ce rechargement.
+   */
   public readonly wasRegenerated = input(false);
   /** FE-03 — sans `lead:source:credentials`, pas de rotation de cle. */
   public readonly canManageSecrets = input(false);
@@ -251,10 +263,27 @@ export class ScriptInstaller implements OnInit {
   public copyScript(): void {
     const html = this.snippet()?.html;
     if (!html) return;
-    navigator.clipboard.writeText(html).then(() => {
-      this.copied.set(true);
-      setTimeout(() => this.copied.set(false), 2000);
-    });
+    // Hors contexte securise, `navigator.clipboard` est absent ou la promesse est
+    // rejetee : le bouton restait sur « Copier » sans le moindre retour.
+    if (!navigator.clipboard?.writeText) {
+      this._snackbar.error(
+        'Copie impossible',
+        'Votre navigateur bloque la copie automatique. Sélectionnez le script puis copiez-le à la main.',
+      );
+      return;
+    }
+    navigator.clipboard.writeText(html).then(
+      () => {
+        this.copied.set(true);
+        setTimeout(() => this.copied.set(false), 2000);
+      },
+      () => {
+        this._snackbar.error(
+          'Copie impossible',
+          'Sélectionnez le script puis copiez-le à la main.',
+        );
+      },
+    );
   }
 
   /**

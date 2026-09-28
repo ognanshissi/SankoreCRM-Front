@@ -34,6 +34,7 @@ import { AbstractFormFieldControl } from '@talisoft/ui/form-field';
   input[tasInput][type=url],
   input[tasInput][type=color],
   input[tasInput][type=date],
+  input[tasInput][type=datetime-local],
   input[tasInput][type=week],
   input[tasInput][type=month],
   textarea[tasInput]`,

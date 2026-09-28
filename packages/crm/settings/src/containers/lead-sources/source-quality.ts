@@ -10,7 +10,6 @@ import { TasTag } from '@talisoft/ui/tag';
 import { Button } from '@talisoft/ui/button';
 import { TasFormField, TasLabel } from '@talisoft/ui/form-field';
 import { TasSelect } from '@talisoft/ui/select';
-import { SnackbarService } from '@talisoft/ui/snackbar';
 import { SourceQualityDto } from '@sankore/crm-api';
 
 /** Valeur du statut « Doublon » attendue par le filtre des réceptions. */
@@ -98,14 +97,15 @@ const PERIOD_OPTIONS = [
         <tas-card class="block">
           <div class="flex items-center px-4 py-2 bg-slate-50 text-xs font-medium text-slate-500 border-b border-slate-100">
             <div class="w-[20%]">Source</div>
-            <div class="w-[10%] text-right">Reçus</div>
-            <div class="w-[10%] text-right">Rejetés</div>
-            <div class="w-[10%] text-right">Doublons</div>
-            <div class="w-[10%] text-right">Contactés</div>
-            <div class="w-[10%] text-right">Convertis</div>
-            <div class="w-[10%] text-right">Taux contact</div>
-            <div class="w-[10%] text-right">Taux conv.</div>
-            <div class="w-[10%] text-right">Coût/converti</div>
+            <div class="w-[9%] text-right">Reçus</div>
+            <div class="w-[9%] text-right">Rejetés</div>
+            <div class="w-[9%] text-right">Doublons</div>
+            <div class="w-[8%] text-right">Contactés</div>
+            <div class="w-[8%] text-right">Convertis</div>
+            <div class="w-[9%] text-right">Taux contact</div>
+            <div class="w-[9%] text-right">Taux conv.</div>
+            <div class="w-[10%] text-right">Coût total</div>
+            <div class="w-[9%] text-right">Coût/converti</div>
           </div>
 
           @if (sources().length === 0) {
@@ -127,19 +127,19 @@ const PERIOD_OPTIONS = [
                   </div>
 
                   <!-- Received -->
-                  <div class="w-[10%] text-right text-xs text-slate-700 font-medium">
+                  <div class="w-[9%] text-right text-xs text-slate-700 font-medium">
                     {{ src.received ?? 0 | number }}
                   </div>
 
                   <!-- Rejected -->
-                  <div class="w-[10%] text-right text-xs">
+                  <div class="w-[9%] text-right text-xs">
                     <span [class]="(src.rejected ?? 0) > 0 ? 'text-red-500 font-medium' : 'text-slate-400'">
                       {{ src.rejected ?? 0 | number }}
                     </span>
                   </div>
 
                   <!-- Duplicates — FE-23 AC2 : ouvre la liste des ingestions en doublon -->
-                  <div class="w-[10%] text-right text-xs">
+                  <div class="w-[9%] text-right text-xs">
                     @if ((src.duplicates ?? 0) > 0) {
                       <button type="button"
                               class="text-amber-600 hover:underline"
@@ -153,29 +153,35 @@ const PERIOD_OPTIONS = [
                   </div>
 
                   <!-- Contacted -->
-                  <div class="w-[10%] text-right text-xs text-slate-700">
+                  <div class="w-[8%] text-right text-xs text-slate-700">
                     {{ src.contacted ?? 0 | number }}
                   </div>
 
                   <!-- Converted -->
-                  <div class="w-[10%] text-right text-xs text-green-600 font-medium">
+                  <div class="w-[8%] text-right text-xs text-green-600 font-medium">
                     {{ src.converted ?? 0 | number }}
                   </div>
 
                   <!-- Contact rate -->
-                  <div class="w-[10%] text-right text-xs text-slate-600">
+                  <div class="w-[9%] text-right text-xs text-slate-600">
                     {{ contactRate(src) | number:'1.1-1' }}%
                   </div>
 
                   <!-- Conversion rate -->
-                  <div class="w-[10%] text-right text-xs">
+                  <div class="w-[9%] text-right text-xs">
                     <span [class]="conversionRate(src) >= 5 ? 'text-green-600 font-medium' : 'text-slate-600'">
                       {{ conversionRate(src) | number:'1.1-1' }}%
                     </span>
                   </div>
 
+                  <!-- FE-23 AC1 — coût total par source : sans lui, impossible de
+                       comparer deux fournisseurs, ce qui est l'objet de l'écran. -->
+                  <div class="w-[10%] text-right text-xs text-slate-700 tabular-nums">
+                    {{ src.totalCost ?? 0 | number:'1.0-0' }} {{ src.costCurrency ?? 'XOF' }}
+                  </div>
+
                   <!-- Cost per converted -->
-                  <div class="w-[10%] text-right text-xs text-slate-700">
+                  <div class="w-[9%] text-right text-xs text-slate-700 tabular-nums">
                     @if (src.costPerConvertedLead != null) {
                       {{ src.costPerConvertedLead | number:'1.0-0' }} {{ src.costCurrency ?? 'XOF' }}
                     } @else {
@@ -194,7 +200,6 @@ const PERIOD_OPTIONS = [
 export class SourceQuality implements OnInit {
   private readonly _sourcesService = inject(LeadSourcesService);
   private readonly _router = inject(Router);
-  private readonly _snackbar = inject(SnackbarService);
   private readonly _breadcrumb = inject(BreadcrumbService);
 
   public isLoading = signal(true);
@@ -253,25 +258,6 @@ export class SourceQuality implements OnInit {
     if (!src.sourceId) return;
     this._router.navigate(['/settings/lead-sources', src.sourceId], {
       queryParams: { tab: 'ingestions', status: DUPLICATE_STATUS },
-    });
-  }
-
-  public exportDuplicates(src: SourceQualityDto): void {
-    if (!src.sourceId || (src.duplicates ?? 0) === 0) return;
-
-    this._sourcesService.exportDuplicates(src.sourceId).pipe(
-      catchError(() => {
-        this._snackbar.error('Erreur', 'Impossible d\'exporter les doublons.');
-        return EMPTY;
-      }),
-    ).subscribe((blob: any) => {
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `doublons-${src.code ?? src.sourceId}.csv`;
-      a.click();
-      URL.revokeObjectURL(url);
-      this._snackbar.success('Export', 'Fichier CSV téléchargé.');
     });
   }
 

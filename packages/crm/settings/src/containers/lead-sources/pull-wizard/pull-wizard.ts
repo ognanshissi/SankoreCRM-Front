@@ -3,10 +3,11 @@ import { FormsModule } from '@angular/forms';
 import { TasCard } from '@talisoft/ui/card';
 import { TasIcon } from '@talisoft/ui/icon';
 import { Button } from '@talisoft/ui/button';
-import { TasFormField, TasLabel } from '@talisoft/ui/form-field';
+import { TasError, TasFormField, TasHint, TasLabel } from '@talisoft/ui/form-field';
 import { TasInput } from '@talisoft/ui/input';
 import { TasSelect } from '@talisoft/ui/select';
 import { TasSwitch } from '@talisoft/ui/switch';
+import { LeadSourceDetailDto } from '@sankore/crm-api';
 
 /**
  * FE-19 + FE-21 — Assistant « API du fournisseur »
@@ -72,12 +73,19 @@ const VARIABLE_HINTS = TEMPLATE_VARIABLES.join(', ');
   standalone: true,
   imports: [
     FormsModule, TasCard, TasIcon, Button,
-    TasFormField, TasLabel, TasInput, TasSelect, TasSwitch,
+    TasFormField, TasLabel, TasHint, TasError, TasInput, TasSelect, TasSwitch,
   ],
   templateUrl: 'pull-wizard.html',
 })
 export class PullWizard implements OnInit {
   public readonly initialConfig = input<PullConfig | null>(null);
+  /**
+   * FE-21 — le coût saisi à la création vit à la RACINE de la source
+   * (`costPerLead: Money`), pas dans `settings.pull` : sans cette entrée,
+   * l'étape « Coût » s'ouvrait vide et le premier enregistrement renvoyait
+   * `null` à la racine, effaçant le montant et la devise saisis.
+   */
+  public readonly source = input<LeadSourceDetailDto | null>(null);
   /** Etape d'ouverture — utilisee par le test a blanc pour renvoyer sur l'etape fautive. */
   public readonly initialStep = input(0);
   public readonly readonly = input(false);
@@ -85,6 +93,16 @@ export class PullWizard implements OnInit {
 
   public config = signal<PullConfig>(defaultPullConfig());
   public currentStep = signal(0);
+  /**
+   * Etape la plus avancée déjà franchie. L'en-tête ne permet de sauter que
+   * jusqu'ici : un clic direct sur « Planification & Coût » contournait sinon
+   * toute la validation et envoyait une configuration vide au serveur.
+   */
+  public maxVisitedStep = signal(0);
+
+  /** Planification telle qu'elle a été ouverte — sert à ne pas réécrire le cron sans raison. */
+  private _openedPreset = '';
+  private _openedDailyHour = 0;
 
   public readonly steps = [
     { id: 'connection', label: 'Connexion' },
@@ -111,13 +129,68 @@ export class PullWizard implements OnInit {
 
   ngOnInit(): void {
     const initial = this.initialConfig();
-    if (initial) this.config.set({ ...initial });
+    const config: PullConfig = initial
+      ? { ...defaultPullConfig(), ...initial }
+      : defaultPullConfig();
+
+    /**
+     * FE-21 — une source créée par l'API (ou dont le sac a été normalisé côté
+     * serveur) porte un `cronExpression` sans `schedulePreset`. Sans cette
+     * dérivation, l'assistant se rouvrait sur « Toutes les 15 minutes » et le
+     * moindre « Enregistrer » remplaçait un cron `0 8 * * *` par celui du
+     * préréglage affiché. Le cron est la source de vérité : c'est lui que le
+     * serveur exécute.
+     */
+    const derived = this._scheduleFromCron(config.cronExpression, config.dailyHour);
+    if (derived) {
+      config.schedulePreset = derived.preset;
+      config.dailyHour = derived.dailyHour;
+    }
+
+    // Le coût de la racine fait foi tant que `settings.pull` n'en porte pas.
+    const rootCost = this.source()?.costPerLead;
+    const pullHasCost = initial?.costPerLead !== null && initial?.costPerLead !== undefined;
+    if (!pullHasCost && rootCost) {
+      if (typeof rootCost.amount === 'number') config.costPerLead = rootCost.amount;
+      if (rootCost.currency) config.costCurrency = rootCost.currency;
+    }
+
+    this.config.set(config);
+    this._openedPreset = config.schedulePreset;
+    this._openedDailyHour = config.dailyHour;
+
     const step = this.initialStep();
-    if (step > 0 && step < this.steps.length) this.currentStep.set(step);
+    const opening = step > 0 && step < this.steps.length ? step : 0;
+    this.currentStep.set(opening);
+
+    // Une configuration déjà enregistrée reste navigable jusqu'à la première
+    // étape qui ne valide pas : sinon la rouvrir obligerait à reparcourir tout
+    // l'assistant pour atteindre « Planification & Coût ».
+    let reachable = 0;
+    while (reachable < this.steps.length - 1 && this.canProceedFrom(reachable)) reachable++;
+    this.maxVisitedStep.set(Math.max(reachable, opening));
   }
 
   public set(field: keyof PullConfig, value: any): void {
     this.config.update((c) => ({ ...c, [field]: value }));
+  }
+
+  // ——— Navigation ———
+
+  /** L'en-tête ne saute que vers une étape déjà franchie. */
+  public goToStep(index: number): void {
+    if (index >= 0 && index <= this.maxVisitedStep()) this.currentStep.set(index);
+  }
+
+  public nextStep(): void {
+    if (!this.canProceed()) return;
+    const next = Math.min(this.currentStep() + 1, this.steps.length - 1);
+    this.currentStep.set(next);
+    this.maxVisitedStep.update((m) => Math.max(m, next));
+  }
+
+  public previousStep(): void {
+    this.currentStep.update((s) => Math.max(0, s - 1));
   }
 
   // ——— FE-19 AC3 : variables de gabarit ———
@@ -182,10 +255,35 @@ export class PullWizard implements OnInit {
     return SCHEDULE_PRESETS.find((p) => p.value === preset)?.cron ?? '';
   }
 
+  /**
+   * Conversion cron → préréglage, réciproque de `_cronFor`. Renvoie `null`
+   * quand aucun cron n'est stocké (le préréglage enregistré fait alors foi).
+   */
+  private _scheduleFromCron(
+    cron: string | null | undefined,
+    fallbackHour: number,
+  ): { preset: string; dailyHour: number } | null {
+    const normalized = (cron ?? '').trim().replace(/\s+/g, ' ');
+    if (!normalized) return null;
+
+    const daily = normalized.match(/^0 (\d{1,2}) \* \* \*$/);
+    if (daily) {
+      const hour = Number(daily[1]);
+      if (hour >= 0 && hour <= 23) return { preset: 'daily', dailyHour: hour };
+    }
+
+    const preset = SCHEDULE_PRESETS.find((p) => !!p.cron && p.cron === normalized);
+    if (preset) return { preset: preset.value, dailyHour: fallbackHour };
+
+    return { preset: 'custom', dailyHour: fallbackHour };
+  }
+
   /** FE-21 AC3 — le montant doit etre positif. */
   public readonly costInvalid = computed(() => {
     const c = this.config().costPerLead;
-    return c !== null && c !== undefined && c < 0;
+    if (c === null || c === undefined || (c as unknown) === '') return false;
+    const amount = Number(c);
+    return !Number.isFinite(amount) || amount < 0;
   });
 
   /** FE-21 — insere `{{ids}}` dans le chemin de l'accuse de reception. */
@@ -193,11 +291,28 @@ export class PullWizard implements OnInit {
     this.set('ackPath', (this.config().ackPath ?? '') + '{{ids}}');
   }
 
-  public canProceed(): boolean {
+  /**
+   * Le type declare `ackPath: string`, mais le sac stocke peut porter `null` :
+   * `config().ackPath.includes(...)` levait dans le template.
+   */
+  public ackPathHasIds(): boolean {
+    const path = this.config().ackPath as string | null | undefined;
+    return !!path && path.includes('{{ids}}');
+  }
+
+  /** Validation d'une étape donnée — appelée aussi bien pour « Suivant » que pour l'enregistrement. */
+  public canProceedFrom(step: number): boolean {
     const c = this.config();
-    switch (this.currentStep()) {
-      case 0: return !!c.baseUrl && c.baseUrl.startsWith('https://');
-      case 1: return !!c.requestPath;
+    switch (step) {
+      case 0: {
+        // Basic Auth sans nom d'utilisateur : le serveur n'a pas de quoi composer
+        // l'en-tête et l'appel échoue systématiquement en 401. Le mot de passe, lui,
+        // est un secret et ne transite pas par les settings.
+        const urlOk = !!c.baseUrl && c.baseUrl.startsWith('https://');
+        return urlOk && (c.authType !== 'Basic' || !!c.basicUsername.trim());
+      }
+      case 1: return !!c.requestPath && this.unknownVariables(c.requestParams).length === 0
+        && this.unknownVariables(c.requestPath).length === 0;
       case 2:
         return c.paginationStrategy !== 'Cursor' || !this.jsonPathInvalid(c.cursorJsonPath);
       case 3:
@@ -208,11 +323,43 @@ export class PullWizard implements OnInit {
     }
   }
 
+  public canProceed(): boolean {
+    return this.canProceedFrom(this.currentStep());
+  }
+
+  /** Aucune étape ne doit être invalide au moment d'enregistrer (FE-19). */
+  public readonly allStepsValid = computed(() =>
+    this.steps.every((_, i) => this.canProceedFrom(i)),
+  );
+
+  /** Première étape en défaut, pour y renvoyer l'utilisateur. */
+  public firstInvalidStep(): number {
+    return this.steps.findIndex((_, i) => !this.canProceedFrom(i));
+  }
+
   public onSave(): void {
+    // `onSave` revalide tout : l'en-tête d'étapes permettait d'atteindre la
+    // dernière étape sans passer par « Suivant », et une URL vide partait au
+    // serveur avec un « Enregistré » affiché malgré tout.
+    const invalid = this.firstInvalidStep();
+    if (invalid >= 0) {
+      this.currentStep.set(invalid);
+      this.maxVisitedStep.update((m) => Math.max(m, invalid));
+      return;
+    }
+
     const c = this.config();
-    if (c.schedulePreset !== 'custom') {
+    // Le cron n'est réécrit que si la planification a changé depuis l'ouverture :
+    // sinon un simple « Enregistrer » écrasait un cron posé côté serveur par
+    // celui du préréglage affiché par défaut.
+    if (
+      c.schedulePreset !== 'custom' &&
+      (c.schedulePreset !== this._openedPreset || c.dailyHour !== this._openedDailyHour)
+    ) {
       this.set('cronExpression', this._cronFor(c.schedulePreset, c.dailyHour));
     }
+    this._openedPreset = this.config().schedulePreset;
+    this._openedDailyHour = this.config().dailyHour;
     this.saved.emit(this.config());
   }
 }

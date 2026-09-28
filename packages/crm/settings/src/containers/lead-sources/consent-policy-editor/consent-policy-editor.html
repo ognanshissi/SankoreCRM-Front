@@ -60,9 +60,13 @@
                  [ngModel]="config().consentFieldPath"
                  (ngModelChange)="updateField('consentFieldPath', $event)"
                  [disabled]="readonly()" />
-          <p class="text-xs text-slate-400 mt-1">
-            Nom ou chemin du champ indiquant que le prospect a donné son consentement.
-          </p>
+          <tas-hint class="text-slate-400 mt-1">
+            @if (isJsonPath()) {
+              Chemin JSONPath du champ indiquant le consentement dans le payload reçu, par exemple <code>$.consent</code>.
+            } @else {
+              Attribut « name » du champ de formulaire indiquant le consentement, par exemple <code>consent_given</code>.
+            }
+          </tas-hint>
         </tas-form-field>
 
         <tas-form-field>
@@ -71,9 +75,9 @@
                  [ngModel]="config().consentTextVersion"
                  (ngModelChange)="updateField('consentTextVersion', $event)"
                  [disabled]="readonly()" />
-          <p class="text-xs text-slate-400 mt-1">
+          <tas-hint class="text-slate-400 mt-1">
             Référence du texte présenté au prospect lors de la collecte.
-          </p>
+          </tas-hint>
         </tas-form-field>
 
         @if (!config().consentFieldPath && !readonly()) {
@@ -101,9 +105,9 @@
                  [ngModel]="config().providerContractRef"
                  (ngModelChange)="updateField('providerContractRef', $event)"
                  [disabled]="readonly()" />
-          <p class="text-xs text-slate-400 mt-1">
+          <tas-hint class="text-slate-400 mt-1">
             Numéro du contrat attestant que le fournisseur a obtenu le consentement.
-          </p>
+          </tas-hint>
         </tas-form-field>
 
         @if (!config().providerContractRef && !readonly()) {
@@ -133,7 +137,7 @@
   @if (!readonly()) {
     <div class="flex justify-end">
       <button tas-raised-button color="primary" type="button"
-              [disabled]="isSaving()"
+              [disabled]="isSaving() || !canSave()"
               [isLoading]="isSaving()"
               (click)="save()">
         <tas-icon iconName="feather:save" style="font-size:14px"></tas-icon>
