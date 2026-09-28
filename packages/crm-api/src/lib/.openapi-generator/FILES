@@ -86,6 +86,7 @@ model/archive-client-request.interface.ts
 model/assign-advisor-request.interface.ts
 model/assign-agency-manager-request.interface.ts
 model/assign-agency-manager-result.interface.ts
+model/assign-manager-result.interface.ts
 model/assign-office-role-request.interface.ts
 model/assign-office-role-result.interface.ts
 model/assign-permission-to-role-request.interface.ts
@@ -93,6 +94,7 @@ model/assign-request.interface.ts
 model/assign-role-request.interface.ts
 model/assign-scoped-permission-request.interface.ts
 model/assign-task-request.interface.ts
+model/assign-user-manager-request.interface.ts
 model/assignment-dto.interface.ts
 model/audit-entry-dto-paged-result.interface.ts
 model/audit-entry-dto.interface.ts

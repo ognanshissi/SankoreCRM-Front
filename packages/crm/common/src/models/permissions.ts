@@ -29,6 +29,9 @@ export const PERMISSIONS = {
   // Déclaré par `POST /api/v1/users/bulk/agency`. Distinct d'`user:update` : déplacer un
   // utilisateur d'agence change son périmètre de données, pas seulement sa fiche.
   USER_ASSIGN_AGENCY: 'user:assign-agency',
+  // Déclaré par `PUT` et `DELETE /api/v1/users/{userId}/manager`. Distinct d'`user:update` :
+  // la ligne hiérarchique conditionne ce que le responsable voit et valide, pas la fiche.
+  USER_ASSIGN_MANAGER: 'user:assign-manager',
   USER_REVOKE_ROLE: 'user:revoke-role',
   USER_ASSIGN_PERMISSION: 'user:assign-permission',
   USER_REVOKE_PERMISSION: 'user:revoke-permission',

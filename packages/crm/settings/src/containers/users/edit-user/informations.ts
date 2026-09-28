@@ -13,6 +13,7 @@ import { UsersApiService, AgenciesApiService, AuthApiService, UserDto, AgencyDto
 import { SnackbarService } from '@talisoft/ui/snackbar';
 import { TimeagoPipe } from '@talisoft/ui/timeago';
 import { PermissionsService } from '@sankore/crm/common';
+import { UserManagerCard, UserManagerChange } from './user-manager-card';
 
 class EditUserFormModel {
   public fullName!: string;
@@ -41,6 +42,7 @@ class EditUserFormModel {
     FormRoot,
     FormField,
     TimeagoPipe,
+    UserManagerCard,
   ],
   template: `
     @if (isLoading()) {
@@ -126,6 +128,15 @@ class EditUserFormModel {
             </div>
           </div>
         </tas-card>
+
+        <!-- Reporting line -->
+        <user-manager-card
+          [userId]="id()"
+          [userFullName]="user()!.fullName"
+          [reportsToUserId]="user()!.reportsToUserId"
+          [reportsToFullName]="user()!.reportsToFullName"
+          (managerChanged)="onManagerChanged($event)"
+        ></user-manager-card>
 
         <!-- Security actions -->
         <tas-card>
@@ -261,6 +272,18 @@ export class UserInformationsPage {
         },
       });
     });
+  }
+
+  public onManagerChanged(change: UserManagerChange): void {
+    this.user.update((u) =>
+      u
+        ? {
+            ...u,
+            reportsToUserId: change.userId,
+            reportsToFullName: change.fullName,
+          }
+        : u,
+    );
   }
 
   public sendActivation(): void {

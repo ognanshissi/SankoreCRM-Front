@@ -28,5 +28,7 @@ export interface UserDto {
     enableNotifications?: boolean;
     accountType?: string | null;
     roles?: Array<string> | null;
+    reportsToUserId?: string | null;
+    reportsToFullName?: string | null;
 }
 

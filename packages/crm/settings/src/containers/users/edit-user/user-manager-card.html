@@ -1,0 +1,123 @@
+<tas-card class="block">
+  <card-header>
+    <p class="font-semibold text-slate-800">Responsable hiérarchique</p>
+    <p class="text-sm text-slate-500 mt-0.5">
+      Indiquez à qui cet utilisateur reporte, ou laissez-le au sommet de sa ligne hiérarchique
+    </p>
+  </card-header>
+
+  <div class="px-4 pb-4 flex flex-col gap-5">
+
+    <!-- Responsable actuel -->
+    <div class="flex items-center justify-between gap-4 p-4 rounded-lg border border-slate-200 bg-slate-50">
+      @if (hasManager()) {
+        <div class="flex items-center gap-3 min-w-0">
+          <div class="w-9 h-9 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0">
+            <tas-icon iconName="feather:user-check" iconSize="sm"></tas-icon>
+          </div>
+          <div class="min-w-0">
+            <p class="font-medium text-slate-800 truncate">
+              {{ currentManagerFullName() ?? 'Responsable' }}
+            </p>
+            <p class="text-xs text-slate-500 mt-0.5">Responsable de cet utilisateur</p>
+          </div>
+        </div>
+        @if (canAssignManager()) {
+          <button
+            tas-outlined-button
+            color="warn"
+            type="button"
+            [disabled]="isRemoving()"
+            [isLoading]="isRemoving()"
+            (click)="confirmRemove()"
+            class="shrink-0"
+          >
+            <tas-icon iconName="feather:user-x" iconSize="sm"></tas-icon>
+            Retirer le responsable
+          </button>
+        }
+      } @else {
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 rounded-full bg-slate-200 text-slate-500 flex items-center justify-center shrink-0">
+            <tas-icon iconName="feather:user" iconSize="sm"></tas-icon>
+          </div>
+          <div>
+            <p class="font-medium text-slate-800">Aucun responsable</p>
+            <p class="text-xs text-slate-500 mt-0.5">
+              Cet utilisateur est au sommet de sa ligne hiérarchique.
+            </p>
+          </div>
+        </div>
+      }
+    </div>
+
+    <!-- Désignation -->
+    @if (canAssignManager()) {
+      <div class="p-4 rounded-lg border border-slate-200">
+        <p class="font-medium text-slate-800 mb-1">
+          {{ hasManager() ? 'Changer de responsable' : 'Définir un responsable' }}
+        </p>
+        <p class="text-sm text-slate-500 mb-4">
+          Le responsable peut appartenir à une autre agence. Une désignation qui fermerait
+          une boucle dans la hiérarchie est refusée.
+        </p>
+
+        @if (isLoadingCandidates()) {
+          <div class="flex items-center gap-2 py-3">
+            <tas-spinner size="5" class="text-primary"></tas-spinner>
+            <span class="text-sm text-slate-500">Chargement des utilisateurs…</span>
+          </div>
+        } @else if (candidates().length === 0) {
+          <div class="flex gap-3 p-3 rounded-lg bg-slate-50 border border-slate-200">
+            <tas-icon iconName="feather:info" class="text-slate-500 shrink-0 mt-0.5" iconSize="sm"></tas-icon>
+            <p class="text-sm text-slate-600">
+              Aucun autre utilisateur actif n'est disponible. Activez un compte avant de
+              désigner un responsable.
+            </p>
+          </div>
+        } @else {
+          @if (candidatesTruncated()) {
+            <div class="flex gap-3 p-3 rounded-lg bg-blue-50 border border-blue-200 mb-4">
+              <tas-icon iconName="feather:info" class="text-blue-700 shrink-0 mt-0.5" iconSize="sm"></tas-icon>
+              <p class="text-sm text-slate-700">
+                Tous les utilisateurs du tenant ne tiennent pas dans cette liste : si le
+                responsable recherché n'y figure pas, désignez-le depuis sa propre fiche.
+              </p>
+            </div>
+          }
+
+          <form [formRoot]="assignFormSchema" class="flex gap-3 items-start">
+            <div class="flex-1">
+              <tas-form-field>
+                <tas-label>Responsable</tas-label>
+                <tas-select
+                  [options]="candidates()"
+                  placeholder="Sélectionnez un utilisateur"
+                  [filter]="true"
+                  [formField]="assignFormSchema.managerUserId"
+                ></tas-select>
+                <tas-hint>Utilisateurs actifs, toutes agences confondues</tas-hint>
+                @if (assignFormSchema.managerUserId().touched() && assignFormSchema.managerUserId().invalid()) {
+                  <tas-error>{{ assignFormSchema.managerUserId().errors()[0].message }}</tas-error>
+                }
+              </tas-form-field>
+            </div>
+            <button
+              tas-raised-button
+              color="primary"
+              type="button"
+              [disabled]="!assignFormSchema.managerUserId().value() || assignFormSchema().submitting()"
+              [isLoading]="assignFormSchema().submitting()"
+              (click)="handleAssign()"
+              class="shrink-0"
+            >
+              <tas-icon iconName="feather:user-check" iconSize="sm"></tas-icon>
+              Définir le responsable
+            </button>
+          </form>
+        }
+      </div>
+    }
+
+  </div>
+</tas-card>

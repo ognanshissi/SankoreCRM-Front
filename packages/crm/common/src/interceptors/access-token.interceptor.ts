@@ -78,7 +78,7 @@ function addToken(req: HttpRequest<unknown>, token: string | null): HttpRequest<
 
 function urlIncludeNotSecuredPaths(url: string): boolean {
   const publicPaths = [
-    'login',
+    'login/',
     'logout',
     'forgot-password',
     'auth/reset-password',
