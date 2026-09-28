@@ -1,0 +1,266 @@
+@if (store.client(); as client) {
+  <div class="flex flex-col gap-4">
+
+    @if (isLegal()) {
+
+      <!-- Identification légale -->
+      <tas-card class="block">
+        <div class="p-4">
+          <div class="flex items-start justify-between gap-3 mb-4">
+            <p class="text-sm font-medium text-slate-600">Identification légale</p>
+            @if (canEditSensitive()) {
+              <button tas-outlined-button color="primary" type="button" (click)="openSensitiveDrawer()">
+                <tas-icon iconName="feather:lock" style="font-size:13px"></tas-icon>
+                Modifier l'adresse postale
+              </button>
+            }
+          </div>
+
+          <div class="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-4">
+            <div>
+              <p class="text-xs text-slate-400 mb-1">Raison sociale</p>
+              <p class="text-sm font-medium text-slate-800">{{ client.legalName || '—' }}</p>
+            </div>
+            <div>
+              <p class="text-xs text-slate-400 mb-1">Forme juridique</p>
+              <p class="text-sm font-medium text-slate-800">{{ client.legalFormCode || '—' }}</p>
+            </div>
+            <div>
+              <p class="text-xs text-slate-400 mb-1">Date de constitution</p>
+              <p class="text-sm font-medium text-slate-800">{{ formatDate(client.incorporationDate) }}</p>
+            </div>
+            <div>
+              <p class="text-xs text-slate-400 mb-1">Numéro d'immatriculation</p>
+              <sensitive-field
+                [clientId]="clientId()"
+                [field]="SENSITIVE.RegistrationNumber"
+                [maskedValue]="client.registrationNumberMasked"
+                fieldLabel="le numéro d'immatriculation"
+              ></sensitive-field>
+            </div>
+            <div>
+              <p class="text-xs text-slate-400 mb-1">Identifiant fiscal</p>
+              <sensitive-field
+                [clientId]="clientId()"
+                [field]="SENSITIVE.TaxIdNumber"
+                [maskedValue]="client.taxIdNumberMasked"
+                fieldLabel="l'identifiant fiscal"
+              ></sensitive-field>
+            </div>
+          </div>
+        </div>
+      </tas-card>
+
+      <!-- Informations complémentaires -->
+      <tas-card class="block">
+        <div class="p-4">
+          <div class="flex items-start justify-between gap-3 mb-4">
+            <p class="text-sm font-medium text-slate-600">Informations complémentaires</p>
+            @if (canEdit()) {
+              <button tas-outlined-button color="primary" type="button" (click)="openIdentityDrawer()">
+                <tas-icon iconName="feather:edit-2" style="font-size:13px"></tas-icon>
+                Modifier
+              </button>
+            }
+          </div>
+
+          <div class="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-4">
+            <div>
+              <p class="text-xs text-slate-400 mb-1">Revenu déclaré</p>
+              <div class="flex items-center gap-1.5">
+                <sensitive-field
+                  [clientId]="clientId()"
+                  [field]="SENSITIVE.DeclaredIncome"
+                  [maskedValue]="client.declaredIncomeMasked"
+                  fieldLabel="le revenu déclaré"
+                ></sensitive-field>
+                @if (client.declaredIncomeMasked && client.declaredIncomeCurrency) {
+                  <span class="text-xs text-slate-400">{{ client.declaredIncomeCurrency }}</span>
+                }
+              </div>
+            </div>
+            <div>
+              <p class="text-xs text-slate-400 mb-1">Langue préférée</p>
+              <p class="text-sm font-medium text-slate-800">
+                {{ preferredLanguageLabel(client.preferredLanguage) }}
+              </p>
+            </div>
+          </div>
+        </div>
+      </tas-card>
+
+    } @else {
+
+      <!-- Identité -->
+      <tas-card class="block">
+        <div class="p-4">
+          <div class="flex items-start justify-between gap-3 mb-4">
+            <p class="text-sm font-medium text-slate-600">Identité</p>
+            @if (canEditSensitive()) {
+              <button tas-outlined-button color="primary" type="button" (click)="openSensitiveDrawer()">
+                <tas-icon iconName="feather:lock" style="font-size:13px"></tas-icon>
+                Modifier les données sensibles
+              </button>
+            }
+          </div>
+
+          <div class="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-4">
+            <div>
+              <p class="text-xs text-slate-400 mb-1">Prénom</p>
+              <p class="text-sm font-medium text-slate-800">{{ client.firstName || '—' }}</p>
+            </div>
+            <div>
+              <p class="text-xs text-slate-400 mb-1">Nom</p>
+              <p class="text-sm font-medium text-slate-800">{{ client.lastName || '—' }}</p>
+            </div>
+            <div>
+              <p class="text-xs text-slate-400 mb-1">Nom de jeune fille</p>
+              <p class="text-sm font-medium text-slate-800">{{ client.maidenName || '—' }}</p>
+            </div>
+            <div>
+              <p class="text-xs text-slate-400 mb-1">Date de naissance</p>
+              <sensitive-field
+                [clientId]="clientId()"
+                [field]="SENSITIVE.DateOfBirth"
+                [maskedValue]="client.dateOfBirthMasked"
+                fieldLabel="la date de naissance"
+              ></sensitive-field>
+            </div>
+            <div>
+              <p class="text-xs text-slate-400 mb-1">Lieu de naissance</p>
+              <p class="text-sm font-medium text-slate-800">{{ client.birthPlace || '—' }}</p>
+            </div>
+            <div>
+              <p class="text-xs text-slate-400 mb-1">Nationalité</p>
+              <p class="text-sm font-medium text-slate-800">{{ client.nationality || '—' }}</p>
+            </div>
+            <div>
+              <p class="text-xs text-slate-400 mb-1">Genre</p>
+              <p class="text-sm font-medium text-slate-800">{{ genderLabel(client.gender) }}</p>
+            </div>
+          </div>
+        </div>
+      </tas-card>
+
+      <!-- Pièce d'identité déclarée -->
+      <tas-card class="block">
+        <div class="p-4">
+          <div class="flex items-start justify-between gap-3 mb-4">
+            <div class="flex items-center gap-2">
+              <p class="text-sm font-medium text-slate-600">Pièce d'identité déclarée</p>
+              @if (documentValidity(); as validity) {
+                <tas-tag [severity]="validity.severity">{{ validity.label }}</tas-tag>
+              }
+            </div>
+            @if (canEditSensitive()) {
+              <button tas-outlined-button color="primary" type="button" (click)="openSensitiveDrawer()">
+                <tas-icon iconName="feather:lock" style="font-size:13px"></tas-icon>
+                Modifier la pièce
+              </button>
+            }
+          </div>
+
+          <div class="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-4">
+            <div>
+              <p class="text-xs text-slate-400 mb-1">Type de pièce</p>
+              <p class="text-sm font-medium text-slate-800">
+                {{ identityDocumentLabel(client.identityDocumentType) }}
+              </p>
+            </div>
+            <div>
+              <p class="text-xs text-slate-400 mb-1">Numéro</p>
+              <sensitive-field
+                [clientId]="clientId()"
+                [field]="SENSITIVE.IdentityDocumentNumber"
+                [maskedValue]="client.identityDocumentNumberMasked"
+                fieldLabel="le numéro de la pièce"
+              ></sensitive-field>
+            </div>
+            <div>
+              <p class="text-xs text-slate-400 mb-1">Délivrée le</p>
+              <p class="text-sm font-medium text-slate-800">
+                {{ formatDate(client.identityDocumentIssuedOn) }}
+              </p>
+            </div>
+            <div>
+              <p class="text-xs text-slate-400 mb-1">Expire le</p>
+              <p class="text-sm font-medium text-slate-800">
+                {{ formatDate(client.identityDocumentExpiresOn) }}
+              </p>
+            </div>
+          </div>
+        </div>
+      </tas-card>
+
+      <!-- Situation familiale et professionnelle -->
+      <tas-card class="block">
+        <div class="p-4">
+          <div class="flex items-start justify-between gap-3 mb-4">
+            <p class="text-sm font-medium text-slate-600">
+              Situation familiale et professionnelle
+            </p>
+            @if (canEdit()) {
+              <button tas-outlined-button color="primary" type="button" (click)="openIdentityDrawer()">
+                <tas-icon iconName="feather:edit-2" style="font-size:13px"></tas-icon>
+                Modifier
+              </button>
+            }
+          </div>
+
+          <div class="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-4">
+            <div>
+              <p class="text-xs text-slate-400 mb-1">Situation familiale</p>
+              <p class="text-sm font-medium text-slate-800">
+                {{ maritalStatusLabel(client.maritalStatus) }}
+              </p>
+            </div>
+            <div>
+              <p class="text-xs text-slate-400 mb-1">Personnes à charge</p>
+              <p class="text-sm font-medium text-slate-800 tabular-nums">
+                {{ client.dependentsCount ?? 0 }}
+              </p>
+            </div>
+            <div>
+              <p class="text-xs text-slate-400 mb-1">Langue préférée</p>
+              <p class="text-sm font-medium text-slate-800">
+                {{ preferredLanguageLabel(client.preferredLanguage) }}
+              </p>
+            </div>
+            <div>
+              <p class="text-xs text-slate-400 mb-1">Nom du père</p>
+              <p class="text-sm font-medium text-slate-800">{{ client.fatherName || '—' }}</p>
+            </div>
+            <div>
+              <p class="text-xs text-slate-400 mb-1">Nom de la mère</p>
+              <p class="text-sm font-medium text-slate-800">{{ client.motherName || '—' }}</p>
+            </div>
+            <div>
+              <p class="text-xs text-slate-400 mb-1">Profession</p>
+              <p class="text-sm font-medium text-slate-800">{{ client.profession || '—' }}</p>
+            </div>
+            <div>
+              <p class="text-xs text-slate-400 mb-1">Employeur</p>
+              <p class="text-sm font-medium text-slate-800">{{ client.employer || '—' }}</p>
+            </div>
+            <div>
+              <p class="text-xs text-slate-400 mb-1">Revenu déclaré</p>
+              <div class="flex items-center gap-1.5">
+                <sensitive-field
+                  [clientId]="clientId()"
+                  [field]="SENSITIVE.DeclaredIncome"
+                  [maskedValue]="client.declaredIncomeMasked"
+                  fieldLabel="le revenu déclaré"
+                ></sensitive-field>
+                @if (client.declaredIncomeMasked && client.declaredIncomeCurrency) {
+                  <span class="text-xs text-slate-400">{{ client.declaredIncomeCurrency }}</span>
+                }
+              </div>
+            </div>
+          </div>
+        </div>
+      </tas-card>
+
+    }
+
+  </div>
+}

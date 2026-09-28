@@ -1,0 +1,355 @@
+<tas-side-drawer>
+  <tas-drawer-title>
+    <div class="flex items-center gap-2">
+      <tas-icon iconName="feather:user-check" style="font-size:18px"></tas-icon>
+      <tas-title>Convertir en client</tas-title>
+    </div>
+  </tas-drawer-title>
+
+  <tas-drawer-content>
+    <!-- ===== Récapitulatif ===== -->
+    @if (currentStep() === 'recap') {
+      <tas-card class="block mb-4">
+        <div class="p-4 border-b border-slate-100">
+          <p class="text-sm font-semibold text-slate-700">Données reprises du lead</p>
+          <p class="text-xs text-slate-400 mt-0.5">
+            Le serveur crée la fiche client à partir de ces informations.
+          </p>
+        </div>
+        <div class="p-4 flex flex-col gap-2">
+          <div class="flex justify-between text-sm">
+            <span class="text-slate-500">Nom</span>
+            <span class="font-medium text-slate-800">{{ leadDisplayName() }}</span>
+          </div>
+          <div class="flex justify-between text-sm">
+            <span class="text-slate-500">Téléphone</span>
+            <span class="text-slate-800">{{ lead().phoneNumber || '—' }}</span>
+          </div>
+          <div class="flex justify-between text-sm">
+            <span class="text-slate-500">E-mail</span>
+            <span class="text-slate-800">{{ lead().email || '—' }}</span>
+          </div>
+          <div class="flex justify-between text-sm">
+            <span class="text-slate-500">Genre</span>
+            <span class="text-slate-800">{{ genderText() }}</span>
+          </div>
+          <div class="flex justify-between text-sm">
+            <span class="text-slate-500">Date de naissance</span>
+            <span class="text-slate-800">{{ lead().dateOfBirth || '—' }}</span>
+          </div>
+          <div class="flex justify-between text-sm">
+            <span class="text-slate-500">Pièce d'identité</span>
+            <span class="text-slate-800">{{ lead().nationalId || '—' }}</span>
+          </div>
+          <div class="flex justify-between text-sm">
+            <span class="text-slate-500">Produit d'intérêt</span>
+            <span class="text-slate-800">{{ lead().interestedProduct || '—' }}</span>
+          </div>
+        </div>
+      </tas-card>
+
+      <!-- Champs encore modifiables sur le lead : la saisie a un effet avant conversion -->
+      @if (missingOnLead().length > 0) {
+        <tas-card class="block mb-4">
+          <div class="p-4 border-b border-slate-100">
+            <div class="flex items-center gap-2">
+              <tas-icon iconName="feather:edit-3" class="text-primary" style="font-size:14px"></tas-icon>
+              <p class="text-sm font-semibold text-slate-700">
+                {{ missingOnLead().length }} information(s) manquante(s) sur le lead
+              </p>
+            </div>
+            <p class="text-xs text-slate-400 mt-1">
+              Complétez-les maintenant : la conversion les reprend telles quelles. La conversion
+              reste possible sans elles.
+            </p>
+          </div>
+          <div class="p-4">
+            <div class="flex flex-wrap gap-2">
+              @for (field of missingOnLead(); track field) {
+                <tas-tag severity="warning">{{ field }}</tas-tag>
+              }
+            </div>
+            <button
+              tas-outlined-button
+              color="primary"
+              type="button"
+              class="mt-4 text-xs"
+              (click)="goToComplete()"
+            >
+              <tas-icon iconName="feather:edit-2" style="font-size:13px"></tas-icon>
+              Compléter le lead
+            </button>
+          </div>
+        </tas-card>
+      }
+
+      <!-- Champs hors contrat de conversion : ils se saisissent sur la fiche client -->
+      <tas-card class="block mb-4">
+        <div class="p-4 border-b border-slate-100">
+          <div class="flex items-center gap-2">
+            <tas-icon iconName="feather:info" class="text-slate-400" style="font-size:14px"></tas-icon>
+            <p class="text-sm font-semibold text-slate-700">
+              À compléter sur la fiche client après conversion
+            </p>
+          </div>
+          <p class="text-xs text-slate-400 mt-1">
+            Ces informations ne font pas partie du contrat de conversion : elles ne se saisissent
+            pas ici, mais sur la fiche client une fois celle-ci créée.
+          </p>
+        </div>
+        <div class="p-4 flex flex-wrap gap-2">
+          @for (field of missingOnClient(); track field) {
+            <tas-tag severity="neutral">{{ field }}</tas-tag>
+          }
+        </div>
+      </tas-card>
+
+      <!-- Éligibilité -->
+      <tas-card class="block">
+        <div class="p-4 border-b border-slate-100">
+          <p class="text-sm font-semibold text-slate-700">Vérification d'éligibilité</p>
+          <p class="text-xs text-slate-400 mt-0.5">Conditions requises avant conversion.</p>
+        </div>
+        <div class="p-4 flex flex-col gap-3">
+          @for (check of eligibilityChecks(); track check.label) {
+            <div class="flex items-start gap-3">
+              <div
+                class="w-6 h-6 rounded-full flex items-center justify-center shrink-0 mt-0.5"
+                [class]="check.passed ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-500'"
+              >
+                <tas-icon
+                  [iconName]="check.passed ? 'feather:check' : 'feather:x'"
+                  style="font-size:10px"
+                ></tas-icon>
+              </div>
+              <div>
+                <p
+                  class="text-sm font-medium"
+                  [class]="check.passed ? 'text-slate-800' : 'text-red-700'"
+                >
+                  {{ check.label }}
+                </p>
+                <p class="text-xs" [class]="check.passed ? 'text-slate-400' : 'text-red-500'">
+                  {{ check.detail }}
+                </p>
+              </div>
+            </div>
+          }
+        </div>
+      </tas-card>
+
+      @if (!isEligible()) {
+        <div class="mt-4 p-3 rounded-lg bg-red-50 border border-red-200 flex items-start gap-2">
+          <tas-icon
+            iconName="feather:alert-circle"
+            class="text-red-500 shrink-0 mt-0.5"
+            style="font-size:14px"
+          ></tas-icon>
+          <p class="text-xs text-red-700">
+            Ce lead ne remplit pas toutes les conditions requises pour la conversion.
+            Complétez les éléments manquants avant de continuer.
+          </p>
+        </div>
+      }
+
+      <div class="mt-4 p-3 rounded-lg bg-slate-50 border border-slate-200 flex items-start gap-2">
+        <tas-icon
+          iconName="feather:shield"
+          class="text-slate-500 shrink-0 mt-0.5"
+          style="font-size:14px"
+        ></tas-icon>
+        <p class="text-xs text-slate-600">
+          Le client est créé en attente de validation KYC : le dossier est initié, sa validation se
+          fait dans le module KYC.
+        </p>
+      </div>
+
+      @if (!canReadCustomers()) {
+        <div class="mt-3 p-3 rounded-lg bg-amber-50 border border-amber-200 flex items-start gap-2">
+          <tas-icon
+            iconName="feather:alert-circle"
+            class="text-amber-500 shrink-0 mt-0.5"
+            style="font-size:14px"
+          ></tas-icon>
+          <p class="text-xs text-amber-800">
+            Vous n'avez pas le droit de consulter les fiches clients : la conversion aboutira, mais
+            l'ouverture de la fiche vous sera refusée.
+          </p>
+        </div>
+      }
+    }
+
+    <!-- ===== Compléter le lead (seuls champs que le contrat de mise à jour couvre) ===== -->
+    @if (currentStep() === 'complete') {
+      <p class="text-xs text-slate-500 mb-4">
+        Ces informations sont enregistrées sur le lead, puis reprises par la conversion. Le type et
+        le numéro de pièce d'identité ne sont pas modifiables ici : ils se saisissent sur la fiche
+        client.
+      </p>
+
+      <form [formRoot]="formSchema" class="flex flex-col gap-4">
+        <div class="grid grid-cols-2 gap-3">
+          <tas-form-field>
+            <tas-label>Prénom <span class="text-functional-error">*</span></tas-label>
+            <input tasInput type="text" placeholder="Prénom" [formField]="formSchema.firstName" />
+            @if (formSchema.firstName().touched() && formSchema.firstName().invalid()) {
+              <tas-error>{{ formSchema.firstName().errors()[0].message }}</tas-error>
+            }
+          </tas-form-field>
+
+          <tas-form-field>
+            <tas-label>Nom <span class="text-functional-error">*</span></tas-label>
+            <input tasInput type="text" placeholder="Nom de famille" [formField]="formSchema.lastName" />
+            @if (formSchema.lastName().touched() && formSchema.lastName().invalid()) {
+              <tas-error>{{ formSchema.lastName().errors()[0].message }}</tas-error>
+            }
+          </tas-form-field>
+        </div>
+
+        <tas-form-field>
+          <tas-label>E-mail</tas-label>
+          <input tasInput type="email" placeholder="exemple@domaine.com" [formField]="formSchema.email" />
+          @if (formSchema.email().touched() && formSchema.email().invalid()) {
+            <tas-error>{{ formSchema.email().errors()[0].message }}</tas-error>
+          }
+        </tas-form-field>
+
+        <div class="grid grid-cols-2 gap-3">
+          <tas-form-field>
+            <tas-label>Genre <span class="text-functional-error">*</span></tas-label>
+            <tas-select
+              [options]="genderOptions"
+              placeholder="Sélectionnez un genre"
+              [formField]="formSchema.gender"
+            ></tas-select>
+            @if (formSchema.gender().touched() && formSchema.gender().invalid()) {
+              <tas-error>{{ formSchema.gender().errors()[0].message }}</tas-error>
+            }
+          </tas-form-field>
+
+          <tas-form-field>
+            <tas-label>Date de naissance <span class="text-functional-error">*</span></tas-label>
+            <tas-date-picker
+              mode="date"
+              placeholder="Sélectionnez une date"
+              [formField]="formSchema.dateOfBirth"
+            ></tas-date-picker>
+            <tas-hint>Le module Clients refuse un client sous l'âge minimum du tenant.</tas-hint>
+            @if (formSchema.dateOfBirth().touched() && formSchema.dateOfBirth().invalid()) {
+              <tas-error>{{ formSchema.dateOfBirth().errors()[0].message }}</tas-error>
+            }
+          </tas-form-field>
+        </div>
+      </form>
+    }
+
+    <!-- ===== Doublons renvoyés par la conversion ===== -->
+    @if (currentStep() === 'duplicate') {
+      <tas-card class="block mb-4">
+        <div class="p-4 border-b border-slate-100">
+          <div class="flex items-center gap-2">
+            <tas-icon iconName="feather:alert-triangle" class="text-amber-500" style="font-size:16px"></tas-icon>
+            <p class="text-sm font-semibold text-slate-700">
+              {{ duplicates().length }} prospect(s) similaire(s) détecté(s)
+            </p>
+          </div>
+          <p class="text-xs text-amber-700 mt-1">
+            La conversion est suspendue. Rattachez le lead à la fiche client existante, ou confirmez
+            qu'il s'agit d'une autre personne.
+          </p>
+        </div>
+        <div class="divide-y divide-slate-100">
+          @for (dup of duplicates(); track dup.leadId ?? $index) {
+            <div class="p-4 flex items-start gap-3">
+              <div class="flex-1 min-w-0">
+                <p class="text-sm font-medium text-slate-800">{{ dup.fullName || '—' }}</p>
+                <div class="flex items-center flex-wrap gap-2 mt-1 text-xs text-slate-400">
+                  @if (dup.phoneNumber) {
+                    <span>{{ dup.phoneNumber }}</span>
+                  }
+                  @if (dup.email) {
+                    <span>{{ dup.email }}</span>
+                  }
+                  @if (dup.status) {
+                    <tas-tag [severity]="dup.status === 'Converted' ? 'success' : 'neutral'">
+                      {{ dup.status }}
+                    </tas-tag>
+                  }
+                  @if (dup.confidenceScore) {
+                    <tas-tag [severity]="dup.confidenceScore >= 80 ? 'error' : 'warning'">
+                      {{ dup.confidenceScore }}% similaire
+                    </tas-tag>
+                  }
+                </div>
+                @if (dup.confidenceSummary) {
+                  <p class="text-xs text-slate-500 mt-1">{{ dup.confidenceSummary }}</p>
+                }
+                @if (!canAttach(dup)) {
+                  <p class="text-xs text-slate-400 mt-1">
+                    Ce prospect n'est pas encore converti : aucune fiche client à rattacher.
+                  </p>
+                }
+              </div>
+              @if (canAttach(dup)) {
+                <button
+                  tas-raised-button
+                  color="primary"
+                  type="button"
+                  class="text-xs shrink-0"
+                  [disabled]="isSubmitting()"
+                  [isLoading]="isSubmitting()"
+                  (click)="attachToDuplicate(dup)"
+                >
+                  Rattacher à cette fiche
+                </button>
+              }
+            </div>
+          }
+        </div>
+      </tas-card>
+    }
+  </tas-drawer-content>
+
+  <tas-drawer-action>
+    <div class="flex items-center justify-between w-full">
+      <button tas-outlined-button color="primary" type="button" (click)="onBack()">
+        {{ currentStep() === 'recap' ? 'Annuler' : 'Retour' }}
+      </button>
+
+      @if (currentStep() === 'recap') {
+        <button
+          tas-raised-button
+          color="primary"
+          type="button"
+          [disabled]="!isEligible() || isSubmitting()"
+          [isLoading]="isSubmitting()"
+          (click)="handleConvert()"
+        >
+          Convertir en client
+        </button>
+      } @else if (currentStep() === 'complete') {
+        <button
+          tas-raised-button
+          color="primary"
+          type="button"
+          [disabled]="formSchema().invalid() || isSubmitting()"
+          [isLoading]="isSubmitting()"
+          (click)="handleCompleteLead()"
+        >
+          Enregistrer sur le lead
+        </button>
+      } @else {
+        <button
+          tas-raised-button
+          color="primary"
+          type="button"
+          [disabled]="isSubmitting()"
+          [isLoading]="isSubmitting()"
+          (click)="forceConvert()"
+        >
+          Ce n'est pas la même personne, créer quand même
+        </button>
+      }
+    </div>
+  </tas-drawer-action>
+</tas-side-drawer>

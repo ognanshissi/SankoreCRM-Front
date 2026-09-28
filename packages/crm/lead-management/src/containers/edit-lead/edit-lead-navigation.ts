@@ -144,7 +144,7 @@ function parseFactors(factorsJson: string | null | undefined): ScoreFactor[] {
           @if (lead()!.status !== 'Converted' && lead()!.status !== 'Lost' && lead()!.status !== 'Expired') {
             <button tas-raised-button color="primary" type="button" (click)="openConvertWizard()">
               <tas-icon iconName="feather:user-check" style="font-size:14px"></tas-icon>
-              Convertir
+              Convertir en client
             </button>
           }
           @if (lead()!.status === 'Lost' || lead()!.status === 'Expired' || lead()!.status === 'Recycled') {
@@ -664,8 +664,13 @@ export class EditLeadNavigation implements OnDestroy {
     });
 
     ref.closed.subscribe((result: any) => {
-      if (result && typeof result === 'object' && result.customerId) {
-        // Reload lead to reflect converted status
+      // L'assistant rend l'identifiant du client (fiche créée, ou fiche existante proposée sur un
+      // doublon bloquant) : la redirection reste ici, pour ne pas dépendre du module Clients.
+      if (result && typeof result === 'object' && result.clientId) {
+        this._router.navigate(['/customers', result.clientId]);
+        return;
+      }
+      if (result) {
         this._leadsApiService.getLead(this.id()).pipe(
           catchError(() => EMPTY),
         ).subscribe((lead) => this.lead.set(lead));

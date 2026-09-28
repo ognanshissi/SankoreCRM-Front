@@ -109,6 +109,31 @@ export const PERMISSIONS = {
 
   LEAD_QUALIFICATION_TEMPLATE_MANAGE: 'lead:qualification-template:manage',
 
+  // ——— Clients ———
+  // Ces neuf codes sont ceux que le swagger déclare endpoint par endpoint : ils ne
+  // sont pas déduits. Attention, la répartition n'est pas celle qu'on devine —
+  // `customers:update` ne couvre que les champs non sensibles, les coordonnées, les
+  // relations et l'affectation d'un conseiller. Les cas contre-intuitifs :
+  //
+  //   suspendre / réactiver / transférer d'agence  -> customers:update_sensitive
+  //   déclarer les bénéficiaires effectifs         -> customers:update_sensitive
+  //   modifier les règles de segmentation          -> customers:update_sensitive
+  //   archiver / anonymiser                        -> customers:archive
+  //   toute écriture sur un groupe                 -> customers:groups_manage
+  //
+  // Le module s'appelle « customers » côté permissions alors que le reste du contrat
+  // parle de « clients » (`/api/v1/clients`, `ClientDetailDto`) : c'est bien ainsi
+  // dans le swagger, ne pas « harmoniser ».
+  CUSTOMERS_READ: 'customers:read',
+  CUSTOMERS_CREATE: 'customers:create',
+  CUSTOMERS_UPDATE: 'customers:update',
+  CUSTOMERS_UPDATE_SENSITIVE: 'customers:update_sensitive',
+  CUSTOMERS_REVEAL_SENSITIVE: 'customers:reveal_sensitive',
+  CUSTOMERS_MERGE: 'customers:merge',
+  CUSTOMERS_ARCHIVE: 'customers:archive',
+  CUSTOMERS_EXPORT: 'customers:export',
+  CUSTOMERS_GROUPS_MANAGE: 'customers:groups_manage',
+
   // ——— Prêts ———
   LOAN_CREATE: 'loan:create',
 

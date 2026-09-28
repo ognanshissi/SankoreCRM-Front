@@ -1,0 +1,521 @@
+@if (isLoading()) {
+  <div class="flex justify-center py-24">
+    <tas-spinner size="10" class="text-primary"></tas-spinner>
+  </div>
+} @else {
+  <div class="pb-8 flex flex-col gap-4">
+    <!-- En-tête -->
+    <div class="flex items-start justify-between gap-4">
+      <div>
+        <h1 class="text-lg font-semibold text-slate-800">
+          Segmentation des clients
+        </h1>
+        <p class="text-sm text-slate-500 mt-0.5">
+          Les règles s'évaluent de haut en bas et la première qui correspond
+          emporte le classement. Le traitement nocturne applique cet ordre.
+        </p>
+      </div>
+      <div class="flex items-center gap-2 shrink-0">
+        <button tas-outlined-button type="button" (click)="reload()">
+          <tas-icon iconName="feather:refresh-cw" style="font-size: 14px"></tas-icon>
+          Recharger
+        </button>
+        @if (canManage()) {
+          <button
+            tas-raised-button
+            color="primary"
+            type="button"
+            [disabled]="isSaving() || rules().length === 0"
+            [isLoading]="isSaving()"
+            (click)="save()"
+          >
+            Enregistrer l'ordre et les règles
+          </button>
+        }
+      </div>
+    </div>
+
+    @if (!canManage()) {
+      <div class="p-3 rounded-lg bg-slate-50 border border-slate-200 flex items-start gap-2">
+        <tas-icon iconName="feather:lock" class="text-slate-400" style="font-size: 14px"></tas-icon>
+        <p class="text-xs text-slate-500">
+          Vous consultez les règles en lecture seule : leur modification demande
+          le droit d'écriture sensible du module Clients.
+        </p>
+      </div>
+    }
+
+    @if (serverState() && serverState()!.isValid === false) {
+      <div class="p-3 rounded-lg bg-red-50 border border-red-200 flex items-start gap-2">
+        <tas-icon iconName="feather:alert-triangle" class="text-functional-error" style="font-size: 14px"></tas-icon>
+        <div>
+          <p class="text-xs font-semibold text-red-700">
+            Les règles stockées sont illisibles : aucune n'est appliquée.
+          </p>
+          <p class="text-xs text-red-600 mt-0.5">
+            {{ serverState()!.parseError || 'Le serveur ne détaille pas l’erreur.' }}
+            Composez au moins une règle puis enregistrez : la séquence remplacera
+            le contenu illisible.
+          </p>
+        </div>
+      </div>
+    }
+
+    @if (hasUnsavedChanges()) {
+      <div class="p-3 rounded-lg bg-primary/5 border border-primary/20 flex items-start gap-2">
+        <tas-icon iconName="feather:info" class="text-primary" style="font-size: 14px"></tas-icon>
+        <p class="text-xs text-slate-600">
+          Vos modifications ne sont pas encore enregistrées : l'ordre de priorité
+          affiché ci-dessous ne sera transmis qu'à l'enregistrement.
+        </p>
+      </div>
+    }
+
+    @if (deadRuleCount() > 0) {
+      <div class="p-3 rounded-lg bg-amber-50 border border-amber-200 flex items-start gap-2">
+        <tas-icon iconName="feather:corner-down-right" class="text-amber-600" style="font-size: 14px"></tas-icon>
+        <p class="text-xs text-amber-700">
+          Une règle sans condition attrape tous les clients :
+          {{ deadRuleCount() }} règle(s) placée(s) après elle ne seront jamais
+          évaluées. Descendez-la en dernière position.
+        </p>
+      </div>
+    }
+
+    <!-- Séquence de règles -->
+    <tas-card class="block">
+      <div class="p-4 border-b border-slate-100 flex items-center justify-between gap-3">
+        <div>
+          <p class="text-sm font-semibold text-slate-700">
+            Séquence de règles
+          </p>
+          <p class="text-xs text-slate-400 mt-0.5">
+            {{ rules().length }} règle(s) · Glissez pour changer l'ordre de
+            priorité
+          </p>
+        </div>
+        @if (canManage()) {
+          <button
+            tas-raised-button
+            color="primary"
+            type="button"
+            class="text-xs"
+            (click)="toggleAddForm()"
+          >
+            <tas-icon iconName="feather:plus" style="font-size: 12px"></tas-icon>
+            Ajouter une règle
+          </button>
+        }
+      </div>
+
+      <!-- Ajout d'une règle : formulaire de saisie simple, en signal forms -->
+      @if (showAddForm() && canManage()) {
+        <form
+          [formRoot]="addFormSchema"
+          class="m-4 p-4 rounded-lg border border-slate-200 bg-slate-50 flex flex-col gap-4"
+        >
+          <p class="text-sm font-medium text-slate-700">Nouvelle règle</p>
+          <div class="grid grid-cols-2 gap-4">
+            <tas-form-field>
+              <tas-label>
+                Nom de la règle
+                <span class="text-functional-error">*</span>
+              </tas-label>
+              <input
+                tasInput
+                type="text"
+                placeholder="ex : clients-fideles"
+                [formField]="addFormSchema.code"
+              />
+              @if (addFormSchema.code().touched() && addFormSchema.code().invalid()) {
+                <tas-error>{{ addFormSchema.code().errors()[0].message }}</tas-error>
+              } @else {
+                <tas-hint>Identifiant de la règle dans les journaux du traitement.</tas-hint>
+              }
+            </tas-form-field>
+
+            <tas-form-field>
+              <tas-label>
+                Segment cible
+                <span class="text-functional-error">*</span>
+              </tas-label>
+              <input
+                tasInput
+                type="text"
+                placeholder="ex : PREMIUM"
+                [formField]="addFormSchema.segmentCode"
+              />
+              @if (addFormSchema.segmentCode().touched() && addFormSchema.segmentCode().invalid()) {
+                <tas-error>{{ addFormSchema.segmentCode().errors()[0].message }}</tas-error>
+              } @else {
+                <tas-hint>Segment attribué au client quand la règle correspond.</tas-hint>
+              }
+            </tas-form-field>
+          </div>
+
+          @if (knownSegmentCodes().length > 0) {
+            <div class="flex items-center gap-2 flex-wrap">
+              <span class="text-xs text-slate-400">Segments existants :</span>
+              @for (code of knownSegmentCodes(); track code) {
+                <button
+                  type="button"
+                  class="px-2 py-0.5 rounded-full border border-slate-200 bg-white text-xs text-slate-600 hover:border-primary hover:text-primary"
+                  (click)="applySegmentSuggestion('add', code)"
+                >
+                  {{ code }}
+                </button>
+              }
+            </div>
+          }
+
+          <div class="flex items-center gap-2">
+            <button
+              tas-raised-button
+              color="primary"
+              type="button"
+              [disabled]="addFormSchema().invalid()"
+              (click)="handleAddRule()"
+            >
+              Ajouter
+            </button>
+            <button tas-text-button type="button" (click)="toggleAddForm()">
+              Annuler
+            </button>
+          </div>
+        </form>
+      }
+
+      @if (rules().length === 0) {
+        <div class="flex flex-col items-center justify-center py-12 text-center">
+          <tas-icon
+            iconName="feather:layers"
+            class="text-slate-300 mb-2"
+            style="font-size: 28px"
+          ></tas-icon>
+          <p class="text-sm text-slate-400">
+            Aucune règle : aucun client n'est classé automatiquement.
+          </p>
+        </div>
+      } @else {
+        <div
+          cdkDropList
+          (cdkDropListDropped)="onReorderRule($event)"
+          class="divide-y divide-slate-100"
+        >
+          @for (rule of rules(); track rule._uid; let ri = $index) {
+            <div cdkDrag [cdkDragDisabled]="!canManage()" class="bg-white">
+              <div
+                cdkDragPlaceholder
+                class="bg-primary/5 border-2 border-dashed border-primary/30 rounded h-14 mx-4 my-2"
+              ></div>
+
+              <!-- Ligne repliée -->
+              <div class="px-4 py-3 flex items-center gap-3 hover:bg-slate-50">
+                @if (canManage()) {
+                  <button
+                    cdkDragHandle
+                    type="button"
+                    class="cursor-grab text-slate-300 hover:text-slate-500"
+                    title="Glisser pour changer la priorité"
+                  >
+                    <tas-icon iconName="feather:menu" style="font-size: 14px"></tas-icon>
+                  </button>
+                }
+                <span
+                  class="w-5 h-5 rounded bg-slate-100 text-[9px] font-bold text-slate-500 flex items-center justify-center tabular-nums shrink-0"
+                >
+                  {{ ri + 1 }}
+                </span>
+                @if (canManage()) {
+                  <!-- Le glisser-déposer n'est pas accessible au clavier : ces deux
+                       boutons déplacent la règle d'un cran, avec le même effet. -->
+                  <div class="flex flex-col shrink-0">
+                    <button
+                      type="button"
+                      class="text-slate-300 hover:text-primary disabled:opacity-30"
+                      title="Monter d'un cran"
+                      [disabled]="ri === 0"
+                      (click)="moveRule(ri, -1)"
+                    >
+                      <tas-icon iconName="feather:chevron-up" style="font-size: 12px"></tas-icon>
+                    </button>
+                    <button
+                      type="button"
+                      class="text-slate-300 hover:text-primary disabled:opacity-30"
+                      title="Descendre d'un cran"
+                      [disabled]="ri === rules().length - 1"
+                      (click)="moveRule(ri, 1)"
+                    >
+                      <tas-icon iconName="feather:chevron-down" style="font-size: 12px"></tas-icon>
+                    </button>
+                  </div>
+                }
+
+                <button
+                  type="button"
+                  class="flex items-center gap-3 flex-1 min-w-0 text-left"
+                  (click)="toggleExpanded(rule)"
+                >
+                  <span class="text-sm font-medium text-slate-800 truncate">
+                    {{ rule.code || 'Règle sans nom' }}
+                  </span>
+                  <tas-tag severity="primary">{{ rule.segmentCode || 'segment ?' }}</tas-tag>
+                  <span class="text-xs text-slate-400 truncate flex-1">
+                    {{ conditionsSummary(rule) }}
+                  </span>
+                  @if (!rule.isEvaluable) {
+                    <tas-tag severity="warning">Inactive</tas-tag>
+                  }
+                  <tas-icon
+                    [iconName]="rule.expanded ? 'feather:chevron-up' : 'feather:chevron-down'"
+                    class="text-slate-400"
+                    style="font-size: 14px"
+                  ></tas-icon>
+                </button>
+
+                <!-- Simulation : indisponible côté serveur, jamais un chiffre inventé -->
+                <span [title]="simulationUnavailableReason" class="shrink-0">
+                  <button tas-outlined-button type="button" [disabled]="true" class="text-xs">
+                    <tas-icon iconName="feather:users" style="font-size: 12px"></tas-icon>
+                    Simuler
+                  </button>
+                </span>
+
+                @if (canManage()) {
+                  <button
+                    type="button"
+                    class="text-slate-300 hover:text-primary shrink-0"
+                    title="Modifier le nom et le segment cible"
+                    (click)="openEditForm(rule)"
+                  >
+                    <tas-icon iconName="feather:edit-2" style="font-size: 14px"></tas-icon>
+                  </button>
+                  <button
+                    type="button"
+                    class="text-slate-300 hover:text-functional-error shrink-0"
+                    title="Supprimer la règle"
+                    (click)="removeRule(rule)"
+                  >
+                    <tas-icon iconName="feather:trash-2" style="font-size: 14px"></tas-icon>
+                  </button>
+                }
+              </div>
+
+              @if (!rule.isEvaluable && rule.notEvaluableReason) {
+                <p class="px-4 pb-3 text-xs text-amber-700">
+                  Le serveur stocke cette règle sans l'appliquer
+                  ({{ rule.notEvaluableReason }}).
+                </p>
+              }
+
+              <!-- Modification du nom et du segment : signal forms -->
+              @if (editingUid() === rule._uid && canManage()) {
+                <form
+                  [formRoot]="editFormSchema"
+                  class="mx-4 mb-4 p-4 rounded-lg border border-primary/20 bg-primary/5 flex flex-col gap-4"
+                >
+                  <div class="grid grid-cols-2 gap-4">
+                    <tas-form-field>
+                      <tas-label>
+                        Nom de la règle
+                        <span class="text-functional-error">*</span>
+                      </tas-label>
+                      <input tasInput type="text" [formField]="editFormSchema.code" />
+                      @if (editFormSchema.code().touched() && editFormSchema.code().invalid()) {
+                        <tas-error>{{ editFormSchema.code().errors()[0].message }}</tas-error>
+                      }
+                    </tas-form-field>
+                    <tas-form-field>
+                      <tas-label>
+                        Segment cible
+                        <span class="text-functional-error">*</span>
+                      </tas-label>
+                      <input tasInput type="text" [formField]="editFormSchema.segmentCode" />
+                      @if (editFormSchema.segmentCode().touched() && editFormSchema.segmentCode().invalid()) {
+                        <tas-error>{{ editFormSchema.segmentCode().errors()[0].message }}</tas-error>
+                      }
+                    </tas-form-field>
+                  </div>
+
+                  @if (knownSegmentCodes().length > 0) {
+                    <div class="flex items-center gap-2 flex-wrap">
+                      <span class="text-xs text-slate-400">Segments existants :</span>
+                      @for (code of knownSegmentCodes(); track code) {
+                        <button
+                          type="button"
+                          class="px-2 py-0.5 rounded-full border border-slate-200 bg-white text-xs text-slate-600 hover:border-primary hover:text-primary"
+                          (click)="applySegmentSuggestion('edit', code)"
+                        >
+                          {{ code }}
+                        </button>
+                      }
+                    </div>
+                  }
+
+                  <div class="flex items-center gap-2">
+                    <button
+                      tas-raised-button
+                      color="primary"
+                      type="button"
+                      [disabled]="editFormSchema().invalid()"
+                      (click)="handleEditRule()"
+                    >
+                      Appliquer
+                    </button>
+                    <button tas-text-button type="button" (click)="cancelEditForm()">
+                      Annuler
+                    </button>
+                  </div>
+                </form>
+              }
+
+              <!-- Conditions : éditeur de collection dynamique -->
+              @if (rule.expanded) {
+                <div class="px-4 pb-4 pt-1 border-t border-slate-50 bg-slate-50">
+                  <div class="flex items-center justify-between gap-3 py-3">
+                    <div>
+                      <p class="text-xs font-semibold text-slate-600">Conditions</p>
+                      <p class="text-xs text-slate-400 mt-0.5">
+                        Toutes les conditions doivent être remplies pour que la
+                        règle attribue son segment.
+                      </p>
+                    </div>
+                  </div>
+
+                  @if (canManage() && availableCriteria(rule).length > 0) {
+                    <!-- Liste fermée : l'administrateur choisit un critère, il ne saisit aucun code. -->
+                    <div class="flex items-center gap-2 flex-wrap pb-3">
+                      <span class="text-xs text-slate-400">Ajouter un critère :</span>
+                      @for (criterion of availableCriteria(rule); track criterion.key) {
+                        <button
+                          type="button"
+                          class="px-2 py-1 rounded-full border border-slate-200 bg-white text-xs text-slate-600 hover:border-primary hover:text-primary"
+                          (click)="addCondition(rule, criterion.key)"
+                        >
+                          + {{ criterion.label }}
+                        </button>
+                      }
+                    </div>
+                  }
+
+                  @if (rule.conditions.length === 0) {
+                    <div class="p-3 rounded-lg border border-dashed border-slate-300 bg-white">
+                      <p class="text-xs text-slate-500">
+                        Sans condition, cette règle attribue son segment à tous
+                        les clients : réservez-la à la dernière position, comme
+                        segment par défaut.
+                      </p>
+                    </div>
+                  } @else {
+                    <div class="flex flex-col gap-2">
+                      @for (condition of rule.conditions; track condition._uid) {
+                        @let def = criterionOf(condition);
+                        <div class="p-3 rounded-lg border border-slate-200 bg-white flex items-start gap-3">
+                          <div class="flex-1 min-w-0">
+                            <p class="text-xs font-medium text-slate-700">{{ def.label }}</p>
+                            <p class="text-xs text-slate-400 mt-0.5">{{ def.hint }}</p>
+                          </div>
+
+                          <div class="w-56 shrink-0">
+                            @switch (def.editor) {
+                              @case ('number') {
+                                <tas-form-field>
+                                  <input
+                                    tasInput
+                                    type="number"
+                                    min="0"
+                                    step="1"
+                                    placeholder="Nombre de jours"
+                                    [disabled]="!canManage()"
+                                    [ngModel]="condition.value"
+                                    (ngModelChange)="setConditionValue(condition, $event)"
+                                  />
+                                </tas-form-field>
+                              }
+                              @case ('choice') {
+                                <tas-form-field>
+                                  <tas-select
+                                    [options]="def.options ?? []"
+                                    optionLabel="label"
+                                    optionValue="value"
+                                    placeholder="Choisissez"
+                                    [readonly]="!canManage()"
+                                    [ngModel]="condition.value"
+                                    (ngModelChange)="setConditionValue(condition, $event)"
+                                  ></tas-select>
+                                </tas-form-field>
+                              }
+                              @default {
+                                <div class="flex items-center gap-2 pt-1">
+                                  <tas-switch
+                                    [checked]="condition.value === 'true'"
+                                    [disabled]="!canManage()"
+                                    ariaLabel="Exiger les encours et produits détenus"
+                                    (toggle)="setConditionValue(condition, $event ? 'true' : 'false')"
+                                  ></tas-switch>
+                                  <span class="text-xs text-slate-500">
+                                    {{ condition.value === 'true' ? 'Exigé' : 'Non exigé' }}
+                                  </span>
+                                </div>
+                              }
+                            }
+                          </div>
+
+                          @if (canManage()) {
+                            <button
+                              type="button"
+                              class="text-slate-300 hover:text-functional-error shrink-0 pt-1"
+                              title="Retirer ce critère"
+                              (click)="removeCondition(rule, condition._uid)"
+                            >
+                              <tas-icon iconName="feather:x" style="font-size: 14px"></tas-icon>
+                            </button>
+                          }
+                        </div>
+                      }
+                    </div>
+                  }
+                </div>
+              }
+            </div>
+          }
+        </div>
+      }
+    </tas-card>
+
+    <!-- Répartition actuelle : un repère, pas une simulation -->
+    <tas-card class="block">
+      <div class="p-4 border-b border-slate-100">
+        <p class="text-sm font-semibold text-slate-700">Répartition actuelle</p>
+        <p class="text-xs text-slate-400 mt-0.5">
+          Clients déjà classés par le dernier passage du traitement nocturne.
+          Ces chiffres ne simulent pas les règles en cours d'édition.
+        </p>
+      </div>
+      @if (!distribution()) {
+        <div class="p-4">
+          <p class="text-xs text-slate-400">
+            La répartition n'a pas pu être chargée.
+          </p>
+        </div>
+      } @else {
+        <div class="p-4 flex flex-col gap-2">
+          <p class="text-xs text-slate-500">
+            {{ distribution()!.totalClients ?? 0 }} client(s) dans votre
+            périmètre.
+          </p>
+          @for (bucket of buckets(); track $index) {
+            <div class="flex items-center justify-between gap-3 py-1.5 border-b border-slate-50 last:border-0">
+              <span class="text-xs text-slate-600">
+                {{ bucket.segmentCode || 'Non classés' }}
+              </span>
+              <span class="text-xs text-slate-700 tabular-nums">
+                {{ bucket.clientCount ?? 0 }} · {{ sharePercentLabel(bucket) }} %
+              </span>
+            </div>
+          }
+        </div>
+      }
+    </tas-card>
+  </div>
+}

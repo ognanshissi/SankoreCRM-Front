@@ -12,7 +12,7 @@ import {
 } from '@talisoft/ui/layouts';
 import { Menu, MenuItem, TasMenuTrigger } from '@talisoft/ui/menu';
 import { BreadcrumbComponent } from '../../breadcrumb/breadcrumb.component';
-import { TenantProvider, AuthenticationService } from '../../../services';
+import { TenantProvider, AuthenticationService, PermissionsService } from '../../../services';
 import { TenantContextResponse } from '@sankore/crm-api';
 
 @Component({
@@ -40,6 +40,7 @@ export class PortalLayoutComponent implements OnInit {
   public navigationItems: NavigationItem[] = [];
   private readonly _tenantProvider = inject(TenantProvider);
   private readonly _auth = inject(AuthenticationService);
+  private readonly _permissions = inject(PermissionsService);
 
   public companyName = computed(() => {
     return this._tenantProvider.context()?.companyName
@@ -81,13 +82,19 @@ export class PortalLayoutComponent implements OnInit {
         type: 'basic',
         link: '/leads',
       },
-      {
-        id: 'customers',
-        icon: 'feather:user',
-        title: 'Clients 360',
-        type: 'basic',
-        link: '/portal/customers',
-      },
+      // `/portal/customers` ne correspondait à aucune route : l'entrée renvoyait vers
+      // la redirection joker. Le module est monté sur `/customers`.
+      ...(this._permissions.has('customers:read')
+        ? [
+            {
+              id: 'customers',
+              icon: 'feather:user',
+              title: 'Clients',
+              type: 'basic' as const,
+              link: '/customers',
+            },
+          ]
+        : []),
       // {
       //   id: 'loans',
       //   icon: 'feather:percent',

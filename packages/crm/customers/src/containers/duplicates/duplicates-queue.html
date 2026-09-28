@@ -1,0 +1,353 @@
+<div class="pb-6">
+  <!-- En-tête -->
+  <div class="flex items-start justify-between gap-4 mb-6">
+    <div>
+      <h1 class="text-lg font-semibold text-slate-800">Doublons et fusions</h1>
+      <p class="text-sm text-slate-500 mt-0.5">
+        Examinez les paires rapprochées par la détection, fusionnez celles qui désignent la même
+        personne et écartez les autres.
+      </p>
+    </div>
+    <div class="flex items-center gap-2 shrink-0">
+      <button tas-outlined-button type="button" (click)="backToClients()">
+        <tas-icon iconName="feather:users" style="font-size:14px"></tas-icon>
+        Liste des clients
+      </button>
+      <button tas-outlined-button type="button" (click)="refresh()">
+        <tas-icon iconName="feather:refresh-cw" style="font-size:14px"></tas-icon>
+        Rafraîchir
+      </button>
+    </div>
+  </div>
+
+  <!-- Onglets -->
+  <div class="flex border-b border-slate-200 mb-6">
+    @for (tab of tabs; track tab.id) {
+      <button
+        type="button"
+        class="px-4 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px flex items-center gap-2"
+        [class]="
+          activeTab() === tab.id
+            ? 'border-primary text-primary'
+            : 'border-transparent text-slate-500 hover:text-slate-700'
+        "
+        (click)="selectTab(tab.id)"
+      >
+        {{ tab.label }}
+        @if (tab.id === 'candidats' && pairCount() > 0) {
+          <span class="text-xs text-slate-400 tabular-nums">{{ pairCount() }}</span>
+        }
+        @if (tab.id === 'approbations' && mergeCount() > 0) {
+          <span class="text-xs text-slate-400 tabular-nums">{{ mergeCount() }}</span>
+        }
+      </button>
+    }
+  </div>
+
+  @switch (activeTab()) {
+    <!-- ——— Doublons potentiels ——— -->
+    @case ('candidats') {
+      @if (isLoadingCandidates() && pairs().length === 0) {
+        <div class="flex justify-center py-24">
+          <tas-spinner size="10" class="text-primary"></tas-spinner>
+        </div>
+      } @else if (candidatesFailed() && pairs().length === 0) {
+        <tas-card class="block">
+          <div class="p-10 text-center">
+            <p class="text-sm font-medium text-slate-700">La file n'a pas pu être chargée</p>
+            <p class="text-sm text-slate-500 mt-1">Réessayez dans un instant.</p>
+            <button tas-outlined-button type="button" class="mt-4" (click)="refresh()">
+              Réessayer
+            </button>
+          </div>
+        </tas-card>
+      } @else if (pairs().length === 0) {
+        <tas-card class="block">
+          <div class="p-10 text-center">
+            <tas-icon
+              iconName="feather:check-circle"
+              class="text-slate-300"
+              style="font-size:28px"
+            ></tas-icon>
+            <p class="text-sm font-medium text-slate-700 mt-3">Aucun doublon à examiner</p>
+            <p class="text-sm text-slate-500 mt-1">
+              La détection nocturne n'a signalé aucune paire dans votre périmètre.
+            </p>
+          </div>
+        </tas-card>
+      } @else {
+        <div class="flex flex-col gap-4">
+          @for (pair of pairs(); track pair.id) {
+            <tas-card class="block">
+              <div class="p-4">
+                <!-- Score et actions -->
+                <div class="flex items-start justify-between gap-4 mb-4">
+                  <div class="min-w-0">
+                    <div class="flex items-center gap-2">
+                      <span class="text-sm font-semibold text-slate-800 tabular-nums">
+                        Score {{ pair.score }}
+                      </span>
+                      <div class="w-24 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                        <div
+                          class="h-full rounded-full bg-primary"
+                          [style.width.%]="pair.scoreWidth"
+                        ></div>
+                      </div>
+                    </div>
+                    @if (pair.detectedAt) {
+                      <p class="text-xs text-slate-400 mt-1">
+                        Détectée {{ pair.detectedAt | dateTimeAgo }}
+                      </p>
+                    }
+                  </div>
+
+                  <div class="flex items-center gap-2 shrink-0">
+                    <button
+                      tas-outlined-button
+                      type="button"
+                      (click)="startReject(pair)"
+                      [disabled]="rejectingId() === pair.id"
+                    >
+                      <tas-icon iconName="feather:x" style="font-size:14px"></tas-icon>
+                      Pas un doublon
+                    </button>
+                    <button
+                      tas-raised-button
+                      color="primary"
+                      type="button"
+                      (click)="openMerge(pair)"
+                    >
+                      <tas-icon iconName="feather:git-merge" style="font-size:14px"></tas-icon>
+                      Fusionner
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Les deux fiches -->
+                <div class="grid grid-cols-2 gap-3">
+                  <!-- `$index` : deux fiches sans identifiant renverraient la même clé de suivi. -->
+                  @for (client of pair.sides; track $index) {
+                    <div class="rounded-lg border border-slate-200 p-3">
+                      <div class="flex items-center gap-2 flex-wrap">
+                        <p class="text-sm font-medium text-slate-800 truncate">
+                          {{ client.displayName }}
+                        </p>
+                        <tas-tag [severity]="client.statusSeverity">
+                          {{ client.statusLabel }}
+                        </tas-tag>
+                      </div>
+                      <div class="mt-2 grid grid-cols-2 gap-x-3 gap-y-1.5">
+                        <div>
+                          <p class="text-xs text-slate-400">Numéro client</p>
+                          <p class="text-xs text-slate-700 tabular-nums">
+                            {{ client.clientNumber }}
+                          </p>
+                        </div>
+                        <div>
+                          <p class="text-xs text-slate-400">Agence</p>
+                          <p class="text-xs text-slate-700">{{ client.agencyCode }}</p>
+                        </div>
+                        <div>
+                          <p class="text-xs text-slate-400">Type</p>
+                          <p class="text-xs text-slate-700">{{ client.typeLabel }}</p>
+                        </div>
+                        <div>
+                          <p class="text-xs text-slate-400">KYC</p>
+                          <p class="text-xs text-slate-700">{{ client.kycLabel }}</p>
+                        </div>
+                      </div>
+                    </div>
+                  }
+                </div>
+
+                <!-- Critères concordants -->
+                <div class="mt-3">
+                  <p class="text-xs text-slate-400 mb-1.5">Critères concordants</p>
+                  @if (pair.reasons.length === 0) {
+                    <p class="text-xs text-slate-500">
+                      La détection n'a transmis aucun critère pour cette paire.
+                    </p>
+                  } @else {
+                    <div class="flex flex-wrap gap-1.5">
+                      @for (reason of pair.reasons; track reason.key) {
+                        <span
+                          class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded border border-slate-200 bg-slate-50 text-xs text-slate-700"
+                        >
+                          {{ reason.label }}
+                          @if (reason.weight) {
+                            <span class="text-slate-400 tabular-nums">+{{ reason.weight }}</span>
+                          }
+                        </span>
+                      }
+                    </div>
+                  }
+                </div>
+
+                <!-- Motif de rejet -->
+                @if (rejectingId() === pair.id) {
+                  <form
+                    [formRoot]="formSchema"
+                    class="mt-4 pt-4 border-t border-slate-100 flex flex-col gap-3"
+                  >
+                    <tas-form-field>
+                      <tas-label>
+                        Motif du rejet <span class="text-functional-error">*</span>
+                      </tas-label>
+                      <textarea
+                        tasInput
+                        rows="2"
+                        placeholder="Expliquez pourquoi ces deux fiches désignent des personnes distinctes"
+                        [formField]="formSchema.reason"
+                      ></textarea>
+                      @if (formSchema.reason().touched() && formSchema.reason().invalid()) {
+                        <tas-error>{{ formSchema.reason().errors()[0].message }}</tas-error>
+                      } @else {
+                        <tas-hint>
+                          Le motif est conservé dans la piste d'audit. La paire ne sera plus
+                          proposée tant qu'aucun champ comparé ne change.
+                        </tas-hint>
+                      }
+                    </tas-form-field>
+
+                    <div class="flex items-center justify-end gap-2">
+                      <button
+                        tas-outlined-button
+                        type="button"
+                        (click)="cancelReject()"
+                        [disabled]="formSchema().submitting()"
+                      >
+                        Annuler
+                      </button>
+                      <button
+                        tas-raised-button
+                        color="primary"
+                        type="button"
+                        (click)="confirmReject()"
+                        [disabled]="formSchema().invalid() || formSchema().submitting()"
+                        [isLoading]="formSchema().submitting()"
+                      >
+                        Confirmer le rejet
+                      </button>
+                    </div>
+                  </form>
+                }
+              </div>
+            </tas-card>
+          }
+
+          @if (hasMoreCandidates()) {
+            <div class="flex justify-center">
+              <button
+                tas-outlined-button
+                type="button"
+                (click)="loadMoreCandidates()"
+                [disabled]="isLoadingCandidates()"
+                [isLoading]="isLoadingCandidates()"
+              >
+                Charger plus
+              </button>
+            </div>
+          }
+        </div>
+      }
+    }
+
+    <!-- ——— À approuver ——— -->
+    @case ('approbations') {
+      @if (!canMerge()) {
+        <tas-card class="block">
+          <div class="p-10 text-center">
+            <p class="text-sm font-medium text-slate-700">Accès réservé</p>
+            <p class="text-sm text-slate-500 mt-1">
+              L'approbation d'une fusion demande la permission de fusionner les clients.
+            </p>
+          </div>
+        </tas-card>
+      } @else if (isLoadingMerges()) {
+        <div class="flex justify-center py-24">
+          <tas-spinner size="10" class="text-primary"></tas-spinner>
+        </div>
+      } @else if (mergesFailed()) {
+        <tas-card class="block">
+          <div class="p-10 text-center">
+            <p class="text-sm font-medium text-slate-700">
+              Les demandes de fusion n'ont pas pu être chargées
+            </p>
+            <button tas-outlined-button type="button" class="mt-4" (click)="refresh()">
+              Réessayer
+            </button>
+          </div>
+        </tas-card>
+      } @else if (mergeRows().length === 0) {
+        <tas-card class="block">
+          <div class="p-10 text-center">
+            <tas-icon
+              iconName="feather:inbox"
+              class="text-slate-300"
+              style="font-size:28px"
+            ></tas-icon>
+            <p class="text-sm font-medium text-slate-700 mt-3">Aucune fusion à approuver</p>
+            <p class="text-sm text-slate-500 mt-1">
+              Vos propres demandes n'apparaissent pas ici : une fusion est toujours approuvée par
+              un autre utilisateur.
+            </p>
+          </div>
+        </tas-card>
+      } @else {
+        <tas-card class="block">
+          <div class="p-4 border-b border-slate-100 flex items-center justify-between">
+            <p class="text-sm font-semibold text-slate-700">Demandes en attente d'approbation</p>
+            <span class="text-xs text-slate-400 tabular-nums">
+              {{ mergeCount() }} demande(s)
+            </span>
+          </div>
+
+          <div class="divide-y divide-slate-100">
+            @for (row of mergeRows(); track row.id) {
+              <div class="p-4 flex items-start justify-between gap-4">
+                <div class="min-w-0">
+                  <div class="flex items-center gap-2 flex-wrap">
+                    <p class="text-sm font-medium text-slate-800 truncate">
+                      {{ row.survivorName }}
+                    </p>
+                    <tas-icon
+                      iconName="feather:arrow-left"
+                      class="text-slate-400"
+                      style="font-size:13px"
+                    ></tas-icon>
+                    <p class="text-sm text-slate-600 truncate">{{ row.absorbedName }}</p>
+                    <tas-tag severity="info">{{ row.statusLabel }}</tas-tag>
+                  </div>
+                  <p class="text-xs text-slate-500 mt-1">
+                    La fiche <span class="tabular-nums">{{ row.survivorNumber }}</span> conserve
+                    les données, la fiche
+                    <span class="tabular-nums">{{ row.absorbedNumber }}</span> est absorbée.
+                  </p>
+                  <p class="text-xs text-slate-400 mt-1">
+                    Demandée par {{ row.requesterName }}
+                    @if (row.requestedAt) {
+                      · {{ row.requestedAt | dateTimeAgo }}
+                    }
+                    @if (row.fieldChoiceCount > 0) {
+                      · {{ row.fieldChoiceCount }} champ(s) arbitré(s)
+                    }
+                  </p>
+                </div>
+
+                <button
+                  tas-raised-button
+                  color="primary"
+                  type="button"
+                  class="shrink-0"
+                  (click)="openMergeRequest(row)"
+                >
+                  Examiner
+                </button>
+              </div>
+            }
+          </div>
+        </tas-card>
+      }
+    }
+  }
+</div>

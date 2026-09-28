@@ -118,6 +118,15 @@ export class OverviewComponent implements OnInit {
           description: "Gérer les sources d'acquisition et campagnes de leads",
         },
         {
+          title: 'Segmentation des clients',
+          type: 'basic',
+          id: 'leads_contacts_client_segments',
+          link: '/settings/client-segments',
+          permission: 'customers:update_sensitive',
+          description:
+            'Définir et ordonner les règles qui classent automatiquement les clients par segment',
+        },
+        {
           title: 'Formulaires de qualification',
           type: 'basic',
           id: 'leads_contacts_qualification_templates',

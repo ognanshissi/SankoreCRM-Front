@@ -26,6 +26,12 @@ export const appRoutes: Route[] = [
     loadChildren: () => import('@sankore/crm/lead-management')
   },
   {
+    path: 'customers',
+    component: PortalLayoutComponent,
+    canActivate: [tenantGuard, authorized],
+    loadChildren: () => import('@sankore/crm/customers'),
+  },
+  {
     path: 'settings',
     component: PortalLayoutComponent,
     canActivate: [tenantGuard, authorized],

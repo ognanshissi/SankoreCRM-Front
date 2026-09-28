@@ -1,0 +1,673 @@
+<div class="flex flex-col gap-4">
+  <!-- Étapes -->
+  <div class="flex flex-wrap items-center gap-2">
+    @for (step of steps; track step.key; let i = $index) {
+      <div class="flex items-center gap-2">
+        <button
+          type="button"
+          class="flex items-center gap-2"
+          [class]="i < stepIndex() ? 'cursor-pointer' : 'cursor-default'"
+          (click)="goTo(i)"
+        >
+          <span
+            class="flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold"
+            [class]="
+              stepIndex() > i
+                ? 'bg-green-100 text-green-700'
+                : stepIndex() === i
+                  ? 'bg-primary/15 text-primary'
+                  : 'bg-slate-100 text-slate-400'
+            "
+          >
+            @if (stepIndex() > i) {
+              <tas-icon iconName="feather:check" style="font-size:12px"></tas-icon>
+            } @else {
+              {{ i + 1 }}
+            }
+          </span>
+          <span
+            class="text-xs font-medium"
+            [class]="stepIndex() >= i ? 'text-slate-700' : 'text-slate-400'"
+          >
+            {{ step.label }}
+          </span>
+        </button>
+        @if (i < steps.length - 1) {
+          <span
+            class="h-px w-6"
+            [class]="stepIndex() > i ? 'bg-green-300' : 'bg-slate-200'"
+          ></span>
+        }
+      </div>
+    }
+  </div>
+
+  @if (stepBlocked()) {
+    <div
+      class="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 p-3"
+    >
+      <tas-icon
+        iconName="feather:alert-circle"
+        class="mt-0.5 shrink-0 text-red-500"
+        style="font-size:14px"
+      ></tas-icon>
+      <p class="text-xs text-red-700">
+        Complétez les champs signalés pour passer à l'étape suivante.
+      </p>
+    </div>
+  }
+
+  <form [formRoot]="formSchema" class="flex flex-col gap-4">
+    <!-- ===== Étape 1 : Identité ===== -->
+    @if (currentStep() === 'identity') {
+      <tas-card class="block">
+        <div class="border-b border-slate-100 p-4">
+          <p class="text-sm font-semibold text-slate-700">Identité</p>
+          <p class="mt-0.5 text-xs text-slate-400">
+            État civil du client et agence de rattachement.
+          </p>
+        </div>
+        <div class="flex flex-col gap-4 p-4">
+          <tas-form-field>
+            <tas-label>
+              Agence de rattachement <span class="text-functional-error">*</span>
+            </tas-label>
+            <tas-select
+              [options]="agencyOptions()"
+              placeholder="Sélectionnez une agence"
+              [formField]="formSchema.identity.agencyId"
+            ></tas-select>
+            @if (
+              formSchema.identity.agencyId().touched() &&
+              formSchema.identity.agencyId().invalid()
+            ) {
+              <tas-error>
+                {{ formSchema.identity.agencyId().errors()[0].message }}
+              </tas-error>
+            }
+          </tas-form-field>
+
+          <div class="grid grid-cols-2 gap-3">
+            <tas-form-field>
+              <tas-label>
+                Prénom <span class="text-functional-error">*</span>
+              </tas-label>
+              <input
+                tasInput
+                type="text"
+                placeholder="Prénom"
+                [formField]="formSchema.identity.firstName"
+              />
+              @if (
+                formSchema.identity.firstName().touched() &&
+                formSchema.identity.firstName().invalid()
+              ) {
+                <tas-error>
+                  {{ formSchema.identity.firstName().errors()[0].message }}
+                </tas-error>
+              }
+            </tas-form-field>
+
+            <tas-form-field>
+              <tas-label>
+                Nom <span class="text-functional-error">*</span>
+              </tas-label>
+              <input
+                tasInput
+                type="text"
+                placeholder="Nom de famille"
+                [formField]="formSchema.identity.lastName"
+              />
+              @if (
+                formSchema.identity.lastName().touched() &&
+                formSchema.identity.lastName().invalid()
+              ) {
+                <tas-error>
+                  {{ formSchema.identity.lastName().errors()[0].message }}
+                </tas-error>
+              }
+            </tas-form-field>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <tas-form-field>
+              <tas-label>Nom de jeune fille</tas-label>
+              <input
+                tasInput
+                type="text"
+                placeholder="Facultatif"
+                [formField]="formSchema.identity.maidenName"
+              />
+            </tas-form-field>
+
+            <tas-form-field>
+              <tas-label>
+                Genre <span class="text-functional-error">*</span>
+              </tas-label>
+              <tas-select
+                [options]="genderOptions"
+                placeholder="Sélectionnez un genre"
+                [formField]="formSchema.identity.gender"
+              ></tas-select>
+              @if (
+                formSchema.identity.gender().touched() &&
+                formSchema.identity.gender().invalid()
+              ) {
+                <tas-error>
+                  {{ formSchema.identity.gender().errors()[0].message }}
+                </tas-error>
+              }
+            </tas-form-field>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <tas-date-picker
+                mode="date"
+                placeholder="Sélectionnez une date"
+                [formField]="formSchema.identity.dateOfBirth">
+                Date de naissance <span class="text-functional-error">*</span>
+              </tas-date-picker>
+              @if (
+                formSchema.identity.dateOfBirth().touched() &&
+                formSchema.identity.dateOfBirth().invalid()
+              ) {
+                <tas-error>
+                  {{ formSchema.identity.dateOfBirth().errors()[0].message }}
+                </tas-error>
+              }
+            </div>
+
+            <tas-form-field>
+              <tas-label>Lieu de naissance</tas-label>
+              <input
+                tasInput
+                type="text"
+                placeholder="Ville de naissance"
+                [formField]="formSchema.identity.birthPlace"
+              />
+            </tas-form-field>
+          </div>
+
+          <tas-form-field>
+            <tas-label>Nationalité</tas-label>
+            <tas-select
+              [options]="countryOptions"
+              placeholder="Sélectionnez un pays"
+              [formField]="formSchema.identity.nationality"
+            ></tas-select>
+          </tas-form-field>
+        </div>
+      </tas-card>
+    }
+
+    <!-- ===== Étape 2 : Pièce déclarée ===== -->
+    @if (currentStep() === 'document') {
+      <tas-card class="block">
+        <div class="border-b border-slate-100 p-4">
+          <p class="text-sm font-semibold text-slate-700">Pièce déclarée</p>
+          <p class="mt-0.5 text-xs text-slate-400">
+            Le numéro est contrôlé contre les fiches existantes à la sortie du champ.
+          </p>
+        </div>
+        <div class="flex flex-col gap-4 p-4">
+          <div class="grid grid-cols-2 gap-3">
+            <tas-form-field>
+              <tas-label>
+                Type de pièce <span class="text-functional-error">*</span>
+              </tas-label>
+              <tas-select
+                [options]="identityDocumentOptions"
+                placeholder="Sélectionnez un type"
+                [formField]="formSchema.document.identityDocumentType"
+              ></tas-select>
+              @if (
+                formSchema.document.identityDocumentType().touched() &&
+                formSchema.document.identityDocumentType().invalid()
+              ) {
+                <tas-error>
+                  {{
+                    formSchema.document.identityDocumentType().errors()[0].message
+                  }}
+                </tas-error>
+              }
+            </tas-form-field>
+
+            <tas-form-field>
+              <tas-label>
+                Numéro de la pièce <span class="text-functional-error">*</span>
+              </tas-label>
+              <input
+                tasInput
+                type="text"
+                placeholder="Numéro"
+                [formField]="formSchema.document.identityDocumentNumber"
+                (blur)="checkDocumentDuplicates()"
+              />
+              @if (
+                formSchema.document.identityDocumentNumber().touched() &&
+                formSchema.document.identityDocumentNumber().invalid()
+              ) {
+                <tas-error>
+                  {{
+                    formSchema.document.identityDocumentNumber().errors()[0]
+                      .message
+                  }}
+                </tas-error>
+              }
+            </tas-form-field>
+          </div>
+
+          <duplicate-check-banner
+            [candidates]="documentDuplicates()"
+            [isChecking]="isCheckingDocument()"
+            title="Cette pièce ressemble à une fiche existante"
+            message="Vérifiez avant de continuer : la création sera refusée si la pièce est déjà enregistrée."
+          ></duplicate-check-banner>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <tas-date-picker
+                mode="date"
+                placeholder="Sélectionnez une date"
+                [formField]="formSchema.document.issuedOn">
+                Délivrée le
+              </tas-date-picker>
+            </div>
+
+            <div>
+              <tas-date-picker
+                mode="date"
+                placeholder="Sélectionnez une date"
+                [formField]="formSchema.document.expiresOn">
+                Expire le
+              </tas-date-picker>
+              @if (
+                formSchema.document.expiresOn().touched() &&
+                formSchema.document.expiresOn().invalid()
+              ) {
+                <tas-error>
+                  {{ formSchema.document.expiresOn().errors()[0].message }}
+                </tas-error>
+              }
+            </div>
+          </div>
+        </div>
+      </tas-card>
+    }
+
+    <!-- ===== Étape 3 : Coordonnées ===== -->
+    @if (currentStep() === 'contact') {
+      <tas-card class="block">
+        <div class="border-b border-slate-100 p-4">
+          <p class="text-sm font-semibold text-slate-700">Coordonnées</p>
+          <p class="mt-0.5 text-xs text-slate-400">
+            Téléphone, e-mail et adresse postale du client.
+          </p>
+        </div>
+        <div class="flex flex-col gap-4 p-4">
+          <div class="grid grid-cols-2 gap-3">
+            <div (focusout)="checkPhoneDuplicates()">
+              <tas-form-field>
+                <tas-label>
+                  Téléphone principal
+                  <span class="text-functional-error">*</span>
+                </tas-label>
+                <tas-input-phone
+                  defaultCountry="CI"
+                  [formField]="formSchema.contact.phoneNumber"
+                ></tas-input-phone>
+                @if (
+                  formSchema.contact.phoneNumber().touched() &&
+                  formSchema.contact.phoneNumber().invalid()
+                ) {
+                  <tas-error>
+                    {{ formSchema.contact.phoneNumber().errors()[0].message }}
+                  </tas-error>
+                }
+              </tas-form-field>
+            </div>
+
+            <tas-form-field>
+              <tas-label>Téléphone secondaire</tas-label>
+              <tas-input-phone
+                defaultCountry="CI"
+                [formField]="formSchema.contact.secondaryPhoneNumber"
+              ></tas-input-phone>
+            </tas-form-field>
+          </div>
+
+          <duplicate-check-banner
+            [candidates]="phoneDuplicates()"
+            [isChecking]="isCheckingPhone()"
+            title="Ce numéro est déjà utilisé par une fiche existante"
+            message="L'avertissement ne bloque pas la création : ouvrez la fiche pour comparer."
+          ></duplicate-check-banner>
+
+          <tas-form-field>
+            <tas-label>E-mail</tas-label>
+            <input
+              tasInput
+              type="email"
+              placeholder="exemple@domaine.com"
+              [formField]="formSchema.contact.email"
+            />
+            @if (
+              formSchema.contact.email().touched() &&
+              formSchema.contact.email().invalid()
+            ) {
+              <tas-error>
+                {{ formSchema.contact.email().errors()[0].message }}
+              </tas-error>
+            }
+          </tas-form-field>
+
+          <div class="border-t border-slate-200 pt-4">
+            <p class="mb-3 text-sm font-medium text-slate-600">Adresse postale</p>
+            <div class="flex flex-col gap-3">
+              <tas-form-field>
+                <tas-label>Rue</tas-label>
+                <input
+                  tasInput
+                  type="text"
+                  placeholder="Quartier, rue, lot…"
+                  [formField]="formSchema.contact.street"
+                />
+              </tas-form-field>
+
+              <div class="grid grid-cols-2 gap-3">
+                <tas-form-field>
+                  <tas-label>Ville</tas-label>
+                  <input
+                    tasInput
+                    type="text"
+                    placeholder="Ville"
+                    [formField]="formSchema.contact.city"
+                  />
+                </tas-form-field>
+
+                <tas-form-field>
+                  <tas-label>Région / District</tas-label>
+                  <input
+                    tasInput
+                    type="text"
+                    placeholder="Région"
+                    [formField]="formSchema.contact.state"
+                  />
+                </tas-form-field>
+              </div>
+
+              <div class="grid grid-cols-2 gap-3">
+                <tas-form-field>
+                  <tas-label>Pays</tas-label>
+                  <tas-select
+                    [options]="countryOptions"
+                    placeholder="Sélectionnez un pays"
+                    [formField]="formSchema.contact.country"
+                  ></tas-select>
+                </tas-form-field>
+
+                <tas-form-field>
+                  <tas-label>Code postal</tas-label>
+                  <input
+                    tasInput
+                    type="text"
+                    placeholder="Code postal"
+                    [formField]="formSchema.contact.zipCode"
+                  />
+                </tas-form-field>
+              </div>
+            </div>
+          </div>
+        </div>
+      </tas-card>
+    }
+
+    <!-- ===== Étape 4 : Situation professionnelle et familiale ===== -->
+    @if (currentStep() === 'situation') {
+      <tas-card class="block">
+        <div class="border-b border-slate-100 p-4">
+          <p class="text-sm font-semibold text-slate-700">
+            Situation professionnelle et familiale
+          </p>
+          <p class="mt-0.5 text-xs text-slate-400">
+            Ces informations alimentent le dossier KYC.
+          </p>
+        </div>
+        <div class="flex flex-col gap-4 p-4">
+          <div class="grid grid-cols-2 gap-3">
+            <tas-form-field>
+              <tas-label>Profession</tas-label>
+              <input
+                tasInput
+                type="text"
+                placeholder="Profession"
+                [formField]="formSchema.situation.profession"
+              />
+            </tas-form-field>
+
+            <tas-form-field>
+              <tas-label>Employeur</tas-label>
+              <input
+                tasInput
+                type="text"
+                placeholder="Employeur"
+                [formField]="formSchema.situation.employer"
+              />
+            </tas-form-field>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <tas-form-field>
+              <tas-label>Revenu déclaré</tas-label>
+              <input
+                tasInput
+                type="number"
+                placeholder="0"
+                [formField]="formSchema.situation.declaredIncome"
+              />
+              @if (
+                formSchema.situation.declaredIncome().touched() &&
+                formSchema.situation.declaredIncome().invalid()
+              ) {
+                <tas-error>
+                  {{ formSchema.situation.declaredIncome().errors()[0].message }}
+                </tas-error>
+              }
+            </tas-form-field>
+
+            <tas-form-field>
+              <tas-label>Devise du revenu</tas-label>
+              <tas-select
+                [options]="currencyOptions"
+                [formField]="formSchema.situation.declaredIncomeCurrency"
+              ></tas-select>
+            </tas-form-field>
+          </div>
+
+          <tas-form-field>
+            <tas-label>Situation familiale</tas-label>
+            <tas-select
+              [options]="maritalStatusOptions"
+              placeholder="Sélectionnez une situation"
+              [formField]="formSchema.situation.maritalStatus"
+            ></tas-select>
+            <tas-hint>Facultatif — complétez-la si le client la déclare.</tas-hint>
+          </tas-form-field>
+
+          <div class="grid grid-cols-2 gap-3">
+            <tas-form-field>
+              <tas-label>Nom du père</tas-label>
+              <input
+                tasInput
+                type="text"
+                placeholder="Facultatif"
+                [formField]="formSchema.situation.fatherName"
+              />
+            </tas-form-field>
+
+            <tas-form-field>
+              <tas-label>Nom de la mère</tas-label>
+              <input
+                tasInput
+                type="text"
+                placeholder="Facultatif"
+                [formField]="formSchema.situation.motherName"
+              />
+            </tas-form-field>
+          </div>
+
+          <tas-form-field>
+            <tas-label>Langue préférée</tas-label>
+            <tas-select
+              [options]="languageOptions"
+              [formField]="formSchema.situation.preferredLanguage"
+            ></tas-select>
+          </tas-form-field>
+        </div>
+      </tas-card>
+    }
+
+    <!-- ===== Étape 5 : Récapitulatif ===== -->
+    @if (currentStep() === 'summary') {
+      <tas-card class="block">
+        <div class="border-b border-slate-100 p-4">
+          <p class="text-sm font-semibold text-slate-700">Récapitulatif</p>
+          <p class="mt-0.5 text-xs text-slate-400">
+            Relisez la fiche avant de créer le client.
+          </p>
+        </div>
+        <div class="divide-y divide-slate-100">
+          <div class="grid grid-cols-2 gap-x-6 gap-y-3 p-4 text-sm">
+            <div>
+              <p class="text-xs text-slate-400">Nom complet</p>
+              <p class="font-medium text-slate-800">{{ fullName() || '—' }}</p>
+            </div>
+            <div>
+              <p class="text-xs text-slate-400">Genre</p>
+              <p class="text-slate-700">
+                {{ genderLabel(model().identity.gender) }}
+              </p>
+            </div>
+            <div>
+              <p class="text-xs text-slate-400">Date de naissance</p>
+              <p class="text-slate-700 tabular-nums">
+                {{ model().identity.dateOfBirth || '—' }}
+              </p>
+            </div>
+            <div>
+              <p class="text-xs text-slate-400">Lieu de naissance</p>
+              <p class="text-slate-700">
+                {{ model().identity.birthPlace || '—' }}
+              </p>
+            </div>
+            <div>
+              <p class="text-xs text-slate-400">Pièce déclarée</p>
+              <p class="text-slate-700">
+                {{ identityDocumentLabel(model().document.identityDocumentType) }}
+                — {{ model().document.identityDocumentNumber || '—' }}
+              </p>
+            </div>
+            <div>
+              <p class="text-xs text-slate-400">Téléphone</p>
+              <p class="text-slate-700 tabular-nums">
+                {{ model().contact.phoneNumber || '—' }}
+              </p>
+            </div>
+            <div>
+              <p class="text-xs text-slate-400">E-mail</p>
+              <p class="text-slate-700">{{ model().contact.email || '—' }}</p>
+            </div>
+            <div>
+              <p class="text-xs text-slate-400">Situation familiale</p>
+              <p class="text-slate-700">
+                {{ maritalStatusLabel(model().situation.maritalStatus) }}
+              </p>
+            </div>
+            <div>
+              <p class="text-xs text-slate-400">Profession</p>
+              <p class="text-slate-700">
+                {{ model().situation.profession || '—' }}
+              </p>
+            </div>
+            <div>
+              <p class="text-xs text-slate-400">Revenu déclaré</p>
+              <p class="text-slate-700 tabular-nums">
+                @if (model().situation.declaredIncome) {
+                  {{ model().situation.declaredIncome }}
+                  {{ model().situation.declaredIncomeCurrency }}
+                } @else {
+                  —
+                }
+              </p>
+            </div>
+          </div>
+        </div>
+      </tas-card>
+
+      @if (blockingDuplicates().length > 0) {
+        <duplicate-check-banner
+          variant="blocking"
+          [candidates]="blockingDuplicates()"
+          title="Création refusée : cette pièce d'identité existe déjà"
+          message="Ouvrez la fiche existante pour la compléter ou la corriger. Modifiez la pièce déclarée si la vôtre est différente."
+        ></duplicate-check-banner>
+      }
+
+      @if (warningDuplicates().length > 0) {
+        <duplicate-check-banner
+          [candidates]="warningDuplicates()"
+          title="Doublon possible sur le téléphone"
+          message="Confirmez qu'il s'agit bien d'une autre personne pour créer la fiche."
+        >
+          <button
+            tas-outlined-button
+            color="primary"
+            type="button"
+            (click)="confirmNotSamePerson()"
+            [isLoading]="formSchema().submitting()"
+          >
+            Ce n'est pas la même personne, créer le client
+          </button>
+        </duplicate-check-banner>
+      }
+    }
+  </form>
+
+  <!-- Actions -->
+  <div class="flex items-center justify-between">
+    <button tas-text-button color="primary" type="button" (click)="requestExit()">
+      Annuler
+    </button>
+
+    <div class="flex items-center gap-2">
+      @if (stepIndex() > 0) {
+        <button
+          tas-outlined-button
+          color="primary"
+          type="button"
+          (click)="previous()"
+        >
+          Précédent
+        </button>
+      }
+
+      @if (!isLastStep()) {
+        <button tas-raised-button color="primary" type="button" (click)="next()">
+          Suivant
+        </button>
+      } @else {
+        <button
+          tas-raised-button
+          color="primary"
+          type="button"
+          (click)="handleSubmit()"
+          [disabled]="formSchema().invalid() || formSchema().submitting()"
+          [isLoading]="formSchema().submitting()"
+        >
+          Créer le client
+        </button>
+      }
+    </div>
+  </div>
+</div>

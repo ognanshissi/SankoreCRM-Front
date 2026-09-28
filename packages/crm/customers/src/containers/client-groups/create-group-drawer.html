@@ -1,0 +1,91 @@
+<tas-side-drawer>
+  <tas-drawer-title>
+    <TasTitle class="text-lg">Nouveau groupe</TasTitle>
+  </tas-drawer-title>
+
+  <tas-drawer-content>
+    @if (isLoadingAgencies()) {
+      <div class="flex justify-center py-12">
+        <tas-spinner size="8" class="text-primary"></tas-spinner>
+      </div>
+    } @else {
+      <form [formRoot]="formSchema" class="flex flex-col gap-5">
+        <tas-form-field>
+          <tas-label>Nom du groupe <span class="text-functional-error">*</span></tas-label>
+          <input
+            tasInput
+            type="text"
+            placeholder="ex: Femmes de Yopougon"
+            [formField]="formSchema.name"
+          />
+          @if (formSchema.name().touched() && formSchema.name().invalid()) {
+            <tas-error>{{ formSchema.name().errors()[0].message }}</tas-error>
+          } @else {
+            <tas-hint>Le nom doit rester unique au sein de l'agence.</tas-hint>
+          }
+        </tas-form-field>
+
+        <div class="grid grid-cols-2 gap-4">
+          <tas-form-field>
+            <tas-label>Type <span class="text-functional-error">*</span></tas-label>
+            <tas-select
+              [options]="typeOptions"
+              optionLabel="label"
+              optionValue="value"
+              placeholder="Choisissez un type"
+              [formField]="formSchema.type"
+            ></tas-select>
+            @if (formSchema.type().touched() && formSchema.type().invalid()) {
+              <tas-error>{{ formSchema.type().errors()[0].message }}</tas-error>
+            }
+          </tas-form-field>
+
+          <tas-form-field>
+            <tas-label>Date de constitution <span class="text-functional-error">*</span></tas-label>
+            <input tasInput type="date" [formField]="formSchema.constitutionDate" />
+            @if (
+              formSchema.constitutionDate().touched() &&
+              formSchema.constitutionDate().invalid()
+            ) {
+              <tas-error>{{ formSchema.constitutionDate().errors()[0].message }}</tas-error>
+            }
+          </tas-form-field>
+        </div>
+
+        <tas-form-field>
+          <tas-label>Agence de rattachement <span class="text-functional-error">*</span></tas-label>
+          <tas-select
+            [options]="agencyOptions()"
+            optionLabel="label"
+            optionValue="value"
+            placeholder="Choisissez une agence"
+            [searchable]="true"
+            [formField]="formSchema.agencyId"
+          ></tas-select>
+          @if (formSchema.agencyId().touched() && formSchema.agencyId().invalid()) {
+            <tas-error>{{ formSchema.agencyId().errors()[0].message }}</tas-error>
+          }
+        </tas-form-field>
+
+        <div class="rounded-lg border border-slate-200 bg-slate-50 p-4 text-xs text-slate-600">
+          Le groupe démarre en constitution. Il s'active dès qu'il réunit sa taille minimale
+          et que le président, le trésorier et le secrétaire sont désignés.
+        </div>
+      </form>
+    }
+  </tas-drawer-content>
+
+  <tas-drawer-action>
+    <button tas-outlined-button color="primary" type="button" (click)="close()">Annuler</button>
+    <button
+      tas-raised-button
+      color="primary"
+      type="button"
+      (click)="handleSubmit()"
+      [disabled]="formSchema().invalid() || formSchema().submitting() || isLoadingAgencies()"
+      [isLoading]="formSchema().submitting()"
+    >
+      Créer le groupe
+    </button>
+  </tas-drawer-action>
+</tas-side-drawer>

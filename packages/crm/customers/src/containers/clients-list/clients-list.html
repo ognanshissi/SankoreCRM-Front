@@ -1,0 +1,284 @@
+<div class="pb-6">
+  <!-- En-tête -->
+  <div class="flex items-start justify-between mb-6 gap-3">
+    <div>
+      <h1 class="text-lg font-semibold text-slate-800">Clients</h1>
+      <p class="text-sm text-slate-500 mt-0.5">
+        Retrouvez un client par son nom, son téléphone, son numéro ou sa pièce d'identité.
+      </p>
+    </div>
+    <div class="flex items-center gap-2 shrink-0">
+      @if (canRead()) {
+        <button tas-outlined-button type="button" (click)="goToGroups()">
+          <tas-icon iconName="feather:users" style="font-size:14px"></tas-icon>
+          Groupes
+        </button>
+      }
+      @if (canMerge()) {
+        <button tas-outlined-button type="button" (click)="goToDuplicates()">
+          <tas-icon iconName="feather:copy" style="font-size:14px"></tas-icon>
+          Doublons
+        </button>
+      }
+      @if (canCreate()) {
+        <button tas-raised-button color="primary" type="button" (click)="goToNewClient()">
+          <tas-icon iconName="feather:plus" style="font-size:14px"></tas-icon>
+          Nouveau client
+        </button>
+      }
+    </div>
+  </div>
+
+  <!-- Recherche et filtres -->
+  <tas-card class="mb-4 block">
+    <div class="p-4 flex flex-col gap-3">
+      <div class="grid grid-cols-4 gap-3 items-start">
+        <div class="col-span-2">
+          <tas-form-field>
+            <tas-label>Rechercher un client</tas-label>
+            <input
+              tasInput
+              type="text"
+              placeholder="Nom, téléphone, numéro client ou pièce d'identité..."
+              [ngModel]="filterQuery()"
+              (ngModelChange)="onSearchChange($event)"
+            />
+          </tas-form-field>
+
+          <!-- Critère détecté, et puces pour le forcer (AC1) -->
+          <div class="mt-2 flex flex-wrap items-center gap-1.5">
+            <span class="text-xs font-medium text-slate-600">{{ criterionHint() }}</span>
+            @if (forcedCriterion() !== 'auto') {
+              <span class="text-xs text-slate-400">critère forcé</span>
+            }
+            <span class="text-slate-200">|</span>
+            @for (chip of criterionChips; track chip.value) {
+              <button
+                type="button"
+                class="rounded-full border px-2.5 py-1 text-xs transition-colors"
+                [class.border-primary]="forcedCriterion() === chip.value"
+                [class.text-primary]="forcedCriterion() === chip.value"
+                [class.border-slate-200]="forcedCriterion() !== chip.value"
+                [class.text-slate-500]="forcedCriterion() !== chip.value"
+                (click)="onCriterionChange(chip.value)"
+              >
+                {{ chip.label }}
+              </button>
+            }
+          </div>
+          @if (criterionNote()) {
+            <p class="mt-1 text-xs text-slate-400">{{ criterionNote() }}</p>
+          }
+        </div>
+
+        <tas-form-field>
+          <tas-label>Statut</tas-label>
+          <tas-select
+            [options]="statusOptions"
+            optionLabel="label"
+            optionValue="value"
+            placeholder="Tous les statuts"
+            [ngModel]="filterStatus()"
+            (ngModelChange)="onFilterChange('status', $event)"
+          ></tas-select>
+        </tas-form-field>
+
+        <tas-form-field>
+          <tas-label>Type de client</tas-label>
+          <tas-select
+            [options]="typeOptions"
+            optionLabel="label"
+            optionValue="value"
+            placeholder="Tous les types"
+            [ngModel]="filterType()"
+            (ngModelChange)="onFilterChange('type', $event)"
+          ></tas-select>
+        </tas-form-field>
+      </div>
+
+      <div class="grid grid-cols-4 gap-3 items-end">
+        <tas-form-field>
+          <tas-label>Agence</tas-label>
+          <tas-select
+            [options]="agencyOptions()"
+            optionLabel="label"
+            optionValue="value"
+            placeholder="Toutes les agences"
+            [searchable]="true"
+            [ngModel]="filterAgency()"
+            (ngModelChange)="onFilterChange('agency', $event)"
+          ></tas-select>
+        </tas-form-field>
+
+        <tas-form-field>
+          <tas-label>Conseiller</tas-label>
+          <tas-select
+            [options]="advisorOptions()"
+            optionLabel="label"
+            optionValue="value"
+            placeholder="Tous les conseillers"
+            [searchable]="true"
+            [ngModel]="filterAdvisor()"
+            (ngModelChange)="onFilterChange('advisor', $event)"
+          ></tas-select>
+        </tas-form-field>
+
+        <div class="col-span-2 flex justify-end">
+          @if (hasActiveFilters()) {
+            <button tas-text-button type="button" (click)="resetFilters()">
+              <tas-icon iconName="feather:x" style="font-size:14px"></tas-icon>
+              Réinitialiser
+            </button>
+          }
+        </div>
+      </div>
+    </div>
+  </tas-card>
+
+  <!-- Résultats -->
+  <tas-card class="block">
+    <div class="p-4 border-b border-slate-100 flex items-center justify-between">
+      <p class="text-sm font-semibold text-slate-700">Clients</p>
+      <span class="text-xs text-slate-400 tabular-nums">
+        {{ totalCount() }} client(s)
+      </span>
+    </div>
+
+    <!--
+      Le spinner ne recouvre QUE la liste. S'il remplaçait tout l'écran, chaque
+      frappe détruirait le champ de recherche, qui perdrait le focus.
+    -->
+    @if (isLoading()) {
+      <div class="flex justify-center py-24">
+        <tas-spinner size="10" class="text-primary"></tas-spinner>
+      </div>
+    } @else if (hasFailed()) {
+      <div class="flex flex-col items-center justify-center py-16 text-center">
+        <tas-icon
+          iconName="feather:alert-triangle"
+          class="text-functional-error mb-3"
+          style="font-size:32px"
+        ></tas-icon>
+        <p class="text-sm font-medium text-slate-600 mb-1">La recherche a échoué</p>
+        <p class="text-xs text-slate-400 mb-4">
+          Le serveur n'a pas répondu. Relancez la recherche dans un instant.
+        </p>
+      </div>
+    } @else if (rows().length === 0) {
+      <div class="flex flex-col items-center justify-center py-16 text-center">
+        <tas-icon
+          iconName="feather:search"
+          class="text-slate-300 mb-3"
+          style="font-size:32px"
+        ></tas-icon>
+        <p class="text-sm font-medium text-slate-500 mb-1">Aucun client ne correspond</p>
+        <p class="text-xs text-slate-400 mb-4">
+          @if (filterQuery().trim()) {
+            Aucun résultat pour « {{ filterQuery().trim() }} ». Changez de critère, ou créez
+            la fiche.
+          } @else {
+            Ajustez les filtres pour élargir la recherche.
+          }
+        </p>
+        @if (canCreate() && filterQuery().trim()) {
+          <button tas-button color="primary" type="button" (click)="createFromSearch()">
+            <tas-icon iconName="feather:user-plus" style="font-size:14px"></tas-icon>
+            Créer ce client
+          </button>
+        }
+      </div>
+    } @else {
+      <!-- En-tête de tableau -->
+      <div
+        class="flex items-center px-4 py-2 bg-slate-50 text-xs font-medium text-slate-500 border-b border-slate-100"
+      >
+        <div class="w-[26%]">Client</div>
+        <div class="w-[12%]">Type</div>
+        <div class="w-[12%] text-center">Statut</div>
+        <div class="w-[12%] text-center">KYC</div>
+        <div class="w-[10%] text-center">Risque</div>
+        <div class="w-[14%]">Agence</div>
+        <div class="w-[14%]">Conseiller</div>
+      </div>
+
+      <!-- Lignes -->
+      <div class="divide-y divide-slate-100">
+        @for (row of rows(); track row.id) {
+          <div
+            class="flex items-center px-4 py-3 hover:bg-slate-50 transition-colors cursor-pointer"
+            (click)="openClient(row.id)"
+          >
+            <div class="w-[26%] min-w-0 pr-2">
+              <p class="text-sm font-medium text-slate-800 truncate">
+                {{ row.displayName }}
+              </p>
+              <div class="flex items-center gap-1.5 mt-0.5">
+                <span
+                  class="text-[10px] text-slate-400 font-mono bg-slate-50 px-1.5 py-0.5 rounded"
+                >
+                  {{ row.clientNumber }}
+                </span>
+                <span class="text-xs text-slate-400 tabular-nums truncate">
+                  {{ row.phoneMasked }}
+                </span>
+              </div>
+            </div>
+
+            <div class="w-[12%] pr-2">
+              <span class="text-xs text-slate-600">{{ row.typeLabel }}</span>
+            </div>
+
+            <div class="w-[12%] text-center">
+              <tas-tag [severity]="row.statusSeverity">{{ row.statusLabel }}</tas-tag>
+            </div>
+
+            <div class="w-[12%] text-center">
+              <tas-tag [severity]="row.kycSeverity">{{ row.kycLabel }}</tas-tag>
+            </div>
+
+            <div class="w-[10%] text-center">
+              <tas-tag [severity]="row.riskSeverity">{{ row.riskLabel }}</tas-tag>
+            </div>
+
+            <div class="w-[14%] pr-2 min-w-0">
+              <span class="text-xs text-slate-600 truncate block">{{ row.agencyName }}</span>
+            </div>
+
+            <div class="w-[14%] min-w-0">
+              <span class="text-xs text-slate-600 truncate block">{{ row.advisorName }}</span>
+            </div>
+          </div>
+        }
+      </div>
+
+      <!-- Pagination : la page courante vit dans l'URL (AC3) -->
+      @if (totalPages() > 1) {
+        <div class="p-4 border-t border-slate-100 flex items-center justify-between">
+          <span class="text-xs text-slate-400 tabular-nums">
+            Page {{ page() }} sur {{ totalPages() }}
+          </span>
+          <div class="flex items-center gap-2">
+            <button
+              tas-outlined-button
+              type="button"
+              [disabled]="page() <= 1"
+              (click)="goToPage(page() - 1)"
+            >
+              <tas-icon iconName="feather:chevron-left" style="font-size:14px"></tas-icon>
+              Précédent
+            </button>
+            <button
+              tas-outlined-button
+              type="button"
+              [disabled]="page() >= totalPages()"
+              (click)="goToPage(page() + 1)"
+            >
+              Suivant
+              <tas-icon iconName="feather:chevron-right" style="font-size:14px"></tas-icon>
+            </button>
+          </div>
+        </div>
+      }
+    }
+  </tas-card>
+</div>

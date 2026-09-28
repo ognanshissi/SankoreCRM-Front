@@ -1,0 +1,120 @@
+<tas-side-drawer>
+  <tas-drawer-title>
+    <TasTitle class="text-lg">Ajouter un membre</TasTitle>
+  </tas-drawer-title>
+
+  <tas-drawer-content>
+    <form [formRoot]="formSchema" class="flex flex-col gap-5">
+      <p class="text-sm text-slate-500">
+        Recherchez le client à rattacher au groupe {{ data.groupName }}.
+      </p>
+
+      <tas-form-field>
+        <tas-label>Nom du client</tas-label>
+        <input
+          tasInput
+          type="text"
+          placeholder="Saisissez au moins deux caractères..."
+          [ngModel]="searchTerm()"
+          [ngModelOptions]="{ standalone: true }"
+          (ngModelChange)="onSearchChange($event)"
+        />
+        <tas-hint>
+          Les clients qui ne peuvent pas rejoindre ce groupe apparaissent grisés avec leur raison.
+        </tas-hint>
+      </tas-form-field>
+
+      <!-- Résultats de recherche -->
+      <div class="rounded-lg border border-slate-200">
+        @if (isSearching()) {
+          <div class="flex justify-center py-10">
+            <tas-spinner size="8" class="text-primary"></tas-spinner>
+          </div>
+        } @else if (!hasSearched()) {
+          <div class="px-4 py-10 text-center text-sm text-slate-400">
+            Les résultats apparaîtront ici.
+          </div>
+        } @else if (candidates().length === 0) {
+          <div class="px-4 py-10 text-center text-sm text-slate-500">
+            Aucun client ne correspond à cette recherche.
+          </div>
+        } @else {
+          <div
+            class="flex items-center justify-between border-b border-slate-100 px-4 py-2 text-xs text-slate-500"
+          >
+            <span>{{ candidates().length }} résultat(s)</span>
+            <span class="tabular-nums">{{ eligibleCount() }} éligible(s)</span>
+          </div>
+          <ul class="max-h-80 divide-y divide-slate-100 overflow-y-auto">
+            @for (candidate of candidates(); track candidate.client.id) {
+              <li
+                class="flex items-center gap-3 px-4 py-3"
+                [ngClass]="candidateRowClass(candidate)"
+                (click)="selectClient(candidate)"
+              >
+                <div class="flex-1">
+                  <p class="text-sm font-medium text-slate-800">
+                    {{ candidate.client.displayName || '—' }}
+                  </p>
+                  <p class="text-xs text-slate-500">
+                    {{ candidate.client.clientNumber || '—' }} ·
+                    {{ clientTypeLabel(candidate.client.clientType) }}
+                  </p>
+                  @if (candidate.blockedReason) {
+                    <p class="mt-1 text-xs text-functional-error">
+                      {{ candidate.blockedReason }}
+                    </p>
+                  }
+                </div>
+                <tas-tag [severity]="clientStatusSeverity(candidate.client.status)">
+                  {{ clientStatusLabel(candidate.client.status) }}
+                </tas-tag>
+                @if (candidate.client.id === selectedClient()?.id) {
+                  <tas-icon iconName="feather:check" class="text-primary"></tas-icon>
+                }
+              </li>
+            }
+          </ul>
+        }
+      </div>
+
+      @if (selectedClient()) {
+        <div class="rounded-lg border border-slate-200 bg-slate-50 p-4">
+          <p class="text-xs text-slate-500">Client retenu</p>
+          <p class="text-sm font-medium text-slate-800">
+            {{ selectedClient()?.displayName }}
+          </p>
+        </div>
+      }
+
+      <tas-form-field>
+        <tas-label>Rôle dans le bureau</tas-label>
+        <tas-select
+          [options]="roleOptions"
+          optionLabel="label"
+          optionValue="value"
+          placeholder="Membre"
+          [formField]="formSchema.officeRole"
+        ></tas-select>
+        <tas-hint>
+          Désigner un président, un trésorier ou un secrétaire démet le titulaire précédent,
+          qui redevient membre.
+        </tas-hint>
+      </tas-form-field>
+    </form>
+  </tas-drawer-content>
+
+  <tas-drawer-action>
+    <button tas-outlined-button color="primary" type="button" (click)="close()">Annuler</button>
+    <button
+      tas-raised-button
+      color="primary"
+      type="button"
+      (click)="handleSubmit()"
+      [disabled]="formSchema().invalid() || formSchema().submitting()"
+      [isLoading]="formSchema().submitting()"
+    >
+      Ajouter au groupe
+    </button>
+  </tas-drawer-action>
+</tas-side-drawer>

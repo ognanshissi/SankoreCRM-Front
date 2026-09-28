@@ -64,7 +64,7 @@
       "@sankore/crm/lead-management": [
         "./packages/crm/lead-management/src/index.ts"
       ],
-      "@sankore/customers": ["./packages/crm/customers/src/index.ts"]
+      "@sankore/crm/customers": ["./packages/crm/customers/src/index.ts"]
     }
   },
   "exclude": ["node_modules", "tmp"]

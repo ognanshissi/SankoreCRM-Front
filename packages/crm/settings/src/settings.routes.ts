@@ -186,6 +186,15 @@ const settingsRoutes: Routes = [
       import('./containers/qualification-templates/edit-qualification-template/edit-qualification-template'),
   },
   {
+    // US-M01-FE-18. `PUT /api/v1/clients/segments/rules` exige
+    // `customers:update_sensitive` : la garde reprend ce droit pour ne pas
+    // ouvrir un écran d'écriture que le serveur refuserait.
+    path: 'client-segments',
+    canActivate: [hasPermissionGuard('customers:update_sensitive')],
+    loadComponent: () =>
+      import('./containers/client-segments/client-segment-rules'),
+  },
+  {
     path: 'import-users',
     canActivate: [hasPermissionGuard('user:create')],
     loadComponent: () => import('./containers/import-users/import-users'),

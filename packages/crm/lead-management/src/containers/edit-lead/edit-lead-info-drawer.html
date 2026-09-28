@@ -44,17 +44,15 @@
             </tas-form-field>
 
             <div>
-              <tas-form-field>
-                <tas-label>Date de naissance</tas-label>
-                <tas-date-picker
-                  mode="date"
-                  placeholder="Sélectionnez une date"
-                  [formField]="formSchema.dateOfBirth"
-                ></tas-date-picker>
-                @if (formSchema.dateOfBirth().touched() && formSchema.dateOfBirth().invalid()) {
-                  <tas-error>{{ formSchema.dateOfBirth().errors()[0].message }}</tas-error>
-                }
-              </tas-form-field>
+              <tas-date-picker
+                mode="date"
+                placeholder="Sélectionnez une date"
+                [formField]="formSchema.dateOfBirth">
+                Date de naissance
+              </tas-date-picker>
+              @if (formSchema.dateOfBirth().touched() && formSchema.dateOfBirth().invalid()) {
+                <tas-error>{{ formSchema.dateOfBirth().errors()[0].message }}</tas-error>
+              }
             </div>
           </div>
 

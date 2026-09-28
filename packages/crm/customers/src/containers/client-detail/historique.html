@@ -1,0 +1,166 @@
+<div class="flex flex-col gap-4 pb-6">
+  <!--
+    Les filtres vivent hors du bloc de chargement. Quand le spinner remplaçait toute la
+    zone, chaque changement détruisait les <tas-select> : la liste se refermait et le
+    filtre perdait le focus avant même d'avoir affiché le résultat.
+  -->
+  <tas-card class="block">
+    <div class="p-4">
+      <div class="grid grid-cols-4 gap-3">
+        <tas-form-field>
+          <tas-label>Module</tas-label>
+          <tas-select
+            [options]="moduleOptions()"
+            optionLabel="label"
+            optionValue="value"
+            placeholder="Tous les modules"
+            [ngModel]="filterModule()"
+            (ngModelChange)="onModuleChange($event)"
+          ></tas-select>
+        </tas-form-field>
+        <tas-form-field>
+          <tas-label>Type d'entrée</tas-label>
+          <tas-select
+            [options]="typeOptions()"
+            optionLabel="label"
+            optionValue="value"
+            placeholder="Tous les types"
+            [ngModel]="filterType()"
+            (ngModelChange)="onTypeChange($event)"
+          ></tas-select>
+        </tas-form-field>
+        <tas-form-field>
+          <tas-label>Période</tas-label>
+          <tas-select
+            [options]="periodOptions"
+            optionLabel="label"
+            optionValue="value"
+            placeholder="Toutes les périodes"
+            [ngModel]="filterPeriod()"
+            (ngModelChange)="onPeriodChange($event)"
+          ></tas-select>
+        </tas-form-field>
+        <div class="flex items-end">
+          @if (hasActiveFilter()) {
+            <button
+              type="button"
+              class="text-xs text-primary hover:underline pb-2"
+              (click)="clearFilters()"
+            >
+              Effacer les filtres
+            </button>
+          }
+        </div>
+      </div>
+
+      @if (isPeriodFilterPartial()) {
+        <p class="text-xs text-slate-500 mt-3 flex items-start gap-1.5">
+          <tas-icon iconName="feather:info" class="text-slate-400 mt-0.5" style="font-size:12px"></tas-icon>
+          <span>
+            Le service ne filtre pas sur les dates : la période s'applique aux entrées déjà
+            chargées. Chargez la suite pour l'étendre à tout l'historique.
+          </span>
+        </p>
+      }
+    </div>
+  </tas-card>
+
+  <tas-card class="block">
+    <div class="p-4 border-b border-slate-100 flex items-start justify-between gap-3">
+      <div>
+        <p class="font-semibold text-slate-800">Historique 360°</p>
+        <p class="text-sm text-slate-500">
+          Toutes les interactions du client, de la plus récente à la plus ancienne.
+        </p>
+      </div>
+      <span class="text-xs text-slate-400 tabular-nums shrink-0">
+        {{ visibleCount() }} / {{ totalCount() }} entrée{{ totalCount() > 1 ? 's' : '' }}
+      </span>
+    </div>
+
+    @if (isLoading()) {
+      <div class="flex justify-center py-24">
+        <tas-spinner size="10" class="text-primary"></tas-spinner>
+      </div>
+    } @else if (rows().length === 0) {
+      <div class="flex flex-col items-center justify-center py-16 text-center">
+        <tas-icon iconName="feather:clock" class="text-slate-300 mb-2" style="font-size:32px"></tas-icon>
+        @if (hasActiveFilter()) {
+          <p class="text-sm text-slate-400">Aucune entrée ne correspond aux filtres.</p>
+          <button type="button" class="text-xs text-primary mt-2 hover:underline" (click)="clearFilters()">
+            Effacer les filtres
+          </button>
+        } @else {
+          <p class="text-sm text-slate-400">Ce client n'a encore aucune interaction enregistrée.</p>
+        }
+      </div>
+    } @else {
+      <div class="p-4">
+        <div class="relative">
+          <div class="absolute left-4 top-0 bottom-0 w-px bg-slate-200"></div>
+
+          <div class="flex flex-col">
+            @for (row of rows(); track row.key) {
+              <div class="relative flex gap-3 py-3">
+                <div
+                  class="relative z-10 w-8 h-8 rounded-full flex items-center justify-center shrink-0"
+                  [class]="row.color"
+                  [title]="row.moduleLabel"
+                >
+                  <tas-icon [iconName]="row.icon" style="font-size:12px"></tas-icon>
+                </div>
+
+                <div class="flex-1 min-w-0 pt-1">
+                  <div class="flex items-center gap-2 flex-wrap">
+                    @if (row.route) {
+                      <a
+                        class="text-sm font-medium text-primary hover:underline inline-flex items-center gap-1"
+                        [routerLink]="row.route"
+                      >
+                        {{ row.summary }}
+                        <tas-icon iconName="feather:arrow-up-right" style="font-size:12px"></tas-icon>
+                      </a>
+                    } @else {
+                      <p class="text-sm font-medium text-slate-800">{{ row.summary }}</p>
+                      @if (row.blockedReason) {
+                        <span
+                          class="inline-flex items-center gap-1 text-xs text-slate-400 cursor-help"
+                          [title]="row.blockedReason"
+                        >
+                          <tas-icon iconName="feather:lock" style="font-size:11px"></tas-icon>
+                          Lien indisponible
+                        </span>
+                      }
+                    }
+                    <tas-tag severity="neutral" class="shrink-0">{{ row.moduleLabel }}</tas-tag>
+                    @if (row.beforeConversion) {
+                      <tas-tag severity="secondary" class="shrink-0">Avant conversion</tas-tag>
+                    }
+                  </div>
+
+                  <div class="flex items-center gap-2 mt-1 text-xs text-slate-400 flex-wrap">
+                    <span>{{ row.typeLabel }}</span>
+                    <span class="text-slate-300">·</span>
+                    <span [title]="row.absoluteDate">{{ row.occurredAt | dateTimeAgo }}</span>
+                  </div>
+                </div>
+              </div>
+            }
+          </div>
+        </div>
+
+        @if (hasNextPage()) {
+          <div class="flex justify-center pt-4 border-t border-slate-100 mt-2">
+            @if (isLoadingMore()) {
+              <tas-spinner size="5" class="text-primary"></tas-spinner>
+            } @else {
+              <button type="button" class="text-sm text-primary hover:underline" (click)="loadMore()">
+                Charger plus
+              </button>
+            }
+          </div>
+        }
+      </div>
+    }
+  </tas-card>
+</div>
