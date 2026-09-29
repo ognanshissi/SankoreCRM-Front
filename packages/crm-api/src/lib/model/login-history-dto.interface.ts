@@ -16,5 +16,11 @@ export interface LoginHistoryDto {
     occuredAt?: string;
     latitude?: number | null;
     longitude?: number | null;
+    ipAddress?: string | null;
+    userAgent?: string | null;
+    browser?: string | null;
+    browserVersion?: string | null;
+    platform?: string | null;
+    clientKind?: string | null;
 }
 
