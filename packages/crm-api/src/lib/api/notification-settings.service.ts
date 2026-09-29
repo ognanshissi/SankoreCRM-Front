@@ -21,7 +21,11 @@ import { Observable }                                        from 'rxjs';
 // @ts-ignore
 import { NotificationSettingsDto } from '../model/notification-settings-dto.interface';
 // @ts-ignore
+import { SendTestEmailRequest } from '../model/send-test-email-request.interface';
+// @ts-ignore
 import { SetMonthlyQuotaCommand } from '../model/set-monthly-quota-command.interface';
+// @ts-ignore
+import { TestEmailResult } from '../model/test-email-result.interface';
 // @ts-ignore
 import { UpdateNotificationSettingsCommand } from '../model/update-notification-settings-command.interface';
 
@@ -147,6 +151,82 @@ export class NotificationSettingsApiService {
         return this.httpClient.request<NotificationSettingsDto>('get', `${this.configuration.basePath}${localVarPath}`,
             {
                 context: localVarHttpContext,
+                responseType: <any>responseType_,
+                withCredentials: this.configuration.withCredentials,
+                headers: localVarHeaders,
+                observe: observe,
+                reportProgress: reportProgress
+            }
+        );
+    }
+
+    /**
+     * Send a test email through the tenant\&#39;s configured provider
+     * Sends one message immediately, bypassing the outbox, and returns whether the provider accepted it. On refusal the provider\&#39;s own message is returned — an invalid API key or a wrong SMTP password shows up here instead of as messages quietly dead-lettering. Requires permission: notification:settings:manage.
+     * @param sendTestEmailRequest 
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     */
+    public sendTestEmail(sendTestEmailRequest: SendTestEmailRequest, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<TestEmailResult>;
+    public sendTestEmail(sendTestEmailRequest: SendTestEmailRequest, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<TestEmailResult>>;
+    public sendTestEmail(sendTestEmailRequest: SendTestEmailRequest, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<TestEmailResult>>;
+    public sendTestEmail(sendTestEmailRequest: SendTestEmailRequest, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
+        if (sendTestEmailRequest === null || sendTestEmailRequest === undefined) {
+            throw new Error('Required parameter sendTestEmailRequest was null or undefined when calling sendTestEmail.');
+        }
+
+        let localVarHeaders = this.defaultHeaders;
+
+        let localVarCredential: string | undefined;
+        // authentication (BearerToken) required
+        localVarCredential = this.configuration.lookupCredential('BearerToken');
+        if (localVarCredential) {
+            localVarHeaders = localVarHeaders.set('Authorization', 'Bearer ' + localVarCredential);
+        }
+
+        let localVarHttpHeaderAcceptSelected: string | undefined = options && options.httpHeaderAccept;
+        if (localVarHttpHeaderAcceptSelected === undefined) {
+            // to determine the Accept header
+            const httpHeaderAccepts: string[] = [
+                'application/json'
+            ];
+            localVarHttpHeaderAcceptSelected = this.configuration.selectHeaderAccept(httpHeaderAccepts);
+        }
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+
+        let localVarHttpContext: HttpContext | undefined = options && options.context;
+        if (localVarHttpContext === undefined) {
+            localVarHttpContext = new HttpContext();
+        }
+
+
+        // to determine the Content-Type header
+        const consumes: string[] = [
+            'application/json'
+        ];
+        const httpContentTypeSelected: string | undefined = this.configuration.selectHeaderContentType(consumes);
+        if (httpContentTypeSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Content-Type', httpContentTypeSelected);
+        }
+
+        let responseType_: 'text' | 'json' | 'blob' = 'json';
+        if (localVarHttpHeaderAcceptSelected) {
+            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+                responseType_ = 'text';
+            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+                responseType_ = 'json';
+            } else {
+                responseType_ = 'blob';
+            }
+        }
+
+        let localVarPath = `/api/v1/notification-settings/test-send`;
+        return this.httpClient.request<TestEmailResult>('post', `${this.configuration.basePath}${localVarPath}`,
+            {
+                context: localVarHttpContext,
+                body: sendTestEmailRequest,
                 responseType: <any>responseType_,
                 withCredentials: this.configuration.withCredentials,
                 headers: localVarHeaders,

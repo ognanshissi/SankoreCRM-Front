@@ -325,6 +325,7 @@ model/segment-rule-definition.interface.ts
 model/segment-rule-dto.interface.ts
 model/segment-rules-dto.interface.ts
 model/send-snippet-request.interface.ts
+model/send-test-email-request.interface.ts
 model/set-intent-level-request.interface.ts
 model/set-monthly-quota-command.interface.ts
 model/set-qualification-completeness-request.interface.ts
@@ -365,6 +366,7 @@ model/template-queue-dto.interface.ts
 model/template-stats-dto.interface.ts
 model/tenant-context-response.interface.ts
 model/territory-dto.interface.ts
+model/test-email-result.interface.ts
 model/timeline-event.interface.ts
 model/transfer-client-request.interface.ts
 model/transition-changed-dto.interface.ts

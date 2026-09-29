@@ -1,0 +1,437 @@
+@if (isLoading()) {
+  <div class="flex justify-center py-24"><tas-spinner size="10" class="text-primary"></tas-spinner></div>
+} @else if (loadError()) {
+  <div class="flex flex-col items-center py-24 text-center">
+    <tas-icon iconName="feather:alert-triangle" class="text-functional-error mb-2" style="font-size:24px"></tas-icon>
+    <p class="text-sm text-slate-600">La configuration e-mail n'a pas pu être lue.</p>
+    <p class="text-xs text-slate-400 mt-0.5">Elle n'est pas forcément absente : l'appel a échoué.</p>
+    <button tas-outlined-button type="button" class="mt-3" (click)="reloadSettings()">Réessayer</button>
+  </div>
+} @else {
+  <div class="pb-6 flex flex-col gap-4">
+
+    <!-- État effectif, tel que le serveur le rapporte -->
+    <tas-card class="block">
+      <div class="p-4 border-b border-slate-100">
+        <p class="text-sm font-semibold text-slate-700 flex items-center gap-2">
+          <tas-icon iconName="feather:activity" class="text-slate-400" style="font-size:14px"></tas-icon>
+          État de l'envoi
+        </p>
+      </div>
+      <div class="p-4 grid grid-cols-3 gap-x-6 gap-y-4">
+        <div>
+          <p class="text-xs text-slate-400 mb-1">Fournisseur enregistré</p>
+          <p class="text-sm font-medium text-slate-800">
+            {{ settings()?.providerType || 'Plateforme (par défaut)' }}
+          </p>
+        </div>
+        <div>
+          <!--
+            `useDefaultPlatformProvider` est dérivé par le serveur et absent de la commande de mise
+            à jour : il est donné en lecture, jamais en réglage.
+          -->
+          <p class="text-xs text-slate-400 mb-1">Envoi assuré par</p>
+          <tas-tag [severity]="settings()?.useDefaultPlatformProvider ? 'info' : 'success'">
+            {{ settings()?.useDefaultPlatformProvider ? 'La plateforme' : 'Votre fournisseur' }}
+          </tas-tag>
+        </div>
+        <div>
+          <p class="text-xs text-slate-400 mb-1">Secret enregistré</p>
+          @if (settings()?.hasCredential) {
+            <tas-tag severity="success">Présent</tas-tag>
+          } @else {
+            <tas-tag severity="neutral">Aucun</tas-tag>
+          }
+        </div>
+        @if (settings()?.updatedAt) {
+          <div class="col-span-3">
+            <p class="text-xs text-slate-400">
+              Dernière mise à jour {{ settings()!.updatedAt | dateTimeAgo }}
+            </p>
+          </div>
+        }
+      </div>
+    </tas-card>
+
+    <!-- Configuration -->
+    <form [formRoot]="formSchema" class="flex flex-col gap-4">
+
+      <!-- Fournisseur -->
+      <tas-card class="block">
+        <div class="p-4 border-b border-slate-100">
+          <p class="text-sm font-semibold text-slate-700 flex items-center gap-2">
+            <tas-icon iconName="feather:mail" class="text-indigo-500" style="font-size:14px"></tas-icon>
+            Fournisseur e-mail
+          </p>
+        </div>
+        <div class="p-4 flex flex-col gap-3">
+          <tas-form-field class="max-w-md">
+            <tas-label>Type de fournisseur</tas-label>
+            <tas-select
+              [options]="providerOptions"
+              optionLabel="label"
+              optionValue="value"
+              placeholder="Sélectionnez un fournisseur"
+              [formField]="formSchema.providerType"
+            ></tas-select>
+            <tas-hint>
+              Tant qu'aucun fournisseur n'est choisi, l'envoi reste assuré par l'infrastructure
+              Sankoré. En choisir un vous en rend la charge : il faudra un secret valide.
+            </tas-hint>
+            @if (formSchema.providerType().touched() && formSchema.providerType().invalid()) {
+              <tas-error>{{ formSchema.providerType().errors()[0].message }}</tas-error>
+            }
+          </tas-form-field>
+
+          @if (providerChanges() && settings()?.hasCredential) {
+            <div class="flex gap-3 p-3 rounded-lg bg-blue-50 border border-blue-200">
+              <tas-icon iconName="feather:info" class="text-blue-700 shrink-0 mt-0.5" style="font-size:14px"></tas-icon>
+              <p class="text-sm text-slate-700">
+                Changer de fournisseur invalide le secret enregistré : il appartenait au précédent.
+                Saisissez-en un nouveau ci-dessous, sinon l'envoi échouera.
+              </p>
+            </div>
+          }
+        </div>
+      </tas-card>
+
+      <!-- Expéditeur -->
+      <tas-card class="block">
+        <div class="p-4 border-b border-slate-100">
+          <p class="text-sm font-semibold text-slate-700 flex items-center gap-2">
+            <tas-icon iconName="feather:at-sign" class="text-slate-400" style="font-size:14px"></tas-icon>
+            Expéditeur
+          </p>
+        </div>
+        <div class="p-4 grid grid-cols-2 gap-3">
+          <tas-form-field>
+            <tas-label>Adresse d'envoi</tas-label>
+            <input tasInput type="email" placeholder="noreply@monentreprise.com"
+              [formField]="formSchema.fromEmail" />
+            @if (formSchema.fromEmail().touched() && formSchema.fromEmail().invalid()) {
+              <tas-error>{{ formSchema.fromEmail().errors()[0].message }}</tas-error>
+            }
+          </tas-form-field>
+          <tas-form-field>
+            <tas-label>Nom affiché</tas-label>
+            <input tasInput type="text" placeholder="Mon Entreprise"
+              [formField]="formSchema.fromName" />
+          </tas-form-field>
+          <tas-form-field>
+            <tas-label>Adresse de réponse</tas-label>
+            <input tasInput type="email" placeholder="support@monentreprise.com"
+              [formField]="formSchema.replyToEmail" />
+            @if (formSchema.replyToEmail().touched() && formSchema.replyToEmail().invalid()) {
+              <tas-error>{{ formSchema.replyToEmail().errors()[0].message }}</tas-error>
+            }
+          </tas-form-field>
+          <tas-form-field>
+            <tas-label>Domaine d'envoi</tas-label>
+            <input tasInput type="text" placeholder="mail.monentreprise.com"
+              [formField]="formSchema.sendingDomain" />
+          </tas-form-field>
+        </div>
+      </tas-card>
+
+      <!-- SMTP -->
+      @if (isSmtp()) {
+        <tas-card class="block">
+          <div class="p-4 border-b border-slate-100">
+            <p class="text-sm font-semibold text-slate-700 flex items-center gap-2">
+              <tas-icon iconName="feather:server" class="text-slate-400" style="font-size:14px"></tas-icon>
+              Serveur SMTP
+            </p>
+          </div>
+          <div class="p-4 flex flex-col gap-3">
+            <div class="grid grid-cols-3 gap-3">
+              <tas-form-field class="col-span-2">
+                <tas-label>Hôte <span class="text-functional-error">*</span></tas-label>
+                <input tasInput type="text" placeholder="smtp.monentreprise.com"
+                  [formField]="formSchema.smtpHost" />
+                @if (formSchema.smtpHost().touched() && formSchema.smtpHost().invalid()) {
+                  <tas-error>{{ formSchema.smtpHost().errors()[0].message }}</tas-error>
+                }
+              </tas-form-field>
+              <tas-form-field>
+                <tas-label>Port</tas-label>
+                <!-- Pas de `min`/`max` en attribut : Angular les refuse avec `[formField]`, la
+                     borne est portée par le validateur du schéma. -->
+                <input tasInput type="number" placeholder="Déduit"
+                  [formField]="formSchema.smtpPort" />
+                <tas-hint>Laissé vide, le serveur le déduit du mode de chiffrement.</tas-hint>
+                @if (formSchema.smtpPort().touched() && formSchema.smtpPort().invalid()) {
+                  <tas-error>{{ formSchema.smtpPort().errors()[0].message }}</tas-error>
+                }
+              </tas-form-field>
+            </div>
+
+            <tas-form-field class="max-w-md">
+              <tas-label>Identifiant</tas-label>
+              <input tasInput type="text" placeholder="noreply@monentreprise.com"
+                [formField]="formSchema.smtpUsername" />
+            </tas-form-field>
+
+            <div class="flex flex-col gap-2 pt-1">
+              <p class="text-xs text-slate-400">Chiffrement — les deux modes s'excluent</p>
+              <div class="flex items-center gap-3">
+                <tas-switch
+                  [checked]="formSchema.smtpUseSsl().value()"
+                  ariaLabel="Utiliser SSL"
+                  (toggle)="setSmtpUseSsl($event)"
+                ></tas-switch>
+                <span class="text-sm text-slate-600">SSL / TLS implicite</span>
+              </div>
+              <div class="flex items-center gap-3">
+                <tas-switch
+                  [checked]="formSchema.smtpUseStartTls().value()"
+                  ariaLabel="Utiliser STARTTLS"
+                  (toggle)="setSmtpUseStartTls($event)"
+                ></tas-switch>
+                <span class="text-sm text-slate-600">STARTTLS</span>
+              </div>
+              @if (formSchema.smtpUseStartTls().invalid()) {
+                <p class="text-xs text-functional-error">
+                  {{ formSchema.smtpUseStartTls().errors()[0].message }}
+                </p>
+              }
+            </div>
+          </div>
+        </tas-card>
+      }
+
+      <!-- Secret : les cinq fournisseurs en exigent un -->
+      <tas-card class="block">
+        <div class="p-4 border-b border-slate-100">
+          <p class="text-sm font-semibold text-slate-700 flex items-center gap-2">
+            <tas-icon iconName="feather:key" class="text-slate-400" style="font-size:14px"></tas-icon>
+            Secret du fournisseur
+          </p>
+        </div>
+        <div class="p-4">
+          <tas-form-field class="max-w-md">
+            <tas-label>
+              {{ isSmtp() ? 'Mot de passe SMTP' : 'Clé d’API' }}
+              @if (!hasUsableCredential()) { <span class="text-functional-error">*</span> }
+            </tas-label>
+            <!--
+              Jamais pré-rempli, pas même de points : le serveur ne renvoie que `hasCredential`,
+              et un champ d'apparence remplie ferait croire à une valeur récupérable.
+            -->
+            <input tasInput type="password" autocomplete="new-password"
+              [placeholder]="hasUsableCredential() ? 'Inchangé' : 'Saisissez le secret'"
+              [formField]="formSchema.credential" />
+            <tas-hint>
+              @if (hasUsableCredential()) {
+                Un secret est enregistré. Laissez ce champ vide pour le conserver : le remplir le
+                remplace.
+              } @else {
+                Aucun secret n'est enregistré pour ce fournisseur. Il n'est jamais relu ensuite,
+                seule sa présence est indiquée.
+              }
+            </tas-hint>
+            @if (formSchema.credential().touched() && formSchema.credential().invalid()) {
+              <tas-error>{{ formSchema.credential().errors()[0].message }}</tas-error>
+            }
+          </tas-form-field>
+        </div>
+      </tas-card>
+
+      @if (canManageSettings()) {
+        <div class="flex justify-end">
+          <button tas-raised-button color="primary" type="button"
+            [disabled]="formSchema().invalid() || formSchema().submitting()"
+            [isLoading]="formSchema().submitting()"
+            (click)="save()">
+            <tas-icon iconName="feather:save" style="font-size:14px"></tas-icon>
+            Enregistrer
+          </button>
+        </div>
+      } @else {
+        <p class="text-xs text-slate-400 text-right">
+          Vous n'avez pas la permission de modifier ces réglages.
+        </p>
+      }
+    </form>
+
+    <!-- Envoi de test -->
+    @if (canManageSettings()) {
+      <tas-card class="block">
+        <div class="p-4 border-b border-slate-100">
+          <p class="text-sm font-semibold text-slate-700 flex items-center gap-2">
+            <tas-icon iconName="feather:send" class="text-slate-400" style="font-size:14px"></tas-icon>
+            Envoi de test
+          </p>
+          <p class="text-xs text-slate-400 mt-0.5">
+            Un message part immédiatement, sans passer par la file d'attente, avec la configuration
+            <span class="font-medium">enregistrée</span> — pas celle en cours de saisie.
+          </p>
+        </div>
+        <div class="p-4">
+          <form [formRoot]="testFormSchema" class="flex gap-3 items-start">
+            <div class="flex-1 max-w-md">
+              <tas-form-field>
+                <tas-label>Destinataire <span class="text-functional-error">*</span></tas-label>
+                <input tasInput type="email" placeholder="vous@monentreprise.com"
+                  [formField]="testFormSchema.recipientEmail" />
+                @if (testFormSchema.recipientEmail().touched() && testFormSchema.recipientEmail().invalid()) {
+                  <tas-error>{{ testFormSchema.recipientEmail().errors()[0].message }}</tas-error>
+                }
+              </tas-form-field>
+            </div>
+            <button tas-outlined-button color="primary" type="button" class="shrink-0 mt-6"
+              [disabled]="testFormSchema().invalid() || testFormSchema().submitting()"
+              [isLoading]="testFormSchema().submitting()"
+              (click)="sendTest()">
+              Envoyer un test
+            </button>
+          </form>
+
+          <!--
+            L'endpoint répond 200 même sur un refus : c'est `delivered` qui tranche, et `error`
+            porte le message du fournisseur.
+          -->
+          @if (testResult(); as result) {
+            @if (result.delivered) {
+              <div class="mt-4 flex gap-3 p-3 rounded-lg bg-green-50 border border-green-200">
+                <tas-icon iconName="feather:check-circle" class="text-green-700 shrink-0 mt-0.5" style="font-size:14px"></tas-icon>
+                <div class="text-sm text-slate-700">
+                  <p class="font-medium text-green-800">Message accepté par le fournisseur</p>
+                  <p class="text-xs text-slate-600 mt-0.5">
+                    Fournisseur : {{ result.providerType || '—' }} —
+                    {{ result.usedTenantProvider ? 'votre configuration' : 'celle de la plateforme' }}.
+                    L'acceptation n'est pas la réception : vérifiez la boîte du destinataire.
+                  </p>
+                </div>
+              </div>
+            } @else {
+              <div class="mt-4 flex gap-3 p-3 rounded-lg bg-red-50 border border-red-200">
+                <tas-icon iconName="feather:x-circle" class="text-red-700 shrink-0 mt-0.5" style="font-size:14px"></tas-icon>
+                <div class="text-sm text-slate-700">
+                  <p class="font-medium text-red-800">Le fournisseur a refusé le message</p>
+                  <p class="text-xs text-red-700 mt-0.5">
+                    {{ result.error || 'Aucun motif renvoyé.' }}
+                  </p>
+                  <p class="text-xs text-slate-500 mt-1">
+                    Fournisseur : {{ result.providerType || '—' }} —
+                    {{ result.usedTenantProvider ? 'votre configuration' : 'celle de la plateforme' }}.
+                  </p>
+                </div>
+              </div>
+            }
+          }
+        </div>
+      </tas-card>
+    }
+
+    <!--
+      Fournisseur SMS : aperçu conservé de l'écran précédent. Aucun endpoint n'existe côté API, donc
+      les champs ne sont liés à rien — les lier à des signaux créerait un état que personne
+      n'enregistre.
+    -->
+    <tas-card class="block">
+      <div class="p-4 border-b border-slate-100 flex items-center justify-between">
+        <p class="text-sm font-semibold text-slate-700 flex items-center gap-2">
+          <tas-icon iconName="feather:message-square" class="text-teal-500" style="font-size:14px"></tas-icon>
+          Fournisseur SMS
+        </p>
+        <tas-tag severity="warning">À venir</tas-tag>
+      </div>
+      <div class="p-4">
+        <div class="flex gap-3 p-3 rounded-lg bg-amber-50 border border-amber-200 mb-4">
+          <tas-icon iconName="feather:info" class="text-amber-500 shrink-0 mt-0.5" style="font-size:14px"></tas-icon>
+          <p class="text-xs text-amber-700">
+            La configuration SMS n'est pas encore exposée par l'API : les champs ci-dessous sont un
+            aperçu et n'enregistrent rien.
+          </p>
+        </div>
+        <div class="grid grid-cols-3 gap-3 opacity-50">
+          <tas-form-field>
+            <tas-label>Fournisseur SMS</tas-label>
+            <input tasInput type="text" placeholder="Ex : Twilio" disabled />
+          </tas-form-field>
+          <tas-form-field>
+            <tas-label>Sender ID</tas-label>
+            <input tasInput type="text" placeholder="Ex : SANKORE" disabled />
+          </tas-form-field>
+          <tas-form-field>
+            <tas-label>Clé API</tas-label>
+            <input tasInput type="password" placeholder="••••••••" disabled />
+          </tas-form-field>
+        </div>
+      </div>
+    </tas-card>
+
+    <!-- Quota -->
+    <tas-card class="block">
+      <div class="p-4 border-b border-slate-100">
+        <p class="text-sm font-semibold text-slate-700 flex items-center gap-2">
+          <tas-icon iconName="feather:bar-chart" class="text-slate-400" style="font-size:14px"></tas-icon>
+          Quota mensuel d'envoi
+        </p>
+      </div>
+      <div class="p-4">
+        @if (quotaLimit()) {
+          <div class="flex items-center gap-3 mb-4">
+            <div class="flex-1 h-2.5 bg-slate-100 rounded-full overflow-hidden">
+              <div class="h-full rounded-full transition-all"
+                [class]="quotaPercent() >= 90 ? 'bg-red-500' : quotaPercent() >= 70 ? 'bg-amber-500' : 'bg-green-500'"
+                [style.width.%]="quotaPercent()"></div>
+            </div>
+            <span class="text-xs text-slate-500 tabular-nums shrink-0">
+              {{ currentUsage() | number: '1.0-0' }} / {{ quotaLimit() | number: '1.0-0' }}
+            </span>
+          </div>
+        } @else {
+          <p class="text-sm text-slate-500 mb-4">Aucune limite : les envois ne sont pas plafonnés.</p>
+        }
+
+        <!--
+          Quota atteint : le serveur ne met pas les messages en attente, il les dead-lette sans
+          nouvelle tentative. Sans cet encart, l'admin attend une reprise qui n'arrivera jamais.
+        -->
+        @if (quotaReached()) {
+          <div class="flex gap-3 p-3 rounded-lg bg-red-50 border border-red-200 mb-4">
+            <tas-icon iconName="feather:alert-octagon" class="text-red-700 shrink-0 mt-0.5" style="font-size:14px"></tas-icon>
+            <div class="text-sm text-slate-700">
+              <p class="font-medium text-red-800">Quota atteint : les envois sont abandonnés</p>
+              <p class="text-xs text-red-700 mt-0.5">
+                Les messages ne sont pas mis en attente : ils partent en rebut sans nouvelle
+                tentative, et ne seront pas renvoyés quand le quota repartira. Relevez la limite
+                pour rétablir l'envoi.
+              </p>
+            </div>
+          </div>
+        }
+
+        @if (canSetQuota()) {
+          <!--
+            Formulaire distinct de celui de la configuration : le quota part sur un autre endpoint,
+            avec une autre permission, et les deux enregistrements sont indépendants.
+          -->
+          <form [formRoot]="quotaFormSchema" class="flex items-start gap-3">
+            <tas-form-field class="max-w-xs">
+              <tas-label>Limite mensuelle</tas-label>
+              <input tasInput type="number" placeholder="10000"
+                [formField]="quotaFormSchema.monthlyQuotaLimit" />
+              <tas-hint>Nombre d'e-mails autorisés par mois pour ce tenant.</tas-hint>
+              @if (quotaFormSchema.monthlyQuotaLimit().touched() && quotaFormSchema.monthlyQuotaLimit().invalid()) {
+                <tas-error>{{ quotaFormSchema.monthlyQuotaLimit().errors()[0].message }}</tas-error>
+              }
+            </tas-form-field>
+            <button tas-outlined-button color="primary" type="button" class="shrink-0 mt-6"
+              [disabled]="quotaFormSchema().invalid() || isSavingQuota()"
+              [isLoading]="isSavingQuota()" (click)="saveQuota()">
+              Mettre à jour
+            </button>
+            @if (quotaLimit()) {
+              <button tas-outlined-button color="warn" type="button" class="shrink-0 mt-6"
+                [disabled]="isSavingQuota()" (click)="confirmClearQuota()">
+                Supprimer la limite
+              </button>
+            }
+          </form>
+        }
+      </div>
+    </tas-card>
+  </div>
+}

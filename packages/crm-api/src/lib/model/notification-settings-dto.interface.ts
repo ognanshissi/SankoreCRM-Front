@@ -18,7 +18,12 @@ export interface NotificationSettingsDto {
     fromName?: string | null;
     replyToEmail?: string | null;
     sendingDomain?: string | null;
-    credentialVaultPathRef?: string | null;
+    hasCredential?: boolean;
+    smtpHost?: string | null;
+    smtpPort?: number | null;
+    smtpUsername?: string | null;
+    smtpUseSsl?: boolean;
+    smtpUseStartTls?: boolean;
     monthlyQuotaLimit?: number | null;
     currentMonthUsageCount?: number;
     updatedAt?: string;

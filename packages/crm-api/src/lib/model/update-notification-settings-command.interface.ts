@@ -17,6 +17,13 @@ export interface UpdateNotificationSettingsCommand {
     fromName?: string | null;
     replyToEmail?: string | null;
     sendingDomain?: string | null;
-    credentialVaultPath?: string | null;
+    credential?: string | null;
+    smtpHost?: string | null;
+    smtpPort?: number | null;
+    smtpUsername?: string | null;
+    smtpUseSsl?: boolean;
+    smtpUseStartTls?: boolean;
+    readonly resourceType?: string | null;
+    readonly resourceId?: string | null;
 }
 
