@@ -8,8 +8,9 @@ import { Component, HostBinding, Input } from '@angular/core';
     `
     @reference "../../tailwind-ref.css";
     tas-hint {
-        display: block;
-        @apply text-[11px] font-sans;
+      display: block;
+      font-size: 10px;
+      color: var(--color-neutral);
     }`
   ]
 })

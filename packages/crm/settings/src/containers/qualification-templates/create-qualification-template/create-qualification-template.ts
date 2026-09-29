@@ -118,8 +118,8 @@ export class CreateQualificationTemplateComponent {
             description: value.description || null,
             productCategory: (value.productCategory || null) as any,
             productCode: value.productCode || null,
-            sections: null,
-            questions: null,
+            sections: [],
+            questions: [],
           })
           .pipe(
             catchError(() => {

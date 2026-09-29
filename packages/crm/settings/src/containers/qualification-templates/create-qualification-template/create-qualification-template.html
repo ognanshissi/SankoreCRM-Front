@@ -63,7 +63,7 @@
   </tas-drawer-content>
 
   <tas-drawer-action>
-    <button tas-outlined-button color="primary" type="button" (click)="close()">Annuler</button>
+    <button tas-outlined-button type="button" (click)="close()"> <tas-icon iconName="feather:x"></tas-icon> &nbsp; Annuler</button>
     <button
       tas-raised-button
       color="primary"
@@ -72,6 +72,7 @@
       [disabled]="formSchema().invalid() || formSchema().submitting()"
       [isLoading]="formSchema().submitting()"
     >
+      <tas-icon iconName="feather:check"></tas-icon> &nbsp;
       Créer le formulaire
     </button>
   </tas-drawer-action>
