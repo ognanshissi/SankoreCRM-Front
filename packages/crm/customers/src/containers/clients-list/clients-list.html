@@ -21,6 +21,10 @@
         </button>
       }
       @if (canCreate()) {
+        <button tas-outlined-button type="button" (click)="goToImport()">
+          <tas-icon iconName="feather:upload" style="font-size:14px"></tas-icon>
+          Importer
+        </button>
         <button tas-raised-button color="primary" type="button" (click)="goToNewClient()">
           <tas-icon iconName="feather:plus" style="font-size:14px"></tas-icon>
           Nouveau client

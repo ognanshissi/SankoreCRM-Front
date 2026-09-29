@@ -204,19 +204,20 @@ export class OverviewComponent implements OnInit {
           description: 'Importer les utilisateurs depuis différentes sources',
         },
         {
-          title: 'Importer les leads / contacts',
-          type: 'basic',
-          id: 'data_import_contacts',
-          link: '/settings/import-contacts',
-          description: 'Importer les contacts depuis différentes sources',
-        },
-        {
           title: 'Importer les clients',
           type: 'basic',
           id: 'data_import_clients',
           link: '/settings/import-clients',
-          description: 'Importer les clients depuis différentes sources',
+          permission: 'customers:create',
+          description: 'Importer les clients depuis un fichier CSV/Excel ou Google Sheets',
         },
+        {
+          title: 'Importer les leads',
+          type: 'basic',
+          id: 'data_import_contacts',
+          link: '/settings/import-contacts',
+          description: 'Importer les contacts depuis différentes sources',
+        }
       ],
     },
     {

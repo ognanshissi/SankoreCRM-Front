@@ -9,6 +9,7 @@ api/bootstrap.service.ts
 api/client-contact-points.service.ts
 api/client-duplicates.service.ts
 api/client-groups.service.ts
+api/client-import.service.ts
 api/client-lifecycle.service.ts
 api/client-merges.service.ts
 api/client-relationships.service.ts
@@ -118,10 +119,15 @@ model/channel-metadata.interface.ts
 model/client-contact-point-dto.interface.ts
 model/client-detail-dto.interface.ts
 model/client-export-status-dto.interface.ts
+model/client-google-sheet-import-request.interface.ts
+model/client-import-job-created-result.interface.ts
+model/client-import-row-failure.interface.ts
+model/client-import-status-dto.interface.ts
 model/client-lifecycle-state-dto.interface.ts
 model/client-loyalty-score-dto.interface.ts
 model/client-merge-request-dto-paged-result.interface.ts
 model/client-merge-request-dto.interface.ts
+model/client-row-validation-result.interface.ts
 model/client-search-item-dto-paged-result.interface.ts
 model/client-search-item-dto.interface.ts
 model/client-status-history-dto-paged-result.interface.ts
@@ -399,6 +405,7 @@ model/user-import-status-dto.interface.ts
 model/user-permissions-dto.interface.ts
 model/user-role-dto.interface.ts
 model/user-status-stats-dto.interface.ts
+model/validate-client-import-response.interface.ts
 model/validate-import-response.interface.ts
 model/validate-lead-import-response.interface.ts
 model/verify-token-response.interface.ts

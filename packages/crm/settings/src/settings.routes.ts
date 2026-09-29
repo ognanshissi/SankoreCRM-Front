@@ -208,6 +208,12 @@ const settingsRoutes: Routes = [
     loadComponent: () => import('./containers/import-users/import-users'),
   },
   {
+    path: 'import-clients',
+    // Les trois opérations d'import client déclarent `customers:create` dans leur description.
+    canActivate: [hasPermissionGuard('customers:create')],
+    loadComponent: () => import('./containers/import-clients/import-clients'),
+  },
+  {
     path: 'lead-sources',
     canActivate: [hasPermissionGuard('lead:source:read')],
     loadComponent: () => import('./containers/lead-sources/lead-sources'),

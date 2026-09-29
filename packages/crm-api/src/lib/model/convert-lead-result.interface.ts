@@ -16,6 +16,9 @@ export interface ConvertLeadResult {
     leadId?: string;
     customerId?: string;
     convertedAt?: string;
+    blockingCode?: string | null;
+    existingCustomerId?: string | null;
+    existingCustomerNumber?: string | null;
     duplicateDetected?: boolean;
     potentialDuplicates?: Array<DuplicateMatchResult> | null;
 }

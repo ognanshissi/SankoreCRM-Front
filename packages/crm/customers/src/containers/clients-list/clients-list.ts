@@ -363,6 +363,14 @@ export class ClientsListPage implements OnInit {
   }
 
   /**
+   * L'écran d'import vit dans le module Paramétrage, avec celui des utilisateurs : c'est là que
+   * le repo regroupe les imports (cf. le groupe « Données & Importation » de l'aperçu).
+   */
+  public goToImport(): void {
+    this._router.navigate(['/settings/import-clients']);
+  }
+
+  /**
    * AC4 — la saisie infructueuse est transmise à l'assistant de création,
    * avec le critère détecté pour qu'il sache dans quel champ la placer.
    */
