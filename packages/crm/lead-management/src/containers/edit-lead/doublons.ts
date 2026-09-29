@@ -1,4 +1,4 @@
-import { Component, effect, inject, input, signal } from '@angular/core';
+import { Component, computed, effect, inject, input, signal } from '@angular/core';
 import { catchError, EMPTY, switchMap } from 'rxjs';
 import { TasCard } from '@talisoft/ui/card';
 import { TasSpinner } from '@talisoft/ui/spinner';
@@ -13,6 +13,8 @@ import {
   DuplicateMatchResult,
 } from '@sankore/crm-api';
 import { PermissionsService } from '@sankore/crm/common';
+import { LeadEditContext } from './lead-edit-context';
+import { ConvertedLeadNotice } from './converted-lead-notice';
 
 function statusMeta(status: string | null | undefined): { label: string; severity: Severity } {
   switch (status) {
@@ -36,7 +38,7 @@ function confidenceColor(score: number | undefined): string {
 
 @Component({
   selector: 'lead-doublons',
-  imports: [TasCard, TasSpinner, TasIcon, Button, TasTag, TimeagoPipe],
+  imports: [TasCard, TasSpinner, TasIcon, Button, TasTag, TimeagoPipe, ConvertedLeadNotice],
   template: `
     @if (isLoading()) {
       <div class="flex justify-center py-24">
@@ -44,6 +46,7 @@ function confidenceColor(score: number | undefined): string {
       </div>
     } @else {
       <div class="pb-6 flex flex-col gap-4">
+        <converted-lead-notice></converted-lead-notice>
 
         @if (duplicates().length === 0) {
           <tas-card>
@@ -205,8 +208,18 @@ function confidenceColor(score: number | undefined): string {
 })
 export class LeadDoublonsPage {
   private readonly _permissions = inject(PermissionsService);
-  public readonly canMerge = this._permissions.can('lead:merge');
-  public readonly canDismissDuplicate = this._permissions.can('lead:duplicate:dismiss');
+  private readonly _leadEditContext = inject(LeadEditContext);
+  // Fusionner écrit dans le lead courant (« Les données ont été fusionnées dans
+  // le lead courant »), et écarter un doublon enregistre une décision sur lui :
+  // les deux tombent sous la règle du lead converti, figé.
+  private readonly _canMerge = this._permissions.can('lead:merge');
+  private readonly _canDismissDuplicate = this._permissions.can('lead:duplicate:dismiss');
+  public readonly canMerge = computed(
+    () => this._canMerge() && !this._leadEditContext.isReadOnly(),
+  );
+  public readonly canDismissDuplicate = computed(
+    () => this._canDismissDuplicate() && !this._leadEditContext.isReadOnly(),
+  );
 
   private readonly _leadsApi = inject(LeadsApiService);
   private readonly _snackbar = inject(SnackbarService);

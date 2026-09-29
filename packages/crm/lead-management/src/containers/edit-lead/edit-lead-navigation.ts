@@ -17,6 +17,7 @@ import { Severity, TasTag } from '@talisoft/ui/tag';
 import { TimeagoPipe } from '@talisoft/ui/timeago';
 import { Menu, MenuItem, TasMenuTrigger } from '@talisoft/ui/menu';
 import { catchError, EMPTY } from 'rxjs';
+import { LeadEditContext } from './lead-edit-context';
 
 interface LeadMenuItem {
   label: string;
@@ -165,7 +166,12 @@ function parseFactors(factorsJson: string | null | undefined): ScoreFactor[] {
 
           <ng-template #actionsMenu>
             <tas-menu>
-              @if (canUpdate()) {
+              <!--
+                Un lead converti est figé : les actions qui l'écrivent
+                disparaissent du menu. Celles qui restent (convertir, clôturer,
+                nurturing) étaient déjà conditionnées au statut.
+              -->
+              @if (canUpdate() && !isConverted()) {
                 <tas-menu-item>
                   <button type="button" class="w-full flex items-center gap-2 text-slate-700" (click)="openEditInfoDrawer()">
                     <tas-icon iconName="feather:edit-2" class="text-slate-400" style="font-size:13px"></tas-icon>
@@ -173,18 +179,20 @@ function parseFactors(factorsJson: string | null | undefined): ScoreFactor[] {
                   </button>
                 </tas-menu-item>
               }
-              <tas-menu-item>
-                <button type="button" class="w-full flex items-center gap-2  text-slate-700" (click)="openReassignDrawer()">
-                  <tas-icon iconName="feather:user-plus" class="text-slate-400" style="font-size:13px"></tas-icon>
-                  Réassigner à un agent
-                </button>
-              </tas-menu-item>
-              <tas-menu-item [disabled]="isReturningToQueue()">
-                <button type="button" class="w-full flex items-center gap-2 text-slate-700" (click)="returnToQueue()">
-                  <tas-icon iconName="feather:corner-down-left" class="text-slate-400" style="font-size:13px"></tas-icon>
-                  Remettre en file d'attente
-                </button>
-              </tas-menu-item>
+              @if (!isConverted()) {
+                <tas-menu-item>
+                  <button type="button" class="w-full flex items-center gap-2  text-slate-700" (click)="openReassignDrawer()">
+                    <tas-icon iconName="feather:user-plus" class="text-slate-400" style="font-size:13px"></tas-icon>
+                    Réassigner à un agent
+                  </button>
+                </tas-menu-item>
+                <tas-menu-item [disabled]="isReturningToQueue()">
+                  <button type="button" class="w-full flex items-center gap-2 text-slate-700" (click)="returnToQueue()">
+                    <tas-icon iconName="feather:corner-down-left" class="text-slate-400" style="font-size:13px"></tas-icon>
+                    Remettre en file d'attente
+                  </button>
+                </tas-menu-item>
+              }
               @if (lead()!.status !== 'Converted') {
                 <tas-menu-item>
                   <button type="button" class="w-full flex items-center gap-2  text-slate-700" (click)="openNurtureRecycleDrawer()">
@@ -332,6 +340,12 @@ function parseFactors(factorsJson: string | null | undefined): ScoreFactor[] {
                             </div>
                           }
                         }
+                        <!--
+                          La température écrit sur le lead : le sélecteur
+                          disparaît une fois converti, la valeur atteinte reste
+                          lisible au-dessus.
+                        -->
+                        @if (!isConverted()) {
                         <div class="px-3 py-2 border-t border-slate-100 bg-slate-50">
                           <p class="text-[10px] text-slate-400 mb-1.5">Température</p>
                           <div class="flex items-center gap-1">
@@ -349,6 +363,7 @@ function parseFactors(factorsJson: string | null | undefined): ScoreFactor[] {
                             }
                           </div>
                         </div>
+                        }
                       </div>
                     }
                   </div>
@@ -357,7 +372,12 @@ function parseFactors(factorsJson: string | null | undefined): ScoreFactor[] {
             }
 
             <!-- Next action widget -->
-            @if (nextAction()) {
+            <!--
+              L'action recommandée porte sur un lead encore en cours : sur un
+              lead converti, l'accepter ou l'ignorer écrirait une décision qui
+              n'a plus d'objet.
+            -->
+            @if (nextAction() && !isConverted()) {
               <div class="p-3 border-b border-gray-100">
                 <div class="p-2.5 rounded-lg border border-primary/20 bg-primary/5">
                   <div class="flex items-center gap-1.5 mb-1">
@@ -427,12 +447,15 @@ export class EditLeadNavigation implements OnDestroy {
   private readonly _snackbar = inject(SnackbarService);
   private readonly _confirmDialog = inject(ConfirmDialogService);
   private readonly _router = inject(Router);
+  private readonly _leadEditContext = inject(LeadEditContext);
   private _pollTimer: ReturnType<typeof setInterval> | null = null;
 
   public readonly id = input.required<string>();
 
   public isLoading = signal(true);
   public lead = signal<LeadDto | null>(null);
+  /** Lu par le template : un lead converti n'offre plus d'action d'écriture. */
+  public readonly isConverted = computed(() => this.lead()?.status === 'Converted');
   public notFound = signal(false);
   public showFactors = signal(false);
   public isReopening = signal(false);
@@ -484,6 +507,12 @@ export class EditLeadNavigation implements OnDestroy {
   ];
 
   constructor() {
+    // Le lead est rechargé à une dizaine d'endroits (actions du menu, polling).
+    // Un effet de recopie évite d'avoir à penser au contexte partagé à chaque
+    // fois : il suffit qu'un jour un `lead.set()` de plus soit ajouté ici pour
+    // que les onglets restent corrects.
+    effect(() => this._leadEditContext.set(this.lead()));
+
     effect(() => {
       const id = this.id();
       this.isLoading.set(true);

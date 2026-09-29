@@ -7,10 +7,12 @@ import { Button } from '@talisoft/ui/button';
 import { TimeagoPipe } from '@talisoft/ui/timeago';
 import { SnackbarService } from '@talisoft/ui/snackbar';
 import { LeadsApiService, LeadDto, ScoreHistoryDto } from '@sankore/crm-api';
+import { LeadEditContext } from './lead-edit-context';
+import { ConvertedLeadNotice } from './converted-lead-notice';
 
 @Component({
   selector: 'lead-score',
-  imports: [TasCard, TasSpinner, TasIcon, Button, TimeagoPipe],
+  imports: [TasCard, TasSpinner, TasIcon, Button, TimeagoPipe, ConvertedLeadNotice],
   template: `
     @if (isLoading()) {
       <div class="flex justify-center py-24">
@@ -18,26 +20,33 @@ import { LeadsApiService, LeadDto, ScoreHistoryDto } from '@sankore/crm-api';
       </div>
     } @else {
       <div class="pb-6 flex flex-col gap-4">
+        <converted-lead-notice></converted-lead-notice>
 
         <!-- Current score -->
         <tas-card>
           <div class="p-4">
             <div class="flex items-center justify-between mb-4">
               <p class="font-semibold text-slate-800">Score actuel</p>
-              <button
-                tas-outlined-button
-                color="primary"
-                type="button"
-                (click)="recalculate()"
-                [disabled]="isRecalculating()"
-              >
-                @if (isRecalculating()) {
-                  <tas-spinner size="3" class="text-primary"></tas-spinner>
-                } @else {
-                  <tas-icon iconName="feather:refresh-cw" style="font-size:14px"></tas-icon>
-                }
-                Recalculer
-              </button>
+              <!--
+                Le recalcul écrit le score du lead : il disparaît une fois le
+                lead converti, comme les autres actions d'écriture de l'écran.
+              -->
+              @if (!leadEditContext.isReadOnly()) {
+                <button
+                  tas-outlined-button
+                  color="primary"
+                  type="button"
+                  (click)="recalculate()"
+                  [disabled]="isRecalculating()"
+                >
+                  @if (isRecalculating()) {
+                    <tas-spinner size="3" class="text-primary"></tas-spinner>
+                  } @else {
+                    <tas-icon iconName="feather:refresh-cw" style="font-size:14px"></tas-icon>
+                  }
+                  Recalculer
+                </button>
+              }
             </div>
             <div class="flex items-end gap-2">
               <span class="text-4xl font-bold text-slate-900 tabular-nums leading-none">
@@ -106,6 +115,8 @@ import { LeadsApiService, LeadDto, ScoreHistoryDto } from '@sankore/crm-api';
   `,
 })
 export class LeadScorePage {
+  public readonly leadEditContext = inject(LeadEditContext);
+
   private readonly _leadsApiService = inject(LeadsApiService);
   private readonly _snackbar = inject(SnackbarService);
 

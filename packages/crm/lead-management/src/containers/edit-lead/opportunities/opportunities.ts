@@ -1,4 +1,4 @@
-import { Component, inject, input, signal, OnInit } from '@angular/core';
+import { Component, OnInit, computed, inject, input, signal } from '@angular/core';
 import { TasCard } from '@talisoft/ui/card';
 import { TasIcon } from '@talisoft/ui/icon';
 import { TasTag, Severity } from '@talisoft/ui/tag';
@@ -11,6 +11,8 @@ import {
 } from './opportunity.model';
 import { CreateOpportunityDrawer } from './create-opportunity-drawer';
 import { PermissionsService } from '@sankore/crm/common';
+import { LeadEditContext } from '../lead-edit-context';
+import { ConvertedLeadNotice } from '../converted-lead-notice';
 
 function stageSeverity(stage: string): Severity {
   switch (stage) {
@@ -40,9 +42,10 @@ function formatMoney(opp: OpportunityDto): string {
 
 @Component({
   selector: 'lead-opportunities',
-  imports: [TasCard, TasIcon, TasTag, Button],
+  imports: [TasCard, TasIcon, TasTag, Button, ConvertedLeadNotice],
   template: `
     <div class="pb-6">
+      <converted-lead-notice></converted-lead-notice>
       <tas-card>
         <div class="p-4 border-b border-slate-100 flex items-center justify-between">
           <div>
@@ -149,7 +152,14 @@ function formatMoney(opp: OpportunityDto): string {
 })
 export class LeadOpportunitiesPage implements OnInit {
   private readonly _permissions = inject(PermissionsService);
-  public readonly canManageOpportunity = this._permissions.can('lead:opportunity:manage');
+  private readonly _leadEditContext = inject(LeadEditContext);
+  // Un lead converti est figé : l'état est replié dans la garde de droits
+  // que le template lit déjà, pour qu'aucune action d'écriture ne puisse y
+  // échapper.
+  private readonly _canManageOpportunity = this._permissions.can('lead:opportunity:manage');
+  public readonly canManageOpportunity = computed(
+    () => this._canManageOpportunity() && !this._leadEditContext.isReadOnly(),
+  );
 
   private readonly _sideDrawer = inject(SideDrawerService);
 

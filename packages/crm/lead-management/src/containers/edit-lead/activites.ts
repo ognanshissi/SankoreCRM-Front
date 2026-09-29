@@ -1,4 +1,4 @@
-import { Component, effect, inject, input, signal } from '@angular/core';
+import { Component, computed, effect, inject, input, signal } from '@angular/core';
 import { catchError, EMPTY } from 'rxjs';
 import { TasCard } from '@talisoft/ui/card';
 import { TasSpinner } from '@talisoft/ui/spinner';
@@ -10,6 +10,8 @@ import { SideDrawerService } from '@talisoft/ui/side-drawer';
 import { LeadsApiService, ActivityDto, ActivityDtoTypeEnum } from '@sankore/crm-api';
 import { LogActivityDrawer } from './log-activity-drawer';
 import { PermissionsService } from '@sankore/crm/common';
+import { LeadEditContext } from './lead-edit-context';
+import { ConvertedLeadNotice } from './converted-lead-notice';
 
 function activityTypeMeta(type: ActivityDtoTypeEnum | undefined): { icon: string; label: string; severity: Severity } {
   switch (type) {
@@ -27,7 +29,7 @@ function activityTypeMeta(type: ActivityDtoTypeEnum | undefined): { icon: string
 
 @Component({
   selector: 'lead-activites',
-  imports: [TasCard, TasSpinner, TasIcon, TasTag, TimeagoPipe, Button],
+  imports: [TasCard, TasSpinner, TasIcon, TasTag, TimeagoPipe, Button, ConvertedLeadNotice],
   template: `
     @if (isLoading()) {
       <div class="flex justify-center py-24">
@@ -35,6 +37,7 @@ function activityTypeMeta(type: ActivityDtoTypeEnum | undefined): { icon: string
       </div>
     } @else {
       <div class="pb-6">
+        <converted-lead-notice></converted-lead-notice>
         <tas-card>
           <div class="p-4 border-b border-slate-100 flex items-center justify-between">
             <div>
@@ -153,7 +156,14 @@ function activityTypeMeta(type: ActivityDtoTypeEnum | undefined): { icon: string
 })
 export class LeadActivitesPage {
   private readonly _permissions = inject(PermissionsService);
-  public readonly canLogActivity = this._permissions.can('lead:activity:log');
+  private readonly _leadEditContext = inject(LeadEditContext);
+  // Un lead converti est figé : l'état est replié dans la garde de droits
+  // que le template lit déjà, pour qu'aucune action d'écriture ne puisse y
+  // échapper.
+  private readonly _canLogActivity = this._permissions.can('lead:activity:log');
+  public readonly canLogActivity = computed(
+    () => this._canLogActivity() && !this._leadEditContext.isReadOnly(),
+  );
 
   private readonly _leadsApiService = inject(LeadsApiService);
   private readonly _sideDrawer = inject(SideDrawerService);

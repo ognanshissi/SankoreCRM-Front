@@ -1,4 +1,4 @@
-import { Component, effect, inject, input, signal } from '@angular/core';
+import { Component, computed, effect, inject, input, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { catchError, EMPTY } from 'rxjs';
 import { TasCard } from '@talisoft/ui/card';
@@ -12,6 +12,8 @@ import { TimeagoPipe } from '@talisoft/ui/timeago';
 import { SnackbarService } from '@talisoft/ui/snackbar';
 import { LeadsApiService, ReminderDto, ReminderDtoStatusEnum } from '@sankore/crm-api';
 import { AuthenticationService, PermissionsService } from '@sankore/crm/common';
+import { LeadEditContext } from './lead-edit-context';
+import { ConvertedLeadNotice } from './converted-lead-notice';
 
 function reminderStatusMeta(r: ReminderDto): { label: string; severity: Severity; icon: string } {
   if (r.status === ReminderDtoStatusEnum.Completed) return { label: 'Terminé', severity: 'success', icon: 'feather:check-circle' };
@@ -22,47 +24,53 @@ function reminderStatusMeta(r: ReminderDto): { label: string; severity: Severity
 
 @Component({
   selector: 'lead-reminders',
-  imports: [FormsModule, TasCard, TasSpinner, TasIcon, TasTag, Button, TasFormField, TasLabel, TasInput, TimeagoPipe],
+  imports: [FormsModule, TasCard, TasSpinner, TasIcon, TasTag, Button, TasFormField, TasLabel, TasInput, TimeagoPipe, ConvertedLeadNotice],
   template: `
     @if (isLoading()) {
       <div class="flex justify-center py-24"><tas-spinner size="10" class="text-primary"></tas-spinner></div>
     } @else {
       <div class="pb-6 flex flex-col gap-4">
+        <converted-lead-notice></converted-lead-notice>
         <!-- Create -->
-        <tas-card>
-          <div class="p-4 border-b border-slate-100">
-            <p class="font-semibold text-slate-800">Nouveau rappel</p>
-          </div>
-          <div class="p-4">
-            <div class="grid grid-cols-3 gap-3">
-              <tas-form-field>
-                <tas-label>Titre <span class="text-red-500">*</span></tas-label>
-                <input tasInput type="text" placeholder="Ex : Rappeler le client"
-                  [ngModel]="newTitle()" (ngModelChange)="newTitle.set($event)" />
-              </tas-form-field>
-              <tas-form-field>
-                <tas-label>Échéance <span class="text-red-500">*</span></tas-label>
-                <input tasInput type="datetime-local" [ngModel]="newDueAt()" (ngModelChange)="newDueAt.set($event)" />
-              </tas-form-field>
-              <div class="flex items-end">
-                @if (canManageReminder()) {
+        <!--
+          La carte entière disparaît quand la création est interdite (droit
+          manquant ou lead converti) : n'en retirer que le bouton laisserait
+          un formulaire qu'on peut remplir sans jamais l'enregistrer.
+        -->
+        @if (canManageReminder()) {
+          <tas-card>
+            <div class="p-4 border-b border-slate-100">
+              <p class="font-semibold text-slate-800">Nouveau rappel</p>
+            </div>
+            <div class="p-4">
+              <div class="grid grid-cols-3 gap-3">
+                <tas-form-field>
+                  <tas-label>Titre <span class="text-red-500">*</span></tas-label>
+                  <input tasInput type="text" placeholder="Ex : Rappeler le client"
+                    [ngModel]="newTitle()" (ngModelChange)="newTitle.set($event)" />
+                </tas-form-field>
+                <tas-form-field>
+                  <tas-label>Échéance <span class="text-red-500">*</span></tas-label>
+                  <input tasInput type="datetime-local" [ngModel]="newDueAt()" (ngModelChange)="newDueAt.set($event)" />
+                </tas-form-field>
+                <div class="flex items-end">
                   <button tas-button color="primary" type="button" class="text-xs"
                     [disabled]="isCreating() || !newTitle().trim() || !newDueAt()" (click)="create()">
                     @if (isCreating()) { <tas-spinner size="3" class="text-white"></tas-spinner> }
                     <tas-icon iconName="feather:bell" style="font-size:12px"></tas-icon> Créer
                   </button>
-                }
+                </div>
+              </div>
+              <div class="mt-2">
+                <tas-form-field>
+                  <tas-label>Notes</tas-label>
+                  <input tasInput type="text" placeholder="Notes optionnelles…"
+                    [ngModel]="newNotes()" (ngModelChange)="newNotes.set($event)" />
+                </tas-form-field>
               </div>
             </div>
-            <div class="mt-2">
-              <tas-form-field>
-                <tas-label>Notes</tas-label>
-                <input tasInput type="text" placeholder="Notes optionnelles…"
-                  [ngModel]="newNotes()" (ngModelChange)="newNotes.set($event)" />
-              </tas-form-field>
-            </div>
-          </div>
-        </tas-card>
+          </tas-card>
+        }
 
         <!-- List -->
         <tas-card>
@@ -139,7 +147,14 @@ function reminderStatusMeta(r: ReminderDto): { label: string; severity: Severity
 })
 export class LeadRemindersPage {
   private readonly _permissions = inject(PermissionsService);
-  public readonly canManageReminder = this._permissions.can('lead:reminder:manage');
+  private readonly _leadEditContext = inject(LeadEditContext);
+  // Un lead converti est figé : l'état est replié dans la garde de droits
+  // que le template lit déjà, pour qu'aucune action d'écriture ne puisse y
+  // échapper.
+  private readonly _canManageReminder = this._permissions.can('lead:reminder:manage');
+  public readonly canManageReminder = computed(
+    () => this._canManageReminder() && !this._leadEditContext.isReadOnly(),
+  );
 
   private readonly _leadsApi = inject(LeadsApiService);
   private readonly _snackbar = inject(SnackbarService);

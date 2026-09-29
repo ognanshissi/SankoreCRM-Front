@@ -1,4 +1,4 @@
-import { Component, effect, inject, input, signal } from '@angular/core';
+import { Component, computed, effect, inject, input, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { DecimalPipe } from '@angular/common';
 import { catchError, EMPTY } from 'rxjs';
@@ -12,6 +12,8 @@ import { Button } from '@talisoft/ui/button';
 import { TimeagoPipe } from '@talisoft/ui/timeago';
 import { SnackbarService } from '@talisoft/ui/snackbar';
 import { LeadsApiService, LeadDto, TagDto } from '@sankore/crm-api';
+import { LeadEditContext } from './lead-edit-context';
+import { ConvertedLeadNotice } from './converted-lead-notice';
 import { AuthenticationService, PermissionsService } from '@sankore/crm/common';
 import { SideDrawerService } from '@talisoft/ui/side-drawer';
 import { EditLeadInfoDrawer, genderLabel } from './edit-lead-info-drawer';
@@ -63,7 +65,7 @@ function intentLabel(level: string | null | undefined): string {
 
 @Component({
   selector: 'lead-informations',
-  imports: [FormsModule, DecimalPipe, TasCard, TasSpinner, TasIcon, TasTag, TasInput, TasFormField, Button, TimeagoPipe],
+  imports: [FormsModule, DecimalPipe, TasCard, TasSpinner, TasIcon, TasTag, TasInput, TasFormField, Button, TimeagoPipe, ConvertedLeadNotice],
   template: `
     @if (isLoading()) {
       <div class="flex justify-center py-24">
@@ -71,6 +73,7 @@ function intentLabel(level: string | null | undefined): string {
       </div>
     } @else if (lead()) {
       <div class="pb-6 flex flex-col gap-4">
+        <converted-lead-notice></converted-lead-notice>
 
         <!-- Identity -->
         <tas-card>
@@ -217,7 +220,7 @@ function intentLabel(level: string | null | undefined): string {
                   <span class="text-xs text-slate-500 tabular-nums">
                     {{ ((lead()!.qualificationCompleteness ?? 0) * 100) | number:'1.0-0' }}%
                   </span>
-                  @if (!showQualOverride()) {
+                  @if (!showQualOverride() && canUpdate()) {
                     <button type="button" class="text-[10px] text-primary hover:underline" (click)="showQualOverride.set(true)">
                       Modifier
                     </button>
@@ -314,7 +317,7 @@ function intentLabel(level: string | null | undefined): string {
                 }
                 <button type="button" class="text-xs text-slate-400 hover:text-slate-600" (click)="showTagInput.set(false)">Annuler</button>
               </div>
-            } @else {
+            } @else if (canTag()) {
               <button type="button" class="text-xs text-primary hover:underline flex items-center gap-1" (click)="showTagInput.set(true)">
                 <tas-icon iconName="feather:plus" style="font-size:10px"></tas-icon> Ajouter un tag
               </button>
@@ -338,8 +341,19 @@ function intentLabel(level: string | null | undefined): string {
 })
 export class LeadInformationsPage {
   private readonly _permissions = inject(PermissionsService);
-  public readonly canTag = this._permissions.can('lead:tag');
-  public readonly canUpdate = this._permissions.can('lead:update');
+  private readonly _leadEditContext = inject(LeadEditContext);
+
+  // L'état « converti » est replié dans les gardes de droits déjà lues par le
+  // template : chaque action d'écriture passe par l'une d'elles, il n'y a donc
+  // pas d'endroit où la règle puisse être oubliée.
+  private readonly _canTag = this._permissions.can('lead:tag');
+  private readonly _canUpdate = this._permissions.can('lead:update');
+  public readonly canTag = computed(
+    () => this._canTag() && !this._leadEditContext.isReadOnly(),
+  );
+  public readonly canUpdate = computed(
+    () => this._canUpdate() && !this._leadEditContext.isReadOnly(),
+  );
 
   private readonly _leadsApiService = inject(LeadsApiService);
   private readonly _snackbar = inject(SnackbarService);

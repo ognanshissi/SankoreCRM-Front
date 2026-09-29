@@ -15,6 +15,8 @@ import {
   QualifyLeadResultNextActionEnum,
 } from '@sankore/crm-api';
 import { DynamicFormRendererComponent, DynamicFormSchema, DynamicFormAnswers, PRODUCT_TYPE_LABELS, PermissionsService } from '@sankore/crm/common';
+import { LeadEditContext } from './lead-edit-context';
+import { ConvertedLeadNotice } from './converted-lead-notice';
 
 type PageState = 'loading' | 'no-product' | 'no-template' | 'form' | 'submitted';
 
@@ -73,6 +75,7 @@ function templateToSchema(t: QualificationTemplateDto): DynamicFormSchema {
     TasTag,
     Button,
     DynamicFormRendererComponent,
+    ConvertedLeadNotice,
   ],
   template: `
     @switch (pageState()) {
@@ -165,106 +168,115 @@ function templateToSchema(t: QualificationTemplateDto): DynamicFormSchema {
       }
       @case ('form') {
         <div class="pb-6">
-          <!-- Product selector + form header -->
-          <div class="flex items-start justify-between gap-4 mb-4">
-            <div class="flex-1 min-w-0">
-              <h2 class="text-base font-semibold text-slate-800">{{ template()?.name }}</h2>
-              @if (template()?.description) {
-                <p class="text-sm text-slate-500 mt-0.5">{{ template()?.description }}</p>
-              }
-              <p class="text-xs text-slate-400 mt-1">
-                Version {{ template()?.version }}
-                @if (hasDraft()) {
-                  — <span class="text-amber-600 font-medium">Brouillon restauré</span>
+          <converted-lead-notice></converted-lead-notice>
+
+          <!--
+            Sur un lead converti, le formulaire disparaît au lieu d'être
+            affiché sans bouton « Soumettre » : une saisie qu'on ne peut pas
+            enregistrer se lit comme une panne.
+          -->
+          @if (!leadEditContext.isConverted()) {
+            <!-- Product selector + form header -->
+            <div class="flex items-start justify-between gap-4 mb-4">
+              <div class="flex-1 min-w-0">
+                <h2 class="text-base font-semibold text-slate-800">{{ template()?.name }}</h2>
+                @if (template()?.description) {
+                  <p class="text-sm text-slate-500 mt-0.5">{{ template()?.description }}</p>
                 }
-              </p>
+                <p class="text-xs text-slate-400 mt-1">
+                  Version {{ template()?.version }}
+                  @if (hasDraft()) {
+                    — <span class="text-amber-600 font-medium">Brouillon restauré</span>
+                  }
+                </p>
+              </div>
+              @if (hasDraft()) {
+                @if (canQualify()) {
+                  <button
+                    tas-outlined-button
+                    type="button"
+                    (click)="clearDraft()"
+                    class="text-xs shrink-0"
+                  >
+                    <tas-icon iconName="feather:trash-2" style="font-size:12px"></tas-icon>
+                    Effacer le brouillon
+                  </button>
+                }
+              }
             </div>
-            @if (hasDraft()) {
+
+            <!-- Product tabs (when multiple products available) -->
+            @if (availableProducts().length > 1) {
+              <div class="flex items-center gap-1 mb-4 overflow-x-auto">
+                @for (p of availableProducts(); track p.value) {
+                  <button
+                    type="button"
+                    class="px-3 py-1.5 rounded-full text-xs font-medium transition-colors whitespace-nowrap"
+                    [class]="p.value === selectedProduct()
+                      ? 'bg-primary/15 text-primary'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'"
+                    (click)="onProductSwitch(p.value)"
+                  >
+                    {{ p.label }}
+                  </button>
+                }
+              </div>
+            }
+
+            <!-- Confirm product switch dialog -->
+            @if (showSwitchConfirm()) {
+              <button class="fixed inset-0 z-50 flex items-center justify-center bg-black/30" (click)="cancelSwitch()">
+                <tas-card class="w-full max-w-sm shadow-xl" (click)="$event.stopPropagation()">
+                  <div class="p-5">
+                    <div class="flex items-center gap-3 mb-3">
+                      <div class="w-10 h-10 rounded-full bg-amber-50 flex items-center justify-center shrink-0">
+                        <tas-icon iconName="feather:alert-triangle" class="text-amber-500" style="font-size:20px"></tas-icon>
+                      </div>
+                      <div>
+                        <p class="text-sm font-semibold text-slate-800">Changer de produit ?</p>
+                        <p class="text-xs text-slate-500 mt-0.5">
+                          Les réponses saisies pour « {{ productLabel(selectedProduct()) }} » seront perdues.
+                        </p>
+                      </div>
+                    </div>
+                    <div class="flex items-center justify-end gap-2 mt-4">
+                      <button tas-outlined-button type="button" (click)="cancelSwitch()">
+                        Annuler
+                      </button>
+                      <button tas-button color="primary" type="button" (click)="confirmSwitch()">
+                        Changer
+                      </button>
+                    </div>
+                  </div>
+                </tas-card>
+              </button>
+            }
+
+            <!-- Dynamic form (product-specific) -->
+            <dynamic-form-renderer
+              [schema]="formSchema()!"
+              [initialAnswers]="restoredAnswers()"
+              (answersChanged)="onAnswersChanged($event)"
+            ></dynamic-form-renderer>
+
+            <!-- Submit -->
+            <div class="flex items-center justify-end gap-3 mt-4">
+              @if (isSubmitting()) {
+                <tas-spinner size="4" class="text-primary"></tas-spinner>
+              }
               @if (canQualify()) {
                 <button
                   tas-outlined-button
+                  color="primary"
                   type="button"
-                  (click)="clearDraft()"
-                  class="text-xs shrink-0"
+                  [disabled]="isSubmitting()"
+                  (click)="handleSubmit()"
                 >
-                  <tas-icon iconName="feather:trash-2" style="font-size:12px"></tas-icon>
-                  Effacer le brouillon
-                </button>
-              }
-            }
-          </div>
-
-          <!-- Product tabs (when multiple products available) -->
-          @if (availableProducts().length > 1) {
-            <div class="flex items-center gap-1 mb-4 overflow-x-auto">
-              @for (p of availableProducts(); track p.value) {
-                <button
-                  type="button"
-                  class="px-3 py-1.5 rounded-full text-xs font-medium transition-colors whitespace-nowrap"
-                  [class]="p.value === selectedProduct()
-                    ? 'bg-primary/15 text-primary'
-                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'"
-                  (click)="onProductSwitch(p.value)"
-                >
-                  {{ p.label }}
+                  Soumettre la qualification
                 </button>
               }
             </div>
           }
-
-          <!-- Confirm product switch dialog -->
-          @if (showSwitchConfirm()) {
-            <button class="fixed inset-0 z-50 flex items-center justify-center bg-black/30" (click)="cancelSwitch()">
-              <tas-card class="w-full max-w-sm shadow-xl" (click)="$event.stopPropagation()">
-                <div class="p-5">
-                  <div class="flex items-center gap-3 mb-3">
-                    <div class="w-10 h-10 rounded-full bg-amber-50 flex items-center justify-center shrink-0">
-                      <tas-icon iconName="feather:alert-triangle" class="text-amber-500" style="font-size:20px"></tas-icon>
-                    </div>
-                    <div>
-                      <p class="text-sm font-semibold text-slate-800">Changer de produit ?</p>
-                      <p class="text-xs text-slate-500 mt-0.5">
-                        Les réponses saisies pour « {{ productLabel(selectedProduct()) }} » seront perdues.
-                      </p>
-                    </div>
-                  </div>
-                  <div class="flex items-center justify-end gap-2 mt-4">
-                    <button tas-outlined-button type="button" (click)="cancelSwitch()">
-                      Annuler
-                    </button>
-                    <button tas-button color="primary" type="button" (click)="confirmSwitch()">
-                      Changer
-                    </button>
-                  </div>
-                </div>
-              </tas-card>
-            </button>
-          }
-
-          <!-- Dynamic form (product-specific) -->
-          <dynamic-form-renderer
-            [schema]="formSchema()!"
-            [initialAnswers]="restoredAnswers()"
-            (answersChanged)="onAnswersChanged($event)"
-          ></dynamic-form-renderer>
-
-          <!-- Submit -->
-          <div class="flex items-center justify-end gap-3 mt-4">
-            @if (isSubmitting()) {
-              <tas-spinner size="4" class="text-primary"></tas-spinner>
-            }
-            @if (canQualify()) {
-              <button
-                tas-outlined-button
-                color="primary"
-                type="button"
-                [disabled]="isSubmitting()"
-                (click)="handleSubmit()"
-              >
-                Soumettre la qualification
-              </button>
-            }
-          </div>
         </div>
       }
     }
@@ -272,7 +284,14 @@ function templateToSchema(t: QualificationTemplateDto): DynamicFormSchema {
 })
 export class LeadQualificationPage implements OnDestroy {
   private readonly _permissions = inject(PermissionsService);
-  public readonly canQualify = this._permissions.can('lead:qualify');
+  public readonly leadEditContext = inject(LeadEditContext);
+  // Un lead converti est figé : l'état est replié dans la garde de droits
+  // que le template lit déjà, pour qu'aucune action d'écriture ne puisse y
+  // échapper.
+  private readonly _canQualify = this._permissions.can('lead:qualify');
+  public readonly canQualify = computed(
+    () => this._canQualify() && !this.leadEditContext.isReadOnly(),
+  );
 
   private readonly _leadsApiService = inject(LeadsApiService);
   private readonly _productsApiService = inject(ProductsApiService);

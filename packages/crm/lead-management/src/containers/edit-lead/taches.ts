@@ -1,4 +1,4 @@
-import { Component, effect, inject, input, signal } from '@angular/core';
+import { Component, computed, effect, inject, input, signal } from '@angular/core';
 import { catchError, EMPTY } from 'rxjs';
 import { TasCard } from '@talisoft/ui/card';
 import { TasSpinner } from '@talisoft/ui/spinner';
@@ -16,6 +16,8 @@ import {
 } from '@sankore/crm-api';
 import { CompleteTaskDrawer, DeclineTaskDrawer, CreateTaskDrawer } from '@sankore/crm/tasks';
 import { PermissionsService } from '@sankore/crm/common';
+import { LeadEditContext } from './lead-edit-context';
+import { ConvertedLeadNotice } from './converted-lead-notice';
 
 function statusMeta(status: CrmTaskDtoStatusEnum | undefined): { label: string; severity: Severity } {
   switch (status) {
@@ -52,7 +54,7 @@ function typeLabel(type: string | undefined): string {
 
 @Component({
   selector: 'lead-taches',
-  imports: [TasCard, TasSpinner, TasIcon, TasTag, TimeagoPipe, Button],
+  imports: [TasCard, TasSpinner, TasIcon, TasTag, TimeagoPipe, Button, ConvertedLeadNotice],
   template: `
     @if (isLoading()) {
       <div class="flex justify-center py-24">
@@ -60,6 +62,7 @@ function typeLabel(type: string | undefined): string {
       </div>
     } @else {
       <div class="pb-6">
+        <converted-lead-notice></converted-lead-notice>
         <tas-card>
           <div class="p-4 border-b border-slate-100 flex items-center justify-between">
             <div>
@@ -186,7 +189,14 @@ function typeLabel(type: string | undefined): string {
 })
 export class LeadTachesPage {
   private readonly _permissions = inject(PermissionsService);
-  public readonly canManageTask = this._permissions.can('lead:task:manage');
+  private readonly _leadEditContext = inject(LeadEditContext);
+  // Un lead converti est figé : l'état est replié dans la garde de droits
+  // que le template lit déjà, pour qu'aucune action d'écriture ne puisse y
+  // échapper.
+  private readonly _canManageTask = this._permissions.can('lead:task:manage');
+  public readonly canManageTask = computed(
+    () => this._canManageTask() && !this._leadEditContext.isReadOnly(),
+  );
 
   private readonly _tasksApi = inject(TasksApiService);
   private readonly _snackbar = inject(SnackbarService);

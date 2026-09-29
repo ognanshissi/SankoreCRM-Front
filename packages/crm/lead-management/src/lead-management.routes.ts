@@ -1,6 +1,7 @@
 import { hasPermissionGuard } from '@sankore/crm/common';
 import LeadHomepage from './containers/lead-homepage/lead-homepage';
 import EditLeadNavigation from './containers/edit-lead/edit-lead-navigation';
+import { LeadEditContext } from './containers/edit-lead/lead-edit-context';
 
 export const leadManagementRoutes = [
   {
@@ -17,6 +18,10 @@ export const leadManagementRoutes = [
     path: ':id',
     canActivate: [hasPermissionGuard('lead:read')],
     loadComponent: () => EditLeadNavigation,
+    // Fourni au niveau de la route, et non du composant : les onglets sont des
+    // routes enfants chargées en lazy, et c'est l'injecteur de la route parente
+    // qu'elles héritent toutes de façon garantie.
+    providers: [LeadEditContext],
     children: [
       { path: '', redirectTo: 'informations', pathMatch: 'full' as const },
       {
