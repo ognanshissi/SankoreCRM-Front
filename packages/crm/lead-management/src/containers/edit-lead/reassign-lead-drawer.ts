@@ -320,7 +320,7 @@ export class ReassignLeadDrawer implements OnInit {
         catchError(() => of({ items: [] as UserDto[], totalCount: 0 })),
       ),
       dispatch: this._leadsApiService.dispatchLead(leadId, {
-        strategy: DispatchLeadRequestStrategyEnum.CompatibilityScoring,
+        strategy: DispatchLeadRequestStrategyEnum.NUMBER_0,
       }).pipe(
         catchError(() => of(null)),
       ),

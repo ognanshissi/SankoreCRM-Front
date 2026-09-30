@@ -3,6 +3,7 @@ import {
   Component,
   inject,
   input,
+  OnInit,
   signal,
 } from '@angular/core';
 import { RouterLink } from '@angular/router';
@@ -44,7 +45,7 @@ type ResetPasswordStep = 'checking' | 'invalid' | 'form' | 'success';
     FormField,
   ],
 })
-export class ResetPasswordComponent {
+export class ResetPasswordComponent implements OnInit {
   private readonly _authApiService = inject(AuthApiService);
   private readonly _loadingService = inject(Loading);
 
@@ -95,7 +96,7 @@ export class ResetPasswordComponent {
 
     this._loadingService
       .showLoaderUntilCompleted(
-        this._authApiService.refreshToken({
+        this._authApiService.resetPassword({
           newPassword: this.formSchema()?.value().password,
           confirmPassword: this.formSchema()?.value().confirmPassword,
           userId: this.userId()!,
@@ -118,9 +119,7 @@ export class ResetPasswordComponent {
     }
 
     this._loadingService
-      .showLoaderUntilCompleted(
-        this._authApiService.validateActivationToken(userId, token),
-      )
+      .showLoaderUntilCompleted(this._authApiService.validateResetToken(userId, token))
       .subscribe({
         next: () => this.step.set('form'),
         error: () => this.step.set('invalid'),

@@ -12,17 +12,14 @@
 
 
 export interface DispatchLeadRequest { 
-    /**
-     * One of: RoundRobin, WeightedRoundRobin, CherryPicking, CompatibilityScoring, StickyAssignment
-     */
-    strategy?: DispatchLeadRequestStrategyEnum;
+    strategy?: DispatchLeadRequestStrategyEnum | null;
 }
 export enum DispatchLeadRequestStrategyEnum {
-    RoundRobin = 'RoundRobin',
-    WeightedRoundRobin = 'WeightedRoundRobin',
-    CherryPicking = 'CherryPicking',
-    CompatibilityScoring = 'CompatibilityScoring',
-    StickyAssignment = 'StickyAssignment'
+    NUMBER_0 = 0,
+    NUMBER_1 = 1,
+    NUMBER_2 = 2,
+    NUMBER_3 = 3,
+    NUMBER_4 = 4
 };
 
 
