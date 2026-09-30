@@ -9,6 +9,7 @@ import { TasTag } from '@talisoft/ui/tag';
 import { Button } from '@talisoft/ui/button';
 import { TasError, TasFormField, TasHint, TasLabel } from '@talisoft/ui/form-field';
 import { TasInput } from '@talisoft/ui/input';
+import { TasFileUploader } from '@talisoft/ui/file-uploader';
 import { SnackbarService } from '@talisoft/ui/snackbar';
 import {
   ImportJobCreatedResult,
@@ -77,6 +78,7 @@ class GoogleSheetImportFormModel {
     TasError,
     TasHint,
     TasInput,
+    TasFileUploader,
     FormRoot,
     FormField,
   ],
@@ -115,8 +117,6 @@ export class ImportUsersPage implements OnInit, OnDestroy {
     return map[this.step()] ?? 0;
   });
 
-  public fileName = signal('');
-  public uploadError = signal('');
   public rawFile = signal<File | null>(null);
 
   // Google
@@ -179,18 +179,12 @@ export class ImportUsersPage implements OnInit, OnDestroy {
     this.step.set('source');
   }
 
-  public onFileSelected(event: Event): void {
-    const input = event.target as HTMLInputElement;
-    const file = input.files?.[0];
-    if (!file) return;
-    if (file.size > 10 * 1024 * 1024) {
-      this.uploadError.set('Fichier trop volumineux (max 10 Mo).');
-      return;
-    }
-    this.fileName.set(file.name);
-    this.uploadError.set('');
+  /**
+   * `tas-file-uploader` refuse lui-même un fichier trop lourd et affiche son nom,
+   * sa taille et le motif du refus : il ne reste ici que le fichier retenu.
+   */
+  public onFileChanged(file: File | null): void {
     this.rawFile.set(file);
-    input.value = '';
   }
 
   public validateFile(): void {
@@ -306,8 +300,6 @@ export class ImportUsersPage implements OnInit, OnDestroy {
     this.step.set('source');
     this.selectedSource.set('csv');
     this.rawFile.set(null);
-    this.fileName.set('');
-    this.uploadError.set('');
     this.validationResult.set(null);
     this.validationRows.set([]);
     this.googleError.set('');

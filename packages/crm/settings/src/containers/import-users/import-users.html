@@ -45,24 +45,17 @@
   @if (step() === 'upload') {
     <tas-card class="block">
       <div class="p-6">
-        <div class="border-2 border-dashed border-slate-200 rounded-lg p-8 text-center hover:border-slate-300 transition-colors cursor-pointer"
-          (click)="fileInput.click()">
-          <tas-icon iconName="feather:upload" class="text-slate-300 mb-2" style="font-size:32px"></tas-icon>
-          <p class="text-sm text-slate-600">Glissez un fichier ou cliquez pour sélectionner</p>
-          <p class="text-xs text-slate-400 mt-1">{{ selectedSource() === 'csv' ? 'Fichiers .csv' : 'Fichiers .xlsx, .xls, .csv' }} — max 10 Mo</p>
-        </div>
-        <input #fileInput type="file" class="hidden"
+        <!--
+          Composant du kit : il porte le glisser-déposer, le nom et la taille du
+          fichier retenu, et le refus au-delà de 10 Mo. Le contrôle de poids et son
+          message vivent donc dans le composant, plus dans cet écran.
+        -->
+        <tas-file-uploader
           [accept]="selectedSource() === 'csv' ? '.csv' : '.xlsx,.xls,.csv'"
-          (change)="onFileSelected($event)" />
-        @if (fileName()) {
-          <div class="mt-3 flex items-center gap-2 text-sm text-slate-600">
-            <tas-icon iconName="feather:file" style="font-size:14px"></tas-icon>
-            {{ fileName() }}
-          </div>
-        }
-        @if (uploadError()) {
-          <p class="text-xs text-red-500 mt-2">{{ uploadError() }}</p>
-        }
+          [maxSizeMb]="10"
+          [value]="rawFile()"
+          (valueChange)="onFileChanged($event)"
+        ></tas-file-uploader>
         <div class="flex justify-end mt-4 gap-2">
           <button tas-outlined-button type="button" (click)="step.set('source')">Retour</button>
           <button tas-raised-button color="primary" type="button" [disabled]="!rawFile()" (click)="validateFile()">

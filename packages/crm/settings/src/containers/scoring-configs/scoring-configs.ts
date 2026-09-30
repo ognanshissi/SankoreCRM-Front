@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal, OnInit } from '@angular/core';
+import { Component, inject, signal, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { catchError, EMPTY } from 'rxjs';
 import { TasCard } from '@talisoft/ui/card';
@@ -6,13 +6,12 @@ import { TasSpinner } from '@talisoft/ui/spinner';
 import { TasIcon } from '@talisoft/ui/icon';
 import { TasTag } from '@talisoft/ui/tag';
 import { Button } from '@talisoft/ui/button';
-import { TasSwitch } from '@talisoft/ui/switch';
 import { TasFormField, TasLabel } from '@talisoft/ui/form-field';
 import { TasInput } from '@talisoft/ui/input';
 import { SnackbarService } from '@talisoft/ui/snackbar';
 import { ConfirmDialogService } from '@talisoft/ui/confirm-dialog';
 import { ScoringConfigsApiService, ScoringConfigDto } from '@sankore/crm-api';
-import { BreadcrumbService, HasPermissionDirective, PermissionsService } from '@sankore/crm/common';
+import { BreadcrumbService, PermissionsService } from '@sankore/crm/common';
 
 type ViewState = 'list' | 'form';
 
@@ -28,8 +27,8 @@ const WEIGHT_FIELDS: WeightField[] = [
 @Component({
   selector: 'scoring-configs',
   imports: [
-    FormsModule, TasCard, TasSpinner, TasIcon, TasTag, Button, TasSwitch,
-    TasFormField, TasLabel, TasInput, HasPermissionDirective,
+    FormsModule, TasCard, TasSpinner, TasIcon, TasTag, Button,
+    TasFormField, TasLabel, TasInput,
   ],
   template: `
     <ng-container>

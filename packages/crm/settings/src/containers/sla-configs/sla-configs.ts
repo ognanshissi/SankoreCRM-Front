@@ -8,7 +8,7 @@ import { TasIcon } from '@talisoft/ui/icon';
 import { TasTag } from '@talisoft/ui/tag';
 import { Button } from '@talisoft/ui/button';
 import { TasSwitch } from '@talisoft/ui/switch';
-import { TasFormField, TasLabel, TasError } from '@talisoft/ui/form-field';
+import { TasFormField, TasLabel } from '@talisoft/ui/form-field';
 import { TasInput } from '@talisoft/ui/input';
 import { TasSelect } from '@talisoft/ui/select';
 import { SnackbarService } from '@talisoft/ui/snackbar';
@@ -16,7 +16,7 @@ import {
   SLAConfigsApiService, SlaConfigDto,
   AgenciesApiService,
 } from '@sankore/crm-api';
-import { BreadcrumbService, HasPermissionDirective, PermissionsService } from '@sankore/crm/common';
+import { BreadcrumbService, PermissionsService } from '@sankore/crm/common';
 
 type ViewState = 'list' | 'form';
 
@@ -55,7 +55,7 @@ function sampleDeadline(duration: string, holidays: string[]): string {
   selector: 'sla-configs',
   imports: [
     FormsModule, TasCard, TasSpinner, TasIcon, TasTag, Button, TasSwitch,
-    TasFormField, TasLabel, TasInput, TasSelect, HasPermissionDirective,
+    TasFormField, TasLabel, TasInput, TasSelect,
   ],
   template: `
     <ng-container>

@@ -6,7 +6,7 @@ import {
   signal,
 } from '@angular/core';
 import { DialogRef } from '@angular/cdk/dialog';
-import { FormsModule, ReactiveFormsModule, FormControl } from '@angular/forms';
+import { FormsModule } from '@angular/forms';
 import { TasTitle } from '@talisoft/ui/title';
 import {
   TasDrawerAction,
@@ -227,7 +227,6 @@ type Step = 'upload' | 'mapping' | 'preview' | 'import';
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     FormsModule,
-    ReactiveFormsModule,
     TasSideDrawer,
     TasDrawerTitle,
     TasDrawerContent,
@@ -305,7 +304,8 @@ type Step = 'upload' | 'mapping' | 'preview' | 'import';
 
             <tas-file-uploader
               accept=".csv,.xlsx,.xls"
-              [formControl]="fileControl"
+              [value]="selectedFile()"
+              (valueChange)="onFileChanged($event)"
             ></tas-file-uploader>
 
             @if (parseError()) {
@@ -582,7 +582,7 @@ export class ImportLeadsComponent {
   public stepIndex = computed(() => this.steps.findIndex((s) => s.key === this.step()));
 
   public defaultSource = signal(ImportLeadRowSourceEnum.FileImport);
-  public fileControl = new FormControl<File | null>(null);
+  public selectedFile = signal<File | null>(null);
   public parseError = signal('');
 
   // Parsed data
@@ -629,10 +629,6 @@ export class ImportLeadsComponent {
     failures?: ImportRowFailure[] | null;
   } | null>(null);
 
-  constructor() {
-    this.fileControl.valueChanges.subscribe((file) => this._onFileSelected(file));
-  }
-
   // ─── Step navigation ─────────────────────────────────────────────────────
 
   public goToMapping(): void {
@@ -665,7 +661,13 @@ export class ImportLeadsComponent {
 
   // ─── File parsing ────────────────────────────────────────────────────────
 
-  private _onFileSelected(file: File | null): void {
+  /**
+   * Appelé par la sortie `valueChange` de `tas-file-uploader`. C'est ce passage
+   * qui alimente l'étape de mapping : sans lui, les colonnes ne sont jamais
+   * détectées et l'assistant reste bloqué sur la première étape.
+   */
+  public onFileChanged(file: File | null): void {
+    this.selectedFile.set(file);
     this.parseError.set('');
     this.csvHeaders.set([]);
     this.rawRows.set([]);

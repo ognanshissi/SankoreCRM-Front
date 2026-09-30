@@ -1,12 +1,12 @@
 <div
   class="tas-file-uploader relative rounded-xl transition-colors"
   [class.tas-file-uploader--drag-over]="isDragOver()"
-  [class.tas-file-uploader--has-file]="value"
+  [class.tas-file-uploader--has-file]="value()"
   (dragover)="onDragOver($event)"
   (dragleave)="onDragLeave()"
   (drop)="onDrop($event)"
 >
-  @if (!value) {
+  @if (!value()) {
   <button
     type="button"
     class="w-full flex flex-col items-center justify-center gap-2 py-10 px-4 text-center"
@@ -28,6 +28,9 @@
         ou <span class="text-primary font-medium">parcourir</span> — {{ accept()
         }} uniquement
       </p>
+      @if (maxSizeMb() !== null) {
+      <p class="text-xs text-gray-400">max {{ maxSizeMb() }} Mo</p>
+      }
     </div>
   </button>
   } @else {
@@ -41,7 +44,9 @@
       ></tas-icon>
     </div>
     <div class="flex-1 min-w-0">
-      <p class="text-sm font-medium text-gray-800 truncate">{{ value.name }}</p>
+      <p class="text-sm font-medium text-gray-800 truncate">
+        {{ value()!.name }}
+      </p>
       <p class="text-xs text-gray-400">{{ fileSize() }}</p>
     </div>
     <button
@@ -62,3 +67,7 @@
     (change)="onFileSelected($event)"
   />
 </div>
+
+@if (sizeError()) {
+<p class="text-xs text-functional-error mt-2">{{ sizeError() }}</p>
+}
