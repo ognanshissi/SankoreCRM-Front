@@ -1,5 +1,6 @@
 import { Route } from '@angular/router';
 import { hasAllPermissionsGuard, hasPermissionGuard } from '@sankore/crm/common';
+import ImportClientsPage from './containers/import-clients/import-clients';
 
 /**
  * Routes du module Clients.
@@ -19,19 +20,28 @@ export const customersRoutes: Route[] = [
     // Le type est structurel plutôt qu'importé : importer la classe ici ferait entrer
     // l'assistant dans le lot initial, alors qu'il est justement chargé à la demande.
     canDeactivate: [
-      (component: { canLeave(): boolean | Promise<boolean> }) => component.canLeave(),
+      (component: { canLeave(): boolean | Promise<boolean> }) =>
+        component.canLeave(),
     ],
     loadComponent: () => import('./containers/create-client/create-client'),
   },
   {
     path: 'groupes',
     canActivate: [hasPermissionGuard('customers:read')],
-    loadComponent: () => import('./containers/client-groups/client-groups-list'),
+    loadComponent: () =>
+      import('./containers/client-groups/client-groups-list'),
   },
   {
     path: 'groupes/:groupId',
     canActivate: [hasPermissionGuard('customers:read')],
-    loadComponent: () => import('./containers/client-groups/client-group-detail'),
+    loadComponent: () =>
+      import('./containers/client-groups/client-group-detail'),
+  },
+  {
+    path: 'import-clients',
+    // Les trois opérations d'import client déclarent `customers:create` dans leur description.
+    canActivate: [hasPermissionGuard('customers:create')],
+    loadComponent: () => ImportClientsPage,
   },
   // Garde conjonctive et non « au moins un » : ces deux écrans écrivent avec
   // `customers:merge` mais lisent avec `customers:read` (`GET /clients/duplicates`,
@@ -55,13 +65,34 @@ export const customersRoutes: Route[] = [
       import('./containers/client-detail/client-detail-navigation'),
     children: [
       { path: '', redirectTo: 'identite', pathMatch: 'full' },
-      { path: 'identite', loadComponent: () => import('./containers/client-detail/identite') },
-      { path: 'coordonnees', loadComponent: () => import('./containers/client-detail/coordonnees') },
-      { path: 'relations', loadComponent: () => import('./containers/client-detail/relations') },
-      { path: 'groupes', loadComponent: () => import('./containers/client-detail/groupes') },
-      { path: 'beneficiaires', loadComponent: () => import('./containers/client-detail/beneficiaires') },
-      { path: 'kyc', loadComponent: () => import('./containers/client-detail/kyc') },
-      { path: 'historique', loadComponent: () => import('./containers/client-detail/historique') },
+      {
+        path: 'identite',
+        loadComponent: () => import('./containers/client-detail/identite'),
+      },
+      {
+        path: 'coordonnees',
+        loadComponent: () => import('./containers/client-detail/coordonnees'),
+      },
+      {
+        path: 'relations',
+        loadComponent: () => import('./containers/client-detail/relations'),
+      },
+      {
+        path: 'groupes',
+        loadComponent: () => import('./containers/client-detail/groupes'),
+      },
+      {
+        path: 'beneficiaires',
+        loadComponent: () => import('./containers/client-detail/beneficiaires'),
+      },
+      {
+        path: 'kyc',
+        loadComponent: () => import('./containers/client-detail/kyc'),
+      },
+      {
+        path: 'historique',
+        loadComponent: () => import('./containers/client-detail/historique'),
+      },
     ],
   },
 ];

@@ -207,7 +207,7 @@ export class OverviewComponent implements OnInit {
           title: 'Importer les clients',
           type: 'basic',
           id: 'data_import_clients',
-          link: '/settings/import-clients',
+          link: '/customers/import-clients',
           permission: 'customers:create',
           description: 'Importer les clients depuis un fichier CSV/Excel ou Google Sheets',
         },

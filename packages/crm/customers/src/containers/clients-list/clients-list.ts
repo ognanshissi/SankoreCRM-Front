@@ -367,7 +367,7 @@ export class ClientsListPage implements OnInit {
    * le repo regroupe les imports (cf. le groupe « Données & Importation » de l'aperçu).
    */
   public goToImport(): void {
-    this._router.navigate(['/settings/import-clients']);
+    this._router.navigate(['/customers/import-clients']);
   }
 
   /**
