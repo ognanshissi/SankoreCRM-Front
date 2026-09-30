@@ -15,6 +15,12 @@ export const leadManagementRoutes = [
     loadComponent: () => import('./containers/analytics/analytics-dashboard'),
   },
   {
+    // Avant `:id`, sinon le joker capturerait « import » comme identifiant de lead.
+    path: 'import',
+    canActivate: [hasPermissionGuard('lead:import')],
+    loadComponent: () => import('./containers/import-leads-page/import-leads-page'),
+  },
+  {
     path: ':id',
     canActivate: [hasPermissionGuard('lead:read')],
     loadComponent: () => EditLeadNavigation,

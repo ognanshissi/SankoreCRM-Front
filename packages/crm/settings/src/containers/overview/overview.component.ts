@@ -214,9 +214,13 @@ export class OverviewComponent implements OnInit {
         {
           title: 'Importer les leads',
           type: 'basic',
-          id: 'data_import_contacts',
-          link: '/settings/import-contacts',
-          description: 'Importer les contacts depuis différentes sources',
+          id: 'data_import_leads',
+          // La page vit dans le module Leads, pas dans Paramétrage : l'assistant appartient au
+          // domaine lead et sert aussi au drawer de la liste. `/settings/import-contacts` était un
+          // lien mort.
+          link: '/leads/import',
+          permission: 'lead:import',
+          description: 'Importer des leads depuis un fichier, Google Sheets ou Google Contacts',
         }
       ],
     },

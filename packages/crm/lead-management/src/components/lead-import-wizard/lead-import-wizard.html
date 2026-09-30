@@ -1,0 +1,377 @@
+<!-- Stepper -->
+<div class="flex items-center gap-2 mb-6">
+  @for (s of stepsMeta(); track s.key; let i = $index) {
+    <div class="flex items-center gap-2">
+      <div class="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold"
+        [class]="stepIdx() > i ? 'bg-green-100 text-green-700' : stepIdx() === i ? 'bg-primary/15 text-primary' : 'bg-slate-100 text-slate-400'">
+        @if (stepIdx() > i) { <tas-icon iconName="feather:check" style="font-size:12px"></tas-icon> }
+        @else { {{ i + 1 }} }
+      </div>
+      <span class="text-xs font-medium" [class]="stepIdx() >= i ? 'text-slate-700' : 'text-slate-400'">{{ s.label }}</span>
+      @if (i < stepsMeta().length - 1) { <div class="w-6 h-px" [class]="stepIdx() > i ? 'bg-green-300' : 'bg-slate-200'"></div> }
+    </div>
+  }
+</div>
+
+<!-- Étape 1 : source -->
+@if (step() === 'source') {
+  @if (!canImport()) {
+    <p class="text-sm text-slate-500">Vous n'avez pas le droit d'importer des leads.</p>
+  }
+  <div class="grid grid-cols-4 gap-3">
+    @for (src of sourceOptions; track src.key) {
+      <button type="button" class="p-4 rounded-lg border transition-all text-center bg-white shadow"
+        [class]="canImport() ? 'border-slate-200 hover:border-primary hover:shadow-sm cursor-pointer' : 'border-slate-100 opacity-50 cursor-not-allowed'"
+        [disabled]="!canImport()" (click)="selectSource(src.key)">
+        <div class="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center mx-auto mb-2">
+          <tas-icon [iconName]="src.icon" class="text-slate-500" size="20"></tas-icon>
+        </div>
+        <p class="text-sm font-medium text-slate-800">{{ src.label }}</p>
+      </button>
+    }
+  </div>
+}
+
+<!--
+  Options communes aux quatre sources. Elles sont reprises à l'identique sur l'étape fichier et sur
+  l'étape Google : le contrat les accepte des deux côtés, en paramètres de requête d'un côté et dans
+  le corps de l'autre.
+-->
+@if (step() === 'upload' || step() === 'google-config') {
+  <form [formRoot]="optionsForm" class="grid grid-cols-3 gap-3 mb-4">
+    <tas-form-field>
+      <tas-label>Source des leads</tas-label>
+      <tas-select
+        [options]="leadSourceOptions"
+        optionLabel="label"
+        optionValue="value"
+        placeholder="Sélectionnez une source"
+        [formField]="optionsForm.source"
+      ></tas-select>
+      <tas-hint>Appliquée à toutes les lignes du fichier.</tas-hint>
+    </tas-form-field>
+    <tas-form-field>
+      <tas-label>Produit d'intérêt</tas-label>
+      <input tasInput type="text" placeholder="Ex : Crédit conso"
+        [formField]="optionsForm.interestedProduct" />
+      <tas-hint>Facultatif, appliqué aux lignes qui n'en portent pas.</tas-hint>
+    </tas-form-field>
+    <tas-form-field>
+      <tas-label>Langue préférée</tas-label>
+      <input tasInput type="text" placeholder="Ex : fr"
+        [formField]="optionsForm.preferredLanguage" />
+      <tas-hint>Facultatif.</tas-hint>
+    </tas-form-field>
+  </form>
+}
+
+<!-- Étape 2 : fichier -->
+@if (step() === 'upload') {
+  <tas-card class="block">
+    <div class="p-6">
+      <tas-file-uploader
+        [accept]="selectedSource() === 'csv' ? '.csv' : '.xlsx,.xls,.csv'"
+        [maxSizeMb]="10"
+        [value]="rawFile()"
+        (valueChange)="onFileChanged($event)"
+      ></tas-file-uploader>
+
+      <div class="flex justify-end mt-4 gap-2">
+        <button tas-outlined-button type="button" (click)="backToSource()">Retour</button>
+        <button tas-raised-button color="primary" type="button" [disabled]="!rawFile()" (click)="validateFile()">
+          Valider le fichier
+        </button>
+      </div>
+    </div>
+  </tas-card>
+}
+
+<!-- Étape 2 (sources Google) : configuration -->
+@if (step() === 'google-config') {
+  <tas-card class="block">
+    <div class="p-6">
+      @if (selectedSource() === 'google-sheets') {
+        <div class="flex items-start gap-3 mb-5">
+          <div class="w-9 h-9 rounded-full bg-slate-100 flex items-center justify-center shrink-0">
+            <tas-icon iconName="feather:grid" class="text-slate-500" style="font-size:18px"></tas-icon>
+          </div>
+          <div>
+            <p class="text-sm font-medium text-slate-800">Importer depuis Google Sheets</p>
+            <p class="text-xs text-slate-500 mt-0.5">
+              Collez l'URL du classeur. Le serveur lit la feuille et reconnaît lui-même les colonnes :
+              l'import démarre dès l'envoi, sans étape de validation — l'API ne la propose que pour un
+              fichier.
+            </p>
+          </div>
+        </div>
+
+        <form [formRoot]="googleSheetForm" class="max-w-xl">
+          <tas-form-field>
+            <tas-label>URL du classeur Google Sheets <span class="text-functional-error">*</span></tas-label>
+            <input tasInput type="url" placeholder="https://docs.google.com/spreadsheets/d/…"
+              [formField]="googleSheetForm.spreadsheetUrl" />
+            <tas-hint>Le classeur doit être accessible par le compte Google du serveur, sinon la lecture échoue.</tas-hint>
+            @if (googleSheetForm.spreadsheetUrl().touched() && googleSheetForm.spreadsheetUrl().invalid()) {
+              <tas-error>{{ googleSheetForm.spreadsheetUrl().errors()[0].message }}</tas-error>
+            }
+          </tas-form-field>
+        </form>
+
+        @if (googleError()) {
+          <div class="mt-4 rounded-lg border border-red-100 bg-red-50 p-3">
+            <p class="text-xs font-medium text-red-700">Le serveur a refusé l'import</p>
+            <p class="text-xs text-red-600 mt-0.5">{{ googleError() }}</p>
+          </div>
+        }
+
+        <div class="flex justify-end mt-5 gap-2">
+          <button tas-outlined-button type="button" (click)="backToSource()">Retour</button>
+          <button tas-raised-button color="primary" type="button"
+            [disabled]="googleSheetForm().invalid() || googleSheetForm().submitting()"
+            [isLoading]="googleSheetForm().submitting()"
+            (click)="submitGoogleSheetImport()">
+            Lancer l'import
+          </button>
+        </div>
+      } @else {
+        <div class="flex items-start gap-3 mb-5">
+          <div class="w-9 h-9 rounded-full bg-slate-100 flex items-center justify-center shrink-0">
+            <tas-icon iconName="feather:users" class="text-slate-500" style="font-size:18px"></tas-icon>
+          </div>
+          <div>
+            <p class="text-sm font-medium text-slate-800">Importer depuis Google Contacts</p>
+            <p class="text-xs text-slate-500 mt-0.5">
+              Aucun paramètre à fournir : le serveur lit les contacts du compte Google qui lui est
+              rattaché et reconnaît lui-même les champs.
+            </p>
+          </div>
+        </div>
+
+        <div class="rounded-lg border border-amber-100 bg-amber-50 p-3">
+          <div class="flex items-start gap-2">
+            <tas-icon iconName="feather:alert-triangle" class="text-amber-600 shrink-0" style="font-size:14px"></tas-icon>
+            <div>
+              <p class="text-xs font-medium text-amber-800">L'autorisation Google se donne côté serveur</p>
+              <p class="text-xs text-amber-700 mt-0.5">
+                L'API n'expose aucune étape d'autorisation que cet écran pourrait déclencher : si le
+                compte Google n'est pas encore autorisé, le serveur refuse l'import et son message
+                s'affiche ici. Contactez alors l'administrateur de la plateforme.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        @if (googleError()) {
+          <div class="mt-4 rounded-lg border border-red-100 bg-red-50 p-3">
+            <p class="text-xs font-medium text-red-700">Le serveur a refusé l'import</p>
+            <p class="text-xs text-red-600 mt-0.5">{{ googleError() }}</p>
+          </div>
+        }
+
+        <div class="flex justify-end mt-5 gap-2">
+          <button tas-outlined-button type="button" (click)="backToSource()">Retour</button>
+          <button tas-raised-button color="primary" type="button"
+            [disabled]="isLaunchingContacts()"
+            [isLoading]="isLaunchingContacts()"
+            (click)="startGoogleContactsImport()">
+            Lancer l'import
+          </button>
+        </div>
+      }
+    </div>
+  </tas-card>
+}
+
+<!-- Étape 2b : validation en cours -->
+@if (step() === 'validating') {
+  <tas-card class="block">
+    <div class="p-6 text-center">
+      <tas-spinner size="8" class="text-primary mb-4"></tas-spinner>
+      <p class="text-sm font-medium text-slate-700">Validation du fichier en cours…</p>
+      <p class="text-xs text-slate-400 mt-1">
+        Le serveur vérifie chaque ligne et cherche les doublons, sans capturer aucun lead.
+      </p>
+    </div>
+  </tas-card>
+}
+
+<!-- Étape 3 : prévisualisation -->
+@if (step() === 'preview') {
+  <div class="mb-4 flex items-center gap-3 flex-wrap">
+    <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-50 text-slate-700 text-xs font-medium">
+      <tas-icon iconName="feather:file-text" style="font-size:12px"></tas-icon>
+      {{ validationResult()?.totalRows ?? 0 }} ligne(s)
+    </div>
+    <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-green-50 text-green-700 text-xs font-medium">
+      <tas-icon iconName="feather:check-circle" style="font-size:12px"></tas-icon>
+      {{ validationResult()?.validRows ?? 0 }} valide(s)
+    </div>
+    @if ((validationResult()?.invalidRows ?? 0) > 0) {
+      <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-red-50 text-red-700 text-xs font-medium">
+        <tas-icon iconName="feather:x-circle" style="font-size:12px"></tas-icon>
+        {{ validationResult()?.invalidRows ?? 0 }} invalide(s)
+      </div>
+    }
+    <!-- Les doublons sont propres à l'import de leads : le serveur les rapproche des leads existants. -->
+    @if ((validationResult()?.duplicateRows ?? 0) > 0) {
+      <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-50 text-amber-700 text-xs font-medium">
+        <tas-icon iconName="feather:copy" style="font-size:12px"></tas-icon>
+        {{ validationResult()?.duplicateRows ?? 0 }} doublon(s)
+      </div>
+    }
+    <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-50 text-blue-700 text-xs font-medium">
+      <tas-icon iconName="feather:tag" style="font-size:12px"></tas-icon>
+      Source : {{ sourceLabel(optionsForm.source().value()) }}
+    </div>
+  </div>
+
+  <tas-table
+    [data]="validationRows()"
+    identifierField="rowNumber"
+    [config]="previewTableConfig()"
+  >
+    <ng-template #header>
+      <tr>
+        <th>#</th>
+        <th>Nom</th>
+        <th>Téléphone</th>
+        <th>Produit</th>
+        <th>Statut</th>
+      </tr>
+    </ng-template>
+    <ng-template #body let-row>
+      <tr [class]="row.isValid ? (row.isDuplicate ? 'bg-amber-50/40' : '') : 'bg-red-50/40'">
+        <td class="text-slate-400 tabular-nums">{{ row.rowNumber }}</td>
+        <td class="text-slate-800">{{ row.fullName || '—' }}</td>
+        <td class="text-slate-600 tabular-nums">{{ row.phoneNumber || '—' }}</td>
+        <td class="text-slate-600">{{ row.interestedProduct || '—' }}</td>
+        <td class="whitespace-normal">
+          <div class="flex flex-col gap-0.5 items-start">
+            @if (row.isValid) {
+              <tas-tag severity="success">OK</tas-tag>
+            } @else {
+              @for (err of row.errors ?? []; track $index) {
+                <tas-tag severity="error">{{ err }}</tas-tag>
+              }
+            }
+            @if (row.isDuplicate) {
+              <tas-tag severity="warning">Doublon</tas-tag>
+              @if (row.duplicateOfLeadId) {
+                <a class="text-xs text-primary hover:underline inline-flex items-center gap-1"
+                  [routerLink]="['/leads', row.duplicateOfLeadId]">
+                  <tas-icon iconName="feather:external-link" style="font-size:11px"></tas-icon>
+                  Voir le lead existant
+                </a>
+              }
+            }
+          </div>
+        </td>
+      </tr>
+    </ng-template>
+  </tas-table>
+
+  <div class="mt-4 flex justify-between">
+    <button tas-outlined-button type="button" (click)="step.set('upload')">Retour</button>
+    <button tas-raised-button color="primary" type="button"
+      [disabled]="(validationResult()?.validRows ?? 0) === 0"
+      (click)="startImport()">
+      Importer {{ validationResult()?.validRows ?? 0 }} lead(s)
+    </button>
+  </div>
+}
+
+<!-- Étape 4 : import en cours -->
+@if (step() === 'importing') {
+  <tas-card class="block">
+    <div class="p-6 text-center">
+      @if (trackingStopped()) {
+        <tas-icon iconName="feather:clock" class="text-amber-500 mb-3" style="font-size:28px"></tas-icon>
+        <p class="text-sm font-medium text-slate-700">L'import se poursuit côté serveur</p>
+        <p class="text-xs text-slate-400 mt-1">
+          Le suivi automatique s'arrête au bout de 2 minutes. Relancez-le pour connaître l'état du job.
+        </p>
+        <button tas-outlined-button color="primary" type="button" class="mt-4" (click)="resumeTracking()">
+          Reprendre le suivi
+        </button>
+      } @else {
+        <tas-spinner size="8" class="text-primary mb-4"></tas-spinner>
+        <p class="text-sm font-medium text-slate-700">Import en cours…</p>
+        @if (importTotal() > 0) {
+          <p class="text-xs text-slate-400 mt-1">{{ importProgress() }} / {{ importTotal() }} traité(s)</p>
+          <div class="mt-3 h-2 bg-slate-100 rounded-full overflow-hidden max-w-sm mx-auto">
+            <div class="h-full bg-primary rounded-full transition-all"
+              [style.width.%]="(importProgress() / importTotal()) * 100"></div>
+          </div>
+        } @else {
+          <p class="text-xs text-slate-400 mt-1">{{ importProgress() }} traité(s)</p>
+        }
+      }
+    </div>
+  </tas-card>
+}
+
+<!-- Étape 5 : terminé -->
+@if (step() === 'done') {
+  <tas-card class="block">
+    <div class="p-6 text-center">
+      <div class="w-16 h-16 rounded-full bg-green-50 flex items-center justify-center mx-auto mb-4">
+        <tas-icon iconName="feather:check-circle" class="text-green-500" style="font-size:32px"></tas-icon>
+      </div>
+      <h2 class="text-lg font-semibold text-slate-800 mb-2">Import terminé</h2>
+      <div class="flex items-center justify-center gap-4 mt-3">
+        <div class="text-center">
+          <p class="text-2xl font-bold text-green-600 tabular-nums">{{ importSucceeded() }}</p>
+          <p class="text-xs text-slate-400">Importé(s)</p>
+        </div>
+        @if (importSkipped() > 0) {
+          <div class="text-center">
+            <p class="text-2xl font-bold text-amber-600 tabular-nums">{{ importSkipped() }}</p>
+            <p class="text-xs text-slate-400">Ignoré(s)</p>
+          </div>
+        }
+        <div class="text-center">
+          <p class="text-2xl font-bold text-red-600 tabular-nums">{{ importFailed() }}</p>
+          <p class="text-xs text-slate-400">Échoué(s)</p>
+        </div>
+      </div>
+      @if (importError()) {
+        <p class="text-xs text-red-500 mt-3">{{ importError() }}</p>
+      }
+      <button tas-outlined-button color="primary" type="button" class="mt-6" (click)="reset()">
+        Nouvel import
+      </button>
+    </div>
+  </tas-card>
+
+  @if (importFailures().length > 0) {
+    <div class="mt-4">
+      <p class="text-sm font-semibold text-slate-700 mb-2">
+        Lignes refusées ({{ importFailures().length }})
+      </p>
+      <!--
+        `ImportRowFailure` des leads porte `row` et `phoneNumber` — et non `rowNumber` et
+        `reference` comme son homonyme côté clients. Ne pas recopier l'un depuis l'autre.
+      -->
+      <tas-table
+        [data]="importFailures()"
+        identifierField="row"
+        [config]="failuresTableConfig()"
+      >
+        <ng-template #header>
+          <tr>
+            <th>#</th>
+            <th>Téléphone</th>
+            <th>Motif</th>
+          </tr>
+        </ng-template>
+        <ng-template #body let-failure>
+          <tr>
+            <td class="text-slate-400 tabular-nums">{{ failure.row }}</td>
+            <td class="text-slate-800 tabular-nums">{{ failure.phoneNumber || '—' }}</td>
+            <td class="text-red-600 whitespace-normal">{{ failure.error || '—' }}</td>
+          </tr>
+        </ng-template>
+      </tas-table>
+    </div>
+  }
+}
