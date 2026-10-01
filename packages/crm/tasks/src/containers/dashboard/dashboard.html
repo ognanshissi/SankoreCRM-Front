@@ -113,17 +113,22 @@
     <div class="flex justify-center py-24"><tas-spinner size="10" class="text-primary"></tas-spinner></div>
   } @else if (viewMode() === 'list') {
     <!-- List view -->
-    <tas-card class="block">
+    <div>
       @if (filteredTasks().length === 0) {
         <div class="flex flex-col items-center justify-center py-16 text-center">
           <tas-icon iconName="feather:check-square" class="text-slate-300 mb-2" style="font-size:32px"></tas-icon>
           <p class="text-sm text-slate-400">{{ activeFilter() !== 'all' ? 'Aucune tâche pour ce filtre' : 'Aucune tâche' }}</p>
         </div>
       } @else {
-        <div class="divide-y divide-slate-100">
+        <div class="grid grid-cols-2 gap-4 p-4">
           @for (task of filteredTasks(); track task.id) {
             @let sla = taskSla(task);
-            <div class="p-4 hover:bg-slate-50 transition-colors" [class]="sla.status === 'breach' ? 'bg-red-50/40' : ''">
+            <!--
+              La carte entière ouvre le détail. Les boutons qu'elle contient arrêtent la propagation,
+              sinon « Démarrer » ouvrirait aussi le drawer.
+            -->
+            <div class="p-4 hover:bg-slate-50 bg-slate-100 transition-colors shadow hover:shadow-lg rounded-lg cursor-pointer" [class]="sla.status === 'breach' ? 'bg-red-50/40' : ''"
+              (click)="openTaskDetail(task)">
               <div class="flex items-start gap-3">
                 <div class="w-8 h-8 rounded-full flex items-center justify-center shrink-0 mt-0.5"
                   [class]="sla.status === 'breach' ? 'bg-red-100 text-red-600' : sla.status === 'warning' ? 'bg-amber-100 text-amber-600' : 'bg-slate-100 text-slate-400'">
@@ -146,20 +151,21 @@
                   @if (sla.label) {
                     <div class="mt-1.5 flex items-center gap-1.5">
                       <tas-icon [iconName]="sla.icon" style="font-size:10px" [class]="sla.status === 'breach' ? 'text-red-500' : sla.status === 'warning' ? 'text-amber-500' : 'text-slate-400'"></tas-icon>
+
                       <span class="text-[10px] font-medium" [class]="sla.status === 'breach' ? 'text-red-600' : sla.status === 'warning' ? 'text-amber-600' : 'text-slate-400'">
-                        {{ sla.status === 'breach' ? 'En retard — ' : 'SLA : ' }}{{ sla.label }}
+                        {{ sla.label }}
                       </span>
                     </div>
                   }
                 </div>
                 <div class="shrink-0 flex items-center gap-1">
                   @if (task.status === 'Pending') {
-                    <button tas-outlined-button color="primary" type="button" class="text-xs" (click)="startTask(task)" [disabled]="actionInProgress() === task.id">Démarrer</button>
-                    <button type="button" class="text-xs text-slate-400 hover:text-red-500 transition-colors px-2 py-1" (click)="declineTask(task)" title="Refuser"><tas-icon iconName="feather:x" style="font-size:14px"></tas-icon></button>
+                    <button tas-outlined-button color="primary" type="button" class="text-xs" (click)="startTask(task); $event.stopPropagation()" [disabled]="actionInProgress() === task.id">Démarrer</button>
+                    <button type="button" class="text-xs text-slate-400 hover:text-red-500 transition-colors px-2 py-1" (click)="declineTask(task); $event.stopPropagation()" title="Refuser"><tas-icon iconName="feather:x" style="font-size:14px"></tas-icon></button>
                   }
                   @if (task.status === 'InProgress') {
-                    <button tas-outlined-button color="primary" type="button" class="text-xs" (click)="completeTask(task)" [disabled]="actionInProgress() === task.id">Terminer</button>
-                    <button type="button" class="text-xs text-slate-400 hover:text-red-500 transition-colors px-2 py-1" (click)="declineTask(task)" title="Refuser"><tas-icon iconName="feather:x" style="font-size:14px"></tas-icon></button>
+                    <button tas-outlined-button color="primary" type="button" class="text-xs" (click)="completeTask(task); $event.stopPropagation()" [disabled]="actionInProgress() === task.id">Terminer</button>
+                    <button type="button" class="text-xs text-slate-400 hover:text-red-500 transition-colors px-2 py-1" (click)="declineTask(task); $event.stopPropagation()" title="Refuser"><tas-icon iconName="feather:x" style="font-size:14px"></tas-icon></button>
                   }
                 </div>
               </div>
@@ -167,7 +173,7 @@
           }
         </div>
       }
-    </tas-card>
+    </div>
   } @else {
     <!-- Kanban view -->
     <div class="flex gap-3 overflow-x-auto pb-4" style="min-height: 50vh">
@@ -180,8 +186,9 @@
           <div class="flex-1 flex flex-col gap-2 bg-slate-400 shadow rounded-lg p-2">
             @for (task of kanbanTasks(col.key); track task.id) {
               @let sla = taskSla(task);
-              <div class="bg-white rounded-lg p-3 border transition-shadow hover:shadow-sm"
-                [class]="sla.status === 'breach' ? 'border-l-[3px] border-l-red-500 border-t-slate-200 border-r-slate-200 border-b-slate-200' : sla.status === 'warning' ? 'border-l-[3px] border-l-amber-400 border-t-slate-200 border-r-slate-200 border-b-slate-200' : 'border-slate-200'">
+              <div class="bg-white rounded-lg p-3 border transition-shadow hover:shadow-sm cursor-pointer"
+                [class]="sla.status === 'breach' ? 'border-l-[3px] border-l-red-500 border-t-slate-200 border-r-slate-200 border-b-slate-200' : sla.status === 'warning' ? 'border-l-[3px] border-l-amber-400 border-t-slate-200 border-r-slate-200 border-b-slate-200' : 'border-slate-200'"
+                (click)="openTaskDetail(task)">
                 <div class="flex items-center gap-2 mb-1">
                   <p class="text-sm font-medium text-slate-800 truncate flex-1">{{ task.title ?? typeLabel(task.type) }}</p>
                   <tas-tag [severity]="priorityMeta(task.priority).severity" class="shrink-0">
@@ -191,17 +198,17 @@
                 @if (sla.label) {
                   <div class="mt-1 px-2 py-1 rounded flex items-center gap-1.5" [class]="sla.status === 'breach' ? 'bg-red-50' : sla.status === 'warning' ? 'bg-amber-50' : 'bg-slate-50'">
                     <tas-icon [iconName]="sla.icon" style="font-size:10px" [class]="sla.status === 'breach' ? 'text-red-500' : sla.status === 'warning' ? 'text-amber-500' : 'text-slate-400'"></tas-icon>
-                    <span class="text-[10px] font-medium" [class]="sla.status === 'breach' ? 'text-red-600' : sla.status === 'warning' ? 'text-amber-600' : 'text-slate-400'">{{ sla.status === 'breach' ? 'En retard — ' : '' }}{{ sla.label }}</span>
+                    <span class="text-[10px] font-medium" [class]="sla.status === 'breach' ? 'text-red-600' : sla.status === 'warning' ? 'text-amber-600' : 'text-slate-400'">{{ sla.label }}</span>
                   </div>
                 }
                 <div class="mt-2 flex items-center justify-end gap-1">
                   @if (task.status === 'Pending') {
-                    <button type="button" class="text-[10px] text-slate-400 hover:text-red-500 px-1.5 py-0.5" (click)="declineTask(task)"><tas-icon iconName="feather:x" style="font-size:12px"></tas-icon></button>
-                    <button tas-outlined-button type="button" class="text-[10px]" (click)="startTask(task)">Démarrer</button>
+                    <button type="button" class="text-[10px] text-slate-400 hover:text-red-500 px-1.5 py-0.5" (click)="declineTask(task); $event.stopPropagation()"><tas-icon iconName="feather:x" style="font-size:12px"></tas-icon></button>
+                    <button tas-outlined-button type="button" class="text-[10px]" (click)="startTask(task); $event.stopPropagation()">Démarrer</button>
                   }
                   @if (task.status === 'InProgress') {
-                    <button type="button" class="text-[10px] text-slate-400 hover:text-red-500 px-1.5 py-0.5" (click)="declineTask(task)"><tas-icon iconName="feather:x" style="font-size:12px"></tas-icon></button>
-                    <button tas-outlined-button type="button" class="text-[10px]" (click)="completeTask(task)">Terminer</button>
+                    <button type="button" class="text-[10px] text-slate-400 hover:text-red-500 px-1.5 py-0.5" (click)="declineTask(task); $event.stopPropagation()"><tas-icon iconName="feather:x" style="font-size:12px"></tas-icon></button>
+                    <button tas-outlined-button type="button" class="text-[10px]" (click)="completeTask(task); $event.stopPropagation()">Terminer</button>
                   }
                 </div>
               </div>

@@ -163,14 +163,6 @@ export class ImportClientsPage implements OnInit, OnDestroy {
 
   public rawFile = signal<File | null>(null);
 
-  /**
-   * Agence par défaut, proposée sur les deux imports : `POST /clients/import/file` l'accepte en
-   * paramètre de requête et `ClientGoogleSheetImportRequest` dans son corps. Elle ne sert qu'aux
-   * lignes dépourvues de colonne `AgencyCode` — d'où le caractère facultatif, et la mention à
-   * l'écran plutôt qu'un champ obligatoire de plus.
-   *
-   * `tas-select` travaille en chaînes : la valeur vide signifie « aucune » et n'est pas envoyée.
-   */
   public agencies = signal<AgencyDto[]>([]);
   public isLoadingAgencies = signal(false);
   public readonly agencyOptions = computed(() =>

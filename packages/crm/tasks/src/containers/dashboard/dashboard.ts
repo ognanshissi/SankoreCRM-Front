@@ -15,7 +15,6 @@ import {
   TasksApiService,
   CrmTaskDto,
   CrmTaskDtoStatusEnum,
-  CrmTaskDtoPriorityEnum,
   WorkflowInstancesApiService,
   MyStepDto,
   CompletedTaskDto,
@@ -23,66 +22,16 @@ import {
   RejectStepRequest,
 } from '@sankore/crm-api';
 import { AuthenticationService, BreadcrumbService } from '@sankore/crm/common';
+import {
+  computeSla,
+  priorityMeta,
+  SlaInfo,
+  statusMeta,
+  typeLabel,
+} from './task-meta';
 import { CompleteTaskDrawer } from './complete-task-drawer';
 import { DeclineTaskDrawer } from './decline-task-drawer';
-
-// ——— Task metadata ———
-
-function statusMeta(status: CrmTaskDtoStatusEnum | string | undefined): { label: string; severity: Severity } {
-  switch (status) {
-    case CrmTaskDtoStatusEnum.Pending:    return { label: 'En attente',  severity: 'neutral' };
-    case CrmTaskDtoStatusEnum.InProgress: return { label: 'En cours',    severity: 'info' };
-    case CrmTaskDtoStatusEnum.Completed:  return { label: 'Terminée',    severity: 'success' };
-    case CrmTaskDtoStatusEnum.Cancelled:  return { label: 'Annulée',     severity: 'error' };
-    default:                              return { label: '—',           severity: 'neutral' };
-  }
-}
-
-function priorityMeta(priority: CrmTaskDtoPriorityEnum | string | undefined): { label: string; severity: Severity; icon: string } {
-  switch (priority) {
-    case CrmTaskDtoPriorityEnum.Low:      return { label: 'Basse',    severity: 'neutral',  icon: 'feather:arrow-down' };
-    case CrmTaskDtoPriorityEnum.Medium:   return { label: 'Moyenne',  severity: 'info',     icon: 'feather:minus' };
-    case CrmTaskDtoPriorityEnum.High:     return { label: 'Haute',    severity: 'warning',  icon: 'feather:arrow-up' };
-    case CrmTaskDtoPriorityEnum.Critical: return { label: 'Critique', severity: 'error',    icon: 'feather:alert-triangle' };
-    default:                              return { label: '—',        severity: 'neutral',  icon: 'feather:minus' };
-  }
-}
-
-function typeLabel(type: string | undefined): string {
-  switch (type) {
-    case 'FirstContact':   return 'Premier contact';
-    case 'Qualification':  return 'Qualification';
-    case 'SlaFollowUp':    return 'Suivi SLA';
-    case 'ScoreReview':    return 'Revue score';
-    case 'OwnerHandover':  return 'Passation';
-    case 'ManualDispatch': return 'Dispatch manuel';
-    case 'Generic':        return 'Générique';
-    default:               return type ?? '—';
-  }
-}
-
-// ——— SLA helpers ———
-
-interface SlaInfo { status: 'ok' | 'warning' | 'breach'; label: string; icon: string; remainingMs: number }
-
-function computeSla(task: CrmTaskDto, now: number): SlaInfo {
-  const deadline = task.slaDeadline ?? task.dueAt;
-  if (!deadline) return { status: 'ok', label: '', icon: '', remainingMs: Infinity };
-  const diff = new Date(deadline).getTime() - now;
-  if (diff < 0) return { status: 'breach', label: `En retard de ${fmtDur(Math.abs(diff))}`, icon: 'feather:alert-octagon', remainingMs: diff };
-  if (diff < 3_600_000) return { status: 'warning', label: `${fmtDur(diff)} restant`, icon: 'feather:alert-triangle', remainingMs: diff };
-  return { status: 'ok', label: `${fmtDur(diff)} restant`, icon: 'feather:clock', remainingMs: diff };
-}
-
-function fmtDur(ms: number): string {
-  const m = Math.floor(ms / 60_000);
-  if (m < 1) return '< 1 min';
-  if (m < 60) return `${m} min`;
-  const h = Math.floor(m / 60); const rm = m % 60;
-  if (h < 24) return rm > 0 ? `${h}h${String(rm).padStart(2, '0')}` : `${h}h`;
-  const d = Math.floor(h / 24); const rh = h % 24;
-  return rh > 0 ? `${d}j ${rh}h` : `${d}j`;
-}
+import { TaskDetailDrawer, TaskDetailDrawerResult } from './task-detail-drawer';
 
 // ——— Queue metadata ———
 
@@ -244,6 +193,44 @@ export class DashboardComponent implements OnInit, OnDestroy {
     ref.closed.subscribe((declined: any) => { if (declined) this.allTasks.update((list) => list.filter((t) => t.id !== task.id)); });
   }
   public navigateToLead(leadId: string | null | undefined): void { if (leadId) this._router.navigate(['/leads', leadId]); }
+
+  /**
+   * Détail d'une tâche. Le drawer n'exécute aucune action : il demande, et c'est ici qu'on rejoue les
+   * parcours existants — sinon « Terminer » aurait deux implémentations, l'une avec résultat et tâche
+   * de suivi, l'autre sans.
+   */
+  public openTaskDetail(task: CrmTaskDto): void {
+    if (!task.id) return;
+    // `open<R, D, C>` : le premier paramètre est le résultat, le troisième le composant — sans ce
+    // dernier, la signature attend un `TasSideDrawer`.
+    const ref = this._sideDrawer.open<TaskDetailDrawerResult, { task: CrmTaskDto }, TaskDetailDrawer>(
+      TaskDetailDrawer,
+      {
+        width: '100%',
+        height: '100%',
+        panelClass: 'side-drawer-panel',
+        data: { task },
+      },
+    );
+
+    ref.closed.subscribe((result) => {
+      if (!result) return;
+      switch (result.action) {
+        case 'start':
+          this.startTask(result.task);
+          break;
+        case 'complete':
+          this.completeTask(result.task);
+          break;
+        case 'decline':
+          this.declineTask(result.task);
+          break;
+        case 'open-lead':
+          this.navigateToLead(result.task.leadId);
+          break;
+      }
+    });
+  }
 
   // ——— Queue actions (from Ma file) ———
   public isQueueOverdue(dueAt: string | null | undefined): boolean { return !!dueAt && new Date(dueAt) < new Date(); }

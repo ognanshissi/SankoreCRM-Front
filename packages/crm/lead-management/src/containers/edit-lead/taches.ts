@@ -13,9 +13,16 @@ import {
   CrmTaskDto,
   CrmTaskDtoStatusEnum,
   CrmTaskDtoPriorityEnum,
+  AuthApiService,
 } from '@sankore/crm-api';
-import { CompleteTaskDrawer, DeclineTaskDrawer, CreateTaskDrawer } from '@sankore/crm/tasks';
-import { PermissionsService } from '@sankore/crm/common';
+import {
+  CompleteTaskDrawer,
+  DeclineTaskDrawer,
+  CreateTaskDrawer,
+  TaskDetailDrawer,
+  TaskDetailDrawerResult,
+} from '@sankore/crm/tasks';
+import { AuthenticationService, PermissionsService } from '@sankore/crm/common';
 import { LeadEditContext } from './lead-edit-context';
 import { ConvertedLeadNotice } from './converted-lead-notice';
 
@@ -98,7 +105,12 @@ function typeLabel(type: string | undefined): string {
           } @else {
             <div class="divide-y divide-slate-100">
               @for (task of tasks(); track task.id) {
-                <div class="p-4 hover:bg-slate-50 transition-colors">
+                <!--
+                  Toute la ligne ouvre le détail ; les boutons qu'elle contient arrêtent la
+                  propagation, sinon « Démarrer » ouvrirait aussi le drawer.
+                -->
+                <div class="p-4 hover:bg-slate-50 transition-colors cursor-pointer"
+                  (click)="openTaskDetail(task)">
                   <div class="flex items-start justify-between gap-3">
                     <div class="flex-1 min-w-0">
                       <div class="flex items-center gap-2 mb-1">
@@ -134,7 +146,7 @@ function typeLabel(type: string | undefined): string {
                             tas-outlined-button
                             color="primary"
                             type="button"
-                            (click)="startTask(task)"
+                            (click)="startTask(task); $event.stopPropagation()"
                             [disabled]="actionInProgress() === task.id"
                           >
                             Démarrer
@@ -146,7 +158,7 @@ function typeLabel(type: string | undefined): string {
                           type="button"
                           class="text-slate-400 hover:text-red-500 transition-colors p-1"
                           [disabled]="!canManageTask()"
-                          (click)="declineTask(task)"
+                          (click)="declineTask(task); $event.stopPropagation()"
                           title="Refuser cette tâche"
                         >
                           <tas-icon iconName="feather:x" style="font-size:14px"></tas-icon>
@@ -160,7 +172,7 @@ function typeLabel(type: string | undefined): string {
                             tas-outlined-button
                             color="primary"
                             type="button"
-                            (click)="completeTask(task)"
+                            (click)="completeTask(task); $event.stopPropagation()"
                             [disabled]="actionInProgress() === task.id"
                           >
                             Terminer
@@ -170,7 +182,7 @@ function typeLabel(type: string | undefined): string {
                           type="button"
                           class="text-slate-400 hover:text-red-500 transition-colors p-1"
                           [disabled]="!canManageTask()"
-                          (click)="declineTask(task)"
+                          (click)="declineTask(task); $event.stopPropagation()"
                           title="Refuser cette tâche"
                         >
                           <tas-icon iconName="feather:x" style="font-size:14px"></tas-icon>
@@ -190,6 +202,7 @@ function typeLabel(type: string | undefined): string {
 export class LeadTachesPage {
   private readonly _permissions = inject(PermissionsService);
   private readonly _leadEditContext = inject(LeadEditContext);
+  private readonly _authenticationService = inject(AuthenticationService);
   // Un lead converti est figé : l'état est replié dans la garde de droits
   // que le template lit déjà, pour qu'aucune action d'écriture ne puisse y
   // échapper.
@@ -214,6 +227,41 @@ export class LeadTachesPage {
   constructor() {
     effect(() => {
       this._loadTasks();
+    });
+  }
+
+  /**
+   * Détail de la tâche. `readOnly` suit la garde de l'écran : sur un lead converti, ou sans le droit
+   * `lead:task:manage`, le drawer n'offre que la consultation.
+   */
+  public openTaskDetail(task: CrmTaskDto): void {
+    if (!task.id) return;
+    const ref = this._sideDrawer.open<TaskDetailDrawerResult, unknown, TaskDetailDrawer>(
+      TaskDetailDrawer,
+      {
+        width: '100%',
+        height: '100%',
+        panelClass: 'side-drawer-panel',
+        data: { task, readOnly: !this.canManageTask() },
+      },
+    );
+
+    ref.closed.subscribe((result) => {
+      if (!result) return;
+      switch (result.action) {
+        case 'start':
+          this.startTask(result.task);
+          break;
+        case 'complete':
+          this.completeTask(result.task);
+          break;
+        case 'decline':
+          this.declineTask(result.task);
+          break;
+        case 'open-lead':
+          // Déjà sur la fiche du lead : rien à faire.
+          break;
+      }
     });
   }
 
@@ -293,7 +341,7 @@ export class LeadTachesPage {
 
   private _loadTasks(): void {
     this.isLoading.set(true);
-    this._tasksApi.listCrmTasks(this.id()).pipe(
+    this._tasksApi.listCrmTasks(this.id(), this._authenticationService.connectedUser()?.id).pipe(
       catchError(() => {
         this.isLoading.set(false);
         return EMPTY;

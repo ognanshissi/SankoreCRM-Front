@@ -1,0 +1,209 @@
+<tas-side-drawer>
+  <tas-drawer-title>
+    <tas-title>Détail de la tâche</tas-title>
+  </tas-drawer-title>
+
+  <tas-drawer-content>
+    <div class="flex flex-col gap-4">
+      <!-- En-tête -->
+      <div class="flex items-start gap-3">
+        <div
+          class="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
+          [class]="sla().status === 'breach' ? 'bg-red-100 text-red-600' : sla().status === 'warning' ? 'bg-amber-100 text-amber-600' : 'bg-slate-100 text-slate-400'"
+        >
+          <tas-icon
+            [iconName]="sla().status === 'breach' ? 'feather:alert-octagon' : sla().status === 'warning' ? 'feather:alert-triangle' : 'feather:check-square'"
+            style="font-size:16px"
+          ></tas-icon>
+        </div>
+        <div class="flex-1 min-w-0">
+          <p class="text-base font-semibold text-slate-800">
+            {{ task().title ?? typeLabel(task().type) }}
+          </p>
+          <div class="flex items-center gap-2 mt-1.5 flex-wrap">
+            <tas-tag [severity]="statusMeta(task().status).severity">
+              {{ statusMeta(task().status).label }}
+            </tas-tag>
+            <tas-tag [severity]="priorityMeta(task().priority).severity">
+              <span class="flex items-center gap-0.5">
+                <tas-icon [iconName]="priorityMeta(task().priority).icon" style="font-size:8px"></tas-icon>
+                {{ priorityMeta(task().priority).label }}
+              </span>
+            </tas-tag>
+            <tas-tag severity="neutral">{{ typeLabel(task().type) }}</tas-tag>
+          </div>
+        </div>
+        @if (isRefreshing()) {
+          <tas-spinner size="4" class="text-primary shrink-0 mt-1"></tas-spinner>
+        }
+      </div>
+
+      <!-- SLA -->
+      @if (sla().label) {
+        <div
+          class="flex items-center gap-2 p-3 rounded-lg border"
+          [class]="sla().status === 'breach' ? 'bg-red-50 border-red-200' : sla().status === 'warning' ? 'bg-amber-50 border-amber-200' : 'bg-slate-50 border-slate-200'"
+        >
+          <tas-icon
+            [iconName]="sla().icon"
+            style="font-size:14px"
+            [class]="sla().status === 'breach' ? 'text-red-600' : sla().status === 'warning' ? 'text-amber-600' : 'text-slate-400'"
+          ></tas-icon>
+          <span
+            class="text-sm font-medium"
+            [class]="sla().status === 'breach' ? 'text-red-700' : sla().status === 'warning' ? 'text-amber-700' : 'text-slate-600'"
+          >
+            {{ sla().label }}
+          </span>
+        </div>
+      }
+
+      <!-- Description -->
+      @if (task().description) {
+        <div>
+          <p class="text-xs text-slate-400 mb-1">Description</p>
+          <p class="text-sm text-slate-700 whitespace-pre-line">{{ task().description }}</p>
+        </div>
+      }
+
+      <!-- Lead rattaché -->
+      @if (task().leadId) {
+        <div class="p-3 rounded-lg border border-slate-200">
+          <p class="text-xs text-slate-400 mb-1.5">Lead rattaché</p>
+          @if (isLoadingLead()) {
+            <div class="flex items-center gap-2">
+              <tas-spinner size="4" class="text-primary"></tas-spinner>
+              <span class="text-xs text-slate-400">Chargement du lead…</span>
+            </div>
+          } @else if (lead()) {
+            <div class="flex items-center justify-between gap-3">
+              <div class="min-w-0">
+                <p class="text-sm font-medium text-slate-800 truncate">{{ leadLabel() }}</p>
+                <div class="flex items-center gap-3 mt-0.5 flex-wrap">
+                  @if (lead()!.phoneNumber) {
+                    <span class="text-xs text-slate-500 tabular-nums flex items-center gap-1">
+                      <tas-icon iconName="feather:phone" style="font-size:10px"></tas-icon>
+                      {{ lead()!.phoneNumber }}
+                    </span>
+                  }
+                  @if (lead()!.status) {
+                    <span class="text-xs text-slate-400">{{ lead()!.status }}</span>
+                  }
+                </div>
+              </div>
+              <!--
+                Navigation par l'hôte : une ancre ouvrirait la fiche derrière le drawer, qui resterait
+                posé par-dessus.
+              -->
+              <button
+                tas-outlined-button
+                color="primary"
+                type="button"
+                class="shrink-0 text-xs"
+                (click)="requestAction('open-lead')"
+              >
+                <tas-icon iconName="feather:external-link" style="font-size:12px"></tas-icon>
+                Ouvrir le lead
+              </button>
+            </div>
+          } @else {
+            <p class="text-sm text-slate-500">Ce lead n'est plus accessible.</p>
+            <p class="text-xs text-slate-400 mt-0.5 font-mono">{{ task().leadId }}</p>
+          }
+        </div>
+      }
+
+      <!-- Affectation -->
+      <div>
+        <p class="text-xs text-slate-400 mb-1">Affectée à</p>
+        @if (agentLabel()) {
+          <p class="text-sm text-slate-700">{{ agentLabel() }}</p>
+        } @else if (task().assignedAgentId) {
+          <p class="text-sm text-slate-500 font-mono text-xs">{{ task().assignedAgentId }}</p>
+        } @else {
+          <p class="text-sm text-slate-500">Personne</p>
+        }
+      </div>
+
+      <!-- Chronologie -->
+      <div class="p-3 rounded-lg bg-slate-50 border border-slate-200">
+        <p class="text-xs text-slate-400 mb-2">Chronologie</p>
+        <div class="flex flex-col gap-1.5">
+          @if (task().createdAt) {
+            <div class="flex items-center justify-between gap-3">
+              <span class="text-xs text-slate-500">Créée</span>
+              <span class="text-xs text-slate-700" [title]="($any(task().createdAt) | date: 'long') ?? ''">
+                {{ task().createdAt | dateTimeAgo }}
+              </span>
+            </div>
+          }
+          @if (task().dueAt) {
+            <div class="flex items-center justify-between gap-3">
+              <span class="text-xs text-slate-500">Échéance</span>
+              <span class="text-xs text-slate-700">{{ $any(task().dueAt) | date: 'short' }}</span>
+            </div>
+          }
+          @if (task().slaDeadline) {
+            <div class="flex items-center justify-between gap-3">
+              <span class="text-xs text-slate-500">Butoir SLA</span>
+              <span class="text-xs text-slate-700">{{ $any(task().slaDeadline) | date: 'short' }}</span>
+            </div>
+          }
+          @if (task().startedAt) {
+            <div class="flex items-center justify-between gap-3">
+              <span class="text-xs text-slate-500">Démarrée</span>
+              <span class="text-xs text-slate-700">{{ task().startedAt | dateTimeAgo }}</span>
+            </div>
+          }
+          @if (task().completedAt) {
+            <div class="flex items-center justify-between gap-3">
+              <span class="text-xs text-slate-500">Terminée</span>
+              <span class="text-xs text-slate-700">{{ task().completedAt | dateTimeAgo }}</span>
+            </div>
+          }
+        </div>
+      </div>
+
+      <!-- Origine : seulement si la tâche a été créée par une règle -->
+      @if (triggerLabel(task().triggerEventType)) {
+        <div>
+          <p class="text-xs text-slate-400 mb-1">Origine</p>
+          <p class="text-sm text-slate-700">
+            Créée automatiquement — {{ triggerLabel(task().triggerEventType) }}
+          </p>
+          <p class="text-xs text-slate-400 mt-0.5">
+            Cette tâche vient d'une règle de génération, pas d'une création manuelle.
+          </p>
+        </div>
+      }
+    </div>
+  </tas-drawer-content>
+
+  <tas-drawer-action>
+    <button tas-outlined-button color="primary" type="button" (click)="close()">Fermer</button>
+
+    <!--
+      Les actions ne sont pas exécutées ici : elles remontent à l'hôte, qui possède déjà les parcours
+      complets (résultat et tâche de suivi pour « Terminer », motif pour « Refuser »).
+    -->
+    @if (!isClosed() && !data.readOnly) {
+      <button
+        type="button"
+        class="text-xs text-slate-400 hover:text-red-500 transition-colors px-2 py-1"
+        (click)="requestAction('decline')"
+      >
+        Refuser
+      </button>
+      @if (isPending()) {
+        <button tas-raised-button color="primary" type="button" (click)="requestAction('start')">
+          Démarrer
+        </button>
+      }
+      @if (isInProgress()) {
+        <button tas-raised-button color="primary" type="button" (click)="requestAction('complete')">
+          Terminer
+        </button>
+      }
+    }
+  </tas-drawer-action>
+</tas-side-drawer>
