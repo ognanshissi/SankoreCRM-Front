@@ -20,6 +20,7 @@ import { TasInput } from '@talisoft/ui/input';
 import { TasSpinner } from '@talisoft/ui/spinner';
 import { SnackbarService } from '@talisoft/ui/snackbar';
 import { RunKycVerificationResponse, RunKycVerificationResponseOutcomeEnum } from '@sankore/crm-api';
+import { PermissionsService } from '@sankore/crm/common';
 import { KycFacadeService } from '../data-access/kyc-facade.service';
 import {
   KycFieldConfidence,
@@ -165,7 +166,21 @@ type VerificationState = 'idle' | 'running' | 'scored' | 'rejected' | 'queued' |
 export class KycDocumentCapture {
   private readonly _kyc = inject(KycFacadeService);
   private readonly _snackbar = inject(SnackbarService);
+  private readonly _permissions = inject(PermissionsService);
   private readonly _destroyRef = inject(DestroyRef);
+
+  /**
+   * Droit de faire noter le dossier et d'en corriger les champs lus : `kyc:verify`.
+   *
+   * Distinct de `kyc:manage`, qui autorise à déposer la pièce. Déposer est un geste de guichet ;
+   * relancer le service biométrique et réécrire une valeur lue par l'OCR engagent la notation du
+   * dossier, et chaque correction est tracée au nom de son auteur. `KycOcrField.editable` portait
+   * déjà cette idée — « faux quand le rôle connecté n'a pas le droit de corriger ce champ » — mais
+   * la façade le fixait à `true` pour tous les champs, faute de code au catalogue : l'écran
+   * proposait donc la correction à tout le monde, et c'est le 403 du serveur qui tranchait après
+   * coup, une fois la saisie faite.
+   */
+  public readonly canVerify = this._permissions.can('kyc:verify');
 
   public readonly kycFileId = input.required<string>();
 
@@ -306,6 +321,7 @@ export class KycDocumentCapture {
 
   /** Correction d'un seul champ, au fil de la relecture. */
   public saveField(name: string): void {
+    if (!this.canVerify()) return;
     const item = this.model().fields.find((f) => f.name === name);
     if (!item || !item.editable || item.value === item.original) return;
 
@@ -345,6 +361,7 @@ export class KycDocumentCapture {
    * les écrans du projet.
    */
   public saveAll(): void {
+    if (!this.canVerify()) return;
     submit(this.formSchema, async (field) => {
       const value = field()?.value();
       if (!value) return;
@@ -479,6 +496,17 @@ export class KycDocumentCapture {
   }
 
   private _runVerification(documentStorageRef: string): void {
+    // Sans le droit, l'appel repartirait en 403 et l'agent lirait une panne là où il n'y a qu'une
+    // habilitation manquante. On le dit dans l'indicateur, qui a déjà un état pour ça.
+    if (!this.canVerify()) {
+      this.verificationState.set('failed');
+      this.verificationError.set(
+        "La notation du dossier demande le droit de vérifier les dossiers KYC, que vous n'avez pas. "
+          + 'Un profil habilité doit la lancer.',
+      );
+      return;
+    }
+
     this.verificationState.set('running');
     this.verificationError.set(null);
     this.rejectionReason.set(null);

@@ -1,0 +1,166 @@
+<!-- En-tête -->
+<div class="flex flex-wrap items-start justify-between gap-3 mb-5">
+  <div class="min-w-0">
+    <div class="flex items-center gap-2.5">
+      <h1 class="text-lg font-semibold text-slate-800">Paramètres KYC</h1>
+      @if (settings().length > 0) {
+        <span
+          class="px-2 py-0.5 rounded-md bg-slate-100 text-slate-500 text-xs font-medium tabular-nums"
+        >
+          {{ filteredSettings().length }}
+        </span>
+      }
+    </div>
+    <p class="text-sm text-slate-400 mt-0.5">
+      Plafonds, seuils et délais appliqués aux dossiers KYC de votre organisation.
+      @if (customisedCount() > 0) {
+        {{ customisedCount() }} paramètre(s) s'écartent de la valeur d'usine.
+      }
+    </p>
+  </div>
+  <button tas-outlined-button type="button" (click)="reload()">
+    <tas-icon iconName="feather:refresh-cw" style="font-size:14px"></tas-icon>
+    Actualiser
+  </button>
+</div>
+
+@if (!canManage()) {
+  <!--
+    Dit en tête plutôt que sous chaque ligne : la lecture est ouverte à `kyc:read`, la modification
+    exige `kyc:settings:manage`. Sans ce rappel, l'absence de bouton se lit comme une panne.
+  -->
+  <div class="mb-4 flex items-start gap-2 rounded-lg border border-slate-200 bg-slate-50 p-3">
+    <tas-icon
+      iconName="feather:lock"
+      class="mt-0.5 shrink-0 text-slate-500"
+      style="font-size:14px"
+    ></tas-icon>
+    <p class="text-xs text-slate-600">
+      Lecture seule : modifier les paramètres KYC demande une habilitation dédiée.
+    </p>
+  </div>
+}
+
+<!--
+  Trois états strictement distincts. Une panne ne doit jamais s'afficher « aucun paramètre » : on en
+  conclurait qu'il n'y a rien à régler, alors que les plafonds en vigueur restent inconnus.
+-->
+@if (loadError()) {
+  <div
+    class="flex flex-col items-center gap-3 rounded-lg border border-red-200 bg-red-50 p-10 text-center"
+    role="alert"
+  >
+    <tas-icon iconName="feather:wifi-off" class="text-red-600" style="font-size:18px"></tas-icon>
+    <div>
+      <p class="text-sm font-medium text-slate-800">Chargement impossible</p>
+      <p class="text-xs text-slate-500 mt-1">{{ loadError() }}</p>
+    </div>
+    <button tas-raised-button color="primary" type="button" (click)="reload()">
+      <tas-icon iconName="feather:refresh-cw" style="font-size:14px"></tas-icon>
+      Réessayer
+    </button>
+  </div>
+} @else if (isEmpty()) {
+  <div
+    class="flex flex-col items-center gap-3 rounded-lg border border-dashed border-slate-300 p-10 text-center"
+  >
+    <tas-icon iconName="feather:sliders" class="text-slate-400" style="font-size:18px"></tas-icon>
+    <div>
+      <p class="text-sm font-medium text-slate-800">Aucun paramètre KYC déclaré</p>
+      <p class="text-xs text-slate-500 mt-1">
+        Le serveur n'expose aucun paramètre pour votre organisation.
+      </p>
+    </div>
+  </div>
+} @else {
+  <tas-table
+    [data]="filteredSettings()"
+    [config]="tableConfig()"
+    [isLoading]="isLoading()"
+    identifierField="key"
+    (searchInputChange)="onSearchChange($event)"
+  >
+    <ng-template #header>
+      <tr>
+        <th class="text-left">Paramètre</th>
+        <th class="text-left whitespace-nowrap">Valeur en vigueur</th>
+        <th class="text-left whitespace-nowrap">Type</th>
+        <th class="text-left whitespace-nowrap">Dernière modification</th>
+        <th></th>
+      </tr>
+    </ng-template>
+
+    <ng-template #body let-item>
+      <tr class="hover:bg-slate-50 transition-colors">
+        <!-- Clé + description du serveur : la clé est l'identifiant stable, celui qu'on cite au support -->
+        <td class="py-3">
+          <p class="font-mono text-xs text-slate-700 break-all">{{ item.key }}</p>
+          @if (item.description) {
+            <p class="text-xs text-slate-500 mt-0.5">{{ item.description }}</p>
+          }
+        </td>
+
+        <!-- Valeur, et l'écart à l'usine dit en toutes lettres plutôt que par une seule couleur -->
+        <td class="py-3 whitespace-nowrap">
+          <div class="flex flex-col items-start gap-1">
+            <span class="text-sm font-medium text-slate-800 tabular-nums">
+              {{ item.displayValue }}
+            </span>
+            @if (item.isDefault) {
+              <tas-tag severity="neutral">Valeur d'usine</tas-tag>
+            } @else {
+              <tas-tag severity="info">Personnalisé</tas-tag>
+              <span class="text-xs text-slate-400">
+                Usine : {{ item.displayDefaultValue }}
+              </span>
+            }
+          </div>
+        </td>
+
+        <td class="py-3 whitespace-nowrap">
+          <span class="text-sm text-slate-600">{{ item.kindLabel }}</span>
+        </td>
+
+        <td class="py-3 whitespace-nowrap">
+          @if (item.updatedAt) {
+            <p class="text-sm text-slate-600">{{ item.updatedAt | date: 'dd/MM/yyyy à HH:mm' }}</p>
+            <p class="text-xs text-slate-400 mt-0.5">{{ authorLabel(item) }}</p>
+          } @else {
+            <span class="text-sm text-slate-400">Jamais modifié</span>
+          }
+        </td>
+
+        <td class="py-3">
+          @if (canManage()) {
+            <div class="flex items-center justify-end gap-1">
+              <button
+                tas-button
+                iconButton
+                type="button"
+                title="Modifier ce paramètre"
+                [attr.aria-label]="'Modifier le paramètre ' + item.key"
+                (click)="openEdit(item)"
+              >
+                <tas-icon iconName="feather:edit-2" iconSize="sm"></tas-icon>
+              </button>
+              @if (!item.isDefault) {
+                <button
+                  tas-button
+                  iconButton
+                  color="warn"
+                  type="button"
+                  title="Revenir à la valeur d'usine"
+                  [attr.aria-label]="'Réinitialiser le paramètre ' + item.key"
+                  [disabled]="resettingKey() === item.key"
+                  (click)="confirmReset(item)"
+                >
+                  <tas-icon iconName="feather:rotate-ccw" iconSize="sm"></tas-icon>
+                </button>
+              }
+            </div>
+          }
+        </td>
+      </tr>
+    </ng-template>
+  </tas-table>
+}

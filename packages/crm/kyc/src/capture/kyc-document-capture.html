@@ -127,7 +127,7 @@
                   ></tas-icon>
                   <div class="flex-1">
                     <p class="text-xs text-amber-900">{{ verificationError() }}</p>
-                    @if (selfieStorageRef()) {
+                    @if (selfieStorageRef() && canVerify()) {
                       <button tas-text-button type="button" class="mt-1" (click)="retryVerification()">
                         Relancer la vérification
                       </button>
@@ -174,6 +174,24 @@
           <button tas-outlined-button type="button" (click)="retake()">Reprendre la photo</button>
         </div>
       } @else {
+        <!--
+          Dit une fois, en tête : sans le droit de vérifier, les champs sont en lecture seule. Le
+          répéter sous chaque champ noierait l'information dans une liste qui en compte huit.
+        -->
+        @if (!canVerify()) {
+          <div class="mb-3 flex items-start gap-2 rounded-lg border border-slate-200 bg-slate-50 p-3">
+            <tas-icon
+              iconName="feather:lock"
+              class="mt-0.5 shrink-0 text-slate-500"
+              style="font-size:14px"
+            ></tas-icon>
+            <p class="text-xs text-slate-600">
+              Lecture seule : corriger les champs lus demande le droit de vérifier les dossiers KYC.
+              Signalez les erreurs à un profil habilité plutôt que de reprendre la photo.
+            </p>
+          </div>
+        }
+
         <form [formRoot]="formSchema" class="flex flex-col gap-3">
           @for (field of ocrFields(); track field.name; let i = $index) {
             <div class="rounded-r-lg bg-white pl-3" [class]="confidenceMeta(field.confidence).borderClasses">
@@ -196,7 +214,7 @@
                 }
               </div>
 
-              @if (field.editable) {
+              @if (field.editable && canVerify()) {
                 <tas-form-field>
                   <tas-label>{{ field.label }}</tas-label>
                   <input
@@ -232,28 +250,32 @@
               } @else {
                 <p class="text-xs text-slate-400">{{ field.label }}</p>
                 <p class="text-sm text-slate-800">{{ field.value || '—' }}</p>
-                <p class="mt-0.5 text-xs text-slate-500">
-                  Non modifiable : ce champ relève d'un profil habilité.
-                </p>
+                @if (!field.editable) {
+                  <p class="mt-0.5 text-xs text-slate-500">
+                    Non modifiable : ce champ relève d'un profil habilité.
+                  </p>
+                }
               }
             </div>
           }
         </form>
 
-        <div class="mt-4 flex flex-wrap items-center justify-end gap-2">
-          <button
-            tas-raised-button
-            color="primary"
-            type="button"
-            [disabled]="
-              !hasPendingCorrections() || formSchema().invalid() || formSchema().submitting()
-            "
-            [isLoading]="formSchema().submitting()"
-            (click)="saveAll()"
-          >
-            Enregistrer toutes les corrections
-          </button>
-        </div>
+        @if (canVerify()) {
+          <div class="mt-4 flex flex-wrap items-center justify-end gap-2">
+            <button
+              tas-raised-button
+              color="primary"
+              type="button"
+              [disabled]="
+                !hasPendingCorrections() || formSchema().invalid() || formSchema().submitting()
+              "
+              [isLoading]="formSchema().submitting()"
+              (click)="saveAll()"
+            >
+              Enregistrer toutes les corrections
+            </button>
+          </div>
+        }
       }
     </tas-card>
 

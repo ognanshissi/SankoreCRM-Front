@@ -24,6 +24,7 @@ api/email-templates.service.ts
 api/health.service.ts
 api/ingest.service.ts
 api/ingestions.service.ts
+api/kyc-settings.service.ts
 api/kyc.service.ts
 api/lead-import.service.ts
 api/lead-sources.service.ts
@@ -230,12 +231,15 @@ model/ingestion-dto.interface.ts
 model/ingestion-payload-dto.interface.ts
 model/kyc-approval-circuit-dto.interface.ts
 model/kyc-approval-step-dto.interface.ts
+model/kyc-caps-dto.interface.ts
+model/kyc-caps-usage-dto.interface.ts
 model/kyc-face-comparison-dto.interface.ts
 model/kyc-file-dto.interface.ts
 model/kyc-file-list-item.interface.ts
 model/kyc-file-list-page.interface.ts
 model/kyc-identity-document-dto.interface.ts
 model/kyc-mrz-dto.interface.ts
+model/kyc-setting-dto.interface.ts
 model/kyc-verification-dto.interface.ts
 model/lead-dto-paged-result.interface.ts
 model/lead-dto.interface.ts
@@ -404,6 +408,7 @@ model/update-company-info-command.interface.ts
 model/update-customer-setting-request.interface.ts
 model/update-dispatching-rule-request.interface.ts
 model/update-email-template-request.interface.ts
+model/update-kyc-setting-request.interface.ts
 model/update-lead-owner-request.interface.ts
 model/update-lead-request.interface.ts
 model/update-lead-source-request.interface.ts

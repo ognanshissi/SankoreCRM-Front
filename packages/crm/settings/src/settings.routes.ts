@@ -243,6 +243,14 @@ const settingsRoutes: Routes = [
     loadComponent: () => import('./containers/scoring-configs/scoring-configs'),
   },
   {
+    // Lecture sur `kyc:read`, comme `GET /kyc-settings` : la modification, elle, exige
+    // `kyc:settings:manage`, vérifié dans l'écran et non par le garde — consulter les plafonds en
+    // vigueur est légitime pour qui lit déjà les dossiers.
+    path: 'kyc',
+    canActivate: [hasPermissionGuard('kyc:read')],
+    loadComponent: () => import('./containers/kyc-settings/kyc-settings'),
+  },
+  {
     path: 'task-types',
     canActivate: [hasPermissionGuard('lead:task-type:read')],
     loadComponent: () => import('./containers/task-types/task-types'),

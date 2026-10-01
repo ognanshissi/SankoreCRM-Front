@@ -172,6 +172,12 @@ export const PERMISSIONS = {
 
   // KYC
   KYC_READ: 'kyc:read',
+  KYC_MANAGE: 'kyc:manage',
+  KYC_VERIFY: 'kyc:verify',
+  KYC_APPROVE: 'kyc:approve',
+  KYC_DUPLICATE_CLEAR: 'kyc:duplicate:clear',
+  KYC_DOCUMENT_REVEAL: 'kyc:document:reveal',
+  KYC_SETTINGS_MANAGE: 'kyc:settings:manage',
 } as const;
 
 /** Code de permission valide. Tout autre littéral est refusé à la compilation. */

@@ -1,7 +1,6 @@
 <!--
-  Quatre états, tous explicites : chargement, panne, « rien à afficher » (pas de dossier ou dossier
-  non simplifié) et l'encart lui-même. Le cas « rien à afficher » ne rend aucun élément : l'encart
-  n'a de sens qu'en KYC simplifié.
+  Quatre états, tous explicites : chargement, panne, « rien à afficher » (pas de dossier ou client
+  sans plafond) et l'encart lui-même. Le cas « rien à afficher » ne rend aucun élément.
 -->
 @if (isLoading()) {
   <tas-card class="block">
@@ -24,24 +23,47 @@
       </div>
     </div>
   </tas-card>
-} @else if (isSimplified() && caps()) {
+} @else if (isCapped() && caps()) {
   <tas-card class="block">
     <div class="p-4">
       <div class="flex flex-wrap items-start justify-between gap-2 mb-3">
         <div class="min-w-0">
           <p class="text-sm font-semibold text-slate-800">Plafonds du KYC simplifié</p>
-          <p class="text-xs text-slate-400 mt-0.5">
-            Ce client est identifié en KYC simplifié : son compte reste soumis à des plafonds.
-          </p>
+          @if (isExpired()) {
+            <p class="text-xs text-slate-400 mt-0.5">
+              La revue périodique de ce dossier est en retard : les plafonds du KYC simplifié
+              s'appliquent jusqu'à ce qu'elle soit faite.
+            </p>
+          } @else {
+            <p class="text-xs text-slate-400 mt-0.5">
+              Ce client est identifié en KYC simplifié : son compte reste soumis à des plafonds.
+            </p>
+          }
         </div>
       </div>
 
-      <!-- Disparaîtra de lui-même quand `getCaps` cessera de renvoyer `isStub: true`. -->
-      @if (caps()!.isStub) {
-        <kyc-stub-notice what="Les plafonds du KYC simplifié"></kyc-stub-notice>
+      <!--
+        La consommation n'est pas mesurable : aucun module ne tient les comptes. On le dit une fois,
+        en tête, plutôt que de laisser deux jauges vides se faire interpréter comme « marge entière ».
+      -->
+      @if (usageUnavailableMessage()) {
+        <div class="flex gap-3 p-3 rounded-lg bg-amber-50 border border-amber-200 mb-4">
+          <tas-icon
+            iconName="feather:alert-triangle"
+            class="text-amber-600 shrink-0 mt-0.5"
+            style="font-size:14px"
+          ></tas-icon>
+          <div class="text-sm text-slate-700">
+            <p class="font-medium text-amber-800">Consommation non mesurée</p>
+            <p class="text-xs text-amber-700 mt-0.5">
+              {{ usageUnavailableMessage() }} Les plafonds ci-dessous sont bien ceux du serveur ; ce
+              qui reste disponible, lui, n'est pas connu.
+            </p>
+          </div>
+        </div>
       }
 
-      <!-- Les valeurs ET les plafonds viennent du serveur : aucun montant n'est écrit dans le front -->
+      <!-- Plafonds, devise, fenêtre et seuil d'alerte viennent du serveur : rien n'est écrit ici -->
       <div class="flex flex-col gap-4">
         <div>
           <kyc-cap-gauge
@@ -49,34 +71,61 @@
             [used]="caps()!.balance"
             [cap]="caps()!.balanceCap"
             [currency]="caps()!.currency"
+            [alertPct]="caps()!.alertPct ?? 80"
           ></kyc-cap-gauge>
         </div>
         <div>
           <kyc-cap-gauge
-            label="Flux du mois en cours"
-            [used]="caps()!.monthlyFlow"
-            [cap]="caps()!.monthlyFlowCap"
+            [label]="flowLabel()"
+            [used]="caps()!.flow"
+            [cap]="caps()!.flowCap"
             [currency]="caps()!.currency"
+            [alertPct]="caps()!.alertPct ?? 80"
           ></kyc-cap-gauge>
         </div>
       </div>
 
       <!-- Guichet : dire QUEL plafond bloque, pas seulement qu'un plafond bloque -->
-      @if (context() === 'teller' && blockingMessage()) {
-        <div
-          class="mt-4 flex items-start gap-2 p-3 rounded-lg bg-red-50 border border-red-200"
-          role="alert"
-        >
-          <tas-icon
-            iconName="feather:x-octagon"
-            class="text-red-700 shrink-0 mt-0.5"
-            style="font-size:14px"
-          ></tas-icon>
-          <div class="text-sm text-red-800">
-            <p class="font-medium">Opération bloquée</p>
-            <p class="text-xs mt-0.5">{{ blockingMessage() }}</p>
+      @if (context() === 'teller') {
+        @if (blockingMessage()) {
+          <div
+            class="mt-4 flex items-start gap-2 p-3 rounded-lg bg-red-50 border border-red-200"
+            role="alert"
+          >
+            <tas-icon
+              iconName="feather:x-octagon"
+              class="text-red-700 shrink-0 mt-0.5"
+              style="font-size:14px"
+            ></tas-icon>
+            <div class="text-sm text-red-800">
+              <p class="font-medium">Opération bloquée</p>
+              <p class="text-xs mt-0.5">{{ blockingMessage() }}</p>
+            </div>
           </div>
-        </div>
+        } @else if (!usageMeasured()) {
+          <!--
+            Au guichet, l'absence de mesure ne doit PAS se lire « ça passe ». L'encart le dit : il
+            donne le plafond, pas le feu vert, et c'est le système qui tient le compte qui tranche.
+          -->
+          <div
+            class="mt-4 flex items-start gap-2 p-3 rounded-lg bg-orange-50 border border-orange-200"
+            role="alert"
+          >
+            <tas-icon
+              iconName="feather:help-circle"
+              class="text-orange-700 shrink-0 mt-0.5"
+              style="font-size:14px"
+            ></tas-icon>
+            <div class="text-sm text-orange-900">
+              <p class="font-medium">Plafonds non vérifiables ici</p>
+              <p class="text-xs mt-0.5">
+                Cet encart ne peut pas confirmer qu'une opération tient dans les plafonds : la
+                consommation du client n'est pas connue. Vérifiez auprès du système qui tient le
+                compte avant de valider.
+              </p>
+            </div>
+          </div>
+        }
       }
 
       <!-- Crédit : l'indisponibilité est une règle, pas une conséquence d'un plafond atteint -->
@@ -99,19 +148,25 @@
       }
 
       <div class="mt-4 pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2">
-        <p class="text-xs text-slate-500">
-          Le KYC complet lève ces plafonds et ouvre l'accès au crédit.
-        </p>
-        <button
-          tas-raised-button
-          color="primary"
-          type="button"
-          aria-label="Passer ce client au KYC complet"
-          (click)="requestUpgrade()"
-        >
-          <tas-icon iconName="feather:arrow-up-circle" style="font-size:14px"></tas-icon>
-          Passer au KYC complet
-        </button>
+        @if (isExpired()) {
+          <p class="text-xs text-slate-500">
+            La revue périodique du dossier lève ces plafonds.
+          </p>
+        } @else {
+          <p class="text-xs text-slate-500">
+            Le KYC complet lève ces plafonds et ouvre l'accès au crédit.
+          </p>
+          <button
+            tas-raised-button
+            color="primary"
+            type="button"
+            aria-label="Passer ce client au KYC complet"
+            (click)="requestUpgrade()"
+          >
+            <tas-icon iconName="feather:arrow-up-circle" style="font-size:14px"></tas-icon>
+            Passer au KYC complet
+          </button>
+        }
       </div>
     </div>
   </tas-card>

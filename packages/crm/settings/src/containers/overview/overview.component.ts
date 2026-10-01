@@ -284,6 +284,15 @@ export class OverviewComponent implements OnInit {
         "Supervision des activités et traçabilité des actions sur l'organisation",
       children: [
         {
+          title: 'Paramètres KYC',
+          type: 'basic',
+          id: 'security_kyc_settings',
+          link: '/settings/kyc',
+          permission: 'kyc:read',
+          description:
+            "Plafonds du KYC simplifié, seuils d'alerte, périodicité de revue et tentatives de comparaison faciale",
+        },
+        {
           title: "Journal d'audit",
           type: 'basic',
           id: 'security_audit',

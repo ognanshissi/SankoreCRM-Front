@@ -19,7 +19,7 @@ import {
   KycApprovalCircuitDto,
   KycFileDto,
 } from '@sankore/crm-api';
-import { AuthenticationService } from '@sankore/crm/common';
+import { AuthenticationService, PermissionsService } from '@sankore/crm/common';
 import { KycFacadeService } from '../data-access/kyc-facade.service';
 import {
   KYC_COMPLEMENT_REASONS,
@@ -50,14 +50,19 @@ class DecisionFormModel {
  * selfie, du score et des flags **sur une seule vue**, mais ces morceaux appartiennent à d'autres
  * dossiers du module. La projection évite d'y créer une dépendance en dur.
  *
- * **Ce que le contrat permet de savoir, et ce qu'il ne permet pas.** L'API n'expose aucun indicateur
- * « cet utilisateur peut décider » : la description de `POST /approval/decisions` dit seulement que
- * seul le prochain niveau en attente peut décider, et que l'agent ayant soumis ne peut jamais
- * approuver son propre dossier. L'écran déduit donc le niveau de l'utilisateur de ses rôles et le
- * compare à `nextLevel` — c'est un filtre d'affichage, pas un contrôle. Le serveur reste l'autorité :
- * un 403 et un 409 sont remontés en clair. Et comme aucun DTO ne porte l'auteur de la soumission,
- * « jamais sur ses propres dossiers » **ne peut pas** être vérifié côté front : seul le serveur le
- * sait.
+ * **Ce que le contrat permet de savoir, et ce qu'il ne permet pas.** Décider demande deux choses
+ * distinctes, et l'écran les traite séparément :
+ *
+ * 1. **Le droit** — `kyc:approve`, du catalogue `PERMISSIONS`. C'est la seule des deux conditions
+ *    qui soit une vraie donnée : elle vient du rôle de l'utilisateur tel que le backend le définit.
+ * 2. **Le tour** — le prochain niveau attendu du circuit doit être le sien. Là, le contrat ne donne
+ *    aucune correspondance entre les rôles du tenant et les trois niveaux : `myLevel()` la **déduit
+ *    des libellés de rôles**, ce qui reste une heuristique.
+ *
+ * Les deux réunies ne forment qu'un filtre d'affichage, jamais un contrôle. Le serveur reste
+ * l'autorité : un 403 et un 409 sont remontés en clair. Et comme aucun DTO ne porte l'auteur de la
+ * soumission, « un agent ne valide jamais son propre dossier » **ne peut pas** être vérifié côté
+ * front : seul le serveur le sait.
  */
 @Component({
   selector: 'kyc-approval-decision',
@@ -83,6 +88,7 @@ class DecisionFormModel {
 export class KycApprovalDecision implements OnInit {
   private readonly _facade = inject(KycFacadeService);
   private readonly _auth = inject(AuthenticationService);
+  private readonly _permissions = inject(PermissionsService);
   private readonly _snackbar = inject(SnackbarService);
   private readonly _confirmDialog = inject(ConfirmDialogService);
 
@@ -155,8 +161,20 @@ export class KycApprovalDecision implements OnInit {
     return null;
   });
 
-  /** Les actions ne s'affichent que si le prochain niveau attendu est celui de l'utilisateur. */
+  /**
+   * Droit de se prononcer dans le circuit. Indépendant du niveau : `kyc:approve` dit que
+   * l'utilisateur décide, `myLevel()` dit à quelle étape. Avant que ce code n'existe au catalogue,
+   * la seule barrière était l'heuristique sur les libellés de rôles — un rôle nommé « Chef
+   * d'agence » suffisait donc à afficher les boutons, droit de décision ou non.
+   */
+  public readonly canApprove = this._permissions.can('kyc:approve');
+
+  /**
+   * Les actions ne s'affichent que si l'utilisateur a le droit de décider **et** que le prochain
+   * niveau attendu est le sien.
+   */
   public readonly canDecide = computed(() => {
+    if (!this.canApprove()) return false;
     const circuit = this.circuit();
     if (!circuit) return false;
     const next = circuit.nextLevel;

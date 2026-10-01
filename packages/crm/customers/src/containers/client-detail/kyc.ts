@@ -65,25 +65,36 @@ interface HistoryRow {
               </div>
 
               <!--
-                Le module KYC est désormais livré : le bouton ouvre le dossier. Il reste désactivé
-                tant qu'aucun dossier n'est ouvert pour ce client (404 sur la lecture du dossier par
-                client), et l'info-bulle est portée par le conteneur, parce qu'un bouton désactivé ne
+                Un seul bouton, contextuel : il consulte le dossier existant, ou lance l'enrôlement
+                quand le client n'en a pas encore (404 sur la lecture du dossier par client).
+                Auparavant il était simplement désactivé dans ce second cas, avec une info-bulle qui
+                invitait à « lancer l'enrôlement » sans qu'aucun chemin ne le permette depuis la
+                fiche. L'info-bulle reste portée par le conteneur, parce qu'un bouton désactivé ne
                 reçoit pas d'évènement de souris dans plusieurs navigateurs.
               -->
               <span class="inline-block" [title]="openFileTitle()">
-                <button
-                  tas-outlined-button
-                  type="button"
-                  [disabled]="!kycFileId() || isLookingUpFile()"
-                  (click)="openKycFile()"
-                >
-                  @if (isLookingUpFile()) {
+                @if (isLookingUpFile()) {
+                  <button tas-outlined-button type="button" [disabled]="true">
                     <tas-spinner size="3" class="text-primary"></tas-spinner>
-                  } @else {
+                    Ouvrir le dossier KYC
+                  </button>
+                } @else if (kycFileId()) {
+                  <button tas-outlined-button type="button" (click)="openKycFile()">
                     <tas-icon iconName="feather:folder" style="font-size:14px"></tas-icon>
-                  }
-                  Ouvrir le dossier KYC
-                </button>
+                    Ouvrir le dossier KYC
+                  </button>
+                } @else {
+                  <button
+                    tas-raised-button
+                    color="primary"
+                    type="button"
+                    [disabled]="!canOpenFile()"
+                    (click)="goToEnrolment()"
+                  >
+                    <tas-icon iconName="feather:folder-plus" style="font-size:14px"></tas-icon>
+                    Ouvrir un dossier KYC
+                  </button>
+                }
               </span>
             </div>
 
@@ -240,6 +251,15 @@ export class ClientKycPage {
 
   public readonly canRead = this._permissions.can('customers:read');
 
+  /**
+   * Droit d'ouvrir un dossier sur un client existant : `kyc:manage`, le droit d'écriture du module
+   * KYC — celui que le swagger exige pour déposer une pièce (`POST /kyc-files/{id}/documents`), et
+   * donc pour tout ce que l'enrôlement fait. C'est **le même code que le garde de la route
+   * d'enrôlement** (`kyc.routes.ts`) : sur un autre code, l'écran proposerait une action que le
+   * routeur refuserait ensuite.
+   */
+  public readonly canOpenFile = this._permissions.can('kyc:manage');
+
   private readonly _kycFacade = inject(KycFacadeService);
   private readonly _router = inject(Router);
 
@@ -252,9 +272,10 @@ export class ClientKycPage {
 
   protected readonly openFileTitle = computed(() => {
     if (this.isLookingUpFile()) return 'Recherche du dossier KYC…';
-    return this.kycFileId()
-      ? 'Ouvrir le dossier KYC complet'
-      : "Ce client n'a pas encore de dossier KYC ouvert : lancez l'enrôlement pour en créer un.";
+    if (this.kycFileId()) return 'Ouvrir le dossier KYC complet';
+    return this.canOpenFile()
+      ? "Ce client n'a pas encore de dossier KYC : ouvrir un dossier lance l'enrôlement."
+      : "Ce client n'a pas encore de dossier KYC, et vous n'avez pas le droit d'en ouvrir un.";
   });
 
   protected readonly kycLabel = computed(() => kycStatusLabel(this.client()?.kycStatus));

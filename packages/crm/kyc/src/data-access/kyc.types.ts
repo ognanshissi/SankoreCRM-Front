@@ -26,7 +26,11 @@ export interface KycOcrField {
   label: string;
   value: string;
   confidence: KycFieldConfidence;
-  /** Faux quand le rôle connecté n'a pas le droit de corriger ce champ. */
+  /**
+   * Faux pour un champ que **sa nature** rend non corrigeable — aujourd'hui le seul numéro de pièce,
+   * affiché masqué. Ce n'est pas le porteur du droit de corriger : celui-là est `kyc:verify`, vérifié
+   * par l'écran de capture, parce qu'il vaut pour tous les champs à la fois et non champ par champ.
+   */
   editable: boolean;
 }
 
@@ -163,15 +167,46 @@ export interface KycDashboardPage {
   awaitingMeCount: number;
 }
 
-/** Plafonds du KYC simplifié (KYC-F-09, dépend de KYC-B-06). */
+/**
+ * Plafonds du KYC simplifié (KYC-F-09), tels que le serveur les applique (KYC-B-06).
+ *
+ * Deux moitiés à ne pas confondre : les **plafonds**, qui sont des paramètres du tenant et arrivent
+ * toujours renseignés pour un client plafonné ; et la **consommation**, qui n'est aujourd'hui pas
+ * mesurable — aucun module ne tient de compte ni de transaction. Un `null` de consommation veut dire
+ * « on ne sait pas », jamais « rien consommé » : l'écran doit le dire au lieu de rassurer.
+ */
 export interface KycCaps {
-  balance: number;
-  balanceCap: number;
-  monthlyFlow: number;
-  monthlyFlowCap: number;
+  /** `false` pour un KYC complet : aucun plafond ne s'applique et les quatre champs suivants sont `null`. */
+  isCapped: boolean;
+  /** Palier renvoyé par le serveur : « Simplified » ou « Full ». */
+  tier: string;
+  /** Code ISO 4217 des montants. Le serveur le donne : ne jamais supposer le franc CFA. */
   currency: string;
-  isStub: boolean;
+  balanceCap: number | null;
+  flowCap: number | null;
+  /**
+   * Largeur de la fenêtre **glissante** du plafond de flux, en jours (30 par défaut, paramétrable).
+   * Ce n'est pas un mois calendaire — un libellé « ce mois-ci » serait faux.
+   */
+  flowWindowDays: number | null;
+  /** Part du plafond de flux qui déclenche l'avertissement, en pourcentage. */
+  alertPct: number | null;
+
+  /** `null` = NON MESURÉ, jamais zéro. */
+  balance: number | null;
+  /** `null` = NON MESURÉ, jamais zéro. */
+  flow: number | null;
+  flowWindowStart: string | null;
+  /** Code stable expliquant pourquoi une consommation manque, quand elle manque. */
+  usageUnavailableReason: string | null;
 }
+
+/** Motifs d'absence de consommation renvoyés par le serveur. */
+export const KYC_USAGE_UNAVAILABLE_LABELS: Record<string, string> = {
+  KYC_USAGE_NO_TRANSACTION_SOURCE:
+    "Les soldes et les mouvements ne sont pas encore tenus par l'application : la consommation des "
+    + 'plafonds ne peut pas être calculée.',
+};
 
 /** Un dossier en attente d'envoi, pour l'indicateur hors-ligne (KYC-F-07). */
 export interface KycPendingUpload {

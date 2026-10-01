@@ -35,6 +35,8 @@ import { DecideKycApprovalResponse } from '../model/decide-kyc-approval-response
 // @ts-ignore
 import { KycApprovalCircuitDto } from '../model/kyc-approval-circuit-dto.interface';
 // @ts-ignore
+import { KycCapsDto } from '../model/kyc-caps-dto.interface';
+// @ts-ignore
 import { KycFileDto } from '../model/kyc-file-dto.interface';
 // @ts-ignore
 import { KycFileListPage } from '../model/kyc-file-list-page.interface';
@@ -508,6 +510,72 @@ export class KYCApiService {
 
         let localVarPath = `/api/v1/kyc-files/${this.configuration.encodeParam({name: "kycFileId", value: kycFileId, in: "path", style: "simple", explode: false, dataType: "string", dataFormat: "uuid"})}/approval`;
         return this.httpClient.request<KycApprovalCircuitDto>('get', `${this.configuration.basePath}${localVarPath}`,
+            {
+                context: localVarHttpContext,
+                responseType: <any>responseType_,
+                withCredentials: this.configuration.withCredentials,
+                headers: localVarHeaders,
+                observe: observe,
+                reportProgress: reportProgress
+            }
+        );
+    }
+
+    /**
+     * Read the operation ceilings in force for a customer
+     * The simplified-tier ceilings as the tenant has configured them, with the currency they are expressed in and the width of the rolling flow window. Amounts already consumed are reported as NULL with a reason code, not as zero: no module owns an account or a transaction yet, and a zero would read as \&#39;nothing consumed\&#39;. An uncapped (full KYC) customer gets every ceiling null. Requires permission: kyc:read.
+     * @param customerId 
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     */
+    public getKycCaps(customerId: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<KycCapsDto>;
+    public getKycCaps(customerId: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<KycCapsDto>>;
+    public getKycCaps(customerId: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<KycCapsDto>>;
+    public getKycCaps(customerId: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
+        if (customerId === null || customerId === undefined) {
+            throw new Error('Required parameter customerId was null or undefined when calling getKycCaps.');
+        }
+
+        let localVarHeaders = this.defaultHeaders;
+
+        let localVarCredential: string | undefined;
+        // authentication (BearerToken) required
+        localVarCredential = this.configuration.lookupCredential('BearerToken');
+        if (localVarCredential) {
+            localVarHeaders = localVarHeaders.set('Authorization', 'Bearer ' + localVarCredential);
+        }
+
+        let localVarHttpHeaderAcceptSelected: string | undefined = options && options.httpHeaderAccept;
+        if (localVarHttpHeaderAcceptSelected === undefined) {
+            // to determine the Accept header
+            const httpHeaderAccepts: string[] = [
+                'application/json'
+            ];
+            localVarHttpHeaderAcceptSelected = this.configuration.selectHeaderAccept(httpHeaderAccepts);
+        }
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+
+        let localVarHttpContext: HttpContext | undefined = options && options.context;
+        if (localVarHttpContext === undefined) {
+            localVarHttpContext = new HttpContext();
+        }
+
+
+        let responseType_: 'text' | 'json' | 'blob' = 'json';
+        if (localVarHttpHeaderAcceptSelected) {
+            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+                responseType_ = 'text';
+            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+                responseType_ = 'json';
+            } else {
+                responseType_ = 'blob';
+            }
+        }
+
+        let localVarPath = `/api/v1/kyc-files/by-customer/${this.configuration.encodeParam({name: "customerId", value: customerId, in: "path", style: "simple", explode: false, dataType: "string", dataFormat: "uuid"})}/caps`;
+        return this.httpClient.request<KycCapsDto>('get', `${this.configuration.basePath}${localVarPath}`,
             {
                 context: localVarHttpContext,
                 responseType: <any>responseType_,

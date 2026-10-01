@@ -1,8 +1,8 @@
 import { inject, Injectable } from '@angular/core';
-import { HttpErrorResponse } from '@angular/common/http';
 import { catchError, delay, forkJoin, map, Observable, of, switchMap } from 'rxjs';
 import {
   ClientsApiService,
+  ClientSearchItemDto,
   CorrectKycFieldResponse,
   CreateKycFileResponse,
   DecideKycApprovalRequestDecisionEnum,
@@ -38,9 +38,10 @@ import {
  *    cahier ne seront pas tenues telles quelles, et chacune est documentée là où elle se lit :
  *    pas de lien d'image temporaire (`KycImageRef`), pas de maximum par critère de score
  *    (`KycScoreContribution`), pas de ligne MRZ brute ni de numéro de pièce en clair (`KycMrzData`).
- * 2. **Bouchons** — ce qui n'a toujours aucun endpoint : la liste des dossiers et l'historique.
- *    Chacun porte un `TODO(KYC-B-08)`, renvoie des données marquées `isStub: true`, et reste la
- *    seule chose à remplacer le jour de la livraison backend.
+ * 2. **Bouchons** — ce qui n'a toujours aucun endpoint : l'historique du dossier. Il porte un
+ *    `TODO(KYC-B-08)`, renvoie des données marquées `isStub: true`, et reste la seule chose à
+ *    remplacer le jour de la livraison backend. Les plafonds en sont sortis (KYC-B-06) : ils
+ *    viennent du serveur, consommation comprise — y compris le fait qu'elle n'est pas mesurable.
  *
  * Aucun écran n'appelle `KYCApiService` en direct : sans cette règle, le rebranchement se chercherait
  * dans sept dossiers au lieu d'un fichier.
@@ -66,6 +67,36 @@ export class KycFacadeService {
   /** `GET /kyc-files/by-customer/{id}` — le dossier ouvert d'un client. 404 s'il n'y en a pas. */
   public getFileByCustomer(customerId: string): Observable<KycFileDto> {
     return this._kycApi.getKycFileByCustomer(customerId);
+  }
+
+  /**
+   * `GET /kyc-files/by-customer/{id}/caps` — les plafonds en vigueur pour un client (KYC-B-06).
+   *
+   * Les deux montants du cahier (250 000 et 500 000) sont des paramètres du tenant : ils arrivent
+   * d'ici, avec leur devise et la largeur de la fenêtre de flux, et ne sont écrits nulle part dans le
+   * front. Un changement de politique ne demande donc pas de livraison.
+   *
+   * La **consommation** est une autre histoire : aucun module ne tient de compte ni de transaction,
+   * le serveur répond `null` avec un motif, et ce `null` est conservé tel quel jusqu'à l'écran. Le
+   * remplacer par 0 ferait lire « rien consommé » là où personne n'a mesuré — c'est exactement
+   * l'erreur que l'ancien bouchon faisait commettre, en affichant 212 000 / 250 000 comme un fait.
+   */
+  public getCaps(customerId: string): Observable<KycCaps> {
+    return this._kycApi.getKycCaps(customerId).pipe(
+      map((dto) => ({
+        isCapped: dto.isCapped ?? false,
+        tier: dto.tier ?? '',
+        currency: dto.currency ?? '',
+        balanceCap: dto.balanceCap ?? null,
+        flowCap: dto.flowCap ?? null,
+        flowWindowDays: dto.flowWindowDays ?? null,
+        alertPct: dto.alertPct ?? null,
+        balance: dto.usage?.balance ?? null,
+        flow: dto.usage?.flow ?? null,
+        flowWindowStart: dto.usage?.flowWindowStart ?? null,
+        usageUnavailableReason: dto.usage?.unavailableReason ?? null,
+      })),
+    );
   }
 
   /**
@@ -330,13 +361,29 @@ export class KycFacadeService {
   }
 
   /**
-   * TODO(KYC-B-06) — plafonds du KYC simplifié.
-   * Attendu : `GET /customers/{id}/kyc-caps` renvoyant solde, flux du mois et les deux plafonds. Les
-   * valeurs du cahier (250 000 et 500 000 FCFA) sont des plafonds **métier** : ils doivent venir du
-   * serveur, pas être écrits en dur ici — ce bouchon les expose justement comme des données.
+   * Recherche de clients existants, pour le choix du client à enrôler (KYC-F-01).
+   *
+   * `searchClients` prend onze paramètres positionnels : seuls `name`, `page` et `pageSize` nous
+   * concernent, les autres restent `undefined`. On passe par la façade plutôt que d'injecter
+   * `ClientsApiService` dans l'écran, pour la même raison que `getCustomerName` : le module KYC a
+   * un seul point de contact avec le serveur.
    */
-  public getCaps(customerId: string): Observable<KycCaps> {
-    return of(STUB_CAPS).pipe(delay(300));
+  public searchCustomers(name: string, pageSize = 10): Observable<ClientSearchItemDto[]> {
+    return this._clientsApi
+      .searchClients(
+        undefined,
+        undefined,
+        undefined,
+        name,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        1,
+        pageSize,
+      )
+      .pipe(map((page) => page.items ?? []));
   }
 
   /** Nom affichable d'un client, pour les écrans KYC qui ne connaissent que son identifiant. */
@@ -365,25 +412,12 @@ export class KycFacadeService {
 // flatteur, et `isStub` porté jusque dans l'interface.
 // ——————————————————————————————————————————————————————————————————————
 
-
-
-
-
 const STUB_HISTORY: KycHistoryEntry[] = [
   { kind: 'creation',     label: 'Dossier ouvert',            detail: null,         authorName: 'Système',          at: new Date(Date.now() - 86_400_000 * 2).toISOString(), masked: false },
   { kind: 'verification', label: 'Vérification exécutée',     detail: 'Score 72',   authorName: 'Service biométrique', at: new Date(Date.now() - 86_400_000).toISOString(), masked: false },
   { kind: 'correction',   label: 'Champ corrigé',             detail: "Date d'expiration", authorName: 'Agent de démonstration', at: new Date(Date.now() - 7_200_000).toISOString(), masked: true },
   { kind: 'decision',     label: 'Complément demandé',        detail: "Chef d'agence", authorName: 'Chef de démonstration', at: new Date(Date.now() - 3_600_000).toISOString(), masked: false },
 ];
-
-const STUB_CAPS: KycCaps = {
-  balance: 212_000,
-  balanceCap: 250_000,
-  monthlyFlow: 180_000,
-  monthlyFlowCap: 500_000,
-  currency: 'FCFA',
-  isStub: true,
-};
 
 // ——————————————————————————————————————————————————————————————————————
 // Libellés et bandes de confiance.

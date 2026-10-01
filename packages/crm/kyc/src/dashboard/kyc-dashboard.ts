@@ -21,8 +21,9 @@ import { TasInput } from '@talisoft/ui/input';
 import { TasSelect } from '@talisoft/ui/select';
 import { TasTable, TableConfig } from '@talisoft/ui/table';
 import { TimeagoPipe } from '@talisoft/ui/timeago';
+import { SideDrawerService } from '@talisoft/ui/side-drawer';
 import { AgenciesApiService } from '@sankore/crm-api';
-import { BreadcrumbService } from '@sankore/crm/common';
+import { BreadcrumbService, PermissionsService } from '@sankore/crm/common';
 import { KycFacadeService } from '../data-access/kyc-facade.service';
 import { KycDashboardRow } from '../data-access/kyc.types';
 import {
@@ -31,6 +32,7 @@ import {
   kycVigilanceMeta,
 } from '../data-access/kyc-referential';
 import { KycStatusBadge } from '../ui/kyc-status-badge';
+import { KycOpenFileDrawer } from '../enrolment/open-kyc-file-drawer';
 
 /** Alerte d'ancienneté affichée sur une ligne (KYC-F-06). */
 interface KycRowAlert {
@@ -77,9 +79,20 @@ export class KycDashboardPage implements OnInit {
   private readonly _facade = inject(KycFacadeService);
   private readonly _agenciesApi = inject(AgenciesApiService);
   private readonly _breadcrumbService = inject(BreadcrumbService);
+  private readonly _sideDrawerService = inject(SideDrawerService);
+  private readonly _permissions = inject(PermissionsService);
   private readonly _route = inject(ActivatedRoute);
   private readonly _router = inject(Router);
   private readonly _destroyRef = inject(DestroyRef);
+
+  /**
+   * Droit d'ouvrir un dossier sur un client existant : `kyc:manage`, le droit d'écriture du module
+   * KYC — celui que le swagger exige pour déposer une pièce (`POST /kyc-files/{id}/documents`), et
+   * donc pour tout ce que l'enrôlement fait. C'est **le même code que le garde de la route
+   * d'enrôlement** (`kyc.routes.ts`) : sur un autre code, l'écran proposerait une action que le
+   * routeur refuserait ensuite.
+   */
+  public readonly canOpenFile = this._permissions.can('kyc:manage');
 
   // ── État de chargement ────────────────────────────────────────────────
   public isLoading = signal(true);
@@ -280,6 +293,23 @@ export class KycDashboardPage implements OnInit {
 
   public openFile(row: KycDashboardViewRow): void {
     this._router.navigate(['/kyc', row.kycFileId]);
+  }
+
+  /**
+   * Ouvre un dossier sur un client existant. Le drawer ne fait que choisir le client ; c'est
+   * l'écran d'enrôlement qui appelle `POST /kyc-files`, idempotent, et reprend le dossier
+   * existant le cas échéant.
+   */
+  public openFileForCustomer(): void {
+    const ref = this._sideDrawerService.open<string, unknown, KycOpenFileDrawer>(KycOpenFileDrawer, {
+      width: '100%',
+      height: '100%',
+      panelClass: 'side-drawer-panel',
+    });
+
+    ref.closed.subscribe((customerId) => {
+      if (customerId) this._router.navigate(['/kyc', 'enrolment', customerId]);
+    });
   }
 
   /** Libellé lu par un lecteur d'écran sur une ligne activable. */

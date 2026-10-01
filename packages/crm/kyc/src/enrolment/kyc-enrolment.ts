@@ -83,7 +83,8 @@ export class KycEnrolmentPage {
   public readonly customerId = input.required<string>();
 
   public readonly steps = STEPS;
-  public readonly canSeeRawDetail = this._permissions.can('customers:reveal_sensitive');
+  /** Même droit que sur l'écran de détail : voir `kyc-file-detail.ts`. */
+  public readonly canSeeRawDetail = this._permissions.can('kyc:document:reveal');
 
   private readonly _scorePanel = viewChild(KycScorePanel);
 

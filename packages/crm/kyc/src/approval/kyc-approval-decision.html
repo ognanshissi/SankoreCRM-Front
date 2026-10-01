@@ -171,13 +171,22 @@
       </tas-card>
     } @else if (awaitedValidator()) {
       <!--
-        Pas de bouton : soit ce n'est pas le tour de cet utilisateur, soit son rôle ne correspond à
-        aucun niveau. Le dire évite de chercher un bouton absent.
+        Pas de bouton, et la raison est dite : sans elle, un utilisateur qui n'a pas le droit de
+        décider cherche un bouton absent en croyant que ce n'est pas son tour. Les deux causes sont
+        distinctes et n'appellent pas la même action — demander le droit, ou attendre.
       -->
-      <p class="text-sm text-slate-500">
-        Ce dossier attend une décision de {{ awaitedValidator() }}. Vous ne pouvez pas décider à ce
-        niveau — et un agent ne valide jamais un dossier qu'il a soumis lui-même.
-      </p>
+      @if (!canApprove()) {
+        <p class="text-sm text-slate-500">
+          Ce dossier attend une décision de {{ awaitedValidator() }}. Vous n'avez pas le droit de
+          vous prononcer dans le circuit de validation : demandez-le à votre administrateur si
+          c'est votre rôle.
+        </p>
+      } @else {
+        <p class="text-sm text-slate-500">
+          Ce dossier attend une décision de {{ awaitedValidator() }}. Vous ne pouvez pas décider à ce
+          niveau — et un agent ne valide jamais un dossier qu'il a soumis lui-même.
+        </p>
+      }
     }
   </div>
 }

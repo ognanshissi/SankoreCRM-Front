@@ -92,11 +92,13 @@ export class KycFileDetailPage implements OnInit {
   public readonly id = input.required<string>();
 
   /**
-   * Le détail technique brut du score est une donnée sensible : il est réservé au droit
-   * `customers:reveal_sensitive` du catalogue `PERMISSIONS`, celui-là même qui gouverne l'affichage
-   * en clair des données sensibles d'un client. Aucun droit propre au KYC n'existe au catalogue.
+   * Le détail technique brut du score est une donnée sensible : il relève de `kyc:document:reveal`,
+   * le droit de révéler les pièces et les données en clair d'un dossier — celui que le swagger
+   * exige pour relire une image déposée et pour `GET /kyc-files/{id}/identity-document`. Il était
+   * porté par `customers:reveal_sensitive` faute de code KYC au catalogue, ce qui ouvrait le détail
+   * brut à quiconque pouvait lire une fiche client en clair.
    */
-  public readonly canSeeRawDetail = this._permissions.can('customers:reveal_sensitive');
+  public readonly canSeeRawDetail = this._permissions.can('kyc:document:reveal');
 
   public readonly tabs = TABS;
   public readonly activeTab = signal<KycDetailTab>('identite');

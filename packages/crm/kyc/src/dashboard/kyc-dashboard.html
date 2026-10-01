@@ -6,10 +6,18 @@
       Suivi des dossiers d'identification et des décisions en attente.
     </p>
   </div>
-  <button tas-outlined-button type="button" (click)="reload()">
-    <tas-icon iconName="feather:refresh-cw" style="font-size:14px"></tas-icon>
-    Actualiser
-  </button>
+  <div class="flex items-center gap-2">
+    <button tas-outlined-button type="button" (click)="reload()">
+      <tas-icon iconName="feather:refresh-cw" style="font-size:14px"></tas-icon>
+      Actualiser
+    </button>
+    @if (canOpenFile()) {
+      <button tas-raised-button color="primary" type="button" (click)="openFileForCustomer()">
+        <tas-icon iconName="feather:folder-plus" style="font-size:14px"></tas-icon>
+        Ouvrir un dossier
+      </button>
+    }
+  </div>
 </div>
 
 <!--
@@ -202,6 +210,11 @@
       @if (hasActiveFilters()) {
         <button tas-outlined-button type="button" (click)="resetFilters()">
           Effacer les filtres
+        </button>
+      } @else if (canOpenFile()) {
+        <button tas-raised-button color="primary" type="button" (click)="openFileForCustomer()">
+          <tas-icon iconName="feather:folder-plus" style="font-size:14px"></tas-icon>
+          Ouvrir un dossier
         </button>
       }
     </div>

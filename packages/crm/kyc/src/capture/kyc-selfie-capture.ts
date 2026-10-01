@@ -20,6 +20,7 @@ import { TasInput } from '@talisoft/ui/input';
 import { TasSpinner } from '@talisoft/ui/spinner';
 import { SnackbarService } from '@talisoft/ui/snackbar';
 import { RunKycVerificationResponse, RunKycVerificationResponseOutcomeEnum } from '@sankore/crm-api';
+import { PermissionsService } from '@sankore/crm/common';
 import { KycFacadeService } from '../data-access/kyc-facade.service';
 import { kycConfidenceMeta } from '../data-access/kyc-referential';
 import { KycImageRef } from '../data-access/kyc.types';
@@ -121,7 +122,11 @@ class SelfieOverrideFormModel {
 export class KycSelfieCapture {
   private readonly _kyc = inject(KycFacadeService);
   private readonly _snackbar = inject(SnackbarService);
+  private readonly _permissions = inject(PermissionsService);
   private readonly _destroyRef = inject(DestroyRef);
+
+  /** Même droit que sur la capture de pièce : la comparaison faciale note le dossier. */
+  public readonly canVerify = this._permissions.can('kyc:verify');
 
   public readonly kycFileId = input.required<string>();
 
@@ -262,6 +267,17 @@ export class KycSelfieCapture {
     if (!documentRef) {
       this.errorMessage.set(
         "La photo de la pièce d'identité manque : capturez-la avant de comparer les visages.",
+      );
+      this.step.set('result');
+      return;
+    }
+
+    // Sans le droit de vérifier, l'appel repartirait en 403 : on le dit au lieu de laisser lire
+    // une panne du service biométrique.
+    if (!this.canVerify()) {
+      this.errorMessage.set(
+        "La comparaison faciale demande le droit de vérifier les dossiers KYC, que vous n'avez pas. "
+          + 'La photo est enregistrée ; un profil habilité doit lancer la comparaison.',
       );
       this.step.set('result');
       return;
