@@ -1,0 +1,183 @@
+/**
+ * Types des données que **le contrat KYC-B-08 ne fournit pas encore**.
+ *
+ * Chacun correspond à un critère d'acceptation du cahier sans endpoint derrière. Ils vivent ici, et
+ * non dispersés dans les écrans, pour que le rebranchement sur l'API réelle se fasse en un seul
+ * endroit : `kyc-facade.service.ts`.
+ *
+ * Tant que ces endpoints n'existent pas, la façade renvoie des valeurs de démonstration explicitement
+ * marquées (`isStub: true`), et les écrans affichent un bandeau le disant. Aucun écran ne doit
+ * présenter une donnée simulée comme une donnée serveur.
+ */
+
+/** Fiabilité d'un champ lu par l'OCR — le code couleur de KYC-F-02. */
+/**
+ * `'unknown'` n'est pas une quatrième nuance : c'est l'absence de mesure. Le serveur ne note pas
+ * tous les champs, et une pièce lue avant que les confiances ne soient conservées n'en a aucune —
+ * aucune reprise ne peut les inventer. Sans cette valeur, « non mesuré » s'afficherait comme
+ * « sûr », et l'agent re-saisirait les champs déjà bons en ignorant les douteux.
+ */
+export type KycFieldConfidence = 'high' | 'medium' | 'low' | 'unknown';
+
+export interface KycOcrField {
+  /** Nom technique, celui qu'attend `CorrectKycFieldRequest.fieldName`. */
+  name: string;
+  /** Libellé français affiché à l'agent. */
+  label: string;
+  value: string;
+  confidence: KycFieldConfidence;
+  /** Faux quand le rôle connecté n'a pas le droit de corriger ce champ. */
+  editable: boolean;
+}
+
+/**
+ * Zone codée de la pièce, affichée en lecture seule pour contrôle (KYC-F-02).
+ *
+ * La forme suit celle du serveur, pas l'inverse : les clés de `fields` sont celles du service de
+ * biométrie, pas une liste fermée. Figer `surname`/`givenNames`/`nationality` ici supposerait
+ * connaître les noms qu'un service externe emploie, et afficherait « — » partout le jour où il en
+ * change un.
+ */
+export interface KycMrzData {
+  /**
+   * Toujours `null`, et déclaré pour qu'aucun écran ne l'attende : la ligne brute **n'est jamais
+   * stockée**. Elle épelle le numéro de la pièce en clair, donc la garder dans une colonne jsonb
+   * annulerait le chiffrement du numéro trois champs plus loin.
+   */
+  rawLine: null;
+  checksumValid: boolean;
+  /** Champs analysés, numéro de pièce exclu — il est retiré avant écriture, comme pour l'OCR. */
+  fields: Record<string, string>;
+}
+
+/**
+ * Contribution d'un critère au score global (KYC-F-04).
+ *
+ * Nommé « contribution » et non « composante », et **sans `max`** : le service rend un apport par
+ * critère et aucun dénominateur. Une jauge par critère ne peut donc pas être dessinée honnêtement —
+ * seul le score global est sur 100. Et `key` est une chaîne libre, pas `'face' | 'mrz' | 'fields' |
+ * 'anomalies'` : le service de biométrie est externe à cette solution, ses critères sont les siens,
+ * et les projeter sur une liste fermée écarterait silencieusement ceux qu'on n'avait pas prévus.
+ */
+export interface KycScoreContribution {
+  key: string;
+  label: string;
+  score: number;
+}
+
+export interface KycVerificationDetail {
+  score: number;
+  level: string;
+  contributions: KycScoreContribution[];
+  flagCodes: string[];
+  /** Pourcentage de correspondance faciale (KYC-F-03). `null` si aucune comparaison n'a eu lieu. */
+  faceMatchPercent: number | null;
+  /**
+   * Cause d'une capture refusée : flou, reflet, lumière.
+   *
+   * Toujours `null` par cette lecture : le code n'est **pas persisté**, il n'existe que dans la
+   * réponse synchrone de `POST /verify`. L'écran qui lance la vérification doit donc le garder de
+   * cette réponse-là ; un écran rouvert plus tard ne peut pas le retrouver.
+   */
+  captureRejectionReason: string | null;
+  /**
+   * Détail technique, pour les profils autorisés (KYC-F-04).
+   *
+   * C'est **ce que le serveur a conservé** de la vérification, pas la charge brute du service : il
+   * n'existe aucune colonne « payload brut », et prétendre le contraire ferait croire à une trace
+   * qui n'a jamais été gardée.
+   */
+  rawPayload: Record<string, unknown> | null;
+}
+
+/**
+ * Nature de l'image déposée, telle que le serveur la nomme. Le verso existe côté serveur même si
+ * aucun écran ne le capture encore : le reprendre tel quel évite une table de correspondance entre
+ * deux vocabulaires, et c'est le piège que le contrat sert à éviter.
+ */
+export type KycDocumentKind = 'IdentityDocumentFront' | 'IdentityDocumentBack' | 'Selfie';
+
+/** Référence d'image dans le magasin documentaire, attendue par `RunKycVerificationRequest`. */
+export interface KycImageRef {
+  storageRef: string;
+  /**
+   * URL d'aperçu **locale** (`blob:`), pas un lien serveur.
+   *
+   * Il n'y a pas de lien de lecture temporaire et il n'y en aura pas : la relecture passe par
+   * `GET /kyc-files/{id}/documents/{storageRef}`, un flux authentifié qui journalise chaque accès
+   * dans `kyc_document_access_logs`. Une URL signée n'auditerait que son émission, pas la lecture,
+   * ce qui viderait cette table de son sens. Juste après une capture le navigateur a déjà les
+   * octets, donc l'aperçu se fabrique ici — et l'appelant doit `revokeObjectURL` l'ancien.
+   */
+  url: string | null;
+}
+
+export type KycHistoryKind = 'verification' | 'correction' | 'decision' | 'review' | 'creation';
+
+export interface KycHistoryEntry {
+  kind: KycHistoryKind;
+  label: string;
+  /** Nom du champ pour une correction, niveau pour une décision. */
+  detail: string | null;
+  authorName: string;
+  at: string;
+  /** Vrai quand la valeur est masquée faute de permission (KYC-F-08). */
+  masked: boolean;
+}
+
+/** Ligne du tableau de bord (KYC-F-06). */
+export interface KycDashboardRow {
+  kycFileId: string;
+  customerId: string;
+  customerName: string;
+  status: string;
+  confidenceScore: number | null;
+  vigilanceLevel: string;
+  updatedAt: string;
+  /** Action attendue, déjà formulée côté serveur dans la cible. */
+  requiredAction: string | null;
+  /** Le dossier attend une décision de l'utilisateur connecté : il remonte en tête. */
+  awaitingMe: boolean;
+}
+
+export interface KycDashboardFilters {
+  status: string;
+  agencyId: string;
+  vigilanceLevel: string;
+  from: string;
+  to: string;
+  page: number;
+  pageSize: number;
+}
+
+export interface KycDashboardPage {
+  rows: KycDashboardRow[];
+  /** Dossiers du périmètre, tous filtres appliqués — pas seulement ceux de la page. */
+  totalCount: number;
+  /**
+   * Dossiers dont le prochain échelon relève des rôles de l'appelant, sur tout le périmètre.
+   *
+   * Indice de tri, jamais un droit : un remplaçant porteur d'une délégation M12 sans le rôle n'est
+   * pas compté ici et peut quand même signer depuis le dossier.
+   */
+  awaitingMeCount: number;
+}
+
+/** Plafonds du KYC simplifié (KYC-F-09, dépend de KYC-B-06). */
+export interface KycCaps {
+  balance: number;
+  balanceCap: number;
+  monthlyFlow: number;
+  monthlyFlowCap: number;
+  currency: string;
+  isStub: boolean;
+}
+
+/** Un dossier en attente d'envoi, pour l'indicateur hors-ligne (KYC-F-07). */
+export interface KycPendingUpload {
+  draftId: string;
+  customerName: string;
+  capturedAt: string;
+  /** 0 à 100 pendant la synchronisation. */
+  progress: number;
+}

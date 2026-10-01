@@ -1,0 +1,333 @@
+<!-- En-tête -->
+<div class="flex flex-wrap items-start justify-between gap-3 mb-5">
+  <div class="min-w-0">
+    <h1 class="text-lg font-semibold text-slate-800">Dossiers KYC</h1>
+    <p class="text-sm text-slate-400 mt-0.5">
+      Suivi des dossiers d'identification et des décisions en attente.
+    </p>
+  </div>
+  <button tas-outlined-button type="button" (click)="reload()">
+    <tas-icon iconName="feather:refresh-cw" style="font-size:14px"></tas-icon>
+    Actualiser
+  </button>
+</div>
+
+<!--
+  Compteur « en attente de moi ». Le cahier le veut aussi dans le menu latéral, qui n'est pas dans
+  ce module : il est exposé par le signal public `awaitingMeCount` et la sortie
+  `awaitingMeCountChange`.
+-->
+<div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
+  <tas-card>
+    <div class="flex items-center gap-3 p-3">
+      <div class="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+        <tas-icon iconName="feather:user-check" class="text-primary" style="font-size:14px"></tas-icon>
+      </div>
+      <div>
+        <p class="text-xl font-semibold text-slate-800 tabular-nums leading-none">
+          {{ awaitingMeCount() }}
+        </p>
+        <p class="text-xs text-slate-400 mt-0.5">En attente de ma décision</p>
+      </div>
+    </div>
+  </tas-card>
+  <tas-card>
+    <div class="flex items-center gap-3 p-3">
+      <div class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center shrink-0">
+        <tas-icon iconName="feather:folder" class="text-slate-500" style="font-size:14px"></tas-icon>
+      </div>
+      <div>
+        <p class="text-xl font-semibold text-slate-800 tabular-nums leading-none">{{ totalCount() }}</p>
+        <p class="text-xs text-slate-400 mt-0.5">Dossiers correspondant aux filtres</p>
+      </div>
+    </div>
+  </tas-card>
+  <tas-card>
+    <div class="flex items-center gap-3 p-3">
+      <div class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center shrink-0">
+        <tas-icon iconName="feather:list" class="text-slate-500" style="font-size:14px"></tas-icon>
+      </div>
+      <div>
+        <p class="text-xl font-semibold text-slate-800 tabular-nums leading-none">{{ displayedCount() }}</p>
+        <!--
+          Le libellé dit « sur cette page », parce que c'est la vérité : la recherche par nom porte
+          sur la page affichée et non sur tout le portefeuille — les noms sont résolus par l'écran,
+          le serveur ne les connaît pas. Sans cette précision, « 0 affiché » se lit comme « aucun
+          dossier de ce nom », ce qui est faux.
+        -->
+        <p class="text-xs text-slate-400 mt-0.5">
+          @if (filterQuery()) {
+            Trouvés sur cette page ({{ loadedCount() }} chargés)
+          } @else {
+            Affichés sur cette page
+          }
+        </p>
+      </div>
+    </div>
+  </tas-card>
+</div>
+
+<!-- Filtres : une colonne à 360 px, cinq au-delà -->
+<tas-card class="block mb-4">
+  <div class="p-4 flex flex-col gap-3">
+    <div class="flex items-center justify-between gap-2">
+      <p class="text-sm font-medium text-slate-700">Filtres</p>
+      @if (hasActiveFilters()) {
+        <button
+          tas-button
+          type="button"
+          class="text-xs text-slate-400 hover:text-slate-600"
+          (click)="resetFilters()"
+        >
+          Tout effacer
+        </button>
+      }
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
+      <tas-form-field>
+        <tas-label>Rechercher un client</tas-label>
+        <input
+          tasInput
+          type="text"
+          placeholder="Nom du client..."
+          aria-label="Rechercher un dossier par nom de client"
+          [ngModel]="filterQuery()"
+          (ngModelChange)="onSearchChange($event)"
+        />
+      </tas-form-field>
+
+      <tas-form-field>
+        <tas-label>Statut</tas-label>
+        <tas-select
+          [options]="statusOptions"
+          optionLabel="label"
+          optionValue="value"
+          placeholder="Tous les statuts"
+          aria-label="Filtrer par statut de dossier"
+          [ngModel]="filterStatus()"
+          (ngModelChange)="onStatusChange($event)"
+        ></tas-select>
+      </tas-form-field>
+
+      <tas-form-field>
+        <tas-label>Agence</tas-label>
+        <tas-select
+          [options]="agencyOptions()"
+          optionLabel="label"
+          optionValue="value"
+          placeholder="Toutes les agences"
+          aria-label="Filtrer par agence"
+          [ngModel]="filterAgency()"
+          (ngModelChange)="onAgencyChange($event)"
+        ></tas-select>
+      </tas-form-field>
+
+      <tas-form-field>
+        <tas-label>Vigilance</tas-label>
+        <tas-select
+          [options]="vigilanceOptions"
+          optionLabel="label"
+          optionValue="value"
+          placeholder="Tous les niveaux"
+          aria-label="Filtrer par niveau de vigilance"
+          [ngModel]="filterVigilance()"
+          (ngModelChange)="onVigilanceChange($event)"
+        ></tas-select>
+      </tas-form-field>
+
+      <tas-form-field>
+        <tas-label>Mis à jour du</tas-label>
+        <input
+          tasInput
+          type="date"
+          aria-label="Début de la période de mise à jour"
+          [value]="filterFrom()"
+          (change)="onFromChange($any($event.target).value)"
+        />
+      </tas-form-field>
+
+      <tas-form-field>
+        <tas-label>au</tas-label>
+        <input
+          tasInput
+          type="date"
+          aria-label="Fin de la période de mise à jour"
+          [value]="filterTo()"
+          (change)="onToChange($any($event.target).value)"
+        />
+      </tas-form-field>
+    </div>
+  </div>
+</tas-card>
+
+<!--
+  Trois états strictement distincts. L'erreur ne doit jamais se lire comme une absence de dossier :
+  un agent qui voit « Aucun dossier en attente » pendant une panne conclut qu'il n'a rien à traiter.
+-->
+@if (loadError()) {
+  <tas-card class="block">
+    <div class="p-10 flex flex-col items-center text-center gap-3" role="alert">
+      <div class="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center">
+        <tas-icon iconName="feather:wifi-off" class="text-red-600" style="font-size:18px"></tas-icon>
+      </div>
+      <div>
+        <p class="text-sm font-medium text-slate-800">Chargement impossible</p>
+        <p class="text-xs text-slate-500 mt-1">{{ loadError() }}</p>
+      </div>
+      <button tas-raised-button color="primary" type="button" (click)="reload()">
+        <tas-icon iconName="feather:refresh-cw" style="font-size:14px"></tas-icon>
+        Réessayer
+      </button>
+    </div>
+  </tas-card>
+} @else if (isEmpty()) {
+  <tas-card class="block">
+    <div class="p-10 flex flex-col items-center text-center gap-3">
+      <div class="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center">
+        <tas-icon iconName="feather:inbox" class="text-slate-400" style="font-size:18px"></tas-icon>
+      </div>
+      <div>
+        <p class="text-sm font-medium text-slate-800">Aucun dossier en attente</p>
+        @if (hasActiveFilters()) {
+          <p class="text-xs text-slate-500 mt-1">
+            Aucun dossier ne correspond aux filtres appliqués.
+          </p>
+        } @else {
+          <p class="text-xs text-slate-500 mt-1">
+            Tous les dossiers d'identification sont traités.
+          </p>
+        }
+      </div>
+      @if (hasActiveFilters()) {
+        <button tas-outlined-button type="button" (click)="resetFilters()">
+          Effacer les filtres
+        </button>
+      }
+    </div>
+  </tas-card>
+} @else {
+  <!--
+    `[data]` reçoit TOUTES les lignes connues, et `serverSide: true` ne sert qu'à recevoir
+    `pageEventChange` (cf. le commentaire de `tableConfig`).
+  -->
+  <tas-table
+    [data]="displayedRows()"
+    [config]="tableConfig()"
+    [hasCaption]="false"
+    [isLoading]="isLoading()"
+    identifierField="kycFileId"
+    (pageEventChange)="onPageChange($event)"
+  >
+    <ng-template #header>
+      <tr>
+        <th class="text-left whitespace-nowrap">Client</th>
+        <th class="text-left whitespace-nowrap">Statut</th>
+        <th class="text-left whitespace-nowrap">Score</th>
+        <th class="text-left whitespace-nowrap">Vigilance</th>
+        <th class="text-left whitespace-nowrap">Mise à jour</th>
+        <th class="text-left whitespace-nowrap">Action requise</th>
+      </tr>
+    </ng-template>
+
+    <ng-template #body let-item>
+      <!--
+        Ligne activable au clavier : `tabindex`, `role="link"` et Entrée/Espace. Un `<tr>` cliquable
+        sans ces trois éléments est inatteignable sans souris (WCAG 2.1 AA, 2.1.1).
+      -->
+      <tr
+        class="cursor-pointer hover:bg-slate-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-inset"
+        tabindex="0"
+        role="link"
+        [attr.aria-label]="rowAriaLabel(item)"
+        [class]="item.awaitingMe ? 'bg-primary/5' : ''"
+        (click)="openFile(item)"
+        (keydown.enter)="openFile(item)"
+        (keydown.space)="openFile(item); $event.preventDefault()"
+      >
+        <!-- Client -->
+        <td class="py-3">
+          <div class="flex items-start gap-2 min-w-0">
+            @if (item.awaitingMe) {
+              <tas-icon
+                iconName="feather:corner-down-right"
+                class="text-primary shrink-0 mt-0.5"
+                style="font-size:13px"
+                title="En attente de ma décision"
+              ></tas-icon>
+            }
+            <div class="min-w-0">
+              <p class="font-medium text-slate-800 truncate">{{ item.customerName }}</p>
+              @if (item.awaitingMe) {
+                <p class="text-xs text-primary mt-0.5">En attente de ma décision</p>
+              }
+            </div>
+          </div>
+        </td>
+
+        <!-- Statut + alerte d'ancienneté, libellée et non portée par la seule couleur -->
+        <td class="py-3 whitespace-nowrap">
+          <div class="flex flex-col items-start gap-1">
+            <kyc-status-badge [status]="item.status"></kyc-status-badge>
+            @if (item.alert) {
+              <span
+                class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium"
+                [class]="item.alert.classes"
+              >
+                <tas-icon [iconName]="item.alert.icon" style="font-size:11px"></tas-icon>
+                {{ item.alert.label }}
+              </span>
+            }
+          </div>
+        </td>
+
+        <!-- Score : le chiffre porte l'information, la barre ne fait que la situer -->
+        <td class="py-3">
+          @if (item.confidenceScore !== null) {
+            <div class="flex items-center gap-2 min-w-28">
+              <span class="text-sm tabular-nums text-slate-700 w-8">{{ item.confidenceScore }}</span>
+              <div
+                class="h-1.5 w-16 rounded-full bg-slate-100 overflow-hidden"
+                role="progressbar"
+                [attr.aria-valuenow]="item.confidenceScore"
+                aria-valuemin="0"
+                aria-valuemax="100"
+                [attr.aria-label]="'Score de confiance : ' + item.confidenceScore + ' sur 100'"
+              >
+                <div
+                  class="h-full rounded-full"
+                  [class]="item.scoreBarClasses"
+                  [style.width.%]="item.confidenceScore"
+                ></div>
+              </div>
+            </div>
+          } @else {
+            <span class="text-sm text-slate-400">Non noté</span>
+          }
+        </td>
+
+        <!-- Vigilance -->
+        <td class="py-3 whitespace-nowrap">
+          <tas-tag [severity]="item.vigilanceSeverity">{{ item.vigilanceLabel }}</tas-tag>
+        </td>
+
+        <!-- Date + ancienneté en clair -->
+        <td class="py-3 whitespace-nowrap">
+          <p class="text-sm text-slate-600">{{ item.updatedAt | dateTimeAgo }}</p>
+          <p class="text-xs text-slate-400 mt-0.5">
+            {{ item.ageDays }} jour(s) sans mouvement
+          </p>
+        </td>
+
+        <!-- Action requise -->
+        <td class="py-3">
+          @if (item.requiredAction) {
+            <span class="text-sm text-slate-700">{{ item.requiredAction }}</span>
+          } @else {
+            <span class="text-sm text-slate-400">—</span>
+          }
+        </td>
+      </tr>
+    </ng-template>
+  </tas-table>
+}

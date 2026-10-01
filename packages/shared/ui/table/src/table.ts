@@ -177,7 +177,7 @@ export class TasTable<T extends TableEntity>
   }
 
   private _updateDatasource(data: T[]) {
-    this.dataSource = new TableDataSource(data);
+    this.dataSource = new TableDataSource(data, !!this.config()?.pagination?.serverSide);
 
     this.paginator.pageIndex = this.config()?.pagination?.pageIndex;
     this.paginator.pageSizeOptions = this.config()?.pagination.pageSizeOptions;

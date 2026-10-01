@@ -74,14 +74,17 @@ interface LoginHistoryRow {
  * `tas-table` n'impose aucune apparence, il apporte la pagination, l'état de
  * chargement et l'état vide.
  *
- * Pagination : les pages serveur sont **accumulées**, et `[data]` reçoit tout ce
- * qui est chargé. C'est imposé par `TableDataSource.getPagedData()`, qui découpe
- * toujours `data` par `pageIndex * pageSize` — y compris quand la configuration
- * annonce `serverSide: true`. Ne lui passer que la page courante afficherait une
- * page 2 vide (elle irait chercher les lignes 20 à 40 d'un tableau qui n'en
- * compte que 20). `serverSide: true` est conservé pour deux raisons : c'est la
- * seule façon de recevoir `pageEventChange`, et la longueur annoncée au
- * paginateur vient alors de `totalElements`, que ce composant maîtrise.
+ * Pagination : les pages serveur restent **accumulées** et triées ici — le contrat
+ * ne promet aucun ordre, et concaténer des pages pourrait défaire celui du serveur
+ * même s'il en avait un. Mais `[data]` ne reçoit plus que la tranche affichée
+ * (`pagedRows`), et non tout ce qui est chargé.
+ *
+ * Cette tranche était auparavant faite par `TableDataSource.getPagedData()`, qui
+ * découpait `data` même en `serverSide: true`. Ce découpage a été corrigé (il
+ * vidait la page 2 de tout écran passant une seule page serveur), donc l'écran le
+ * fait lui-même : c'est lui qui accumule, c'est à lui de dire quelle part montrer.
+ * `serverSide: true` reste nécessaire pour recevoir `pageEventChange` et pour que
+ * la longueur du paginateur vienne de `totalElements`.
  */
 @Component({
   selector: 'user-login-history',
@@ -139,7 +142,7 @@ interface LoginHistoryRow {
         </tas-card>
       } @else {
         <tas-table
-          [data]="rows()"
+          [data]="pagedRows()"
           identifierField="key"
           [config]="tableConfig()"
           [isLoading]="isLoading()"
@@ -257,6 +260,18 @@ export class LoginHistoryList {
    * chaîne au premier appel.
    */
   private _isFetching = false;
+
+  /**
+   * La part de `rows()` que la page courante montre.
+   *
+   * Dérivée de `tableConfig`, qui est le signal portant déjà `pageIndex` et `pageSize` : les deux
+   * champs privés homonymes ne sont pas des signaux et un `computed` ne les verrait pas changer.
+   */
+  public readonly pagedRows = computed<LoginHistoryRow[]>(() => {
+    const { pageIndex, pageSize } = this.tableConfig().pagination;
+    const start = Math.max(0, pageIndex * pageSize);
+    return this.rows().slice(start, start + pageSize);
+  });
 
   public readonly rows = computed<LoginHistoryRow[]>(() =>
     // Le contrat ne promet aucun ordre : « Returns a user's login history », sans

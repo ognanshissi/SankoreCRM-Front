@@ -1,0 +1,228 @@
+<tas-card class="block">
+  <div class="p-4">
+    <!-- ——— Chargement ——— -->
+    @if (isLoading()) {
+      <div class="flex items-center justify-center gap-3 py-10">
+        <tas-spinner size="8" class="text-primary"></tas-spinner>
+        <span class="text-sm text-slate-500">Calcul du score en cours…</span>
+      </div>
+    }
+
+    <!-- ——— Erreur ——— -->
+    @else if (hasFailed()) {
+      <div class="py-8 text-center">
+        <tas-icon
+          iconName="feather:alert-circle"
+          class="text-red-500"
+          style="font-size:24px"
+        ></tas-icon>
+        <p class="text-sm font-medium text-slate-700 mt-2">Le score n'a pas pu être chargé</p>
+        <p class="text-xs text-slate-500 mt-1">
+          Le dossier reste intact : seul l'affichage du score a échoué.
+        </p>
+        <button tas-outlined-button type="button" class="mt-4" (click)="refresh()">
+          <tas-icon iconName="feather:refresh-cw" style="font-size:14px"></tas-icon>
+          Réessayer
+        </button>
+      </div>
+    }
+
+    <!-- ——— Vide : aucune vérification exécutée ——— -->
+    @else if (!detail()) {
+      <div class="py-8 text-center">
+        <tas-icon iconName="feather:shield" class="text-slate-300" style="font-size:24px"></tas-icon>
+        <p class="text-sm font-medium text-slate-700 mt-2">Aucun score pour l'instant</p>
+        <p class="text-xs text-slate-500 mt-1">
+          Le score apparaîtra après l'exécution de la vérification sur la pièce et le selfie.
+        </p>
+      </div>
+    }
+
+    <!-- ——— Contenu ——— -->
+    @else {
+      <!-- Niveau et score -->
+      <div class="flex flex-wrap items-start justify-between gap-3">
+        <div class="min-w-0">
+          <p class="text-xs font-medium uppercase tracking-wide text-slate-400 mb-1">
+            Score de confiance
+          </p>
+          <kyc-score-gauge [score]="detail()!.score" [level]="detail()!.level"></kyc-score-gauge>
+        </div>
+        <button
+          tas-button
+          iconButton
+          type="button"
+          aria-label="Recalculer le score de confiance"
+          (click)="refresh()"
+        >
+          <tas-icon
+            iconName="feather:refresh-cw"
+            class="text-slate-500"
+            style="font-size:14px"
+          ></tas-icon>
+        </button>
+      </div>
+
+      <!--
+        Contributions au score, sans jauge et sans « / max ».
+        Le service rend un apport par critère et aucun dénominateur : une barre de progression
+        exigerait un maximum, et l'inventer afficherait une proportion fausse. Le nombre de points
+        apportés est ce qui est su, donc ce qui est montré. La liste est ouverte — les critères
+        viennent du service, pas d'une énumération figée ici.
+      -->
+      <div class="mt-5">
+        <p class="text-xs font-medium uppercase tracking-wide text-slate-400 mb-2">
+          Contributions au score
+        </p>
+        @if (detail()!.contributions.length === 0) {
+          <p class="text-sm text-slate-500">
+            Le service n'a pas détaillé son score pour cette vérification.
+          </p>
+        } @else {
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            @for (part of detail()!.contributions; track part.key) {
+              <div class="flex items-baseline justify-between gap-2 rounded-lg border border-slate-200 p-3">
+                <span class="text-sm text-slate-700">{{ part.label }}</span>
+                <span class="text-xs tabular-nums text-slate-500">
+                  {{ part.score }} pt{{ part.score === 1 ? '' : 's' }}
+                </span>
+              </div>
+            }
+          </div>
+        }
+      </div>
+
+      <!-- Correspondance faciale et capture refusée -->
+      @if (detail()!.faceMatchPercent !== null || detail()!.captureRejectionReason) {
+        <div class="mt-4 flex flex-wrap gap-2">
+          @if (detail()!.faceMatchPercent !== null) {
+            <span
+              class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-50 text-slate-700 text-xs font-medium"
+            >
+              <tas-icon iconName="feather:user-check" style="font-size:12px"></tas-icon>
+              Correspondance faciale
+              <span class="tabular-nums">{{ detail()!.faceMatchPercent }} %</span>
+            </span>
+          }
+          @if (detail()!.captureRejectionReason) {
+            <span
+              class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-orange-50 text-orange-700 text-xs font-medium"
+            >
+              <tas-icon iconName="feather:camera-off" style="font-size:12px"></tas-icon>
+              Capture refusée : {{ detail()!.captureRejectionReason }}
+            </span>
+          }
+        </div>
+      }
+
+      <!-- Flags, groupés par gravité -->
+      <div class="mt-5">
+        <p class="text-xs font-medium uppercase tracking-wide text-slate-400 mb-2">
+          Points relevés
+        </p>
+        @if (flagGroups().length === 0) {
+          <p class="text-sm text-slate-500">Aucun point relevé sur ce dossier.</p>
+        } @else {
+          <div class="flex flex-col gap-3">
+            @for (group of flagGroups(); track group.severity) {
+              <div>
+                <p class="text-xs font-semibold text-slate-600">
+                  {{ group.title }}
+                  <span class="font-normal text-slate-400">— {{ group.hint }}</span>
+                </p>
+                <ul class="mt-1.5 flex flex-col gap-1.5">
+                  @for (flag of group.flags; track flag.code) {
+                    <li>
+                      <!--
+                        Icône + libellé explicite : un flag bloquant doit rester reconnaissable sans
+                        distinguer le rouge (WCAG 1.4.1).
+                      -->
+                      <tas-tag [severity]="flag.meta.tagSeverity">
+                        <span class="inline-flex items-center gap-1.5">
+                          <tas-icon [iconName]="flag.meta.icon" style="font-size:12px"></tas-icon>
+                          {{ flag.meta.label }}
+                        </span>
+                      </tas-tag>
+                    </li>
+                  }
+                </ul>
+              </div>
+            }
+          </div>
+        }
+      </div>
+
+      <!-- Soumission -->
+      <div class="mt-5 pt-4 border-t border-slate-100">
+        @if (!canSubmit()) {
+          <div class="rounded-lg border border-red-100 bg-red-50 p-3">
+            <p class="text-sm font-medium text-red-700 flex items-center gap-1.5">
+              <tas-icon iconName="feather:x-circle" style="font-size:14px"></tas-icon>
+              Soumission impossible en l'état
+            </p>
+            @if (blockingActions().length > 0) {
+              <p class="text-xs text-red-700 mt-1.5">À corriger avant de soumettre :</p>
+              <ul class="mt-1 list-disc pl-5 text-xs text-red-700 flex flex-col gap-0.5">
+                @for (action of blockingActions(); track $index) {
+                  <li>{{ action }}</li>
+                }
+              </ul>
+            } @else {
+              <p class="text-xs text-red-700 mt-1.5">
+                Le niveau de confiance est « {{ confidence().label }} ». Reprenez la photo de la
+                pièce et du visage, puis relancez la vérification.
+              </p>
+            }
+          </div>
+        } @else if (warnOnSubmit()) {
+          <div class="rounded-lg border border-orange-200 bg-orange-50 p-3">
+            <p class="text-sm font-medium text-orange-800 flex items-center gap-1.5">
+              <tas-icon iconName="feather:alert-triangle" style="font-size:14px"></tas-icon>
+              Dossier soumis avec réserve
+            </p>
+            <p class="text-xs text-orange-700 mt-1">
+              Le niveau de confiance est « {{ confidence().label }} » : le dossier passera en revue
+              manuelle et pourra revenir pour complément.
+            </p>
+          </div>
+        }
+
+        <div class="flex justify-end mt-4">
+          <button
+            tas-raised-button
+            color="primary"
+            type="button"
+            [disabled]="!canSubmit()"
+            (click)="handleSubmit()"
+          >
+            Soumettre le dossier
+          </button>
+        </div>
+      </div>
+
+      <!-- Détail technique brut -->
+      @if (canSeeRawDetail() && rawJson()) {
+        <div class="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-3">
+          <button
+            type="button"
+            class="flex items-center gap-2 text-xs font-medium text-slate-700"
+            [attr.aria-expanded]="showRaw()"
+            (click)="toggleRaw()"
+          >
+            <tas-icon
+              [iconName]="showRaw() ? 'feather:chevron-down' : 'feather:chevron-right'"
+              style="font-size:12px"
+            ></tas-icon>
+            Détail technique brut
+          </button>
+          @if (showRaw()) {
+            <pre
+              class="mt-2 p-2 bg-white border border-slate-200 rounded text-[10px] font-mono text-slate-600 overflow-x-auto whitespace-pre"
+              >{{ rawJson() }}</pre
+            >
+          }
+        </div>
+      }
+    }
+  </div>
+</tas-card>

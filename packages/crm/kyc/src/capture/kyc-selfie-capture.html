@@ -1,0 +1,294 @@
+<div class="flex flex-col gap-4">
+  <kyc-stub-notice what="La comparaison faciale"></kyc-stub-notice>
+
+  @if (missingDocument()) {
+    <!-- État vide : sans référence de pièce, `verify` n'a rien à comparer. -->
+    <tas-card class="block p-6">
+      <div class="flex flex-col items-center gap-2 text-center">
+        <tas-icon iconName="feather:credit-card" class="text-slate-400" style="font-size:22px"></tas-icon>
+        <p class="text-sm font-medium text-slate-700">
+          La photo de la pièce d'identité est requise
+        </p>
+        <p class="max-w-md text-xs text-slate-500">
+          La comparaison faciale confronte le visage à la photo de la pièce. Revenez à l'étape
+          précédente pour capturer la pièce, puis reprenez ici.
+        </p>
+      </div>
+    </tas-card>
+  } @else {
+    <!-- ─────────── Les deux images, côte à côte dès 640 px, empilées en dessous ─────────── -->
+    <tas-card class="block p-4">
+      <h2 class="mb-3 text-sm font-semibold text-slate-800">Pièce d'identité et visage</h2>
+      <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <figure class="m-0">
+          <figcaption class="mb-1 text-xs font-medium text-slate-500">Photo de la pièce</figcaption>
+          @if (documentImageUrl(); as documentUrl) {
+            <img
+              [src]="documentUrl"
+              alt="Photo de la pièce d'identité du client"
+              class="w-full rounded-lg border border-slate-200 object-contain"
+            />
+          } @else {
+            <div class="flex h-36 items-center justify-center rounded-lg border border-dashed border-slate-300 p-3 text-center text-xs text-slate-400">
+              Aperçu de la pièce indisponible
+            </div>
+          }
+        </figure>
+
+        <figure class="m-0">
+          <figcaption class="mb-1 text-xs font-medium text-slate-500">Selfie</figcaption>
+          @if (selfieRef()?.url; as selfieUrl) {
+            <img
+              [src]="selfieUrl"
+              alt="Photo du visage du client qui vient d'être prise"
+              class="w-full rounded-lg border border-slate-200 object-contain"
+            />
+          } @else {
+            <div class="flex h-36 items-center justify-center rounded-lg border border-dashed border-slate-300 p-3 text-center text-xs text-slate-400">
+              Aucune photo du visage pour l'instant
+            </div>
+          }
+        </figure>
+      </div>
+    </tas-card>
+
+    <!-- ─────────── Capture ─────────── -->
+    @if (step() === 'capture') {
+      <tas-card class="block p-4">
+        <h2 class="text-sm font-semibold text-slate-800">Photo du visage</h2>
+        <ul class="mt-2 mb-3 flex flex-col gap-1 text-xs text-slate-600">
+          <li class="flex items-start gap-2">
+            <tas-icon iconName="feather:sun" class="mt-0.5 shrink-0 text-slate-400" style="font-size:12px"></tas-icon>
+            Placez-vous face à une lumière suffisante, sans contre-jour.
+          </li>
+          <li class="flex items-start gap-2">
+            <tas-icon iconName="feather:eye-off" class="mt-0.5 shrink-0 text-slate-400" style="font-size:12px"></tas-icon>
+            Retirez les lunettes de soleil.
+          </li>
+          <li class="flex items-start gap-2">
+            <tas-icon iconName="feather:x-circle" class="mt-0.5 shrink-0 text-slate-400" style="font-size:12px"></tas-icon>
+            Retirez tout couvre-chef masquant le visage, le front ou le menton.
+          </li>
+          <li class="flex items-start gap-2">
+            <tas-icon iconName="feather:user" class="mt-0.5 shrink-0 text-slate-400" style="font-size:12px"></tas-icon>
+            Cadrez le visage entier dans l'ovale, regard vers l'objectif, expression neutre.
+          </li>
+        </ul>
+
+        @if (errorMessage()) {
+          <div class="mb-3 flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 p-3" role="alert">
+            <tas-icon
+              iconName="feather:alert-triangle"
+              class="mt-0.5 shrink-0 text-functional-error"
+              style="font-size:14px"
+            ></tas-icon>
+            <p class="text-xs text-red-800">{{ errorMessage() }}</p>
+          </div>
+        }
+
+        <kyc-camera-capture
+          facingMode="user"
+          guide="oval"
+          fileBaseName="selfie"
+          shutterLabel="Prendre la photo du visage"
+          accept="image/jpeg,image/png,image/webp"
+          [maxSizeMb]="10"
+          [maxWidth]="1280"
+          hint="Formats acceptés : JPG, PNG, WEBP. 10 Mo maximum."
+          (captured)="onCaptured($event)"
+        ></kyc-camera-capture>
+      </tas-card>
+    }
+
+    <!-- ─────────── Traitement ─────────── -->
+    @if (step() === 'uploading' || step() === 'verifying') {
+      <tas-card class="block p-6">
+        <div class="flex flex-col items-center gap-2" aria-live="polite">
+          <tas-spinner size="8" class="text-primary"></tas-spinner>
+          <p class="text-xs text-slate-500">
+            {{ step() === 'uploading' ? 'Dépôt de la photo…' : 'Comparaison des visages…' }}
+          </p>
+        </div>
+      </tas-card>
+    }
+
+    <!-- ─────────── Résultat ─────────── -->
+    @if (step() === 'result') {
+      <tas-card class="block p-4">
+        @if (errorMessage()) {
+          <div class="flex flex-col items-start gap-2 rounded-lg border border-red-200 bg-red-50 p-3" role="alert">
+            <p class="text-xs text-red-800">{{ errorMessage() }}</p>
+            <div class="flex flex-wrap gap-2">
+              <button tas-outlined-button type="button" (click)="retryVerification()">
+                Relancer la comparaison
+              </button>
+              <button tas-text-button type="button" (click)="retake()">Reprendre la photo</button>
+            </div>
+          </div>
+        } @else if (isQueued()) {
+          <div class="flex items-start gap-2 rounded-lg border border-blue-200 bg-blue-50 p-3" aria-live="polite">
+            <tas-icon
+              iconName="feather:clock"
+              class="mt-0.5 shrink-0 text-blue-600"
+              style="font-size:14px"
+            ></tas-icon>
+            <div class="flex-1">
+              <p class="text-sm font-medium text-blue-800">Comparaison mise en file</p>
+              <p class="mt-0.5 text-xs text-blue-700">
+                Le service de comparaison est momentanément injoignable. La tentative est enregistrée
+                et sera reprise automatiquement : cet essai n'est pas décompté.
+              </p>
+              <button tas-text-button type="button" class="mt-1" (click)="retryVerification()">
+                Réessayer maintenant
+              </button>
+            </div>
+          </div>
+        } @else if (captureRejected()) {
+          <div class="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 p-3" role="alert">
+            <tas-icon
+              iconName="feather:camera-off"
+              class="mt-0.5 shrink-0 text-functional-error"
+              style="font-size:16px"
+            ></tas-icon>
+            <div class="flex-1">
+              <p class="text-sm font-medium text-red-800">Photo refusée</p>
+              <p class="mt-0.5 text-xs text-red-700">
+                Le visage n'est pas exploitable : flou, reflet ou lumière insuffisante. Reprenez la
+                photo en suivant les consignes.
+              </p>
+            </div>
+          </div>
+        } @else if (matchMeta(); as meta) {
+          <div class="rounded-lg border p-3" [class]="meta.boxClasses">
+            <div class="flex items-start gap-2">
+              <tas-icon
+                [iconName]="meta.icon"
+                class="mt-0.5 shrink-0"
+                [class]="meta.textClasses"
+                style="font-size:18px"
+              ></tas-icon>
+              <div class="flex-1">
+                <p class="text-sm font-semibold" [class]="meta.textClasses">
+                  {{ meta.label }}
+                </p>
+                <p class="mt-0.5 text-xs text-slate-600">{{ meta.message }}</p>
+
+                <div class="mt-3">
+                  <div class="flex items-baseline gap-2">
+                    <span class="text-2xl font-semibold tabular-nums text-slate-900">
+                      {{ faceMatchPercent() ?? '—' }}
+                    </span>
+                    <span class="text-xs text-slate-400">% de correspondance</span>
+                  </div>
+                  <div
+                    class="mt-1 h-2 overflow-hidden rounded-full bg-slate-100"
+                    role="progressbar"
+                    [attr.aria-valuenow]="faceMatchPercent() ?? 0"
+                    aria-valuemin="0"
+                    aria-valuemax="100"
+                    [attr.aria-label]="
+                      'Correspondance faciale : ' + percentLabel() + ', ' + meta.label
+                    "
+                  >
+                    <div
+                      class="h-full rounded-full transition-all"
+                      [class]="meta.barClasses"
+                      [style.width.%]="faceMatchPercent() ?? 0"
+                    ></div>
+                  </div>
+                  @if (faceMatchPercent() === null) {
+                    <p class="mt-1 text-xs text-slate-500">
+                      Le pourcentage n'a pas été communiqué : seul le verdict ci-dessus est fiable.
+                    </p>
+                  }
+                </div>
+              </div>
+            </div>
+          </div>
+        }
+
+        <!-- ─────────── Suites possibles ─────────── -->
+        <div class="mt-4">
+          @if (isConfirmed()) {
+            <div class="flex flex-wrap items-center justify-end gap-2">
+              <button tas-outlined-button type="button" (click)="retake()">
+                Reprendre la photo
+              </button>
+              <button tas-raised-button color="primary" type="button" (click)="confirmMatch()">
+                Confirmer et continuer
+              </button>
+            </div>
+          } @else if (!attemptsExhausted()) {
+            <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <p class="text-xs text-slate-600" aria-live="polite">
+                {{ remainingAttempts() }} tentative(s) restante(s) avant de devoir justifier la
+                soumission.
+              </p>
+              <button tas-raised-button color="primary" type="button" (click)="retake()">
+                <tas-icon iconName="feather:refresh-cw" style="font-size:14px"></tas-icon>
+                Reprendre la photo
+              </button>
+            </div>
+          } @else {
+            <div class="rounded-lg border border-amber-200 bg-amber-50 p-3">
+              <div class="flex items-start gap-2">
+                <tas-icon
+                  iconName="feather:shield"
+                  class="mt-0.5 shrink-0 text-amber-600"
+                  style="font-size:16px"
+                ></tas-icon>
+                <div class="flex-1">
+                  <p class="text-sm font-medium text-amber-900">
+                    {{ maxAttempts() }} tentative(s) effectuée(s) sans correspondance
+                  </p>
+                  <p class="mt-0.5 text-xs text-amber-800">
+                    Vous pouvez soumettre le dossier malgré tout, en expliquant pourquoi. Le dossier
+                    ne sera pas validé automatiquement : <strong>le chef d'agence devra le valider</strong>,
+                    et votre commentaire lui sera présenté.
+                  </p>
+                </div>
+              </div>
+
+              <form [formRoot]="overrideForm" class="mt-3 flex flex-col gap-3">
+                <tas-form-field>
+                  <tas-label>
+                    Motif de la soumission <span class="text-functional-error">*</span>
+                  </tas-label>
+                  <textarea
+                    tasInput
+                    rows="3"
+                    placeholder="Ex. client présent en agence, pièce authentique vérifiée visuellement, éclairage du guichet insuffisant"
+                    [formField]="overrideForm.comment"
+                  ></textarea>
+                  @if (overrideForm.comment().touched() && overrideForm.comment().invalid()) {
+                    <tas-error>{{ overrideForm.comment().errors()[0].message }}</tas-error>
+                  } @else {
+                    <tas-hint>
+                      Ce commentaire est conservé dans le dossier et lu par le validateur.
+                    </tas-hint>
+                  }
+                </tas-form-field>
+
+                <div class="flex flex-wrap items-center justify-end gap-2">
+                  <button tas-outlined-button type="button" (click)="retake()">
+                    Reprendre la photo quand même
+                  </button>
+                  <button
+                    tas-raised-button
+                    color="primary"
+                    type="button"
+                    [disabled]="overrideForm().invalid() || overrideForm().submitting()"
+                    [isLoading]="overrideForm().submitting()"
+                    (click)="submitWithOverride()"
+                  >
+                    Soumettre pour validation
+                  </button>
+                </div>
+              </form>
+            </div>
+          }
+        </div>
+      </tas-card>
+    }
+  }
+</div>

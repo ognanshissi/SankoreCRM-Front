@@ -1,0 +1,183 @@
+@if (isLoading()) {
+  <div class="flex justify-center py-24"><tas-spinner size="10" class="text-primary"></tas-spinner></div>
+} @else if (loadError()) {
+  <div class="flex flex-col items-center py-24 text-center">
+    <tas-icon iconName="feather:alert-triangle" class="text-functional-error mb-2" style="font-size:24px"></tas-icon>
+    <p class="text-sm text-slate-600">{{ loadError() }}</p>
+    <button tas-outlined-button type="button" class="mt-3" (click)="reload()">Réessayer</button>
+  </div>
+} @else {
+  <div class="flex flex-col gap-4">
+
+    <!-- Où en est le dossier, et qui est attendu -->
+    <tas-card class="block">
+      <div class="p-4 flex flex-wrap items-center justify-between gap-3">
+        <div class="flex items-center gap-3 flex-wrap">
+          <kyc-status-badge [status]="file()?.status"></kyc-status-badge>
+          <tas-tag [severity]="vigilance().severity">{{ vigilance().label }}</tas-tag>
+          @if (file()?.duplicateSuspected) {
+            <tas-tag severity="error">
+              <span class="flex items-center gap-1">
+                <tas-icon iconName="feather:copy" style="font-size:9px"></tas-icon>
+                Doublon suspecté
+              </span>
+            </tas-tag>
+          }
+        </div>
+        @if (awaitedValidator(); as validator) {
+          <p class="text-sm text-slate-600">
+            Prochain validateur attendu :
+            <span class="font-medium text-slate-800">{{ validator }}</span>
+          </p>
+        } @else {
+          <p class="text-sm text-slate-500">Le circuit est clos : plus aucune décision n'est attendue.</p>
+        }
+      </div>
+    </tas-card>
+
+    <!--
+      Identité, pièce, selfie, score et flags sur une seule vue : l'hôte projette ici le bloc de
+      score et les images, qui appartiennent à d'autres parties du module.
+    -->
+    <ng-content></ng-content>
+
+    <!-- Frise des décisions -->
+    <tas-card class="block">
+      <div class="p-4 border-b border-slate-100">
+        <p class="text-sm font-semibold text-slate-700">Circuit de validation</p>
+        @if (!circuit()?.isStarted) {
+          <p class="text-xs text-slate-400 mt-0.5">
+            Aperçu calculé à partir du niveau de vigilance : le circuit s'ouvrira à la soumission.
+          </p>
+        }
+      </div>
+      <div class="p-4">
+        @if (steps().length === 0) {
+          <p class="text-sm text-slate-500">Aucune étape : ce dossier ne requiert pas de validation.</p>
+        } @else {
+          <ol class="flex flex-col gap-3">
+            @for (step of steps(); track $index) {
+              @let meta = decisionMeta(step.decision);
+              <li class="flex items-start gap-3">
+                <div
+                  class="w-7 h-7 rounded-full flex items-center justify-center shrink-0 bg-slate-100 text-slate-500"
+                >
+                  <tas-icon [iconName]="meta.icon" style="font-size:12px"></tas-icon>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center gap-2 flex-wrap">
+                    <p class="text-sm font-medium text-slate-800">{{ levelLabel(step.level) }}</p>
+                    <tas-tag [severity]="meta.severity">{{ meta.label }}</tas-tag>
+                    @if (step.level === nextLevel()) {
+                      <span class="text-xs text-primary font-medium">En attente</span>
+                    }
+                  </div>
+                  @if (step.comment) {
+                    <p class="text-xs text-slate-600 mt-0.5">{{ step.comment }}</p>
+                  }
+                  @if (step.decidedAt) {
+                    <p class="text-xs text-slate-400 mt-0.5">{{ step.decidedAt | dateTimeAgo }}</p>
+                  }
+                </div>
+              </li>
+            }
+          </ol>
+        }
+
+        @if (showComplianceStep()) {
+          <div class="mt-4 flex gap-3 p-3 rounded-lg bg-orange-50 border border-orange-200">
+            <tas-icon iconName="feather:shield" class="text-orange-700 shrink-0 mt-0.5" style="font-size:14px"></tas-icon>
+            <p class="text-sm text-slate-700">
+              Vigilance renforcée : le responsable conformité doit se prononcer avant validation
+              définitive.
+            </p>
+          </div>
+        }
+      </div>
+    </tas-card>
+
+    <!-- Décision -->
+    @if (canDecide()) {
+      <tas-card class="block">
+        <div class="p-4 border-b border-slate-100">
+          <p class="text-sm font-semibold text-slate-700">Votre décision</p>
+          <p class="text-xs text-slate-400 mt-0.5">
+            Vous décidez au niveau {{ levelLabel(nextLevel()) }}.
+          </p>
+        </div>
+        <div class="p-4">
+          @if (!pendingAction()) {
+            <div class="flex flex-wrap gap-2">
+              <button tas-raised-button color="primary" type="button" (click)="startAction('approve')">
+                <tas-icon iconName="feather:check" style="font-size:14px"></tas-icon>
+                Approuver
+              </button>
+              <button tas-outlined-button color="primary" type="button" (click)="startAction('complement')">
+                <tas-icon iconName="feather:edit-3" style="font-size:14px"></tas-icon>
+                Demander un complément
+              </button>
+              <button tas-outlined-button color="warn" type="button" (click)="startAction('reject')">
+                <tas-icon iconName="feather:x" style="font-size:14px"></tas-icon>
+                Rejeter
+              </button>
+            </div>
+          } @else {
+            <form [formRoot]="formSchema" class="flex flex-col gap-3 max-w-xl">
+              @if (pendingAction() === 'complement') {
+                <tas-form-field>
+                  <tas-label>Point à compléter <span class="text-functional-error">*</span></tas-label>
+                  <tas-select
+                    [options]="complementReasons"
+                    optionLabel="label"
+                    optionValue="value"
+                    placeholder="Choisissez le point à corriger"
+                    [formField]="formSchema.reason"
+                  ></tas-select>
+                  @if (formSchema.reason().touched() && formSchema.reason().invalid()) {
+                    <tas-error>{{ formSchema.reason().errors()[0].message }}</tas-error>
+                  }
+                </tas-form-field>
+              }
+
+              <tas-form-field>
+                <tas-label>
+                  Commentaire
+                  @if (pendingAction() !== 'approve') {
+                    <span class="text-functional-error">*</span>
+                  }
+                </tas-label>
+                <input tasInput type="text" [formField]="formSchema.comment"
+                  [placeholder]="pendingAction() === 'approve' ? 'Facultatif' : 'Expliquez votre décision à l’agent'" />
+                <tas-hint>Ce commentaire est lu par l'agent qui reprend le dossier.</tas-hint>
+                @if (formSchema.comment().touched() && formSchema.comment().invalid()) {
+                  <tas-error>{{ formSchema.comment().errors()[0].message }}</tas-error>
+                }
+              </tas-form-field>
+
+              <div class="flex items-center gap-2">
+                <button tas-raised-button color="primary" type="button"
+                  [disabled]="formSchema().invalid() || isDeciding()"
+                  [isLoading]="isDeciding()"
+                  (click)="confirmAndDecide()">
+                  Enregistrer la décision
+                </button>
+                <button tas-outlined-button type="button" [disabled]="isDeciding()" (click)="cancelAction()">
+                  Annuler
+                </button>
+              </div>
+            </form>
+          }
+        </div>
+      </tas-card>
+    } @else if (awaitedValidator()) {
+      <!--
+        Pas de bouton : soit ce n'est pas le tour de cet utilisateur, soit son rôle ne correspond à
+        aucun niveau. Le dire évite de chercher un bouton absent.
+      -->
+      <p class="text-sm text-slate-500">
+        Ce dossier attend une décision de {{ awaitedValidator() }}. Vous ne pouvez pas décider à ce
+        niveau — et un agent ne valide jamais un dossier qu'il a soumis lui-même.
+      </p>
+    }
+  </div>
+}

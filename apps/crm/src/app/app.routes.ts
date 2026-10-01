@@ -32,6 +32,12 @@ export const appRoutes: Route[] = [
     loadChildren: () => import('@sankore/crm/customers'),
   },
   {
+    path: 'kyc',
+    component: PortalLayoutComponent,
+    canActivate: [tenantGuard, authorized],
+    loadChildren: () => import('@sankore/crm/kyc'),
+  },
+  {
     path: 'settings',
     component: PortalLayoutComponent,
     canActivate: [tenantGuard, authorized],

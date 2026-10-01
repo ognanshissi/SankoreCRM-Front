@@ -1,0 +1,329 @@
+<div class="flex flex-col gap-4">
+  <kyc-stub-notice what="La lecture de la pièce"></kyc-stub-notice>
+
+  <!-- ─────────────── Capture ─────────────── -->
+  @if (step() === 'capture') {
+    <tas-card class="block p-4">
+      <h2 class="text-sm font-semibold text-slate-800">Photo de la pièce d'identité</h2>
+      <p class="mt-1 mb-3 text-xs text-slate-500">
+        Posez la pièce à plat sur un fond uni, dans le rectangle de guidage, et évitez les reflets.
+      </p>
+
+      @if (uploadError()) {
+        <div class="mb-3 flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 p-3" role="alert">
+          <tas-icon
+            iconName="feather:alert-triangle"
+            class="mt-0.5 shrink-0 text-functional-error"
+            style="font-size:14px"
+          ></tas-icon>
+          <p class="text-xs text-red-800">{{ uploadError() }}</p>
+        </div>
+      }
+
+      <kyc-camera-capture
+        facingMode="environment"
+        guide="id-card"
+        fileBaseName="piece-identite"
+        shutterLabel="Prendre la photo de la pièce"
+        accept="image/jpeg,image/png,image/webp"
+        [maxSizeMb]="10"
+        [maxWidth]="1600"
+        hint="Formats acceptés : JPG, PNG, WEBP. 10 Mo maximum."
+        (captured)="onCaptured($event)"
+      ></kyc-camera-capture>
+    </tas-card>
+  }
+
+  <!-- ─────────────── Envoi ─────────────── -->
+  @if (step() === 'uploading') {
+    <tas-card class="block p-6">
+      <div class="flex flex-col items-center gap-2" aria-live="polite">
+        <tas-spinner size="8" class="text-primary"></tas-spinner>
+        <p class="text-xs text-slate-500">Dépôt de l'image…</p>
+      </div>
+    </tas-card>
+  }
+
+  <!-- ─────────────── Relecture ─────────────── -->
+  @if (step() === 'review') {
+    <tas-card class="block p-4">
+      <div class="flex flex-col gap-4 md:flex-row">
+        <div class="md:w-1/3">
+          @if (imageRef()?.url; as previewUrl) {
+            <img
+              [src]="previewUrl"
+              alt="Photo de la pièce d'identité qui vient d'être prise"
+              class="w-full rounded-lg border border-slate-200 object-contain"
+            />
+          } @else {
+            <div class="flex h-32 items-center justify-center rounded-lg border border-dashed border-slate-300 text-xs text-slate-400">
+              Aperçu indisponible
+            </div>
+          }
+          <button tas-outlined-button type="button" class="mt-2 w-full" (click)="retake()">
+            <tas-icon iconName="feather:refresh-cw" style="font-size:14px"></tas-icon>
+            Reprendre la photo
+          </button>
+        </div>
+
+        <div class="flex-1">
+          <!-- Indicateur discret : la vérification tourne, l'agent continue de corriger. -->
+          <div class="rounded-lg border border-slate-200 bg-slate-50 p-3" aria-live="polite">
+            @switch (verificationState()) {
+              @case ('running') {
+                <p class="flex items-center gap-2 text-xs text-slate-600">
+                  <tas-spinner size="4" class="text-primary"></tas-spinner>
+                  Vérification en cours en arrière-plan. Vous pouvez relire et corriger les champs
+                  sans attendre.
+                </p>
+              }
+              @case ('scored') {
+                <kyc-score-gauge [score]="displayedScore()" [level]="displayedLevel()"></kyc-score-gauge>
+              }
+              @case ('queued') {
+                <div class="flex items-start gap-2">
+                  <tas-icon
+                    iconName="feather:clock"
+                    class="mt-0.5 shrink-0 text-blue-600"
+                    style="font-size:14px"
+                  ></tas-icon>
+                  <div>
+                    <p class="text-sm font-medium text-blue-800">Vérification mise en file</p>
+                    <p class="mt-0.5 text-xs text-blue-700">
+                      Le service de vérification est momentanément injoignable. La tentative est
+                      enregistrée et sera reprise automatiquement : rien n'est perdu, et la saisie
+                      peut continuer.
+                    </p>
+                  </div>
+                </div>
+              }
+              @case ('rejected') {
+                <div class="flex items-start gap-2">
+                  <tas-icon
+                    iconName="feather:camera-off"
+                    class="mt-0.5 shrink-0 text-functional-error"
+                    style="font-size:16px"
+                  ></tas-icon>
+                  <div class="flex-1">
+                    <p class="text-sm font-medium text-red-800">Photo refusée</p>
+                    <p class="mt-0.5 text-xs text-red-700">
+                      {{
+                        rejectionReason() ??
+                          "La photo n'est pas exploitable (flou, reflet ou lumière insuffisante)."
+                      }}
+                    </p>
+                    <button tas-raised-button color="primary" type="button" class="mt-2" (click)="retake()">
+                      Reprendre la photo
+                    </button>
+                  </div>
+                </div>
+              }
+              @case ('failed') {
+                <div class="flex items-start gap-2">
+                  <tas-icon
+                    iconName="feather:alert-triangle"
+                    class="mt-0.5 shrink-0 text-amber-600"
+                    style="font-size:14px"
+                  ></tas-icon>
+                  <div class="flex-1">
+                    <p class="text-xs text-amber-900">{{ verificationError() }}</p>
+                    @if (selfieStorageRef()) {
+                      <button tas-text-button type="button" class="mt-1" (click)="retryVerification()">
+                        Relancer la vérification
+                      </button>
+                    }
+                  </div>
+                </div>
+              }
+              @default {
+                <p class="text-xs text-slate-500">Vérification non lancée.</p>
+              }
+            }
+          </div>
+        </div>
+      </div>
+    </tas-card>
+
+    <!-- ─────────────── Champs lus ─────────────── -->
+    <tas-card class="block p-4">
+      <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <h2 class="text-sm font-semibold text-slate-800">Informations lues sur la pièce</h2>
+        <p class="text-xs text-slate-500">
+          Chaque correction est enregistrée avec son auteur et sa date.
+        </p>
+      </div>
+
+      @if (isLoadingFields()) {
+        <div class="flex flex-col items-center gap-2 py-8" aria-live="polite">
+          <tas-spinner size="8" class="text-primary"></tas-spinner>
+          <p class="text-xs text-slate-500">Lecture de la pièce…</p>
+        </div>
+      } @else if (fieldsError()) {
+        <div class="flex flex-col items-start gap-2 rounded-lg border border-red-200 bg-red-50 p-3" role="alert">
+          <p class="text-xs text-red-800">{{ fieldsError() }}</p>
+          <button tas-outlined-button type="button" (click)="reloadOcr()">Réessayer</button>
+        </div>
+      } @else if (isEmptyOcr()) {
+        <div class="flex flex-col items-center gap-2 rounded-lg border border-dashed border-slate-300 p-6 text-center">
+          <tas-icon iconName="feather:file-text" class="text-slate-400" style="font-size:20px"></tas-icon>
+          <p class="text-sm text-slate-600">Aucun champ n'a pu être lu sur cette photo.</p>
+          <p class="text-xs text-slate-500">
+            Reprenez la photo en cadrant la pièce entière, ou saisissez les informations depuis la
+            fiche client.
+          </p>
+          <button tas-outlined-button type="button" (click)="retake()">Reprendre la photo</button>
+        </div>
+      } @else {
+        <form [formRoot]="formSchema" class="flex flex-col gap-3">
+          @for (field of ocrFields(); track field.name; let i = $index) {
+            <div class="rounded-r-lg bg-white pl-3" [class]="confidenceMeta(field.confidence).borderClasses">
+              <div class="mb-1 flex flex-wrap items-center gap-2">
+                <span
+                  class="flex items-center gap-1 text-xs font-medium"
+                  [class]="confidenceMeta(field.confidence).textClasses"
+                >
+                  <tas-icon
+                    [iconName]="confidenceMeta(field.confidence).icon"
+                    style="font-size:12px"
+                  ></tas-icon>
+                  {{ confidenceMeta(field.confidence).label }}
+                </span>
+                @if (isCorrected(field.name)) {
+                  <span class="flex items-center gap-1 text-xs text-slate-500">
+                    <tas-icon iconName="feather:check" style="font-size:12px"></tas-icon>
+                    Correction tracée dans l'historique
+                  </span>
+                }
+              </div>
+
+              @if (field.editable) {
+                <tas-form-field>
+                  <tas-label>{{ field.label }}</tas-label>
+                  <input
+                    tasInput
+                    type="text"
+                    [formField]="formSchema.fields[i].value"
+                    [attr.aria-label]="field.label + ' — ' + confidenceMeta(field.confidence).label"
+                  />
+                  @if (
+                    formSchema.fields[i].value().touched() && formSchema.fields[i].value().invalid()
+                  ) {
+                    <tas-error>{{ formSchema.fields[i].value().errors()[0].message }}</tas-error>
+                  } @else {
+                    <tas-hint>Valeur lue : {{ field.value || '—' }}</tas-hint>
+                  }
+                </tas-form-field>
+
+                @if (formSchema.fields[i].value().dirty()) {
+                  <div class="mt-1 flex items-center gap-2">
+                    <button
+                      tas-outlined-button
+                      type="button"
+                      [disabled]="
+                        savingField() === field.name || formSchema.fields[i].value().invalid()
+                      "
+                      [isLoading]="savingField() === field.name"
+                      (click)="saveField(field.name)"
+                    >
+                      Enregistrer cette correction
+                    </button>
+                  </div>
+                }
+              } @else {
+                <p class="text-xs text-slate-400">{{ field.label }}</p>
+                <p class="text-sm text-slate-800">{{ field.value || '—' }}</p>
+                <p class="mt-0.5 text-xs text-slate-500">
+                  Non modifiable : ce champ relève d'un profil habilité.
+                </p>
+              }
+            </div>
+          }
+        </form>
+
+        <div class="mt-4 flex flex-wrap items-center justify-end gap-2">
+          <button
+            tas-raised-button
+            color="primary"
+            type="button"
+            [disabled]="
+              !hasPendingCorrections() || formSchema().invalid() || formSchema().submitting()
+            "
+            [isLoading]="formSchema().submitting()"
+            (click)="saveAll()"
+          >
+            Enregistrer toutes les corrections
+          </button>
+        </div>
+      }
+    </tas-card>
+
+    <!-- ─────────────── Zone codée ─────────────── -->
+    <tas-card class="block p-4">
+      <h2 class="mb-2 text-sm font-semibold text-slate-800">Zone codée de la pièce (MRZ)</h2>
+
+      @if (isLoadingMrz()) {
+        <div class="flex items-center gap-2 py-4" aria-live="polite">
+          <tas-spinner size="4" class="text-primary"></tas-spinner>
+          <span class="text-xs text-slate-500">Relecture de la zone codée…</span>
+        </div>
+      } @else if (mrzError()) {
+        <div class="flex flex-col items-start gap-2 rounded-lg border border-red-200 bg-red-50 p-3" role="alert">
+          <p class="text-xs text-red-800">{{ mrzError() }}</p>
+          <button tas-outlined-button type="button" (click)="reloadMrz()">Réessayer</button>
+        </div>
+      } @else if (!mrz()) {
+        <div class="rounded-lg border border-dashed border-slate-300 p-4 text-center">
+          <p class="text-sm text-slate-600">Aucune zone codée détectée sur cette pièce.</p>
+          <p class="mt-0.5 text-xs text-slate-500">
+            Certaines pièces n'en comportent pas : le contrôle croisé est alors impossible.
+          </p>
+        </div>
+      } @else {
+        <div
+          class="mb-3 flex items-center gap-2 rounded-lg p-2"
+          [class]="mrz()?.checksumValid ? 'bg-green-50' : 'bg-red-50'"
+        >
+          <tas-icon
+            [iconName]="mrz()?.checksumValid ? 'feather:check-circle' : 'feather:alert-octagon'"
+            [class]="mrz()?.checksumValid ? 'text-green-600' : 'text-functional-error'"
+            style="font-size:14px"
+          ></tas-icon>
+          <span
+            class="text-xs font-medium"
+            [class]="mrz()?.checksumValid ? 'text-green-800' : 'text-red-800'"
+          >
+            {{
+              mrz()?.checksumValid
+                ? 'Clé de contrôle valide : la zone codée est cohérente.'
+                : 'Clé de contrôle invalide : la zone codée ne peut pas être utilisée comme preuve.'
+            }}
+          </span>
+        </div>
+
+        <!--
+          Champs parcourus, pas nommés un par un : les clés viennent du service de biométrie, et
+          figer « surname / givenNames / nationality » afficherait « — » partout le jour où il en
+          renomme un. Le numéro de la pièce n'y figure pas — il est retiré avant écriture — et se
+          lit masqué dans la liste des champs au-dessus.
+        -->
+        <dl class="grid grid-cols-1 gap-x-4 gap-y-2 sm:grid-cols-2">
+          @for (entry of mrzEntries(); track entry.key) {
+            <div>
+              <dt class="text-xs text-slate-400">{{ entry.label }}</dt>
+              <dd class="text-sm text-slate-800">{{ entry.value || '—' }}</dd>
+            </div>
+          } @empty {
+            <p class="text-sm text-slate-500">
+              La zone codée a été lue mais ne contient aucun champ exploitable.
+            </p>
+          }
+        </dl>
+
+        <p class="mt-3 text-xs text-slate-500">
+          Lecture seule : la zone codée ne se corrige pas, elle sert de contrôle croisé. La ligne
+          brute n'est pas conservée — elle épelle le numéro de la pièce en clair.
+        </p>
+      }
+    </tas-card>
+  }
+</div>

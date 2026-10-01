@@ -24,6 +24,7 @@ api/email-templates.service.ts
 api/health.service.ts
 api/ingest.service.ts
 api/ingestions.service.ts
+api/kyc.service.ts
 api/lead-import.service.ts
 api/lead-sources.service.ts
 api/leads-analytics.service.ts
@@ -33,6 +34,7 @@ api/legal-entities.service.ts
 api/legal-forms.service.ts
 api/notification-settings.service.ts
 api/nurturing-sequences.service.ts
+api/object-storage.service.ts
 api/opportunities.service.ts
 api/permissions.service.ts
 api/pipeline-stages.service.ts
@@ -116,6 +118,7 @@ model/capture-lead-request.interface.ts
 model/capture-lead-result.interface.ts
 model/change-password-request.interface.ts
 model/channel-metadata.interface.ts
+model/clear-duplicate-flag-request.interface.ts
 model/client-contact-point-dto.interface.ts
 model/client-detail-dto.interface.ts
 model/client-export-status-dto.interface.ts
@@ -144,6 +147,8 @@ model/consent-dto.interface.ts
 model/contact-point-dto.interface.ts
 model/convert-lead-request.interface.ts
 model/convert-lead-result.interface.ts
+model/correct-kyc-field-request.interface.ts
+model/correct-kyc-field-response.interface.ts
 model/create-agency-request.interface.ts
 model/create-agency-result.interface.ts
 model/create-client-result.interface.ts
@@ -152,6 +157,8 @@ model/create-email-template-request.interface.ts
 model/create-group-request.interface.ts
 model/create-group-result.interface.ts
 model/create-individual-client-request.interface.ts
+model/create-kyc-file-request.interface.ts
+model/create-kyc-file-response.interface.ts
 model/create-lead-source-request.interface.ts
 model/create-legal-client-request.interface.ts
 model/create-legal-client-result.interface.ts
@@ -180,6 +187,8 @@ model/crm-task-dto.interface.ts
 model/current-user-dto.interface.ts
 model/customer-setting-dto.interface.ts
 model/daily-breach-dto.interface.ts
+model/decide-kyc-approval-request.interface.ts
+model/decide-kyc-approval-response.interface.ts
 model/declare-beneficial-owners-request.interface.ts
 model/declare-beneficial-owners-result.interface.ts
 model/decline-task-request.interface.ts
@@ -219,6 +228,15 @@ model/import-row-failure.interface.ts
 model/ingestion-dto-paged-result.interface.ts
 model/ingestion-dto.interface.ts
 model/ingestion-payload-dto.interface.ts
+model/kyc-approval-circuit-dto.interface.ts
+model/kyc-approval-step-dto.interface.ts
+model/kyc-face-comparison-dto.interface.ts
+model/kyc-file-dto.interface.ts
+model/kyc-file-list-item.interface.ts
+model/kyc-file-list-page.interface.ts
+model/kyc-identity-document-dto.interface.ts
+model/kyc-mrz-dto.interface.ts
+model/kyc-verification-dto.interface.ts
 model/lead-dto-paged-result.interface.ts
 model/lead-dto.interface.ts
 model/lead-import-status-response.interface.ts
@@ -245,6 +263,7 @@ model/merge-field-preferences.interface.ts
 model/merge-lead-result.interface.ts
 model/merge-leads-request.interface.ts
 model/merged-into-dto.interface.ts
+model/migrate-objects-result.interface.ts
 model/models.ts
 model/money.interface.ts
 model/move-agency-request.interface.ts
@@ -277,6 +296,8 @@ model/qualify-lead-request.interface.ts
 model/qualify-lead-result.interface.ts
 model/question-input.interface.ts
 model/question-rule-dto.interface.ts
+model/raise-kyc-review-request.interface.ts
+model/raise-kyc-review-result.interface.ts
 model/reassign-task-request.interface.ts
 model/recalculate-lead-score-result.interface.ts
 model/record-consent-request.interface.ts
@@ -312,6 +333,8 @@ model/rule-dto.interface.ts
 model/rule-input.interface.ts
 model/run-dto-paged-result.interface.ts
 model/run-dto.interface.ts
+model/run-kyc-verification-request.interface.ts
+model/run-kyc-verification-response.interface.ts
 model/scoped-permission-dto.interface.ts
 model/score-history-dto.interface.ts
 model/scoring-config-dto.interface.ts
@@ -401,6 +424,7 @@ model/update-task-type-request.interface.ts
 model/update-template-request.interface.ts
 model/update-territory-request.interface.ts
 model/update-user-request.interface.ts
+model/upload-kyc-document-response.interface.ts
 model/user-dto.interface.ts
 model/user-google-sheet-import-request.interface.ts
 model/user-import-status-dto.interface.ts

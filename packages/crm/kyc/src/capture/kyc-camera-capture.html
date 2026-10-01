@@ -1,0 +1,140 @@
+<div class="flex flex-col gap-3">
+  @switch (state()) {
+    @case ('idle') {
+      @if (!importMode()) {
+        <div
+          class="flex flex-col items-center gap-3 rounded-lg border border-dashed border-slate-300 bg-slate-50 p-6 text-center"
+        >
+          <tas-icon iconName="feather:camera" class="text-slate-400" style="font-size:22px"></tas-icon>
+          <p class="text-sm text-slate-600">
+            La caméra n'est pas encore activée. Votre navigateur vous demandera l'autorisation.
+          </p>
+          <div class="flex flex-col gap-2 sm:flex-row">
+            <button tas-raised-button color="primary" type="button" (click)="start()">
+              Activer la caméra
+            </button>
+            <button tas-text-button type="button" (click)="chooseImport()">
+              Importer une photo
+            </button>
+          </div>
+        </div>
+      }
+    }
+
+    @case ('starting') {
+      <div
+        class="flex flex-col items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 p-6"
+        aria-live="polite"
+      >
+        <tas-spinner size="8" class="text-primary"></tas-spinner>
+        <p class="text-xs text-slate-500">Ouverture de la caméra…</p>
+      </div>
+    }
+
+    @case ('live') {
+      <div class="relative overflow-hidden rounded-lg bg-slate-900">
+        <video
+          #video
+          autoplay
+          muted
+          playsinline
+          class="block h-auto w-full"
+          [style.transform]="mirrored() ? 'scaleX(-1)' : null"
+          [attr.aria-label]="'Aperçu de la caméra. ' + guideLabel() + '.'"
+        ></video>
+
+        <!-- Purement visuel : le cadre guide le geste, il ne porte aucune information à lire. -->
+        <div class="pointer-events-none absolute inset-0 flex items-center justify-center" aria-hidden="true">
+          @if (guide() === 'id-card') {
+            <div class="aspect-[85.6/54] w-[86%] rounded-lg border-2 border-dashed border-white/90 shadow-[0_0_0_9999px_rgba(15,23,42,0.35)]"></div>
+          } @else {
+            <div class="aspect-[3/4] h-[84%] rounded-[50%] border-2 border-dashed border-white/90 shadow-[0_0_0_9999px_rgba(15,23,42,0.35)]"></div>
+          }
+        </div>
+      </div>
+
+      <div class="flex flex-col items-center gap-2">
+        <button
+          tas-raised-button
+          color="primary"
+          type="button"
+          class="w-full sm:w-auto"
+          [attr.aria-label]="shutterLabel()"
+          (click)="capture()"
+        >
+          <tas-icon iconName="feather:camera" style="font-size:14px"></tas-icon>
+          {{ shutterLabel() }}
+        </button>
+        <button tas-text-button type="button" (click)="chooseImport()">
+          Importer une photo à la place
+        </button>
+      </div>
+    }
+
+    @case ('captured') {
+      <div
+        class="flex items-start gap-2 rounded-lg border border-green-200 bg-green-50 p-3"
+        aria-live="polite"
+      >
+        <tas-icon
+          iconName="feather:check-circle"
+          class="mt-0.5 shrink-0 text-green-600"
+          style="font-size:14px"
+        ></tas-icon>
+        <div class="flex-1">
+          <p class="text-sm font-medium text-green-800">Photo enregistrée</p>
+          <p class="mt-0.5 text-xs text-green-700">
+            Si elle est floue ou trop sombre, reprenez-la : la lecture automatique en dépend.
+          </p>
+        </div>
+        <button tas-outlined-button type="button" (click)="retake()">Reprendre la photo</button>
+      </div>
+    }
+
+    @case ('error') {
+      <div class="flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 p-3" role="alert">
+        <tas-icon
+          iconName="feather:camera-off"
+          class="mt-0.5 shrink-0 text-amber-600"
+          style="font-size:16px"
+        ></tas-icon>
+        <div class="flex-1">
+          <p class="text-sm font-medium text-amber-900">{{ failure()?.title }}</p>
+          <p class="mt-1 text-xs text-amber-800">{{ failure()?.message }}</p>
+          @if (failure()?.retryable) {
+            <button tas-outlined-button type="button" class="mt-2" (click)="start()">
+              Réessayer la caméra
+            </button>
+          }
+        </div>
+      </div>
+    }
+  }
+
+  @if (importVisible()) {
+    <div>
+      <p class="mb-2 text-xs font-medium text-slate-600">Importer une photo depuis cet appareil</p>
+      <tas-file-uploader
+        [accept]="accept()"
+        [maxSizeMb]="maxSizeMb()"
+        [value]="importedFile()"
+        (valueChange)="onImported($event)"
+      ></tas-file-uploader>
+      @if (isCompressing()) {
+        <p class="mt-2 flex items-center gap-2 text-xs text-slate-500" aria-live="polite">
+          <tas-spinner size="4" class="text-primary"></tas-spinner>
+          Préparation de l'image…
+        </p>
+      }
+      @if (state() === 'error' && failure()?.retryable === false) {
+        <button tas-text-button type="button" class="mt-2" (click)="start()">
+          Réessayer malgré tout
+        </button>
+      }
+    </div>
+  }
+
+  @if (hint()) {
+    <p class="text-xs text-slate-500">{{ hint() }}</p>
+  }
+</div>

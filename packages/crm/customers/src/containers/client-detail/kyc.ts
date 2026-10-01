@@ -11,7 +11,10 @@ import {
   ClientStatusHistoryDto,
   UsersApiService,
 } from '@sankore/crm-api';
+import { Router } from '@angular/router';
 import { PermissionsService } from '@sankore/crm/common';
+// Le module KYC ne dépend pas de la lib clients : l'import ne crée donc pas de cycle.
+import { KycCapsPanel, KycFacadeService } from '@sankore/crm/kyc';
 import { ClientDetailStore } from '../../models/client-detail.store';
 import {
   clientStatusLabel,
@@ -46,7 +49,7 @@ interface HistoryRow {
 @Component({
   selector: 'client-kyc',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [DatePipe, TasCard, TasIcon, TasSpinner, TasTag, Button],
+  imports: [DatePipe, TasCard, TasIcon, TasSpinner, TasTag, Button, KycCapsPanel],
   template: `
     @if (client()) {
       <div class="flex flex-col gap-4">
@@ -62,17 +65,23 @@ interface HistoryRow {
               </div>
 
               <!--
-                Le dossier complet vit dans le module M02, qui n'est pas livré. Le bouton est
-                présent mais désactivé : le retirer laisserait croire que le lien n'existe pas.
-                L'info-bulle est portée par le conteneur, parce qu'un bouton désactivé ne reçoit
-                pas d'évènement de souris dans plusieurs navigateurs.
+                Le module KYC est désormais livré : le bouton ouvre le dossier. Il reste désactivé
+                tant qu'aucun dossier n'est ouvert pour ce client (404 sur la lecture du dossier par
+                client), et l'info-bulle est portée par le conteneur, parce qu'un bouton désactivé ne
+                reçoit pas d'évènement de souris dans plusieurs navigateurs.
               -->
-              <span
-                class="inline-block"
-                title="Le module KYC (M02) n'est pas encore disponible : le dossier détaillé s'ouvrira depuis cette fiche dès sa livraison."
-              >
-                <button tas-outlined-button type="button" [disabled]="true">
-                  <tas-icon iconName="feather:folder" style="font-size:14px"></tas-icon>
+              <span class="inline-block" [title]="openFileTitle()">
+                <button
+                  tas-outlined-button
+                  type="button"
+                  [disabled]="!kycFileId() || isLookingUpFile()"
+                  (click)="openKycFile()"
+                >
+                  @if (isLookingUpFile()) {
+                    <tas-spinner size="3" class="text-primary"></tas-spinner>
+                  } @else {
+                    <tas-icon iconName="feather:folder" style="font-size:14px"></tas-icon>
+                  }
                   Ouvrir le dossier KYC
                 </button>
               </span>
@@ -111,6 +120,18 @@ interface HistoryRow {
             }
           </div>
         </tas-card>
+
+        <!--
+          Plafonds du KYC simplifié (KYC-F-09). L'encart se masque de lui-même quand le dossier n'est
+          pas en KYC simplifié : inutile de le conditionner ici.
+        -->
+        @if (clientId(); as customerId) {
+          <kyc-caps-panel
+            [customerId]="customerId"
+            context="customer-file"
+            (upgradeRequested)="goToEnrolment()"
+          ></kyc-caps-panel>
+        }
 
         <!-- Historique des statuts -->
         <tas-card class="block">
@@ -219,7 +240,22 @@ export class ClientKycPage {
 
   public readonly canRead = this._permissions.can('customers:read');
 
+  private readonly _kycFacade = inject(KycFacadeService);
+  private readonly _router = inject(Router);
+
   protected readonly client = this.store.client;
+  protected readonly clientId = this.store.clientId;
+
+  /** Dossier KYC ouvert du client, s'il en a un : conditionne le bouton d'ouverture. */
+  protected readonly kycFileId = signal<string | null>(null);
+  protected readonly isLookingUpFile = signal(false);
+
+  protected readonly openFileTitle = computed(() => {
+    if (this.isLookingUpFile()) return 'Recherche du dossier KYC…';
+    return this.kycFileId()
+      ? 'Ouvrir le dossier KYC complet'
+      : "Ce client n'a pas encore de dossier KYC ouvert : lancez l'enrôlement pour en créer un.";
+  });
 
   protected readonly kycLabel = computed(() => kycStatusLabel(this.client()?.kycStatus));
   protected readonly kycSeverity = computed<Severity>(() =>
@@ -281,7 +317,40 @@ export class ClientKycPage {
       if (!clientId || !this.canRead()) return;
       this._reset();
       this._fetch(clientId, 1);
+      this._lookUpKycFile(clientId);
     });
+  }
+
+  /**
+   * Un 404 signifie « pas de dossier ouvert », pas une panne : le bouton reste désactivé et aucune
+   * erreur n'est affichée. C'est le cas normal d'un client jamais enrôlé.
+   */
+  private _lookUpKycFile(clientId: string): void {
+    this.isLookingUpFile.set(true);
+    this.kycFileId.set(null);
+    this._kycFacade
+      .getFileByCustomer(clientId)
+      .pipe(
+        catchError(() => {
+          this.isLookingUpFile.set(false);
+          return EMPTY;
+        }),
+      )
+      .subscribe((file) => {
+        this.kycFileId.set(file?.id ?? null);
+        this.isLookingUpFile.set(false);
+      });
+  }
+
+  public openKycFile(): void {
+    const id = this.kycFileId();
+    if (id) this._router.navigate(['/kyc', id]);
+  }
+
+  /** Bouton « Passer au KYC complet » de l'encart : ouvre l'enrôlement sur ce client. */
+  public goToEnrolment(): void {
+    const customerId = this.clientId();
+    if (customerId) this._router.navigate(['/kyc', 'enrolment', customerId]);
   }
 
   protected actorLabel(row: HistoryRow): string {

@@ -1,0 +1,175 @@
+<div class="pb-6">
+  @if (isLoading()) {
+    <div class="flex justify-center py-24"><tas-spinner size="10" class="text-primary"></tas-spinner></div>
+  } @else if (loadError()) {
+    <div class="flex flex-col items-center py-24 text-center" role="alert">
+      <tas-icon iconName="feather:alert-triangle" class="text-functional-error mb-2" style="font-size:24px"></tas-icon>
+      <p class="text-sm text-slate-600">{{ loadError() }}</p>
+      <button tas-outlined-button type="button" class="mt-3" (click)="retry()">Réessayer</button>
+    </div>
+  } @else {
+    <!-- En-tête -->
+    <div class="flex flex-wrap items-start justify-between gap-3 mb-5">
+      <div>
+        <h1 class="text-lg font-semibold text-slate-800">Enrôlement KYC</h1>
+        <p class="text-sm text-slate-500 mt-0.5">
+          @if (customerName()) {
+            {{ customerName() }}
+          } @else {
+            Client en cours de chargement…
+          }
+        </p>
+      </div>
+      <div class="flex items-center gap-3">
+        <kyc-status-badge [status]="file()?.status"></kyc-status-badge>
+        @if (lastSavedAt()) {
+          <span class="text-xs text-slate-400">Brouillon enregistré</span>
+        }
+      </div>
+    </div>
+
+    <!--
+      Les deux premières étapes du cahier — type de client, état civil — se saisissent sur la fiche
+      client : le dossier KYC ne porte aucun de ces champs, et `customers/create-client` les gère déjà.
+    -->
+    <div class="flex gap-3 p-3 rounded-lg bg-slate-50 border border-slate-200 mb-5">
+      <tas-icon iconName="feather:user" class="text-slate-400 shrink-0 mt-0.5" style="font-size:14px"></tas-icon>
+      <div class="text-sm text-slate-700">
+        <p>
+          L'état civil et les coordonnées se saisissent sur la fiche du client. Cet écran ne collecte
+          que ce qui appartient au dossier KYC : la pièce, le visage et la vérification.
+        </p>
+        <a
+          class="text-xs text-primary hover:underline inline-flex items-center gap-1 mt-1"
+          [routerLink]="['/customers', customerId()]"
+        >
+          <tas-icon iconName="feather:external-link" style="font-size:11px"></tas-icon>
+          Ouvrir la fiche client
+        </a>
+      </div>
+    </div>
+
+    @if (draftUnavailable()) {
+      <div class="flex gap-3 p-3 rounded-lg bg-amber-50 border border-amber-200 mb-5" role="alert">
+        <tas-icon iconName="feather:alert-triangle" class="text-amber-600 shrink-0 mt-0.5" style="font-size:14px"></tas-icon>
+        <p class="text-sm text-amber-700">
+          Le brouillon chiffré ne peut pas être enregistré dans ce navigateur : en cas de coupure, la
+          saisie sera perdue. Terminez l'enrôlement d'une seule traite.
+        </p>
+      </div>
+    }
+
+    <!-- Fil des étapes -->
+    <nav class="flex items-center gap-2 mb-6 flex-wrap" aria-label="Étapes de l'enrôlement">
+      @for (s of steps; track s.key; let i = $index) {
+        <div class="flex items-center gap-2">
+          <button
+            type="button"
+            class="flex items-center gap-2 rounded-md px-1 py-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
+            [disabled]="(s.key === 'selfie' && !canReachSelfie()) || (s.key === 'summary' && !canReachSummary())"
+            [attr.aria-current]="step() === s.key ? 'step' : null"
+            (click)="goToStep(s.key)"
+          >
+            <span
+              class="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold"
+              [class]="stepIndex() > i ? 'bg-green-100 text-green-700' : stepIndex() === i ? 'bg-primary/15 text-primary' : 'bg-slate-100 text-slate-400'"
+            >
+              @if (stepIndex() > i) {
+                <tas-icon iconName="feather:check" style="font-size:12px"></tas-icon>
+              } @else {
+                {{ i + 1 }}
+              }
+            </span>
+            <span class="text-xs font-medium" [class]="stepIndex() >= i ? 'text-slate-700' : 'text-slate-400'">
+              {{ s.label }}
+            </span>
+          </button>
+          @if (i < steps.length - 1) {
+            <div class="w-6 h-px" [class]="stepIndex() > i ? 'bg-green-300' : 'bg-slate-200'"></div>
+          }
+        </div>
+      }
+    </nav>
+
+    @if (submitted()) {
+      <tas-card class="block">
+        <div class="p-6 text-center">
+          <div class="w-16 h-16 rounded-full bg-green-50 flex items-center justify-center mx-auto mb-4">
+            <tas-icon iconName="feather:check-circle" class="text-green-500" style="font-size:32px"></tas-icon>
+          </div>
+          <h2 class="text-lg font-semibold text-slate-800 mb-2">Dossier soumis</h2>
+          <p class="text-sm text-slate-600">
+            @if (needsManagerValidation()) {
+              La comparaison faciale n'a pas abouti : le chef d'agence doit valider ce dossier.
+            } @else {
+              Le dossier part dans le circuit de validation.
+            }
+          </p>
+          <button tas-raised-button color="primary" type="button" class="mt-6" (click)="openFile()">
+            Suivre le dossier
+          </button>
+        </div>
+      </tas-card>
+    } @else if (file()?.id; as kycFileId) {
+      @switch (step()) {
+        @case ('document') {
+          <kyc-document-capture
+            [kycFileId]="kycFileId"
+            (documentUploaded)="onDocumentUploaded($event)"
+          ></kyc-document-capture>
+        }
+        @case ('selfie') {
+          <kyc-selfie-capture
+            [kycFileId]="kycFileId"
+            [documentImageUrl]="documentRef()?.url ?? null"
+            [documentStorageRef]="documentRef()?.storageRef ?? ''"
+            (matched)="onSelfieMatched($event)"
+            (submittedWithOverride)="onSubmittedWithOverride($event)"
+          ></kyc-selfie-capture>
+        }
+        @case ('summary') {
+          <div class="flex flex-col gap-4">
+            <kyc-score-panel
+              [kycFileId]="kycFileId"
+              [canSeeRawDetail]="canSeeRawDetail()"
+              (submitRequested)="submit()"
+            ></kyc-score-panel>
+
+            @if (needsManagerValidation()) {
+              <div class="flex gap-3 p-3 rounded-lg bg-orange-50 border border-orange-200" role="alert">
+                <tas-icon iconName="feather:user-check" class="text-orange-700 shrink-0 mt-0.5" style="font-size:14px"></tas-icon>
+                <div class="text-sm text-slate-700">
+                  <p class="font-medium text-orange-800">Validation du chef d'agence requise</p>
+                  <p class="text-xs text-orange-700 mt-0.5">
+                    Votre commentaire accompagne le dossier : « {{ overrideComment() }} »
+                  </p>
+                </div>
+              </div>
+            }
+
+            <div class="flex items-center justify-between gap-3">
+              <button tas-outlined-button type="button" (click)="goToStep('selfie')">
+                Revenir au visage
+              </button>
+              <div class="flex items-center gap-2">
+                <button tas-outlined-button color="warn" type="button" (click)="discardDraft()">
+                  Repartir de zéro
+                </button>
+                <button
+                  tas-raised-button
+                  color="primary"
+                  type="button"
+                  [disabled]="isSubmitting()"
+                  [isLoading]="isSubmitting()"
+                  (click)="submit()"
+                >
+                  Soumettre le dossier
+                </button>
+              </div>
+            </div>
+          </div>
+        }
+      }
+    }
+  }
+</div>

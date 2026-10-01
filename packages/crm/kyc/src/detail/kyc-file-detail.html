@@ -1,0 +1,515 @@
+<div class="pb-6">
+  <!-- ——— En-tête ——— -->
+  <div class="flex flex-wrap items-start justify-between gap-3 mb-6">
+    <div class="min-w-0">
+      <h1 class="text-lg font-semibold text-slate-800">Dossier KYC</h1>
+      <p class="text-sm text-slate-500 mt-0.5">
+        @if (customerName()) {
+          Client : <span class="font-medium text-slate-700">{{ customerName() }}</span>
+        } @else {
+          Consultation d'un dossier de connaissance client.
+        }
+      </p>
+    </div>
+    <div class="flex items-center gap-2 shrink-0">
+      @if (file()?.customerId) {
+        <button tas-outlined-button type="button" (click)="openCustomer()">
+          <tas-icon iconName="feather:user" style="font-size:14px"></tas-icon>
+          Fiche client
+        </button>
+      }
+      <button tas-outlined-button type="button" (click)="refresh()">
+        <tas-icon iconName="feather:refresh-cw" style="font-size:14px"></tas-icon>
+        Rafraîchir
+      </button>
+    </div>
+  </div>
+
+  <!-- ——— Chargement du dossier ——— -->
+  @if (isLoading()) {
+    <div class="flex justify-center py-24">
+      <tas-spinner size="10" class="text-primary"></tas-spinner>
+    </div>
+  }
+
+  <!-- ——— Dossier introuvable ——— -->
+  @else if (isNotFound()) {
+    <tas-card class="block">
+      <div class="p-10 text-center">
+        <tas-icon
+          iconName="feather:file-minus"
+          class="text-slate-300"
+          style="font-size:28px"
+        ></tas-icon>
+        <p class="text-sm font-medium text-slate-700 mt-2">Dossier introuvable</p>
+        <p class="text-sm text-slate-500 mt-1">
+          Ce dossier n'existe pas, ou il est hors de votre périmètre.
+        </p>
+      </div>
+    </tas-card>
+  }
+
+  <!-- ——— Erreur de chargement ——— -->
+  @else if (hasFailed()) {
+    <tas-card class="block">
+      <div class="p-10 text-center">
+        <tas-icon
+          iconName="feather:alert-circle"
+          class="text-red-500"
+          style="font-size:28px"
+        ></tas-icon>
+        <p class="text-sm font-medium text-slate-700 mt-2">Le dossier n'a pas pu être chargé</p>
+        <p class="text-sm text-slate-500 mt-1">Réessayez dans un instant.</p>
+        <button tas-outlined-button type="button" class="mt-4" (click)="refresh()">Réessayer</button>
+      </div>
+    </tas-card>
+  }
+
+  <!-- ——— Contenu ——— -->
+  @else if (file()) {
+    <!-- Onglets : la bande défile horizontalement sous 400 px plutôt que de se replier -->
+    <div class="border-b border-slate-200 mb-6 overflow-x-auto">
+      <div
+        class="flex flex-nowrap min-w-max"
+        role="tablist"
+        aria-label="Sections du dossier KYC"
+        (keydown)="onTabKeydown($event)"
+      >
+        @for (tab of tabs; track tab.id) {
+          <button
+            #tabButton
+            type="button"
+            role="tab"
+            [id]="'kyc-tab-' + tab.id"
+            [attr.aria-selected]="activeTab() === tab.id"
+            [attr.aria-controls]="'kyc-panel-' + tab.id"
+            [tabindex]="activeTab() === tab.id ? 0 : -1"
+            class="px-4 py-2.5 text-sm font-medium whitespace-nowrap border-b-2 -mb-px transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+            [class]="
+              activeTab() === tab.id
+                ? 'border-primary text-primary'
+                : 'border-transparent text-slate-500 hover:text-slate-700'
+            "
+            (click)="selectTab(tab.id)"
+          >
+            {{ tab.label }}
+          </button>
+        }
+      </div>
+    </div>
+
+    @switch (activeTab()) {
+      <!-- ═══════════════ Identité ═══════════════ -->
+      @case ('identite') {
+        <div role="tabpanel" id="kyc-panel-identite" aria-labelledby="kyc-tab-identite">
+          <tas-card class="block">
+            <div class="p-4">
+              <dl class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">
+                <div>
+                  <dt class="text-xs font-medium uppercase tracking-wide text-slate-400">Client</dt>
+                  <dd class="text-sm text-slate-800 mt-1">
+                    @if (file()!.customerId) {
+                      <a
+                        class="text-primary underline underline-offset-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                        [routerLink]="['/customers', file()!.customerId]"
+                      >
+                        {{ customerName() ?? 'Voir la fiche client' }}
+                      </a>
+                    } @else {
+                      —
+                    }
+                  </dd>
+                </div>
+                <div>
+                  <dt class="text-xs font-medium uppercase tracking-wide text-slate-400">Statut</dt>
+                  <dd class="mt-1">
+                    <kyc-status-badge [status]="file()!.status"></kyc-status-badge>
+                  </dd>
+                </div>
+                <div>
+                  <dt class="text-xs font-medium uppercase tracking-wide text-slate-400">
+                    Niveau de vigilance
+                  </dt>
+                  <dd class="mt-1">
+                    <tas-tag [severity]="vigilance().severity">{{ vigilance().label }}</tas-tag>
+                    @if (vigilance().requiresCompliance) {
+                      <p class="text-xs text-slate-500 mt-1">
+                        Le circuit de validation comporte une étape responsable conformité.
+                      </p>
+                    }
+                  </dd>
+                </div>
+                <div>
+                  <dt class="text-xs font-medium uppercase tracking-wide text-slate-400">
+                    Palier (tier)
+                  </dt>
+                  <dd class="text-sm text-slate-800 mt-1">{{ file()!.tier || '—' }}</dd>
+                </div>
+                <div>
+                  <dt class="text-xs font-medium uppercase tracking-wide text-slate-400">Canal</dt>
+                  <dd class="text-sm text-slate-800 mt-1">{{ file()!.channel || '—' }}</dd>
+                </div>
+                <div>
+                  <dt class="text-xs font-medium uppercase tracking-wide text-slate-400">
+                    Score de confiance
+                  </dt>
+                  <dd class="text-sm text-slate-800 mt-1 tabular-nums">
+                    @if (file()!.confidenceScore !== null && file()!.confidenceScore !== undefined) {
+                      {{ file()!.confidenceScore }} / 100
+                    } @else {
+                      —
+                    }
+                  </dd>
+                </div>
+                <div>
+                  <dt class="text-xs font-medium uppercase tracking-wide text-slate-400">
+                    Tentatives de reconnaissance faciale
+                  </dt>
+                  <dd class="text-sm text-slate-800 mt-1 tabular-nums">
+                    {{ file()!.faceMatchAttempts ?? 0 }}
+                  </dd>
+                </div>
+                <div>
+                  <dt class="text-xs font-medium uppercase tracking-wide text-slate-400">
+                    Doublon suspecté
+                  </dt>
+                  <dd class="mt-1">
+                    @if (file()!.duplicateSuspected) {
+                      <tas-tag severity="error">
+                        <span class="inline-flex items-center gap-1.5">
+                          <tas-icon iconName="feather:copy" style="font-size:12px"></tas-icon>
+                          Oui
+                        </span>
+                      </tas-tag>
+                    } @else {
+                      <span class="text-sm text-slate-800">Non</span>
+                    }
+                  </dd>
+                </div>
+                <div>
+                  <dt class="text-xs font-medium uppercase tracking-wide text-slate-400">
+                    Ouvert le
+                  </dt>
+                  <dd class="text-sm text-slate-800 mt-1">
+                    {{ file()!.createdAt ? (file()!.createdAt | date: 'dd/MM/yyyy HH:mm') : '—' }}
+                  </dd>
+                </div>
+                <div>
+                  <dt class="text-xs font-medium uppercase tracking-wide text-slate-400">
+                    Dernière mise à jour
+                  </dt>
+                  <dd class="text-sm text-slate-800 mt-1">
+                    {{ file()!.updatedAt ? (file()!.updatedAt | date: 'dd/MM/yyyy HH:mm') : '—' }}
+                  </dd>
+                </div>
+                <div>
+                  <dt class="text-xs font-medium uppercase tracking-wide text-slate-400">
+                    Validé le
+                  </dt>
+                  <dd class="text-sm text-slate-800 mt-1">
+                    {{ file()!.validatedAt ? (file()!.validatedAt | date: 'dd/MM/yyyy HH:mm') : '—' }}
+                  </dd>
+                </div>
+                <div>
+                  <dt class="text-xs font-medium uppercase tracking-wide text-slate-400">
+                    Prochaine revue
+                  </dt>
+                  <dd class="text-sm text-slate-800 mt-1">
+                    {{ formatDay(file()!.nextReviewDate) }}
+                  </dd>
+                </div>
+              </dl>
+
+              <!--
+                Dire où vit l'état civil évite qu'on cherche ici une date de naissance que le dossier
+                KYC ne porte pas : le contrat KYC n'expose que l'état du dossier.
+              -->
+              <div class="mt-5 rounded-lg border border-slate-200 bg-slate-50 p-3">
+                <p class="text-sm text-slate-700 flex items-start gap-2">
+                  <tas-icon
+                    iconName="feather:info"
+                    class="text-slate-400 shrink-0 mt-0.5"
+                    style="font-size:14px"
+                  ></tas-icon>
+                  <span>
+                    L'état civil détaillé (noms, date et lieu de naissance, nationalité, adresse,
+                    pièce d'identité) vit sur la <strong>fiche client</strong>, dans le module
+                    Clients. Ce dossier ne porte que l'état de la vérification KYC.
+                  </span>
+                </p>
+                @if (file()!.customerId) {
+                  <a
+                    class="inline-flex items-center gap-1.5 text-sm text-primary underline underline-offset-2 mt-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                    [routerLink]="['/customers', file()!.customerId]"
+                  >
+                    <tas-icon iconName="feather:external-link" style="font-size:12px"></tas-icon>
+                    Ouvrir la fiche client
+                  </a>
+                }
+              </div>
+            </div>
+          </tas-card>
+        </div>
+      }
+
+      <!-- ═══════════════ Pièce et selfie ═══════════════ -->
+      @case ('piece') {
+        <div role="tabpanel" id="kyc-panel-piece" aria-labelledby="kyc-tab-piece">
+          <kyc-stub-notice what="Les images du dossier"></kyc-stub-notice>
+          <tas-card class="block">
+            <div class="p-4">
+              <p class="text-sm text-slate-700">
+                Les images ne sont pas affichées : le contrat n'expose
+                <strong>aucun lien de lecture temporaire</strong> vers le magasin documentaire. Un
+                cadre vide laisserait croire à une image manquante côté dossier — ce n'est pas le
+                cas, c'est l'accès qui manque.
+              </p>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">
+                @for (slot of imageSlots; track slot) {
+                  <div class="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-6 text-center">
+                    <tas-icon
+                      iconName="feather:image"
+                      class="text-slate-300"
+                      style="font-size:24px"
+                    ></tas-icon>
+                    <p class="text-sm font-medium text-slate-700 mt-2">{{ slot }}</p>
+                    <p class="text-xs text-slate-500 mt-1">Affichage à la demande indisponible</p>
+                    <button
+                      tas-outlined-button
+                      type="button"
+                      class="mt-3"
+                      disabled
+                      [attr.aria-label]="
+                        'Afficher ' + slot + ' — indisponible : aucun lien de lecture au contrat'
+                      "
+                    >
+                      Afficher l'image
+                    </button>
+                  </div>
+                }
+              </div>
+              <p class="text-xs text-slate-400 mt-4">
+                Attendu côté serveur : un dépôt d'image renvoyant une référence de stockage, et un
+                lien de lecture temporaire par image, demandé au moment de l'affichage.
+              </p>
+            </div>
+          </tas-card>
+        </div>
+      }
+
+      <!-- ═══════════════ Score de confiance ═══════════════ -->
+      @case ('score') {
+        <div role="tabpanel" id="kyc-panel-score" aria-labelledby="kyc-tab-score">
+          <kyc-score-panel
+            [kycFileId]="id()"
+            [canSeeRawDetail]="canSeeRawDetail()"
+            (submitRequested)="onSubmitRequested()"
+          ></kyc-score-panel>
+        </div>
+      }
+
+      <!-- ═══════════════ Validation ═══════════════ -->
+      @case ('validation') {
+        <div role="tabpanel" id="kyc-panel-validation" aria-labelledby="kyc-tab-validation">
+          @if (isLoadingCircuit()) {
+            <div class="flex justify-center py-16">
+              <tas-spinner size="10" class="text-primary"></tas-spinner>
+            </div>
+          } @else if (circuitFailed()) {
+            <tas-card class="block">
+              <div class="p-10 text-center">
+                <p class="text-sm font-medium text-slate-700">
+                  Le circuit de validation n'a pas pu être chargé
+                </p>
+                <p class="text-sm text-slate-500 mt-1">Réessayez dans un instant.</p>
+                <button tas-outlined-button type="button" class="mt-4" (click)="reloadCircuit()">
+                  Réessayer
+                </button>
+              </div>
+            </tas-card>
+          } @else {
+            <!-- Résumé du circuit : trois valeurs, pas une liste -->
+            <tas-card class="block mb-4">
+              <div class="p-4 flex flex-wrap gap-x-8 gap-y-3">
+                <div>
+                  <p class="text-xs font-medium uppercase tracking-wide text-slate-400">
+                    Circuit ouvert
+                  </p>
+                  <p class="text-sm text-slate-800 mt-1">
+                    {{ circuit()?.isStarted ? 'Oui' : 'Pas encore' }}
+                  </p>
+                </div>
+                <div>
+                  <p class="text-xs font-medium uppercase tracking-wide text-slate-400">
+                    Prochain niveau attendu
+                  </p>
+                  <p class="text-sm text-slate-800 mt-1">
+                    {{
+                      circuit()?.nextLevel
+                        ? kycApprovalLevelLabel(circuit()?.nextLevel)
+                        : 'Aucun — circuit terminé'
+                    }}
+                  </p>
+                </div>
+                <div>
+                  <p class="text-xs font-medium uppercase tracking-wide text-slate-400">
+                    Statut du dossier
+                  </p>
+                  <p class="mt-1">
+                    <kyc-status-badge [status]="circuit()?.fileStatus"></kyc-status-badge>
+                  </p>
+                </div>
+              </div>
+            </tas-card>
+
+            @if (circuitRows().length === 0) {
+              <tas-card class="block">
+                <div class="p-10 text-center">
+                  <tas-icon
+                    iconName="feather:git-commit"
+                    class="text-slate-300"
+                    style="font-size:28px"
+                  ></tas-icon>
+                  <p class="text-sm font-medium text-slate-700 mt-2">Aucune étape enregistrée</p>
+                  <p class="text-sm text-slate-500 mt-1">
+                    Le circuit s'ouvrira à la soumission du dossier.
+                  </p>
+                </div>
+              </tas-card>
+            } @else {
+              <tas-table [data]="circuitRows()" identifierField="id" [config]="circuitTableConfig()">
+                <ng-template #header>
+                  <tr>
+                    <th scope="col">Étape</th>
+                    <th scope="col">Niveau</th>
+                    <th scope="col">Décision</th>
+                    <th scope="col">Commentaire</th>
+                    <th scope="col">Date</th>
+                  </tr>
+                </ng-template>
+                <ng-template #body let-step>
+                  <tr>
+                    <td class="text-slate-400 tabular-nums">{{ step.position }}</td>
+                    <td class="text-slate-800">
+                      {{ step.levelLabel }}
+                      @if (step.isNext) {
+                        <span class="block text-xs text-primary">En attente de décision</span>
+                      }
+                    </td>
+                    <td>
+                      <tas-tag [severity]="step.decision.severity">
+                        <span class="inline-flex items-center gap-1.5">
+                          <tas-icon
+                            [iconName]="step.decision.icon"
+                            style="font-size:12px"
+                          ></tas-icon>
+                          {{ step.decision.label }}
+                        </span>
+                      </tas-tag>
+                    </td>
+                    <td class="text-slate-600 whitespace-normal">{{ step.comment || '—' }}</td>
+                    <td class="text-slate-600">
+                      {{ step.decidedAt ? (step.decidedAt | date: 'dd/MM/yyyy HH:mm') : '—' }}
+                    </td>
+                  </tr>
+                </ng-template>
+              </tas-table>
+            }
+          }
+        </div>
+      }
+
+      <!-- ═══════════════ Historique ═══════════════ -->
+      @case ('historique') {
+        <div role="tabpanel" id="kyc-panel-historique" aria-labelledby="kyc-tab-historique">
+          @if (isLoadingHistory()) {
+            <div class="flex justify-center py-16">
+              <tas-spinner size="10" class="text-primary"></tas-spinner>
+            </div>
+          } @else if (historyFailed()) {
+            <tas-card class="block">
+              <div class="p-10 text-center">
+                <p class="text-sm font-medium text-slate-700">L'historique n'a pas pu être chargé</p>
+                <p class="text-sm text-slate-500 mt-1">Réessayez dans un instant.</p>
+                <button tas-outlined-button type="button" class="mt-4" (click)="reloadHistory()">
+                  Réessayer
+                </button>
+              </div>
+            </tas-card>
+          } @else {
+            @if (historyIsStub()) {
+              <kyc-stub-notice what="L'historique du dossier"></kyc-stub-notice>
+            }
+            @if (historyRows().length === 0) {
+              <tas-card class="block">
+                <div class="p-10 text-center">
+                  <tas-icon
+                    iconName="feather:clock"
+                    class="text-slate-300"
+                    style="font-size:28px"
+                  ></tas-icon>
+                  <p class="text-sm font-medium text-slate-700 mt-2">Aucun évènement</p>
+                  <p class="text-sm text-slate-500 mt-1">
+                    L'historique se remplira au fil des vérifications, corrections et décisions.
+                  </p>
+                </div>
+              </tas-card>
+            } @else {
+              <!--
+                Frise rendue par `tas-table` : chaque évènement est un `<tr>` d'une seule cellule, et
+                il n'y a pas de `#header`. La liste garde ainsi la pagination et l'état vide du kit.
+              -->
+              <tas-table [data]="historyRows()" identifierField="id" [config]="historyTableConfig()">
+                <ng-template #body let-event>
+                  <tr>
+                    <td [attr.colspan]="1" class="p-0">
+                      <div class="flex gap-3 p-3">
+                        <div
+                          class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center shrink-0"
+                        >
+                          <tas-icon
+                            [iconName]="event.icon"
+                            class="text-slate-500"
+                            style="font-size:14px"
+                          ></tas-icon>
+                        </div>
+                        <div class="min-w-0">
+                          <p class="text-sm font-medium text-slate-800">{{ event.label }}</p>
+                          @if (event.fieldName) {
+                            <p class="text-xs text-slate-600 mt-0.5">
+                              Champ corrigé :
+                              <span class="font-medium">{{ event.fieldName }}</span>
+                            </p>
+                          }
+                          @if (event.detail) {
+                            <p class="text-xs text-slate-600 mt-0.5">{{ event.detail }}</p>
+                          }
+                          @if (event.masked) {
+                            <!-- Le texte porte l'information : pas de distinction par la seule couleur -->
+                            <tas-tag severity="neutral" class="mt-1">
+                              <span class="inline-flex items-center gap-1.5">
+                                <tas-icon
+                                  iconName="feather:eye-off"
+                                  style="font-size:12px"
+                                ></tas-icon>
+                                valeur masquée
+                              </span>
+                            </tas-tag>
+                          }
+                          <p class="text-xs text-slate-400 mt-1">
+                            {{ event.authorName }} ·
+                            {{ event.at ? (event.at | date: 'dd/MM/yyyy HH:mm') : '—' }}
+                          </p>
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                </ng-template>
+              </tas-table>
+            }
+          }
+        </div>
+      }
+    }
+  }
+</div>

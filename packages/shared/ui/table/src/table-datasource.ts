@@ -13,7 +13,19 @@ export class TableDataSource<TEntity> extends DataSource<TEntity> {
   paginator: MatPaginator | undefined;
   sort: MatSort | undefined;
 
-  constructor(public data: TEntity[]) {
+  /**
+   * @param serverSide Les lignes reçues SONT déjà la page : ne pas les redécouper.
+   *
+   * Sans ce drapeau, `getPagedData` tranchait toujours `data` par `pageIndex * pageSize`, même
+   * quand la configuration annonçait `serverSide: true`. Un écran qui fournissait une page de 20
+   * lignes avec `pageIndex: 1` se faisait donc trancher `splice(20, 20)` sur un tableau de 20 —
+   * un tableau vide dès la page 2. Les écrans concernés ont contourné de deux façons : charger
+   * tout d'un coup, ou accumuler les pages pour que le découpage retombe juste.
+   */
+  constructor(
+    public data: TEntity[],
+    private readonly serverSide = false,
+  ) {
     super();
   }
 
@@ -49,6 +61,9 @@ export class TableDataSource<TEntity> extends DataSource<TEntity> {
    * this would be replaced by requesting the appropriate data from the server.
    */
   private getPagedData(data: TEntity[]): TEntity[] {
+    // Le serveur a déjà paginé : redécouper ici viderait la page.
+    if (this.serverSide) return data;
+
     if (this.paginator) {
       const startIndex = this.paginator.pageIndex * this.paginator.pageSize;
       return data.splice(startIndex, this.paginator.pageSize);

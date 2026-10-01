@@ -95,6 +95,18 @@ export class PortalLayoutComponent implements OnInit {
             },
           ]
         : []),
+
+      ...(this._permissions.has('kyc:read')
+        ? [
+            {
+              id: 'kyc',
+              icon: 'feather:lock',
+              title: 'KYC',
+              type: 'basic' as const,
+              link: '/kyc',
+            },
+          ]
+        : []),
       // {
       //   id: 'loans',
       //   icon: 'feather:percent',

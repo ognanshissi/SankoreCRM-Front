@@ -169,6 +169,9 @@ export const PERMISSIONS = {
   WORKFLOW_TASK_COMPLETE: 'workflow:task:complete',
   WORKFLOW_INSTANCE_VIEW: 'workflow:instance:view',
   WORKFLOW_ANALYTICS_VIEW: 'workflow:analytics:view',
+
+  // KYC
+  KYC_READ: 'kyc:read',
 } as const;
 
 /** Code de permission valide. Tout autre littéral est refusé à la compilation. */
