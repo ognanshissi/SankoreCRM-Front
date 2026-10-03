@@ -25,6 +25,9 @@ export interface CreateIndividualClientRequest {
     dateOfBirth?: string;
     birthPlace?: string | null;
     nationality?: string | null;
+    /**
+     * One of: Single, Married, Divorced, Widowed, FreeUnion
+     */
     maritalStatus?: CreateIndividualClientRequestMaritalStatusEnum | null;
     fatherName?: string | null;
     motherName?: string | null;
@@ -51,11 +54,11 @@ export enum CreateIndividualClientRequestGenderEnum {
     Other = 'Other'
 };
 export enum CreateIndividualClientRequestMaritalStatusEnum {
-    NUMBER_0 = 0,
-    NUMBER_1 = 1,
-    NUMBER_2 = 2,
-    NUMBER_3 = 3,
-    NUMBER_4 = 4
+    Single = 'Single',
+    Married = 'Married',
+    Divorced = 'Divorced',
+    Widowed = 'Widowed',
+    FreeUnion = 'FreeUnion'
 };
 export enum CreateIndividualClientRequestIdentityDocumentTypeEnum {
     NationalIdCard = 'NationalIdCard',

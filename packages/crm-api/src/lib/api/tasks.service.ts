@@ -602,15 +602,15 @@ export class TasksApiService {
     /**
      * @param leadId 
      * @param agentId 
-     * @param status 
-     * @param type 
+     * @param status One of: Pending, InProgress, Completed, Cancelled
+     * @param type One of: FirstContact, Qualification, SlaFollowUp, ScoreReview, OwnerHandover, ManualDispatch, Generic
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      */
-    public listCrmTasks(leadId?: string, agentId?: string, status?: 0 | 1 | 2 | 3, type?: 0 | 1 | 2 | 3 | 4 | 5 | 6, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<Array<CrmTaskDto>>;
-    public listCrmTasks(leadId?: string, agentId?: string, status?: 0 | 1 | 2 | 3, type?: 0 | 1 | 2 | 3 | 4 | 5 | 6, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<Array<CrmTaskDto>>>;
-    public listCrmTasks(leadId?: string, agentId?: string, status?: 0 | 1 | 2 | 3, type?: 0 | 1 | 2 | 3 | 4 | 5 | 6, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<Array<CrmTaskDto>>>;
-    public listCrmTasks(leadId?: string, agentId?: string, status?: 0 | 1 | 2 | 3, type?: 0 | 1 | 2 | 3 | 4 | 5 | 6, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
+    public listCrmTasks(leadId?: string, agentId?: string, status?: 'Pending' | 'InProgress' | 'Completed' | 'Cancelled', type?: 'FirstContact' | 'Qualification' | 'SlaFollowUp' | 'ScoreReview' | 'OwnerHandover' | 'ManualDispatch' | 'Generic', observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<Array<CrmTaskDto>>;
+    public listCrmTasks(leadId?: string, agentId?: string, status?: 'Pending' | 'InProgress' | 'Completed' | 'Cancelled', type?: 'FirstContact' | 'Qualification' | 'SlaFollowUp' | 'ScoreReview' | 'OwnerHandover' | 'ManualDispatch' | 'Generic', observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<Array<CrmTaskDto>>>;
+    public listCrmTasks(leadId?: string, agentId?: string, status?: 'Pending' | 'InProgress' | 'Completed' | 'Cancelled', type?: 'FirstContact' | 'Qualification' | 'SlaFollowUp' | 'ScoreReview' | 'OwnerHandover' | 'ManualDispatch' | 'Generic', observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<Array<CrmTaskDto>>>;
+    public listCrmTasks(leadId?: string, agentId?: string, status?: 'Pending' | 'InProgress' | 'Completed' | 'Cancelled', type?: 'FirstContact' | 'Qualification' | 'SlaFollowUp' | 'ScoreReview' | 'OwnerHandover' | 'ManualDispatch' | 'Generic', observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
 
         let localVarQueryParameters = new HttpParams({encoder: this.encoder});
         if (leadId !== undefined && leadId !== null) {

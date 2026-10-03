@@ -24,6 +24,7 @@ import {
   LogActivityRequestTypeEnum,
   LogActivityRequestOutcomeEnum,
   ActivityDto,
+  ActivityDtoOutcomeEnum,
   ActivityDtoTypeEnum,
   ConsentDto,
 } from '@sankore/crm-api';
@@ -100,15 +101,29 @@ const ACTIVITY_TYPES: TypeOption[] = [
   },
 ];
 
-const OUTCOME_OPTIONS = [
-  { label: 'Contacté avec succès',       value: String(LogActivityRequestOutcomeEnum.NUMBER_0) },
-  { label: 'Injoignable',                value: String(LogActivityRequestOutcomeEnum.NUMBER_1) },
-  { label: 'Messagerie vocale',          value: String(LogActivityRequestOutcomeEnum.NUMBER_2) },
-  { label: 'Rappel demandé',             value: String(LogActivityRequestOutcomeEnum.NUMBER_3) },
-  { label: 'Intéressé',                  value: String(LogActivityRequestOutcomeEnum.NUMBER_4) },
-  { label: 'Pas intéressé',              value: String(LogActivityRequestOutcomeEnum.NUMBER_5) },
-  { label: 'Faux numéro',               value: String(LogActivityRequestOutcomeEnum.NUMBER_6) },
-  { label: 'Autre',                      value: String(LogActivityRequestOutcomeEnum.NUMBER_7) },
+/**
+ * Les huit résultats du contrat, un par valeur, dans l'ordre de l'énumération.
+ *
+ * Trois défauts corrigés ici, qu'il ne faut pas réintroduire :
+ *
+ * 1. « Autre » valait `NUMBER_7`, un nom que le générateur ne produit que pour une énumération
+ *    **numérique**. `LogActivityRequestOutcomeEnum` est une énumération de chaînes : la constante
+ *    n'existe pas, et le contrat n'a aucune valeur « Autre ». L'entrée a été remplacée par les deux
+ *    valeurs réelles qui manquaient, `Callback` et `Completed`.
+ * 2. « Faux numéro » réutilisait `NoAnswer`, déjà porté par « Injoignable ». `tas-select` résout une
+ *    sélection par sa valeur : choisir l'un affichait l'autre. Le contrat n'a pas de valeur pour un
+ *    mauvais numéro — l'entrée est retirée plutôt que repliée sur une valeur voisine.
+ * 3. « Rappel demandé » pointait sur `Rescheduled` (reporté), alors que `Callback` existe.
+ */
+const OUTCOME_OPTIONS: { label: string; value: LogActivityRequestOutcomeEnum }[] = [
+  { label: 'Contacté avec succès', value: LogActivityRequestOutcomeEnum.Reached },
+  { label: 'Injoignable',          value: LogActivityRequestOutcomeEnum.NoAnswer },
+  { label: 'Messagerie vocale',    value: LogActivityRequestOutcomeEnum.Voicemail },
+  { label: 'Rappel demandé',       value: LogActivityRequestOutcomeEnum.Callback },
+  { label: 'Intéressé',            value: LogActivityRequestOutcomeEnum.Interested },
+  { label: 'Pas intéressé',        value: LogActivityRequestOutcomeEnum.NotInterested },
+  { label: 'Reporté',              value: LogActivityRequestOutcomeEnum.Rescheduled },
+  { label: 'Terminé',              value: LogActivityRequestOutcomeEnum.Completed },
 ];
 
 type GeoStatus = 'idle' | 'acquiring' | 'acquired' | 'denied' | 'error' | 'manual';
@@ -391,6 +406,21 @@ type GeoStatus = 'idle' | 'acquiring' | 'acquired' | 'denied' | 'error' | 'manua
               <p class="text-xs font-semibold text-slate-600">Photo de visite</p>
             </div>
 
+            <!--
+              Dit franchement : le contrat a bien un champ visitPhotoReference, mais il attend une
+              RÉFÉRENCE de magasin documentaire, et aucun endpoint de dépôt n'existe pour les
+              activités. Le fichier ne quitte donc pas le navigateur. Le code ajoutait auparavant
+              « [Photo jointe : nom.jpg] » aux notes, ce qui inscrivait dans le dossier qu'une pièce
+              était attachée alors qu'elle était perdue à la fermeture du drawer.
+            -->
+            <div class="mb-2 p-2.5 rounded-lg bg-slate-50 border border-slate-200 flex items-start gap-2">
+              <tas-icon iconName="feather:info" class="text-slate-400 shrink-0 mt-0.5" style="font-size:14px"></tas-icon>
+              <p class="text-xs text-slate-600">
+                Aperçu local uniquement : la photo n'est pas encore transmise au serveur, faute de
+                service de dépôt. Décrivez ce qu'elle montre dans les notes.
+              </p>
+            </div>
+
             @if (!photoPreviewUrl()) {
               <!-- Upload zone -->
               <div
@@ -506,7 +536,8 @@ export class LogActivityDrawer {
   public subject = signal('');
   public notes = signal('');
   public durationMinutes = signal<number | null>(null);
-  public outcome = signal('');
+  /** Chaîne vide = aucun résultat choisi. Les autres valeurs sont celles du contrat, pas des indices. */
+  public outcome = signal<LogActivityRequestOutcomeEnum | ''>('');
   public scheduledAt = signal('');
   public isSubmitting = signal(false);
   public submitted = signal(false);
@@ -520,6 +551,17 @@ export class LogActivityDrawer {
   // ——— Visit: Photo ———
   public photoFile = signal<File | null>(null);
   public photoPreviewUrl = signal<string | null>(null);
+
+  /**
+   * Durée en minutes, ramenée à un nombre. `[ngModel]` sur un `input[type=number]` peut rendre une
+   * chaîne selon la saisie : la laisser passer envoyait `"15"` là où le contrat attend un entier.
+   */
+  private _duration(): number | null {
+    const raw = this.durationMinutes();
+    if (raw === null || raw === undefined || raw === ('' as unknown)) return null;
+    const parsed = Number(raw);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
 
   public readonly activeFields = computed(() => {
     const type = this.selectedType();
@@ -619,28 +661,28 @@ export class LogActivityDrawer {
 
     this.isSubmitting.set(true);
 
-    // Build notes with geo + photo info for visit
-    let enrichedNotes = this.notes().trim();
-    if (this.selectedType() === LogActivityRequestTypeEnum.Visit) {
-      if (this.geoLatitude() != null && this.geoLongitude() != null) {
-        enrichedNotes += `\n[Position GPS : ${this.geoLatitude()}, ${this.geoLongitude()}]`;
-      }
-      if (this.photoFile()) {
-        enrichedNotes += `\n[Photo jointe : ${this.photoFile()!.name}]`;
-      }
-    }
+    const notes = this.notes().trim() || null;
+    // Lu une fois : `signal() ? signal() : null` empêche TypeScript d'écarter la chaîne vide.
+    const outcome = this.outcome() || null;
+    const isVisit = this.selectedType() === LogActivityRequestTypeEnum.Visit;
+    const hasPosition = isVisit && this.geoLatitude() != null && this.geoLongitude() != null;
 
     this._leadsApi.logLeadActivity(this.data.leadId, {
       type: this.selectedType() as LogActivityRequestTypeEnum,
       subject: this.subject().trim(),
-      notes: enrichedNotes || null,
-      durationMinutes: this.activeFields().has('duration') ? this.durationMinutes() : null,
-      outcome: this.activeFields().has('outcome') && this.outcome()
-        ? Number(this.outcome()) as any
-        : null,
+      notes,
+      durationMinutes: this.activeFields().has('duration') ? this._duration() : null,
+      // `outcome` est une énumération de CHAÎNES : la valeur part telle quelle. Elle passait
+      // auparavant par `Number(...)`, qui rendait `NaN` pour « Reached » — sérialisé en `null`,
+      // donc le résultat de l'activité n'était jamais enregistré, sans la moindre erreur.
+      outcome: this.activeFields().has('outcome') ? outcome : null,
       scheduledAt: this.activeFields().has('scheduledAt') && this.scheduledAt()
         ? new Date(this.scheduledAt()).toISOString()
         : null,
+      // Champs dédiés du contrat. La position était jusqu'ici recopiée dans le texte des notes,
+      // d'où elle n'était ni interrogeable ni cartographiable.
+      visitLatitude: hasPosition ? this.geoLatitude() : null,
+      visitLongitude: hasPosition ? this.geoLongitude() : null,
     }).pipe(
       catchError(() => {
         this._snackbar.error('Erreur', "Impossible d'enregistrer l'activité.");
@@ -650,27 +692,27 @@ export class LogActivityDrawer {
     ).subscribe((result) => {
       const typeMeta = ACTIVITY_TYPES.find((t) => t.value === this.selectedType());
 
+      // Ligne affichée sans attendre un rechargement : elle doit refléter ce qui est parti, et
+      // rien de plus. Les deux énumérations ont les mêmes membres mais restent des types distincts,
+      // d'où le transtypage.
       const activity: ActivityDto = {
         id: result.activityId,
         type: this.selectedType() as unknown as ActivityDtoTypeEnum,
         subject: this.subject().trim(),
-        notes: enrichedNotes || null,
+        notes,
         performedAt: result.performedAt ?? new Date().toISOString(),
-        durationMinutes: this.durationMinutes(),
-        outcome: this.outcome() ? Number(this.outcome()) as any : null,
+        durationMinutes: this.activeFields().has('duration') ? this._duration() : null,
+        outcome: outcome as unknown as ActivityDtoOutcomeEnum | null,
         scheduledAt: this.scheduledAt()
           ? new Date(this.scheduledAt()).toISOString()
           : null,
+        visitLatitude: hasPosition ? this.geoLatitude() : null,
+        visitLongitude: hasPosition ? this.geoLongitude() : null,
       };
 
-      // If visit with geo, also update lead coordinates
-      if (this.selectedType() === LogActivityRequestTypeEnum.Visit
-          && this.geoLatitude() != null && this.geoLongitude() != null) {
-        this._leadsApi.updateLead(this.data.leadId, {
-          latitude: this.geoLatitude(),
-          longitude: this.geoLongitude(),
-        }).pipe(catchError(() => EMPTY)).subscribe();
-      }
+      // La position d'une visite n'écrase plus `lead.latitude/longitude` : ces deux champs sont
+      // l'adresse du prospect, pas l'endroit où l'agent se tenait ce jour-là. Les recopier faisait
+      // dériver l'adresse à chaque visite, de façon irréversible.
 
       this._snackbar.success(
         'Activité enregistrée',

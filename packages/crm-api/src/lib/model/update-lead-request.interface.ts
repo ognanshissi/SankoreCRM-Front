@@ -16,6 +16,9 @@ export interface UpdateLeadRequest {
     firstName?: string | null;
     lastName?: string | null;
     email?: string | null;
+    /**
+     * One of: Unknown, Male, Female, Other
+     */
     gender?: UpdateLeadRequestGenderEnum | null;
     dateOfBirth?: string | null;
     interestedProduct?: string | null;
@@ -30,10 +33,10 @@ export interface UpdateLeadRequest {
     expectedUpdatedAt?: string | null;
 }
 export enum UpdateLeadRequestGenderEnum {
-    NUMBER_0 = 0,
-    NUMBER_1 = 1,
-    NUMBER_2 = 2,
-    NUMBER_3 = 3
+    Unknown = 'Unknown',
+    Male = 'Male',
+    Female = 'Female',
+    Other = 'Other'
 };
 
 

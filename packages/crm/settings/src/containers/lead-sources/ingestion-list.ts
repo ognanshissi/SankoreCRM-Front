@@ -69,6 +69,7 @@ const EMPTY_GUID = '00000000-0000-0000-0000-000000000000';
         <tas-form-field class="w-48">
           <tas-label>Statut</tas-label>
           <tas-select
+            clearable
             [options]="statusOptions"
             optionLabel="label" optionValue="value"
             [ngModel]="filterStatus()" (ngModelChange)="onFilterChange($event)"
@@ -326,8 +327,9 @@ export class IngestionList implements OnInit {
     this._load(true);
   }
 
-  public onFilterChange(status: string): void {
-    this.filterStatus.set(status);
+  public onFilterChange(status: string | null): void {
+    // `?? ''` : la croix du `tas-select` notifie `null`, le signal reste en chaîne.
+    this.filterStatus.set(status ?? '');
     this._page = 1;
     this._load(true);
   }
@@ -463,11 +465,16 @@ export class IngestionList implements OnInit {
       this.isLoading.set(true);
       this.loadError.set(false);
     }
-    const statusNum = this.filterStatus()
-      ? (Number(this.filterStatus()) as 0 | 1 | 2 | 3)
-      : undefined;
+    // Le contrat nomme ce statut ; il portait un entier 0..3 tant que l'énumération
+    // optionnelle sortait en integer du swagger, d'où le `Number(...)` qui traînait ici.
+    const status = (this.filterStatus() || undefined) as
+      | 'Accepted'
+      | 'Rejected'
+      | 'Duplicate'
+      | 'Failed'
+      | undefined;
 
-    this._ingestionsApi.listIngestions(this.sourceId(), statusNum, this._page, 25).pipe(
+    this._ingestionsApi.listIngestions(this.sourceId(), status, this._page, 25).pipe(
       // L'appel ne passe pas par `LeadSourcesService` : sans ce message, un 403
       // ou un 500 se lisait « Aucune réception enregistrée. »
       catchError((err: HttpErrorResponse) => {

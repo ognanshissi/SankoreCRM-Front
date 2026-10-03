@@ -192,15 +192,18 @@ export const GENDER_OPTIONS = GENDER_ORDER.map((name) => ({
 // ——— Situation familiale ———
 
 /**
- * `maritalStatus` est un entier 0..4 dans les deux sens et le contrat ne nomme
- * aucune de ses valeurs : ces libellés sont une convention à confirmer côté API.
+ * Les valeurs sont celles du contrat. Elles étaient des indices '0'..'4' tant que
+ * `maritalStatus` sortait en entier du swagger côté requête — ce qui obligeait aussi à
+ * deviner à quoi correspondait chaque indice. Le contrat nomme maintenant ses valeurs des
+ * deux côtés, donc l'option porte directement le nom : plus de table de correspondance, et
+ * une valeur lue sur un client se présélectionne sans traduction.
  */
 export const MARITAL_STATUS_OPTIONS = [
-  { label: 'Célibataire', value: '0' },
-  { label: 'Marié(e)', value: '1' },
-  { label: 'Divorcé(e)', value: '2' },
-  { label: 'Veuf / Veuve', value: '3' },
-  { label: 'Union libre', value: '4' },
+  { label: 'Célibataire', value: 'Single' },
+  { label: 'Marié(e)', value: 'Married' },
+  { label: 'Divorcé(e)', value: 'Divorced' },
+  { label: 'Veuf / Veuve', value: 'Widowed' },
+  { label: 'Union libre', value: 'FreeUnion' },
 ];
 export function maritalStatusLabel(value: RawEnum): string {
   if (value === null || value === undefined || value === '') return '—';
@@ -240,11 +243,14 @@ export const IDENTITY_DOCUMENT_OPTIONS = IDENTITY_DOCUMENT_ORDER.map((name) => (
   label: IDENTITY_DOCUMENT_LABELS[name] as string,
   value: name,
 }));
-/** Nom -> index, pour `UpdateClientSensitiveRequest` qui attend un entier. */
-export function identityDocumentToIndex(name: string | null | undefined): number | null {
+/**
+ * Nom validé pour `UpdateClientSensitiveRequest`. Cette requête attendait un entier tant que
+ * le champ, optionnel, sortait en integer du swagger — alors que la création nommait déjà ses
+ * valeurs. Les deux sens parlent désormais la même langue.
+ */
+export function identityDocumentToName(name: string | null | undefined): string | null {
   if (!name) return null;
-  const index = IDENTITY_DOCUMENT_ORDER.indexOf(name);
-  return index >= 0 ? index : null;
+  return IDENTITY_DOCUMENT_ORDER.includes(name) ? name : null;
 }
 
 // ——— Type de contrôle d'un bénéficiaire effectif ———

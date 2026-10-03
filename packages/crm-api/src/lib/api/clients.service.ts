@@ -334,20 +334,20 @@ export class ClientsApiService {
      * @param phone 
      * @param identityDocumentNumber 
      * @param name 
-     * @param status 
+     * @param status One of: PendingKyc, Active, Suspended, KycRejected, Archived, Merged
      * @param agencyId 
      * @param advisorUserId 
-     * @param type 
+     * @param type One of: Individual, Legal
      * @param segmentCode 
      * @param page 
      * @param pageSize 
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      */
-    public searchClients(clientNumber?: string, phone?: string, identityDocumentNumber?: string, name?: string, status?: 0 | 1 | 2 | 3 | 4 | 5, agencyId?: string, advisorUserId?: string, type?: 0 | 1, segmentCode?: string, page?: number, pageSize?: number, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<ClientSearchItemDtoPagedResult>;
-    public searchClients(clientNumber?: string, phone?: string, identityDocumentNumber?: string, name?: string, status?: 0 | 1 | 2 | 3 | 4 | 5, agencyId?: string, advisorUserId?: string, type?: 0 | 1, segmentCode?: string, page?: number, pageSize?: number, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<ClientSearchItemDtoPagedResult>>;
-    public searchClients(clientNumber?: string, phone?: string, identityDocumentNumber?: string, name?: string, status?: 0 | 1 | 2 | 3 | 4 | 5, agencyId?: string, advisorUserId?: string, type?: 0 | 1, segmentCode?: string, page?: number, pageSize?: number, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<ClientSearchItemDtoPagedResult>>;
-    public searchClients(clientNumber?: string, phone?: string, identityDocumentNumber?: string, name?: string, status?: 0 | 1 | 2 | 3 | 4 | 5, agencyId?: string, advisorUserId?: string, type?: 0 | 1, segmentCode?: string, page?: number, pageSize?: number, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
+    public searchClients(clientNumber?: string, phone?: string, identityDocumentNumber?: string, name?: string, status?: 'PendingKyc' | 'Active' | 'Suspended' | 'KycRejected' | 'Archived' | 'Merged', agencyId?: string, advisorUserId?: string, type?: 'Individual' | 'Legal', segmentCode?: string, page?: number, pageSize?: number, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<ClientSearchItemDtoPagedResult>;
+    public searchClients(clientNumber?: string, phone?: string, identityDocumentNumber?: string, name?: string, status?: 'PendingKyc' | 'Active' | 'Suspended' | 'KycRejected' | 'Archived' | 'Merged', agencyId?: string, advisorUserId?: string, type?: 'Individual' | 'Legal', segmentCode?: string, page?: number, pageSize?: number, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<ClientSearchItemDtoPagedResult>>;
+    public searchClients(clientNumber?: string, phone?: string, identityDocumentNumber?: string, name?: string, status?: 'PendingKyc' | 'Active' | 'Suspended' | 'KycRejected' | 'Archived' | 'Merged', agencyId?: string, advisorUserId?: string, type?: 'Individual' | 'Legal', segmentCode?: string, page?: number, pageSize?: number, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<ClientSearchItemDtoPagedResult>>;
+    public searchClients(clientNumber?: string, phone?: string, identityDocumentNumber?: string, name?: string, status?: 'PendingKyc' | 'Active' | 'Suspended' | 'KycRejected' | 'Archived' | 'Merged', agencyId?: string, advisorUserId?: string, type?: 'Individual' | 'Legal', segmentCode?: string, page?: number, pageSize?: number, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
 
         let localVarQueryParameters = new HttpParams({encoder: this.encoder});
         if (clientNumber !== undefined && clientNumber !== null) {

@@ -57,7 +57,7 @@ export class CreateLeadFormModel {
     m.phoneNumber = '';
     m.email = '';
     m.nationalId = '';
-    m.prospectType = CaptureLeadRequestProspectTypeEnum.NUMBER_0;
+    m.prospectType = CaptureLeadRequestProspectTypeEnum.Individual;
     m.companyName = '';
     m.source = CaptureLeadRequestSourceEnum.Agency;
     m.interestedProduct = '';
@@ -69,9 +69,15 @@ export class CreateLeadFormModel {
   }
 }
 
+/**
+ * `prospectType` est une énumération de **chaînes** au contrat. Les valeurs étaient écrites
+ * `NUMBER_0`/`NUMBER_1`, les noms que le générateur ne produit que pour une énumération numérique,
+ * puis repassées par `.toString()` — ce qui envoyait « 0 » et « 1 ». `tas-select` travaillant déjà
+ * en chaînes, le nom du contrat convient directement et aucune conversion n'est nécessaire.
+ */
 export const PROSPECT_TYPE_OPTIONS = [
-  { label: 'Individuel', value: CaptureLeadRequestProspectTypeEnum.NUMBER_0.toString() },
-  { label: 'Entreprise', value: CaptureLeadRequestProspectTypeEnum.NUMBER_1.toString() },
+  { label: 'Individuel', value: CaptureLeadRequestProspectTypeEnum.Individual },
+  { label: 'Entreprise', value: CaptureLeadRequestProspectTypeEnum.Corporate },
 ];
 
 export const SOURCE_OPTIONS = [
@@ -151,9 +157,7 @@ export class CreateLeadComponent {
   });
 
   public isCompany = computed(
-    () =>
-      this.formSchema.prospectType().value().toString() ===
-      CaptureLeadRequestProspectTypeEnum.NUMBER_1.toString(),
+    () => this.formSchema.prospectType().value() === CaptureLeadRequestProspectTypeEnum.Corporate,
   );
 
   constructor() {

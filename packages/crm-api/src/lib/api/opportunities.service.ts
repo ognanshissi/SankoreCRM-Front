@@ -312,14 +312,14 @@ export class OpportunitiesApiService {
     /**
      * @param leadId 
      * @param customerId 
-     * @param stage 
+     * @param stage One of: Prospecting, Qualification, NeedsAnalysis, Proposal, Negotiation, ClosedWon, ClosedLost
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      */
-    public listOpportunities(leadId?: string, customerId?: string, stage?: 0 | 1 | 2 | 3 | 4 | 5 | 6, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<Array<OpportunityDto>>;
-    public listOpportunities(leadId?: string, customerId?: string, stage?: 0 | 1 | 2 | 3 | 4 | 5 | 6, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<Array<OpportunityDto>>>;
-    public listOpportunities(leadId?: string, customerId?: string, stage?: 0 | 1 | 2 | 3 | 4 | 5 | 6, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<Array<OpportunityDto>>>;
-    public listOpportunities(leadId?: string, customerId?: string, stage?: 0 | 1 | 2 | 3 | 4 | 5 | 6, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
+    public listOpportunities(leadId?: string, customerId?: string, stage?: 'Prospecting' | 'Qualification' | 'NeedsAnalysis' | 'Proposal' | 'Negotiation' | 'ClosedWon' | 'ClosedLost', observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<Array<OpportunityDto>>;
+    public listOpportunities(leadId?: string, customerId?: string, stage?: 'Prospecting' | 'Qualification' | 'NeedsAnalysis' | 'Proposal' | 'Negotiation' | 'ClosedWon' | 'ClosedLost', observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<Array<OpportunityDto>>>;
+    public listOpportunities(leadId?: string, customerId?: string, stage?: 'Prospecting' | 'Qualification' | 'NeedsAnalysis' | 'Proposal' | 'Negotiation' | 'ClosedWon' | 'ClosedLost', observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<Array<OpportunityDto>>>;
+    public listOpportunities(leadId?: string, customerId?: string, stage?: 'Prospecting' | 'Qualification' | 'NeedsAnalysis' | 'Proposal' | 'Negotiation' | 'ClosedWon' | 'ClosedLost', observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
 
         let localVarQueryParameters = new HttpParams({encoder: this.encoder});
         if (leadId !== undefined && leadId !== null) {

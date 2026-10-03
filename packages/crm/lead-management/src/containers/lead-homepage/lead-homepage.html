@@ -147,17 +147,19 @@
       <tas-form-field>
         <tas-label>Source</tas-label>
         <tas-select
-          [options]="sourceFilterOptions"
+          clearable
+          [options]="sourceFilterOptions()"
           optionLabel="label"
           optionValue="value"
           placeholder="Toutes les sources"
-          [ngModel]="filterSource()"
-          (ngModelChange)="onFilterChange('source', $event)"
+          [ngModel]="filterLeadSourceId()"
+          (ngModelChange)="onFilterChange('leadSource', $event)"
         ></tas-select>
       </tas-form-field>
       <tas-form-field>
         <tas-label>Agence</tas-label>
         <tas-select
+          clearable
           [options]="agencyOptions()"
           optionLabel="label"
           optionValue="value"
@@ -169,6 +171,7 @@
       <tas-form-field>
         <tas-label>Température</tas-label>
         <tas-select
+          clearable
           [options]="intentFilterOptions"
           optionLabel="label"
           optionValue="value"
@@ -278,7 +281,7 @@
         </td>
         <td class="text-sm text-slate-600 tabular-nums">{{ item.phoneNumber ?? '—' }}</td>
         <td class="text-sm text-slate-600">{{ prospectTypeLabel(item.prospectType) }}</td>
-        <td class="text-sm text-slate-600">{{ sourceLabel(item.source) }}</td>
+        <td class="text-sm text-slate-600">{{ leadSourceLabel(item) }}</td>
         <td>
           @if (item.intentLevel !== null) {
             <span
@@ -394,8 +397,8 @@
                     <span class="text-[10px] text-slate-500 font-medium tabular-nums">
                       {{ formatAmount(lead.desiredAmount?.amount ?? 0) }} {{ lead.desiredAmount?.currency ?? '' }}
                     </span>
-                  } @else if (lead.source) {
-                    <span class="text-[10px] text-slate-400">{{ sourceLabel(lead.source) }}</span>
+                  } @else if (lead.leadSourceLabel || lead.leadSourceCode || lead.source) {
+                    <span class="text-[10px] text-slate-400">{{ leadSourceLabel(lead) }}</span>
                   } @else {
                     <span></span>
                   }

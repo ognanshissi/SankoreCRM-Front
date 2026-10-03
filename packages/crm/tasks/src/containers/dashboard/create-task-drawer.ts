@@ -204,7 +204,9 @@ export class CreateTaskDrawer implements OnInit {
     const currentUserId = this._auth.connectedUser()?.id;
     const currentUserName = this._auth.connectedUser()?.fullName ?? this._auth.connectedUser()?.email ?? 'Moi-même';
 
-    this._usersApi.listUsers(0, undefined, undefined, 1, 200).pipe(
+    // 'Active' — et non `0`, qui désignait PendingActivation et non « tous ». La liste des
+    // agents assignables ne contenait que des comptes jamais activés.
+    this._usersApi.listUsers('Active', undefined, undefined, 1, 200).pipe(
       catchError(() => of({ items: [] })),
     ).subscribe((result: any) => {
       const users = result?.items ?? [];

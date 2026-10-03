@@ -37,7 +37,7 @@ import {
   UpdateLeadRequest,
   UpdateLeadRequestGenderEnum,
 } from '@sankore/crm-api';
-import { GENDER_OPTIONS, genderLabel } from './edit-lead-info-drawer';
+import { GENDER_OPTIONS, genderFromLead, genderLabel } from './edit-lead-info-drawer';
 
 export interface ConvertLeadWizardData {
   lead: LeadDto;
@@ -80,10 +80,14 @@ function todayISODate(): string {
   return `${now.getFullYear()}-${month}-${day}`;
 }
 
-/** `LeadDto.gender` arrive en chaîne numérique ; '0' vaut « Non précisé », donc pas renseigné. */
+/**
+ * « Unknown » est le « Non précisé » du contrat : un lead qui le porte n'a pas de genre renseigné,
+ * et cette étape de complétion a bien quelque chose à demander. `genderFromLead` accepte aussi les
+ * anciens indices ('0'..'3') encore présents sur les fiches écrites avant la bascule.
+ */
 function hasGender(lead: LeadDto): boolean {
-  const gender = lead.gender == null ? '' : String(lead.gender);
-  return gender !== '' && gender !== '0';
+  const gender = genderFromLead(lead.gender);
+  return gender !== '' && gender !== UpdateLeadRequestGenderEnum.Unknown;
 }
 
 /**
@@ -115,7 +119,7 @@ export class CompleteLeadFormModel {
   public firstName!: string;
   public lastName!: string;
   public email!: string;
-  /** Chaîne numérique '0'..'3' : `UpdateLeadRequest.gender` est un entier, converti à la soumission. */
+  /** Nom du contrat (`UpdateLeadRequestGenderEnum`), ou chaîne vide si non renseigné. */
   public gender!: string;
   public dateOfBirth!: string;
 
@@ -124,7 +128,7 @@ export class CompleteLeadFormModel {
     m.firstName = lead.firstName ?? '';
     m.lastName = lead.lastName ?? '';
     m.email = lead.email ?? '';
-    m.gender = lead.gender != null ? String(lead.gender) : '';
+    m.gender = genderFromLead(lead.gender);
     m.dateOfBirth = lead.dateOfBirth ?? '';
     return m;
   }
@@ -181,10 +185,10 @@ export class ConvertLeadWizard {
     required(schema.lastName, { message: 'Le nom est obligatoire' });
     emailValidator(schema.email, { message: 'Adresse e-mail invalide' });
 
-    // '0' est le « Non précisé » du lead : l'accepter ici viderait le sens de cette étape.
+    // « Unknown » est le « Non précisé » du lead : l'accepter ici viderait le sens de cette étape.
     validate(schema.gender, (ctx) => {
       const value = ctx.value();
-      return value === '' || value === '0'
+      return value === '' || value === UpdateLeadRequestGenderEnum.Unknown
         ? { kind: 'required', message: 'Précisez le genre' }
         : null;
     });
@@ -353,10 +357,9 @@ export class ConvertLeadWizard {
           firstName: value.firstName.trim() || null,
           lastName: value.lastName.trim() || null,
           email: value.email.trim() || null,
-          gender:
-            value.gender !== ''
-              ? (Number(value.gender) as UpdateLeadRequestGenderEnum)
-              : null,
+          // Même correction que dans `edit-lead-info-drawer` : l'énumération est en chaînes, et
+          // `Number('Male')` rendait `NaN`, donc `null` — le genre n'était jamais enregistré.
+          gender: (value.gender || null) as UpdateLeadRequestGenderEnum | null,
           dateOfBirth: value.dateOfBirth || null,
           interestedProduct: lead.interestedProduct ?? null,
           desiredAmount: lead.desiredAmount?.amount ?? null,

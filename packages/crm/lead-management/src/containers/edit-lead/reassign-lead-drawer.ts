@@ -316,19 +316,20 @@ export class ReassignLeadDrawer implements OnInit {
     const leadId = this.data.lead.id!;
 
     forkJoin({
-      users: this._usersApiService.listUsers(0, undefined, undefined, 1, 200).pipe(
-        catchError(() => of({ items: [] as UserDto[], totalCount: 0 })),
-      ),
-      dispatch: this._leadsApiService.dispatchLead(leadId, {
-        strategy: DispatchLeadRequestStrategyEnum.NUMBER_0,
-      }).pipe(
-        catchError(() => of(null)),
-      ),
+      users: this._usersApiService
+        .listUsers('PendingActivation', undefined, undefined, 1, 200)
+        .pipe(catchError(() => of({ items: [] as UserDto[], totalCount: 0 }))),
+      dispatch: this._leadsApiService
+        .dispatchLead(leadId, {
+          strategy: DispatchLeadRequestStrategyEnum.RoundRobin,
+        })
+        .pipe(catchError(() => of(null))),
     }).subscribe(({ users, dispatch }) => {
       const userList = users?.items ?? [];
 
       // If current owner exists, resolve their name
-      const ownerId = this.data.lead.ownerId ?? this.data.lead.currentAssignedId;
+      const ownerId =
+        this.data.lead.ownerId ?? this.data.lead.currentAssignedId;
       if (ownerId) {
         const owner = userList.find((u) => u.id === ownerId);
         if (owner) {
@@ -345,7 +346,9 @@ export class ReassignLeadDrawer implements OnInit {
         .filter((u) => u.id !== ownerId) // exclude current owner
         .map((u) => {
           const isTopMatch = u.id === topMatchId;
-          const score = isTopMatch ? topScore : this._estimateScore(u, this.data.lead);
+          const score = isTopMatch
+            ? topScore
+            : this._estimateScore(u, this.data.lead);
           const totalAssigned = this._estimateWorkload(u);
 
           return {

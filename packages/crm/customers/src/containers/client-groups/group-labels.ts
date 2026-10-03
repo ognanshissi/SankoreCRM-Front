@@ -3,25 +3,26 @@ import { Severity } from '@talisoft/ui/tag';
 /**
  * Libellés et conversions des énumérations des groupes de clients.
  *
- * Le contrat est asymétrique, comme ailleurs dans cette API : les DTO de lecture
- * (`GroupListItemDto.type`, `GroupDetailDto.status`, `GroupMemberDto.officeRole`)
- * renvoient des chaînes sans énumération déclarée, tandis que les filtres de
- * `listClientGroups` attendent des entiers (`type?: 0 | 1 | 2`,
- * `status?: 0 | 1 | 2 | 3`) et que `AddGroupMemberRequest.officeRole` est un
- * entier 0..3 là où `AssignOfficeRoleRequest.officeRole` est la chaîne
- * `'Member' | 'President' | 'Treasurer' | 'Secretary'`.
+ * Le contrat était asymétrique : les filtres de `listClientGroups` attendaient des entiers
+ * (`type?: 0 | 1 | 2`, `status?: 0 | 1 | 2 | 3`) et `AddGroupMemberRequest.officeRole` un
+ * entier 0..3, alors que les DTO de lecture et `AssignOfficeRoleRequest.officeRole` donnaient
+ * déjà des chaînes. La cause était côté API : `EnumSchemaFilter` testait `context.Type.IsEnum`,
+ * faux pour un `Nullable<TEnum>`, donc toute énumération OPTIONNELLE restait documentée en
+ * integer. Le filtre déballe désormais le nullable et les deux sens parlent la même langue.
  *
- * Toute conversion passe donc par les fonctions de ce fichier, jamais par un
- * `as any` : c'est exactement le décalage qu'un cast masquerait.
+ * Les conversions de ce fichier restent le seul passage autorisé — jamais un `as any`. Elles ne
+ * traduisent plus un indice : elles normalisent une valeur brute (ancien indice d'une URL mise
+ * en favori, casse différente) vers le nom du contrat.
  *
- * Les correspondances nom <-> entier de `type` et `officeRole` suivent l'ordre
- * déclaré dans le contrat. **Celle des statuts est une déduction** : le swagger
- * n'énumère les statuts que dans ses descriptions (Forming à la création, Active
- * après activation automatique, Suspended, Dissolved) et le filtre ne connaît
- * que 0..3. À confirmer côté API.
+ * La correspondance des statuts n'est plus une déduction : le contrat les nomme.
  */
 
 type RawEnum = string | number | null | undefined;
+
+/** Les noms que le contrat accepte, désormais identiques en lecture et en filtre. */
+export type GroupTypeParam = 'SolidarityGroup' | 'Tontine' | 'Vsla';
+export type GroupStatusParam = 'Forming' | 'Active' | 'Suspended' | 'Dissolved';
+export type OfficeRoleParam = 'Member' | 'President' | 'Treasurer' | 'Secretary';
 
 /** Ramène une valeur brute au nom canonique du contrat, ou `null` si inconnue. */
 function canonical(value: RawEnum, order: string[]): string | null {
@@ -61,14 +62,14 @@ export const GROUP_TYPE_OPTIONS = GROUP_TYPE_ORDER.map((name) => ({
   label: GROUP_TYPE_LABELS[name] as string,
   value: name,
 }));
-/** Nom -> entier, pour le filtre `listClientGroups(type)`. */
-export function groupTypeToNumeric(value: RawEnum): 0 | 1 | 2 | undefined {
-  switch (canonical(value, GROUP_TYPE_ORDER)) {
-    case 'SolidarityGroup': return 0;
-    case 'Tontine': return 1;
-    case 'Vsla': return 2;
-    default: return undefined;
-  }
+/**
+ * Nom -> paramètre de requête pour `listClientGroups(type)`. Renvoyait un entier tant que le
+ * contrat documentait cette énumération optionnelle en integer ; elle est maintenant en chaîne,
+ * donc la valeur canonique part telle quelle. `canonical` reste utile : l'appelant peut encore
+ * fournir un ancien indice ou une casse différente.
+ */
+export function groupTypeToParam(value: RawEnum): GroupTypeParam | undefined {
+  return (canonical(value, GROUP_TYPE_ORDER) as GroupTypeParam | null) ?? undefined;
 }
 
 // ——— Statut du groupe ———
@@ -112,17 +113,12 @@ export const GROUP_STATUS_OPTIONS = GROUP_STATUS_ORDER.map((name) => ({
   value: name,
 }));
 /**
- * Nom -> entier, pour le filtre `listClientGroups(status)`. Correspondance
- * déduite : voir l'avertissement au-dessus de `GROUP_STATUS_ORDER`.
+ * Nom -> paramètre de requête pour `listClientGroups(status)`. Le contrat nomme désormais les
+ * valeurs, ce qui lève au passage le doute signalé au-dessus de `GROUP_STATUS_ORDER` : la
+ * correspondance n'est plus déduite d'un indice.
  */
-export function groupStatusToNumeric(value: RawEnum): 0 | 1 | 2 | 3 | undefined {
-  switch (canonical(value, GROUP_STATUS_ORDER)) {
-    case 'Forming':   return 0;
-    case 'Active':    return 1;
-    case 'Suspended': return 2;
-    case 'Dissolved': return 3;
-    default:          return undefined;
-  }
+export function groupStatusToParam(value: RawEnum): GroupStatusParam | undefined {
+  return (canonical(value, GROUP_STATUS_ORDER) as GroupStatusParam | null) ?? undefined;
 }
 export function isFormingGroup(value: RawEnum): boolean {
   return canonical(value, GROUP_STATUS_ORDER) === 'Forming';
@@ -152,14 +148,8 @@ export const OFFICE_ROLE_OPTIONS = OFFICE_ROLE_ORDER.map((name) => ({
   value: name,
 }));
 /** Nom -> entier, pour `AddGroupMemberRequest.officeRole` qui attend un entier. */
-export function officeRoleToNumeric(value: RawEnum): 0 | 1 | 2 | 3 | undefined {
-  switch (canonical(value, OFFICE_ROLE_ORDER)) {
-    case 'Member':    return 0;
-    case 'President': return 1;
-    case 'Treasurer': return 2;
-    case 'Secretary': return 3;
-    default:          return undefined;
-  }
+export function officeRoleToParam(value: RawEnum): OfficeRoleParam | undefined {
+  return (canonical(value, OFFICE_ROLE_ORDER) as OfficeRoleParam | null) ?? undefined;
 }
 /** Les trois rôles uniques dans le groupe, dans l'ordre d'affichage du bureau. */
 export const OFFICE_BOARD_ROLES = ['President', 'Treasurer', 'Secretary'] as const;

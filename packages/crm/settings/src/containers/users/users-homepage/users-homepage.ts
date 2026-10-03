@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { NgClass } from '@angular/common';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { SelectionModel } from '@angular/cdk/collections';
@@ -16,7 +16,8 @@ import {
   UserStatusStatsDto,
 } from '@sankore/crm-api';
 
-type UserStatus = 0 | 1 | 2 | 3;
+// Les noms du contrat, qui exposait ces valeurs en entier tant que le filtre était optionnel.
+type UserStatus = 'PendingActivation' | 'Active' | 'Disabled' | 'Locked';
 import { CreateUserComponent } from '../create-user/create-user';
 import {
   BULK_ASSIGN_MAX_USERS,
@@ -48,7 +49,7 @@ const AVATAR_COLORS = [
     InitialsPipe,
   ],
 })
-export class UsersHomePage {
+export class UsersHomePage implements OnInit {
   private readonly _permissions = inject(PermissionsService);
   public readonly canCreate = this._permissions.can('user:create');
   public readonly canAssignAgency = this._permissions.can('user:assign-agency');
@@ -65,7 +66,13 @@ export class UsersHomePage {
   public searchQuery = signal('');
   public statusFilter = signal<UserStatus | undefined>(undefined);
 
-  public userStatusStats = signal<UserStatusStatsDto>({ total: 0, active: 0 , disabled: 0, locked: 0, pendingActivation: 0});
+  public userStatusStats = signal<UserStatusStatsDto>({
+    total: 0,
+    active: 0,
+    disabled: 0,
+    locked: 0,
+    pendingActivation: 0,
+  });
 
   public tableConfig = signal<TableConfig>({
     property: 'id',
@@ -122,15 +129,15 @@ export class UsersHomePage {
       .subscribe(() => this.selectedUsers.set([...this.selection.selected]));
   }
 
-  ngOnInit(): void {
+  public ngOnInit(): void {
     this._breadcrumbService.set([
       { label: 'Paramétrage', link: ['/settings'] },
       { label: 'Utilisateurs' },
     ]);
     this.loadUsers(0, 20);
     this._usersApiService.getUserStatusStats().subscribe({
-      next: data => this.userStatusStats.set(data),
-    })
+      next: (data) => this.userStatusStats.set(data),
+    });
   }
 
   public onStatusFilterChange(status: UserStatus | undefined): void {
@@ -139,7 +146,12 @@ export class UsersHomePage {
       ...c,
       pagination: { ...c.pagination, pageIndex: 0 },
     }));
-    this.loadUsers(0, this.tableConfig().pagination.pageSize, this.searchQuery(), status);
+    this.loadUsers(
+      0,
+      this.tableConfig().pagination.pageSize,
+      this.searchQuery(),
+      status,
+    );
   }
 
   public onSearchChange(query: string): void {
@@ -148,7 +160,12 @@ export class UsersHomePage {
       ...c,
       pagination: { ...c.pagination, pageIndex: 0 },
     }));
-    this.loadUsers(0, this.tableConfig().pagination.pageSize, query, this.statusFilter());
+    this.loadUsers(
+      0,
+      this.tableConfig().pagination.pageSize,
+      query,
+      this.statusFilter(),
+    );
   }
 
   public openCreateDrawer(): void {
@@ -256,10 +273,20 @@ export class UsersHomePage {
         pageSize: event.pageSize,
       },
     }));
-    this.loadUsers(event.pageIndex, event.pageSize, this.searchQuery(), this.statusFilter());
+    this.loadUsers(
+      event.pageIndex,
+      event.pageSize,
+      this.searchQuery(),
+      this.statusFilter(),
+    );
   }
 
-  public loadUsers(page: number, pageSize: number, search?: string, status?: UserStatus): void {
+  public loadUsers(
+    page: number,
+    pageSize: number,
+    search?: string,
+    status?: UserStatus,
+  ): void {
     // La sélection ne survit pas à un rechargement : elle ne porte que sur la
     // page affichée, et un changement de page, de filtre ou de recherche
     // remplace entièrement les lignes qui la composaient.
@@ -302,12 +329,18 @@ export class UsersHomePage {
     return roles.join(', ');
   }
 
-  public statusSeverity(status: string | null | undefined): 'success' | 'warning' | 'neutral' | 'error' {
+  public statusSeverity(
+    status: string | null | undefined,
+  ): 'success' | 'warning' | 'neutral' | 'error' {
     switch (status) {
-      case 'Active': return 'success';
-      case 'PendingActivation': return 'warning';
-      case 'Locked': return 'error';
-      default: return 'neutral';
+      case 'Active':
+        return 'success';
+      case 'PendingActivation':
+        return 'warning';
+      case 'Locked':
+        return 'error';
+      default:
+        return 'neutral';
     }
   }
 

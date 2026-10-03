@@ -1,34 +1,64 @@
 <div (click)="$event.stopPropagation()">
-  <button
-    class="relative block justify-between items-center py-2 px-2 text-left w-full rounded-lg"
-    aria-haspopup="listbox"
-    [class.bg-gray-50]="readonly()"
-    [class.bg-transparent]="!readonly()"
-    [class.cursor-not-allowed]="readonly()"
-    aria-expanded="true"
-    type="button"
-    [disabled]="readonly()"
-    (click)="toggleDropdown()"
-    aria-labelledby="listbox-label"
-  >
-    <span
-      [ngClass]="{'font-normal text-gray-900': displayValue.value, 'text-gray-400':!displayValue.value}"
+  <div class="relative">
+    <button
+      class="relative block justify-between items-center py-2 px-2 text-left w-full rounded-lg"
+      aria-haspopup="listbox"
+      [class.bg-gray-50]="readonly()"
+      [class.bg-transparent]="!readonly()"
+      [class.cursor-not-allowed]="readonly()"
+      [class.pr-8]="showClearButton"
+      aria-expanded="true"
+      type="button"
+      [disabled]="readonly()"
+      (click)="toggleDropdown()"
+      aria-labelledby="listbox-label"
     >
-      {{ displayValue.value ? displayValue.label : placeholder() }}
-    </span>
+      <span
+        class="block truncate"
+        [ngClass]="{'font-normal text-gray-900': displayValue.value, 'text-gray-400':!displayValue.value}"
+      >
+        {{ displayValue.value ? displayValue.label : placeholder() }}
+      </span>
+    </button>
+
+    @if (showClearButton) {
+    <button
+      type="button"
+      class="absolute inset-y-0 right-6 flex items-center text-gray-400 hover:text-gray-600 transition-colors"
+      aria-label="Effacer la sélection"
+      title="Effacer la sélection"
+      (click)="clear()"
+    >
+      <svg
+        class="h-4 w-4"
+        xmlns="http://www.w3.org/2000/svg"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke-width="2"
+        stroke="currentColor"
+      >
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          d="M6 18 18 6M6 6l12 12"
+        />
+      </svg>
+    </button>
+    }
+
     <span
       class="pointer-events-none absolute inset-y-0 right-0 ml-3 flex items-center pr-2"
     >
       @if (!isDropdownOpened()) {
-        <!-- closed icon -->
-        <svg
-          class="h-5 w-5 text-gray-400"
-          xmlns="http://www.w3.org/2000/svg"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke-width="1.5"
-          stroke="currentColor"
-        >
+      <!-- closed icon -->
+      <svg
+        class="h-5 w-5 text-gray-400"
+        xmlns="http://www.w3.org/2000/svg"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke-width="1.5"
+        stroke="currentColor"
+      >
         <path
           stroke-linecap="round"
           stroke-linejoin="round"
@@ -37,15 +67,15 @@
       </svg>
 
       } @else {
-        <!-- Open icon -->
-        <svg
-          class="h-5 w-5 text-gray-400"
-          xmlns="http://www.w3.org/2000/svg"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke-width="1.5"
-          stroke="currentColor"
-        >
+      <!-- Open icon -->
+      <svg
+        class="h-5 w-5 text-gray-400"
+        xmlns="http://www.w3.org/2000/svg"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke-width="1.5"
+        stroke="currentColor"
+      >
         <path
           stroke-linecap="round"
           stroke-linejoin="round"
@@ -54,54 +84,51 @@
       </svg>
       }
     </span>
-  </button>
+  </div>
 
   <!-- List dropdown -->
   @if (isDropdownOpened()) {
-    <ul
-      class="absolute z-20 mt-2 border border-gray-300 max-h-60 w-full overflow-auto rounded-md bg-white pb-1 text-base shadow-xl ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm"
-      tabindex="-1"
-      role="listbox"
-      aria-labelledby="listbox-label"
-    >
-      @if (isSearchable()) {
-        <li
-          class="px-2 pb-2 sticky bg-white top-1  z-10"
-        >
-          <tas-form-field>
-            <input
-              type="search"
-              [ngModel]="searchKey()"
-              (input)="updateSearchKey($event)"
-              tasInput
-              class="form-input"
-              placeholder="Rechercher..."
-            />
-          </tas-form-field>
-        </li>
-      }
-      @for (item of filteredList(); track item[optionValue()]; let index = $index)
-      {
-        <li id="listbox-option-{{ index }}">
-          <button
-            type="button"
-            class="relative w-full cursor-default hover:cursor-pointer hover:bg-gray-200 transition-all select-none py-4 pl-3 pr-9"
-            [ngClass]="{'text-primary  bg-gray-200': selectionModel.isSelected(item[optionValue()]) }"
-            (click)="toggleSelection(item[optionValue()])"
-          >
-            @if (labelTemplate) {
-              <ng-container
-                *ngTemplateOutlet="labelTemplate; context: { $implicit: item }"
-              ></ng-container>
-            } @else {
-              <div class="flex items-center">
-                <span class="block truncate">{{ item[optionLabel()] }}</span>
-              </div>
-            }
-          </button>
-        </li>
-      }
-    </ul>
+  <ul
+    class="absolute z-20 mt-2 border border-gray-300 max-h-60 w-full overflow-auto rounded-md bg-white pb-1 text-base shadow-xl ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm"
+    tabindex="-1"
+    role="listbox"
+    aria-labelledby="listbox-label"
+  >
+    @if (isSearchable()) {
+    <li class="px-2 pb-2 sticky bg-white top-1 z-10">
+      <tas-form-field>
+        <input
+          type="search"
+          [ngModel]="searchKey()"
+          (input)="updateSearchKey($event)"
+          tasInput
+          class="form-input"
+          placeholder="Rechercher..."
+        />
+      </tas-form-field>
+    </li>
+    } @for (item of filteredList(); track item[optionValue()]; let index =
+    $index) {
+    <li id="listbox-option-{{ index }}">
+      <button
+        type="button"
+        class="relative w-full cursor-default hover:cursor-pointer hover:bg-gray-200 transition-all select-none py-4 pl-3 pr-9"
+        [ngClass]="{'text-primary  bg-gray-200': selectionModel.isSelected(item[optionValue()]) }"
+        (click)="toggleSelection(item[optionValue()])"
+      >
+        @if (labelTemplate) {
+        <ng-container
+          *ngTemplateOutlet="labelTemplate; context: { $implicit: item }"
+        ></ng-container>
+        } @else {
+        <div class="flex items-center">
+          <span class="block truncate">{{ item[optionLabel()] }}</span>
+        </div>
+        }
+      </button>
+    </li>
+    }
+  </ul>
 
   }
 </div>

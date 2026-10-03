@@ -512,8 +512,8 @@ export class ClientGroupsApiService {
     /**
      * List client groups
      * Returns a paginated list of groups, ordered by name. Filters: type, status, agencyId, search (substring of the name). Results are always restricted to the caller\&#39;s agency perimeter, so an agencyId outside it returns an empty page rather than 403. Requires permission: customers:read.
-     * @param type 
-     * @param status 
+     * @param type One of: SolidarityGroup, Tontine, Vsla
+     * @param status One of: Forming, Active, Suspended, Dissolved
      * @param agencyId 
      * @param search 
      * @param page 
@@ -521,10 +521,10 @@ export class ClientGroupsApiService {
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      */
-    public listClientGroups(type?: 0 | 1 | 2, status?: 0 | 1 | 2 | 3, agencyId?: string, search?: string, page?: number, pageSize?: number, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<GroupListItemDtoPagedResult>;
-    public listClientGroups(type?: 0 | 1 | 2, status?: 0 | 1 | 2 | 3, agencyId?: string, search?: string, page?: number, pageSize?: number, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<GroupListItemDtoPagedResult>>;
-    public listClientGroups(type?: 0 | 1 | 2, status?: 0 | 1 | 2 | 3, agencyId?: string, search?: string, page?: number, pageSize?: number, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<GroupListItemDtoPagedResult>>;
-    public listClientGroups(type?: 0 | 1 | 2, status?: 0 | 1 | 2 | 3, agencyId?: string, search?: string, page?: number, pageSize?: number, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
+    public listClientGroups(type?: 'SolidarityGroup' | 'Tontine' | 'Vsla', status?: 'Forming' | 'Active' | 'Suspended' | 'Dissolved', agencyId?: string, search?: string, page?: number, pageSize?: number, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<GroupListItemDtoPagedResult>;
+    public listClientGroups(type?: 'SolidarityGroup' | 'Tontine' | 'Vsla', status?: 'Forming' | 'Active' | 'Suspended' | 'Dissolved', agencyId?: string, search?: string, page?: number, pageSize?: number, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<GroupListItemDtoPagedResult>>;
+    public listClientGroups(type?: 'SolidarityGroup' | 'Tontine' | 'Vsla', status?: 'Forming' | 'Active' | 'Suspended' | 'Dissolved', agencyId?: string, search?: string, page?: number, pageSize?: number, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<GroupListItemDtoPagedResult>>;
+    public listClientGroups(type?: 'SolidarityGroup' | 'Tontine' | 'Vsla', status?: 'Forming' | 'Active' | 'Suspended' | 'Dissolved', agencyId?: string, search?: string, page?: number, pageSize?: number, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
 
         let localVarQueryParameters = new HttpParams({encoder: this.encoder});
         if (type !== undefined && type !== null) {

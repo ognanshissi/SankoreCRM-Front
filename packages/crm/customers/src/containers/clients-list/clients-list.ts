@@ -104,17 +104,18 @@ export function detectSearchCriterion(raw: string): ResolvedCriterion {
 }
 
 /** Nom canonique -> index attendu par `searchClients` (`status` est un entier). */
-function statusToIndex(name: string | null): 0 | 1 | 2 | 3 | 4 | 5 | undefined {
-  if (!name) return undefined;
-  const index = CLIENT_STATUS_ORDER.indexOf(name);
-  return index >= 0 ? (index as 0 | 1 | 2 | 3 | 4 | 5) : undefined;
+// Le contrat nomme ces valeurs ; ces fonctions traduisaient un nom en indice tant qu'il
+// documentait les filtres optionnels en entier. Elles ne font plus que valider.
+type ClientStatusParam =
+  | 'PendingKyc' | 'Active' | 'Suspended' | 'KycRejected' | 'Archived' | 'Merged';
+type ClientTypeParam = 'Individual' | 'Legal';
+
+function statusToIndex(name: string | null): ClientStatusParam | undefined {
+  return (name || undefined) as ClientStatusParam | undefined;
 }
 
-/** Nom canonique -> index attendu par `searchClients` (`type` est un entier). */
-function typeToIndex(name: string | null): 0 | 1 | undefined {
-  if (!name) return undefined;
-  const index = CLIENT_TYPE_ORDER.indexOf(name);
-  return index >= 0 ? (index as 0 | 1) : undefined;
+function typeToIndex(name: string | null): ClientTypeParam | undefined {
+  return (name || undefined) as ClientTypeParam | undefined;
 }
 
 /** Ligne prête à afficher : libellés et sévérités déjà résolus. */

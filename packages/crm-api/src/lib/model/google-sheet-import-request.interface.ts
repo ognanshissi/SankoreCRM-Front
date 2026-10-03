@@ -15,20 +15,23 @@ export interface GoogleSheetImportRequest {
     spreadsheetUrl?: string | null;
     interestedProduct?: string | null;
     preferredLanguage?: string | null;
+    /**
+     * One of: Web, MobileAgent, Agency, CallCenter, Sms, Ussd, WhatsApp, Referral, Partner, FileImport, Campaign
+     */
     source?: GoogleSheetImportRequestSourceEnum | null;
 }
 export enum GoogleSheetImportRequestSourceEnum {
-    NUMBER_0 = 0,
-    NUMBER_1 = 1,
-    NUMBER_2 = 2,
-    NUMBER_3 = 3,
-    NUMBER_4 = 4,
-    NUMBER_5 = 5,
-    NUMBER_6 = 6,
-    NUMBER_7 = 7,
-    NUMBER_8 = 8,
-    NUMBER_9 = 9,
-    NUMBER_10 = 10
+    Web = 'Web',
+    MobileAgent = 'MobileAgent',
+    Agency = 'Agency',
+    CallCenter = 'CallCenter',
+    Sms = 'Sms',
+    Ussd = 'Ussd',
+    WhatsApp = 'WhatsApp',
+    Referral = 'Referral',
+    Partner = 'Partner',
+    FileImport = 'FileImport',
+    Campaign = 'Campaign'
 };
 
 

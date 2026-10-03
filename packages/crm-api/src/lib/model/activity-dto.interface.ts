@@ -23,6 +23,9 @@ export interface ActivityDto {
     scheduledAt?: string | null;
     performedAt?: string;
     durationMinutes?: number | null;
+    /**
+     * One of: Reached, NoAnswer, Voicemail, Callback, Interested, NotInterested, Rescheduled, Completed
+     */
     outcome?: ActivityDtoOutcomeEnum | null;
     attachmentsJson?: string | null;
     ctiCallReference?: string | null;
@@ -42,14 +45,14 @@ export enum ActivityDtoTypeEnum {
     Task = 'Task'
 };
 export enum ActivityDtoOutcomeEnum {
-    NUMBER_0 = 0,
-    NUMBER_1 = 1,
-    NUMBER_2 = 2,
-    NUMBER_3 = 3,
-    NUMBER_4 = 4,
-    NUMBER_5 = 5,
-    NUMBER_6 = 6,
-    NUMBER_7 = 7
+    Reached = 'Reached',
+    NoAnswer = 'NoAnswer',
+    Voicemail = 'Voicemail',
+    Callback = 'Callback',
+    Interested = 'Interested',
+    NotInterested = 'NotInterested',
+    Rescheduled = 'Rescheduled',
+    Completed = 'Completed'
 };
 
 

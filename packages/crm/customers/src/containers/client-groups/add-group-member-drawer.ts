@@ -28,7 +28,12 @@ import { TasSpinner } from '@talisoft/ui/spinner';
 import { TasTag } from '@talisoft/ui/tag';
 import { TasIcon } from '@talisoft/ui/icon';
 import { SnackbarService } from '@talisoft/ui/snackbar';
-import { ClientGroupsApiService, ClientSearchItemDto, ClientsApiService } from '@sankore/crm-api';
+import {
+  AddGroupMemberRequestOfficeRoleEnum,
+  ClientGroupsApiService,
+  ClientSearchItemDto,
+  ClientsApiService,
+} from '@sankore/crm-api';
 
 import {
   clientStatusLabel,
@@ -38,7 +43,7 @@ import {
   isMergedStatus,
   kycStatusLabel,
 } from '../../models/client-labels';
-import { OFFICE_ROLE_OPTIONS, officeRoleToNumeric } from './group-labels';
+import { OFFICE_ROLE_OPTIONS, officeRoleToParam } from './group-labels';
 
 export interface AddGroupMemberDrawerData {
   groupId: string;
@@ -164,10 +169,12 @@ export class AddGroupMemberDrawer {
         this._clientGroupsApiService
           .addClientGroupMember(this.data.groupId, {
             clientId: value.clientId,
-            // Le contrat attend ici l'entier du rôle, alors que
-            // `assignClientGroupOfficeRole` attend son nom : la conversion est
+            // Les deux appels attendent désormais le nom du rôle ; la normalisation reste
             // centralisée dans `group-labels.ts`.
-            officeRole: officeRoleToNumeric(value.officeRole) ?? null,
+            officeRole:
+              (officeRoleToParam(value.officeRole) as
+                | AddGroupMemberRequestOfficeRoleEnum
+                | undefined) ?? null,
             expectedVersion: this.data.version ?? null,
           })
           .pipe(

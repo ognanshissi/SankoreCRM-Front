@@ -70,24 +70,20 @@ export function toControlType(
 }
 
 /**
- * `maritalStatus` est un entier 0..4 côté contrat alors que `MARITAL_STATUS_OPTIONS`
- * porte des chaînes '0'..'4' : la table ci-dessous fait la traduction sans cast.
+ * Même forme que `toIdentityDocumentType` : le contrat nomme ses valeurs, donc la validation
+ * suffit. Il y avait ici une table '0'..'4' -> `NUMBER_0..NUMBER_4`, parce que le swagger
+ * documentait cette énumération optionnelle en entier et que le générateur nommait les membres
+ * d'après leur indice, sans dire ce qu'ils désignaient.
  */
-const MARITAL_STATUS_BY_INDEX = new Map<
-  string,
-  CreateIndividualClientRequestMaritalStatusEnum
->([
-  ['0', CreateIndividualClientRequestMaritalStatusEnum.NUMBER_0],
-  ['1', CreateIndividualClientRequestMaritalStatusEnum.NUMBER_1],
-  ['2', CreateIndividualClientRequestMaritalStatusEnum.NUMBER_2],
-  ['3', CreateIndividualClientRequestMaritalStatusEnum.NUMBER_3],
-  ['4', CreateIndividualClientRequestMaritalStatusEnum.NUMBER_4],
-]);
-
 export function toMaritalStatus(
   value: string,
 ): CreateIndividualClientRequestMaritalStatusEnum | null {
-  return MARITAL_STATUS_BY_INDEX.get(value) ?? null;
+  const names: string[] = Object.values(
+    CreateIndividualClientRequestMaritalStatusEnum,
+  );
+  return names.includes(value)
+    ? (value as CreateIndividualClientRequestMaritalStatusEnum)
+    : null;
 }
 
 // ——— Mise en forme des payloads ———

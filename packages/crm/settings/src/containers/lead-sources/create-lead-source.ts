@@ -24,7 +24,7 @@ import { writeSettings } from './lead-source-settings.types';
 import { LeadSourceMetadataService } from './lead-source-metadata.service';
 import {
   IntegrationMode,
-  modeToNumeric,
+  modeToParam,
   channelIcon,
   tabForMode,
 } from './lead-source.types';
@@ -499,7 +499,7 @@ export class CreateLeadSourcePage implements OnInit {
       label,
       description: this.description().trim() || null,
       channelType: this.channelType() as CreateLeadSourceRequestChannelTypeEnum,
-      integrationMode: modeToNumeric(mode) as CreateLeadSourceRequestIntegrationModeEnum,
+      integrationMode: modeToParam(mode) as CreateLeadSourceRequestIntegrationModeEnum,
       dedupWindowDays: this.dedupWindowDays(),
       costPerLead: this.costPerLead(),
       costCurrency: this.costCurrency() || null,

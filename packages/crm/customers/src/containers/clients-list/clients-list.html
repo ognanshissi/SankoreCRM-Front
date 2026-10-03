@@ -78,6 +78,7 @@
         <tas-form-field>
           <tas-label>Statut</tas-label>
           <tas-select
+            clearable
             [options]="statusOptions"
             optionLabel="label"
             optionValue="value"
@@ -90,6 +91,7 @@
         <tas-form-field>
           <tas-label>Type de client</tas-label>
           <tas-select
+            clearable
             [options]="typeOptions"
             optionLabel="label"
             optionValue="value"
@@ -104,6 +106,7 @@
         <tas-form-field>
           <tas-label>Agence</tas-label>
           <tas-select
+            clearable
             [options]="agencyOptions()"
             optionLabel="label"
             optionValue="value"
@@ -117,6 +120,7 @@
         <tas-form-field>
           <tas-label>Conseiller</tas-label>
           <tas-select
+            clearable
             [options]="advisorOptions()"
             optionLabel="label"
             optionValue="value"

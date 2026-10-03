@@ -13,14 +13,17 @@
 
 export interface AddGroupMemberRequest { 
     clientId?: string;
+    /**
+     * One of: Member, President, Treasurer, Secretary
+     */
     officeRole?: AddGroupMemberRequestOfficeRoleEnum | null;
     expectedVersion?: number | null;
 }
 export enum AddGroupMemberRequestOfficeRoleEnum {
-    NUMBER_0 = 0,
-    NUMBER_1 = 1,
-    NUMBER_2 = 2,
-    NUMBER_3 = 3
+    Member = 'Member',
+    President = 'President',
+    Treasurer = 'Treasurer',
+    Secretary = 'Secretary'
 };
 
 

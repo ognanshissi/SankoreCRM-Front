@@ -15,6 +15,8 @@ import { TasTable, TableConfig } from '@talisoft/ui/table';
 import { SnackbarService } from '@talisoft/ui/snackbar';
 import { RouterLink } from '@angular/router';
 import {
+  GoogleContactsImportRequestSourceEnum,
+  GoogleSheetImportRequestSourceEnum,
   ImportLeadsAccepted,
   ImportRowFailure,
   LeadImportApiService,
@@ -62,9 +64,10 @@ const GOOGLE_STEPS = [
 /**
  * Valeurs de `source` acceptées par les quatre opérations d'import.
  *
- * Le swagger les déclare `type: integer` avec `enum [0..10]` : c'est donc un **entier** qui part sur
- * le réseau, alors que `LeadDto.source` se lit en chaîne. L'ordre de ce tableau donne l'indice, il ne
- * doit pas être réarrangé — `indexOf` en dépend.
+ * Ce sont les **noms** du contrat, envoyés tels quels. Le swagger les déclarait auparavant en
+ * `type: integer`, d'où une conversion par indice à l'envoi ; ils sont maintenant des énumérations
+ * de chaînes (`GoogleSheetImportRequestSourceEnum`, etc.) et l'indice n'a plus aucun sens. L'ordre
+ * de ce tableau n'est donc plus qu'un ordre d'affichage.
  */
 const LEAD_SOURCE_NAMES = [
   'Web',
@@ -80,9 +83,9 @@ const LEAD_SOURCE_NAMES = [
   'Campaign',
 ] as const;
 
-type LeadSourceValue = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10;
+type LeadSourceName = (typeof LEAD_SOURCE_NAMES)[number];
 
-const LEAD_SOURCE_LABELS: Record<(typeof LEAD_SOURCE_NAMES)[number], string> = {
+const LEAD_SOURCE_LABELS: Record<LeadSourceName, string> = {
   Web: 'Web',
   MobileAgent: 'Agent mobile',
   Agency: 'Agence',
@@ -356,7 +359,10 @@ export class LeadImportWizard implements OnDestroy {
             spreadsheetUrl,
             interestedProduct: this._interestedProduct() ?? null,
             preferredLanguage: this._preferredLanguage() ?? null,
-            source: this._sourceValue() ?? null,
+            // Les deux opérations Google typent `source` par une énumération nommée, là où les deux
+            // opérations fichier acceptent l'union de littéraux. Mêmes valeurs, types nominaux
+            // distincts : d'où le transtypage, qui ne masque aucune conversion.
+            source: (this._sourceValue() ?? null) as GoogleSheetImportRequestSourceEnum | null,
           })
           .pipe(
             catchError((error: HttpErrorResponse) => {
@@ -388,7 +394,7 @@ export class LeadImportWizard implements OnDestroy {
       .importLeadsFromGoogleContacts({
         interestedProduct: this._interestedProduct() ?? null,
         preferredLanguage: this._preferredLanguage() ?? null,
-        source: this._sourceValue() ?? null,
+        source: (this._sourceValue() ?? null) as GoogleContactsImportRequestSourceEnum | null,
       })
       .pipe(
         catchError((error: HttpErrorResponse) => {
@@ -435,17 +441,22 @@ export class LeadImportWizard implements OnDestroy {
   }
 
   public sourceLabel(name: string): string {
-    return LEAD_SOURCE_LABELS[name as (typeof LEAD_SOURCE_NAMES)[number]] ?? name;
+    return LEAD_SOURCE_LABELS[name as LeadSourceName] ?? name;
   }
 
   /**
-   * `source` part en **entier** : l'indice dans `LEAD_SOURCE_NAMES`. `tas-select` ne travaille qu'en
-   * chaînes, la conversion ne peut donc se faire qu'ici, à l'envoi.
+   * `source` part sous son **nom**, celui que porte déjà le select. La conversion en indice qui se
+   * faisait ici envoyait `2` là où le contrat attend « Agency » : le serveur recevait une valeur
+   * qu'il ne sait plus interpréter, et les leads importés perdaient leur source.
+   *
+   * Le nom est validé contre `LEAD_SOURCE_NAMES` avant l'envoi : une valeur inconnue devient
+   * `undefined` plutôt que de partir telle quelle.
    */
-  private _sourceValue(): LeadSourceValue | undefined {
+  private _sourceValue(): LeadSourceName | undefined {
     const name = this.optionsForm.source().value();
-    const index = LEAD_SOURCE_NAMES.indexOf(name as (typeof LEAD_SOURCE_NAMES)[number]);
-    return index >= 0 ? (index as LeadSourceValue) : undefined;
+    return LEAD_SOURCE_NAMES.includes(name as LeadSourceName)
+      ? (name as LeadSourceName)
+      : undefined;
   }
 
   private _interestedProduct(): string | undefined {

@@ -26,7 +26,7 @@ import { LeadSourceMetadataService } from './lead-source-metadata.service';
 import {
   channelLabel, modeLabel, statusLabel, statusSeverity,
   healthIcon, healthColor, healthTooltip, channelIcon,
-  channelTypeToNumeric, modeToNumeric, statusToNumeric,
+  channelTypeToParam, modeToParam, statusToParam,
 } from './lead-source.types';
 import { TimeagoPipe } from '@talisoft/ui/timeago';
 
@@ -112,6 +112,7 @@ import { TimeagoPipe } from '@talisoft/ui/timeago';
                 <tas-form-field>
                   <tas-label>Canal</tas-label>
                   <tas-select
+                    clearable
                     [options]="metadataService.channelOptions()"
                     optionLabel="label"
                     optionValue="value"
@@ -123,6 +124,7 @@ import { TimeagoPipe } from '@talisoft/ui/timeago';
                 <tas-form-field>
                   <tas-label>Mode</tas-label>
                   <tas-select
+                    clearable
                     [options]="metadataService.modeOptions()"
                     optionLabel="label"
                     optionValue="value"
@@ -134,6 +136,7 @@ import { TimeagoPipe } from '@talisoft/ui/timeago';
                 <tas-form-field>
                   <tas-label>Statut</tas-label>
                   <tas-select
+                    clearable
                     [options]="metadataService.statusOptions()"
                     optionLabel="label"
                     optionValue="value"
@@ -569,9 +572,9 @@ export class LeadSourcesConfig implements OnInit {
         switchMap((reset) =>
           this._api
             .listLeadSources(
-              channelTypeToNumeric(this.filterChannel()),
-              modeToNumeric(this.filterMode()),
-              statusToNumeric(this.filterStatus()),
+              channelTypeToParam(this.filterChannel()),
+              modeToParam(this.filterMode()),
+              statusToParam(this.filterStatus()),
               this.filterQuery().trim() || undefined,
               this._page,
               this._pageSize,

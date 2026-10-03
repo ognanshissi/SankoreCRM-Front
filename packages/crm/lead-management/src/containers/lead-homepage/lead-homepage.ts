@@ -24,6 +24,7 @@ import {
   AgenciesApiService,
   LeadDto,
   LeadsApiService,
+  LeadSourcesApiService,
   LeadStatsDto,
   UpdatePipelineStageRequestStageEnum,
 } from '@sankore/crm-api';
@@ -59,6 +60,14 @@ function intentMeta(level: string | number | null | undefined): { label: string;
   }
 }
 
+/**
+ * Canal d'origine (`LeadDto.source`), l'énumération figée du contrat.
+ *
+ * Ce n'est **pas** la source configurée : un lead porte les deux, `source` disant par quel canal il
+ * est entré (Web, USSD, agence…) et `leadSourceConfigId` de quelle source paramétrée il provient.
+ * Ces libellés ne servent donc plus qu'au repli, pour les leads sans source configurée — ceux
+ * capturés avant la mise en place du paramétrage, ou créés à la main.
+ */
 const SOURCE_LABELS: Record<string, string> = {
   Web: 'Web',
   MobileAgent: 'Agent mobile',
@@ -73,20 +82,11 @@ const SOURCE_LABELS: Record<string, string> = {
   Campaign: 'Campagne',
 };
 
-const SOURCE_FILTER_OPTIONS = [
-  { label: 'Toutes', value: '' },
-  { label: 'Web',             value: '0' },
-  { label: 'Agent mobile',    value: '1' },
-  { label: 'Agence',          value: '2' },
-  { label: "Centre d'appels", value: '3' },
-  { label: 'SMS',             value: '4' },
-  { label: 'USSD',            value: '5' },
-  { label: 'WhatsApp',        value: '6' },
-  { label: 'Référencement',   value: '7' },
-  { label: 'Partenaire',      value: '8' },
-  { label: 'Import fichier',  value: '9' },
-  { label: 'Campagne',        value: '10' },
-];
+/**
+ * Option « aucun filtre », seule entrée écrite en dur : les autres viennent des sources
+ * configurées dans Paramétrage › Sources & Campagnes.
+ */
+const ALL_SOURCES_OPTION = { label: 'Toutes', value: '' };
 
 const INTENT_FILTER_OPTIONS = [
   { label: 'Toutes', value: '' },
@@ -187,6 +187,7 @@ export class LeadHomepage implements OnInit {
 
   private readonly _leadsApiService = inject(LeadsApiService);
   private readonly _agenciesApiService = inject(AgenciesApiService);
+  private readonly _leadSourcesApiService = inject(LeadSourcesApiService);
   private readonly _sideDrawerService = inject(SideDrawerService);
   private readonly _snackbar = inject(SnackbarService);
   private readonly _destroyRef = inject(DestroyRef);
@@ -217,12 +218,22 @@ export class LeadHomepage implements OnInit {
 
   // Filters
   public filterStatus = signal('');
-  public filterSource = signal('');
+  /**
+   * Source **configurée** retenue : un `leadSourceConfigId` (uuid), pas l'indice de l'énumération
+   * `source`. Le filtre portait auparavant sur cette énumération, qui est le canal d'entrée et non
+   * la source paramétrée : deux campagnes Facebook distinctes y étaient confondues sous « Web »,
+   * et une source créée dans Paramétrage n'apparaissait nulle part.
+   */
+  public filterLeadSourceId = signal('');
   public filterAgencyId = signal('');
   public filterIntent = signal('');
   public agencyOptions = signal<{ label: string; value: string }[]>([{ label: 'Toutes', value: '' }]);
 
-  public readonly sourceFilterOptions = SOURCE_FILTER_OPTIONS;
+  /**
+   * Options du filtre Source, alimentées par les sources configurées. Signal et non constante :
+   * la liste vient du serveur et change avec le paramétrage.
+   */
+  public sourceFilterOptions = signal<{ label: string; value: string }[]>([ALL_SOURCES_OPTION]);
   public readonly intentFilterOptions = INTENT_FILTER_OPTIONS;
   public readonly kanbanColumns = KANBAN_COLUMNS;
   public readonly pipelineColumns = PIPELINE_COLUMNS;
@@ -244,7 +255,7 @@ export class LeadHomepage implements OnInit {
   ];
 
   public hasActiveSecondaryFilters = computed(() =>
-    !!(this.filterSource() || this.filterAgencyId() || this.filterIntent()),
+    !!(this.filterLeadSourceId() || this.filterAgencyId() || this.filterIntent()),
   );
 
   public tableConfig = signal<TableConfig>({
@@ -268,12 +279,16 @@ export class LeadHomepage implements OnInit {
     const params = this._route.snapshot.queryParams;
     if (params['q']) this.searchQuery.set(params['q']);
     if (params['status']) this.filterStatus.set(params['status']);
-    if (params['source']) this.filterSource.set(params['source']);
+    // `leadSource` et non `source` : la valeur a changé de nature (uuid au lieu d'un indice
+    // d'énumération). Un ancien lien portant `source=2` est donc ignoré plutôt que mal interprété —
+    // aucune correspondance n'existe entre les deux vocabulaires.
+    if (params['leadSource']) this.filterLeadSourceId.set(params['leadSource']);
     if (params['agency']) this.filterAgencyId.set(params['agency']);
     if (params['intent']) this.filterIntent.set(params['intent']);
 
     this.loadLeads(0, this.tableConfig().pagination.pageSize);
     this._loadAgencies();
+    this._loadLeadSources();
     this._loadStats();
   }
 
@@ -401,6 +416,18 @@ export class LeadHomepage implements OnInit {
     return this.stats().byStatus?.find((s) => s.status === status)?.count ?? 0;
   }
 
+  /**
+   * Source affichée sur une ligne : le libellé de la source **configurée** quand le lead en a une,
+   * sinon le canal d'entrée. Les deux coexistent sur `LeadDto`, et afficher le seul canal revenait
+   * à montrer « Web » pour trois campagnes différentes.
+   */
+  public leadSourceLabel(lead: LeadDto): string {
+    const configured = lead.leadSourceLabel?.trim() || lead.leadSourceCode?.trim();
+    if (configured) return configured;
+    return this.sourceLabel(lead.source);
+  }
+
+  /** Canal d'entrée seul (`LeadDto.source`). Utilisé en repli, et pour les leads sans source configurée. */
   public sourceLabel(source: string | null | undefined): string {
     return SOURCE_LABELS[source ?? ''] ?? source ?? '—';
   }
@@ -485,18 +512,25 @@ export class LeadHomepage implements OnInit {
     this._search$.next();
   }
 
-  public onFilterChange(filter: 'status' | 'source' | 'agency' | 'intent', value: string): void {
+  public onFilterChange(
+    filter: 'status' | 'leadSource' | 'agency' | 'intent',
+    value: string | null,
+  ): void {
+    // La croix d'effacement d'un `tas-select` notifie `null` : les signaux de
+    // filtre restent en chaîne vide, que tout le reste de l'écran traite déjà
+    // comme « aucun filtre ».
+    const next = value ?? '';
     switch (filter) {
-      case 'status':  this.filterStatus.set(value); break;
-      case 'source':  this.filterSource.set(value); break;
-      case 'agency':  this.filterAgencyId.set(value); break;
-      case 'intent':  this.filterIntent.set(value); break;
+      case 'status':     this.filterStatus.set(next); break;
+      case 'leadSource': this.filterLeadSourceId.set(next); break;
+      case 'agency':     this.filterAgencyId.set(next); break;
+      case 'intent':     this.filterIntent.set(next); break;
     }
     this._applyFilters();
   }
 
   public clearSecondaryFilters(): void {
-    this.filterSource.set('');
+    this.filterLeadSourceId.set('');
     this.filterAgencyId.set('');
     this.filterIntent.set('');
     this._applyFilters();
@@ -512,7 +546,7 @@ export class LeadHomepage implements OnInit {
       queryParams: {
         q: this.searchQuery() || null,
         status: this.filterStatus() || null,
-        source: this.filterSource() || null,
+        leadSource: this.filterLeadSourceId() || null,
         agency: this.filterAgencyId() || null,
         intent: this.filterIntent() || null,
       },
@@ -538,13 +572,27 @@ export class LeadHomepage implements OnInit {
     this.isLoading.set(true);
 
     const status = this.filterStatus() ? Number(this.filterStatus()) as any : undefined;
-    const source = this.filterSource() ? Number(this.filterSource()) as any : undefined;
     const agencyId = this.filterAgencyId() || undefined;
     const intent = this.filterIntent() ? Number(this.filterIntent()) as any : undefined;
     const search = this.searchQuery() || undefined;
+    const leadSourceConfigId = this.filterLeadSourceId() || undefined;
 
+    // `source` (5e paramètre) reste `undefined` : le filtrage passe désormais par
+    // `leadSourceConfigId` (11e), qui désigne la source configurée et non le canal d'entrée.
     this._leadsApiService
-      .listLeads(page + 1, pageSize, status, undefined, source, undefined, agencyId, search, undefined, intent)
+      .listLeads(
+        page + 1,
+        pageSize,
+        status,
+        undefined,
+        undefined,
+        undefined,
+        agencyId,
+        search,
+        undefined,
+        intent,
+        leadSourceConfigId,
+      )
       .subscribe({
         next: (result) => {
           this.leads.set(result.items ?? []);
@@ -653,14 +701,25 @@ export class LeadHomepage implements OnInit {
     });
   }
 
+  /**
+   * Export CSV des leads filtrés — **à une exception près, signalée à l'agent**.
+   *
+   * `GET /leads/export` n'accepte pas `leadSourceConfigId` : ses paramètres s'arrêtent à
+   * `status, pipelineStage, source, ownerId, agencyId, search, tag`. Un filtre par source
+   * configurée ne peut donc pas être transmis, et le fichier contiendra toutes les sources. Plutôt
+   * que de laisser croire à un export filtré, on le dit dans le message de fin. À retirer le jour
+   * où le backend expose ce paramètre sur l'export, comme il le fait déjà sur la liste.
+   */
   public exportLeads(): void {
     this.isExporting.set(true);
     const status = this.filterStatus() ? Number(this.filterStatus()) as any : undefined;
-    const source = this.filterSource() ? Number(this.filterSource()) as any : undefined;
     const agencyId = this.filterAgencyId() || undefined;
     const search = this.searchQuery() || undefined;
+    const sourceFilterIgnored = !!this.filterLeadSourceId();
 
-    this._leadsApiService.exportLeads(status, undefined, source, undefined, agencyId, search).pipe(
+    this._leadsApiService
+      .exportLeads(status, undefined, undefined, undefined, agencyId, search)
+      .pipe(
       catchError(() => {
         this._snackbar.error('Erreur', 'Impossible d\'exporter les leads.');
         this.isExporting.set(false);
@@ -674,7 +733,12 @@ export class LeadHomepage implements OnInit {
       a.download = `leads-export-${new Date().toISOString().slice(0, 10)}.csv`;
       a.click();
       URL.revokeObjectURL(url);
-      this._snackbar.success('Export terminé', 'Le fichier CSV a été téléchargé.');
+      this._snackbar.success(
+        'Export terminé',
+        sourceFilterIgnored
+          ? "Le fichier CSV a été téléchargé. Attention : l'export ne sait pas filtrer par source configurée, toutes les sources y figurent."
+          : 'Le fichier CSV a été téléchargé.',
+      );
       this.isExporting.set(false);
     });
   }
@@ -691,6 +755,35 @@ export class LeadHomepage implements OnInit {
       .subscribe({
         next: (opts) => this.agencyOptions.set(opts),
       });
+  }
+
+  /**
+   * Sources configurées, pour le filtre. **Aucun filtre de statut n'est appliqué** : une source en
+   * pause, en erreur ou archivée garde ses leads, et l'exclure de la liste les rendrait
+   * introuvables. Le statut de la source se consulte dans Paramétrage, pas ici.
+   *
+   * Une seule page de 200 : le contrat pagine, mais un tenant qui dépasserait 200 sources
+   * configurées demanderait de toute façon un champ de recherche plutôt qu'une liste déroulante.
+   */
+  private _loadLeadSources(): void {
+    this._leadSourcesApiService
+      .listLeadSources(undefined, undefined, "Active", undefined, 1, 200)
+      .pipe(
+        map((res) => [
+          ALL_SOURCES_OPTION,
+          ...(res.items ?? []).map((source) => ({
+            label: source.label?.trim() || source.code?.trim() || 'Source sans nom',
+            value: source.id ?? '',
+          })),
+        ]),
+        catchError(() => {
+          // Le filtre est un confort : son absence ne doit pas vider la page de leads. La liste
+          // reste réduite à « Toutes », et le reste de l'écran fonctionne.
+          this._snackbar.error('Erreur', 'La liste des sources configurées n\'a pas pu être chargée.');
+          return EMPTY;
+        }),
+      )
+      .subscribe((options) => this.sourceFilterOptions.set(options));
   }
 
   private _loadStats(): void {

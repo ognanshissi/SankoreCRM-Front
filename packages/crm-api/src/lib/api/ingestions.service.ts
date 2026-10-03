@@ -159,16 +159,16 @@ export class IngestionsApiService {
 
     /**
      * @param sourceId 
-     * @param status 
+     * @param status One of: Accepted, Rejected, Duplicate, Failed
      * @param page 
      * @param pageSize 
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      */
-    public listIngestions(sourceId: string, status?: 0 | 1 | 2 | 3, page?: number, pageSize?: number, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<IngestionDtoPagedResult>;
-    public listIngestions(sourceId: string, status?: 0 | 1 | 2 | 3, page?: number, pageSize?: number, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<IngestionDtoPagedResult>>;
-    public listIngestions(sourceId: string, status?: 0 | 1 | 2 | 3, page?: number, pageSize?: number, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<IngestionDtoPagedResult>>;
-    public listIngestions(sourceId: string, status?: 0 | 1 | 2 | 3, page?: number, pageSize?: number, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
+    public listIngestions(sourceId: string, status?: 'Accepted' | 'Rejected' | 'Duplicate' | 'Failed', page?: number, pageSize?: number, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<IngestionDtoPagedResult>;
+    public listIngestions(sourceId: string, status?: 'Accepted' | 'Rejected' | 'Duplicate' | 'Failed', page?: number, pageSize?: number, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<IngestionDtoPagedResult>>;
+    public listIngestions(sourceId: string, status?: 'Accepted' | 'Rejected' | 'Duplicate' | 'Failed', page?: number, pageSize?: number, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<IngestionDtoPagedResult>>;
+    public listIngestions(sourceId: string, status?: 'Accepted' | 'Rejected' | 'Duplicate' | 'Failed', page?: number, pageSize?: number, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
         if (sourceId === null || sourceId === undefined) {
             throw new Error('Required parameter sourceId was null or undefined when calling listIngestions.');
         }

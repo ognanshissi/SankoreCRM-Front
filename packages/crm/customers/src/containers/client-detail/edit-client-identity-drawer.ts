@@ -62,8 +62,9 @@ export class EditClientIdentityFormModel {
     const model = new EditClientIdentityFormModel();
     model.profession = client.profession ?? '';
     model.employer = client.employer ?? '';
-    // `maritalStatus` arrive en chaîne, tantôt numérique tantôt nommée, alors que la requête
-    // attend un entier 0..4 : on ne présélectionne que ce que le select sait afficher.
+    // Lecture et écriture nomment la même valeur depuis que le contrat n'expose plus cette
+    // énumération en entier, donc la présélection est directe. Le garde-fou reste utile pour
+    // une valeur inconnue du select (ancienne donnée, nouveau membre côté serveur).
     const marital = client.maritalStatus != null ? String(client.maritalStatus) : '';
     model.maritalStatus = MARITAL_STATUS_OPTIONS.some((o) => o.value === marital)
       ? marital
@@ -320,7 +321,7 @@ export class EditClientIdentityDrawer {
         request.maritalStatus =
           value.maritalStatus === ''
             ? null
-            : (Number(value.maritalStatus) as UpdateClientRequestMaritalStatusEnum);
+            : (value.maritalStatus as UpdateClientRequestMaritalStatusEnum);
         changed.push('maritalStatus');
       }
       if (value.declaredIncome !== '') {

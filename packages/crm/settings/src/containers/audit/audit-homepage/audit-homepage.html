@@ -56,18 +56,20 @@
       <tas-form-field>
         <tas-label>Ressource</tas-label>
         <tas-select
+          clearable
           [options]="resourceTypeOptions"
           [ngModel]="resourceType()"
-          (ngModelChange)="resourceType.set($event)"
+          (ngModelChange)="resourceType.set($event ?? '')"
         ></tas-select>
       </tas-form-field>
 
       <tas-form-field>
         <tas-label>Résultat</tas-label>
         <tas-select
+          clearable
           [options]="outcomeOptions"
           [ngModel]="outcome()"
-          (ngModelChange)="outcome.set($event)"
+          (ngModelChange)="outcome.set($event ?? '')"
         ></tas-select>
       </tas-form-field>
 

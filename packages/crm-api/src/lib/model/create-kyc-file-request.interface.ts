@@ -13,20 +13,26 @@
 
 export interface CreateKycFileRequest { 
     customerId?: string;
+    /**
+     * One of: Agency, MobileAgent, Web, Import, LeadConversion
+     */
     channel?: CreateKycFileRequestChannelEnum | null;
+    /**
+     * One of: Low, Standard, High
+     */
     vigilanceLevel?: CreateKycFileRequestVigilanceLevelEnum | null;
 }
 export enum CreateKycFileRequestChannelEnum {
-    NUMBER_0 = 0,
-    NUMBER_1 = 1,
-    NUMBER_2 = 2,
-    NUMBER_3 = 3,
-    NUMBER_4 = 4
+    Agency = 'Agency',
+    MobileAgent = 'MobileAgent',
+    Web = 'Web',
+    Import = 'Import',
+    LeadConversion = 'LeadConversion'
 };
 export enum CreateKycFileRequestVigilanceLevelEnum {
-    NUMBER_0 = 0,
-    NUMBER_1 = 1,
-    NUMBER_2 = 2
+    Low = 'Low',
+    Standard = 'Standard',
+    High = 'High'
 };
 
 

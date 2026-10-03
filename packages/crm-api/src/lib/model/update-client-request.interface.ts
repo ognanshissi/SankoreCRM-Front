@@ -15,17 +15,20 @@ export interface UpdateClientRequest {
     expectedVersion?: number;
     profession?: string | null;
     employer?: string | null;
+    /**
+     * One of: Single, Married, Divorced, Widowed, FreeUnion
+     */
     maritalStatus?: UpdateClientRequestMaritalStatusEnum | null;
     declaredIncome?: number | null;
     declaredIncomeCurrency?: string | null;
     preferredLanguage?: string | null;
 }
 export enum UpdateClientRequestMaritalStatusEnum {
-    NUMBER_0 = 0,
-    NUMBER_1 = 1,
-    NUMBER_2 = 2,
-    NUMBER_3 = 3,
-    NUMBER_4 = 4
+    Single = 'Single',
+    Married = 'Married',
+    Divorced = 'Divorced',
+    Widowed = 'Widowed',
+    FreeUnion = 'FreeUnion'
 };
 
 

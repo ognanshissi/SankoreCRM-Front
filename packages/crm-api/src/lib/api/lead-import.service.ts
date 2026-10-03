@@ -114,14 +114,14 @@ export class LeadImportApiService {
      * @param file 
      * @param interestedProduct 
      * @param preferredLanguage 
-     * @param source 
+     * @param source One of: Web, MobileAgent, Agency, CallCenter, Sms, Ussd, WhatsApp, Referral, Partner, FileImport, Campaign
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      */
-    public importLeadsFromFile(file: Blob, interestedProduct?: string, preferredLanguage?: string, source?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<ImportLeadsAccepted>;
-    public importLeadsFromFile(file: Blob, interestedProduct?: string, preferredLanguage?: string, source?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<ImportLeadsAccepted>>;
-    public importLeadsFromFile(file: Blob, interestedProduct?: string, preferredLanguage?: string, source?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<ImportLeadsAccepted>>;
-    public importLeadsFromFile(file: Blob, interestedProduct?: string, preferredLanguage?: string, source?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
+    public importLeadsFromFile(file: Blob, interestedProduct?: string, preferredLanguage?: string, source?: 'Web' | 'MobileAgent' | 'Agency' | 'CallCenter' | 'Sms' | 'Ussd' | 'WhatsApp' | 'Referral' | 'Partner' | 'FileImport' | 'Campaign', observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<ImportLeadsAccepted>;
+    public importLeadsFromFile(file: Blob, interestedProduct?: string, preferredLanguage?: string, source?: 'Web' | 'MobileAgent' | 'Agency' | 'CallCenter' | 'Sms' | 'Ussd' | 'WhatsApp' | 'Referral' | 'Partner' | 'FileImport' | 'Campaign', observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<ImportLeadsAccepted>>;
+    public importLeadsFromFile(file: Blob, interestedProduct?: string, preferredLanguage?: string, source?: 'Web' | 'MobileAgent' | 'Agency' | 'CallCenter' | 'Sms' | 'Ussd' | 'WhatsApp' | 'Referral' | 'Partner' | 'FileImport' | 'Campaign', observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<ImportLeadsAccepted>>;
+    public importLeadsFromFile(file: Blob, interestedProduct?: string, preferredLanguage?: string, source?: 'Web' | 'MobileAgent' | 'Agency' | 'CallCenter' | 'Sms' | 'Ussd' | 'WhatsApp' | 'Referral' | 'Partner' | 'FileImport' | 'Campaign', observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
         if (file === null || file === undefined) {
             throw new Error('Required parameter file was null or undefined when calling importLeadsFromFile.');
         }
@@ -368,14 +368,14 @@ export class LeadImportApiService {
      * @param file 
      * @param interestedProduct 
      * @param preferredLanguage 
-     * @param source 
+     * @param source One of: Web, MobileAgent, Agency, CallCenter, Sms, Ussd, WhatsApp, Referral, Partner, FileImport, Campaign
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      */
-    public validateLeadImport(file: Blob, interestedProduct?: string, preferredLanguage?: string, source?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<ValidateLeadImportResponse>;
-    public validateLeadImport(file: Blob, interestedProduct?: string, preferredLanguage?: string, source?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<ValidateLeadImportResponse>>;
-    public validateLeadImport(file: Blob, interestedProduct?: string, preferredLanguage?: string, source?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<ValidateLeadImportResponse>>;
-    public validateLeadImport(file: Blob, interestedProduct?: string, preferredLanguage?: string, source?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
+    public validateLeadImport(file: Blob, interestedProduct?: string, preferredLanguage?: string, source?: 'Web' | 'MobileAgent' | 'Agency' | 'CallCenter' | 'Sms' | 'Ussd' | 'WhatsApp' | 'Referral' | 'Partner' | 'FileImport' | 'Campaign', observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<ValidateLeadImportResponse>;
+    public validateLeadImport(file: Blob, interestedProduct?: string, preferredLanguage?: string, source?: 'Web' | 'MobileAgent' | 'Agency' | 'CallCenter' | 'Sms' | 'Ussd' | 'WhatsApp' | 'Referral' | 'Partner' | 'FileImport' | 'Campaign', observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<ValidateLeadImportResponse>>;
+    public validateLeadImport(file: Blob, interestedProduct?: string, preferredLanguage?: string, source?: 'Web' | 'MobileAgent' | 'Agency' | 'CallCenter' | 'Sms' | 'Ussd' | 'WhatsApp' | 'Referral' | 'Partner' | 'FileImport' | 'Campaign', observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<ValidateLeadImportResponse>>;
+    public validateLeadImport(file: Blob, interestedProduct?: string, preferredLanguage?: string, source?: 'Web' | 'MobileAgent' | 'Agency' | 'CallCenter' | 'Sms' | 'Ussd' | 'WhatsApp' | 'Referral' | 'Partner' | 'FileImport' | 'Campaign', observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
         if (file === null || file === undefined) {
             throw new Error('Required parameter file was null or undefined when calling validateLeadImport.');
         }

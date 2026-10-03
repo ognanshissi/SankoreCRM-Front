@@ -20,6 +20,9 @@ export interface CreateLeadSourceRequest {
      */
     channelType?: CreateLeadSourceRequestChannelTypeEnum;
     displayOrder?: number;
+    /**
+     * One of: EmbeddedScript, ServerWebhook, ScheduledPull, PlatformConnection, SocialTracking, Internal
+     */
     integrationMode?: CreateLeadSourceRequestIntegrationModeEnum | null;
     description?: string | null;
     settings?: SourceSettings;
@@ -47,12 +50,12 @@ export enum CreateLeadSourceRequestChannelTypeEnum {
     InboundCall = 'InboundCall'
 };
 export enum CreateLeadSourceRequestIntegrationModeEnum {
-    NUMBER_0 = 0,
-    NUMBER_1 = 1,
-    NUMBER_2 = 2,
-    NUMBER_3 = 3,
-    NUMBER_4 = 4,
-    NUMBER_5 = 5
+    EmbeddedScript = 'EmbeddedScript',
+    ServerWebhook = 'ServerWebhook',
+    ScheduledPull = 'ScheduledPull',
+    PlatformConnection = 'PlatformConnection',
+    SocialTracking = 'SocialTracking',
+    Internal = 'Internal'
 };
 
 

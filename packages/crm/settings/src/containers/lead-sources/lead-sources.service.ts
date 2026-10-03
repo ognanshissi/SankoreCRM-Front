@@ -2,7 +2,7 @@ import { inject, Injectable, signal } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { catchError, Observable, throwError } from 'rxjs';
 import { SnackbarService } from '@talisoft/ui/snackbar';
-import { ChannelTypeParam, ModeParam, StatusParam } from './lead-source.types';
+import { IntegrationMode, LeadChannelType, LeadSourceStatus } from './lead-source.types';
 import {
   LeadSourcesApiService,
   LeadSourceDetailDto,
@@ -71,9 +71,9 @@ export class LeadSourcesService {
   // ——— List ———
 
   public list(
-    channelType?: ChannelTypeParam,
-    mode?: ModeParam,
-    status?: StatusParam,
+    channelType?: LeadChannelType,
+    mode?: IntegrationMode,
+    status?: LeadSourceStatus,
     q?: string,
     page?: number,
     pageSize?: number,

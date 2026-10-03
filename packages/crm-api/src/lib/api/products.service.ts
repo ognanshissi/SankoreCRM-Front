@@ -383,14 +383,14 @@ export class ProductsApiService {
     /**
      * List financial products for the tenant, optionally filtered by category
      * @param activeOnly 
-     * @param category 
+     * @param category One of: Loan, Savings, Insurance, HealthInsurance, ForecastInsurance, Tontine, GroupCredit, Agriculture
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      */
-    public listProducts(activeOnly?: boolean, category?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<Array<ProductDto>>;
-    public listProducts(activeOnly?: boolean, category?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<Array<ProductDto>>>;
-    public listProducts(activeOnly?: boolean, category?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<Array<ProductDto>>>;
-    public listProducts(activeOnly?: boolean, category?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
+    public listProducts(activeOnly?: boolean, category?: 'Loan' | 'Savings' | 'Insurance' | 'HealthInsurance' | 'ForecastInsurance' | 'Tontine' | 'GroupCredit' | 'Agriculture', observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<Array<ProductDto>>;
+    public listProducts(activeOnly?: boolean, category?: 'Loan' | 'Savings' | 'Insurance' | 'HealthInsurance' | 'ForecastInsurance' | 'Tontine' | 'GroupCredit' | 'Agriculture', observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<Array<ProductDto>>>;
+    public listProducts(activeOnly?: boolean, category?: 'Loan' | 'Savings' | 'Insurance' | 'HealthInsurance' | 'ForecastInsurance' | 'Tontine' | 'GroupCredit' | 'Agriculture', observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<Array<ProductDto>>>;
+    public listProducts(activeOnly?: boolean, category?: 'Loan' | 'Savings' | 'Insurance' | 'HealthInsurance' | 'ForecastInsurance' | 'Tontine' | 'GroupCredit' | 'Agriculture', observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
 
         let localVarQueryParameters = new HttpParams({encoder: this.encoder});
         if (activeOnly !== undefined && activeOnly !== null) {

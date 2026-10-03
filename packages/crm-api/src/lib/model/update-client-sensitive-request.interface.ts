@@ -18,6 +18,9 @@ export interface UpdateClientSensitiveRequest {
     firstName?: string | null;
     lastName?: string | null;
     maidenName?: string | null;
+    /**
+     * One of: NationalIdCard, Passport, DriverLicense, ConsularCard, VoterCard, ResidencePermit, Other
+     */
     identityDocumentType?: UpdateClientSensitiveRequestIdentityDocumentTypeEnum | null;
     identityDocumentNumber?: string | null;
     identityDocumentIssuedOn?: string | null;
@@ -25,13 +28,13 @@ export interface UpdateClientSensitiveRequest {
     address?: PostalAddressInput;
 }
 export enum UpdateClientSensitiveRequestIdentityDocumentTypeEnum {
-    NUMBER_0 = 0,
-    NUMBER_1 = 1,
-    NUMBER_2 = 2,
-    NUMBER_3 = 3,
-    NUMBER_4 = 4,
-    NUMBER_5 = 5,
-    NUMBER_6 = 6
+    NationalIdCard = 'NationalIdCard',
+    Passport = 'Passport',
+    DriverLicense = 'DriverLicense',
+    ConsularCard = 'ConsularCard',
+    VoterCard = 'VoterCard',
+    ResidencePermit = 'ResidencePermit',
+    Other = 'Other'
 };
 
 

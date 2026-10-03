@@ -57,5 +57,8 @@ export interface LeadDto {
     nationalId?: string | null;
     customerReference?: string | null;
     prospectType?: string | null;
+    leadSourceConfigId?: string | null;
+    leadSourceCode?: string | null;
+    leadSourceLabel?: string | null;
 }
 

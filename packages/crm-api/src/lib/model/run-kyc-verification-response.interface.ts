@@ -22,6 +22,9 @@ export interface RunKycVerificationResponse {
      */
     outcome?: RunKycVerificationResponseOutcomeEnum;
     confidenceScore?: number | null;
+    /**
+     * One of: Rejected, Low, Medium, High
+     */
     confidenceLevel?: RunKycVerificationResponseConfidenceLevelEnum | null;
     code?: string | null;
 }
@@ -43,10 +46,10 @@ export enum RunKycVerificationResponseOutcomeEnum {
     ServiceUnavailable = 'ServiceUnavailable'
 };
 export enum RunKycVerificationResponseConfidenceLevelEnum {
-    NUMBER_0 = 0,
-    NUMBER_1 = 1,
-    NUMBER_2 = 2,
-    NUMBER_3 = 3
+    Rejected = 'Rejected',
+    Low = 'Low',
+    Medium = 'Medium',
+    High = 'High'
 };
 
 

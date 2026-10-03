@@ -598,8 +598,12 @@ export class LifecycleActionDrawer {
     // Critère 4 : le serveur filtre déjà sur l'agence et le statut actif, mais le filtre est
     // redoublé côté front — un `ADVISOR_NOT_ELIGIBLE` renvoyé après coup est une erreur que
     // l'utilisateur ne peut pas corriger depuis cet écran.
+    // 'Active' — et non le `0` qui était écrit ici. Le contrat exposait ce filtre en entier,
+    // où 0 est PendingActivation, pas « pas de filtre » : cet écran proposait donc comme
+    // conseillers les comptes qui n'ont jamais été activés, et aucun compte actif. Le nom rend
+    // la méprise impossible.
     this._usersApi
-      .listUsers(0, agencyId, undefined, 1, 200)
+      .listUsers('Active', agencyId, undefined, 1, 200)
       .pipe(catchError(() => of({ items: [] as UserDto[] })))
       .subscribe((result) => {
         const currentAdvisorId = this.data.client.advisorUserId;

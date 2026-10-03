@@ -26,11 +26,17 @@ export interface CaptureLeadRequest {
     firstName?: string | null;
     lastName?: string | null;
     email?: string | null;
+    /**
+     * One of: Unknown, Male, Female, Other
+     */
     gender?: CaptureLeadRequestGenderEnum | null;
     dateOfBirth?: string | null;
     desiredAmount?: number | null;
     desiredCurrency?: string | null;
     campaign?: string | null;
+    /**
+     * One of: Web, MobileAgent, Agency, CallCenter, Sms, Ussd, WhatsApp, Referral, Partner, Import, MarketingCampaign
+     */
     channel?: CaptureLeadRequestChannelEnum | null;
     comment?: string | null;
     externalReference?: string | null;
@@ -41,9 +47,15 @@ export interface CaptureLeadRequest {
     companyEmail?: string | null;
     companyPhone?: string | null;
     website?: string | null;
+    /**
+     * One of: Individual, Corporate
+     */
     prospectType?: CaptureLeadRequestProspectTypeEnum | null;
     nationalId?: string | null;
     customerReference?: string | null;
+    /**
+     * One of: Block, Warn
+     */
     gateMode?: CaptureLeadRequestGateModeEnum | null;
     minConfidenceThreshold?: number | null;
     force?: boolean;
@@ -62,31 +74,31 @@ export enum CaptureLeadRequestSourceEnum {
     Campaign = 'Campaign'
 };
 export enum CaptureLeadRequestGenderEnum {
-    NUMBER_0 = 0,
-    NUMBER_1 = 1,
-    NUMBER_2 = 2,
-    NUMBER_3 = 3
+    Unknown = 'Unknown',
+    Male = 'Male',
+    Female = 'Female',
+    Other = 'Other'
 };
 export enum CaptureLeadRequestChannelEnum {
-    NUMBER_0 = 0,
-    NUMBER_1 = 1,
-    NUMBER_2 = 2,
-    NUMBER_3 = 3,
-    NUMBER_4 = 4,
-    NUMBER_5 = 5,
-    NUMBER_6 = 6,
-    NUMBER_7 = 7,
-    NUMBER_8 = 8,
-    NUMBER_9 = 9,
-    NUMBER_10 = 10
+    Web = 'Web',
+    MobileAgent = 'MobileAgent',
+    Agency = 'Agency',
+    CallCenter = 'CallCenter',
+    Sms = 'Sms',
+    Ussd = 'Ussd',
+    WhatsApp = 'WhatsApp',
+    Referral = 'Referral',
+    Partner = 'Partner',
+    Import = 'Import',
+    MarketingCampaign = 'MarketingCampaign'
 };
 export enum CaptureLeadRequestProspectTypeEnum {
-    NUMBER_0 = 0,
-    NUMBER_1 = 1
+    Individual = 'Individual',
+    Corporate = 'Corporate'
 };
 export enum CaptureLeadRequestGateModeEnum {
-    NUMBER_0 = 0,
-    NUMBER_1 = 1
+    Block = 'Block',
+    Warn = 'Warn'
 };
 
 

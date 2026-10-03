@@ -16,23 +16,29 @@ export interface RequestClientExportRequest {
     phone?: string | null;
     identityDocumentNumber?: string | null;
     name?: string | null;
+    /**
+     * One of: PendingKyc, Active, Suspended, KycRejected, Archived, Merged
+     */
     status?: RequestClientExportRequestStatusEnum | null;
     agencyId?: string | null;
     advisorUserId?: string | null;
+    /**
+     * One of: Individual, Legal
+     */
     type?: RequestClientExportRequestTypeEnum | null;
     segmentCode?: string | null;
 }
 export enum RequestClientExportRequestStatusEnum {
-    NUMBER_0 = 0,
-    NUMBER_1 = 1,
-    NUMBER_2 = 2,
-    NUMBER_3 = 3,
-    NUMBER_4 = 4,
-    NUMBER_5 = 5
+    PendingKyc = 'PendingKyc',
+    Active = 'Active',
+    Suspended = 'Suspended',
+    KycRejected = 'KycRejected',
+    Archived = 'Archived',
+    Merged = 'Merged'
 };
 export enum RequestClientExportRequestTypeEnum {
-    NUMBER_0 = 0,
-    NUMBER_1 = 1
+    Individual = 'Individual',
+    Legal = 'Legal'
 };
 
 

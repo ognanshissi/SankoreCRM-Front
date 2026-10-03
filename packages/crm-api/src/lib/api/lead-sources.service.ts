@@ -853,19 +853,19 @@ export class LeadSourcesApiService {
     }
 
     /**
-     * @param channelType 
-     * @param mode 
-     * @param status 
+     * @param channelType One of: WebForm, InboundWebhook, ExternalApiPull, FacebookLeadAds, InstagramLeadAds, LinkedInLeadGen, WhatsAppInbound, SocialEngagement, MobileAgent, WalkIn, SmsUssdCampaign, Referral, FileImport, InboundCall
+     * @param mode One of: EmbeddedScript, ServerWebhook, ScheduledPull, PlatformConnection, SocialTracking, Internal
+     * @param status One of: Draft, Testing, Active, Paused, Error, Archived
      * @param q 
      * @param page 
      * @param pageSize 
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      */
-    public listLeadSources(channelType?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13, mode?: 0 | 1 | 2 | 3 | 4 | 5, status?: 0 | 1 | 2 | 3 | 4 | 5, q?: string, page?: number, pageSize?: number, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<LeadSourceListDtoPagedResult>;
-    public listLeadSources(channelType?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13, mode?: 0 | 1 | 2 | 3 | 4 | 5, status?: 0 | 1 | 2 | 3 | 4 | 5, q?: string, page?: number, pageSize?: number, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<LeadSourceListDtoPagedResult>>;
-    public listLeadSources(channelType?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13, mode?: 0 | 1 | 2 | 3 | 4 | 5, status?: 0 | 1 | 2 | 3 | 4 | 5, q?: string, page?: number, pageSize?: number, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<LeadSourceListDtoPagedResult>>;
-    public listLeadSources(channelType?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13, mode?: 0 | 1 | 2 | 3 | 4 | 5, status?: 0 | 1 | 2 | 3 | 4 | 5, q?: string, page?: number, pageSize?: number, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
+    public listLeadSources(channelType?: 'WebForm' | 'InboundWebhook' | 'ExternalApiPull' | 'FacebookLeadAds' | 'InstagramLeadAds' | 'LinkedInLeadGen' | 'WhatsAppInbound' | 'SocialEngagement' | 'MobileAgent' | 'WalkIn' | 'SmsUssdCampaign' | 'Referral' | 'FileImport' | 'InboundCall', mode?: 'EmbeddedScript' | 'ServerWebhook' | 'ScheduledPull' | 'PlatformConnection' | 'SocialTracking' | 'Internal', status?: 'Draft' | 'Testing' | 'Active' | 'Paused' | 'Error' | 'Archived', q?: string, page?: number, pageSize?: number, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<LeadSourceListDtoPagedResult>;
+    public listLeadSources(channelType?: 'WebForm' | 'InboundWebhook' | 'ExternalApiPull' | 'FacebookLeadAds' | 'InstagramLeadAds' | 'LinkedInLeadGen' | 'WhatsAppInbound' | 'SocialEngagement' | 'MobileAgent' | 'WalkIn' | 'SmsUssdCampaign' | 'Referral' | 'FileImport' | 'InboundCall', mode?: 'EmbeddedScript' | 'ServerWebhook' | 'ScheduledPull' | 'PlatformConnection' | 'SocialTracking' | 'Internal', status?: 'Draft' | 'Testing' | 'Active' | 'Paused' | 'Error' | 'Archived', q?: string, page?: number, pageSize?: number, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<LeadSourceListDtoPagedResult>>;
+    public listLeadSources(channelType?: 'WebForm' | 'InboundWebhook' | 'ExternalApiPull' | 'FacebookLeadAds' | 'InstagramLeadAds' | 'LinkedInLeadGen' | 'WhatsAppInbound' | 'SocialEngagement' | 'MobileAgent' | 'WalkIn' | 'SmsUssdCampaign' | 'Referral' | 'FileImport' | 'InboundCall', mode?: 'EmbeddedScript' | 'ServerWebhook' | 'ScheduledPull' | 'PlatformConnection' | 'SocialTracking' | 'Internal', status?: 'Draft' | 'Testing' | 'Active' | 'Paused' | 'Error' | 'Archived', q?: string, page?: number, pageSize?: number, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<LeadSourceListDtoPagedResult>>;
+    public listLeadSources(channelType?: 'WebForm' | 'InboundWebhook' | 'ExternalApiPull' | 'FacebookLeadAds' | 'InstagramLeadAds' | 'LinkedInLeadGen' | 'WhatsAppInbound' | 'SocialEngagement' | 'MobileAgent' | 'WalkIn' | 'SmsUssdCampaign' | 'Referral' | 'FileImport' | 'InboundCall', mode?: 'EmbeddedScript' | 'ServerWebhook' | 'ScheduledPull' | 'PlatformConnection' | 'SocialTracking' | 'Internal', status?: 'Draft' | 'Testing' | 'Active' | 'Paused' | 'Error' | 'Archived', q?: string, page?: number, pageSize?: number, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
 
         let localVarQueryParameters = new HttpParams({encoder: this.encoder});
         if (channelType !== undefined && channelType !== null) {

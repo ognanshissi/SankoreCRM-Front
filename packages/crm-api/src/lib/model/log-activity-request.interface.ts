@@ -20,6 +20,9 @@ export interface LogActivityRequest {
     notes?: string | null;
     scheduledAt?: string | null;
     durationMinutes?: number | null;
+    /**
+     * One of: Reached, NoAnswer, Voicemail, Callback, Interested, NotInterested, Rescheduled, Completed
+     */
     outcome?: LogActivityRequestOutcomeEnum | null;
     attachmentsJson?: string | null;
     ctiCallReference?: string | null;
@@ -39,14 +42,14 @@ export enum LogActivityRequestTypeEnum {
     Task = 'Task'
 };
 export enum LogActivityRequestOutcomeEnum {
-    NUMBER_0 = 0,
-    NUMBER_1 = 1,
-    NUMBER_2 = 2,
-    NUMBER_3 = 3,
-    NUMBER_4 = 4,
-    NUMBER_5 = 5,
-    NUMBER_6 = 6,
-    NUMBER_7 = 7
+    Reached = 'Reached',
+    NoAnswer = 'NoAnswer',
+    Voicemail = 'Voicemail',
+    Callback = 'Callback',
+    Interested = 'Interested',
+    NotInterested = 'NotInterested',
+    Rescheduled = 'Rescheduled',
+    Completed = 'Completed'
 };
 
 

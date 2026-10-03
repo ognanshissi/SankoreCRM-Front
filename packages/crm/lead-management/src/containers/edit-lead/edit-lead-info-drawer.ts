@@ -45,16 +45,42 @@ export interface EditLeadInfoDrawerData {
 }
 
 /**
- * Le swagger ne donne que les valeurs numériques de `gender` (0..3), sans les nommer.
- * Ces libellés reprennent la convention .NET habituelle (Unknown / Male / Female / Other) —
- * à confirmer côté API avant de s'appuyer dessus pour du reporting.
+ * Genres, aux **noms** du contrat (`UpdateLeadRequestGenderEnum`).
+ *
+ * Les valeurs étaient les indices `'0'..'3'`, convertis à la soumission par
+ * `Number(value.gender) as UpdateLeadRequestGenderEnum`. L'énumération est devenue une énumération
+ * de chaînes : `Number('Male')` rend `NaN`, sérialisé en `null`. Le genre n'était donc plus jamais
+ * enregistré, et le transtypage empêchait le compilateur de le dire.
+ *
+ * `LeadDto.gender` reste un `string` libre au contrat : `genderFromLead` accepte les deux formes.
  */
 export const GENDER_OPTIONS = [
-  { label: 'Non précisé', value: '0' },
-  { label: 'Masculin', value: '1' },
-  { label: 'Féminin', value: '2' },
-  { label: 'Autre', value: '3' },
+  { label: 'Non précisé', value: UpdateLeadRequestGenderEnum.Unknown },
+  { label: 'Masculin', value: UpdateLeadRequestGenderEnum.Male },
+  { label: 'Féminin', value: UpdateLeadRequestGenderEnum.Female },
+  { label: 'Autre', value: UpdateLeadRequestGenderEnum.Other },
 ];
+
+/** Ordre des anciens indices numériques, pour relire une fiche écrite avant la bascule. */
+const GENDER_BY_INDEX = [
+  UpdateLeadRequestGenderEnum.Unknown,
+  UpdateLeadRequestGenderEnum.Male,
+  UpdateLeadRequestGenderEnum.Female,
+  UpdateLeadRequestGenderEnum.Other,
+];
+
+/**
+ * Ramène `LeadDto.gender` au nom du contrat. Le serveur a renvoyé des indices (« 1 ») avant la
+ * bascule et renvoie des noms (« Male ») après : les deux sont acceptés, et une valeur inconnue
+ * donne une chaîne vide plutôt qu'une sélection fausse.
+ */
+export function genderFromLead(gender: string | null | undefined): string {
+  if (gender == null || gender === '') return '';
+  const raw = String(gender);
+  if (GENDER_OPTIONS.some((o) => o.value === raw)) return raw;
+  const index = Number(raw);
+  return Number.isInteger(index) && GENDER_BY_INDEX[index] ? GENDER_BY_INDEX[index] : '';
+}
 
 /** `UpdateLeadRequest.preferredLanguage` est une chaîne libre ; on reprend les valeurs de
  *  `UpdateCompanyInfoCommand.defaultLanguage`, seul endroit du contrat où elles sont énumérées. */
@@ -68,8 +94,9 @@ export const LANGUAGE_OPTIONS = [
 
 /** Même convention que `GENDER_OPTIONS` : `LeadDto.gender` arrive en chaîne numérique. */
 export function genderLabel(gender: string | null | undefined): string {
-  if (gender == null || gender === '') return '—';
-  return GENDER_OPTIONS.find((o) => o.value === String(gender))?.label ?? String(gender);
+  const normalised = genderFromLead(gender);
+  if (!normalised) return '—';
+  return GENDER_OPTIONS.find((o) => o.value === normalised)?.label ?? normalised;
 }
 
 function todayISODate(): string {
@@ -98,9 +125,7 @@ export class EditLeadInfoFormModel {
     m.firstName = lead.firstName ?? '';
     m.lastName = lead.lastName ?? '';
     m.email = lead.email ?? '';
-    // `LeadDto.gender` est une chaîne ('0'..'3') là où `UpdateLeadRequest.gender` est un entier,
-    // et `tas-select` ne travaille qu'en chaînes : la conversion se fait à la soumission.
-    m.gender = lead.gender != null ? String(lead.gender) : '';
+    m.gender = genderFromLead(lead.gender);
     m.dateOfBirth = lead.dateOfBirth ?? '';
     m.interestedProduct = lead.interestedProduct ?? '';
     m.desiredAmount =
@@ -229,10 +254,7 @@ export class EditLeadInfoDrawer {
         firstName: value.firstName || null,
         lastName: value.lastName || null,
         email: value.email || null,
-        gender:
-          value.gender !== ''
-            ? (Number(value.gender) as UpdateLeadRequestGenderEnum)
-            : null,
+        gender: (value.gender || null) as UpdateLeadRequestGenderEnum | null,
         dateOfBirth: value.dateOfBirth || null,
         interestedProduct: value.interestedProduct || null,
         desiredAmount: value.desiredAmount ? Number(value.desiredAmount) : null,

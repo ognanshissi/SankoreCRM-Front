@@ -35,6 +35,9 @@ export interface SystemCaptureLeadRequest {
     externalReference?: string | null;
     ownerId?: string | null;
     agencyId?: string | null;
+    /**
+     * One of: Individual, Corporate
+     */
     prospectType?: SystemCaptureLeadRequestProspectTypeEnum | null;
     nationalId?: string | null;
     customerReference?: string | null;
@@ -66,8 +69,8 @@ export enum SystemCaptureLeadRequestChannelEnum {
     MarketingCampaign = 'MarketingCampaign'
 };
 export enum SystemCaptureLeadRequestProspectTypeEnum {
-    NUMBER_0 = 0,
-    NUMBER_1 = 1
+    Individual = 'Individual',
+    Corporate = 'Corporate'
 };
 
 

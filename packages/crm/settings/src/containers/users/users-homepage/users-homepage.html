@@ -79,23 +79,16 @@
   <button
     type="button"
     class="px-3 py-1.5 rounded-md text-sm font-medium transition-colors"
-    [class.bg-white]="statusFilter() === 1"
-    [class.text-slate-800]="statusFilter() === 1"
-    [class.shadow-sm]="statusFilter() === 1"
-    [class.text-slate-500]="statusFilter() !== 1"
-    (click)="onStatusFilterChange(1)"
-  >
+    [ngClass]="{'bg-white text-slate-800 shadow-sm text-slate-500': statusFilter() === 'Active'}"
+    (click)="onStatusFilterChange('Active')">
     Actifs
     <span class="ml-1 text-[10px] font-semibold tabular-nums">{{ userStatusStats().active ?? 0 }}</span>
   </button>
   <button
     type="button"
     class="px-3 py-1.5 rounded-md text-sm font-medium transition-colors"
-    [class.bg-white]="statusFilter() === 0"
-    [class.text-slate-800]="statusFilter() === 0"
-    [class.shadow-sm]="statusFilter() === 0"
-    [class.text-slate-500]="statusFilter() !== 0"
-    (click)="onStatusFilterChange(0)"
+    [ngClass]="{'bg-white text-slate-800 shadow-sm text-slate-500': statusFilter() === 'PendingActivation'}"
+    (click)="onStatusFilterChange('PendingActivation')"
   >
     En attente
     <span class="ml-1 text-[10px] font-semibold tabular-nums">{{ userStatusStats().pendingActivation ?? 0 }}</span>
@@ -103,11 +96,11 @@
   <button
     type="button"
     class="px-3 py-1.5 rounded-md text-sm font-medium transition-colors"
-    [class.bg-white]="statusFilter() === 2"
-    [class.text-slate-800]="statusFilter() === 2"
-    [class.shadow-sm]="statusFilter() === 2"
-    [class.text-slate-500]="statusFilter() !== 2"
-    (click)="onStatusFilterChange(2)"
+    [class.bg-white]="statusFilter() === 'Disabled'"
+    [class.text-slate-800]="statusFilter() === 'Disabled'"
+    [class.shadow-sm]="statusFilter() === 'Disabled'"
+    [class.text-slate-500]="statusFilter() !== 'Disabled'"
+    (click)="onStatusFilterChange('Disabled')"
   >
     Désactivés / Suspendus
     <span class="ml-1 text-[10px] font-semibold tabular-nums">{{ (userStatusStats().disabled ?? 0) + (userStatusStats().locked ?? 0) }}</span>
@@ -226,7 +219,7 @@
 
       <!-- Account type -->
       <td>
-        @if (item.accountType != null) {
+        @if (item.accountType !== null) {
           <tas-tag severity="neutral">{{ accountTypeLabel(item.accountType) }}</tas-tag>
         } @else {
           <span class="text-slate-400 text-sm">—</span>

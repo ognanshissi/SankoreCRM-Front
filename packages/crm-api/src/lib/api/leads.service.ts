@@ -1172,20 +1172,21 @@ export class LeadsApiService {
     }
 
     /**
-     * @param status 
-     * @param pipelineStage 
-     * @param source 
+     * @param status One of: New, Open, Qualifying, Qualified, Nurturing, Recycled, Converted, Lost, Disqualified, Archived
+     * @param pipelineStage One of: New, ContactAttempted, ContactEstablished, NeedIdentified, Qualified, ProductProposed, ApplicationStarted, DocumentCollection, ApplicationCompleted, ApprovalPending, Converted, Lost
+     * @param source One of: Web, MobileAgent, Agency, CallCenter, Sms, Ussd, WhatsApp, Referral, Partner, FileImport, Campaign
      * @param ownerId 
      * @param agencyId 
      * @param search 
      * @param tag 
+     * @param leadSourceConfigId 
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      */
-    public exportLeads(status?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9, pipelineStage?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11, source?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10, ownerId?: string, agencyId?: string, search?: string, tag?: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'text/csv', context?: HttpContext}): Observable<string>;
-    public exportLeads(status?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9, pipelineStage?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11, source?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10, ownerId?: string, agencyId?: string, search?: string, tag?: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'text/csv', context?: HttpContext}): Observable<HttpResponse<string>>;
-    public exportLeads(status?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9, pipelineStage?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11, source?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10, ownerId?: string, agencyId?: string, search?: string, tag?: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'text/csv', context?: HttpContext}): Observable<HttpEvent<string>>;
-    public exportLeads(status?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9, pipelineStage?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11, source?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10, ownerId?: string, agencyId?: string, search?: string, tag?: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'text/csv', context?: HttpContext}): Observable<any> {
+    public exportLeads(status?: 'New' | 'Open' | 'Qualifying' | 'Qualified' | 'Nurturing' | 'Recycled' | 'Converted' | 'Lost' | 'Disqualified' | 'Archived', pipelineStage?: 'New' | 'ContactAttempted' | 'ContactEstablished' | 'NeedIdentified' | 'Qualified' | 'ProductProposed' | 'ApplicationStarted' | 'DocumentCollection' | 'ApplicationCompleted' | 'ApprovalPending' | 'Converted' | 'Lost', source?: 'Web' | 'MobileAgent' | 'Agency' | 'CallCenter' | 'Sms' | 'Ussd' | 'WhatsApp' | 'Referral' | 'Partner' | 'FileImport' | 'Campaign', ownerId?: string, agencyId?: string, search?: string, tag?: string, leadSourceConfigId?: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'text/csv', context?: HttpContext}): Observable<string>;
+    public exportLeads(status?: 'New' | 'Open' | 'Qualifying' | 'Qualified' | 'Nurturing' | 'Recycled' | 'Converted' | 'Lost' | 'Disqualified' | 'Archived', pipelineStage?: 'New' | 'ContactAttempted' | 'ContactEstablished' | 'NeedIdentified' | 'Qualified' | 'ProductProposed' | 'ApplicationStarted' | 'DocumentCollection' | 'ApplicationCompleted' | 'ApprovalPending' | 'Converted' | 'Lost', source?: 'Web' | 'MobileAgent' | 'Agency' | 'CallCenter' | 'Sms' | 'Ussd' | 'WhatsApp' | 'Referral' | 'Partner' | 'FileImport' | 'Campaign', ownerId?: string, agencyId?: string, search?: string, tag?: string, leadSourceConfigId?: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'text/csv', context?: HttpContext}): Observable<HttpResponse<string>>;
+    public exportLeads(status?: 'New' | 'Open' | 'Qualifying' | 'Qualified' | 'Nurturing' | 'Recycled' | 'Converted' | 'Lost' | 'Disqualified' | 'Archived', pipelineStage?: 'New' | 'ContactAttempted' | 'ContactEstablished' | 'NeedIdentified' | 'Qualified' | 'ProductProposed' | 'ApplicationStarted' | 'DocumentCollection' | 'ApplicationCompleted' | 'ApprovalPending' | 'Converted' | 'Lost', source?: 'Web' | 'MobileAgent' | 'Agency' | 'CallCenter' | 'Sms' | 'Ussd' | 'WhatsApp' | 'Referral' | 'Partner' | 'FileImport' | 'Campaign', ownerId?: string, agencyId?: string, search?: string, tag?: string, leadSourceConfigId?: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'text/csv', context?: HttpContext}): Observable<HttpEvent<string>>;
+    public exportLeads(status?: 'New' | 'Open' | 'Qualifying' | 'Qualified' | 'Nurturing' | 'Recycled' | 'Converted' | 'Lost' | 'Disqualified' | 'Archived', pipelineStage?: 'New' | 'ContactAttempted' | 'ContactEstablished' | 'NeedIdentified' | 'Qualified' | 'ProductProposed' | 'ApplicationStarted' | 'DocumentCollection' | 'ApplicationCompleted' | 'ApprovalPending' | 'Converted' | 'Lost', source?: 'Web' | 'MobileAgent' | 'Agency' | 'CallCenter' | 'Sms' | 'Ussd' | 'WhatsApp' | 'Referral' | 'Partner' | 'FileImport' | 'Campaign', ownerId?: string, agencyId?: string, search?: string, tag?: string, leadSourceConfigId?: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'text/csv', context?: HttpContext}): Observable<any> {
 
         let localVarQueryParameters = new HttpParams({encoder: this.encoder});
         if (status !== undefined && status !== null) {
@@ -1215,6 +1216,10 @@ export class LeadsApiService {
         if (tag !== undefined && tag !== null) {
           localVarQueryParameters = this.addToHttpParams(localVarQueryParameters,
             <any>tag, 'tag');
+        }
+        if (leadSourceConfigId !== undefined && leadSourceConfigId !== null) {
+          localVarQueryParameters = this.addToHttpParams(localVarQueryParameters,
+            <any>leadSourceConfigId, 'leadSourceConfigId');
         }
 
         let localVarHeaders = this.defaultHeaders;
@@ -2475,14 +2480,14 @@ export class LeadsApiService {
 
     /**
      * @param leadId 
-     * @param status 
+     * @param status One of: Pending, Completed, Dismissed
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      */
-    public listLeadReminders(leadId: string, status?: 0 | 1 | 2, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<Array<ReminderDto>>;
-    public listLeadReminders(leadId: string, status?: 0 | 1 | 2, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<Array<ReminderDto>>>;
-    public listLeadReminders(leadId: string, status?: 0 | 1 | 2, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<Array<ReminderDto>>>;
-    public listLeadReminders(leadId: string, status?: 0 | 1 | 2, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
+    public listLeadReminders(leadId: string, status?: 'Pending' | 'Completed' | 'Dismissed', observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<Array<ReminderDto>>;
+    public listLeadReminders(leadId: string, status?: 'Pending' | 'Completed' | 'Dismissed', observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<Array<ReminderDto>>>;
+    public listLeadReminders(leadId: string, status?: 'Pending' | 'Completed' | 'Dismissed', observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<Array<ReminderDto>>>;
+    public listLeadReminders(leadId: string, status?: 'Pending' | 'Completed' | 'Dismissed', observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
         if (leadId === null || leadId === undefined) {
             throw new Error('Required parameter leadId was null or undefined when calling listLeadReminders.');
         }
@@ -2612,21 +2617,22 @@ export class LeadsApiService {
     /**
      * @param page 
      * @param pageSize 
-     * @param status 
-     * @param pipelineStage 
-     * @param source 
+     * @param status One of: New, Open, Qualifying, Qualified, Nurturing, Recycled, Converted, Lost, Disqualified, Archived
+     * @param pipelineStage One of: New, ContactAttempted, ContactEstablished, NeedIdentified, Qualified, ProductProposed, ApplicationStarted, DocumentCollection, ApplicationCompleted, ApprovalPending, Converted, Lost
+     * @param source One of: Web, MobileAgent, Agency, CallCenter, Sms, Ussd, WhatsApp, Referral, Partner, FileImport, Campaign
      * @param ownerId 
      * @param agencyId 
      * @param search 
      * @param tag 
-     * @param intentLevel 
+     * @param intentLevel One of: Unknown, Cold, Warm, Hot
+     * @param leadSourceConfigId 
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      */
-    public listLeads(page?: number, pageSize?: number, status?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9, pipelineStage?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11, source?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10, ownerId?: string, agencyId?: string, search?: string, tag?: string, intentLevel?: 0 | 1 | 2 | 3, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<LeadDtoPagedResult>;
-    public listLeads(page?: number, pageSize?: number, status?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9, pipelineStage?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11, source?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10, ownerId?: string, agencyId?: string, search?: string, tag?: string, intentLevel?: 0 | 1 | 2 | 3, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<LeadDtoPagedResult>>;
-    public listLeads(page?: number, pageSize?: number, status?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9, pipelineStage?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11, source?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10, ownerId?: string, agencyId?: string, search?: string, tag?: string, intentLevel?: 0 | 1 | 2 | 3, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<LeadDtoPagedResult>>;
-    public listLeads(page?: number, pageSize?: number, status?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9, pipelineStage?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11, source?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10, ownerId?: string, agencyId?: string, search?: string, tag?: string, intentLevel?: 0 | 1 | 2 | 3, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
+    public listLeads(page?: number, pageSize?: number, status?: 'New' | 'Open' | 'Qualifying' | 'Qualified' | 'Nurturing' | 'Recycled' | 'Converted' | 'Lost' | 'Disqualified' | 'Archived', pipelineStage?: 'New' | 'ContactAttempted' | 'ContactEstablished' | 'NeedIdentified' | 'Qualified' | 'ProductProposed' | 'ApplicationStarted' | 'DocumentCollection' | 'ApplicationCompleted' | 'ApprovalPending' | 'Converted' | 'Lost', source?: 'Web' | 'MobileAgent' | 'Agency' | 'CallCenter' | 'Sms' | 'Ussd' | 'WhatsApp' | 'Referral' | 'Partner' | 'FileImport' | 'Campaign', ownerId?: string, agencyId?: string, search?: string, tag?: string, intentLevel?: 'Unknown' | 'Cold' | 'Warm' | 'Hot', leadSourceConfigId?: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<LeadDtoPagedResult>;
+    public listLeads(page?: number, pageSize?: number, status?: 'New' | 'Open' | 'Qualifying' | 'Qualified' | 'Nurturing' | 'Recycled' | 'Converted' | 'Lost' | 'Disqualified' | 'Archived', pipelineStage?: 'New' | 'ContactAttempted' | 'ContactEstablished' | 'NeedIdentified' | 'Qualified' | 'ProductProposed' | 'ApplicationStarted' | 'DocumentCollection' | 'ApplicationCompleted' | 'ApprovalPending' | 'Converted' | 'Lost', source?: 'Web' | 'MobileAgent' | 'Agency' | 'CallCenter' | 'Sms' | 'Ussd' | 'WhatsApp' | 'Referral' | 'Partner' | 'FileImport' | 'Campaign', ownerId?: string, agencyId?: string, search?: string, tag?: string, intentLevel?: 'Unknown' | 'Cold' | 'Warm' | 'Hot', leadSourceConfigId?: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<LeadDtoPagedResult>>;
+    public listLeads(page?: number, pageSize?: number, status?: 'New' | 'Open' | 'Qualifying' | 'Qualified' | 'Nurturing' | 'Recycled' | 'Converted' | 'Lost' | 'Disqualified' | 'Archived', pipelineStage?: 'New' | 'ContactAttempted' | 'ContactEstablished' | 'NeedIdentified' | 'Qualified' | 'ProductProposed' | 'ApplicationStarted' | 'DocumentCollection' | 'ApplicationCompleted' | 'ApprovalPending' | 'Converted' | 'Lost', source?: 'Web' | 'MobileAgent' | 'Agency' | 'CallCenter' | 'Sms' | 'Ussd' | 'WhatsApp' | 'Referral' | 'Partner' | 'FileImport' | 'Campaign', ownerId?: string, agencyId?: string, search?: string, tag?: string, intentLevel?: 'Unknown' | 'Cold' | 'Warm' | 'Hot', leadSourceConfigId?: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<LeadDtoPagedResult>>;
+    public listLeads(page?: number, pageSize?: number, status?: 'New' | 'Open' | 'Qualifying' | 'Qualified' | 'Nurturing' | 'Recycled' | 'Converted' | 'Lost' | 'Disqualified' | 'Archived', pipelineStage?: 'New' | 'ContactAttempted' | 'ContactEstablished' | 'NeedIdentified' | 'Qualified' | 'ProductProposed' | 'ApplicationStarted' | 'DocumentCollection' | 'ApplicationCompleted' | 'ApprovalPending' | 'Converted' | 'Lost', source?: 'Web' | 'MobileAgent' | 'Agency' | 'CallCenter' | 'Sms' | 'Ussd' | 'WhatsApp' | 'Referral' | 'Partner' | 'FileImport' | 'Campaign', ownerId?: string, agencyId?: string, search?: string, tag?: string, intentLevel?: 'Unknown' | 'Cold' | 'Warm' | 'Hot', leadSourceConfigId?: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
 
         let localVarQueryParameters = new HttpParams({encoder: this.encoder});
         if (page !== undefined && page !== null) {
@@ -2668,6 +2674,10 @@ export class LeadsApiService {
         if (intentLevel !== undefined && intentLevel !== null) {
           localVarQueryParameters = this.addToHttpParams(localVarQueryParameters,
             <any>intentLevel, 'intentLevel');
+        }
+        if (leadSourceConfigId !== undefined && leadSourceConfigId !== null) {
+          localVarQueryParameters = this.addToHttpParams(localVarQueryParameters,
+            <any>leadSourceConfigId, 'leadSourceConfigId');
         }
 
         let localVarHeaders = this.defaultHeaders;
@@ -2723,15 +2733,15 @@ export class LeadsApiService {
     }
 
     /**
-     * @param status 
-     * @param productCategory 
+     * @param status One of: Draft, Published, Archived
+     * @param productCategory One of: Loan, Savings, Insurance, HealthInsurance, ForecastInsurance, Tontine, GroupCredit, Agriculture
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      */
-    public listQualificationTemplates(status?: 0 | 1 | 2, productCategory?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<Array<QualificationTemplateDto>>;
-    public listQualificationTemplates(status?: 0 | 1 | 2, productCategory?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<Array<QualificationTemplateDto>>>;
-    public listQualificationTemplates(status?: 0 | 1 | 2, productCategory?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<Array<QualificationTemplateDto>>>;
-    public listQualificationTemplates(status?: 0 | 1 | 2, productCategory?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
+    public listQualificationTemplates(status?: 'Draft' | 'Published' | 'Archived', productCategory?: 'Loan' | 'Savings' | 'Insurance' | 'HealthInsurance' | 'ForecastInsurance' | 'Tontine' | 'GroupCredit' | 'Agriculture', observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<Array<QualificationTemplateDto>>;
+    public listQualificationTemplates(status?: 'Draft' | 'Published' | 'Archived', productCategory?: 'Loan' | 'Savings' | 'Insurance' | 'HealthInsurance' | 'ForecastInsurance' | 'Tontine' | 'GroupCredit' | 'Agriculture', observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<Array<QualificationTemplateDto>>>;
+    public listQualificationTemplates(status?: 'Draft' | 'Published' | 'Archived', productCategory?: 'Loan' | 'Savings' | 'Insurance' | 'HealthInsurance' | 'ForecastInsurance' | 'Tontine' | 'GroupCredit' | 'Agriculture', observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<Array<QualificationTemplateDto>>>;
+    public listQualificationTemplates(status?: 'Draft' | 'Published' | 'Archived', productCategory?: 'Loan' | 'Savings' | 'Insurance' | 'HealthInsurance' | 'ForecastInsurance' | 'Tontine' | 'GroupCredit' | 'Agriculture', observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
 
         let localVarQueryParameters = new HttpParams({encoder: this.encoder});
         if (status !== undefined && status !== null) {

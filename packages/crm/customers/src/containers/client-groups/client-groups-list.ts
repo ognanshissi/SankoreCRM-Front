@@ -30,9 +30,9 @@ import {
   GROUP_TYPE_OPTIONS,
   groupStatusLabel,
   groupStatusSeverity,
-  groupStatusToNumeric,
+  groupStatusToParam,
   groupTypeLabel,
-  groupTypeToNumeric,
+  groupTypeToParam,
 } from './group-labels';
 
 @Component({
@@ -215,8 +215,8 @@ export class ClientGroupsListPage implements OnInit {
 
     this._clientGroupsApiService
       .listClientGroups(
-        groupTypeToNumeric(this.filterType()),
-        groupStatusToNumeric(this.filterStatus()),
+        groupTypeToParam(this.filterType()),
+        groupStatusToParam(this.filterStatus()),
         this.filterAgencyId() ?? undefined,
         this.filterQuery() || undefined,
         this._page,

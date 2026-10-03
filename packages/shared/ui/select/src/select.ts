@@ -24,6 +24,7 @@ import { fromEvent } from 'rxjs';
 
 @Component({
   selector: 'tas-select',
+  exportAs: 'tasSelect',
   templateUrl: './select.html',
   styleUrl: './select.scss',
   standalone: true,
@@ -59,6 +60,9 @@ export class TasSelect<T>
   public searchable = input<boolean>(false);
 
   public readonly = input<boolean>(false);
+
+  /** Affiche une croix dans le champ pour effacer la sélection. */
+  public clearable = input(false, { transform: booleanAttribute });
 
   @ContentChild('labelTemplate', { descendants: true })
   labelTemplate!: TemplateRef<any>;
@@ -103,7 +107,10 @@ export class TasSelect<T>
       // Une synchronisation venue du modèle ne doit pas être renotifiée :
       // ce serait exactement le cycle que `writeValue` évite ci-dessous.
       if (this._syncingFromModel) return;
-      this.value = this.selectionModel.selected[0];
+      // `?? null` : vider la sélection doit notifier `null` et non
+      // `undefined`, sinon un filtre remis à zéro repart avec une valeur
+      // que le gestionnaire ne reconnaît pas comme « aucun choix ».
+      this.value = this.selectionModel.selected[0] ?? null;
     });
   }
 
@@ -157,6 +164,28 @@ export class TasSelect<T>
     this.isDropdownOpened.set(false);
   }
 
+  /**
+   * Efface la sélection et notifie `null` au formulaire.
+   *
+   * Appelable depuis le template du parent (`#sel="tasSelect"` ou
+   * `@ViewChild`) autant que par la croix du champ.
+   */
+  public clear(): void {
+    if (this.readonly()) {
+      return;
+    }
+    this.searchKey.set('');
+    this.isDropdownOpened.set(false);
+
+    if (!this.selectionModel.isEmpty()) {
+      // L'abonnement de `ngOnInit` se charge de la notification : la faire
+      // aussi ici émettrait deux fois.
+      this.selectionModel.clear();
+    } else if (this.value !== null) {
+      this.value = null;
+    }
+  }
+
   public toggleDropdown(): void {
     if (this.readonly()) {
       return;
@@ -174,6 +203,12 @@ export class TasSelect<T>
     this.selectControl.setValue(value, { emitEvent: false });
     this.onChange(value);
     this.onTouched();
+  }
+
+  public get showClearButton(): boolean {
+    // On s'appuie sur la sélection et non sur `displayValue`, qui est nul tant
+    // que les options ne sont pas chargées alors qu'une valeur existe déjà.
+    return this.clearable() && !this.readonly() && !this.selectionModel.isEmpty();
   }
 
   public get displayValue() {

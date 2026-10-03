@@ -100,9 +100,10 @@ const LOCALE_FILTER_OPTIONS = [
             <tas-form-field>
               <tas-label>Locale</tas-label>
               <tas-select
+                clearable
                 [options]="localeOptions"
                 [ngModel]="filterLocale()"
-                (ngModelChange)="filterLocale.set($event)"
+                (ngModelChange)="filterLocale.set($event ?? '')"
               ></tas-select>
             </tas-form-field>
             <div>

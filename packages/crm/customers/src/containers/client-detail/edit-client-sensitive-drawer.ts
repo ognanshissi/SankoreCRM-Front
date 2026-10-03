@@ -35,7 +35,7 @@ import {
   IDENTITY_DOCUMENT_OPTIONS,
   IDENTITY_DOCUMENT_ORDER,
   identityDocumentLabel,
-  identityDocumentToIndex,
+  identityDocumentToName,
   isLegalClient,
 } from '../../models/client-labels';
 
@@ -489,11 +489,11 @@ export class EditClientSensitiveDrawer {
           changed.push('maidenName');
         }
         if (value.identityDocumentType !== initial.identityDocumentType) {
-          const index = identityDocumentToIndex(value.identityDocumentType);
+          const documentType = identityDocumentToName(value.identityDocumentType);
           request.identityDocumentType =
-            index === null
+            documentType === null
               ? null
-              : (index as UpdateClientSensitiveRequestIdentityDocumentTypeEnum);
+              : (documentType as UpdateClientSensitiveRequestIdentityDocumentTypeEnum);
           changed.push('identityDocumentType');
         }
         if (value.identityDocumentNumber !== '') {
