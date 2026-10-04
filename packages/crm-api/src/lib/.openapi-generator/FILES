@@ -198,6 +198,8 @@ model/dismiss-duplicate-request.interface.ts
 model/dismissal-dto.interface.ts
 model/dispatch-lead-request.interface.ts
 model/dispatch-lead-result.interface.ts
+model/dispatch-preview-candidate.interface.ts
+model/dispatch-preview-result.interface.ts
 model/dispatch-task-request.interface.ts
 model/dispatch-task-result.interface.ts
 model/dispatching-rule-dto.interface.ts

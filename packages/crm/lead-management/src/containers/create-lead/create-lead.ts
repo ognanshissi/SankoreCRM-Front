@@ -29,6 +29,8 @@ import {
   CaptureLeadRequestProspectTypeEnum,
   CaptureLeadRequestSourceEnum,
   DuplicateMatchResult,
+  LeadSourceListDtoStatusEnum,
+  LeadSourcesApiService,
   LeadsApiService,
   ProductsApiService,
 } from '@sankore/crm-api';
@@ -44,6 +46,11 @@ export class CreateLeadFormModel {
   public prospectType!: CaptureLeadRequestProspectTypeEnum;
   public companyName!: string;
   public source!: CaptureLeadRequestSourceEnum;
+  /**
+   * Source **configurée** d'où vient le lead (`leadSourceConfigId`). Facultatif : un lead saisi au
+   * guichet peut n'être rattaché à aucune source paramétrée. Chaîne vide = aucune.
+   */
+  public leadSourceConfigId!: string;
   public interestedProduct!: string;
   public desiredAmount!: string;
   public desiredCurrency!: string;
@@ -60,6 +67,7 @@ export class CreateLeadFormModel {
     m.prospectType = CaptureLeadRequestProspectTypeEnum.Individual;
     m.companyName = '';
     m.source = CaptureLeadRequestSourceEnum.Agency;
+    m.leadSourceConfigId = '';
     m.interestedProduct = '';
     m.desiredAmount = '';
     m.desiredCurrency = 'XOF';
@@ -78,15 +86,6 @@ export class CreateLeadFormModel {
 export const PROSPECT_TYPE_OPTIONS = [
   { label: 'Individuel', value: CaptureLeadRequestProspectTypeEnum.Individual },
   { label: 'Entreprise', value: CaptureLeadRequestProspectTypeEnum.Corporate },
-];
-
-export const SOURCE_OPTIONS = [
-  { label: 'Agence', value: CaptureLeadRequestSourceEnum.Agency },
-  { label: "Centre d'appels", value: CaptureLeadRequestSourceEnum.CallCenter },
-  { label: 'Référencement', value: CaptureLeadRequestSourceEnum.Referral },
-  { label: 'WhatsApp', value: CaptureLeadRequestSourceEnum.WhatsApp },
-  { label: 'Web', value: CaptureLeadRequestSourceEnum.Web },
-  { label: 'Partenaire', value: CaptureLeadRequestSourceEnum.Partner },
 ];
 
 export const CURRENCY_OPTIONS = [
@@ -125,6 +124,7 @@ export class CreateLeadComponent {
   private readonly _destroyRef = inject(DestroyRef);
   private readonly _leadsApiService = inject(LeadsApiService);
   private readonly _agenciesApiService = inject(AgenciesApiService);
+  private readonly _leadSourcesApiService = inject(LeadSourcesApiService);
   private readonly _snackbarService = inject(SnackbarService);
   private readonly _productSpecialitiesService = inject(ProductsApiService);
 
@@ -132,7 +132,17 @@ export class CreateLeadComponent {
   public isCheckingDuplicates = signal(false);
 
   public readonly prospectTypeOptions = PROSPECT_TYPE_OPTIONS;
-  public readonly sourceOptions = SOURCE_OPTIONS;
+
+  /**
+   * Sources configurées proposées à la saisie, depuis Paramétrage › Sources & Campagnes.
+   *
+   * Les sources **archivées sont exclues** : on consulte l'historique d'une source archivée, on ne
+   * lui attribue pas un lead créé aujourd'hui. C'est l'inverse du filtre de la liste des leads, qui
+   * les garde pour ne pas rendre leurs leads introuvables.
+   */
+  public leadSourceOptions = signal<{ label: string; value: string }[]>([
+    { label: 'Aucune', value: '' },
+  ]);
   public readonly currencyOptions = CURRENCY_OPTIONS;
 
   public agencies = signal<{ label: string; value: string }[]>([]);
@@ -162,6 +172,7 @@ export class CreateLeadComponent {
 
   constructor() {
     this._loadAgencies();
+    this._loadLeadSources();
 
     toObservable(computed(() => this.formSchema.phoneNumber().value()))
       .pipe(
@@ -195,6 +206,7 @@ export class CreateLeadComponent {
         prospectType: value.prospectType,
         companyName: this.isCompany() ? value.companyName || null : null,
         source: value.source,
+        leadSourceConfigId: value.leadSourceConfigId || null,
         interestedProduct: value.interestedProduct || null,
         desiredAmount: value.desiredAmount ? Number(value.desiredAmount) : null,
         desiredCurrency: value.desiredCurrency || null,
@@ -229,6 +241,28 @@ export class CreateLeadComponent {
 
   public close(): void {
     this._dialogRef.close();
+  }
+
+  private _loadLeadSources(): void {
+    this._leadSourcesApiService
+      .listLeadSources(undefined, undefined, undefined, undefined, 1, 200)
+      .pipe(
+        map((res) => [
+          { label: 'Aucune', value: '' },
+          ...(res.items ?? [])
+            .filter((source) => source.status !== LeadSourceListDtoStatusEnum.Archived)
+            .map((source) => ({
+              label: source.label?.trim() || source.code?.trim() || 'Source sans nom',
+              value: source.id ?? '',
+            })),
+        ]),
+        catchError(() => {
+          // Le champ est facultatif : son indisponibilité ne doit pas empêcher de créer un lead.
+          // La liste reste réduite à « Aucune », le reste du formulaire fonctionne.
+          return EMPTY;
+        }),
+      )
+      .subscribe((options) => this.leadSourceOptions.set(options));
   }
 
   private _loadAgencies(): void {

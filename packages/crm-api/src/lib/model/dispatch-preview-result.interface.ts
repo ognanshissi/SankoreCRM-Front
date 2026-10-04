@@ -9,25 +9,23 @@
  * https://openapi-generator.tech
  * Do not edit the class manually.
  */
+import { DispatchPreviewCandidate } from './dispatch-preview-candidate.interface';
 
 
-export interface AssignmentDto { 
-    id?: string;
-    agentId?: string;
+export interface DispatchPreviewResult { 
+    leadId?: string;
     /**
      * One of: RoundRobin, WeightedRoundRobin, CherryPicking, CompatibilityScoring, StickyAssignment
      */
-    strategy?: AssignmentDtoStrategyEnum;
-    compatibilityScore?: number;
-    wasManualOverride?: boolean;
-    overrideReason?: string | null;
-    createdAt?: string;
-    slaDeadline?: string;
-    firstContactAt?: string | null;
-    slaBreached?: boolean;
-    supersededAt?: string | null;
+    strategy?: DispatchPreviewResultStrategyEnum;
+    ruleId?: string | null;
+    ruleName?: string | null;
+    maxTasksPerAgent?: number;
+    antiMonopolyThreshold?: number;
+    wouldAssignToAgentId?: string | null;
+    candidates?: Array<DispatchPreviewCandidate> | null;
 }
-export enum AssignmentDtoStrategyEnum {
+export enum DispatchPreviewResultStrategyEnum {
     RoundRobin = 'RoundRobin',
     WeightedRoundRobin = 'WeightedRoundRobin',
     CherryPicking = 'CherryPicking',

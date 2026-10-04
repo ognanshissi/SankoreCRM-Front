@@ -702,23 +702,29 @@ export class LeadHomepage implements OnInit {
   }
 
   /**
-   * Export CSV des leads filtrés — **à une exception près, signalée à l'agent**.
+   * Export CSV des leads filtrés.
    *
-   * `GET /leads/export` n'accepte pas `leadSourceConfigId` : ses paramètres s'arrêtent à
-   * `status, pipelineStage, source, ownerId, agencyId, search, tag`. Un filtre par source
-   * configurée ne peut donc pas être transmis, et le fichier contiendra toutes les sources. Plutôt
-   * que de laisser croire à un export filtré, on le dit dans le message de fin. À retirer le jour
-   * où le backend expose ce paramètre sur l'export, comme il le fait déjà sur la liste.
+   * `leadSourceConfigId` est le 8e paramètre, après `tag` : l'export porte donc exactement les
+   * mêmes filtres que la liste, source configurée comprise.
    */
   public exportLeads(): void {
     this.isExporting.set(true);
     const status = this.filterStatus() ? Number(this.filterStatus()) as any : undefined;
     const agencyId = this.filterAgencyId() || undefined;
     const search = this.searchQuery() || undefined;
-    const sourceFilterIgnored = !!this.filterLeadSourceId();
+    const leadSourceConfigId = this.filterLeadSourceId() || undefined;
 
     this._leadsApiService
-      .exportLeads(status, undefined, undefined, undefined, agencyId, search)
+      .exportLeads(
+        status,
+        undefined,
+        undefined,
+        undefined,
+        agencyId,
+        search,
+        undefined,
+        leadSourceConfigId,
+      )
       .pipe(
       catchError(() => {
         this._snackbar.error('Erreur', 'Impossible d\'exporter les leads.');
@@ -733,12 +739,7 @@ export class LeadHomepage implements OnInit {
       a.download = `leads-export-${new Date().toISOString().slice(0, 10)}.csv`;
       a.click();
       URL.revokeObjectURL(url);
-      this._snackbar.success(
-        'Export terminé',
-        sourceFilterIgnored
-          ? "Le fichier CSV a été téléchargé. Attention : l'export ne sait pas filtrer par source configurée, toutes les sources y figurent."
-          : 'Le fichier CSV a été téléchargé.',
-      );
+      this._snackbar.success('Export terminé', 'Le fichier CSV a été téléchargé.');
       this.isExporting.set(false);
     });
   }

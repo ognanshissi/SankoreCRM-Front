@@ -16,7 +16,7 @@ import { NurtureRecycleDrawer } from './nurture-recycle-drawer';
 import { Severity, TasTag } from '@talisoft/ui/tag';
 import { TimeagoPipe } from '@talisoft/ui/timeago';
 import { Menu, MenuItem, TasMenuTrigger } from '@talisoft/ui/menu';
-import { catchError, EMPTY } from 'rxjs';
+import { catchError, EMPTY, exhaustMap, finalize } from 'rxjs';
 import { LeadEditContext } from './lead-edit-context';
 
 interface LeadMenuItem {
@@ -158,7 +158,7 @@ function parseFactors(factorsJson: string | null | undefined): ScoreFactor[] {
           }
 
           <!-- Actions menu -->
-          <button tas-outlined-button type="button" TasMenuTrigger [panel]="actionsMenu">
+          <button tas-outlined-button type="button" color="primary" TasMenuTrigger [panel]="actionsMenu">
             <tas-icon iconName="feather:more-horizontal" style="font-size:14px"></tas-icon>
             Actions
             <tas-icon iconName="feather:chevron-down" style="font-size:10px"></tas-icon>
@@ -259,7 +259,7 @@ function parseFactors(factorsJson: string | null | undefined): ScoreFactor[] {
                 </div>
 
                 <!-- Score & Temperature badge -->
-                @if (lead()!.score != null || lead()!.intentLevel != null) {
+                @if (lead()!.score !== null || lead()!.intentLevel !== null) {
                   <div class="mt-3 relative">
                     <button
                       type="button"
@@ -593,11 +593,18 @@ export class EditLeadNavigation implements OnDestroy {
     this.isRecordingFirstContact.set(true);
     this._leadsApiService.recordFirstContact(this.id(), { contactedAt: new Date().toISOString() }).pipe(
       catchError(() => { this._snackbar.error('Erreur', 'Enregistrement échoué.'); return EMPTY; }),
-    ).subscribe(() => {
-      this._snackbar.success('Premier contact', 'Le premier contact a été enregistré.');
-      this.isRecordingFirstContact.set(false);
-      this._leadsApiService.getLead(this.id()).pipe(catchError(() => EMPTY))
-        .subscribe((lead) => this.lead.set(lead));
+      finalize(() => this.isRecordingFirstContact.set(false)),
+      exhaustMap(() => {
+        this._snackbar.success(
+          'Premier contact',
+          'Le premier contact a été enregistré.',
+        );
+        return this._leadsApiService
+          .getLead(this.id())
+          .pipe(catchError(() => EMPTY))
+      })
+    ).subscribe((lead) => {
+      this.lead.set(lead)
     });
   }
 
@@ -686,8 +693,6 @@ export class EditLeadNavigation implements OnDestroy {
     if (!currentLead) return;
 
     const ref = this._sideDrawerService.open(ConvertLeadWizard, {
-      width: '100%',
-      height: '100%',
       panelClass: 'side-drawer-panel',
       data: { lead: currentLead },
     });
@@ -738,9 +743,6 @@ export class EditLeadNavigation implements OnDestroy {
     if (!currentLead) return;
 
     const ref = this._sideDrawerService.open(ReassignLeadDrawer, {
-      width: '100%',
-      height: '100%',
-      panelClass: 'side-drawer-panel',
       data: { lead: currentLead },
     });
 

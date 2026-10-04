@@ -16,6 +16,8 @@ export interface DispatchLeadRequest {
      * One of: RoundRobin, WeightedRoundRobin, CherryPicking, CompatibilityScoring, StickyAssignment
      */
     strategy?: DispatchLeadRequestStrategyEnum | null;
+    agentId?: string | null;
+    overrideReason?: string | null;
 }
 export enum DispatchLeadRequestStrategyEnum {
     RoundRobin = 'RoundRobin',

@@ -136,6 +136,8 @@ export * from './dismiss-duplicate-request.interface';
 export * from './dismissal-dto.interface';
 export * from './dispatch-lead-request.interface';
 export * from './dispatch-lead-result.interface';
+export * from './dispatch-preview-candidate.interface';
+export * from './dispatch-preview-result.interface';
 export * from './dispatch-task-request.interface';
 export * from './dispatch-task-result.interface';
 export * from './dispatching-rule-dto.interface';

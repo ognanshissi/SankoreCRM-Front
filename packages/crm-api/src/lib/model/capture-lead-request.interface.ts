@@ -59,6 +59,7 @@ export interface CaptureLeadRequest {
     gateMode?: CaptureLeadRequestGateModeEnum | null;
     minConfidenceThreshold?: number | null;
     force?: boolean;
+    leadSourceConfigId?: string | null;
 }
 export enum CaptureLeadRequestSourceEnum {
     Web = 'Web',

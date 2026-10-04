@@ -1,13 +1,14 @@
 import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { DIALOG_DATA, DialogRef } from '@angular/cdk/dialog';
+import { HttpErrorResponse } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
-import { catchError, EMPTY, forkJoin, of } from 'rxjs';
+import { catchError, EMPTY, finalize, of, switchMap } from 'rxjs';
 import { TasIcon } from '@talisoft/ui/icon';
 import { TasSpinner } from '@talisoft/ui/spinner';
 import { TasTag } from '@talisoft/ui/tag';
 import { Button } from '@talisoft/ui/button';
 import { TasInput } from '@talisoft/ui/input';
-import { TasFormField, TasLabel } from '@talisoft/ui/form-field';
+import { TasFormField, TasHint, TasLabel } from '@talisoft/ui/form-field';
 import {
   TasSideDrawer,
   TasDrawerTitle,
@@ -20,8 +21,8 @@ import {
   UsersApiService,
   UserDto,
   LeadDto,
-  DispatchLeadRequestStrategyEnum,
 } from '@sankore/crm-api';
+import { TasTitle } from '@talisoft/ui/title';
 
 export interface ReassignLeadDrawerData {
   lead: LeadDto;
@@ -52,28 +53,38 @@ const CAPACITY_THRESHOLD = 50;
     TasInput,
     TasFormField,
     TasLabel,
+    TasHint,
     FormsModule,
+    TasTitle,
   ],
   template: `
     <tas-side-drawer>
       <tas-drawer-title>
-        <div class="flex items-center gap-2">
-          <tas-icon iconName="feather:user-plus" style="font-size:18px"></tas-icon>
-          <span>Réassigner le lead</span>
-        </div>
+        <tas-title>Réassigner le lead</tas-title>
       </tas-drawer-title>
 
       <tas-drawer-content>
         <!-- Lead summary -->
         <div class="mb-4 p-3 rounded-lg bg-slate-50 border border-slate-200">
-          <p class="text-sm font-medium text-slate-800">{{ data.lead.fullName ?? leadDisplayName() }}</p>
+          <p class="text-sm font-medium text-slate-800">
+            {{ data.lead.fullName ?? leadDisplayName() }}
+          </p>
           @if (data.lead.phoneNumber) {
-            <p class="text-xs text-slate-400 mt-0.5">{{ data.lead.phoneNumber }}</p>
+            <p class="text-xs text-slate-400 mt-0.5">
+              {{ data.lead.phoneNumber }}
+            </p>
           }
           @if (data.lead.currentAssignedId) {
             <div class="flex items-center gap-1 mt-1.5">
-              <tas-icon iconName="feather:user" class="text-slate-400" style="font-size:10px"></tas-icon>
-              <span class="text-xs text-slate-500">Assigné actuellement à : <span class="font-medium">{{ currentOwnerName() }}</span></span>
+              <tas-icon
+                iconName="feather:user"
+                class="text-slate-400"
+                style="font-size:10px"
+              ></tas-icon>
+              <span class="text-xs text-slate-500"
+                >Assigné actuellement à :
+                <span class="font-medium">{{ currentOwnerName() }}</span></span
+              >
             </div>
           }
         </div>
@@ -90,10 +101,14 @@ const CAPACITY_THRESHOLD = 50;
           />
         </tas-form-field>
 
-        <!-- Reason -->
+        <!-- Reason — requis : l'API écrit l'affectation avec WasManualOverride = true et
+             conserve ce motif, c'est lui qui explique l'override dans l'historique. -->
         <div class="mt-3">
           <tas-form-field size="small">
-            <tas-label>Motif de réassignation</tas-label>
+            <tas-label
+              >Motif de réassignation
+              <span class="text-functional-error">*</span></tas-label
+            >
             <input
               tasInput
               type="text"
@@ -101,6 +116,9 @@ const CAPACITY_THRESHOLD = 50;
               [ngModel]="reason()"
               (ngModelChange)="reason.set($event)"
             />
+            @if (!reason().trim()) {
+              <tas-hint>Obligatoire : conservé dans l'historique d'affectation.</tas-hint>
+            }
           </tas-form-field>
         </div>
 
@@ -109,7 +127,9 @@ const CAPACITY_THRESHOLD = 50;
           <div class="flex items-center justify-between mb-2">
             <p class="text-xs font-semibold text-slate-600">
               Agents disponibles
-              <span class="text-slate-400 font-normal">(triés par compatibilité)</span>
+              <span class="text-slate-400 font-normal"
+                >(triés par compatibilité)</span
+              >
             </p>
             @if (isLoadingAgents()) {
               <tas-spinner size="3" class="text-primary"></tas-spinner>
@@ -122,7 +142,10 @@ const CAPACITY_THRESHOLD = 50;
             </div>
           } @else if (filteredAgents().length === 0) {
             <div class="py-8 text-center">
-              <tas-icon iconName="feather:users" class="text-slate-300 mb-1" style="font-size:24px"></tas-icon>
+              <tas-icon
+                iconName="feather:users"
+                class="text-slate-300 mb-1"
+                style="font-size:24px"></tas-icon>
               <p class="text-xs text-slate-400">Aucun agent trouvé</p>
             </div>
           } @else {
@@ -131,18 +154,24 @@ const CAPACITY_THRESHOLD = 50;
                 <button
                   type="button"
                   class="w-full text-left p-3 rounded-lg border transition-all hover:shadow-sm"
-                  [class]="selectedAgentId() === agent.user.id
-                    ? 'border-primary bg-primary/5 ring-1 ring-primary/30'
-                    : agent.isSaturated
-                      ? 'border-amber-200 bg-amber-50/50'
-                      : 'border-slate-200 bg-white hover:border-slate-300'"
+                  [class]="
+                    selectedAgentId() === agent.user.id
+                      ? 'border-primary bg-primary/5 ring-1 ring-primary/30'
+                      : agent.isSaturated
+                        ? 'border-amber-200 bg-amber-50/50'
+                        : 'border-slate-200 bg-white hover:border-slate-300'
+                  "
                   (click)="selectedAgentId.set(agent.user.id ?? null)"
                 >
                   <div class="flex items-center gap-3">
                     <!-- Avatar -->
                     <div
                       class="w-9 h-9 rounded-full flex items-center justify-center text-xs font-semibold shrink-0"
-                      [class]="agent.isSaturated ? 'bg-amber-100 text-amber-700' : 'bg-teal-50 text-teal-800'"
+                      [class]="
+                        agent.isSaturated
+                          ? 'bg-amber-100 text-amber-700'
+                          : 'bg-teal-50 text-teal-800'
+                      "
                     >
                       {{ initials(agent.user) }}
                     </div>
@@ -150,24 +179,40 @@ const CAPACITY_THRESHOLD = 50;
                     <!-- Info -->
                     <div class="flex-1 min-w-0">
                       <div class="flex items-center gap-1.5">
-                        <p class="text-sm font-medium text-slate-800 truncate">{{ agent.user.fullName ?? agent.user.email }}</p>
+                        <p class="text-sm font-medium text-slate-800 truncate">
+                          {{ agent.user.fullName ?? agent.user.email }}
+                        </p>
                         @if (agent.isSaturated) {
-                          <tas-tag severity="warning" class="shrink-0">Saturé</tas-tag>
+                          <tas-tag severity="warning" class="shrink-0"
+                            >Saturé</tas-tag
+                          >
                         }
                         @if (!agent.user.isAvailable) {
-                          <tas-tag severity="neutral" class="shrink-0">Indisponible</tas-tag>
+                          <tas-tag severity="neutral" class="shrink-0"
+                            >Indisponible</tas-tag
+                          >
                         }
                       </div>
                       <div class="flex items-center gap-3 mt-0.5">
                         @if (agent.user.agencyName) {
-                          <span class="text-[10px] text-slate-400">{{ agent.user.agencyName }}</span>
+                          <span class="text-[10px] text-slate-400">{{
+                            agent.user.agencyName
+                          }}</span>
                         }
-                        <span class="text-[10px] text-slate-400">{{ agent.totalAssigned }} leads actifs</span>
+                        <span class="text-[10px] text-slate-400"
+                          >{{ agent.totalAssigned }} leads actifs</span
+                        >
                       </div>
                       <!-- Compatibility factor -->
                       @if (agent.compatibilityFactor) {
-                        <p class="text-[10px] text-slate-500 mt-0.5 flex items-center gap-1">
-                          <tas-icon iconName="feather:zap" style="font-size:8px" class="text-amber-500"></tas-icon>
+                        <p
+                          class="text-[10px] text-slate-500 mt-0.5 flex items-center gap-1"
+                        >
+                          <tas-icon
+                            iconName="feather:zap"
+                            style="font-size:8px"
+                            class="text-amber-500"
+                          ></tas-icon>
                           {{ agent.compatibilityFactor }}
                         </p>
                       }
@@ -177,24 +222,35 @@ const CAPACITY_THRESHOLD = 50;
                     <div class="text-right shrink-0">
                       <div
                         class="text-lg font-bold tabular-nums"
-                        [class]="compatibilityScoreColor(agent.compatibilityScore)"
-                      >
+                        [class]="compatibilityScoreColor(agent.compatibilityScore)">
                         {{ agent.compatibilityScore }}
                       </div>
-                      <p class="text-[9px] text-slate-400 -mt-0.5">compatibilité</p>
+                      <p class="text-[9px] text-slate-400 -mt-0.5">
+                        compatibilité
+                      </p>
                     </div>
                   </div>
 
                   <!-- Performance bar -->
                   <div class="mt-2 flex items-center gap-2">
-                    <div class="flex-1 h-1 bg-slate-100 rounded-full overflow-hidden">
+                    <div
+                      class="flex-1 h-1 bg-slate-100 rounded-full overflow-hidden"
+                    >
                       <div
                         class="h-full rounded-full transition-all"
-                        [class]="agent.slaComplianceRate >= 80 ? 'bg-green-500' : agent.slaComplianceRate >= 50 ? 'bg-amber-500' : 'bg-red-400'"
+                        [class]="
+                          agent.slaComplianceRate >= 80
+                            ? 'bg-green-500'
+                            : agent.slaComplianceRate >= 50
+                              ? 'bg-amber-500'
+                              : 'bg-red-400'
+                        "
                         [style.width.%]="agent.slaComplianceRate"
                       ></div>
                     </div>
-                    <span class="text-[9px] text-slate-400 tabular-nums shrink-0">
+                    <span
+                      class="text-[9px] text-slate-400 tabular-nums shrink-0"
+                    >
                       SLA {{ agent.slaComplianceRate }}%
                     </span>
                   </div>
@@ -206,23 +262,23 @@ const CAPACITY_THRESHOLD = 50;
       </tas-drawer-content>
 
       <tas-drawer-action>
-        <div class="flex items-center justify-between w-full">
           <button tas-outlined-button type="button" (click)="close()">
-            Annuler
+            <tas-icon iconName="feather:x"></tas-icon> Annuler
           </button>
           <button
-            tas-button
+            tas-raised-button
             color="primary"
             type="button"
-            [disabled]="!selectedAgentId() || isSubmitting()"
+            [disabled]="!canSubmit() || isSubmitting()"
             (click)="confirm()"
           >
             @if (isSubmitting()) {
               <tas-spinner size="3" class="text-white"></tas-spinner>
+            } @else if (!isSubmitting()) {
+              <tas-icon iconName="feather:send"></tas-icon>
             }
             Réassigner
           </button>
-        </div>
       </tas-drawer-action>
     </tas-side-drawer>
   `,
@@ -243,14 +299,20 @@ export class ReassignLeadDrawer implements OnInit {
 
   public agents = signal<AgentRow[]>([]);
 
+  /** Un agent ET un motif : l'API refuse un override sans motif. */
+  public readonly canSubmit = computed(
+    () => !!this.selectedAgentId() && this.reason().trim().length > 0,
+  );
+
   public readonly filteredAgents = computed(() => {
     const q = this.searchQuery().toLowerCase().trim();
     const list = this.agents();
     if (!q) return list;
-    return list.filter((a) =>
-      (a.user.fullName?.toLowerCase().includes(q)) ||
-      (a.user.email?.toLowerCase().includes(q)) ||
-      (a.user.agencyName?.toLowerCase().includes(q)),
+    return list.filter(
+      (a) =>
+        a.user.fullName?.toLowerCase().includes(q) ||
+        a.user.email?.toLowerCase().includes(q) ||
+        a.user.agencyName?.toLowerCase().includes(q),
     );
   });
 
@@ -261,7 +323,9 @@ export class ReassignLeadDrawer implements OnInit {
   public leadDisplayName(): string {
     const l = this.data.lead;
     const parts = [l.firstName, l.lastName].filter(Boolean);
-    return parts.length ? parts.join(' ') : l.phoneNumber ?? l.email ?? 'Lead';
+    return parts.length
+      ? parts.join(' ')
+      : (l.phoneNumber ?? l.email ?? 'Lead');
   }
 
   public initials(user: UserDto): string {
@@ -276,35 +340,91 @@ export class ReassignLeadDrawer implements OnInit {
     return 'text-red-500';
   }
 
+  /**
+   * Réassignation = créer une AFFECTATION, puis aligner le propriétaire.
+   *
+   * Ce tiroir n'appelait que `updateLeadOwner`, qui ne touche que `OwnerId`. Or ce que l'écran
+   * montre — compatibilité, saturation, respect du SLA, « les agents seront notifiés » — relève
+   * de l'affectation : `OwnerId` dit qui porte la relation, `CurrentAssignmentId` dit quelle
+   * décision de dispatch est en vigueur (cf. Lead.cs). Sans affectation, aucun SLA ne démarre et
+   * `RecordFirstContact` refuse le lead avec LEAD_HAS_NO_ACTIVE_ASSIGNMENT — un agent voyait donc
+   * le lead « réassigné » puis ne pouvait pas enregistrer son premier contact.
+   *
+   * `dispatchLead` accepte désormais un agent explicite : le moteur ne classe plus, il prend
+   * celui qu'on nomme. `overrideReason` est obligatoire côté API (l'affectation est écrite avec
+   * WasManualOverride = true, et un override sans motif n'explique rien dans l'historique), d'où
+   * le motif devenu requis dans le formulaire.
+   *
+   * Les deux appels sont séquentiels et non atomiques. Si le propriétaire échoue après une
+   * affectation réussie — `UpdateLeadOwner` refuse un non-superviseur qui réassigne le lead d'un
+   * autre — on le dit, au lieu d'annoncer un succès complet : l'affectation, elle, est bien faite.
+   */
   public confirm(): void {
     const agentId = this.selectedAgentId();
-    if (!agentId) return;
+    const reason = this.reason().trim();
+    if (!agentId || !reason) return;
+
+    const agent = this.agents().find((a) => a.user.id === agentId);
+    const agentName = agent?.user.fullName ?? agent?.user.email ?? agentId;
 
     this.isSubmitting.set(true);
     this._leadsApiService
-      .updateLeadOwner(this.data.lead.id!, {
-        ownerId: agentId,
-        reason: this.reason() || null,
-        assignmentMethod: 'ManualReassignment',
+      .dispatchLead(this.data.lead.id!, {
+        agentId,
+        overrideReason: reason,
       })
       .pipe(
-        catchError(() => {
-          this._snackbar.error('Erreur', 'Impossible de réassigner le lead.');
+        catchError((err: HttpErrorResponse) => {
+          this._snackbar.error(
+            'Erreur',
+            this._dispatchErrorMessage(err, agentName),
+          );
           return EMPTY;
         }),
+        // Le propriétaire suit l'affectation. Son échec ne remet pas l'affectation en cause.
+        switchMap(() =>
+          this._leadsApiService
+            .updateLeadOwner(this.data.lead.id!, {
+              ownerId: agentId,
+              reason,
+              assignmentMethod: 'ManualReassignment',
+            })
+            .pipe(
+              catchError(() => {
+                this._snackbar.error(
+                  'Partiellement appliqué',
+                  `Le lead est bien affecté à ${agentName}, mais son propriétaire n'a pas pu être changé — droits insuffisants.`,
+                );
+                this._dialogRef.close(true);
+                return EMPTY;
+              }),
+            ),
+        ),
+        finalize(() => this.isSubmitting.set(false)),
       )
       .subscribe({
         next: () => {
-          const agent = this.agents().find((a) => a.user.id === agentId);
-          const agentName = agent?.user.fullName ?? agent?.user.email ?? agentId;
           this._snackbar.success(
             'Lead réassigné',
-            `Le lead a été réassigné à ${agentName}. L'ancien et le nouvel agent seront notifiés.`,
+            `Le lead a été affecté à ${agentName}. L'ancien et le nouvel agent seront notifiés.`,
           );
           this._dialogRef.close(true);
         },
-        complete: () => this.isSubmitting.set(false),
       });
+  }
+
+  /** Les refus du moteur sont nommés : les afficher tels quels évite un aller-retour. */
+  private _dispatchErrorMessage(err: HttpErrorResponse, agentName: string): string {
+    const detail = err.error?.detail ?? '';
+
+    if (detail.includes('AGENT_NOT_ELIGIBLE'))
+      return `${agentName} ne fait pas partie des agents disponibles pour l'agence de ce lead.`;
+    if (detail.includes('AGENT_EXCLUDED_BY_RULE'))
+      return `${agentName} est exclu par la règle de dispatching en vigueur.`;
+    if (detail.includes('LEAD_NOT_DISPATCHABLE'))
+      return 'Ce lead est clôturé : il ne peut plus être affecté.';
+
+    return err.error?.title ?? 'Impossible de réassigner le lead.';
   }
 
   public close(): void {
@@ -313,18 +433,10 @@ export class ReassignLeadDrawer implements OnInit {
 
   private _loadAgents(): void {
     this.isLoadingAgents.set(true);
-    const leadId = this.data.lead.id!;
-
-    forkJoin({
-      users: this._usersApiService
-        .listUsers('PendingActivation', undefined, undefined, 1, 200)
-        .pipe(catchError(() => of({ items: [] as UserDto[], totalCount: 0 }))),
-      dispatch: this._leadsApiService
-        .dispatchLead(leadId, {
-          strategy: DispatchLeadRequestStrategyEnum.RoundRobin,
-        })
-        .pipe(catchError(() => of(null))),
-    }).subscribe(({ users, dispatch }) => {
+    this._usersApiService
+      .listUsers('Active', undefined, undefined, 1, 200)
+      .pipe(catchError(() => of({ items: [] as UserDto[], totalCount: 0 })))
+      .subscribe((users) => {
       const userList = users?.items ?? [];
 
       // If current owner exists, resolve their name
@@ -337,18 +449,10 @@ export class ReassignLeadDrawer implements OnInit {
         }
       }
 
-      // Top match from dispatch (compatibility scoring)
-      const topMatchId = dispatch?.agentId;
-      const topScore = dispatch?.compatibilityScore ?? 0;
-
-      // Build agent rows with simulated compatibility scores
       const agents: AgentRow[] = userList
-        .filter((u) => u.id !== ownerId) // exclude current owner
+        .filter((u) => u.id !== ownerId) // exclut l'agent déjà en charge
         .map((u) => {
-          const isTopMatch = u.id === topMatchId;
-          const score = isTopMatch
-            ? topScore
-            : this._estimateScore(u, this.data.lead);
+          const score = this._estimateScore(u, this.data.lead);
           const totalAssigned = this._estimateWorkload(u);
 
           return {
@@ -362,9 +466,9 @@ export class ReassignLeadDrawer implements OnInit {
         })
         .sort((a, b) => b.compatibilityScore - a.compatibilityScore);
 
-      this.agents.set(agents);
-      this.isLoadingAgents.set(false);
-    });
+        this.agents.set(agents);
+        this.isLoadingAgents.set(false);
+      });
   }
 
   /**
@@ -418,12 +522,17 @@ export class ReassignLeadDrawer implements OnInit {
 
   private _estimateWorkload(user: UserDto): number {
     // Hash-based deterministic pseudo-workload for display consistency
-    const hash = (user.id ?? '').split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
+    const hash = (user.id ?? '')
+      .split('')
+      .reduce((acc, c) => acc + c.charCodeAt(0), 0);
     return (hash % 60) + 5;
   }
 
   private _estimateSlaRate(user: UserDto): number {
-    const hash = (user.id ?? '').split('').reduce((acc, c) => acc * 31 + c.charCodeAt(0), 7) & 0xffff;
+    const hash =
+      (user.id ?? '')
+        .split('')
+        .reduce((acc, c) => acc * 31 + c.charCodeAt(0), 7) & 0xffff;
     return 50 + (hash % 51); // 50-100%
   }
 }

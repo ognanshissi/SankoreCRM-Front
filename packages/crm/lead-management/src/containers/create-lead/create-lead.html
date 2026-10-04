@@ -97,13 +97,14 @@
       <div class="border-t border-gray-200 pt-4 mt-1">
         <p class="text-sm font-medium text-slate-600 mb-3">Intérêt commercial</p>
         <div class="flex flex-col gap-4">
-
           <tas-form-field>
-            <tas-label>Source</tas-label>
+            <tas-label>Source configurée</tas-label>
             <tas-select
-              [options]="sourceOptions"
-              placeholder="Canal d'entrée"
-              [formField]="formSchema.source"
+              [options]="leadSourceOptions()"
+              optionLabel="label"
+              optionValue="value"
+              placeholder="Aucune"
+              [formField]="formSchema.leadSourceConfigId"
             ></tas-select>
           </tas-form-field>
 
