@@ -9,6 +9,7 @@
  * https://openapi-generator.tech
  * Do not edit the class manually.
  */
+import { CompatibilityFactors } from './compatibility-factors.interface';
 
 
 export interface DispatchPreviewCandidate { 
@@ -16,7 +17,7 @@ export interface DispatchPreviewCandidate {
     fullName?: string | null;
     agencyId?: string;
     compatibilityScore?: number;
-    compatibilityFactorsJson?: string | null;
+    factors?: CompatibilityFactors;
     openTaskCount?: number;
     hotLeadsCount?: number;
     isExcludedByRule?: boolean;

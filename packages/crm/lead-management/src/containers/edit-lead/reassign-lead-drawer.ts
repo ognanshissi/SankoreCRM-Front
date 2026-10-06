@@ -21,6 +21,7 @@ import {
   UsersApiService,
   UserDto,
   LeadDto,
+  CompatibilityFactors,
 } from '@sankore/crm-api';
 import { TasTitle } from '@talisoft/ui/title';
 
@@ -50,15 +51,7 @@ interface AgentRow {
   isEligible: boolean;
 }
 
-/** Forme du `compatibilityFactorsJson` renvoyé par le moteur (CompatibilityScorer). */
-interface ScoreFactors {
-  language?: { matched?: boolean; contribution?: number };
-  product?: { matched?: boolean; contribution?: number };
-  geography?: { distanceKm?: number | null; contribution?: number };
-  agency?: { matched?: boolean; contribution?: number };
-  performance?: { contribution?: number };
-  workload?: { contribution?: number };
-}
+
 
 @Component({
   selector: 'reassign-lead-drawer',
@@ -606,7 +599,7 @@ export class ReassignLeadDrawer implements OnInit {
             // Le preview porte le nom ; `listUsers` complète le reste quand il le connaît.
             user: user ?? { id: c.agentId, fullName: c.fullName },
             score: Math.round(c.compatibilityScore ?? 0),
-            factors: this._parseFactors(c.compatibilityFactorsJson),
+            factors: this._toChips(c.factors),
             openTasks: c.openTaskCount ?? 0,
             maxTasks: preview.maxTasksPerAgent ?? 0,
             hotLeads: c.hotLeadsCount ?? 0,
@@ -631,22 +624,17 @@ export class ReassignLeadDrawer implements OnInit {
   }
 
   /**
-   * Transforme le `compatibilityFactorsJson` du moteur en pastilles lisibles. On n'affiche qu'un
-   * facteur qui a réellement contribué : une pastille « Langue ✓ +25 » explique le score, une
-   * ligne « langue : non » ne fait que du bruit.
+   * Transforme les facteurs du moteur en pastilles lisibles. On n'affiche qu'un facteur qui a
+   * réellement contribué : « Langue +25 » explique le score, « langue : non » ne fait que du bruit.
    *
-   * Le JSON vient du serveur, mais un `parse` qui échoue ne doit pas faire tomber la liste : on
-   * renvoie alors aucune pastille et le score reste affiché.
+   * Il n'y a plus rien à parser : le contrat expose un objet typé. C'était une chaîne JSON, que ce
+   * composant redéclarait à la main et désérialisait — une forme dupliquée qu'aucun compilateur ne
+   * tenait à jour. `factors` est absent pour les stratégies qui ne calculent pas de détail
+   * (round-robin et round-robin pondéré, qui classent sur la charge seule) : pas de pastille,
+   * plutôt que six zéros.
    */
-  private _parseFactors(json: string | null | undefined): FactorChip[] {
-    if (!json) return [];
-
-    let f: ScoreFactors;
-    try {
-      f = JSON.parse(json) as ScoreFactors;
-    } catch {
-      return [];
-    }
+  private _toChips(factors: CompatibilityFactors | null | undefined): FactorChip[] {
+    if (!factors) return [];
 
     const chips: FactorChip[] = [];
     const add = (label: string, contribution?: number): void => {
@@ -655,14 +643,14 @@ export class ReassignLeadDrawer implements OnInit {
       }
     };
 
-    if (f.language?.matched) add('Langue', f.language.contribution);
-    if (f.product?.matched) add('Produit', f.product.contribution);
-    if (f.agency?.matched) add('Agence', f.agency.contribution);
-    add('Performance', f.performance?.contribution);
-    add('Charge', f.workload?.contribution);
+    if (factors.language?.matched) add('Langue', factors.language.contribution);
+    if (factors.product?.matched) add('Produit', factors.product.contribution);
+    if (factors.agency?.matched) add('Agence', factors.agency.contribution);
+    add('Performance', factors.performance?.contribution);
+    add('Charge', factors.workload?.contribution);
 
     // La distance n'est pas un « bonus » lisible : on montre le kilométrage, pas sa contribution.
-    const km = f.geography?.distanceKm;
+    const km = factors.geography?.distanceKm;
     if (typeof km === 'number') {
       chips.push({ label: `${Math.round(km)} km`, contribution: 0 });
     }

@@ -81,6 +81,7 @@ model/add-trigger-request.interface.ts
 model/admin-reset-password-request.interface.ts
 model/agency-dto-paged-result.interface.ts
 model/agency-dto.interface.ts
+model/agency-factor.interface.ts
 model/agency-tree-node-dto.interface.ts
 model/agent-performance-dto.interface.ts
 model/anonymize-client-request.interface.ts
@@ -141,6 +142,7 @@ model/client-timeline-entry-dto-paged-result.interface.ts
 model/client-timeline-entry-dto.interface.ts
 model/close-lead-request.interface.ts
 model/company-info-dto.interface.ts
+model/compatibility-factors.interface.ts
 model/complete-task-request.interface.ts
 model/completed-task-dto-paged-result.interface.ts
 model/completed-task-dto.interface.ts
@@ -219,6 +221,7 @@ model/field-changed-dto.interface.ts
 model/forgot-password-request.interface.ts
 model/forgot-password-result.interface.ts
 model/funnel-metrics-dto.interface.ts
+model/geography-factor.interface.ts
 model/google-contacts-import-request.interface.ts
 model/google-sheet-import-request.interface.ts
 model/group-detail-dto.interface.ts
@@ -243,6 +246,7 @@ model/kyc-identity-document-dto.interface.ts
 model/kyc-mrz-dto.interface.ts
 model/kyc-setting-dto.interface.ts
 model/kyc-verification-dto.interface.ts
+model/language-factor.interface.ts
 model/lead-dto-paged-result.interface.ts
 model/lead-dto.interface.ts
 model/lead-import-status-response.interface.ts
@@ -282,6 +286,7 @@ model/nurturing-step-dto.interface.ts
 model/opportunity-dto.interface.ts
 model/overdue-step-dto.interface.ts
 model/owner-assignment-dto.interface.ts
+model/performance-factor.interface.ts
 model/permission-dto.interface.ts
 model/permission-group-dto.interface.ts
 model/pipeline-card.interface.ts
@@ -293,6 +298,7 @@ model/preview-mapping-request.interface.ts
 model/preview-mapping-result.interface.ts
 model/problem-details.interface.ts
 model/product-dto.interface.ts
+model/product-factor.interface.ts
 model/publish-sdk-version-result.interface.ts
 model/qualification-answer-input.interface.ts
 model/qualification-question-dto.interface.ts
@@ -450,5 +456,6 @@ model/workflow-instance-dto.interface.ts
 model/workflow-instance-step-dto.interface.ts
 model/workflow-step-dto.interface.ts
 model/workflow-template-dto.interface.ts
+model/workload-factor.interface.ts
 param.ts
 variables.ts
