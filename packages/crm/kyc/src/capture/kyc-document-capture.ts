@@ -3,6 +3,7 @@ import {
   Component,
   computed,
   DestroyRef,
+  effect,
   inject,
   input,
   output,
@@ -17,11 +18,17 @@ import { TasCard } from '@talisoft/ui/card';
 import { TasError, TasFormField, TasHint, TasLabel } from '@talisoft/ui/form-field';
 import { TasIcon } from '@talisoft/ui/icon';
 import { TasInput } from '@talisoft/ui/input';
+import { TasSelect } from '@talisoft/ui/select';
 import { TasSpinner } from '@talisoft/ui/spinner';
 import { SnackbarService } from '@talisoft/ui/snackbar';
-import { RunKycVerificationResponse, RunKycVerificationResponseOutcomeEnum } from '@sankore/crm-api';
+import {
+  RunKycVerificationRequestDocumentTypeEnum,
+  RunKycVerificationResponse,
+  RunKycVerificationResponseOutcomeEnum,
+} from '@sankore/crm-api';
 import { PermissionsService } from '@sankore/crm/common';
 import { KycFacadeService } from '../data-access/kyc-facade.service';
+import { isKycDocumentType, KYC_DOCUMENT_TYPE_OPTIONS } from '../data-access/kyc-referential';
 import {
   KycFieldConfidence,
   KycImageRef,
@@ -128,6 +135,27 @@ class OcrFieldsFormModel {
   }
 }
 
+/**
+ * Nature de la pièce photographiée.
+ *
+ * Champ à part du formulaire de relecture OCR : il se saisit **avant** la photo, alors que les
+ * champs lus n'existent qu'après. Les deux dans le même `form()` auraient rendu invalide, donc non
+ * enregistrable, la correction d'un champ tant que le type n'était pas choisi.
+ */
+class DocumentTypeFormModel {
+  public documentType!: string;
+
+  public static instantiate(): DocumentTypeFormModel {
+    return DocumentTypeFormModel.withType('');
+  }
+
+  public static withType(documentType: string): DocumentTypeFormModel {
+    const model = new DocumentTypeFormModel();
+    model.documentType = documentType;
+    return model;
+  }
+}
+
 type DocumentStep = 'capture' | 'uploading' | 'review';
 type VerificationState = 'idle' | 'running' | 'scored' | 'rejected' | 'queued' | 'failed';
 
@@ -155,6 +183,7 @@ type VerificationState = 'idle' | 'running' | 'scored' | 'rejected' | 'queued' |
     TasIcon,
     TasInput,
     TasLabel,
+    TasSelect,
     TasSpinner,
     FormRoot,
     FormField,
@@ -193,6 +222,21 @@ export class KycDocumentCapture {
   public readonly selfieStorageRef = input<string | null>(null);
 
   public readonly documentUploaded = output<KycImageRef>();
+
+  /**
+   * Le type de pièce retenu, dès qu'il est choisi : l'étape du selfie relance la même vérification
+   * et doit envoyer le même type, et le brouillon du parent le conserve en cas de coupure.
+   */
+  public readonly documentTypeSelected = output<RunKycVerificationRequestDocumentTypeEnum>();
+
+  /**
+   * Type déjà choisi, repris du parent. Le composant est recréé à chaque passage sur l'étape — le
+   * fil des étapes permet de revenir en arrière, et un brouillon repris a conservé le type : sans
+   * cette reprise, l'agent devrait le rechoisir alors qu'il est connu.
+   */
+  public readonly initialDocumentType = input<RunKycVerificationRequestDocumentTypeEnum | null>(
+    null,
+  );
 
   public readonly step = signal<DocumentStep>('capture');
   public readonly uploadError = signal<string | null>(null);
@@ -235,6 +279,38 @@ export class KycDocumentCapture {
     null,
   );
 
+  public readonly documentTypeOptions = KYC_DOCUMENT_TYPE_OPTIONS;
+
+  public documentTypeModel = signal(DocumentTypeFormModel.instantiate());
+
+  public documentTypeForm = form(this.documentTypeModel, (schema) => {
+    required(schema.documentType, { message: 'Indiquez la nature de la pièce photographiée' });
+  });
+
+  /**
+   * Le type choisi, ou `null` tant qu'il ne l'est pas.
+   *
+   * Lu sur l'état du champ et non sur le modèle : le `form()` mute le modèle en place, seuls les
+   * signaux du champ sont garantis réactifs.
+   */
+  public readonly documentType = computed(() => {
+    const value = this.documentTypeForm.documentType().value();
+    return isKycDocumentType(value) ? value : null;
+  });
+
+  /**
+   * La vérification part dès le dépôt de l'image et exige le type : sans lui, l'appel repartirait
+   * en 400. On demande donc le type avant d'ouvrir la caméra, plutôt que de laisser l'agent
+   * photographier une pièce pour rien.
+   */
+  public readonly canCapture = computed(() => !!this.documentType());
+
+  /** Type envoyé à la dernière vérification lancée, pour ne pas la relancer à l'identique. */
+  private _verifiedWithType: RunKycVerificationRequestDocumentTypeEnum | null = null;
+
+  /** La reprise n'a lieu qu'une fois : ensuite, c'est le choix de l'agent qui fait foi. */
+  private _seededFromParent = false;
+
   public model = signal(OcrFieldsFormModel.fromOcr([]));
 
   public formSchema = form(this.model, (schema) => {
@@ -266,6 +342,31 @@ export class KycDocumentCapture {
     () => !this.isLoadingFields() && !this.fieldsError() && this.ocrFields().length === 0,
   );
 
+  constructor() {
+    effect(() => {
+      const initial = this.initialDocumentType();
+      if (!initial || this._seededFromParent) return;
+      this._seededFromParent = true;
+      this.documentTypeModel.set(DocumentTypeFormModel.withType(initial));
+    });
+
+    effect(() => {
+      const type = this.documentType();
+      if (type) this.documentTypeSelected.emit(type);
+    });
+
+    // Corriger le type après la photo doit renoter le dossier : la première lecture a été faite
+    // avec le mauvais gabarit, et son score ne veut rien dire. Reprendre la photo pour cela serait
+    // une perte de temps au guichet, l'image étant la bonne.
+    effect(() => {
+      const type = this.documentType();
+      const ref = this.imageRef();
+      if (!type || !ref || this.step() !== 'review') return;
+      if (this._verifiedWithType === type) return;
+      this._runVerification(ref.storageRef);
+    });
+  }
+
   public confidenceMeta(confidence: KycFieldConfidence) {
     return OCR_CONFIDENCE_META[confidence];
   }
@@ -276,6 +377,13 @@ export class KycDocumentCapture {
 
   /** Reçu de la caméra comme de l'import : le reste du parcours est identique. */
   public onCaptured(file: File): void {
+    // La caméra n'est pas proposée sans type choisi ; la garde couvre l'import de fichier déclenché
+    // par un raccourci et évite de déposer une image qu'aucune vérification ne pourra exploiter.
+    if (!this.documentType()) {
+      this.uploadError.set("Indiquez d'abord la nature de la pièce photographiée.");
+      return;
+    }
+
     this.step.set('uploading');
     this.uploadError.set(null);
 
@@ -308,6 +416,7 @@ export class KycDocumentCapture {
 
   public retake(): void {
     this.step.set('capture');
+    this._verifiedWithType = null;
     this.ocrFields.set([]);
     this.mrz.set(null);
     this.model.set(OcrFieldsFormModel.fromOcr([]));
@@ -496,6 +605,18 @@ export class KycDocumentCapture {
   }
 
   private _runVerification(documentStorageRef: string): void {
+    // `documentType` est obligatoire côté contrat : sans lui, l'appel repart en 400. L'écran ne
+    // laisse pas photographier avant le choix, donc ce cas ne vient que d'un brouillon repris.
+    const documentType = this.documentType();
+    if (!documentType) {
+      this.verificationState.set('failed');
+      this.verificationError.set(
+        "La vérification attend la nature de la pièce : choisissez-la ci-dessus, elle repartira "
+          + 'aussitôt.',
+      );
+      return;
+    }
+
     // Sans le droit, l'appel repartirait en 403 et l'agent lirait une panne là où il n'y a qu'une
     // habilitation manquante. On le dit dans l'indicateur, qui a déjà un état pour ça.
     if (!this.canVerify()) {
@@ -510,9 +631,15 @@ export class KycDocumentCapture {
     this.verificationState.set('running');
     this.verificationError.set(null);
     this.rejectionReason.set(null);
+    this._verifiedWithType = documentType;
 
     this._kyc
-      .runVerification(this.kycFileId(), documentStorageRef, this.selfieStorageRef() ?? '')
+      .runVerification(
+        this.kycFileId(),
+        documentStorageRef,
+        this.selfieStorageRef() ?? '',
+        documentType,
+      )
       .pipe(
         takeUntilDestroyed(this._destroyRef),
         catchError((error: HttpErrorResponse) => {

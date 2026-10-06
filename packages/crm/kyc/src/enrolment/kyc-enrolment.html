@@ -115,6 +115,8 @@
         @case ('document') {
           <kyc-document-capture
             [kycFileId]="kycFileId"
+            [initialDocumentType]="documentType()"
+            (documentTypeSelected)="onDocumentTypeSelected($event)"
             (documentUploaded)="onDocumentUploaded($event)"
           ></kyc-document-capture>
         }
@@ -123,6 +125,7 @@
             [kycFileId]="kycFileId"
             [documentImageUrl]="documentRef()?.url ?? null"
             [documentStorageRef]="documentRef()?.storageRef ?? ''"
+            [documentType]="documentType()"
             (matched)="onSelfieMatched($event)"
             (submittedWithOverride)="onSubmittedWithOverride($event)"
           ></kyc-selfie-capture>

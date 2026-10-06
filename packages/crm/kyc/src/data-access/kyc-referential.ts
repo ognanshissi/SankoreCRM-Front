@@ -1,4 +1,5 @@
 import { Severity } from '@talisoft/ui/tag';
+import { RunKycVerificationRequestDocumentTypeEnum } from '@sankore/crm-api';
 
 /**
  * Référentiels d'affichage du module KYC — section 3 du cahier.
@@ -264,3 +265,37 @@ export const KYC_COMPLEMENT_REASONS = [
   { value: 'expired_document', label: 'Pièce expirée, en fournir une valide' },
   { value: 'other', label: 'Autre (préciser)' },
 ];
+
+// ——————————————————————————————————————————————————————————————————————
+// Types de pièce d'identité
+// ——————————————————————————————————————————————————————————————————————
+
+/**
+ * Nature de la pièce, désormais exigée par `POST /kyc-files/{id}/verify`
+ * (`RunKycVerificationRequest.documentType`) : le service biométrique ne sait pas la deviner, et
+ * sans elle il ne peut pas choisir le gabarit de lecture.
+ *
+ * Le `Record` est indexé sur l'enum généré : ajouter une valeur au contrat casse la compilation
+ * ici, là où le libellé manque, plutôt que de laisser l'écran afficher un code brut.
+ */
+const DOCUMENT_TYPE_LABELS: Record<RunKycVerificationRequestDocumentTypeEnum, string> = {
+  [RunKycVerificationRequestDocumentTypeEnum.Cni]: "Carte nationale d'identité",
+  [RunKycVerificationRequestDocumentTypeEnum.Passport]: 'Passeport',
+  [RunKycVerificationRequestDocumentTypeEnum.Cedeao]: 'Carte CEDEAO',
+  [RunKycVerificationRequestDocumentTypeEnum.Consulaire]: 'Carte consulaire',
+};
+
+export const KYC_DOCUMENT_TYPE_OPTIONS = (
+  Object.keys(DOCUMENT_TYPE_LABELS) as RunKycVerificationRequestDocumentTypeEnum[]
+).map((value) => ({ value, label: DOCUMENT_TYPE_LABELS[value] }));
+
+/** Vrai si la chaîne vient bien du contrat : garde-fou avant de la poser dans la requête. */
+export function isKycDocumentType(
+  value: string | null | undefined,
+): value is RunKycVerificationRequestDocumentTypeEnum {
+  return !!value && value in DOCUMENT_TYPE_LABELS;
+}
+
+export function kycDocumentTypeLabel(value: string | null | undefined): string {
+  return isKycDocumentType(value) ? DOCUMENT_TYPE_LABELS[value] : (value ?? '—');
+}

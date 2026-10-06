@@ -19,7 +19,11 @@ import { TasIcon } from '@talisoft/ui/icon';
 import { TasInput } from '@talisoft/ui/input';
 import { TasSpinner } from '@talisoft/ui/spinner';
 import { SnackbarService } from '@talisoft/ui/snackbar';
-import { RunKycVerificationResponse, RunKycVerificationResponseOutcomeEnum } from '@sankore/crm-api';
+import {
+  RunKycVerificationRequestDocumentTypeEnum,
+  RunKycVerificationResponse,
+  RunKycVerificationResponseOutcomeEnum,
+} from '@sankore/crm-api';
 import { PermissionsService } from '@sankore/crm/common';
 import { KycFacadeService } from '../data-access/kyc-facade.service';
 import { kycConfidenceMeta } from '../data-access/kyc-referential';
@@ -139,6 +143,13 @@ export class KycSelfieCapture {
    * lancer la vérification plutôt que d'envoyer une requête vouée au 400.
    */
   public readonly documentStorageRef = input<string>('');
+
+  /**
+   * Nature de la pièce, choisie à l'étape précédente. `POST /kyc-files/{id}/verify` l'exige, et la
+   * comparaison faciale passe par le même endpoint : sans elle, la requête repart en 400. Le parent
+   * la conserve, brouillon repris compris.
+   */
+  public readonly documentType = input<RunKycVerificationRequestDocumentTypeEnum | null>(null);
 
   /** Paramètre tenant : le nombre d'essais avant qu'une soumission commentée devienne possible. */
   public readonly maxAttempts = input(2);
@@ -272,6 +283,16 @@ export class KycSelfieCapture {
       return;
     }
 
+    const documentType = this.documentType();
+    if (!documentType) {
+      this.errorMessage.set(
+        "La nature de la pièce d'identité manque : revenez à l'étape de la pièce pour l'indiquer, "
+          + 'la comparaison pourra alors être lancée.',
+      );
+      this.step.set('result');
+      return;
+    }
+
     // Sans le droit de vérifier, l'appel repartirait en 403 : on le dit au lieu de laisser lire
     // une panne du service biométrique.
     if (!this.canVerify()) {
@@ -287,7 +308,7 @@ export class KycSelfieCapture {
     this.errorMessage.set(null);
 
     this._kyc
-      .runVerification(this.kycFileId(), documentRef, selfieStorageRef)
+      .runVerification(this.kycFileId(), documentRef, selfieStorageRef, documentType)
       .pipe(
         takeUntilDestroyed(this._destroyRef),
         catchError((error: HttpErrorResponse) => {

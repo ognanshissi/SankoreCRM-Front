@@ -1110,7 +1110,7 @@ export class KYCApiService {
 
     /**
      * Run the biometric verification of a KYC file
-     * Reads the identity document, compares the faces and scores the file. The images must already be in the KYC document store; this endpoint takes their references. 200 when the file was scored or the capture was refused, 202 when the biometric service could not be reached and the attempt was queued.
+     * Reads the identity document, compares the faces and scores the file. The images must already be in the KYC document store; this endpoint takes their references. 200 when the file was scored or the capture was refused, 202 when the biometric service could not be reached and the attempt was queued. documentType says which document was photographed (CNI by default): the service picks its extraction template from it.
      * @param kycFileId 
      * @param runKycVerificationRequest 
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.

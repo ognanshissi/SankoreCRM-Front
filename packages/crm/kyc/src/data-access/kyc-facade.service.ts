@@ -13,6 +13,7 @@ import {
   KycApprovalCircuitDto,
   KycFileDto,
   RaiseKycReviewResult,
+  RunKycVerificationRequestDocumentTypeEnum,
   RunKycVerificationResponse,
 } from '@sankore/crm-api';
 import {
@@ -103,13 +104,24 @@ export class KycFacadeService {
    * `POST /kyc-files/{id}/verify`. Les images doivent **déjà** être dans le magasin documentaire :
    * l'endpoint ne prend que leurs références. 200 = dossier noté ou capture refusée,
    * 202 = service biométrique injoignable, tentative mise en file.
+   *
+   * `documentType` est **obligatoire** depuis la mise à jour du contrat, alors que le générateur le
+   * sort optionnel (`documentType?`) : le champ n'est pas dans le `required` du schéma. Le paramètre
+   * est donc requis ici, pour que l'oubli soit une erreur de compilation et non un 400 découvert au
+   * guichet. C'est aussi pour ça qu'il n'a pas de valeur par défaut : deviner « Cni » enverrait le
+   * service biométrique lire un passeport avec le mauvais gabarit.
    */
   public runVerification(
     kycFileId: string,
     documentStorageRef: string,
     selfieStorageRef: string,
+    documentType: RunKycVerificationRequestDocumentTypeEnum,
   ): Observable<RunKycVerificationResponse> {
-    return this._kycApi.runKycVerification(kycFileId, { documentStorageRef, selfieStorageRef });
+    return this._kycApi.runKycVerification(kycFileId, {
+      documentStorageRef,
+      selfieStorageRef,
+      documentType,
+    });
   }
 
   /**

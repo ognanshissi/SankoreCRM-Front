@@ -11,11 +11,13 @@ import {
   DecideKycApprovalRequestDecisionEnum,
   DecideKycApprovalRequestLevelEnum,
   KycFileDto,
+  RunKycVerificationRequestDocumentTypeEnum,
 } from '@sankore/crm-api';
 import { BreadcrumbService, PermissionsService } from '@sankore/crm/common';
 import { KycFacadeService } from '../data-access/kyc-facade.service';
 import { KycDraftStore } from '../data-access/kyc-draft.store';
 import { KycImageRef } from '../data-access/kyc.types';
+import { isKycDocumentType } from '../data-access/kyc-referential';
 import { KycDocumentCapture } from '../capture/kyc-document-capture';
 import { KycSelfieCapture } from '../capture/kyc-selfie-capture';
 import { KycScorePanel } from '../verification/kyc-score-panel';
@@ -36,6 +38,8 @@ interface KycEnrolmentDraft {
   step: Step;
   documentStorageRef: string | null;
   documentImageUrl: string | null;
+  /** Nature de la pièce : la vérification de l'étape du selfie l'exige, après une coupure comprise. */
+  documentType: RunKycVerificationRequestDocumentTypeEnum | null;
   selfieStorageRef: string | null;
   overrideComment: string | null;
 }
@@ -95,6 +99,8 @@ export class KycEnrolmentPage {
 
   public step = signal<Step>('document');
   public documentRef = signal<KycImageRef | null>(null);
+  /** Choisi à l'étape de la pièce, réutilisé par la comparaison faciale qui appelle le même endpoint. */
+  public documentType = signal<RunKycVerificationRequestDocumentTypeEnum | null>(null);
   public selfieRef = signal<string | null>(null);
   public overrideComment = signal<string | null>(null);
   public isSubmitting = signal(false);
@@ -123,6 +129,12 @@ export class KycEnrolmentPage {
     if (step === 'selfie' && !this.canReachSelfie()) return;
     if (step === 'summary' && !this.canReachSummary()) return;
     this.step.set(step);
+    void this._saveDraft();
+  }
+
+  public onDocumentTypeSelected(type: RunKycVerificationRequestDocumentTypeEnum): void {
+    if (this.documentType() === type) return;
+    this.documentType.set(type);
     void this._saveDraft();
   }
 
@@ -200,6 +212,7 @@ export class KycEnrolmentPage {
   public discardDraft(): void {
     this._drafts.discard(this._draftId());
     this.documentRef.set(null);
+    this.documentType.set(null);
     this.selfieRef.set(null);
     this.overrideComment.set(null);
     this.step.set('document');
@@ -290,6 +303,7 @@ export class KycEnrolmentPage {
       step: this.step(),
       documentStorageRef: this.documentRef()?.storageRef ?? null,
       documentImageUrl: this.documentRef()?.url ?? null,
+      documentType: this.documentType(),
       selfieStorageRef: this.selfieRef(),
       overrideComment: this.overrideComment(),
     };
@@ -310,6 +324,9 @@ export class KycEnrolmentPage {
     if (draft.documentStorageRef) {
       this.documentRef.set({ storageRef: draft.documentStorageRef, url: null });
     }
+    // Le type n'est repris que s'il appartient toujours au contrat : un brouillon d'avant une
+    // évolution de l'enum ne doit pas faire repartir une valeur que le serveur refuserait.
+    if (isKycDocumentType(draft.documentType)) this.documentType.set(draft.documentType);
     this.selfieRef.set(draft.selfieStorageRef);
     this.overrideComment.set(draft.overrideComment);
     this.step.set(draft.step);

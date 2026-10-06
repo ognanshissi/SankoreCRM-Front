@@ -1,6 +1,29 @@
 <div class="flex flex-col gap-4">
   <kyc-stub-notice what="La lecture de la pièce"></kyc-stub-notice>
 
+  <!-- ─────────────── Nature de la pièce ─────────────── -->
+  <tas-card class="block p-4">
+    <form [formRoot]="documentTypeForm">
+      <tas-form-field>
+        <tas-label>
+          Nature de la pièce <span class="text-functional-error">*</span>
+        </tas-label>
+        <tas-select
+          [options]="documentTypeOptions"
+          placeholder="Choisissez le type de pièce"
+          [formField]="documentTypeForm.documentType"
+        ></tas-select>
+        @if (documentTypeForm.documentType().touched() && documentTypeForm.documentType().invalid()) {
+          <tas-error>{{ documentTypeForm.documentType().errors()[0].message }}</tas-error>
+        }
+        <tas-hint>
+          La vérification ne peut pas la deviner : c'est elle qui détermine comment la pièce est
+          lue. Corrigez-la ici si elle est fausse, la vérification repart aussitôt.
+        </tas-hint>
+      </tas-form-field>
+    </form>
+  </tas-card>
+
   <!-- ─────────────── Capture ─────────────── -->
   @if (step() === 'capture') {
     <tas-card class="block p-4">
@@ -20,17 +43,38 @@
         </div>
       }
 
-      <kyc-camera-capture
-        facingMode="environment"
-        guide="id-card"
-        fileBaseName="piece-identite"
-        shutterLabel="Prendre la photo de la pièce"
-        accept="image/jpeg,image/png,image/webp"
-        [maxSizeMb]="10"
-        [maxWidth]="1600"
-        hint="Formats acceptés : JPG, PNG, WEBP. 10 Mo maximum."
-        (captured)="onCaptured($event)"
-      ></kyc-camera-capture>
+      @if (canCapture()) {
+        <kyc-camera-capture
+          facingMode="environment"
+          guide="id-card"
+          fileBaseName="piece-identite"
+          shutterLabel="Prendre la photo de la pièce"
+          accept="image/jpeg,image/png,image/webp"
+          [maxSizeMb]="10"
+          [maxWidth]="1600"
+          hint="Formats acceptés : JPG, PNG, WEBP. 10 Mo maximum."
+          (captured)="onCaptured($event)"
+        ></kyc-camera-capture>
+      } @else {
+        <!--
+          La caméra n'est pas proposée avant le choix du type : la vérification part dès le dépôt de
+          l'image et le serveur l'exige. Photographier d'abord ferait déposer une image que rien ne
+          pourrait noter.
+        -->
+        <div
+          class="flex items-start gap-2 rounded-lg border border-dashed border-slate-300 bg-slate-50 p-3"
+          role="status"
+        >
+          <tas-icon
+            iconName="feather:info"
+            class="mt-0.5 shrink-0 text-slate-400"
+            style="font-size:14px"
+          ></tas-icon>
+          <p class="text-xs text-slate-600">
+            Choisissez la nature de la pièce ci-dessus pour ouvrir la caméra.
+          </p>
+        </div>
+      }
     </tas-card>
   }
 

@@ -14,5 +14,17 @@
 export interface RunKycVerificationRequest { 
     documentStorageRef?: string | null;
     selfieStorageRef?: string | null;
+    /**
+     * One of: Cni, Passport, Cedeao, Consulaire
+     */
+    documentType?: RunKycVerificationRequestDocumentTypeEnum;
 }
+export enum RunKycVerificationRequestDocumentTypeEnum {
+    Cni = 'Cni',
+    Passport = 'Passport',
+    Cedeao = 'Cedeao',
+    Consulaire = 'Consulaire'
+};
+
+
 

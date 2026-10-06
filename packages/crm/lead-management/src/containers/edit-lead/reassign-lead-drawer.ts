@@ -2,7 +2,7 @@ import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { DIALOG_DATA, DialogRef } from '@angular/cdk/dialog';
 import { HttpErrorResponse } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
-import { catchError, EMPTY, finalize, of, switchMap } from 'rxjs';
+import { catchError, EMPTY, finalize, forkJoin, of, switchMap } from 'rxjs';
 import { TasIcon } from '@talisoft/ui/icon';
 import { TasSpinner } from '@talisoft/ui/spinner';
 import { TasTag } from '@talisoft/ui/tag';
@@ -28,16 +28,37 @@ export interface ReassignLeadDrawerData {
   lead: LeadDto;
 }
 
-interface AgentRow {
-  user: UserDto;
-  compatibilityScore: number;
-  compatibilityFactor: string;
-  totalAssigned: number;
-  slaComplianceRate: number;
-  isSaturated: boolean;
+/** Un facteur du score, tel que le moteur l'a calculé — pas une approximation. */
+interface FactorChip {
+  label: string;
+  contribution: number;
 }
 
-const CAPACITY_THRESHOLD = 50;
+interface AgentRow {
+  /** Pour l'affichage uniquement : email, agence, disponibilité, initiales. */
+  user: UserDto;
+  score: number;
+  factors: FactorChip[];
+  openTasks: number;
+  maxTasks: number;
+  hotLeads: number;
+  /** L'agent que le moteur retiendrait de lui-même. */
+  isEngineChoice: boolean;
+  isExcludedByRule: boolean;
+  isAtTaskCapacity: boolean;
+  isBlockedByAntiMonopoly: boolean;
+  isEligible: boolean;
+}
+
+/** Forme du `compatibilityFactorsJson` renvoyé par le moteur (CompatibilityScorer). */
+interface ScoreFactors {
+  language?: { matched?: boolean; contribution?: number };
+  product?: { matched?: boolean; contribution?: number };
+  geography?: { distanceKm?: number | null; contribution?: number };
+  agency?: { matched?: boolean; contribution?: number };
+  performance?: { contribution?: number };
+  workload?: { contribution?: number };
+}
 
 @Component({
   selector: 'reassign-lead-drawer',
@@ -127,16 +148,42 @@ const CAPACITY_THRESHOLD = 50;
           <div class="flex items-center justify-between mb-2">
             <p class="text-xs font-semibold text-slate-600">
               Agents disponibles
-              <span class="text-slate-400 font-normal"
-                >(triés par compatibilité)</span
-              >
+              <span class="text-slate-400 font-normal">
+                @if (ruleName()) {
+                  (règle « {{ ruleName() }} »
+                } @else {
+                  (règles par défaut
+                }
+                @if (strategy()) {
+                  · {{ strategy() }}
+                }
+                )
+              </span>
             </p>
             @if (isLoadingAgents()) {
               <tas-spinner size="3" class="text-primary"></tas-spinner>
             }
           </div>
 
-          @if (isLoadingAgents() && filteredAgents().length === 0) {
+          @if (previewError()) {
+            <div class="py-8 text-center">
+              <tas-icon
+                iconName="feather:alert-triangle"
+                class="text-functional-error mb-1"
+                style="font-size:24px"
+              ></tas-icon>
+              <p class="text-xs text-slate-600">{{ previewError() }}</p>
+              <button
+                tas-text-button
+                color="primary"
+                type="button"
+                class="mt-2"
+                (click)="reload()"
+              >
+                <tas-icon iconName="feather:refresh-cw"></tas-icon> Réessayer
+              </button>
+            </div>
+          } @else if (isLoadingAgents() && filteredAgents().length === 0) {
             <div class="flex justify-center py-8">
               <tas-spinner size="6" class="text-primary"></tas-spinner>
             </div>
@@ -151,24 +198,31 @@ const CAPACITY_THRESHOLD = 50;
           } @else {
             <div class="flex flex-col gap-1.5 max-h-[400px] overflow-y-auto">
               @for (agent of filteredAgents(); track agent.user.id) {
+                <!-- Un agent exclu par la règle est montré mais pas sélectionnable : le
+                     serveur refuserait (AGENT_EXCLUDED_BY_RULE), alors que « à capacité » et
+                     « quota anti-monopole » restent choisissables — l'override les franchit
+                     volontairement. -->
                 <button
                   type="button"
-                  class="w-full text-left p-3 rounded-lg border transition-all hover:shadow-sm"
+                  [disabled]="agent.isExcludedByRule"
+                  class="w-full text-left p-3 rounded-lg border transition-all"
                   [class]="
-                    selectedAgentId() === agent.user.id
-                      ? 'border-primary bg-primary/5 ring-1 ring-primary/30'
-                      : agent.isSaturated
-                        ? 'border-amber-200 bg-amber-50/50'
-                        : 'border-slate-200 bg-white hover:border-slate-300'
+                    agent.isExcludedByRule
+                      ? 'border-slate-200 bg-slate-50 opacity-60 cursor-not-allowed'
+                      : selectedAgentId() === agent.user.id
+                        ? 'border-primary bg-primary/5 ring-1 ring-primary/30 hover:shadow-sm'
+                        : agent.isAtTaskCapacity || agent.isBlockedByAntiMonopoly
+                          ? 'border-amber-200 bg-amber-50/50 hover:shadow-sm'
+                          : 'border-slate-200 bg-white hover:border-slate-300 hover:shadow-sm'
                   "
-                  (click)="selectedAgentId.set(agent.user.id ?? null)"
+                  (click)="selectAgent(agent)"
                 >
                   <div class="flex items-center gap-3">
                     <!-- Avatar -->
                     <div
                       class="w-9 h-9 rounded-full flex items-center justify-center text-xs font-semibold shrink-0"
                       [class]="
-                        agent.isSaturated
+                        agent.isAtTaskCapacity || agent.isBlockedByAntiMonopoly
                           ? 'bg-amber-100 text-amber-700'
                           : 'bg-teal-50 text-teal-800'
                       "
@@ -182,12 +236,29 @@ const CAPACITY_THRESHOLD = 50;
                         <p class="text-sm font-medium text-slate-800 truncate">
                           {{ agent.user.fullName ?? agent.user.email }}
                         </p>
-                        @if (agent.isSaturated) {
-                          <tas-tag severity="warning" class="shrink-0"
-                            >Saturé</tas-tag
+                        @if (agent.isEngineChoice) {
+                          <tas-tag severity="primary" class="shrink-0"
+                            >Choix du moteur</tas-tag
                           >
                         }
-                        @if (!agent.user.isAvailable) {
+                        @if (agent.isExcludedByRule) {
+                          <tas-tag severity="neutral" class="shrink-0"
+                            >Exclu par la règle</tas-tag
+                          >
+                        }
+                        @if (agent.isAtTaskCapacity) {
+                          <tas-tag severity="warning" class="shrink-0"
+                            >À capacité ({{ agent.openTasks }}/{{
+                              agent.maxTasks
+                            }})</tas-tag
+                          >
+                        }
+                        @if (agent.isBlockedByAntiMonopoly) {
+                          <tas-tag severity="warning" class="shrink-0"
+                            >Quota anti-monopole</tas-tag
+                          >
+                        }
+                        @if (agent.user.isAvailable === false) {
                           <tas-tag severity="neutral" class="shrink-0"
                             >Indisponible</tas-tag
                           >
@@ -199,22 +270,35 @@ const CAPACITY_THRESHOLD = 50;
                             agent.user.agencyName
                           }}</span>
                         }
-                        <span class="text-[10px] text-slate-400"
-                          >{{ agent.totalAssigned }} leads actifs</span
+                        <span class="text-[10px] text-slate-400 tabular-nums"
+                          >{{ agent.openTasks }} tâche(s) ouverte(s)</span
                         >
+                        @if (agent.hotLeads > 0) {
+                          <span class="text-[10px] text-slate-400 tabular-nums"
+                            >{{ agent.hotLeads }} lead(s) chaud(s)</span
+                          >
+                        }
                       </div>
-                      <!-- Compatibility factor -->
-                      @if (agent.compatibilityFactor) {
-                        <p
-                          class="text-[10px] text-slate-500 mt-0.5 flex items-center gap-1"
-                        >
+                      <!-- Facteurs du score, tels que le moteur les a calculés -->
+                      @if (agent.factors.length > 0) {
+                        <div class="flex items-center gap-1 flex-wrap mt-1">
                           <tas-icon
                             iconName="feather:zap"
                             style="font-size:8px"
                             class="text-amber-500"
                           ></tas-icon>
-                          {{ agent.compatibilityFactor }}
-                        </p>
+                          @for (f of agent.factors; track f.label) {
+                            <span
+                              class="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 tabular-nums"
+                            >
+                              {{ f.label }}@if (f.contribution > 0) {
+                                <span class="text-slate-400"
+                                  >&nbsp;+{{ f.contribution }}</span
+                                >
+                              }
+                            </span>
+                          }
+                        </div>
                       }
                     </div>
 
@@ -222,8 +306,8 @@ const CAPACITY_THRESHOLD = 50;
                     <div class="text-right shrink-0">
                       <div
                         class="text-lg font-bold tabular-nums"
-                        [class]="compatibilityScoreColor(agent.compatibilityScore)">
-                        {{ agent.compatibilityScore }}
+                        [class]="compatibilityScoreColor(agent.score)">
+                        {{ agent.score }}
                       </div>
                       <p class="text-[9px] text-slate-400 -mt-0.5">
                         compatibilité
@@ -231,29 +315,27 @@ const CAPACITY_THRESHOLD = 50;
                     </div>
                   </div>
 
-                  <!-- Performance bar -->
-                  <div class="mt-2 flex items-center gap-2">
-                    <div
-                      class="flex-1 h-1 bg-slate-100 rounded-full overflow-hidden"
-                    >
+                  <!-- Charge réelle : tâches ouvertes sur le plafond de la règle. C'était
+                       auparavant un taux de respect du SLA inventé côté client — le preview n'en
+                       fournit pas, et la charge est précisément ce que signale « À capacité ». -->
+                  @if (agent.maxTasks > 0) {
+                    <div class="mt-2 flex items-center gap-2">
                       <div
-                        class="h-full rounded-full transition-all"
-                        [class]="
-                          agent.slaComplianceRate >= 80
-                            ? 'bg-green-500'
-                            : agent.slaComplianceRate >= 50
-                              ? 'bg-amber-500'
-                              : 'bg-red-400'
-                        "
-                        [style.width.%]="agent.slaComplianceRate"
-                      ></div>
+                        class="flex-1 h-1 bg-slate-100 rounded-full overflow-hidden"
+                      >
+                        <div
+                          class="h-full rounded-full transition-all"
+                          [class]="loadBarColor(agent)"
+                          [style.width.%]="loadPercent(agent)"
+                        ></div>
+                      </div>
+                      <span
+                        class="text-[9px] text-slate-400 tabular-nums shrink-0"
+                      >
+                        charge {{ agent.openTasks }}/{{ agent.maxTasks }}
+                      </span>
                     </div>
-                    <span
-                      class="text-[9px] text-slate-400 tabular-nums shrink-0"
-                    >
-                      SLA {{ agent.slaComplianceRate }}%
-                    </span>
-                  </div>
+                  }
                 </button>
               }
             </div>
@@ -296,6 +378,11 @@ export class ReassignLeadDrawer implements OnInit {
   public reason = signal('');
   public selectedAgentId = signal<string | null>(null);
   public currentOwnerName = signal('—');
+  /** Message d'erreur du preview : s'il est posé, aucune liste n'est affichable. */
+  public previewError = signal<string | null>(null);
+  public engineChoiceId = signal<string | null>(null);
+  public ruleName = signal<string | null>(null);
+  public strategy = signal<string | null>(null);
 
   public agents = signal<AgentRow[]>([]);
 
@@ -431,17 +518,66 @@ export class ReassignLeadDrawer implements OnInit {
     this._dialogRef.close(false);
   }
 
+  public reload(): void {
+    this._loadAgents();
+  }
+
+  /** Un agent exclu par la règle n'est pas sélectionnable : le serveur le refuserait. */
+  public selectAgent(agent: AgentRow): void {
+    if (agent.isExcludedByRule) return;
+    this.selectedAgentId.set(agent.user.id ?? null);
+  }
+
+  public loadPercent(agent: AgentRow): number {
+    if (agent.maxTasks <= 0) return 0;
+    return Math.min(100, Math.round((agent.openTasks / agent.maxTasks) * 100));
+  }
+
+  /** Vert tant que la charge est basse — l'inverse de l'ancienne barre de SLA. */
+  public loadBarColor(agent: AgentRow): string {
+    const pct = this.loadPercent(agent);
+    if (pct >= 100) return 'bg-red-400';
+    if (pct >= 75) return 'bg-amber-500';
+    return 'bg-green-500';
+  }
+
   private _loadAgents(): void {
     this.isLoadingAgents.set(true);
-    this._usersApiService
-      .listUsers('Active', undefined, undefined, 1, 200)
-      .pipe(catchError(() => of({ items: [] as UserDto[], totalCount: 0 })))
-      .subscribe((users) => {
+    this.previewError.set(null);
+
+    // Deux lectures, jointes sur l'identifiant de l'agent :
+    //  - `dispatch-preview` donne les CHIFFRES, calculés par le moteur lui-même (score, facteurs,
+    //    charge réelle, et ce que le moteur choisirait) ;
+    //  - `listUsers` ne donne que l'affichage (email, agence, disponibilité), absent du preview.
+    //
+    // C'est le preview qui pilote la liste, pas `listUsers`. Son vivier est l'agence du lead
+    // (GetAvailableAgentsAsync(tenantId, lead.PreferredAgencyId)) : un agent qui n'y figure pas ne
+    // PEUT PAS recevoir ce lead, et le choisir renvoyait AGENT_NOT_ELIGIBLE à la validation. La
+    // liste est donc plus courte qu'avant, et c'est le but — l'impossibilité est visible à
+    // l'ouverture au lieu d'être découverte à l'envoi.
+    forkJoin({
+      users: this._usersApiService
+        .listUsers('Active', undefined, undefined, 1, 200)
+        .pipe(catchError(() => of({ items: [] as UserDto[], totalCount: 0 }))),
+      preview: this._leadsApiService
+        .previewLeadDispatch(this.data.lead.id!)
+        .pipe(
+          catchError((err: HttpErrorResponse) => {
+            // Pas de repli sur des estimations : ce serait revenir aux chiffres inventés que ce
+            // changement supprime. Mieux vaut un état d'erreur explicite et aucune liste.
+            this.previewError.set(
+              (err.error?.detail ?? '').includes('LEAD_NOT_DISPATCHABLE')
+                ? 'Ce lead est clôturé : il ne peut plus être réassigné.'
+                : "Impossible de calculer les affectations possibles pour ce lead.",
+            );
+            return of(null);
+          }),
+        ),
+    }).subscribe(({ users, preview }) => {
       const userList = users?.items ?? [];
 
-      // If current owner exists, resolve their name
-      const ownerId =
-        this.data.lead.ownerId ?? this.data.lead.currentAssignedId;
+      // Le nom de l'agent en charge vient de `listUsers` : il peut être hors du vivier.
+      const ownerId = this.data.lead.ownerId ?? this.data.lead.currentAssignedId;
       if (ownerId) {
         const owner = userList.find((u) => u.id === ownerId);
         if (owner) {
@@ -449,90 +585,93 @@ export class ReassignLeadDrawer implements OnInit {
         }
       }
 
-      const agents: AgentRow[] = userList
-        .filter((u) => u.id !== ownerId) // exclut l'agent déjà en charge
-        .map((u) => {
-          const score = this._estimateScore(u, this.data.lead);
-          const totalAssigned = this._estimateWorkload(u);
+      if (!preview) {
+        this.agents.set([]);
+        this.isLoadingAgents.set(false);
+        return;
+      }
+
+      this.engineChoiceId.set(preview.wouldAssignToAgentId ?? null);
+      this.ruleName.set(preview.ruleName ?? null);
+      this.strategy.set(preview.strategy ?? null);
+
+      const byId = new Map(userList.map((u) => [u.id, u]));
+
+      const agents: AgentRow[] = (preview.candidates ?? [])
+        .filter((c) => c.agentId !== ownerId) // exclut l'agent déjà en charge
+        .map((c) => {
+          const user = byId.get(c.agentId);
 
           return {
-            user: u,
-            compatibilityScore: Math.round(score),
-            compatibilityFactor: this._buildFactorLabel(u, this.data.lead),
-            totalAssigned,
-            slaComplianceRate: this._estimateSlaRate(u),
-            isSaturated: totalAssigned >= CAPACITY_THRESHOLD,
+            // Le preview porte le nom ; `listUsers` complète le reste quand il le connaît.
+            user: user ?? { id: c.agentId, fullName: c.fullName },
+            score: Math.round(c.compatibilityScore ?? 0),
+            factors: this._parseFactors(c.compatibilityFactorsJson),
+            openTasks: c.openTaskCount ?? 0,
+            maxTasks: preview.maxTasksPerAgent ?? 0,
+            hotLeads: c.hotLeadsCount ?? 0,
+            isEngineChoice: c.agentId === preview.wouldAssignToAgentId,
+            isExcludedByRule: c.isExcludedByRule ?? false,
+            isAtTaskCapacity: c.isAtTaskCapacity ?? false,
+            isBlockedByAntiMonopoly: c.isBlockedByAntiMonopoly ?? false,
+            isEligible: c.isEligible ?? false,
           };
         })
-        .sort((a, b) => b.compatibilityScore - a.compatibilityScore);
+        // Le serveur trie déjà (éligibles d'abord, puis score) ; on le refait pour ne pas
+        // dépendre de l'ordre de sérialisation.
+        .sort((a, b) =>
+          a.isEligible === b.isEligible
+            ? b.score - a.score
+            : Number(b.isEligible) - Number(a.isEligible),
+        );
 
-        this.agents.set(agents);
-        this.isLoadingAgents.set(false);
-      });
+      this.agents.set(agents);
+      this.isLoadingAgents.set(false);
+    });
   }
 
   /**
-   * Estimate compatibility score based on matching criteria.
-   * In production, the backend should provide these scores.
+   * Transforme le `compatibilityFactorsJson` du moteur en pastilles lisibles. On n'affiche qu'un
+   * facteur qui a réellement contribué : une pastille « Langue ✓ +25 » explique le score, une
+   * ligne « langue : non » ne fait que du bruit.
+   *
+   * Le JSON vient du serveur, mais un `parse` qui échoue ne doit pas faire tomber la liste : on
+   * renvoie alors aucune pastille et le score reste affiché.
    */
-  private _estimateScore(user: UserDto, lead: LeadDto): number {
-    let score = 30; // base
+  private _parseFactors(json: string | null | undefined): FactorChip[] {
+    if (!json) return [];
 
-    // Language match
-    if (user.spokenLanguages?.includes(lead.preferredLanguage ?? '')) {
-      score += 25;
+    let f: ScoreFactors;
+    try {
+      f = JSON.parse(json) as ScoreFactors;
+    } catch {
+      return [];
     }
 
-    // Same agency
-    if (user.agencyId && user.agencyId === lead.agencyId) {
-      score += 20;
+    const chips: FactorChip[] = [];
+    const add = (label: string, contribution?: number): void => {
+      if (contribution && contribution > 0) {
+        chips.push({ label, contribution: Math.round(contribution) });
+      }
+    };
+
+    if (f.language?.matched) add('Langue', f.language.contribution);
+    if (f.product?.matched) add('Produit', f.product.contribution);
+    if (f.agency?.matched) add('Agence', f.agency.contribution);
+    add('Performance', f.performance?.contribution);
+    add('Charge', f.workload?.contribution);
+
+    // La distance n'est pas un « bonus » lisible : on montre le kilométrage, pas sa contribution.
+    const km = f.geography?.distanceKm;
+    if (typeof km === 'number') {
+      chips.push({ label: `${Math.round(km)} km`, contribution: 0 });
     }
 
-    // Product specialty match
-    if (user.specialties?.includes(lead.interestedProduct ?? '')) {
-      score += 15;
-    }
-
-    // Availability bonus
-    if (user.isAvailable) {
-      score += 10;
-    }
-
-    return Math.min(100, score);
+    return chips;
   }
 
-  private _buildFactorLabel(user: UserDto, lead: LeadDto): string {
-    const factors: string[] = [];
 
-    if (user.spokenLanguages?.includes(lead.preferredLanguage ?? '')) {
-      factors.push('langue');
-    }
-    if (user.agencyId && user.agencyId === lead.agencyId) {
-      factors.push('agence');
-    }
-    if (user.specialties?.includes(lead.interestedProduct ?? '')) {
-      factors.push('produit');
-    }
-    if (!user.isAvailable) {
-      factors.push('indisponible');
-    }
 
-    return factors.length ? factors.join(' + ') : '';
-  }
 
-  private _estimateWorkload(user: UserDto): number {
-    // Hash-based deterministic pseudo-workload for display consistency
-    const hash = (user.id ?? '')
-      .split('')
-      .reduce((acc, c) => acc + c.charCodeAt(0), 0);
-    return (hash % 60) + 5;
-  }
 
-  private _estimateSlaRate(user: UserDto): number {
-    const hash =
-      (user.id ?? '')
-        .split('')
-        .reduce((acc, c) => acc * 31 + c.charCodeAt(0), 7) & 0xffff;
-    return 50 + (hash % 51); // 50-100%
-  }
 }
