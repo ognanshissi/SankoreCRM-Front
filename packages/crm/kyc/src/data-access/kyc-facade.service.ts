@@ -202,6 +202,50 @@ export class KycFacadeService {
   }
 
   /**
+   * `GET /kyc-files/{id}/documents/{storageRef}` — flux de l'image déchiffrée, déjà déposée.
+   *
+   * Trois choses qui pèsent sur l'appelant, et qui expliquent qu'aucun écran ne l'appelle au
+   * chargement :
+   *
+   * - **Chaque lecture est journalisée**, avec son auteur, dans `kyc_document_access_logs`. On
+   *   n'appelle donc que sur un geste explicite de l'agent : garnir un aperçu automatiquement
+   *   inscrirait dans la piste d'audit des accès que personne n'a demandés, et la viderait de son
+   *   sens.
+   * - La lecture demande **`kyc:document:reveal`**, pas `kyc:manage` : l'image porte le numéro de la
+   *   pièce, donc déposer n'autorise pas à relire. Un agent de guichet peut n'avoir que le dépôt.
+   * - `reason` part en query. La renseigner est ce qui rend la ligne d'audit exploitable : « image
+   *   ouverte » sans motif n'apprend rien à qui relit la table six mois plus tard.
+   *
+   * Le générateur type la réponse `object`, le contrat ne décrivant pas le corps d'un flux binaire.
+   * Le client règle bien `responseType: 'blob'` : c'est un `Blob` qui arrive, et le cast est fait
+   * ici, une fois, plutôt que dans chaque écran.
+   */
+  /**
+   * `GET /kyc-files/{id}/identity-document` — la référence de l'image de la pièce, seule que le
+   * contrat rende après coup.
+   *
+   * Sous `kyc:read` : c'est l'image qui relève de `kyc:document:reveal`, pas sa référence. **Le
+   * selfie n'a aucun équivalent** — aucun schéma ne porte sa référence de stockage, seule la
+   * réponse du dépôt la donne. Il n'est donc réaffichable que dans la session qui l'a déposé, et un
+   * écran qui le rouvrirait plus tard n'est pas réalisable en l'état.
+   */
+  public getDocumentStorageRef(kycFileId: string): Observable<string | null> {
+    return this._kycApi
+      .getKycIdentityDocument(kycFileId)
+      .pipe(map((dto) => dto.storageRef ?? null));
+  }
+
+  public readDocumentImage(
+    kycFileId: string,
+    storageRef: string,
+    reason?: string,
+  ): Observable<Blob> {
+    return this._kycApi
+      .readKycDocument(kycFileId, storageRef, reason)
+      .pipe(map((body) => body as Blob));
+  }
+
+  /**
    * `GET /kyc-files/{id}/verification` — où en est le dossier après la vérification.
    *
    * Sous `kyc:read`, pas `kyc:verify` : rouvrir un panneau ne doit pas coûter le droit de relancer

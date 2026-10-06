@@ -106,6 +106,7 @@ model/audit-entry-dto.interface.ts
 model/backfill-phonetic-keys-result.interface.ts
 model/beneficial-owner-dto.interface.ts
 model/beneficial-owner-input.interface.ts
+model/biometry-token-status-dto.interface.ts
 model/bulk-assign-agency-request.interface.ts
 model/bulk-assign-owner-request.interface.ts
 model/bulk-assign-result.interface.ts
@@ -361,6 +362,7 @@ model/segment-rule-dto.interface.ts
 model/segment-rules-dto.interface.ts
 model/send-snippet-request.interface.ts
 model/send-test-email-request.interface.ts
+model/set-biometry-token-request.interface.ts
 model/set-intent-level-request.interface.ts
 model/set-monthly-quota-command.interface.ts
 model/set-qualification-completeness-request.interface.ts

@@ -321,6 +321,8 @@ export class KycEnrolmentPage {
     // exige `kyc:document:reveal`, la permission de révéler le numéro du document, que l'agent qui
     // enrôle n'a pas forcément. Et chaque lecture est journalisée : restaurer un aperçu à chaque
     // reprise de brouillon inscrirait des accès que personne n'a demandés dans la piste d'audit.
+    // C'est pour ça que la relecture est un geste de l'agent, proposé par l'étape de comparaison
+    // (`kyc-selfie-capture`, bouton « Afficher la pièce ») et non faite ici.
     if (draft.documentStorageRef) {
       this.documentRef.set({ storageRef: draft.documentStorageRef, url: null });
     }
@@ -332,7 +334,8 @@ export class KycEnrolmentPage {
     this.step.set(draft.step);
     this._snackbar.info(
       'Brouillon repris',
-      'La saisie reprend où elle avait été interrompue. Les photos doivent être reprises.',
+      'La saisie reprend où elle avait été interrompue. La photo du visage doit être reprise ; '
+        + "celle de la pièce est conservée et peut être réaffichée à l'étape de comparaison.",
     );
   }
 

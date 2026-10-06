@@ -1,18 +1,21 @@
 import {
   Component,
   computed,
+  DestroyRef,
   effect,
   ElementRef,
   inject,
   input,
   OnInit,
   signal,
+  untracked,
   viewChildren,
 } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Router, RouterLink } from '@angular/router';
-import { catchError, EMPTY } from 'rxjs';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { catchError, EMPTY, switchMap } from 'rxjs';
 import { Button } from '@talisoft/ui/button';
 import { TasCard } from '@talisoft/ui/card';
 import { TasIcon } from '@talisoft/ui/icon';
@@ -43,6 +46,14 @@ const TABS: { id: KycDetailTab; label: string }[] = [
   { id: 'historique', label: 'Historique' },
 ];
 
+/**
+ * Motif inscrit dans `kyc_document_access_logs` à chaque ouverture d'image.
+ *
+ * Fixe : il dit d'où vient l'accès, ce qui est l'information utile à qui relit la table. Un champ
+ * libre proposé à chaque clic serait rempli d'un caractère.
+ */
+const DOCUMENT_REVEAL_REASON = 'Consultation de la pièce depuis la fiche du dossier';
+
 /** Icône par type d'évènement : la frise doit se lire sans dépendre de la couleur. */
 const HISTORY_ICONS: Record<KycHistoryKind, string> = {
   creation: 'feather:file-plus',
@@ -56,10 +67,13 @@ const HISTORY_ICONS: Record<KycHistoryKind, string> = {
  * Fiche détaillée d'un dossier KYC (KYC-F-08) : cinq onglets, chacun avec ses propres états de
  * chargement, de vide et d'erreur.
  *
- * Deux onglets reposent sur des bouchons de `KycFacadeService` — « Pièce et selfie » (aucun endpoint
- * de dépôt ni de lien de lecture temporaire) et « Historique » (aucun endpoint d'agrégation). Ils
- * affichent un bandeau le disant plutôt qu'un cadre vide : sur un écran de conformité, une donnée
+ * « Historique » repose encore sur un bouchon de `KycFacadeService` (aucun endpoint d'agrégation) et
+ * affiche un bandeau le disant plutôt qu'un cadre vide : sur un écran de conformité, une donnée
  * inventée présentée comme une donnée serveur est pire qu'une absence assumée.
+ *
+ * « Pièce et selfie » affiche la pièce pour de vrai — `GET /documents/{storageRef}`, à la demande et
+ * journalisé — mais **pas le selfie** : le contrat ne rend nulle part sa référence de stockage, qui
+ * n'existe que dans la réponse de son dépôt. L'onglet le dit à la place d'un bouton mort.
  *
  * Les listes passent par `tas-table`, y compris la frise d'historique : son `#body` rend une ligne de
  * frise dans un `<tr>` d'une seule cellule, sans `#header`.
@@ -87,6 +101,7 @@ export class KycFileDetailPage implements OnInit {
   private readonly _permissions = inject(PermissionsService);
   private readonly _snackbarService = inject(SnackbarService);
   private readonly _router = inject(Router);
+  private readonly _destroyRef = inject(DestroyRef);
 
   /** Identifiant du dossier, lié par `withComponentInputBinding()`. */
   public readonly id = input.required<string>();
@@ -103,8 +118,10 @@ export class KycFileDetailPage implements OnInit {
   public readonly tabs = TABS;
   public readonly activeTab = signal<KycDetailTab>('identite');
 
-  /** Les deux images attendues par la vérification, nommées pour l'agent. */
-  public readonly imageSlots = ["Pièce d'identité", 'Photo du visage (selfie)'];
+  // ——— Image de la pièce (onglet « Pièce et selfie ») ———
+  public readonly documentImageUrl = signal<string | null>(null);
+  public readonly isRevealingDocument = signal(false);
+  public readonly revealDocumentError = signal<string | null>(null);
 
   private readonly _tabButtons = viewChildren<ElementRef<HTMLButtonElement>>('tabButton');
 
@@ -177,9 +194,19 @@ export class KycFileDetailPage implements OnInit {
   private readonly _reloadToken = signal(0);
 
   constructor() {
+    this._destroyRef.onDestroy(() => this._replaceDocumentImageUrl(null));
+
     effect(() => {
       const kycFileId = this.id();
       this._reloadToken();
+
+      // Changer de dossier ou recharger ne doit pas laisser à l'écran l'image du précédent.
+      // `untracked` : la révocation lit `documentImageUrl`, et cette lecture ferait de l'effet son
+      // propre déclencheur — donc un rechargement du dossier à chaque ouverture d'image.
+      untracked(() => {
+        this._replaceDocumentImageUrl(null);
+        this.revealDocumentError.set(null);
+      });
 
       this.isLoading.set(true);
       this.hasFailed.set(false);
@@ -211,6 +238,64 @@ export class KycFileDetailPage implements OnInit {
       { label: 'Dossiers KYC', link: ['/kyc'] },
       { label: 'Fiche du dossier' },
     ]);
+  }
+
+  /**
+   * Ouvre l'image de la pièce, en deux appels : la référence de stockage
+   * (`GET /identity-document`, sous `kyc:read`), puis le flux de l'image
+   * (`GET /documents/{storageRef}`, sous `kyc:document:reveal`).
+   *
+   * Jamais au chargement de l'onglet : le serveur journalise chaque lecture au nom de son auteur, et
+   * un accès inscrit sans que personne ne l'ait demandé rend la table d'audit inexploitable.
+   */
+  public revealDocument(): void {
+    if (this.isRevealingDocument() || !this.canSeeRawDetail()) return;
+
+    const kycFileId = this.id();
+    this.isRevealingDocument.set(true);
+    this.revealDocumentError.set(null);
+
+    this._facade
+      .getDocumentStorageRef(kycFileId)
+      .pipe(
+        switchMap((storageRef) => {
+          if (!storageRef) {
+            // Un dossier dont la pièce n'a pas encore été lue par le service n'a pas de référence :
+            // ce n'est pas une panne, et le dire évite de chercher une erreur réseau.
+            this.revealDocumentError.set(
+              "Aucune image de pièce n'est rattachée à ce dossier pour l'instant.",
+            );
+            this.isRevealingDocument.set(false);
+            return EMPTY;
+          }
+          return this._facade.readDocumentImage(kycFileId, storageRef, DOCUMENT_REVEAL_REASON);
+        }),
+        takeUntilDestroyed(this._destroyRef),
+        catchError((err: HttpErrorResponse) => {
+          this.revealDocumentError.set(
+            err.status === 403
+              ? "Vous n'avez pas le droit d'ouvrir les images de ce dossier."
+              : "L'image n'a pas pu être ouverte. Réessayez.",
+          );
+          this.isRevealingDocument.set(false);
+          return EMPTY;
+        }),
+      )
+      .subscribe((blob) => {
+        this._replaceDocumentImageUrl(URL.createObjectURL(blob));
+        this.isRevealingDocument.set(false);
+      });
+  }
+
+  /** Referme l'aperçu : les octets de la pièce ne restent pas en mémoire après consultation. */
+  public hideDocument(): void {
+    this._replaceDocumentImageUrl(null);
+  }
+
+  private _replaceDocumentImageUrl(next: string | null): void {
+    const previous = this.documentImageUrl();
+    this.documentImageUrl.set(next);
+    if (previous) URL.revokeObjectURL(previous);
   }
 
   // ——— Onglets ———

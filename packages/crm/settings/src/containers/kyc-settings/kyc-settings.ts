@@ -9,10 +9,15 @@ import { TasTable, TableConfig } from '@talisoft/ui/table';
 import { SideDrawerService } from '@talisoft/ui/side-drawer';
 import { ConfirmDialogService } from '@talisoft/ui/confirm-dialog';
 import { SnackbarService } from '@talisoft/ui/snackbar';
-import { KYCSettingsApiService, UsersApiService } from '@sankore/crm-api';
+import {
+  BiometryTokenStatusDto,
+  KYCSettingsApiService,
+  UsersApiService,
+} from '@sankore/crm-api';
 import { BreadcrumbService, PermissionsService } from '@sankore/crm/common';
 import { KycSettingRow, toKycSettingRow } from './kyc-settings.model';
 import { EditKycSettingDrawer, EditKycSettingDrawerData } from './edit-kyc-setting-drawer';
+import { BiometryTokenDrawer, BiometryTokenDrawerData } from './biometry-token-drawer';
 
 /**
  * Paramètres KYC du tenant (`GET /kyc-settings`, `PUT /kyc-settings/{key}`).
@@ -55,6 +60,13 @@ export class KycSettingsPage implements OnInit {
   public resettingKey = signal<string | null>(null);
 
   public readonly settings = signal<KycSettingRow[]>([]);
+
+  /**
+   * État du jeton biométrique : configuré ou non, et l'indice masqué du coffre. Jamais la valeur —
+   * aucune route ne la renvoie. `null` tant que la réponse n'est pas arrivée, ce qui évite
+   * d'afficher « Non configuré » pendant le chargement.
+   */
+  public readonly biometryToken = signal<BiometryTokenStatusDto | null>(null);
   public searchQuery = signal('');
 
   /** Noms des auteurs, résolus une fois par identifiant : la liste répète les mêmes. */
@@ -97,6 +109,7 @@ export class KycSettingsPage implements OnInit {
       { label: 'Paramètres KYC' },
     ]);
     this._load();
+    this._loadBiometryToken();
   }
 
   public onSearchChange(query: string): void {
@@ -105,6 +118,37 @@ export class KycSettingsPage implements OnInit {
 
   public reload(): void {
     this._load();
+    this._loadBiometryToken();
+  }
+
+  public openBiometryToken(): void {
+    if (!this.canManage()) return;
+
+    const data: BiometryTokenDrawerData = {
+      maskedValue: this.biometryToken()?.maskedValue ?? null,
+    };
+
+    const ref = this._sideDrawerService.open<boolean, BiometryTokenDrawerData, BiometryTokenDrawer>(
+      BiometryTokenDrawer,
+      { width: '100%', height: '100%', panelClass: 'side-drawer-panel', data },
+    );
+
+    // On relit l'état plutôt que de le déduire : l'indice masqué vient du coffre, et c'est la
+    // seule façon de vérifier que le jeton enregistré est bien celui qu'on croit.
+    ref.closed.subscribe((saved) => {
+      if (saved) this._loadBiometryToken();
+    });
+  }
+
+  /**
+   * Un échec ici n'est pas une panne d'écran : les paramètres restent affichables. La carte
+   * retombe sur « Non configuré », ce qui est aussi ce qu'une absence de droit produit.
+   */
+  private _loadBiometryToken(): void {
+    this._settingsApi
+      .getKycBiometryTokenStatus()
+      .pipe(catchError(() => of(null)))
+      .subscribe((status) => this.biometryToken.set(status));
   }
 
   public authorLabel(row: KycSettingRow): string {

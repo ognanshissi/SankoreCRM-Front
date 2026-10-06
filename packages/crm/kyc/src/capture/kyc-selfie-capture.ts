@@ -86,6 +86,14 @@ const FACE_MATCH_META: Record<FaceMatchOutcome, FaceMatchMeta> = {
   },
 };
 
+/**
+ * Motif inscrit dans `kyc_document_access_logs` à chaque relecture de l'image.
+ *
+ * Fixe et non saisi : la relecture sert ici une seule chose, et une ligne d'audit qui dit laquelle
+ * vaut mieux qu'un champ libre rempli à la hâte au milieu d'un enrôlement.
+ */
+const DOCUMENT_REVEAL_REASON = "Comparaison pièce/visage pendant l'enrôlement";
+
 class SelfieOverrideFormModel {
   public comment!: string;
 
@@ -172,6 +180,12 @@ export class KycSelfieCapture {
 
   public overrideModel = signal(SelfieOverrideFormModel.instantiate());
 
+  constructor() {
+    // L'aperçu relu est un objet URL : sans cette révocation, les octets de la pièce resteraient en
+    // mémoire après la sortie de l'écran.
+    this._destroyRef.onDestroy(() => this._replaceRevealedUrl(null));
+  }
+
   public overrideForm = form(this.overrideModel, (schema) => {
     required(schema.comment, {
       message: 'Un commentaire est obligatoire pour soumettre malgré l\'échec',
@@ -203,6 +217,26 @@ export class KycSelfieCapture {
 
   /** Il n'y a rien à comparer tant que la pièce n'a pas été capturée. */
   public readonly missingDocument = computed(() => !this.documentStorageRef());
+
+  /** Aperçu relu depuis le serveur, quand l'aperçu local n'existe plus. */
+  public readonly revealedDocumentUrl = signal<string | null>(null);
+  public readonly isRevealingDocument = signal(false);
+  public readonly revealDocumentError = signal<string | null>(null);
+
+  /**
+   * L'image de la pièce à afficher face au visage : l'aperçu local de la capture s'il existe encore,
+   * sinon celui relu à la demande. Un rechargement ou une reprise de brouillon fait disparaître le
+   * `blob:` de la capture — c'est le cas qui laissait la comparaison sans son terme de gauche.
+   */
+  public readonly documentPreviewUrl = computed(
+    () => this.documentImageUrl() ?? this.revealedDocumentUrl(),
+  );
+
+  /**
+   * Relire l'image demande `kyc:document:reveal` : le bouton n'est proposé qu'à qui l'a, plutôt que
+   * de faire découvrir le refus par un 403 après le clic.
+   */
+  public readonly canRevealDocument = this._permissions.can('kyc:document:reveal');
 
   public readonly percentLabel = computed(() => {
     const percent = this.faceMatchPercent();
@@ -271,6 +305,47 @@ export class KycSelfieCapture {
         "La comparaison faciale n'a pas abouti : le chef d'agence devra valider ce dossier.",
       );
     });
+  }
+
+  /**
+   * Relit l'image de la pièce pour la comparaison, à la demande.
+   *
+   * Jamais automatique : l'accès est journalisé nominativement côté serveur. Le motif envoyé est
+   * fixe et dit le contexte — c'est ce qui rend la ligne d'audit lisible six mois plus tard, sans
+   * demander à l'agent de taper une justification au milieu d'un enrôlement.
+   */
+  public revealDocument(): void {
+    const storageRef = this.documentStorageRef();
+    if (!storageRef || this.isRevealingDocument() || !this.canRevealDocument()) return;
+
+    this.isRevealingDocument.set(true);
+    this.revealDocumentError.set(null);
+
+    this._kyc
+      .readDocumentImage(this.kycFileId(), storageRef, DOCUMENT_REVEAL_REASON)
+      .pipe(
+        takeUntilDestroyed(this._destroyRef),
+        catchError((error: HttpErrorResponse) => {
+          this.revealDocumentError.set(
+            error.status === 403
+              ? "Vous n'avez pas le droit de réafficher l'image de la pièce."
+              : "L'image de la pièce n'a pas pu être relue. Réessayez.",
+          );
+          this.isRevealingDocument.set(false);
+          return EMPTY;
+        }),
+      )
+      .subscribe((blob) => {
+        this._replaceRevealedUrl(URL.createObjectURL(blob));
+        this.isRevealingDocument.set(false);
+      });
+  }
+
+  /** Un seul objet URL vivant à la fois : l'ancien est révoqué dès qu'il n'est plus affiché. */
+  private _replaceRevealedUrl(next: string | null): void {
+    const previous = this.revealedDocumentUrl();
+    this.revealedDocumentUrl.set(next);
+    if (previous) URL.revokeObjectURL(previous);
   }
 
   private _verify(selfieStorageRef: string): void {

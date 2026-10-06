@@ -255,42 +255,83 @@
       <!-- ═══════════════ Pièce et selfie ═══════════════ -->
       @case ('piece') {
         <div role="tabpanel" id="kyc-panel-piece" aria-labelledby="kyc-tab-piece">
-          <kyc-stub-notice what="Les images du dossier"></kyc-stub-notice>
           <tas-card class="block">
             <div class="p-4">
               <p class="text-sm text-slate-700">
-                Les images ne sont pas affichées : le contrat n'expose
-                <strong>aucun lien de lecture temporaire</strong> vers le magasin documentaire. Un
-                cadre vide laisserait croire à une image manquante côté dossier — ce n'est pas le
-                cas, c'est l'accès qui manque.
+                L'image de la pièce est lue à la demande, jamais à l'ouverture de l'onglet :
+                <strong>chaque consultation est inscrite au dossier</strong> avec le nom de son
+                auteur.
               </p>
+
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">
-                @for (slot of imageSlots; track slot) {
-                  <div class="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-6 text-center">
-                    <tas-icon
-                      iconName="feather:image"
-                      class="text-slate-300"
-                      style="font-size:24px"
-                    ></tas-icon>
-                    <p class="text-sm font-medium text-slate-700 mt-2">{{ slot }}</p>
-                    <p class="text-xs text-slate-500 mt-1">Affichage à la demande indisponible</p>
-                    <button
-                      tas-outlined-button
-                      type="button"
-                      class="mt-3"
-                      disabled
-                      [attr.aria-label]="
-                        'Afficher ' + slot + ' — indisponible : aucun lien de lecture au contrat'
-                      "
-                    >
-                      Afficher l'image
+                <!-- ─────── Pièce d'identité : lisible, sous kyc:document:reveal ─────── -->
+                <figure class="m-0">
+                  <figcaption class="mb-1 text-xs font-medium text-slate-500">
+                    Pièce d'identité
+                  </figcaption>
+
+                  @if (documentImageUrl(); as url) {
+                    <img
+                      [src]="url"
+                      alt="Image de la pièce d'identité rattachée au dossier"
+                      class="w-full rounded-lg border border-slate-200 object-contain"
+                    />
+                    <button tas-outlined-button type="button" class="mt-2 w-full" (click)="hideDocument()">
+                      <tas-icon iconName="feather:eye-off" style="font-size:14px"></tas-icon>
+                      Masquer l'image
                     </button>
+                  } @else {
+                    <div
+                      class="flex min-h-40 flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-slate-300 bg-slate-50 p-6 text-center"
+                      aria-live="polite"
+                    >
+                      @if (isRevealingDocument()) {
+                        <tas-spinner size="8" class="text-primary"></tas-spinner>
+                        <p class="text-xs text-slate-500">Ouverture de l'image…</p>
+                      } @else if (canSeeRawDetail()) {
+                        <tas-icon iconName="feather:image" class="text-slate-300" style="font-size:24px"></tas-icon>
+                        <button tas-outlined-button type="button" (click)="revealDocument()">
+                          <tas-icon iconName="feather:eye" style="font-size:14px"></tas-icon>
+                          Afficher l'image
+                        </button>
+                        <p class="text-[11px] text-slate-400">
+                          Cette ouverture sera tracée à votre nom.
+                        </p>
+                      } @else {
+                        <tas-icon iconName="feather:lock" class="text-slate-300" style="font-size:24px"></tas-icon>
+                        <p class="text-xs text-slate-500">
+                          Ouvrir l'image demande le droit de révéler les pièces d'un dossier.
+                        </p>
+                      }
+
+                      @if (revealDocumentError()) {
+                        <p class="text-xs text-functional-error" role="alert">
+                          {{ revealDocumentError() }}
+                        </p>
+                      }
+                    </div>
+                  }
+                </figure>
+
+                <!-- ─────── Selfie : aucune référence au contrat, donc pas de bouton mort ─────── -->
+                <figure class="m-0">
+                  <figcaption class="mb-1 text-xs font-medium text-slate-500">
+                    Photo du visage (selfie)
+                  </figcaption>
+                  <div class="flex min-h-40 flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-slate-300 bg-slate-50 p-6 text-center">
+                    <tas-icon iconName="feather:user-x" class="text-slate-300" style="font-size:24px"></tas-icon>
+                    <p class="text-xs text-slate-500">
+                      Le selfie ne peut pas être rouvert depuis la fiche : le contrat ne rend nulle
+                      part sa référence de stockage, qui n'existe que dans la réponse de son dépôt.
+                      Il reste visible pendant l'enrôlement qui l'a pris.
+                    </p>
                   </div>
-                }
+                </figure>
               </div>
+
               <p class="text-xs text-slate-400 mt-4">
-                Attendu côté serveur : un dépôt d'image renvoyant une référence de stockage, et un
-                lien de lecture temporaire par image, demandé au moment de l'affichage.
+                Attendu côté serveur pour compléter cet onglet : la référence de stockage du selfie,
+                exposée par la fiche du dossier ou par le détail de la vérification.
               </p>
             </div>
           </tas-card>

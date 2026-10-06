@@ -22,15 +22,43 @@
       <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <figure class="m-0">
           <figcaption class="mb-1 text-xs font-medium text-slate-500">Photo de la pièce</figcaption>
-          @if (documentImageUrl(); as documentUrl) {
+          @if (documentPreviewUrl(); as documentUrl) {
             <img
               [src]="documentUrl"
               alt="Photo de la pièce d'identité du client"
               class="w-full rounded-lg border border-slate-200 object-contain"
             />
           } @else {
-            <div class="flex h-36 items-center justify-center rounded-lg border border-dashed border-slate-300 p-3 text-center text-xs text-slate-400">
-              Aperçu de la pièce indisponible
+            <!--
+              L'aperçu local de la capture a disparu (rechargement, brouillon repris) : l'image est
+              relisible côté serveur, mais chaque lecture est journalisée au nom de l'agent. On la
+              propose donc, on ne la charge pas d'office.
+            -->
+            <div
+              class="flex h-36 flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-slate-300 p-3 text-center"
+              aria-live="polite"
+            >
+              @if (isRevealingDocument()) {
+                <tas-spinner size="6" class="text-primary"></tas-spinner>
+                <p class="text-xs text-slate-500">Lecture de l'image…</p>
+              } @else if (canRevealDocument()) {
+                <p class="text-xs text-slate-500">
+                  L'aperçu de la pièce n'est plus en mémoire.
+                </p>
+                <button tas-outlined-button type="button" (click)="revealDocument()">
+                  <tas-icon iconName="feather:eye" style="font-size:14px"></tas-icon>
+                  Afficher la pièce
+                </button>
+                <p class="text-[11px] text-slate-400">Cet affichage est tracé au dossier.</p>
+              } @else {
+                <p class="text-xs text-slate-400">
+                  Aperçu de la pièce indisponible : le réafficher demande le droit de révéler les
+                  pièces. La comparaison reste possible, le serveur compare les images qu'il a.
+                </p>
+              }
+              @if (revealDocumentError()) {
+                <p class="text-xs text-functional-error" role="alert">{{ revealDocumentError() }}</p>
+              }
             </div>
           }
         </figure>
