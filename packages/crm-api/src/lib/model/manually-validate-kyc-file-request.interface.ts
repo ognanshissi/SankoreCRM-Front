@@ -11,12 +11,7 @@
  */
 
 
-export interface UploadKycDocumentResponse { 
-    documentId?: string;
-    storageRef?: string | null;
-    kind?: string | null;
-    contentType?: string | null;
-    sizeBytes?: number;
-    sha256?: string | null;
+export interface ManuallyValidateKycFileRequest { 
+    reason?: string | null;
 }
 

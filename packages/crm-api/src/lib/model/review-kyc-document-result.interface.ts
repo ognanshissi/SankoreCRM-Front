@@ -11,12 +11,10 @@
  */
 
 
-export interface UploadKycDocumentResponse { 
+export interface ReviewKycDocumentResult { 
     documentId?: string;
-    storageRef?: string | null;
     kind?: string | null;
-    contentType?: string | null;
-    sizeBytes?: number;
-    sha256?: string | null;
+    decision?: string | null;
+    fileStatus?: string | null;
 }
 

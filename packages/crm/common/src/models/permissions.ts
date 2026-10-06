@@ -177,6 +177,7 @@ export const PERMISSIONS = {
   KYC_APPROVE: 'kyc:approve',
   KYC_DUPLICATE_CLEAR: 'kyc:duplicate:clear',
   KYC_DOCUMENT_REVEAL: 'kyc:document:reveal',
+  KYC_DOCUMENT_VALIDATE: 'kyc:document:validate',
   KYC_SETTINGS_MANAGE: 'kyc:settings:manage',
 } as const;
 

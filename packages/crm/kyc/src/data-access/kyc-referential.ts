@@ -299,3 +299,41 @@ export function isKycDocumentType(
 export function kycDocumentTypeLabel(value: string | null | undefined): string {
   return isKycDocumentType(value) ? DOCUMENT_TYPE_LABELS[value] : (value ?? '—');
 }
+
+// ——————————————————————————————————————————————————————————————————————
+// Pièces du dossier et verdicts de validation
+// ——————————————————————————————————————————————————————————————————————
+
+const DOCUMENT_KIND_LABELS: Record<string, string> = {
+  IdentityDocumentFront: "Pièce d'identité — recto",
+  IdentityDocumentBack: "Pièce d'identité — verso",
+  Selfie: 'Photo du visage (selfie)',
+};
+
+export function kycDocumentKindLabel(kind: string | null | undefined): string {
+  return DOCUMENT_KIND_LABELS[kind ?? ''] ?? kind ?? '—';
+}
+
+/**
+ * `NotReviewed` n'est **pas** « en attente », et les deux ne portent ni le même libellé ni la même
+ * couleur : « en attente » annonce une décision que quelqu'un doit prendre, alors qu'une image
+ * antérieure au registre n'a pas de ligne à décider — aucun rattrapage ne peut lui en donner une.
+ * Les confondre ferait chercher du travail là où il n'y en a pas, et c'est exactement la lecture que
+ * ce tableau doit rendre impossible.
+ */
+const DOCUMENT_DECISION_META: Record<string, { label: string; severity: Severity; icon: string }> = {
+  NotReviewed: { label: 'Non examinée', severity: 'neutral', icon: 'feather:help-circle' },
+  Pending:     { label: 'À examiner',   severity: 'warning', icon: 'feather:clock' },
+  Accepted:    { label: 'Acceptée',     severity: 'success', icon: 'feather:check-circle' },
+  Refused:     { label: 'Refusée',      severity: 'error',   icon: 'feather:x-circle' },
+};
+
+export function kycDocumentDecisionMeta(decision: string | null | undefined) {
+  return (
+    DOCUMENT_DECISION_META[decision ?? ''] ?? {
+      label: decision ?? 'Non examinée',
+      severity: 'neutral' as Severity,
+      icon: 'feather:help-circle',
+    }
+  );
+}

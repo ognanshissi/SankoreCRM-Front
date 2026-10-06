@@ -67,6 +67,14 @@ export class KycScorePanel {
    */
   public readonly canSeeRawDetail = input<boolean>(false);
 
+  /**
+   * Le bloc est réutilisé par l'enrôlement **et** par la fiche détaillée. Seul le premier a une
+   * action à proposer : sur la fiche, le bouton ne menait à rien — son gestionnaire se contentait
+   * d'un message disant d'aller ailleurs, ce qui est un bouton mort déguisé. L'action est donc
+   * désormais explicitement demandée par l'hôte.
+   */
+  public readonly showSubmitAction = input<boolean>(false);
+
   public readonly submitRequested = output<void>();
 
   public readonly isLoading = signal(true);

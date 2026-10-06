@@ -11,12 +11,20 @@
  */
 
 
-export interface UploadKycDocumentResponse { 
-    documentId?: string;
-    storageRef?: string | null;
+export interface KycDocumentDto { 
+    id?: string | null;
     kind?: string | null;
+    storageRef?: string | null;
     contentType?: string | null;
-    sizeBytes?: number;
+    sizeBytes?: number | null;
     sha256?: string | null;
+    uploadedBy?: string | null;
+    uploadedAt?: string;
+    reviewDecision?: string | null;
+    reviewedBy?: string | null;
+    reviewedAt?: string | null;
+    refusalReason?: string | null;
+    isCurrentForKind?: boolean;
+    hasOcrReading?: boolean;
 }
 

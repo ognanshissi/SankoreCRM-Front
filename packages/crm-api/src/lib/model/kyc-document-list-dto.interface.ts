@@ -9,14 +9,14 @@
  * https://openapi-generator.tech
  * Do not edit the class manually.
  */
+import { KycDocumentDto } from './kyc-document-dto.interface';
 
 
-export interface UploadKycDocumentResponse { 
-    documentId?: string;
-    storageRef?: string | null;
-    kind?: string | null;
-    contentType?: string | null;
-    sizeBytes?: number;
-    sha256?: string | null;
+export interface KycDocumentListDto { 
+    kycFileId?: string;
+    fileStatus?: string | null;
+    allCurrentDocumentsAccepted?: boolean;
+    anyCurrentDocumentNotReviewed?: boolean;
+    documents?: Array<KycDocumentDto> | null;
 }
 

@@ -10,6 +10,9 @@ import {
   DecideKycApprovalResponse,
   KYCApiService,
   KycFileListPage,
+  ManuallyValidateKycFileResult,
+  ReviewKycDocumentRequestDecisionEnum,
+  ReviewKycDocumentResult,
   KycApprovalCircuitDto,
   KycFileDto,
   RaiseKycReviewResult,
@@ -21,6 +24,9 @@ import {
   KycDashboardFilters,
   KycDashboardPage,
   KycDocumentKind,
+  KycDocumentList,
+  KycDocumentRow,
+  KycDocumentReviewDecision,
   KycImageRef,
   KycFieldConfidence,
   KycHistoryEntry,
@@ -224,10 +230,12 @@ export class KycFacadeService {
    * `GET /kyc-files/{id}/identity-document` — la référence de l'image de la pièce, seule que le
    * contrat rende après coup.
    *
-   * Sous `kyc:read` : c'est l'image qui relève de `kyc:document:reveal`, pas sa référence. **Le
-   * selfie n'a aucun équivalent** — aucun schéma ne porte sa référence de stockage, seule la
-   * réponse du dépôt la donne. Il n'est donc réaffichable que dans la session qui l'a déposé, et un
-   * écran qui le rouvrirait plus tard n'est pas réalisable en l'état.
+   * Sous `kyc:read` : c'est l'image qui relève de `kyc:document:reveal`, pas sa référence.
+   *
+   * **Ne rend que la pièce d'identité, et seulement après lecture par le service** : la référence
+   * vient de l'évidence OCR. Pour toutes les pièces d'un dossier — verso et selfie compris, déposés
+   * ou non encore lus — c'est `listDocuments` qu'il faut appeler : le registre les connaît dès le
+   * dépôt. Conservé parce que le panneau OCR part de cette même ressource.
    */
   public getDocumentStorageRef(kycFileId: string): Observable<string | null> {
     return this._kycApi
@@ -243,6 +251,84 @@ export class KycFacadeService {
     return this._kycApi
       .readKycDocument(kycFileId, storageRef, reason)
       .pipe(map((body) => body as Blob));
+  }
+
+  /**
+   * `GET /kyc-files/{id}/documents` — toutes les pièces du dossier et leur verdict.
+   *
+   * La liste que le module n'avait pas : avant le registre, rien ne représentait une image déposée —
+   * le dépôt rendait une référence opaque que l'appelant passait à `/verify`, et la seule référence
+   * récupérable ensuite était celle de la pièce lue par l'OCR. C'est ce qui rendait le selfie et le
+   * verso impossibles à rouvrir depuis la fiche.
+   *
+   * Métadonnées seulement, jamais les octets : ouvrir une image reste
+   * `GET /documents/{storageRef}` sous `kyc:document:reveal`, et chaque ouverture est journalisée.
+   */
+  public listDocuments(kycFileId: string): Observable<KycDocumentList> {
+    return this._kycApi.listKycDocuments(kycFileId).pipe(
+      map((dto) => ({
+        fileStatus: dto.fileStatus ?? '',
+        allCurrentAccepted: dto.allCurrentDocumentsAccepted ?? false,
+        anyNotReviewed: dto.anyCurrentDocumentNotReviewed ?? false,
+        documents: (dto.documents ?? []).map(
+          (d): KycDocumentRow => ({
+            id: d.id ?? null,
+            kind: d.kind ?? '',
+            storageRef: d.storageRef ?? '',
+            contentType: d.contentType ?? null,
+            sizeBytes: d.sizeBytes ?? null,
+            uploadedAt: d.uploadedAt ?? '',
+            uploadedBy: d.uploadedBy ?? null,
+            // Le serveur rend une chaîne : on la garde telle quelle plutôt que de retomber sur
+            // « Pending », qui promettrait une décision là où il n'y a pas de ligne à décider.
+            decision: (d.reviewDecision ?? 'NotReviewed') as KycDocumentReviewDecision,
+            reviewedBy: d.reviewedBy ?? null,
+            reviewedAt: d.reviewedAt ?? null,
+            refusalReason: d.refusalReason ?? null,
+            isCurrentForKind: d.isCurrentForKind ?? false,
+            hasOcrReading: d.hasOcrReading ?? false,
+          }),
+        ),
+      })),
+    );
+  }
+
+  /**
+   * `POST /kyc-files/{id}/documents/{documentId}/review` — accepter ou refuser une pièce.
+   *
+   * Deux règles tranchées par le propriétaire du produit, que l'écran doit refléter sans les
+   * réinventer :
+   *
+   * - **Accepter ne fait rien avancer.** Accepter la dernière pièce en attente ne valide pas le
+   *   dossier : la décision de dossier reste un geste distinct, sinon le circuit d'approbation
+   *   perdrait son sens.
+   * - **Refuser renvoie le dossier en complément**, motif attaché, pour que l'agent reproduise une
+   *   image exploitable.
+   *
+   * Une pièce ne se décide **qu'une fois** : un refus se corrige par un nouveau dépôt, qui crée une
+   * nouvelle ligne, et le refus reste au dossier comme la raison de ce dépôt. Le serveur répond 409
+   * sur une pièce déjà décidée, sur une pièce remplacée depuis, et sur un dossier qui a bougé.
+   */
+  public reviewDocument(
+    kycFileId: string,
+    documentId: string,
+    decision: ReviewKycDocumentRequestDecisionEnum,
+    reason: string | null,
+  ): Observable<ReviewKycDocumentResult> {
+    return this._kycApi.reviewKycDocument(kycFileId, documentId, { decision, reason });
+  }
+
+  /**
+   * `POST /kyc-files/{id}/manual-validation` — valider les pièces à la main, sans score biométrique.
+   *
+   * L'échappatoire pour un dossier que la machine ne peut pas conclure : service injoignable, ou
+   * pièce usée refusée à répétition. Ce n'est **pas** une approbation — le circuit décide toujours,
+   * il gagne le chef d'agence même sur un dossier à risque faible, et le validateur ne peut signer
+   * aucun de ses niveaux. Le motif est obligatoire : c'est toute la preuve que l'écrasement de la
+   * machine était une décision.
+   */
+  public manuallyValidate(kycFileId: string, reason: string): Observable<ManuallyValidateKycFileResult> {
+    return this._kycApi.manuallyValidateKycFile(kycFileId, { reason });
   }
 
   /**

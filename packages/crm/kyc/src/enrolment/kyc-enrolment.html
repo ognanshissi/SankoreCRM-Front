@@ -59,6 +59,37 @@
       </div>
     }
 
+    @if (duplicateSuspected()) {
+      <div class="flex gap-3 p-3 rounded-lg bg-red-50 border border-red-200 mb-5" role="alert">
+        <tas-icon iconName="feather:copy" class="text-functional-error shrink-0 mt-0.5" style="font-size:14px"></tas-icon>
+        <div class="flex-1 text-sm text-slate-700">
+          <p class="font-medium text-red-800">Doublon suspecté</p>
+          <p class="text-xs text-red-700 mt-0.5">
+            Une pièce déjà enregistrée pour un autre client ressemble à celle-ci. Vérifiez l'identité
+            avec le client avant de poursuivre : sans levée, le dossier part en validation avec ce
+            signalement.
+          </p>
+          @if (canClearDuplicate()) {
+            <button
+              tas-outlined-button
+              color="warn"
+              type="button"
+              class="mt-2"
+              (click)="openClearDuplicateDrawer()"
+            >
+              <tas-icon iconName="feather:check" style="font-size:14px"></tas-icon>
+              Lever le signalement
+            </button>
+          } @else {
+            <p class="text-xs text-red-700 mt-1">
+              Lever ce signalement demande un droit que vous n'avez pas : un profil habilité doit s'en
+              charger.
+            </p>
+          }
+        </div>
+      </div>
+    }
+
     <!-- Fil des étapes -->
     <nav class="flex items-center gap-2 mb-6 flex-wrap" aria-label="Étapes de l'enrôlement">
       @for (s of steps; track s.key; let i = $index) {
@@ -97,12 +128,13 @@
           <div class="w-16 h-16 rounded-full bg-green-50 flex items-center justify-center mx-auto mb-4">
             <tas-icon iconName="feather:check-circle" class="text-green-500" style="font-size:32px"></tas-icon>
           </div>
-          <h2 class="text-lg font-semibold text-slate-800 mb-2">Dossier soumis</h2>
+          <h2 class="text-lg font-semibold text-slate-800 mb-2">Enrôlement terminé</h2>
           <p class="text-sm text-slate-600">
             @if (needsManagerValidation()) {
-              La comparaison faciale n'a pas abouti : le chef d'agence doit valider ce dossier.
+              La comparaison faciale n'a pas abouti : le dossier passe par une validation manuelle,
+              et le chef d'agence s'ajoute aux niveaux à signer.
             } @else {
-              Le dossier part dans le circuit de validation.
+              La vérification a placé le dossier dans le circuit de validation.
             }
           </p>
           <button tas-raised-button color="primary" type="button" class="mt-6" (click)="openFile()">
@@ -135,6 +167,7 @@
             <kyc-score-panel
               [kycFileId]="kycFileId"
               [canSeeRawDetail]="canSeeRawDetail()"
+              [showSubmitAction]="true"
               (submitRequested)="submit()"
             ></kyc-score-panel>
 
@@ -144,8 +177,15 @@
                 <div class="text-sm text-slate-700">
                   <p class="font-medium text-orange-800">Validation du chef d'agence requise</p>
                   <p class="text-xs text-orange-700 mt-0.5">
-                    Votre commentaire accompagne le dossier : « {{ overrideComment() }} »
+                    Votre commentaire sert de motif à la validation manuelle :
+                    « {{ overrideComment() }} »
                   </p>
+                  @if (!canValidateManually()) {
+                    <p class="text-xs text-orange-700 mt-1">
+                      Vous n'avez pas le droit de valider les pièces à la main : un profil habilité
+                      devra le faire depuis la fiche du dossier.
+                    </p>
+                  }
                 </div>
               </div>
             }
@@ -158,6 +198,11 @@
                 <button tas-outlined-button color="warn" type="button" (click)="discardDraft()">
                   Repartir de zéro
                 </button>
+                <!--
+                  Le libellé dit ce qui se passe vraiment : rien n'est « soumis » dans le cas
+                  nominal — la vérification a déjà ouvert le circuit. Seul l'écrasement d'une
+                  comparaison en échec déclenche un appel, celui de la validation manuelle.
+                -->
                 <button
                   tas-raised-button
                   color="primary"
@@ -166,7 +211,11 @@
                   [isLoading]="isSubmitting()"
                   (click)="submit()"
                 >
-                  Soumettre le dossier
+                  @if (needsManagerValidation()) {
+                    Valider les pièces à la main
+                  } @else {
+                    Terminer l'enrôlement
+                  }
                 </button>
               </div>
             </div>

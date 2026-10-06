@@ -1,25 +1,23 @@
 import {
   Component,
   computed,
-  DestroyRef,
   effect,
   ElementRef,
   inject,
   input,
   OnInit,
   signal,
-  untracked,
   viewChildren,
 } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Router, RouterLink } from '@angular/router';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { catchError, EMPTY, switchMap } from 'rxjs';
+import { catchError, EMPTY } from 'rxjs';
 import { Button } from '@talisoft/ui/button';
 import { TasCard } from '@talisoft/ui/card';
 import { TasIcon } from '@talisoft/ui/icon';
 import { SnackbarService } from '@talisoft/ui/snackbar';
+import { SideDrawerService } from '@talisoft/ui/side-drawer';
 import { TasSpinner } from '@talisoft/ui/spinner';
 import { TasTable, TableConfig } from '@talisoft/ui/table';
 import { TasTag } from '@talisoft/ui/tag';
@@ -34,25 +32,22 @@ import {
 import { KycHistoryEntry, KycHistoryKind } from '../data-access/kyc.types';
 import { KycStatusBadge } from '../ui/kyc-status-badge';
 import { KycStubNotice } from '../ui/kyc-stub-notice';
+import { KycDocumentsPanel } from '../documents/kyc-documents-panel';
 import { KycScorePanel } from '../verification/kyc-score-panel';
+import {
+  ManuallyValidateKycFileDrawer,
+  ManuallyValidateKycFileDrawerData,
+} from '../verification/manually-validate-kyc-file-drawer';
 
 type KycDetailTab = 'identite' | 'piece' | 'score' | 'validation' | 'historique';
 
 const TABS: { id: KycDetailTab; label: string }[] = [
   { id: 'identite', label: 'Identité' },
-  { id: 'piece', label: 'Pièce et selfie' },
+  { id: 'piece', label: 'Pièces' },
   { id: 'score', label: 'Score de confiance' },
   { id: 'validation', label: 'Validation' },
   { id: 'historique', label: 'Historique' },
 ];
-
-/**
- * Motif inscrit dans `kyc_document_access_logs` à chaque ouverture d'image.
- *
- * Fixe : il dit d'où vient l'accès, ce qui est l'information utile à qui relit la table. Un champ
- * libre proposé à chaque clic serait rempli d'un caractère.
- */
-const DOCUMENT_REVEAL_REASON = 'Consultation de la pièce depuis la fiche du dossier';
 
 /** Icône par type d'évènement : la frise doit se lire sans dépendre de la couleur. */
 const HISTORY_ICONS: Record<KycHistoryKind, string> = {
@@ -90,6 +85,7 @@ const HISTORY_ICONS: Record<KycHistoryKind, string> = {
     TasSpinner,
     TasTable,
     TasTag,
+    KycDocumentsPanel,
     KycScorePanel,
     KycStatusBadge,
     KycStubNotice,
@@ -100,8 +96,8 @@ export class KycFileDetailPage implements OnInit {
   private readonly _breadcrumbService = inject(BreadcrumbService);
   private readonly _permissions = inject(PermissionsService);
   private readonly _snackbarService = inject(SnackbarService);
+  private readonly _sideDrawerService = inject(SideDrawerService);
   private readonly _router = inject(Router);
-  private readonly _destroyRef = inject(DestroyRef);
 
   /** Identifiant du dossier, lié par `withComponentInputBinding()`. */
   public readonly id = input.required<string>();
@@ -115,13 +111,15 @@ export class KycFileDetailPage implements OnInit {
    */
   public readonly canSeeRawDetail = this._permissions.can('kyc:document:reveal');
 
+  /**
+   * Valider les pièces à la main relève de `kyc:document:validate`, pas de `kyc:approve` : ce n'est
+   * pas une signature du circuit, c'est le jugement d'un validateur sur les preuves — et celui qui
+   * le porte ne pourra justement signer aucun niveau du circuit ensuite.
+   */
+  public readonly canValidateDocuments = this._permissions.can('kyc:document:validate');
+
   public readonly tabs = TABS;
   public readonly activeTab = signal<KycDetailTab>('identite');
-
-  // ——— Image de la pièce (onglet « Pièce et selfie ») ———
-  public readonly documentImageUrl = signal<string | null>(null);
-  public readonly isRevealingDocument = signal(false);
-  public readonly revealDocumentError = signal<string | null>(null);
 
   private readonly _tabButtons = viewChildren<ElementRef<HTMLButtonElement>>('tabButton');
 
@@ -194,19 +192,9 @@ export class KycFileDetailPage implements OnInit {
   private readonly _reloadToken = signal(0);
 
   constructor() {
-    this._destroyRef.onDestroy(() => this._replaceDocumentImageUrl(null));
-
     effect(() => {
       const kycFileId = this.id();
       this._reloadToken();
-
-      // Changer de dossier ou recharger ne doit pas laisser à l'écran l'image du précédent.
-      // `untracked` : la révocation lit `documentImageUrl`, et cette lecture ferait de l'effet son
-      // propre déclencheur — donc un rechargement du dossier à chaque ouverture d'image.
-      untracked(() => {
-        this._replaceDocumentImageUrl(null);
-        this.revealDocumentError.set(null);
-      });
 
       this.isLoading.set(true);
       this.hasFailed.set(false);
@@ -238,64 +226,6 @@ export class KycFileDetailPage implements OnInit {
       { label: 'Dossiers KYC', link: ['/kyc'] },
       { label: 'Fiche du dossier' },
     ]);
-  }
-
-  /**
-   * Ouvre l'image de la pièce, en deux appels : la référence de stockage
-   * (`GET /identity-document`, sous `kyc:read`), puis le flux de l'image
-   * (`GET /documents/{storageRef}`, sous `kyc:document:reveal`).
-   *
-   * Jamais au chargement de l'onglet : le serveur journalise chaque lecture au nom de son auteur, et
-   * un accès inscrit sans que personne ne l'ait demandé rend la table d'audit inexploitable.
-   */
-  public revealDocument(): void {
-    if (this.isRevealingDocument() || !this.canSeeRawDetail()) return;
-
-    const kycFileId = this.id();
-    this.isRevealingDocument.set(true);
-    this.revealDocumentError.set(null);
-
-    this._facade
-      .getDocumentStorageRef(kycFileId)
-      .pipe(
-        switchMap((storageRef) => {
-          if (!storageRef) {
-            // Un dossier dont la pièce n'a pas encore été lue par le service n'a pas de référence :
-            // ce n'est pas une panne, et le dire évite de chercher une erreur réseau.
-            this.revealDocumentError.set(
-              "Aucune image de pièce n'est rattachée à ce dossier pour l'instant.",
-            );
-            this.isRevealingDocument.set(false);
-            return EMPTY;
-          }
-          return this._facade.readDocumentImage(kycFileId, storageRef, DOCUMENT_REVEAL_REASON);
-        }),
-        takeUntilDestroyed(this._destroyRef),
-        catchError((err: HttpErrorResponse) => {
-          this.revealDocumentError.set(
-            err.status === 403
-              ? "Vous n'avez pas le droit d'ouvrir les images de ce dossier."
-              : "L'image n'a pas pu être ouverte. Réessayez.",
-          );
-          this.isRevealingDocument.set(false);
-          return EMPTY;
-        }),
-      )
-      .subscribe((blob) => {
-        this._replaceDocumentImageUrl(URL.createObjectURL(blob));
-        this.isRevealingDocument.set(false);
-      });
-  }
-
-  /** Referme l'aperçu : les octets de la pièce ne restent pas en mémoire après consultation. */
-  public hideDocument(): void {
-    this._replaceDocumentImageUrl(null);
-  }
-
-  private _replaceDocumentImageUrl(next: string | null): void {
-    const previous = this.documentImageUrl();
-    this.documentImageUrl.set(next);
-    if (previous) URL.revokeObjectURL(previous);
   }
 
   // ——— Onglets ———
@@ -362,15 +292,34 @@ export class KycFileDetailPage implements OnInit {
   }
 
   /**
-   * La fiche détaillée est un écran de consultation : la soumission appartient au récapitulatif
-   * d'enrôlement, qui seul connaît les images et les champs corrigés. On le dit plutôt que de laisser
-   * croire à un bouton inopérant.
+   * Vrai seulement dans les deux états où le serveur l'accepte : un dossier qui attend le service
+   * biométrique, ou qui en est revenu sans conclusion. Ailleurs l'action est masquée plutôt que
+   * proposée pour échouer en 409.
    */
-  public onSubmitRequested(): void {
-    this._snackbarService.info(
-      'Soumission',
-      "La soumission d'un dossier se fait depuis l'écran d'enrôlement.",
+  public readonly canValidateManually = computed(() => {
+    const status = this.file()?.status;
+    return (
+      this.canValidateDocuments() &&
+      (status === 'Verifying' || status === 'ComplementRequired')
     );
+  });
+
+  /** Ouvre la validation manuelle, puis relit le dossier : son statut et son circuit ont changé. */
+  public validateManually(): void {
+    const file = this.file();
+    if (!file || !this.canValidateManually()) return;
+
+    const ref = this._sideDrawerService.open(ManuallyValidateKycFileDrawer, {
+      data: {
+        kycFileId: this.id(),
+        currentStatus: file.status ?? '',
+      } satisfies ManuallyValidateKycFileDrawerData,
+      panelClass: 'side-drawer-panel',
+    });
+
+    ref.closed.subscribe((validated) => {
+      if (validated) this.refresh();
+    });
   }
 
   /** Les dates du contrat en `yyyy-MM-dd` : découper la chaîne évite le décalage de fuseau. */

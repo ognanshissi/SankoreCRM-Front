@@ -8,11 +8,10 @@ import { TasIcon } from '@talisoft/ui/icon';
 import { Button } from '@talisoft/ui/button';
 import { SnackbarService } from '@talisoft/ui/snackbar';
 import {
-  DecideKycApprovalRequestDecisionEnum,
-  DecideKycApprovalRequestLevelEnum,
   KycFileDto,
   RunKycVerificationRequestDocumentTypeEnum,
 } from '@sankore/crm-api';
+import { SideDrawerService } from '@talisoft/ui/side-drawer';
 import { BreadcrumbService, PermissionsService } from '@sankore/crm/common';
 import { KycFacadeService } from '../data-access/kyc-facade.service';
 import { KycDraftStore } from '../data-access/kyc-draft.store';
@@ -22,6 +21,10 @@ import { KycDocumentCapture } from '../capture/kyc-document-capture';
 import { KycSelfieCapture } from '../capture/kyc-selfie-capture';
 import { KycScorePanel } from '../verification/kyc-score-panel';
 import { KycStatusBadge } from '../ui/kyc-status-badge';
+import {
+  ClearDuplicateFlagDrawer,
+  ClearDuplicateFlagDrawerData,
+} from './clear-duplicate-flag-drawer';
 
 type Step = 'document' | 'selfie' | 'summary';
 
@@ -81,6 +84,7 @@ export class KycEnrolmentPage {
   private readonly _snackbar = inject(SnackbarService);
   private readonly _breadcrumbService = inject(BreadcrumbService);
   private readonly _permissions = inject(PermissionsService);
+  private readonly _sideDrawerService = inject(SideDrawerService);
   private readonly _router = inject(Router);
 
   /** Identifiant du client à enrôler, lu depuis la route. */
@@ -89,6 +93,14 @@ export class KycEnrolmentPage {
   public readonly steps = STEPS;
   /** Même droit que sur l'écran de détail : voir `kyc-file-detail.ts`. */
   public readonly canSeeRawDetail = this._permissions.can('kyc:document:reveal');
+  /** Droit de valider les pièces à la main quand la biométrie n'a pas tranché. */
+  public readonly canValidateManually = this._permissions.can('kyc:document:validate');
+
+  /**
+   * Lever un signalement de doublon a son propre droit (`kyc:duplicate:clear`), distinct de
+   * `kyc:manage` : enrôler et décider qu'un doublon n'en est pas un ne sont pas le même geste.
+   */
+  public readonly canClearDuplicate = this._permissions.can('kyc:duplicate:clear');
 
   private readonly _scorePanel = viewChild(KycScorePanel);
 
@@ -117,6 +129,15 @@ export class KycEnrolmentPage {
 
   /** Un override après échec de comparaison impose un passage par le chef d'agence. */
   public readonly needsManagerValidation = computed(() => !!this.overrideComment());
+
+  /**
+   * Doublon suspecté, tel que le serveur l'a posé sur le dossier.
+   *
+   * Affiché pendant l'enrôlement et non seulement sur la fiche : c'est ici que l'agent a le client
+   * devant lui, donc le seul moment où la question « est-ce vraiment la même personne ? » peut être
+   * tranchée autrement qu'en relisant un écran.
+   */
+  public readonly duplicateSuspected = computed(() => !!this.file()?.duplicateSuspected);
 
   constructor() {
     effect(() => {
@@ -164,30 +185,61 @@ export class KycEnrolmentPage {
   }
 
   /**
-   * Soumission du dossier. Voir la note de la classe : faute d'opération dédiée au contrat, l'agent se
-   * prononce à son propre niveau, ce qui ouvre le circuit. Le commentaire obligatoire d'un override
-   * est transmis, afin que le chef d'agence sache pourquoi le dossier lui arrive.
+   * Fin de l'enrôlement.
+   *
+   * **Il n'existe aucune opération « soumettre » au contrat, et ce n'est pas un oubli.** Un dossier
+   * entre dans le circuit par `POST /verify`, que les écrans de capture appellent déjà : une
+   * vérification réussie l'y place toute seule. Il ne reste donc rien à envoyer dans le cas nominal.
+   *
+   * Ce code appelait `decide(Agent, Approved, …)`, déduit à une époque où le contrat ne disait rien.
+   * Il le dit maintenant : « the agent who submitted the file can never approve or refuse it ».
+   * L'appel partait donc en 403 systématique, et le message affiché — « vérifiez votre rôle dans le
+   * circuit » — envoyait l'agent chercher la cause du mauvais côté.
+   *
+   * Reste le cas où la machine n'a pas tranché : comparaison faciale en échec que l'agent a écrasée
+   * avec un commentaire. C'est exactement ce que `POST /manual-validation` couvre, et son motif
+   * obligatoire est ce commentaire. Il exige `kyc:document:validate`, que l'agent qui enrôle n'a pas
+   * forcément : sans ce droit, on le dit plutôt que de laisser le serveur répondre 403.
    */
   public async submit(): Promise<void> {
     const file = this.file();
     if (!file?.id || this.isSubmitting()) return;
 
+    const comment = this.overrideComment();
+
+    // Cas nominal : `verify` a déjà fait entrer le dossier dans le circuit, rien à envoyer.
+    if (!comment) {
+      this.submitted.set(true);
+      this._drafts.discard(this._draftId());
+      this._snackbar.success(
+        'Enrôlement terminé',
+        'La vérification a placé le dossier dans le circuit de validation.',
+      );
+      this._reloadFile();
+      return;
+    }
+
+    if (!this.canValidateManually()) {
+      this._snackbar.info(
+        'Validation manuelle requise',
+        "La comparaison faciale n'a pas abouti : un profil habilité doit valider les pièces à la "
+          + 'main depuis la fiche du dossier. Votre commentaire y est déjà rattaché.',
+      );
+      this.submitted.set(true);
+      this._drafts.discard(this._draftId());
+      this._reloadFile();
+      return;
+    }
+
     this.isSubmitting.set(true);
     const result = await firstValueFrom(
-      this._facade
-        .decide(
-          file.id,
-          DecideKycApprovalRequestLevelEnum.Agent,
-          DecideKycApprovalRequestDecisionEnum.Approved,
-          this.overrideComment(),
-        )
-        .pipe(
-          catchError((error: HttpErrorResponse) => {
-            this._snackbar.error('Soumission refusée', this._submitError(error));
-            this.isSubmitting.set(false);
-            return of(null);
-          }),
-        ),
+      this._facade.manuallyValidate(file.id, comment).pipe(
+        catchError((error: HttpErrorResponse) => {
+          this._snackbar.error('Validation refusée', this._submitError(error));
+          this.isSubmitting.set(false);
+          return of(null);
+        }),
+      ),
     );
 
     this.isSubmitting.set(false);
@@ -196,12 +248,39 @@ export class KycEnrolmentPage {
     this.submitted.set(true);
     this._drafts.discard(this._draftId());
     this._snackbar.success(
-      'Dossier soumis',
-      this.needsManagerValidation()
-        ? "Le chef d'agence doit valider ce dossier, la comparaison faciale n'ayant pas abouti."
-        : 'Le dossier part dans le circuit de validation.',
+      'Dossier validé à la main',
+      "Le dossier entre dans le circuit, avec le chef d'agence ajouté aux niveaux à signer.",
     );
     this._reloadFile();
+  }
+
+  /**
+   * Ouvre la levée du signalement. Le dossier est **relu** au retour : le serveur peut avoir changé
+   * autre chose que le drapeau, et c'est lui qui dit si la levée a pris.
+   */
+  public openClearDuplicateDrawer(): void {
+    const kycFileId = this.file()?.id;
+    if (!kycFileId || !this.canClearDuplicate()) return;
+
+    const data: ClearDuplicateFlagDrawerData = {
+      kycFileId,
+      customerName: this.customerName() || null,
+    };
+
+    const ref = this._sideDrawerService.open<
+      boolean,
+      ClearDuplicateFlagDrawerData,
+      ClearDuplicateFlagDrawer
+    >(ClearDuplicateFlagDrawer, {
+      width: '100%',
+      height: '100%',
+      panelClass: 'side-drawer-panel',
+      data,
+    });
+
+    ref.closed.subscribe((cleared) => {
+      if (cleared) this._reloadFile();
+    });
   }
 
   public openFile(): void {
@@ -339,16 +418,21 @@ export class KycEnrolmentPage {
     );
   }
 
+  /** Codes de `POST /manual-validation`. Les libellés nomment la cause réelle, pas « la soumission ». */
   private _submitError(error: HttpErrorResponse): string {
     switch (error.status) {
       case 409:
-        return 'Ce dossier a déjà été soumis ou décidé. Rechargez pour voir son état.';
+        // L'opération n'accepte que `Verifying` et `ComplementRequired` : un 409 dit que le dossier
+        // a changé d'état entre l'affichage du récapitulatif et le clic.
+        return "Ce dossier n'est plus en attente de vérification : il a avancé entre-temps. Rechargez pour voir son état.";
       case 403:
-        return "Vous ne pouvez pas soumettre ce dossier : vérifiez votre rôle dans le circuit.";
+        return "Vous n'avez pas le droit de valider les pièces à la main, ou ce dossier sort de votre périmètre d'agence.";
+      case 404:
+        return "Ce dossier est introuvable : il a peut-être été clôturé.";
       case 400:
-        return error.error?.detail ?? 'Le dossier a été refusé : des éléments manquent.';
+        return error.error?.detail ?? 'Le motif de validation a été refusé par le serveur.';
       default:
-        return error.error?.detail ?? "La soumission n'a pas abouti.";
+        return error.error?.detail ?? "La validation manuelle n'a pas abouti.";
     }
   }
 }

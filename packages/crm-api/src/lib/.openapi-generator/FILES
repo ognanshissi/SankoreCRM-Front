@@ -239,6 +239,8 @@ model/kyc-approval-circuit-dto.interface.ts
 model/kyc-approval-step-dto.interface.ts
 model/kyc-caps-dto.interface.ts
 model/kyc-caps-usage-dto.interface.ts
+model/kyc-document-dto.interface.ts
+model/kyc-document-list-dto.interface.ts
 model/kyc-face-comparison-dto.interface.ts
 model/kyc-file-dto.interface.ts
 model/kyc-file-list-item.interface.ts
@@ -267,6 +269,8 @@ model/login-request.interface.ts
 model/login-result.interface.ts
 model/loyalty-score-history-item-dto.interface.ts
 model/manual-pull-result.interface.ts
+model/manually-validate-kyc-file-request.interface.ts
+model/manually-validate-kyc-file-result.interface.ts
 model/mapping-field-error.interface.ts
 model/mapping-validation-error.interface.ts
 model/match-reason.interface.ts
@@ -336,6 +340,8 @@ model/retention-candidate-dto-paged-result.interface.ts
 model/retention-candidate-dto.interface.ts
 model/reveal-sensitive-field-request.interface.ts
 model/reveal-sensitive-field-result.interface.ts
+model/review-kyc-document-request.interface.ts
+model/review-kyc-document-result.interface.ts
 model/revoke-role-request.interface.ts
 model/role-detail-dto.interface.ts
 model/role-dto.interface.ts

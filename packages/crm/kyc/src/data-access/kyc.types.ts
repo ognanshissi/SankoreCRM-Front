@@ -101,6 +101,56 @@ export interface KycVerificationDetail {
  */
 export type KycDocumentKind = 'IdentityDocumentFront' | 'IdentityDocumentBack' | 'Selfie';
 
+/**
+ * Verdict d'un validateur sur une pièce, tel que le serveur le nomme.
+ *
+ * `NotReviewed` n'est **pas** « en attente » : il désigne une image collectée avant que la revue
+ * pièce à pièce n'existe, dont le serveur n'a gardé que la référence de stockage — ni type MIME, ni
+ * taille, ni empreinte, et aucune ligne de registre à décider. Elle est une preuve de ce qui a été
+ * collecté, pas du travail en attente, et l'écran doit la présenter ainsi : « Pending » promettrait
+ * une décision que personne ne peut prendre.
+ */
+export type KycDocumentReviewDecision = 'NotReviewed' | 'Pending' | 'Accepted' | 'Refused';
+
+/** Une pièce du dossier, telle que la liste la rend. */
+export interface KycDocumentRow {
+  /**
+   * Identifiant de la ligne de registre. **Null** pour une image antérieure au registre : il n'y a
+   * rien à décider, et c'est ce `null` qui le dit.
+   */
+  id: string | null;
+  kind: KycDocumentKind | string;
+  storageRef: string;
+  /** Null pour une image antérieure au registre — jamais persistés, donc irrécupérables. */
+  contentType: string | null;
+  sizeBytes: number | null;
+  uploadedAt: string;
+  uploadedBy: string | null;
+  decision: KycDocumentReviewDecision;
+  reviewedBy: string | null;
+  reviewedAt: string | null;
+  refusalReason: string | null;
+  /** Seule la plus récente de chaque nature peut être décidée : c'est celle qui vaut preuve. */
+  isCurrentForKind: boolean;
+  /** Vrai quand une vérification a lu cette image (rapprochement par référence de stockage). */
+  hasOcrReading: boolean;
+}
+
+/** Les pièces d'un dossier, avec de quoi dire si la décision de dossier est ouverte. */
+export interface KycDocumentList {
+  fileStatus: string;
+  documents: KycDocumentRow[];
+  /**
+   * Vraie quand chaque pièce courante a été acceptée, et qu'il y en a au moins une. C'est un
+   * **constat, pas un déclencheur** : accepter la dernière pièce ne fait pas avancer le dossier, par
+   * décision produit explicite. L'écran s'en sert pour dire au validateur qu'il peut passer à la
+   * décision de dossier.
+   */
+  allCurrentAccepted: boolean;
+  /** Vraie dès qu'une pièce courante est antérieure au registre : « tout accepté » serait trompeur. */
+  anyNotReviewed: boolean;
+}
+
 /** Référence d'image dans le magasin documentaire, attendue par `RunKycVerificationRequest`. */
 export interface KycImageRef {
   storageRef: string;

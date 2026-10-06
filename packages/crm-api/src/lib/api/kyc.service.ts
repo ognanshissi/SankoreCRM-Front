@@ -37,6 +37,8 @@ import { KycApprovalCircuitDto } from '../model/kyc-approval-circuit-dto.interfa
 // @ts-ignore
 import { KycCapsDto } from '../model/kyc-caps-dto.interface';
 // @ts-ignore
+import { KycDocumentListDto } from '../model/kyc-document-list-dto.interface';
+// @ts-ignore
 import { KycFileDto } from '../model/kyc-file-dto.interface';
 // @ts-ignore
 import { KycFileListPage } from '../model/kyc-file-list-page.interface';
@@ -45,11 +47,19 @@ import { KycIdentityDocumentDto } from '../model/kyc-identity-document-dto.inter
 // @ts-ignore
 import { KycVerificationDto } from '../model/kyc-verification-dto.interface';
 // @ts-ignore
+import { ManuallyValidateKycFileRequest } from '../model/manually-validate-kyc-file-request.interface';
+// @ts-ignore
+import { ManuallyValidateKycFileResult } from '../model/manually-validate-kyc-file-result.interface';
+// @ts-ignore
 import { ProblemDetails } from '../model/problem-details.interface';
 // @ts-ignore
 import { RaiseKycReviewRequest } from '../model/raise-kyc-review-request.interface';
 // @ts-ignore
 import { RaiseKycReviewResult } from '../model/raise-kyc-review-result.interface';
+// @ts-ignore
+import { ReviewKycDocumentRequest } from '../model/review-kyc-document-request.interface';
+// @ts-ignore
+import { ReviewKycDocumentResult } from '../model/review-kyc-document-result.interface';
 // @ts-ignore
 import { RunKycVerificationRequest } from '../model/run-kyc-verification-request.interface';
 // @ts-ignore
@@ -850,6 +860,72 @@ export class KYCApiService {
     }
 
     /**
+     * List the images attached to a KYC file and their review decisions
+     * Metadata only, never bytes: fetching an image is GET kyc-files/{id}/documents/{storageRef} under kyc:document:reveal, which is audited per access. Images collected before per-document review come back with a null id and decision NotReviewed — such a file was decided as a whole by the approval circuit, and no per-document verdict exists to show. Requires permission: kyc:read.
+     * @param kycFileId 
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     */
+    public listKycDocuments(kycFileId: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<KycDocumentListDto>;
+    public listKycDocuments(kycFileId: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<KycDocumentListDto>>;
+    public listKycDocuments(kycFileId: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<KycDocumentListDto>>;
+    public listKycDocuments(kycFileId: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
+        if (kycFileId === null || kycFileId === undefined) {
+            throw new Error('Required parameter kycFileId was null or undefined when calling listKycDocuments.');
+        }
+
+        let localVarHeaders = this.defaultHeaders;
+
+        let localVarCredential: string | undefined;
+        // authentication (BearerToken) required
+        localVarCredential = this.configuration.lookupCredential('BearerToken');
+        if (localVarCredential) {
+            localVarHeaders = localVarHeaders.set('Authorization', 'Bearer ' + localVarCredential);
+        }
+
+        let localVarHttpHeaderAcceptSelected: string | undefined = options && options.httpHeaderAccept;
+        if (localVarHttpHeaderAcceptSelected === undefined) {
+            // to determine the Accept header
+            const httpHeaderAccepts: string[] = [
+                'application/json'
+            ];
+            localVarHttpHeaderAcceptSelected = this.configuration.selectHeaderAccept(httpHeaderAccepts);
+        }
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+
+        let localVarHttpContext: HttpContext | undefined = options && options.context;
+        if (localVarHttpContext === undefined) {
+            localVarHttpContext = new HttpContext();
+        }
+
+
+        let responseType_: 'text' | 'json' | 'blob' = 'json';
+        if (localVarHttpHeaderAcceptSelected) {
+            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+                responseType_ = 'text';
+            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+                responseType_ = 'json';
+            } else {
+                responseType_ = 'blob';
+            }
+        }
+
+        let localVarPath = `/api/v1/kyc-files/${this.configuration.encodeParam({name: "kycFileId", value: kycFileId, in: "path", style: "simple", explode: false, dataType: "string", dataFormat: "uuid"})}/documents`;
+        return this.httpClient.request<KycDocumentListDto>('get', `${this.configuration.basePath}${localVarPath}`,
+            {
+                context: localVarHttpContext,
+                responseType: <any>responseType_,
+                withCredentials: this.configuration.withCredentials,
+                headers: localVarHeaders,
+                observe: observe,
+                reportProgress: reportProgress
+            }
+        );
+    }
+
+    /**
      * List KYC files in the caller\&#39;s agency perimeter
      * Server-side paging, filterable by status, agency, vigilance level and a period on last activity. Always bounded to the caller\&#39;s agency perimeter, and files whose agency could not be resolved are visible only to an unrestricted caller. Rows whose next approval rung the caller\&#39;s roles can sign come first, and awaitingMeCount counts those across the whole perimeter rather than the page. Carries no customer name: resolve it from the clients API. Requires kyc:read.
      * @param status 
@@ -941,6 +1017,86 @@ export class KYCApiService {
             {
                 context: localVarHttpContext,
                 params: localVarQueryParameters,
+                responseType: <any>responseType_,
+                withCredentials: this.configuration.withCredentials,
+                headers: localVarHeaders,
+                observe: observe,
+                reportProgress: reportProgress
+            }
+        );
+    }
+
+    /**
+     * Validate a KYC file\&#39;s evidence by hand, with no biometric score
+     * For a file the machine cannot resolve: the biometric service is unreachable, or it keeps refusing a usable but worn document. Moves the file from Verifying or ComplementRequired into the approval circuit on the validator\&#39;s word, with a mandatory motive. It is NOT an approval: the circuit still decides, it gains the branch manager even on a low-risk file, and the validator can sign none of its levels. Requires permission: kyc:document:validate.
+     * @param kycFileId 
+     * @param manuallyValidateKycFileRequest 
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     */
+    public manuallyValidateKycFile(kycFileId: string, manuallyValidateKycFileRequest: ManuallyValidateKycFileRequest, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<ManuallyValidateKycFileResult>;
+    public manuallyValidateKycFile(kycFileId: string, manuallyValidateKycFileRequest: ManuallyValidateKycFileRequest, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<ManuallyValidateKycFileResult>>;
+    public manuallyValidateKycFile(kycFileId: string, manuallyValidateKycFileRequest: ManuallyValidateKycFileRequest, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<ManuallyValidateKycFileResult>>;
+    public manuallyValidateKycFile(kycFileId: string, manuallyValidateKycFileRequest: ManuallyValidateKycFileRequest, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
+        if (kycFileId === null || kycFileId === undefined) {
+            throw new Error('Required parameter kycFileId was null or undefined when calling manuallyValidateKycFile.');
+        }
+        if (manuallyValidateKycFileRequest === null || manuallyValidateKycFileRequest === undefined) {
+            throw new Error('Required parameter manuallyValidateKycFileRequest was null or undefined when calling manuallyValidateKycFile.');
+        }
+
+        let localVarHeaders = this.defaultHeaders;
+
+        let localVarCredential: string | undefined;
+        // authentication (BearerToken) required
+        localVarCredential = this.configuration.lookupCredential('BearerToken');
+        if (localVarCredential) {
+            localVarHeaders = localVarHeaders.set('Authorization', 'Bearer ' + localVarCredential);
+        }
+
+        let localVarHttpHeaderAcceptSelected: string | undefined = options && options.httpHeaderAccept;
+        if (localVarHttpHeaderAcceptSelected === undefined) {
+            // to determine the Accept header
+            const httpHeaderAccepts: string[] = [
+                'application/json'
+            ];
+            localVarHttpHeaderAcceptSelected = this.configuration.selectHeaderAccept(httpHeaderAccepts);
+        }
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+
+        let localVarHttpContext: HttpContext | undefined = options && options.context;
+        if (localVarHttpContext === undefined) {
+            localVarHttpContext = new HttpContext();
+        }
+
+
+        // to determine the Content-Type header
+        const consumes: string[] = [
+            'application/json'
+        ];
+        const httpContentTypeSelected: string | undefined = this.configuration.selectHeaderContentType(consumes);
+        if (httpContentTypeSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Content-Type', httpContentTypeSelected);
+        }
+
+        let responseType_: 'text' | 'json' | 'blob' = 'json';
+        if (localVarHttpHeaderAcceptSelected) {
+            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+                responseType_ = 'text';
+            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+                responseType_ = 'json';
+            } else {
+                responseType_ = 'blob';
+            }
+        }
+
+        let localVarPath = `/api/v1/kyc-files/${this.configuration.encodeParam({name: "kycFileId", value: kycFileId, in: "path", style: "simple", explode: false, dataType: "string", dataFormat: "uuid"})}/manual-validation`;
+        return this.httpClient.request<ManuallyValidateKycFileResult>('post', `${this.configuration.basePath}${localVarPath}`,
+            {
+                context: localVarHttpContext,
+                body: manuallyValidateKycFileRequest,
                 responseType: <any>responseType_,
                 withCredentials: this.configuration.withCredentials,
                 headers: localVarHeaders,
@@ -1099,6 +1255,90 @@ export class KYCApiService {
             {
                 context: localVarHttpContext,
                 params: localVarQueryParameters,
+                responseType: <any>responseType_,
+                withCredentials: this.configuration.withCredentials,
+                headers: localVarHeaders,
+                observe: observe,
+                reportProgress: reportProgress
+            }
+        );
+    }
+
+    /**
+     * Accept or refuse one uploaded KYC document
+     * One validator\&#39;s verdict on one image, with a mandatory motive when refused. Accepting does NOT advance the file — the file-level decision stays a separate, deliberate act — while refusing sends it back to ComplementRequired so the agent produces a better image. A document can be decided once: a refused one is replaced by a new upload, not edited. Allowed while the file is Verifying or Validating. Requires permission: kyc:document:validate.
+     * @param kycFileId 
+     * @param documentId 
+     * @param reviewKycDocumentRequest 
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     */
+    public reviewKycDocument(kycFileId: string, documentId: string, reviewKycDocumentRequest: ReviewKycDocumentRequest, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<ReviewKycDocumentResult>;
+    public reviewKycDocument(kycFileId: string, documentId: string, reviewKycDocumentRequest: ReviewKycDocumentRequest, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<ReviewKycDocumentResult>>;
+    public reviewKycDocument(kycFileId: string, documentId: string, reviewKycDocumentRequest: ReviewKycDocumentRequest, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<ReviewKycDocumentResult>>;
+    public reviewKycDocument(kycFileId: string, documentId: string, reviewKycDocumentRequest: ReviewKycDocumentRequest, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
+        if (kycFileId === null || kycFileId === undefined) {
+            throw new Error('Required parameter kycFileId was null or undefined when calling reviewKycDocument.');
+        }
+        if (documentId === null || documentId === undefined) {
+            throw new Error('Required parameter documentId was null or undefined when calling reviewKycDocument.');
+        }
+        if (reviewKycDocumentRequest === null || reviewKycDocumentRequest === undefined) {
+            throw new Error('Required parameter reviewKycDocumentRequest was null or undefined when calling reviewKycDocument.');
+        }
+
+        let localVarHeaders = this.defaultHeaders;
+
+        let localVarCredential: string | undefined;
+        // authentication (BearerToken) required
+        localVarCredential = this.configuration.lookupCredential('BearerToken');
+        if (localVarCredential) {
+            localVarHeaders = localVarHeaders.set('Authorization', 'Bearer ' + localVarCredential);
+        }
+
+        let localVarHttpHeaderAcceptSelected: string | undefined = options && options.httpHeaderAccept;
+        if (localVarHttpHeaderAcceptSelected === undefined) {
+            // to determine the Accept header
+            const httpHeaderAccepts: string[] = [
+                'application/json'
+            ];
+            localVarHttpHeaderAcceptSelected = this.configuration.selectHeaderAccept(httpHeaderAccepts);
+        }
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+
+        let localVarHttpContext: HttpContext | undefined = options && options.context;
+        if (localVarHttpContext === undefined) {
+            localVarHttpContext = new HttpContext();
+        }
+
+
+        // to determine the Content-Type header
+        const consumes: string[] = [
+            'application/json'
+        ];
+        const httpContentTypeSelected: string | undefined = this.configuration.selectHeaderContentType(consumes);
+        if (httpContentTypeSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Content-Type', httpContentTypeSelected);
+        }
+
+        let responseType_: 'text' | 'json' | 'blob' = 'json';
+        if (localVarHttpHeaderAcceptSelected) {
+            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+                responseType_ = 'text';
+            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+                responseType_ = 'json';
+            } else {
+                responseType_ = 'blob';
+            }
+        }
+
+        let localVarPath = `/api/v1/kyc-files/${this.configuration.encodeParam({name: "kycFileId", value: kycFileId, in: "path", style: "simple", explode: false, dataType: "string", dataFormat: "uuid"})}/documents/${this.configuration.encodeParam({name: "documentId", value: documentId, in: "path", style: "simple", explode: false, dataType: "string", dataFormat: "uuid"})}/review`;
+        return this.httpClient.request<ReviewKycDocumentResult>('post', `${this.configuration.basePath}${localVarPath}`,
+            {
+                context: localVarHttpContext,
+                body: reviewKycDocumentRequest,
                 responseType: <any>responseType_,
                 withCredentials: this.configuration.withCredentials,
                 headers: localVarHeaders,

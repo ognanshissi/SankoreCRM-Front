@@ -187,17 +187,19 @@
           </div>
         }
 
-        <div class="flex justify-end mt-4">
-          <button
-            tas-raised-button
-            color="primary"
-            type="button"
-            [disabled]="!canSubmit()"
-            (click)="handleSubmit()"
-          >
-            Soumettre le dossier
-          </button>
-        </div>
+        @if (showSubmitAction()) {
+          <div class="flex justify-end mt-4">
+            <button
+              tas-raised-button
+              color="primary"
+              type="button"
+              [disabled]="!canSubmit()"
+              (click)="handleSubmit()"
+            >
+              Soumettre le dossier
+            </button>
+          </div>
+        }
       </div>
 
       <!-- Détail technique brut -->
