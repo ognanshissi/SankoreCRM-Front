@@ -1,4 +1,4 @@
-import { Component, inject, input, OnInit, signal } from '@angular/core';
+import { Component, computed, inject, input, OnInit, signal } from '@angular/core';
 import { NgClass } from '@angular/common';
 import { Router } from '@angular/router';
 import { forkJoin } from 'rxjs';
@@ -22,6 +22,13 @@ import {
   WorkflowTasksApiService,
   WorkflowTemplatesApiService,
 } from '@sankore/crm-api';
+import { SideDrawerService } from '@talisoft/ui/side-drawer';
+// Le module KYC ne dépend pas de la lib settings : l'import ne crée donc pas de cycle.
+import {
+  isKycWorkflowEntity,
+  KycFilePreviewDrawer,
+  KycFilePreviewDrawerData,
+} from '@sankore/crm/kyc';
 import { entityTypeLabel, instanceStatusMeta, stepStatusMeta } from '../workflow-shared';
 import { PermissionsService } from '@sankore/crm/common';
 
@@ -55,7 +62,15 @@ function taskPriorityLabel(priority: string | undefined): string {
 })
 export class WorkflowInstanceDetailPage implements OnInit {
   private readonly _permissions = inject(PermissionsService);
+  private readonly _sideDrawerService = inject(SideDrawerService);
   public readonly canApprove = this._permissions.can('workflow:approve');
+
+  /**
+   * L'instance porte-t-elle un dossier KYC ? Si oui, on propose de le consulter **avant** de
+   * signer : approuver une étape KYC sans avoir vu le score, le niveau de vigilance et les
+   * décisions déjà prises revient à signer à l'aveugle.
+   */
+  public readonly isKycInstance = computed(() => isKycWorkflowEntity(this.instance()?.entityType));
   public readonly canAssign = this._permissions.can('workflow:step:assign');
   public readonly canCancel = this._permissions.can('workflow:cancel');
   public readonly canCompleteTask = this._permissions.can('workflow:task:complete');
@@ -126,6 +141,27 @@ export class WorkflowInstanceDetailPage implements OnInit {
   }
 
   // ── Approve ───────────────────────────────────────────────────────────────
+
+  /**
+   * Aperçu du dossier rattaché. `entityId` est passé **dans les deux champs** : le contrat ne dit
+   * pas s'il désigne le dossier ou le client, et le drawer tente l'un puis l'autre.
+   */
+  public openKycPreview(): void {
+    const instance = this.instance();
+    const entityId = instance?.entityId;
+    if (!entityId) return;
+
+    const data: KycFilePreviewDrawerData = {
+      kycFileId: entityId,
+      customerId: entityId,
+      context: `Consulté depuis l'instance de workflow ${instance?.id ?? ''}`.trim(),
+    };
+
+    this._sideDrawerService.open<boolean, KycFilePreviewDrawerData, KycFilePreviewDrawer>(
+      KycFilePreviewDrawer,
+      { width: '100%', height: '100%', panelClass: 'side-drawer-panel', data },
+    );
+  }
 
   public approve(): void {
     this.isActing.set(true);

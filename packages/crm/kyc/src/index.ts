@@ -8,6 +8,9 @@ import kycRoutes from './kyc.routes';
  * client et au guichet, et de quoi afficher un statut KYC hors du module.
  */
 export { KycCapsPanel } from './caps/kyc-caps-panel';
+export { KycFilePreviewDrawer } from './preview/kyc-file-preview-drawer';
+export type { KycFilePreviewDrawerData } from './preview/kyc-file-preview-drawer';
+export { isKycWorkflowEntity } from './data-access/kyc-referential';
 export { KycStatusBadge } from './ui/kyc-status-badge';
 export { KycScoreGauge } from './ui/kyc-score-gauge';
 

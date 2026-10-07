@@ -1,5 +1,5 @@
 import { inject, Injectable } from '@angular/core';
-import { catchError, delay, forkJoin, map, Observable, of, switchMap } from 'rxjs';
+import { catchError, forkJoin, map, Observable, of, switchMap } from 'rxjs';
 import {
   ClientsApiService,
   ClientSearchItemDto,
@@ -19,6 +19,11 @@ import {
   RunKycVerificationRequestDocumentTypeEnum,
   RunKycVerificationResponse,
 } from '@sankore/crm-api';
+import {
+  kycApprovalDecisionMeta,
+  kycApprovalLevelLabel,
+  kycDocumentKindLabel,
+} from './kyc-referential';
 import {
   KycCaps,
   KycDashboardFilters,
@@ -45,10 +50,10 @@ import {
  *    cahier ne seront pas tenues telles quelles, et chacune est documentée là où elle se lit :
  *    pas de lien d'image temporaire (`KycImageRef`), pas de maximum par critère de score
  *    (`KycScoreContribution`), pas de ligne MRZ brute ni de numéro de pièce en clair (`KycMrzData`).
- * 2. **Bouchons** — ce qui n'a toujours aucun endpoint : l'historique du dossier. Il porte un
- *    `TODO(KYC-B-08)`, renvoie des données marquées `isStub: true`, et reste la seule chose à
- *    remplacer le jour de la livraison backend. Les plafonds en sont sortis (KYC-B-06) : ils
- *    viennent du serveur, consommation comprise — y compris le fait qu'elle n'est pas mesurable.
+ * 2. **Plus aucun bouchon.** L'historique était le dernier ; il est désormais *composé* des quatre
+ *    lectures réelles (dossier, pièces, vérification, circuit), faute d'endpoint agrégé. Il reste
+ *    incomplet — corrections et revues sont en écriture seule — et l'écran le dit, ce qui n'est pas
+ *    la même chose que d'afficher des données simulées.
  *
  * Aucun écran n'appelle `KYCApiService` en direct : sans cette règle, le rebranchement se chercherait
  * dans sept dossiers au lieu d'un fichier.
@@ -493,13 +498,88 @@ export class KycFacadeService {
 
 
   /**
-   * TODO(KYC-B-08) — historique du dossier.
-   * Attendu : `GET /kyc-files/{id}/history` agrégeant vérifications, corrections, décisions et revues,
-   * avec auteur, date, et masquage des valeurs sensibles selon les permissions. Les corrections et les
-   * revues ne sont aujourd'hui qu'en écriture.
+   * Historique du dossier, **composé à partir des lectures réelles** plutôt que d'un bouchon.
+   *
+   * Il n'existe toujours pas de `GET /kyc-files/{id}/history` agrégé. Mais les évènements eux-mêmes
+   * sont désormais lisibles, chacun daté et signé, dans quatre réponses que l'écran chargeait déjà
+   * séparément : le dossier (ouverture, validation), le registre des pièces (dépôts et revues), la
+   * vérification (notation) et le circuit (décisions). On les fusionne et on trie par date.
+   *
+   * Chaque entrée est donc traçable à un champ du contrat — plus aucune donnée inventée, et le
+   * bandeau « données de démonstration » disparaît de l'onglet.
+   *
+   * **Ce qui manque encore, et que l'écran doit dire** : les corrections de champs
+   * (`POST /corrections`) et les revues levées (`POST /reviews`) sont en écriture seule, aucune
+   * lecture ne les restitue. La frise est donc réelle mais incomplète, ce qui n'est pas la même
+   * chose que simulée.
+   *
+   * Chaque source tombe indépendamment : une pièce illisible ne doit pas faire disparaître les
+   * décisions du circuit.
    */
   public getHistory(kycFileId: string): Observable<KycHistoryEntry[]> {
-    return of(STUB_HISTORY).pipe(delay(300));
+    return forkJoin({
+      file: this._kycApi.getKycFile(kycFileId).pipe(catchError(() => of(null))),
+      documents: this.listDocuments(kycFileId).pipe(catchError(() => of(null))),
+      verification: this._kycApi.getKycVerification(kycFileId).pipe(catchError(() => of(null))),
+      circuit: this._kycApi.getKycApprovalCircuit(kycFileId).pipe(catchError(() => of(null))),
+    }).pipe(
+      map(({ file, documents, verification, circuit }) => {
+        const entries: KycHistoryEntry[] = [];
+        const push = (
+          kind: KycHistoryEntry['kind'],
+          label: string,
+          detail: string | null,
+          authorId: string | null,
+          at: string | null | undefined,
+        ) => {
+          if (!at) return;
+          entries.push({ kind, label, detail, authorId, authorName: '', at, masked: false });
+        };
+
+        push('creation', 'Dossier ouvert', null, null, file?.createdAt);
+
+        for (const doc of documents?.documents ?? []) {
+          push('creation', 'Pièce déposée', kycDocumentKindLabel(doc.kind), doc.uploadedBy, doc.uploadedAt);
+          if (doc.reviewedAt) {
+            const accepted = doc.decision === 'Accepted';
+            push(
+              'review',
+              accepted ? 'Pièce acceptée' : 'Pièce refusée',
+              doc.refusalReason || kycDocumentKindLabel(doc.kind),
+              doc.reviewedBy,
+              doc.reviewedAt,
+            );
+          }
+        }
+
+        if (verification?.assessedAt) {
+          const score = verification.confidenceScore;
+          push(
+            'verification',
+            'Vérification exécutée',
+            score === null || score === undefined ? null : `Score ${score}`,
+            null,
+            verification.assessedAt,
+          );
+        }
+
+        for (const step of circuit?.steps ?? []) {
+          if (!step.decidedAt || !step.decision) continue;
+          push(
+            'decision',
+            `${kycApprovalDecisionMeta(step.decision).label} — ${kycApprovalLevelLabel(step.level)}`,
+            step.comment || null,
+            step.approverId ?? null,
+            step.decidedAt,
+          );
+        }
+
+        push('decision', 'Dossier validé', null, null, file?.validatedAt);
+
+        // Du plus récent au plus ancien : c'est le dernier mouvement qu'on vient chercher.
+        return entries.sort((a, b) => Date.parse(b.at) - Date.parse(a.at));
+      }),
+    );
   }
 
   /**
@@ -544,22 +624,8 @@ export class KycFacadeService {
       }),
     );
   }
-
-  /** Utilisé par les écrans pour signaler honnêtement qu'ils affichent des données simulées. */
-  public readonly hasStubbedData = true;
 }
 
-// ——————————————————————————————————————————————————————————————————————
-// Données de démonstration. Volontairement reconnaissables : pas de nom plausible, pas de score
-// flatteur, et `isStub` porté jusque dans l'interface.
-// ——————————————————————————————————————————————————————————————————————
-
-const STUB_HISTORY: KycHistoryEntry[] = [
-  { kind: 'creation',     label: 'Dossier ouvert',            detail: null,         authorName: 'Système',          at: new Date(Date.now() - 86_400_000 * 2).toISOString(), masked: false },
-  { kind: 'verification', label: 'Vérification exécutée',     detail: 'Score 72',   authorName: 'Service biométrique', at: new Date(Date.now() - 86_400_000).toISOString(), masked: false },
-  { kind: 'correction',   label: 'Champ corrigé',             detail: "Date d'expiration", authorName: 'Agent de démonstration', at: new Date(Date.now() - 7_200_000).toISOString(), masked: true },
-  { kind: 'decision',     label: 'Complément demandé',        detail: "Chef d'agence", authorName: 'Chef de démonstration', at: new Date(Date.now() - 3_600_000).toISOString(), masked: false },
-];
 
 // ——————————————————————————————————————————————————————————————————————
 // Libellés et bandes de confiance.

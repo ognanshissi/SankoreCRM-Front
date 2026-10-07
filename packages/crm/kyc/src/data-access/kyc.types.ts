@@ -5,9 +5,10 @@
  * non dispersés dans les écrans, pour que le rebranchement sur l'API réelle se fasse en un seul
  * endroit : `kyc-facade.service.ts`.
  *
- * Tant que ces endpoints n'existent pas, la façade renvoie des valeurs de démonstration explicitement
- * marquées (`isStub: true`), et les écrans affichent un bandeau le disant. Aucun écran ne doit
- * présenter une donnée simulée comme une donnée serveur.
+ * Plus aucune valeur de démonstration n'y subsiste. Là où le contrat n'offre pas d'endpoint dédié —
+ * l'historique du dossier — la façade **compose** la réponse à partir de lectures réelles, et
+ * l'écran dit ce qui manque. Aucun écran ne doit présenter une donnée simulée comme une donnée
+ * serveur, ni une vue partielle comme une vue complète.
  */
 
 /** Fiabilité d'un champ lu par l'OCR — le code couleur de KYC-F-02. */
@@ -173,6 +174,13 @@ export interface KycHistoryEntry {
   label: string;
   /** Nom du champ pour une correction, niveau pour une décision. */
   detail: string | null;
+  /**
+   * Auteur de l'évènement, tel que le contrat le donne : un identifiant d'utilisateur. `null` pour
+   * un évènement machine (ouverture, notation). Le nom est résolu par l'écran, qui ne demande
+   * qu'une fois chaque identifiant — l'historique répète les mêmes.
+   */
+  authorId: string | null;
+  /** Rempli par l'écran après résolution ; vide tant que le nom n'est pas connu. */
   authorName: string;
   at: string;
   /** Vrai quand la valeur est masquée faute de permission (KYC-F-08). */

@@ -26,5 +26,7 @@ export interface KycFileDto {
     validatedAt?: string | null;
     createdAt?: string;
     updatedAt?: string;
+    workflowInstanceId?: string | null;
+    workflowStatus?: string | null;
 }
 

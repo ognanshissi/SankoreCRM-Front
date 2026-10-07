@@ -276,6 +276,34 @@
       @case ('validation') {
         <div role="tabpanel" id="kyc-panel-validation" aria-labelledby="kyc-tab-validation">
           <!--
+            Délai dépassé côté workflow. Affiché AVANT tout le reste de l'onglet : c'est une alerte,
+            pas un changement d'état — le dossier reste gouverné par le module KYC, et le circuit
+            ci-dessous est toujours celui qui décide.
+          -->
+          @if (workflowTimedOut()) {
+            <tas-card class="block mb-4">
+              <div class="p-4 flex gap-3">
+                <tas-icon
+                  iconName="feather:clock"
+                  class="text-functional-error shrink-0"
+                  style="font-size:16px"
+                ></tas-icon>
+                <div class="min-w-0">
+                  <p class="text-sm font-medium text-slate-800">
+                    Le délai de cette étape a été dépassé
+                  </p>
+                  <p class="text-xs text-slate-500 mt-1 max-w-prose">
+                    Le suivi workflow de ce tour de validation a été clos faute de décision dans les
+                    délais. <strong>Le dossier n'a pas changé d'état</strong> et reste à décider
+                    ci-dessous : seul le reflet de suivi s'arrête là, et les décisions qui suivent ne
+                    seront plus retracées pour ce tour.
+                  </p>
+                </div>
+              </div>
+            </tas-card>
+          }
+
+          <!--
             Validation manuelle : l'échappatoire pour un dossier que la machine ne peut pas
             conclure. Proposée seulement dans les deux états où le serveur l'accepte, et annoncée
             pour ce qu'elle est — une entrée dans le circuit, pas une approbation.
@@ -428,9 +456,24 @@
               </div>
             </tas-card>
           } @else {
-            @if (historyIsStub()) {
-              <kyc-stub-notice what="L'historique du dossier"></kyc-stub-notice>
-            }
+            <!--
+              La frise est réelle mais **incomplète**, et c'est une nuance qui compte sur un écran
+              de conformité : les corrections de champs et les revues levées sont en écriture seule
+              au contrat, aucune lecture ne les restitue. Le dire évite de conclure d'une absence
+              qu'il ne s'est rien passé.
+            -->
+            <div class="mb-4 flex items-start gap-2 rounded-lg border border-slate-200 bg-slate-50 p-3">
+              <tas-icon
+                iconName="feather:info"
+                class="mt-0.5 shrink-0 text-slate-400"
+                style="font-size:14px"
+              ></tas-icon>
+              <p class="text-xs text-slate-600">
+                Ouvertures, dépôts et revues de pièces, vérifications et décisions du circuit. Les
+                corrections de champs et les revues levées n'apparaissent pas : le serveur ne les
+                restitue pas encore.
+              </p>
+            </div>
             @if (historyRows().length === 0) {
               <tas-card class="block">
                 <div class="p-10 text-center">

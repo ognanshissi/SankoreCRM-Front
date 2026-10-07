@@ -2,6 +2,14 @@ import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { NgClass } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
+import { catchError, EMPTY } from 'rxjs';
+import { SideDrawerService } from '@talisoft/ui/side-drawer';
+// Le module KYC ne dépend pas de la lib settings : l'import ne crée donc pas de cycle.
+import {
+  isKycWorkflowEntity,
+  KycFilePreviewDrawer,
+  KycFilePreviewDrawerData,
+} from '@sankore/crm/kyc';
 import { TasCard } from '@talisoft/ui/card';
 import { TasSpinner } from '@talisoft/ui/spinner';
 import { TasIcon } from '@talisoft/ui/icon';
@@ -14,6 +22,7 @@ import {
   CompletedTaskDto,
   MyStepDto,
   RejectStepRequest,
+  WorkflowInstanceDto,
   WorkflowInstancesApiService,
 } from '@sankore/crm-api';
 
@@ -233,7 +242,7 @@ function completedStatusMeta(status: string | null | undefined) {
                     class="text-sm font-medium mb-2"
                     [ngClass]="actionType() === 'approve' ? 'text-green-800' : 'text-red-800'"
                   >
-                    {{ actionType() === 'approve' ? 'Confirmer l\'approbation' : 'Confirmer le rejet' }}
+                    {{ actionType() === 'approve' ? "Confirmer l'approbation" : 'Confirmer le rejet' }}
                   </p>
                   <textarea
                     class="w-full px-2.5 py-1.5 text-sm border rounded-md bg-white focus:outline-none focus:ring-1 resize-none"
@@ -245,6 +254,22 @@ function completedStatusMeta(status: string | null | undefined) {
                     [(ngModel)]="actionComment"
                   ></textarea>
                   <div class="flex items-center gap-2 mt-2">
+                    <!--
+                      Visible seulement pour une étape rattachée a un dossier KYC, et seulement une
+                      fois son instance lue. Le drawer se superpose : le commentaire deja saisi
+                      reste en place derriere lui.
+                    -->
+                    @if (expandedKycEntityId()) {
+                      <button
+                        tas-outlined-button
+                        type="button"
+                        size="small"
+                        (click)="openKycPreview()"
+                      >
+                        <tas-icon iconName="feather:folder" style="font-size:14px"></tas-icon>
+                        Consulter le dossier KYC
+                      </button>
+                    }
                     <button
                       tas-button
                       type="button"
@@ -386,6 +411,18 @@ export class WorkflowMyQueuePage implements OnInit {
   private readonly _api = inject(WorkflowInstancesApiService);
   private readonly _snackbar = inject(SnackbarService);
   private readonly _router = inject(Router);
+  private readonly _sideDrawerService = inject(SideDrawerService);
+
+  /**
+   * Instance de l'étape dont le panneau d'action est ouvert.
+   *
+   * `MyStepDto` ne porte ni `entityType` ni `entityId` : savoir si une étape concerne un dossier
+   * KYC demande de lire son instance. Cette lecture est faite **à l'ouverture du panneau d'action**,
+   * pas au chargement de la file — une requête par ligne affichée coûterait une rafale d'appels
+   * pour une information dont on n'a besoin qu'au moment de signer. Un seul panneau étant ouvert à
+   * la fois, un seul signal suffit, sans cache à invalider.
+   */
+  public readonly expandedInstance = signal<WorkflowInstanceDto | null>(null);
 
   public readonly completedStatusMeta = completedStatusMeta;
 
@@ -500,12 +537,64 @@ export class WorkflowMyQueuePage implements OnInit {
     this.actionComment = '';
     this.actionType.set(type);
     this.expandedStepId.set(step.stepId ?? null);
+    this._resolveExpandedInstance(step);
   }
 
   public closeAction(): void {
     this.expandedStepId.set(null);
     this.actionType.set(null);
     this.actionComment = '';
+    this.expandedInstance.set(null);
+  }
+
+  /**
+   * Entité KYC de l'étape ouverte, ou `null`. Sert à la fois de condition d'affichage et de valeur
+   * passée au drawer, pour qu'il n'y ait qu'un seul endroit où la règle est écrite.
+   */
+  public readonly expandedKycEntityId = computed(() => {
+    const instance = this.expandedInstance();
+    if (!instance || !isKycWorkflowEntity(instance.entityType)) return null;
+    return instance.entityId ?? null;
+  });
+
+  /**
+   * Aperçu du dossier rattaché à l'étape en cours de signature. `entityId` part dans les deux
+   * champs : le contrat ne dit pas s'il désigne le dossier ou le client, et le drawer tente l'un
+   * puis l'autre.
+   */
+  public openKycPreview(): void {
+    const entityId = this.expandedKycEntityId();
+    if (!entityId) return;
+
+    const data: KycFilePreviewDrawerData = {
+      kycFileId: entityId,
+      customerId: entityId,
+      context: 'Consulté depuis votre file de validation',
+    };
+
+    this._sideDrawerService.open<boolean, KycFilePreviewDrawerData, KycFilePreviewDrawer>(
+      KycFilePreviewDrawer,
+      { width: '100%', height: '100%', panelClass: 'side-drawer-panel', data },
+    );
+  }
+
+  /**
+   * Un échec est silencieux : ne pas savoir si l'étape est un dossier KYC n'empêche ni d'approuver
+   * ni de rejeter. Le bouton de consultation reste simplement absent.
+   */
+  private _resolveExpandedInstance(step: MyStepDto): void {
+    this.expandedInstance.set(null);
+    if (!step.instanceId) return;
+
+    this._api
+      .getWorkflowInstance(step.instanceId)
+      .pipe(catchError(() => EMPTY))
+      .subscribe((instance) => {
+        // L'utilisateur a pu fermer le panneau ou en ouvrir un autre entre-temps.
+        if (this.expandedStepId() === (step.stepId ?? null)) {
+          this.expandedInstance.set(instance);
+        }
+      });
   }
 
   public submitAction(step: MyStepDto): void {

@@ -32,6 +32,18 @@
               </span>
             </div>
             <p class="text-xs text-slate-400 font-mono">{{ inst.entityId }}</p>
+            @if (isKycInstance()) {
+              <button
+                type="button"
+                tas-outlined-button
+                size="small"
+                class="mt-2"
+                (click)="openKycPreview()"
+              >
+                <tas-icon iconName="feather:folder" style="font-size:14px"></tas-icon>
+                Consulter le dossier KYC
+              </button>
+            }
             <p class="text-xs text-slate-400 mt-1">
               Étape {{ inst.currentStepOrder }}/{{ inst.totalSteps }} ·
               Démarré {{ inst.startedAt! | dateTimeAgo }}
@@ -176,6 +188,22 @@
                 (input)="approveComment.set($any($event.target).value)"
               ></textarea>
               <div class="flex items-center gap-2 mt-2">
+                <!--
+                  Proposé ici aussi, et pas seulement en tête : c'est au moment de signer qu'on a
+                  besoin de revoir le dossier. Le drawer se superpose, le commentaire déjà saisi
+                  reste en place derrière lui.
+                -->
+                @if (isKycInstance()) {
+                  <button
+                    type="button"
+                    tas-outlined-button
+                    size="small"
+                    (click)="openKycPreview()"
+                  >
+                    <tas-icon iconName="feather:eye" style="font-size:14px"></tas-icon>
+                    Revoir le dossier
+                  </button>
+                }
                 @if (canApprove()) {
                   <button
                     type="button"

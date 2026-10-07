@@ -12,7 +12,7 @@ import {
 import { DatePipe } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Router, RouterLink } from '@angular/router';
-import { catchError, EMPTY } from 'rxjs';
+import { catchError, EMPTY, of } from 'rxjs';
 import { Button } from '@talisoft/ui/button';
 import { TasCard } from '@talisoft/ui/card';
 import { TasIcon } from '@talisoft/ui/icon';
@@ -21,7 +21,7 @@ import { SideDrawerService } from '@talisoft/ui/side-drawer';
 import { TasSpinner } from '@talisoft/ui/spinner';
 import { TasTable, TableConfig } from '@talisoft/ui/table';
 import { TasTag } from '@talisoft/ui/tag';
-import { KycApprovalCircuitDto, KycFileDto } from '@sankore/crm-api';
+import { KycApprovalCircuitDto, KycFileDto, UsersApiService } from '@sankore/crm-api';
 import { BreadcrumbService, PermissionsService } from '@sankore/crm/common';
 import { KycFacadeService } from '../data-access/kyc-facade.service';
 import {
@@ -31,7 +31,6 @@ import {
 } from '../data-access/kyc-referential';
 import { KycHistoryEntry, KycHistoryKind } from '../data-access/kyc.types';
 import { KycStatusBadge } from '../ui/kyc-status-badge';
-import { KycStubNotice } from '../ui/kyc-stub-notice';
 import { KycDocumentsPanel } from '../documents/kyc-documents-panel';
 import { KycScorePanel } from '../verification/kyc-score-panel';
 import {
@@ -88,11 +87,11 @@ const HISTORY_ICONS: Record<KycHistoryKind, string> = {
     KycDocumentsPanel,
     KycScorePanel,
     KycStatusBadge,
-    KycStubNotice,
   ],
 })
 export class KycFileDetailPage implements OnInit {
   private readonly _facade = inject(KycFacadeService);
+  private readonly _usersApi = inject(UsersApiService);
   private readonly _breadcrumbService = inject(BreadcrumbService);
   private readonly _permissions = inject(PermissionsService);
   private readonly _snackbarService = inject(SnackbarService);
@@ -140,7 +139,9 @@ export class KycFileDetailPage implements OnInit {
   public readonly isLoadingHistory = signal(false);
   public readonly historyFailed = signal(false);
   public readonly history = signal<KycHistoryEntry[]>([]);
-  public readonly historyIsStub = signal(false);
+  /** Noms des auteurs, résolus une fois par identifiant : l'historique répète les mêmes. */
+  private readonly _authorNames = signal<Record<string, string>>({});
+  private readonly _resolvingAuthors = new Set<string>();
   private _historyRequested = false;
 
   public readonly kycVigilanceMeta = kycVigilanceMeta;
@@ -176,7 +177,7 @@ export class KycFileDetailPage implements OnInit {
       fieldName: entry.kind === 'correction' ? entry.detail : null,
       detail: entry.kind === 'correction' ? null : entry.masked ? null : entry.detail,
       masked: entry.masked,
-      authorName: entry.authorName,
+      authorName: this.authorLabel(entry.authorId),
       at: entry.at,
     })),
   );
@@ -304,6 +305,25 @@ export class KycFileDetailPage implements OnInit {
     );
   });
 
+  /**
+   * Statut de l'instance de workflow qui reflète ce tour de validation, quand il y en a une.
+   *
+   * <p>Le module KYC reste la référence : cette instance n'est qu'un reflet, pour la piste d'audit
+   * commune, la corbeille « mes étapes » et les statistiques. Elle est donc affichée pour ce qu'elle
+   * est, et surtout quand elle <b>contredit</b> le dossier.</p>
+   */
+  public readonly workflowStatus = computed(() => this.file()?.workflowStatus ?? null);
+
+  /**
+   * Vrai quand l'instance a dépassé son délai alors que le dossier, lui, attend toujours sa
+   * décision.
+   *
+   * C'est la divergence assumée du choix d'un délai sur les étapes : le vérificateur de SLA de M12
+   * clôt l'instance au-delà de l'échéance, le dossier KYC ne bouge pas — c'est M02 qui gouverne. Sans
+   * cet affichage l'alerte n'existerait que dans un journal, et une alerte invisible ne vaut rien.
+   */
+  public readonly workflowTimedOut = computed(() => this.workflowStatus() === 'TimedOut');
+
   /** Ouvre la validation manuelle, puis relit le dossier : son statut et son circuit ont changé. */
   public validateManually(): void {
     const file = this.file();
@@ -374,10 +394,35 @@ export class KycFileDetailPage implements OnInit {
       )
       .subscribe((entries) => {
         this.history.set(entries);
-        // L'historique est entièrement bouché aujourd'hui ; le drapeau survivra au rebranchement.
-        this.historyIsStub.set(this._facade.hasStubbedData);
         this.isLoadingHistory.set(false);
+        this._resolveAuthors(entries);
       });
+  }
+
+  /** Évènement machine quand aucun auteur n'est donné : ouverture et notation n'ont pas d'auteur. */
+  public authorLabel(authorId: string | null): string {
+    if (!authorId) return 'Système';
+    return this._authorNames()[authorId] ?? 'Utilisateur inconnu';
+  }
+
+  private _resolveAuthors(entries: KycHistoryEntry[]): void {
+    const known = this._authorNames();
+    const pending = new Set(
+      entries
+        .map((entry) => entry.authorId)
+        .filter((id): id is string => !!id && !known[id] && !this._resolvingAuthors.has(id)),
+    );
+
+    for (const id of pending) {
+      this._resolvingAuthors.add(id);
+      this._usersApi
+        .getUser(id)
+        .pipe(catchError(() => of(null)))
+        .subscribe((user) => {
+          const name = user?.fullName || user?.email;
+          if (name) this._authorNames.update((current) => ({ ...current, [id]: name }));
+        });
+    }
   }
 
   private _loadCustomerName(customerId: string | undefined): void {

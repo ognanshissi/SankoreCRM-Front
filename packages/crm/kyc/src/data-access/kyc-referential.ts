@@ -337,3 +337,25 @@ export function kycDocumentDecisionMeta(decision: string | null | undefined) {
     }
   );
 }
+
+// ——————————————————————————————————————————————————————————————————————
+// Rattachement depuis les workflows
+// ——————————————————————————————————————————————————————————————————————
+
+/**
+ * Une instance de workflow porte-t-elle un dossier KYC ?
+ *
+ * `WorkflowInstanceDto.entityType` est une **chaîne libre** : le contrat ne l'énumère nulle part,
+ * et aucun schéma ne dit quelle valeur le backend émet pour un circuit KYC. Le test est donc
+ * volontairement tolérant — insensible à la casse, et satisfait par toute valeur contenant « kyc ».
+ * Il attrape ainsi `Kyc`, `KycFile`, `KycDossier` ou `kyc_file` sans qu'il faille livrer à chaque
+ * fois que le backend change d'orthographe.
+ *
+ * La contrepartie est assumée : un `entityType` qui ne contiendrait pas « kyc » ne serait pas
+ * reconnu, et l'affordance de consultation n'apparaîtrait pas. C'est le bon sens de l'échec —
+ * l'écran de validation reste utilisable, seule la consultation rapide manque. **À remplacer par
+ * une comparaison stricte le jour où le contrat énumère les valeurs.**
+ */
+export function isKycWorkflowEntity(entityType: string | null | undefined): boolean {
+  return (entityType ?? '').toLowerCase().includes('kyc');
+}
