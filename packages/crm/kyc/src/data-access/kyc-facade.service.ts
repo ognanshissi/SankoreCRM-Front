@@ -451,37 +451,24 @@ export class KycFacadeService {
         filters.page + 1,
         filters.pageSize,
       )
-      .pipe(switchMap((page) => this._withCustomerNames(page)));
-  }
+      .pipe(
+        map(this._formatResponse),
+      );
+  } 
 
   /** Complète les lignes avec le nom du client, en parallèle et sans faire échouer la page. */
-  private _withCustomerNames(page: KycFileListPage): Observable<KycDashboardPage> {
+  private _formatResponse(page: KycFileListPage): KycDashboardPage {
     const rows = page.rows ?? [];
 
     if (rows.length === 0) {
-      return of({ rows: [], totalCount: page.totalCount ?? 0, awaitingMeCount: page.awaitingMeCount ?? 0 });
+      return { rows: [], totalCount: page.totalCount ?? 0, awaitingMeCount: page.awaitingMeCount ?? 0 };
     }
 
-    const ids = [...new Set(rows.map((r) => r.customerId).filter((id): id is string => !!id))];
-
-    return forkJoin(
-      ids.map((id) =>
-        this._clientsApi.getClient(id).pipe(
-          map((client) => [id, client.displayName ?? id] as const),
-          // Un client archivé ou hors périmètre M01 ne doit pas effacer la ligne : le dossier KYC
-          // existe et l'agent doit pouvoir l'ouvrir.
-          catchError(() => of([id, 'Client indisponible'] as const)),
-        ),
-      ),
-    ).pipe(
-      map((pairs) => {
-        const names = new Map(pairs);
-
-        return {
+    return {
           rows: rows.map((r) => ({
             kycFileId: r.kycFileId ?? '',
             customerId: r.customerId ?? '',
-            customerName: names.get(r.customerId ?? '') ?? 'Client indisponible',
+            customerName: r.customerName ?? 'Client inconnu',
             status: r.status ?? '',
             confidenceScore: r.confidenceScore ?? null,
             vigilanceLevel: r.vigilanceLevel ?? '',
@@ -491,9 +478,7 @@ export class KycFacadeService {
           })),
           totalCount: page.totalCount ?? 0,
           awaitingMeCount: page.awaitingMeCount ?? 0,
-        };
-      }),
-    );
+        }
   }
 
 

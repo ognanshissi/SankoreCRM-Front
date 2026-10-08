@@ -14,6 +14,7 @@
 export interface KycFileListItem { 
     kycFileId?: string;
     customerId?: string;
+    customerName?: string | null;
     agencyId?: string | null;
     status?: string | null;
     tier?: string | null;

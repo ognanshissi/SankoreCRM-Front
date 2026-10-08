@@ -927,7 +927,7 @@ export class KYCApiService {
 
     /**
      * List KYC files in the caller\&#39;s agency perimeter
-     * Server-side paging, filterable by status, agency, vigilance level and a period on last activity. Always bounded to the caller\&#39;s agency perimeter, and files whose agency could not be resolved are visible only to an unrestricted caller. Rows whose next approval rung the caller\&#39;s roles can sign come first, and awaitingMeCount counts those across the whole perimeter rather than the page. Carries no customer name: resolve it from the clients API. Requires kyc:read.
+     * Server-side paging, filterable by status, agency, vigilance level and a period on last activity. Always bounded to the caller\&#39;s agency perimeter, and files whose agency could not be resolved are visible only to an unrestricted caller. Rows whose next approval rung the caller\&#39;s roles can sign come first, and awaitingMeCount counts those across the whole perimeter rather than the page. customerName is resolved from the clients module for the returned rows and is null when that module no longer knows the id. Requires kyc:read.
      * @param status 
      * @param agencyId 
      * @param vigilanceLevel 
