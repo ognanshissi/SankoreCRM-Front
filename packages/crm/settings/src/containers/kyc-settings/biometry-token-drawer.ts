@@ -4,7 +4,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { form, FormField, FormRoot, submit, validate } from '@angular/forms/signals';
 import { catchError, EMPTY, firstValueFrom, map } from 'rxjs';
 import { Button } from '@talisoft/ui/button';
-import { TasError, TasFormField, TasHint, TasLabel } from '@talisoft/ui/form-field';
+import { TasError, TasHint } from '@talisoft/ui/form-field';
 import { TasIcon } from '@talisoft/ui/icon';
 import { TasInputPassword } from '@talisoft/ui/input-password';
 import { TasTitle } from '@talisoft/ui/title';
@@ -54,9 +54,7 @@ class BiometryTokenFormModel {
     FormRoot,
     Button,
     TasError,
-    TasFormField,
     TasHint,
-    TasLabel,
     TasIcon,
     TasInputPassword,
     TasTitle,

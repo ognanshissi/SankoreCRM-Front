@@ -4,7 +4,6 @@ import { forkJoin } from 'rxjs';
 import { TasCard } from '@talisoft/ui/card';
 import { TasSpinner } from '@talisoft/ui/spinner';
 import { TasIcon } from '@talisoft/ui/icon';
-import { TasTag } from '@talisoft/ui/tag';
 import {
   StepBottleneckDto,
   StepStatsDto,
@@ -44,7 +43,7 @@ function hours(n: number | null | undefined): string {
 
 @Component({
   selector: 'workflow-analytics',
-  imports: [NgClass, TasCard, TasSpinner, TasIcon, TasTag],
+  imports: [NgClass, TasCard, TasSpinner, TasIcon],
   template: `
     @if (isLoading()) {
       <div class="flex justify-center py-24">

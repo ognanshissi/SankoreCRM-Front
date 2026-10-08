@@ -395,7 +395,7 @@
                 <div class="flex items-center justify-between mt-2">
                   @if (lead.desiredAmount?.amount) {
                     <span class="text-[10px] text-slate-500 font-medium tabular-nums">
-                      {{ formatAmount(lead.desiredAmount?.amount ?? 0) }} {{ lead.desiredAmount?.currency ?? '' }}
+                      {{ formatAmount(lead.desiredAmount.amount || 0) }} {{ lead.desiredAmount?.currency ?? '' }}
                     </span>
                   } @else if (lead.leadSourceLabel || lead.leadSourceCode || lead.source) {
                     <span class="text-[10px] text-slate-400">{{ leadSourceLabel(lead) }}</span>

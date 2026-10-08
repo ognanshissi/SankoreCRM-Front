@@ -1,9 +1,6 @@
 import { Component, computed, input, output, signal, effect, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { TasCard } from '@talisoft/ui/card';
 import { TasIcon } from '@talisoft/ui/icon';
-import { TasTag } from '@talisoft/ui/tag';
-import { Button } from '@talisoft/ui/button';
 import { TasFormField, TasLabel } from '@talisoft/ui/form-field';
 import { TasInput } from '@talisoft/ui/input';
 import { TasSelect } from '@talisoft/ui/select';
@@ -60,7 +57,7 @@ interface ParamEntry {
 @Component({
   selector: 'product-parameters-editor',
   standalone: true,
-  imports: [FormsModule, TasCard, TasIcon, TasTag, Button, TasFormField, TasLabel, TasInput, TasSelect],
+  imports: [FormsModule, TasIcon, TasFormField, TasLabel, TasInput, TasSelect],
   template: `
     <!-- Predefined fields for category -->
     @if (predefinedFields().length > 0) {

@@ -8,7 +8,7 @@ import {
 } from '@angular/core';
 import { TasTitle } from '@talisoft/ui/title';
 import { TasText } from '@talisoft/ui/text';
-import { NgClass, NgIf } from '@angular/common';
+import { NgClass } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import {
   BreadcrumbService,
@@ -41,7 +41,7 @@ export interface MenuItem {
       }
     `,
   ],
-  imports: [TasTitle, TasText, NgClass, RouterLink, NgIf],
+  imports: [TasTitle, TasText, NgClass, RouterLink],
 })
 export class OverviewComponent implements OnInit {
   private readonly menuData: MenuItem[] = [

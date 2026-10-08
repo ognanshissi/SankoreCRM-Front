@@ -3,7 +3,6 @@ import { Router } from '@angular/router';
 import { Button } from '@talisoft/ui/button';
 import { TasIcon } from '@talisoft/ui/icon';
 import { TasTag, Severity } from '@talisoft/ui/tag';
-import { TasCard } from '@talisoft/ui/card';
 import { TasTable, TableConfig } from '@talisoft/ui/table';
 import { ProductsApiService, ProductDto } from '@sankore/crm-api';
 import { SideDrawerService } from '@talisoft/ui/side-drawer';
@@ -15,7 +14,7 @@ import { BreadcrumbService, PermissionsService } from '@sankore/crm/common';
 
 @Component({
   templateUrl: './products-homepage.html',
-  imports: [Button, TasIcon, TasCard, TasTable, TasTag],
+  imports: [Button, TasIcon, TasTable, TasTag],
 })
 export class ProductsHomePage {
   private readonly _permissions = inject(PermissionsService);

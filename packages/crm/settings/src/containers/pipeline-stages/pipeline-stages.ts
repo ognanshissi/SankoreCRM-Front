@@ -1,5 +1,5 @@
 import { Component, computed, inject, signal, OnInit } from '@angular/core';
-import { catchError, EMPTY, forkJoin, of } from 'rxjs';
+import { catchError, forkJoin, of } from 'rxjs';
 import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
 import { TasCard } from '@talisoft/ui/card';
 import { TasSpinner } from '@talisoft/ui/spinner';
@@ -14,7 +14,7 @@ import {
   ProductsApiService,
   ProductDto,
 } from '@sankore/crm-api';
-import { BreadcrumbService, HasPermissionDirective, PermissionsService } from '@sankore/crm/common';
+import { BreadcrumbService, PermissionsService } from '@sankore/crm/common';
 
 interface PipelineStage {
   key: string;
@@ -51,8 +51,7 @@ const DRAFT_STORAGE_KEY = 'pipeline_stages_draft';
     TasIcon,
     Button,
     TasSwitch,
-    DragDropModule,
-    HasPermissionDirective,
+    DragDropModule
   ],
   template: `
     <ng-container>

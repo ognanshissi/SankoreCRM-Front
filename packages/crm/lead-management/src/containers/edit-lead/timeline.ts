@@ -16,7 +16,6 @@ import { TasSpinner } from '@talisoft/ui/spinner';
 import { TasIcon } from '@talisoft/ui/icon';
 import { TasTag } from '@talisoft/ui/tag';
 import { TimeagoPipe } from '@talisoft/ui/timeago';
-import { Button } from '@talisoft/ui/button';
 import { LeadsApiService, TimelineEvent, TimelineEventKindEnum, AssignmentDto, OwnerAssignmentDto } from '@sankore/crm-api';
 
 const PAGE_SIZE = 20;
@@ -59,7 +58,7 @@ const FILTER_OPTIONS: { kind: TimelineEventKindEnum; label: string }[] = [
 
 @Component({
   selector: 'lead-timeline',
-  imports: [TasCard, TasSpinner, TasIcon, TasTag, TimeagoPipe, Button],
+  imports: [TasCard, TasSpinner, TasIcon, TasTag, TimeagoPipe],
   template: `
     @if (isLoading()) {
       <div class="flex justify-center py-24">
