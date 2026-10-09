@@ -1,0 +1,337 @@
+<!-- En-tête -->
+<div class="mb-5 flex items-start justify-between gap-4">
+  <div>
+    <h1 class="text-lg font-semibold text-slate-800">Commandes d'intégration</h1>
+    <p class="mt-0.5 text-sm text-slate-500">
+      Les écritures envoyées à vos systèmes externes. Les plus anciennes viennent d'abord :
+      dans une file de rejet, c'est la ligne la plus ancienne qui bloque un client depuis le
+      plus longtemps.
+    </p>
+  </div>
+  <button tas-outlined-button type="button" [disabled]="isLoading()" (click)="reload()">
+    <tas-icon iconName="feather:refresh-cw" style="font-size:14px"></tas-icon>
+    Actualiser
+  </button>
+</div>
+
+<!-- Filtres -->
+<tas-card class="mb-4 block">
+  <div class="p-4">
+    <div class="grid grid-cols-4 gap-3">
+      <tas-form-field>
+        <tas-label>Statut</tas-label>
+        <tas-select
+          clearable
+          [options]="statusOptions"
+          optionLabel="label"
+          optionValue="value"
+          placeholder="Tous les statuts"
+          [ngModel]="filterStatus()"
+          (ngModelChange)="onStatusChange($event)"
+        ></tas-select>
+      </tas-form-field>
+
+      <tas-form-field>
+        <tas-label>Type de commande</tas-label>
+        <tas-select
+          clearable
+          [options]="commandTypeOptions"
+          optionLabel="label"
+          optionValue="value"
+          placeholder="Tous les types"
+          [ngModel]="filterCommandType()"
+          (ngModelChange)="onCommandTypeChange($event)"
+        ></tas-select>
+      </tas-form-field>
+
+      <tas-form-field>
+        <tas-label>Cause du rejet</tas-label>
+        <tas-select
+          clearable
+          [options]="errorFamilyOptions"
+          optionLabel="label"
+          optionValue="value"
+          placeholder="Toutes les causes"
+          [ngModel]="filterErrorFamily()"
+          (ngModelChange)="onErrorFamilyChange($event)"
+        ></tas-select>
+      </tas-form-field>
+
+      <tas-form-field>
+        <tas-label>Type d'entité</tas-label>
+        <tas-select
+          clearable
+          [options]="entityTypeOptions"
+          optionLabel="label"
+          optionValue="value"
+          placeholder="Toutes les entités"
+          [ngModel]="filterEntityType()"
+          (ngModelChange)="onEntityTypeChange($event)"
+        ></tas-select>
+      </tas-form-field>
+
+      <tas-form-field>
+        <tas-label>Famille</tas-label>
+        <tas-select
+          clearable
+          [options]="familyOptions"
+          optionLabel="label"
+          optionValue="value"
+          placeholder="Toutes les familles"
+          [ngModel]="filterFamily()"
+          (ngModelChange)="onFamilyChange($event)"
+        ></tas-select>
+        <tas-hint>Restreint la liste des connexions ; choisissez une connexion pour filtrer.</tas-hint>
+      </tas-form-field>
+
+      <tas-form-field>
+        <tas-label>Connexion</tas-label>
+        <tas-select
+          clearable
+          [searchable]="true"
+          [options]="connectionOptions()"
+          optionLabel="label"
+          optionValue="value"
+          placeholder="Toutes les connexions"
+          [ngModel]="filterConnectionId()"
+          (ngModelChange)="onConnectionChange($event)"
+        ></tas-select>
+      </tas-form-field>
+
+      <tas-form-field>
+        <tas-label>Identifiant client</tas-label>
+        <input
+          tasInput
+          type="text"
+          placeholder="Collez l'identifiant du client"
+          [ngModel]="filterCrmId()"
+          (ngModelChange)="onCrmIdChange($event)"
+        />
+        @if (crmIdError()) {
+          <tas-error>{{ crmIdError() }}</tas-error>
+        }
+      </tas-form-field>
+
+      <div class="grid grid-cols-2 gap-3">
+        <tas-form-field>
+          <tas-label>Créées du</tas-label>
+          <input
+            tasInput
+            type="date"
+            [value]="filterFrom() ?? ''"
+            (change)="onFromChange($any($event.target).value)"
+          />
+        </tas-form-field>
+        <tas-form-field>
+          <tas-label>au</tas-label>
+          <input
+            tasInput
+            type="date"
+            [value]="filterTo() ?? ''"
+            (change)="onToChange($any($event.target).value)"
+          />
+        </tas-form-field>
+      </div>
+    </div>
+
+    <div class="mt-3 flex items-center justify-between gap-3">
+      <p class="text-xs text-slate-500">
+        @if (isRejectionQueue()) {
+          <span class="tabular-nums font-medium text-slate-700">{{ totalCount() }}</span>
+          rejet(s) à traiter dans cette vue.
+        } @else {
+          <span class="tabular-nums font-medium text-slate-700">{{ totalCount() }}</span>
+          commande(s) dans cette vue.
+        }
+      </p>
+      @if (hasActiveFilters()) {
+        <button tas-text-button type="button" size="small" (click)="resetFilters()">
+          <tas-icon iconName="feather:x" style="font-size:12px"></tas-icon>
+          Revenir à la file de rejet
+        </button>
+      }
+    </div>
+  </div>
+</tas-card>
+
+@if (needsReload()) {
+  <div
+    class="mb-4 flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3"
+  >
+    <p class="text-sm text-slate-600">
+      Une commande a changé d'état. Rechargez pour voir la liste telle que le serveur la trie.
+    </p>
+    <button tas-outlined-button color="primary" type="button" size="small" (click)="reload()">
+      Recharger la liste
+    </button>
+  </div>
+}
+
+@if (loadError()) {
+  <div class="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3" role="alert">
+    <p class="text-sm text-slate-700">{{ loadError() }}</p>
+    <button tas-text-button color="primary" type="button" size="small" (click)="reload()">
+      Réessayer
+    </button>
+  </div>
+}
+
+@if (!isLoading() && rows().length === 0 && !loadError()) {
+  <tas-card class="block">
+    <div class="flex flex-col items-center justify-center py-16 text-center">
+      <tas-icon
+        iconName="feather:check-circle"
+        class="mb-3 text-slate-300"
+        style="font-size:32px"
+      ></tas-icon>
+      @if (isRejectionQueue()) {
+        <p class="mb-1 text-sm font-medium text-slate-600">
+          Aucun rejet sur cette période. Rien n'est bloqué.
+        </p>
+        <p class="text-xs text-slate-400">
+          Les écritures acceptées se consultent en changeant le statut ci-dessus.
+        </p>
+      } @else {
+        <p class="mb-1 text-sm font-medium text-slate-600">Aucune commande pour ces filtres.</p>
+        <p class="text-xs text-slate-400">Élargissez la période ou retirez un filtre.</p>
+      }
+      @if (hasActiveFilters()) {
+        <button tas-outlined-button type="button" class="mt-4" (click)="resetFilters()">
+          Revenir à la file de rejet
+        </button>
+      }
+    </div>
+  </tas-card>
+} @else {
+  <tas-table
+    [data]="rows()"
+    identifierField="commandId"
+    [config]="tableConfig()"
+    [isLoading]="isLoading()"
+    [hasCaption]="false"
+    (pageEventChange)="onPageChange($event)"
+  >
+    <ng-template #header>
+      <tr>
+        <th>Depuis</th>
+        <th>Statut</th>
+        <th>Cause</th>
+        <th>Écriture</th>
+        <th>Connexion</th>
+        <th class="text-right">Tentatives</th>
+        <th>Commande</th>
+        <th class="text-right"></th>
+      </tr>
+    </ng-template>
+
+    <ng-template #body let-item>
+      <tr
+        class="cursor-pointer transition-colors hover:bg-slate-50"
+        [class.bg-red-50]="isStuck(item.status, item.createdAt)"
+        (click)="openDetail(item)"
+      >
+        <!-- L'âge prime sur la date : c'est lui qui hiérarchise deux lignes à l'œil. -->
+        <td class="py-3">
+          <div class="flex items-center gap-2">
+            @if (isStuck(item.status, item.createdAt)) {
+              <tas-icon
+                iconName="feather:alert-circle"
+                class="text-functional-error"
+                style="font-size:13px"
+                title="Rejetée depuis plus de 24 heures"
+              ></tas-icon>
+            }
+            <div class="min-w-0">
+              <div class="text-sm font-medium text-slate-800 tabular-nums">
+                {{ ageLabel(item.createdAt) }}
+              </div>
+              <div class="text-xs text-slate-400">{{ item.createdAt | dateTimeAgo }}</div>
+            </div>
+          </div>
+        </td>
+
+        <td>
+          <tas-tag [severity]="statusMeta(item.status).severity">
+            {{ statusMeta(item.status).label }}
+          </tas-tag>
+        </td>
+
+        <!-- La famille d'erreur classe, le détail technique explique. -->
+        <td class="max-w-[260px]">
+          @if (item.errorFamily || item.errorDetail) {
+            <div class="text-sm text-slate-700">{{ errorFamilyLabel(item.errorFamily) }}</div>
+            @if (item.errorDetail) {
+              <div class="truncate text-xs text-slate-400" [title]="item.errorDetail">
+                {{ item.errorDetail }}
+              </div>
+            }
+          } @else {
+            <span class="text-sm text-slate-400">—</span>
+          }
+        </td>
+
+        <td>
+          <div class="text-sm text-slate-700">{{ typeLabel(item.commandType) }}</div>
+          <div class="text-xs text-slate-400">{{ entityLabel(item.entityType) }}</div>
+        </td>
+
+        <td>
+          @if (connectionName(item.connectionId); as name) {
+            <span class="text-sm text-slate-700">{{ name }}</span>
+          } @else {
+            <span class="font-mono text-xs text-slate-400">{{ shortId(item.connectionId) }}</span>
+          }
+        </td>
+
+        <td class="text-right text-sm text-slate-700 tabular-nums">{{ item.attempts ?? 0 }}</td>
+
+        <td>
+          <span class="font-mono text-xs text-slate-400" [title]="item.commandId ?? ''">
+            {{ shortId(item.commandId) }}
+          </span>
+        </td>
+
+        <td class="text-right" (click)="$event.stopPropagation()">
+          <div class="flex items-center justify-end gap-1">
+            @if (actionInProgress() === item.commandId) {
+              <span class="text-xs text-slate-400">…</span>
+            } @else {
+              @if (canReplayRow(item)) {
+                <button
+                  tas-button
+                  iconButton
+                  type="button"
+                  title="Rejouer cette commande"
+                  (click)="confirmReplay(item)"
+                >
+                  <tas-icon iconName="feather:refresh-cw" iconSize="sm"></tas-icon>
+                </button>
+              }
+              @if (canCancelRow(item)) {
+                <button
+                  tas-button
+                  iconButton
+                  color="warn"
+                  type="button"
+                  title="Annuler cette commande"
+                  (click)="openCancel(item)"
+                >
+                  <tas-icon iconName="feather:slash" iconSize="sm"></tas-icon>
+                </button>
+              }
+              <button
+                tas-button
+                iconButton
+                type="button"
+                title="Voir le détail"
+                (click)="openDetail(item)"
+              >
+                <tas-icon iconName="feather:eye" iconSize="sm"></tas-icon>
+              </button>
+            }
+          </div>
+        </td>
+      </tr>
+    </ng-template>
+  </tas-table>
+}

@@ -1,0 +1,492 @@
+<div class="pb-6">
+  @if (isLoading()) {
+    <div class="flex justify-center py-24">
+      <tas-spinner size="10" class="text-primary"></tas-spinner>
+    </div>
+  } @else if (loadFailed() || !product()) {
+    <tas-alert type="error">
+      <p class="text-sm">
+        Ce produit n'existe pas, ou plus. Revenez au catalogue pour en choisir un autre.
+      </p>
+      <button tas-outlined-button type="button" class="mt-3" (click)="backToCatalogue()">
+        Revenir au catalogue
+      </button>
+    </tas-alert>
+  } @else if (product(); as loaded) {
+    <div class="flex items-start justify-between mb-6 gap-4">
+      <div class="min-w-0">
+        <button tas-text-button type="button" class="mb-1" (click)="backToCatalogue()">
+          <tas-icon iconName="feather:arrow-left" style="font-size:14px"></tas-icon>
+          Produits d'assurance
+        </button>
+        <h1 class="text-lg font-semibold text-slate-800">{{ loaded.name }}</h1>
+        <div class="flex items-center gap-2 mt-2">
+          <tas-tag [severity]="loaded.isActive ? 'success' : 'neutral'">
+            {{ loaded.isActive ? 'En distribution' : 'Retiré de la distribution' }}
+          </tas-tag>
+          <tas-tag [severity]="loaded.isOfferable ? 'success' : 'warning'">
+            {{ loaded.isOfferable ? 'Proposable aux agents' : 'Non proposable' }}
+          </tas-tag>
+        </div>
+        @if (notOfferableLabels().length) {
+          <ul class="mt-2 text-xs text-slate-500 list-disc pl-5">
+            @for (reason of notOfferableLabels(); track reason) {
+              <li>{{ reason }}</li>
+            }
+          </ul>
+        }
+      </div>
+
+      @if (canManage()) {
+        <button
+          tas-raised-button
+          color="primary"
+          type="button"
+          (click)="handleSubmit()"
+          [disabled]="formSchema().invalid() || formSchema().submitting() || !!guaranteeError()"
+          [isLoading]="formSchema().submitting()"
+        >
+          Enregistrer
+        </button>
+      }
+    </div>
+
+    <form [formRoot]="formSchema" class="flex flex-col gap-4">
+      <!-- Identité -->
+      <tas-card class="block">
+        <div class="p-4">
+          <p class="text-sm font-semibold text-slate-700">Identité</p>
+          <p class="text-xs text-slate-500 mt-0.5">
+            L'assureur et son code produit sont l'identité du produit : ils ont été posés à
+            la création et ne sont plus modifiables. Pour en changer, déclarez un nouveau
+            produit.
+          </p>
+
+          <div class="grid grid-cols-2 gap-4 mt-4">
+            <div class="rounded-lg border border-slate-200 bg-slate-50 p-3">
+              <p class="text-xs text-slate-500">Assureur</p>
+              <p class="text-sm text-slate-800 mt-0.5">{{ loaded.connectionName ?? '—' }}</p>
+              <p class="text-xs text-slate-400 mt-0.5">{{ insurerKindLabel() }}</p>
+            </div>
+            <div class="rounded-lg border border-slate-200 bg-slate-50 p-3">
+              <p class="text-xs text-slate-500">Code chez l'assureur</p>
+              <p class="font-mono text-xs text-slate-700 mt-1">
+                {{ loaded.insurerProductCode ?? '—' }}
+              </p>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-4 mt-4">
+            <tas-form-field>
+              <tas-label>Nom du produit <span class="text-functional-error">*</span></tas-label>
+              <input tasInput type="text" [formField]="formSchema.name" />
+              @if (formSchema.name().touched() && formSchema.name().invalid()) {
+                <tas-error>{{ formSchema.name().errors()[0].message }}</tas-error>
+              }
+            </tas-form-field>
+
+            <tas-form-field>
+              <tas-label>Périodicité de la prime <span class="text-functional-error">*</span></tas-label>
+              <tas-select
+                [options]="periodicityOptions"
+                optionLabel="label"
+                optionValue="value"
+                placeholder="Choisissez la périodicité"
+                [formField]="formSchema.periodicity"
+              ></tas-select>
+              @if (formSchema.periodicity().touched() && formSchema.periodicity().invalid()) {
+                <tas-error>{{ formSchema.periodicity().errors()[0].message }}</tas-error>
+              }
+            </tas-form-field>
+          </div>
+
+          <tas-form-field class="mt-4 block">
+            <tas-label>Description</tas-label>
+            <textarea
+              tasInput
+              rows="3"
+              placeholder="Ce que couvre le produit, en une ou deux phrases."
+              [formField]="formSchema.description"
+            ></textarea>
+            <tas-hint>Ce texte est lu par l'agent au guichet.</tas-hint>
+          </tas-form-field>
+        </div>
+      </tas-card>
+
+      <!-- Garanties -->
+      <tas-card class="block">
+        <div class="p-4">
+          <div class="flex items-start justify-between gap-3">
+            <div>
+              <p class="text-sm font-semibold text-slate-700">Garanties</p>
+              <p class="text-xs text-slate-500 mt-0.5">
+                Ce que le contrat couvre, avec le plafond d'indemnisation et la franchise
+                éventuelle.
+              </p>
+            </div>
+            <button tas-outlined-button type="button" (click)="addGuarantee()">
+              <tas-icon iconName="feather:plus" style="font-size:14px"></tas-icon>
+              Ajouter une garantie
+            </button>
+          </div>
+
+          @if (guaranteeError()) {
+            <div class="mt-3">
+              <tas-alert type="error">
+                <p class="text-sm">{{ guaranteeError() }}</p>
+              </tas-alert>
+            </div>
+          }
+
+          @if (guarantees().length) {
+            <div class="mt-4 flex flex-col gap-3">
+              @for (guarantee of guarantees(); track guarantee.key) {
+                <div class="grid grid-cols-12 gap-3 items-end">
+                  <tas-form-field class="col-span-2">
+                    <tas-label>Code</tas-label>
+                    <input
+                      tasInput
+                      type="text"
+                      placeholder="ex: DC"
+                      [ngModel]="guarantee.code"
+                      [ngModelOptions]="{ standalone: true }"
+                      (ngModelChange)="updateGuarantee(guarantee.key, 'code', $event)"
+                    />
+                  </tas-form-field>
+                  <tas-form-field class="col-span-4">
+                    <tas-label>Libellé</tas-label>
+                    <input
+                      tasInput
+                      type="text"
+                      placeholder="ex: Décès toutes causes"
+                      [ngModel]="guarantee.label"
+                      [ngModelOptions]="{ standalone: true }"
+                      (ngModelChange)="updateGuarantee(guarantee.key, 'label', $event)"
+                    />
+                  </tas-form-field>
+                  <tas-form-field class="col-span-3">
+                    <tas-label>Plafond</tas-label>
+                    <input
+                      tasInput
+                      type="number"
+                      [ngModel]="guarantee.ceilingAmount"
+                      [ngModelOptions]="{ standalone: true }"
+                      (ngModelChange)="updateGuarantee(guarantee.key, 'ceilingAmount', $event)"
+                    />
+                  </tas-form-field>
+                  <tas-form-field class="col-span-2">
+                    <tas-label>Franchise</tas-label>
+                    <input
+                      tasInput
+                      type="number"
+                      [ngModel]="guarantee.deductible"
+                      [ngModelOptions]="{ standalone: true }"
+                      (ngModelChange)="updateGuarantee(guarantee.key, 'deductible', $event)"
+                    />
+                  </tas-form-field>
+                  <div class="col-span-1 flex justify-end pb-2">
+                    <button
+                      tas-button
+                      iconButton
+                      type="button"
+                      title="Retirer cette garantie"
+                      (click)="removeGuarantee(guarantee.key)"
+                    >
+                      <tas-icon
+                        iconName="feather:trash-2"
+                        style="font-size:14px"
+                        class="text-slate-400"
+                      ></tas-icon>
+                    </button>
+                  </div>
+                </div>
+              }
+            </div>
+          } @else {
+            <p class="text-sm text-slate-500 mt-4">
+              Aucune garantie décrite. Ajoutez-en une pour que l'agent sache ce qu'il vend.
+            </p>
+          }
+        </div>
+      </tas-card>
+
+      <!-- Tarification -->
+      <tas-card class="block">
+        <div class="p-4">
+          <p class="text-sm font-semibold text-slate-700">Tarification</p>
+
+          <div class="grid grid-cols-2 gap-4 mt-4">
+            <tas-form-field>
+              <tas-label>Mode de tarification <span class="text-functional-error">*</span></tas-label>
+              <tas-select
+                [options]="pricingModeOptions"
+                optionLabel="label"
+                optionValue="value"
+                placeholder="Choisissez le mode de tarification"
+                [formField]="formSchema.pricingMode"
+              ></tas-select>
+              @if (selectedPricingModeDescription()) {
+                <tas-hint>{{ selectedPricingModeDescription() }}</tas-hint>
+              }
+              @if (formSchema.pricingMode().touched() && formSchema.pricingMode().invalid()) {
+                <tas-error>{{ formSchema.pricingMode().errors()[0].message }}</tas-error>
+              }
+            </tas-form-field>
+
+            <tas-form-field>
+              <tas-label>Capital assuré</tas-label>
+              <input tasInput type="number" [formField]="formSchema.insuredAmount" />
+              <tas-hint>Laissez vide si le capital est propre à chaque souscription.</tas-hint>
+              @if (formSchema.insuredAmount().touched() && formSchema.insuredAmount().invalid()) {
+                <tas-error>{{ formSchema.insuredAmount().errors()[0].message }}</tas-error>
+              }
+            </tas-form-field>
+          </div>
+
+          <!-- En tarif calculé, les champs du catalogue sont retirés plutôt que laissés
+               saisissables et ignorés à l'envoi. -->
+          @if (isCatalogueFixed()) {
+            <div class="grid grid-cols-2 gap-4 mt-4">
+              <tas-form-field>
+                <tas-label>Prime du catalogue <span class="text-functional-error">*</span></tas-label>
+                <input tasInput type="number" [formField]="formSchema.fixedPremiumAmount" />
+                @if (
+                  formSchema.fixedPremiumAmount().touched() &&
+                  formSchema.fixedPremiumAmount().invalid()
+                ) {
+                  <tas-error>{{ formSchema.fixedPremiumAmount().errors()[0].message }}</tas-error>
+                }
+              </tas-form-field>
+
+              <tas-form-field>
+                <tas-label>Devise <span class="text-functional-error">*</span></tas-label>
+                <input tasInput type="text" placeholder="ex: XOF" [formField]="formSchema.currency" />
+                @if (formSchema.currency().touched() && formSchema.currency().invalid()) {
+                  <tas-error>{{ formSchema.currency().errors()[0].message }}</tas-error>
+                }
+              </tas-form-field>
+            </div>
+          } @else {
+            <p class="text-sm text-slate-600 mt-4">
+              La prime sera demandée à l'assureur à chaque souscription : il n'y a pas de
+              montant à saisir ici.
+            </p>
+          }
+        </div>
+      </tas-card>
+
+      <!-- Éligibilité -->
+      <tas-card class="block">
+        <div class="p-4">
+          <p class="text-sm font-semibold text-slate-700">Qui peut souscrire</p>
+          <p class="text-xs text-slate-500 mt-0.5">
+            Ces conditions sont celles que l'agent verra et que la souscription vérifiera.
+          </p>
+
+          <div class="grid grid-cols-3 gap-4 mt-4">
+            <tas-form-field>
+              <tas-label>Âge minimum</tas-label>
+              <input tasInput type="number" [formField]="formSchema.minAge" />
+              @if (formSchema.minAge().touched() && formSchema.minAge().invalid()) {
+                <tas-error>{{ formSchema.minAge().errors()[0].message }}</tas-error>
+              }
+            </tas-form-field>
+
+            <tas-form-field>
+              <tas-label>Âge maximum</tas-label>
+              <input tasInput type="number" [formField]="formSchema.maxAge" />
+              @if (formSchema.maxAge().touched() && formSchema.maxAge().invalid()) {
+                <tas-error>{{ formSchema.maxAge().errors()[0].message }}</tas-error>
+              }
+            </tas-form-field>
+
+            <tas-form-field>
+              <tas-label>Niveau de KYC exigé</tas-label>
+              <tas-select
+                [options]="minKycLevelOptions"
+                optionLabel="label"
+                optionValue="value"
+                [formField]="formSchema.minKycLevel"
+              ></tas-select>
+            </tas-form-field>
+          </div>
+
+          <div class="flex flex-col gap-3 mt-4">
+            <div class="flex items-center gap-3">
+              <tas-switch
+                ariaLabel="Nécessite un compte au core banking"
+                [checked]="formSchema.requiresCbsAccount().value()"
+                (toggle)="setRequiresCbsAccount($event)"
+              ></tas-switch>
+              <p class="text-sm text-slate-700">Nécessite un compte au core banking</p>
+            </div>
+            <div class="flex items-center gap-3">
+              <tas-switch
+                ariaLabel="Nécessite un prêt en cours"
+                [checked]="formSchema.requiresActiveLoan().value()"
+                (toggle)="setRequiresActiveLoan($event)"
+              ></tas-switch>
+              <p class="text-sm text-slate-700">Nécessite un prêt en cours</p>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-4 mt-4">
+            <tas-form-field>
+              <tas-label>Produit de crédit associé</tas-label>
+              <tas-select
+                clearable
+                [options]="creditProductOptions()"
+                optionLabel="label"
+                optionValue="value"
+                placeholder="Aucun"
+                [formField]="formSchema.linkedCreditProductCode"
+              ></tas-select>
+              <tas-hint>
+                Pour une assurance emprunteur : le produit de prêt auquel elle est adossée.
+              </tas-hint>
+            </tas-form-field>
+
+            <tas-form-field>
+              <tas-label>Commission (%)</tas-label>
+              <input tasInput type="number" [formField]="formSchema.commissionRatePercent" />
+              <tas-hint>
+                Part de la prime revenant à votre institution, en pourcentage.
+              </tas-hint>
+              @if (
+                formSchema.commissionRatePercent().touched() &&
+                formSchema.commissionRatePercent().invalid()
+              ) {
+                <tas-error>
+                  {{ formSchema.commissionRatePercent().errors()[0].message }}
+                </tas-error>
+              }
+            </tas-form-field>
+          </div>
+        </div>
+      </tas-card>
+
+      <!-- Recouvrement de prime -->
+      <tas-card class="block">
+        <div class="p-4">
+          <p class="text-sm font-semibold text-slate-700">Recouvrement de la prime</p>
+          <p class="text-xs text-slate-500 mt-0.5">
+            Ce que SANKORE fait quand un prélèvement de prime échoue.
+          </p>
+
+          <div class="grid grid-cols-2 gap-4 mt-4">
+            <tas-form-field>
+              <tas-label>Nombre de relances</tas-label>
+              <input tasInput type="number" [formField]="formSchema.premiumRetryLimit" />
+              @if (
+                formSchema.premiumRetryLimit().touched() &&
+                formSchema.premiumRetryLimit().invalid()
+              ) {
+                <tas-error>{{ formSchema.premiumRetryLimit().errors()[0].message }}</tas-error>
+              }
+            </tas-form-field>
+
+            <tas-form-field>
+              <tas-label>Intervalle entre deux relances (jours)</tas-label>
+              <input tasInput type="number" [formField]="formSchema.premiumRetryIntervalDays" />
+              @if (
+                formSchema.premiumRetryIntervalDays().touched() &&
+                formSchema.premiumRetryIntervalDays().invalid()
+              ) {
+                <tas-error>
+                  {{ formSchema.premiumRetryIntervalDays().errors()[0].message }}
+                </tas-error>
+              }
+            </tas-form-field>
+          </div>
+        </div>
+      </tas-card>
+
+      <!-- Période de validité -->
+      <tas-card class="block">
+        <div class="p-4">
+          <p class="text-sm font-semibold text-slate-700">Période de validité</p>
+          <p class="text-xs text-slate-500 mt-0.5">
+            Hors de cette période, le produit reste au catalogue mais n'est pas proposable.
+          </p>
+
+          <div class="grid grid-cols-2 gap-4 mt-4">
+            <tas-form-field>
+              <tas-label>Entrée en vigueur <span class="text-functional-error">*</span></tas-label>
+              <input tasInput type="date" [formField]="formSchema.effectiveFrom" />
+              @if (formSchema.effectiveFrom().touched() && formSchema.effectiveFrom().invalid()) {
+                <tas-error>{{ formSchema.effectiveFrom().errors()[0].message }}</tas-error>
+              }
+            </tas-form-field>
+
+            <tas-form-field>
+              <tas-label>Fin de validité</tas-label>
+              <input tasInput type="date" [formField]="formSchema.effectiveTo" />
+              <tas-hint>Laissez vide si le produit n'a pas de date de fin.</tas-hint>
+              @if (formSchema.effectiveTo().touched() && formSchema.effectiveTo().invalid()) {
+                <tas-error>{{ formSchema.effectiveTo().errors()[0].message }}</tas-error>
+              }
+            </tas-form-field>
+          </div>
+        </div>
+      </tas-card>
+    </form>
+
+    <!-- Aperçu côté agent -->
+    @if (previewProduct(); as preview) {
+      <tas-card class="block mt-4 bg-slate-50">
+        <div class="p-4">
+          <p class="text-sm font-semibold text-slate-700">Aperçu côté agent</p>
+          <p class="text-xs text-slate-500 mt-0.5 mb-4">
+            Le produit tel qu'un agent le verra au guichet, vos modifications en cours
+            comprises.
+          </p>
+          <insurance-product-preview [product]="preview"></insurance-product-preview>
+        </div>
+      </tas-card>
+    }
+
+    <!-- Distribution -->
+    @if (canManage()) {
+      <tas-card class="block mt-4">
+        <div class="p-4">
+          <p class="text-sm font-semibold text-slate-700">Distribution</p>
+          @if (loaded.isActive) {
+            <p class="text-sm text-slate-600 mt-1">
+              Ce produit est en distribution. Le retirer arrête les nouvelles souscriptions ;
+              les contrats en cours continuent.
+            </p>
+            <button
+              tas-outlined-button
+              color="warn"
+              type="button"
+              class="mt-3"
+              [disabled]="isChangingDistribution()"
+              [isLoading]="isChangingDistribution()"
+              (click)="withdraw()"
+            >
+              Retirer de la distribution
+            </button>
+          } @else {
+            <p class="text-sm text-slate-600 mt-1">
+              Ce produit n'est pas distribué : aucun agent ne peut le proposer.
+            </p>
+            <button
+              tas-raised-button
+              color="primary"
+              type="button"
+              class="mt-3"
+              [disabled]="isChangingDistribution()"
+              [isLoading]="isChangingDistribution()"
+              (click)="activate()"
+            >
+              Activer
+            </button>
+          }
+          <p class="text-xs text-slate-400 mt-3">
+            Dernière modification le {{ lastUpdatedLabel() }}
+          </p>
+        </div>
+      </tas-card>
+    }
+  }
+</div>

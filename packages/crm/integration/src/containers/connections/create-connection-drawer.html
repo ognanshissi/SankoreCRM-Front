@@ -1,0 +1,125 @@
+<tas-side-drawer>
+  <tas-drawer-title>
+    <TasTitle class="text-lg">Déclarer une connexion</TasTitle>
+  </tas-drawer-title>
+
+  <tas-drawer-content>
+    <form [formRoot]="formSchema" class="flex flex-col gap-6">
+      <section class="flex flex-col gap-5">
+        <p class="text-sm text-slate-500">
+          La famille et le système ne se changent plus ensuite : un autre système est une autre
+          connexion. Le reste du paramétrage se fait sur l'écran de la connexion.
+        </p>
+
+        <div class="grid grid-cols-2 gap-4">
+          @if (data.family) {
+            <div>
+              <p class="text-sm text-slate-500 mb-1">Famille</p>
+              <p class="text-sm font-medium text-slate-800">
+                {{ selectedFamily() === 'Insurance' ? 'Assurance' : 'Core banking' }}
+              </p>
+              <p class="text-xs text-slate-400 mt-1">{{ familyDescription() }}</p>
+            </div>
+          } @else {
+            <tas-form-field>
+              <tas-label>Famille <span class="text-functional-error">*</span></tas-label>
+              <tas-select
+                [options]="familyOptions"
+                optionLabel="label"
+                optionValue="value"
+                placeholder="Choisissez une famille"
+                [formField]="formSchema.family"
+              ></tas-select>
+              @if (formSchema.family().touched() && formSchema.family().invalid()) {
+                <tas-error>{{ formSchema.family().errors()[0].message }}</tas-error>
+              } @else if (familyDescription()) {
+                <tas-hint>{{ familyDescription() }}</tas-hint>
+              }
+            </tas-form-field>
+          }
+
+          <tas-form-field>
+            <tas-label>Système <span class="text-functional-error">*</span></tas-label>
+            <tas-select
+              [options]="kindOptions()"
+              optionLabel="label"
+              optionValue="value"
+              placeholder="Choisissez un système"
+              [formField]="formSchema.kind"
+            ></tas-select>
+            @if (formSchema.kind().touched() && formSchema.kind().invalid()) {
+              <tas-error>{{ formSchema.kind().errors()[0].message }}</tas-error>
+            }
+          </tas-form-field>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+          <tas-form-field>
+            <tas-label>Mode d'échange <span class="text-functional-error">*</span></tas-label>
+            <tas-select
+              [options]="modeOptions"
+              optionLabel="label"
+              optionValue="value"
+              placeholder="Choisissez un mode"
+              [formField]="formSchema.mode"
+            ></tas-select>
+            @if (formSchema.mode().touched() && formSchema.mode().invalid()) {
+              <tas-error>{{ formSchema.mode().errors()[0].message }}</tas-error>
+            } @else if (modeDescription()) {
+              <tas-hint>{{ modeDescription() }}</tas-hint>
+            }
+          </tas-form-field>
+
+          <tas-form-field>
+            <tas-label>Nom <span class="text-functional-error">*</span></tas-label>
+            <input
+              tasInput
+              type="text"
+              placeholder="ex: Core banking production"
+              [formField]="formSchema.name"
+            />
+            @if (formSchema.name().touched() && formSchema.name().invalid()) {
+              <tas-error>{{ formSchema.name().errors()[0].message }}</tas-error>
+            } @else {
+              <tas-hint>Le nom sous lequel vos équipes reconnaîtront cette connexion.</tas-hint>
+            }
+          </tas-form-field>
+        </div>
+
+        @if (selectedMode() === 'Relay') {
+          <p class="text-sm text-slate-600">
+            En mode Agent relais, l'agent se rattache lui-même à la connexion lors de son
+            enrôlement : vous générerez son jeton depuis l'écran de la connexion.
+          </p>
+        }
+      </section>
+
+      <section>
+        <h2 class="text-sm font-semibold text-slate-700 mb-1">Réglages techniques</h2>
+        <p class="text-sm text-slate-500 mb-4">
+          Ces valeurs de départ protègent le système externe d'une rafale d'appels. Elles restent
+          modifiables ensuite.
+        </p>
+        <connection-settings-form
+          [fields]="formSchema.settings"
+          [family]="selectedFamily()"
+          [mode]="selectedMode()"
+        ></connection-settings-form>
+      </section>
+    </form>
+  </tas-drawer-content>
+
+  <tas-drawer-action>
+    <button tas-outlined-button color="primary" type="button" (click)="close()">Annuler</button>
+    <button
+      tas-raised-button
+      color="primary"
+      type="button"
+      (click)="handleSubmit()"
+      [disabled]="formSchema().invalid() || formSchema().submitting()"
+      [isLoading]="formSchema().submitting()"
+    >
+      Déclarer la connexion
+    </button>
+  </tas-drawer-action>
+</tas-side-drawer>

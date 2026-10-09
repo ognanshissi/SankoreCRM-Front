@@ -13,7 +13,11 @@ import { TasIcon } from '@talisoft/ui/icon';
 import { TasSpinner } from '@talisoft/ui/spinner';
 import { Severity, TasTag } from '@talisoft/ui/tag';
 import { Anchor } from '@talisoft/ui/button';
-import { BreadcrumbService, PermissionsService } from '@sankore/crm/common';
+import {
+  BreadcrumbService,
+  PermissionCode,
+  PermissionsService,
+} from '@sankore/crm/common';
 import { AgenciesApiService, UsersApiService } from '@sankore/crm-api';
 import { catchError, EMPTY } from 'rxjs';
 import { ClientDetailStore } from '../../models/client-detail.store';
@@ -38,6 +42,12 @@ interface ClientTab {
   route: string;
   /** Onglet réservé aux personnes morales (bénéficiaires effectifs). */
   legalOnly?: boolean;
+  /**
+   * Droits dont l'un au moins est nécessaire pour voir l'onglet. Les onglets Core
+   * banking et Assurances lisent les systèmes externes : sans le droit, leurs appels
+   * répondraient 403 et l'onglet n'afficherait que des erreurs.
+   */
+  permissions?: PermissionCode[];
 }
 
 /** Au-delà de ce délai en attente de KYC, la fiche affiche une alerte. */
@@ -260,12 +270,34 @@ export class ClientDetailNavigation {
     { label: 'Groupes', icon: 'feather:layers', route: 'groupes' },
     { label: 'Bénéficiaires effectifs', icon: 'feather:pie-chart', route: 'beneficiaires', legalOnly: true },
     { label: 'KYC', icon: 'feather:shield', route: 'kyc' },
+    {
+      label: 'Core banking',
+      icon: 'feather:database',
+      route: 'core-banking',
+      // `Integration.Command.View` est le droit qu'exigent les références et les
+      // commandes d'intégration, d'où vient l'état de création du client ;
+      // `CoreBanking.Balance.ViewLive` celui du solde en temps réel. L'un suffit pour
+      // que l'onglet ait quelque chose à montrer. Le contrat ne déclare pas encore de
+      // droit de lecture propre au core banking — à revoir si le back en ajoute un.
+      permissions: ['Integration.Command.View', 'CoreBanking.Balance.ViewLive'],
+    },
+    {
+      label: 'Assurances',
+      icon: 'feather:umbrella',
+      route: 'assurances',
+      permissions: ['Ins.Policy.View', 'Ins.Policy.Subscribe', 'Ins.Claim.View'],
+    },
     { label: 'Historique', icon: 'feather:clock', route: 'historique' },
   ];
 
   protected readonly visibleTabs = computed(() => {
     const isLegal = isLegalClient(this.client()?.clientType);
-    return this._tabs.filter((t) => !t.legalOnly || isLegal);
+    const granted = this._permissions.granted();
+    return this._tabs.filter(
+      (t) =>
+        (!t.legalOnly || isLegal) &&
+        (!t.permissions || t.permissions.some((c) => granted.has(c))),
+    );
   });
 
   protected readonly statusLabel = computed(() => clientStatusLabel(this.client()?.status));

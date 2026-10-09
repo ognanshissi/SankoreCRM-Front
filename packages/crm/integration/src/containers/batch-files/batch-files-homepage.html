@@ -1,0 +1,225 @@
+<!-- En-tête -->
+<div class="mb-5 flex items-start justify-between gap-4">
+  <div>
+    <h1 class="text-lg font-semibold text-slate-800">Fichiers batch</h1>
+    <p class="mt-0.5 text-sm text-slate-500">
+      Les fichiers échangés avec vos systèmes externes, dans les deux sens. Un fichier
+      sortant resté sans accusé au-delà du délai annoncé est signalé.
+    </p>
+  </div>
+  <button tas-outlined-button type="button" [disabled]="isLoading()" (click)="reload()">
+    <tas-icon iconName="feather:refresh-cw" style="font-size:14px"></tas-icon>
+    Actualiser
+  </button>
+</div>
+
+@if (isPending) {
+  <tas-alert type="info" class="mb-4 block">
+    <p class="text-sm font-medium">Le suivi des fichiers attend une livraison serveur.</p>
+    <p class="mt-1 text-xs">
+      Les fichiers ne sont pas encore publiés par la plateforme : cet écran restera vide
+      jusque-là. En attendant, l'écran Commandes montre chaque écriture envoyée à vos
+      systèmes, et le champ « fichier batch d'origine » du détail d'une commande indique par
+      quel fichier elle est partie.
+    </p>
+    @if (requestedFileId()) {
+      <p class="mt-2 text-xs">
+        Fichier demandé depuis une commande :
+        <span class="font-mono break-all">{{ requestedFileId() }}</span>
+      </p>
+    }
+    <button tas-outlined-button color="primary" type="button" size="small" class="mt-3" (click)="openCommands()">
+      <tas-icon iconName="feather:list" style="font-size:13px"></tas-icon>
+      Ouvrir l'écran Commandes
+    </button>
+  </tas-alert>
+}
+
+<!-- Filtres -->
+<tas-card class="mb-4 block">
+  <div class="p-4">
+    <div class="grid grid-cols-4 gap-3">
+      <tas-form-field>
+        <tas-label>Connexion</tas-label>
+        <tas-select
+          clearable
+          [searchable]="true"
+          [options]="connectionOptions()"
+          optionLabel="label"
+          optionValue="value"
+          placeholder="Toutes les connexions"
+          [ngModel]="filterConnectionId()"
+          (ngModelChange)="onConnectionChange($event)"
+        ></tas-select>
+      </tas-form-field>
+
+      <tas-form-field>
+        <tas-label>Sens</tas-label>
+        <tas-select
+          clearable
+          [options]="directionOptions"
+          optionLabel="label"
+          optionValue="value"
+          placeholder="Entrants et sortants"
+          [ngModel]="filterDirection()"
+          (ngModelChange)="onDirectionChange($event)"
+        ></tas-select>
+        <tas-hint>Sortant : envoyé par SANKORE. Entrant : reçu du système externe.</tas-hint>
+      </tas-form-field>
+
+      <tas-form-field>
+        <tas-label>Produits du</tas-label>
+        <input
+          tasInput
+          type="date"
+          [value]="filterFrom() ?? ''"
+          (change)="onFromChange($any($event.target).value)"
+        />
+      </tas-form-field>
+
+      <tas-form-field>
+        <tas-label>au</tas-label>
+        <input
+          tasInput
+          type="date"
+          [value]="filterTo() ?? ''"
+          (change)="onToChange($any($event.target).value)"
+        />
+      </tas-form-field>
+    </div>
+
+    <div class="mt-3 flex items-center justify-between gap-3">
+      <p class="text-xs text-slate-500">
+        @if (overdueInView() > 0) {
+          <span class="tabular-nums font-medium text-functional-error">{{ overdueInView() }}</span>
+          fichier(s) sans accusé au-delà du délai dans cette vue.
+        } @else {
+          <span class="tabular-nums font-medium text-slate-700">{{ totalCount() }}</span>
+          fichier(s) dans cette vue.
+        }
+      </p>
+      @if (hasActiveFilters()) {
+        <button tas-text-button type="button" size="small" (click)="resetFilters()">
+          <tas-icon iconName="feather:x" style="font-size:12px"></tas-icon>
+          Retirer les filtres
+        </button>
+      }
+    </div>
+  </div>
+</tas-card>
+
+@if (!isLoading() && rows().length === 0) {
+  <tas-card class="block">
+    <div class="flex flex-col items-center justify-center py-16 text-center">
+      <tas-icon
+        iconName="feather:file-text"
+        class="mb-3 text-slate-300"
+        style="font-size:32px"
+      ></tas-icon>
+      @if (isPending) {
+        <p class="mb-1 text-sm font-medium text-slate-600">
+          Aucun fichier à afficher : la plateforme ne les publie pas encore.
+        </p>
+        <p class="max-w-md text-xs text-slate-400">
+          Ce n'est pas le signe qu'aucun fichier n'a circulé. Pour savoir ce qui est parti vers
+          vos systèmes, passez par l'écran Commandes.
+        </p>
+      } @else if (hasActiveFilters()) {
+        <p class="mb-1 text-sm font-medium text-slate-600">Aucun fichier pour ces filtres.</p>
+        <p class="text-xs text-slate-400">Élargissez la période ou changez de connexion.</p>
+      } @else {
+        <p class="mb-1 text-sm font-medium text-slate-600">
+          Aucun fichier échangé jusqu'ici. Rien n'est en attente.
+        </p>
+        <p class="text-xs text-slate-400">
+          Les connexions en mode « Fichiers » déposeront ici chaque envoi et chaque réception.
+        </p>
+      }
+      @if (hasActiveFilters()) {
+        <button tas-outlined-button type="button" class="mt-4" (click)="resetFilters()">
+          Retirer les filtres
+        </button>
+      }
+    </div>
+  </tas-card>
+} @else {
+  <tas-table
+    [data]="rows()"
+    identifierField="batchFileId"
+    [config]="tableConfig()"
+    [isLoading]="isLoading()"
+    [hasCaption]="false"
+    (pageEventChange)="onPageChange($event)"
+  >
+    <ng-template #header>
+      <tr>
+        <th class="text-right">Séquence</th>
+        <th>Fichier</th>
+        <th>Sens</th>
+        <th>Produit le</th>
+        <th class="text-right">Enregistrements</th>
+        <th>Accusé</th>
+        <th class="text-right"></th>
+      </tr>
+    </ng-template>
+
+    <ng-template #body let-item>
+      <tr
+        class="cursor-pointer transition-colors hover:bg-slate-50"
+        [class.bg-red-50]="acknowledgement(item, acknowledgementDueHours()).isOverdue"
+        (click)="openDetail(item)"
+      >
+        <td class="py-3 text-right font-mono text-xs text-slate-500 tabular-nums">
+          {{ item.sequence }}
+        </td>
+
+        <td class="max-w-[280px]">
+          <div class="flex items-center gap-2">
+            @if (acknowledgement(item, acknowledgementDueHours()).isOverdue) {
+              <tas-icon
+                iconName="feather:alert-circle"
+                class="text-functional-error"
+                style="font-size:13px"
+                title="Aucun accusé au-delà du délai annoncé"
+              ></tas-icon>
+            }
+            <span class="truncate text-sm font-medium text-slate-800" [title]="item.fileName">
+              {{ item.fileName }}
+            </span>
+          </div>
+        </td>
+
+        <td class="text-sm text-slate-600">{{ directionLabel(item.direction) }}</td>
+
+        <td>
+          <div class="text-sm text-slate-700">{{ item.producedAt | dateTimeAgo }}</div>
+        </td>
+
+        <td class="text-right text-sm text-slate-700 tabular-nums">{{ item.recordCount }}</td>
+
+        <td>
+          <tas-tag [severity]="acknowledgement(item, acknowledgementDueHours()).severity">
+            {{ acknowledgement(item, acknowledgementDueHours()).label }}
+          </tas-tag>
+          @if (acknowledgement(item, acknowledgementDueHours()).detail) {
+            <div class="mt-0.5 text-xs text-slate-400">
+              {{ acknowledgement(item, acknowledgementDueHours()).detail }}
+            </div>
+          }
+        </td>
+
+        <td class="text-right" (click)="$event.stopPropagation()">
+          <button
+            tas-button
+            iconButton
+            type="button"
+            title="Voir le détail du fichier"
+            (click)="openDetail(item)"
+          >
+            <tas-icon iconName="feather:eye" iconSize="sm"></tas-icon>
+          </button>
+        </td>
+      </tr>
+    </ng-template>
+  </tas-table>
+}

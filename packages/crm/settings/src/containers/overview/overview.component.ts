@@ -277,6 +277,96 @@ export class OverviewComponent implements OnInit {
       ],
     },
     {
+      title: 'Intégrations',
+      type: 'group',
+      id: 'integrations',
+      description:
+        'Connecter le CRM au système bancaire et aux back-offices des assureurs partenaires',
+      children: [
+        {
+          title: 'Vue d\'ensemble',
+          type: 'basic',
+          id: 'integrations_hub',
+          link: '/settings/integrations',
+          permission: 'lead:source:read',
+          description:
+            'Les services externes connectables depuis SANKORE, et leur état',
+        },
+        {
+          title: 'Connexions',
+          type: 'basic',
+          id: 'integrations_connections',
+          link: '/settings/integrations/connections',
+          permission: 'Integration.Connection.View',
+          description:
+            'Déclarer les systèmes externes, tester la connexion et les activer',
+        },
+        {
+          title: 'Correspondances de codes',
+          type: 'basic',
+          id: 'integrations_mappings',
+          link: '/settings/integrations/mappings',
+          permission: 'Integration.Mapping.Manage',
+          description:
+            'Faire correspondre les codes du CRM à ceux attendus par chaque système externe',
+        },
+        {
+          title: 'Écritures et rejets',
+          type: 'basic',
+          id: 'integrations_commands',
+          link: '/settings/integrations/commands',
+          permission: 'Integration.Command.View',
+          description:
+            'Suivre les écritures envoyées aux systèmes externes et traiter les rejets',
+        },
+        {
+          title: 'Fichiers échangés',
+          type: 'basic',
+          id: 'integrations_batch_files',
+          link: '/settings/integrations/batch-files',
+          permission: 'Integration.Command.View',
+          description:
+            "Suivre les fichiers sortants et entrants, et détecter un accusé manquant",
+        },
+        {
+          title: 'Réconciliation',
+          type: 'basic',
+          id: 'integrations_reconciliation',
+          link: '/settings/integrations/reconciliation',
+          permission: 'Integration.Reconciliation.View',
+          description:
+            'Consulter et traiter les écarts entre le CRM et les systèmes externes',
+        },
+        {
+          title: 'Connexions assurance',
+          type: 'basic',
+          id: 'integrations_insurance_connections',
+          link: '/settings/integrations/insurance-connections',
+          permission: 'Integration.Connection.View',
+          description:
+            'Connecter les back-offices des assureurs partenaires',
+        },
+        {
+          title: "Produits d'assurance",
+          type: 'basic',
+          id: 'integrations_insurance_products',
+          link: '/settings/integrations/insurance-products',
+          permission: 'Ins.Product.Manage',
+          description:
+            'Gérer les produits d\'assurance que vos agents peuvent proposer',
+        },
+        {
+          title: 'Bordereaux assurance',
+          type: 'basic',
+          id: 'integrations_insurance_statements',
+          link: '/settings/integrations/insurance-statements',
+          permission: 'Ins.Statement.View',
+          description:
+            'Justifier les primes reversées et les commissions, par assureur et par mois',
+        },
+      ],
+    },
+    {
       title: 'Sécurité & Conformité',
       type: 'group',
       id: 'security_compliance',
@@ -332,15 +422,6 @@ export class OverviewComponent implements OnInit {
           id: 'account_settings_tags',
           link: '/settings/tags',
           description: "Gérer l'ensemble des tags",
-        },
-        {
-          title: 'Intégrations',
-          type: 'basic',
-          id: 'account_settings_integrations',
-          link: '/settings/integrations',
-          permission: 'lead:source:read',
-          description:
-            'Connecter des services externes (WhatsApp, téléphonie, CBS, webhooks)',
         },
         {
           title: 'Plan et Facturation',

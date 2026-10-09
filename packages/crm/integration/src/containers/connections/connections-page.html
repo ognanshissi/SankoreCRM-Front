@@ -1,0 +1,167 @@
+<div class="flex items-start justify-between mb-5">
+  <div>
+    <div class="flex items-center gap-2.5">
+      <h1 class="text-lg font-semibold text-slate-800">{{ pageTitle() }}</h1>
+      @if (totalCount() > 0) {
+        <span
+          class="px-2 py-0.5 rounded-md bg-slate-100 text-slate-500 text-xs font-medium tabular-nums"
+        >
+          {{ totalCount() }}
+        </span>
+      }
+    </div>
+    <p class="text-sm text-slate-400 mt-0.5">{{ pageIntent() }}</p>
+  </div>
+  @if (canManage()) {
+    <button tas-filled-button color="primary" (click)="openCreateDrawer()">
+      <tas-icon iconName="feather:plus"></tas-icon>
+      Déclarer une connexion
+    </button>
+  }
+</div>
+
+@if (failingConnections().length > 0) {
+  <div class="mb-4 rounded-lg border border-functional-error bg-white p-4">
+    <p class="text-sm font-medium text-functional-error">
+      {{ failingConnections().length }} connexion(s) active(s) dont le dernier test a échoué
+    </p>
+    <p class="text-sm text-slate-600 mt-1">
+      Les écritures qui passent par ces connexions restent en attente. Ouvrez la connexion et
+      relancez un test pour savoir ce que le système externe répond.
+    </p>
+    <ul class="mt-2 text-sm text-slate-700 list-disc pl-5">
+      @for (row of failingConnections(); track row.id) {
+        <li>{{ row.name || kindLabel(row.kind) }}</li>
+      }
+    </ul>
+  </div>
+}
+
+<tas-card class="mb-4 block">
+  <div class="p-4">
+    <div class="grid grid-cols-4 gap-3 items-end">
+      @if (showFamilyColumn()) {
+        <tas-form-field>
+          <tas-label>Famille</tas-label>
+          <tas-select
+            clearable
+            [options]="familyOptions"
+            optionLabel="label"
+            optionValue="value"
+            placeholder="Toutes les familles"
+            [ngModel]="filterFamily()"
+            [ngModelOptions]="{ standalone: true }"
+            (ngModelChange)="onFilterChange('famille', $event)"
+          ></tas-select>
+        </tas-form-field>
+      }
+
+      <tas-form-field>
+        <tas-label>État</tas-label>
+        <tas-select
+          clearable
+          [options]="activeOptions"
+          optionLabel="label"
+          optionValue="value"
+          placeholder="Tous les états"
+          [ngModel]="filterActive()"
+          [ngModelOptions]="{ standalone: true }"
+          (ngModelChange)="onFilterChange('actif', $event)"
+        ></tas-select>
+      </tas-form-field>
+
+      <div class="flex items-center">
+        <button tas-text-button type="button" (click)="refresh()">
+          <tas-icon iconName="feather:refresh-cw" iconSize="sm"></tas-icon>
+          Actualiser
+        </button>
+      </div>
+    </div>
+  </div>
+</tas-card>
+
+@if (!isLoading() && connections().length === 0) {
+  <tas-card class="block">
+    <div class="p-12 text-center">
+      <p class="text-sm font-medium text-slate-700">
+        @if (hasActiveFilter()) {
+          Aucune connexion ne correspond à ces filtres.
+        } @else if (isInsurance()) {
+          Aucune connexion assurance déclarée.
+        } @else {
+          Aucune connexion déclarée.
+        }
+      </p>
+      <p class="text-sm text-slate-500 mt-1">
+        @if (hasActiveFilter()) {
+          Élargissez les filtres pour voir les autres connexions.
+        } @else {
+          Déclarez votre premier système pour activer l'intégration.
+        }
+      </p>
+      @if (canManage() && !hasActiveFilter()) {
+        <div class="mt-4">
+          <button tas-raised-button color="primary" type="button" (click)="openCreateDrawer()">
+            Déclarer une connexion
+          </button>
+        </div>
+      }
+    </div>
+  </tas-card>
+} @else {
+  <tas-table
+    [data]="connections()"
+    identifierField="id"
+    [config]="tableConfig()"
+    [isLoading]="isLoading()"
+    [hasCaption]="false"
+    (pageEventChange)="onPageChange($event)"
+  >
+    <ng-template #header>
+      <tr>
+        <th>{{ nameColumnLabel() }}</th>
+        <th>Système</th>
+        <th>Mode</th>
+        <th>État</th>
+        <th>Dernier test</th>
+        <th class="text-right"></th>
+      </tr>
+    </ng-template>
+
+    <ng-template #body let-item>
+      <tr class="cursor-pointer hover:bg-slate-50 transition-colors" (click)="open(item)">
+        <td class="py-3">
+          <div class="font-medium text-slate-800 leading-tight">
+            {{ item.name || kindLabel(item.kind) }}
+          </div>
+          @if (showFamilyColumn()) {
+            <div class="text-xs text-slate-400 mt-0.5">{{ familyLabel(item.family) }}</div>
+          }
+        </td>
+        <td class="text-sm text-slate-700">{{ kindLabel(item.kind) }}</td>
+        <td class="text-sm text-slate-700">{{ modeLabel(item.mode) }}</td>
+        <td>
+          <tas-tag [severity]="item.isActive ? 'success' : 'neutral'">
+            {{ item.isActive ? 'Active' : 'Inactive' }}
+          </tas-tag>
+        </td>
+        <td>
+          <connection-health-badge
+            [status]="item.lastHealthStatus"
+            [checkedAt]="item.lastHealthAt"
+          ></connection-health-badge>
+        </td>
+        <td class="text-right" (click)="$event.stopPropagation()">
+          <div class="flex items-center justify-end gap-3">
+            <span class="text-xs text-slate-400">
+              modifiée {{ item.updatedAt | dateTimeAgo }}
+            </span>
+            <button tas-button iconButton type="button" (click)="open(item)" title="Ouvrir">
+              <tas-icon iconName="feather:chevron-right" iconSize="sm"></tas-icon>
+            </button>
+          </div>
+        </td>
+      </tr>
+    </ng-template>
+  </tas-table>
+}

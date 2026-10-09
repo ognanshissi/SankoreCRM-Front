@@ -1,0 +1,210 @@
+@if (canView()) {
+  <div class="p-6">
+    <div class="mb-6">
+      <h1 class="text-xl font-semibold text-slate-800">Bordereaux et réconciliation assurance</h1>
+      <p class="mt-1 text-sm text-slate-500">
+        Les primes reversées, les commissions et les écarts relevés avec un assureur,
+        mois par mois.
+      </p>
+    </div>
+
+    <tas-card class="mb-4 block">
+      <div class="p-4">
+        <div class="grid grid-cols-4 gap-3">
+          <tas-form-field>
+            <tas-label>Assureur</tas-label>
+            @if (isLoadingInsurers()) {
+              <div class="flex h-10 items-center">
+                <tas-spinner size="6" class="text-primary"></tas-spinner>
+              </div>
+            } @else {
+              <tas-select
+                [options]="insurerOptions()"
+                optionLabel="label"
+                optionValue="value"
+                placeholder="Choisissez un assureur"
+                [ngModel]="selectedInsurerId() ?? ''"
+                [ngModelOptions]="{ standalone: true }"
+                (ngModelChange)="onInsurerChange($event)"
+              ></tas-select>
+            }
+          </tas-form-field>
+
+          <tas-form-field>
+            <tas-label>Mois</tas-label>
+            <input
+              tasInput
+              type="month"
+              [ngModel]="period()"
+              [ngModelOptions]="{ standalone: true }"
+              (ngModelChange)="onPeriodChange($event)"
+            />
+          </tas-form-field>
+        </div>
+
+        @if (!isLoadingInsurers() && insurerOptions().length === 0) {
+          <p class="mt-3 text-sm text-slate-500">
+            Aucune connexion assurance n'est déclarée. Déclarez l'assureur dans les
+            connexions d'intégration pour suivre ses bordereaux.
+          </p>
+        }
+      </div>
+    </tas-card>
+
+    <!-- ——— Bordereau ——— -->
+
+    <div class="mb-3 flex items-center justify-between gap-4">
+      <div>
+        <h2 class="text-base font-semibold text-slate-800">Bordereau</h2>
+        @if (selectedInsurerName()) {
+          <p class="text-xs text-slate-400">
+            {{ selectedInsurerName() }}, {{ periodLabel() }}
+          </p>
+        }
+      </div>
+      <div class="flex items-center gap-2">
+        <button
+          tas-outlined-button
+          color="primary"
+          type="button"
+          (click)="exportCsv()"
+          [disabled]="!statement()"
+        >
+          Exporter en CSV
+        </button>
+        <!--
+          Pas d'export PDF : le projet n'embarque aucune bibliothèque PDF et
+          l'endpoint du bordereau n'existe pas encore. Le bouton reste visible et
+          désactivé plutôt que retiré, pour que le critère d'acceptation se lise
+          comme non couvert au lieu de disparaître.
+        -->
+        <button
+          tas-outlined-button
+          color="primary"
+          type="button"
+          [disabled]="true"
+          title="L'export PDF attend la livraison serveur du bordereau."
+        >
+          Exporter en PDF
+        </button>
+      </div>
+    </div>
+
+    @if (isStatementPending) {
+      <tas-alert type="info" class="mb-4">
+        <p class="text-sm font-medium">Le bordereau attend une livraison serveur.</p>
+        <p class="mt-1 text-sm">
+          Les adhésions, primes encaissées, contre-passations, résiliations et
+          commissions seront remplies dès que l'assureur les publiera à SANKORE.
+          D'ici là, les écarts de réconciliation ci-dessous sont disponibles et se
+          traitent normalement.
+        </p>
+      </tas-alert>
+    }
+
+    @if (isLoadingStatement()) {
+      <tas-card class="mb-6 block">
+        <div class="flex justify-center py-16">
+          <tas-spinner size="10" class="text-primary"></tas-spinner>
+        </div>
+      </tas-card>
+    } @else if (statement(); as currentStatement) {
+      <tas-table
+        [data]="lines()"
+        identifierField="productId"
+        [config]="tableConfig()"
+        [hasCaption]="false"
+      >
+        <ng-template #header>
+          <tr>
+            <th>Produit</th>
+            <th class="text-right">Adhésions</th>
+            <th class="text-right">Primes encaissées</th>
+            <th class="text-right">Contre-passations</th>
+            <th class="text-right">Résiliations</th>
+            <th class="text-right">Commissions</th>
+          </tr>
+        </ng-template>
+
+        <ng-template #body let-line>
+          <tr>
+            <td class="py-3 text-sm text-slate-700">{{ line.productName }}</td>
+            <td class="text-right text-sm tabular-nums text-slate-700">
+              {{ line.subscriptionCount }}
+            </td>
+            <td class="text-right text-sm tabular-nums text-slate-700">
+              {{ amount(line.premiumCollected) }}
+            </td>
+            <td class="text-right text-sm tabular-nums text-slate-700">
+              {{ line.reversalCount }}
+              <span class="block text-xs text-slate-400">
+                {{ amount(line.reversedAmount) }}
+              </span>
+            </td>
+            <td class="text-right text-sm tabular-nums text-slate-700">
+              {{ line.cancellationCount }}
+            </td>
+            <td class="text-right text-sm tabular-nums text-slate-700">
+              {{ amount(line.commissionAmount) }}
+            </td>
+          </tr>
+        </ng-template>
+      </tas-table>
+
+      <tas-card class="mt-4 mb-6 block">
+        <div class="grid grid-cols-5 gap-4 p-4">
+          <div>
+            <p class="text-xs text-slate-400">Adhésions</p>
+            <p class="text-lg font-semibold tabular-nums text-slate-800">
+              {{ currentStatement.totalSubscriptionCount }}
+            </p>
+          </div>
+          <div>
+            <p class="text-xs text-slate-400">Primes encaissées</p>
+            <p class="text-lg font-semibold tabular-nums text-slate-800">
+              {{ amount(currentStatement.totalPremiumCollected) }}
+            </p>
+          </div>
+          <div>
+            <p class="text-xs text-slate-400">Montant contre-passé</p>
+            <p class="text-lg font-semibold tabular-nums text-slate-800">
+              {{ amount(currentStatement.totalReversedAmount) }}
+            </p>
+          </div>
+          <div>
+            <p class="text-xs text-slate-400">Résiliations</p>
+            <p class="text-lg font-semibold tabular-nums text-slate-800">
+              {{ currentStatement.totalCancellationCount }}
+            </p>
+          </div>
+          <div>
+            <p class="text-xs text-slate-400">Commissions</p>
+            <p class="text-lg font-semibold tabular-nums text-slate-800">
+              {{ amount(currentStatement.totalCommissionAmount) }}
+            </p>
+          </div>
+        </div>
+      </tas-card>
+    }
+
+    <!-- ——— Écarts de réconciliation ——— -->
+
+    <div class="mb-3 mt-8">
+      <h2 class="text-base font-semibold text-slate-800">Écarts de réconciliation</h2>
+      <p class="text-xs text-slate-400">
+        Les divergences relevées entre le CRM et le back-office de l'assureur.
+      </p>
+    </div>
+
+    <reconciliation-gaps-list
+      [connectionId]="selectedInsurerId()"
+      [family]="insuranceFamily"
+      [resolvePermission]="resolvePermission"
+    ></reconciliation-gaps-list>
+  </div>
+} @else {
+  <div class="p-10 text-center text-sm text-slate-500">
+    La consultation des bordereaux assurance demande le droit « Ins.Statement.View ».
+    Demandez-le à votre administrateur.
+  </div>
+}

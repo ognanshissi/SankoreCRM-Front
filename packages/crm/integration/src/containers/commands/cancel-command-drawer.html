@@ -1,0 +1,57 @@
+<tas-side-drawer>
+  <tas-drawer-title>
+    <tas-title>Annuler la commande</tas-title>
+  </tas-drawer-title>
+
+  <tas-drawer-content>
+    <div class="mb-4 rounded-lg border border-slate-200 bg-slate-50 p-3">
+      <p class="text-sm font-medium text-slate-700">{{ commandLabel }}</p>
+      <p class="mt-0.5 font-mono text-xs text-slate-400">{{ commandRef }}</p>
+    </div>
+
+    <tas-alert type="error" class="mb-4 block">
+      {{ cancelWarning }}
+    </tas-alert>
+
+    <form [formRoot]="formSchema" class="flex flex-col gap-5">
+      <tas-form-field>
+        <tas-label>
+          Motif de l'annulation <span class="text-functional-error">*</span>
+        </tas-label>
+        <textarea
+          tasInput
+          rows="4"
+          [formField]="formSchema.reason"
+          placeholder="Le compte a été ouvert manuellement dans le core banking, cette écriture est devenue inutile."
+        ></textarea>
+        @if (formSchema.reason().touched() && formSchema.reason().invalid()) {
+          <tas-error>{{ formSchema.reason().errors()[0].message }}</tas-error>
+        } @else {
+          <tas-hint>
+            Conservé dans la piste d'audit avec votre nom : dites pourquoi cette écriture
+            n'a plus à partir, en {{ minimumReasonLength }} caractères au moins.
+          </tas-hint>
+        }
+      </tas-form-field>
+
+      @if (submitError()) {
+        <p class="text-xs text-functional-error" role="alert">{{ submitError() }}</p>
+      }
+    </form>
+  </tas-drawer-content>
+
+  <tas-drawer-action>
+    <button tas-outlined-button type="button" (click)="close()">Conserver la commande</button>
+    <button
+      tas-raised-button
+      color="warn"
+      type="button"
+      [disabled]="formSchema().invalid() || formSchema().submitting()"
+      [isLoading]="formSchema().submitting()"
+      (click)="handleSubmit()"
+    >
+      <tas-icon iconName="feather:slash" style="font-size:14px"></tas-icon>
+      Annuler définitivement
+    </button>
+  </tas-drawer-action>
+</tas-side-drawer>

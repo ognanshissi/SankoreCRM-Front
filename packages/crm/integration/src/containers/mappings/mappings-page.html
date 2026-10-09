@@ -1,0 +1,337 @@
+<div class="pb-6">
+  <div class="mb-6">
+    <h1 class="text-lg font-semibold text-slate-800">Correspondances de codes</h1>
+    <p class="text-sm text-slate-500 mt-0.5">
+      Reliez les codes du CRM à ceux du système externe, domaine par domaine, pour que les
+      données envoyées soient acceptées.
+    </p>
+  </div>
+
+  <!-- Connexion -->
+  <tas-card class="mb-4 block">
+    <div class="p-4">
+      <div class="grid grid-cols-2 gap-3">
+        <tas-form-field>
+          <tas-label>Connexion</tas-label>
+          <tas-select
+            [options]="connectionOptions()"
+            optionLabel="label"
+            optionValue="value"
+            placeholder="Choisissez une connexion"
+            [ngModel]="selectedConnectionId()"
+            (ngModelChange)="onConnectionChange($event)"
+          ></tas-select>
+        </tas-form-field>
+      </div>
+    </div>
+  </tas-card>
+
+  @if (!selectedConnectionId()) {
+    <tas-card class="block">
+      <div class="p-8 text-center">
+        <p class="text-sm text-slate-600">
+          Choisissez une connexion pour afficher ses correspondances de codes.
+        </p>
+        @if (!isLoadingConnections() && !connections().length) {
+          <p class="text-sm text-slate-500 mt-1">
+            Aucune connexion déclarée. Déclarez un système externe pour pouvoir lui
+            associer des codes.
+          </p>
+        }
+      </div>
+    </tas-card>
+  } @else if (connectionMissing()) {
+    <tas-alert type="error">
+      <p class="text-sm">
+        Cette connexion n'existe pas, ou plus. Choisissez-en une autre dans la liste.
+      </p>
+    </tas-alert>
+  } @else {
+    <!-- Onglets par domaine -->
+    <div class="border-b border-slate-200 mb-4 overflow-x-auto">
+      <div
+        class="flex"
+        role="tablist"
+        aria-label="Domaines de correspondance"
+        (keydown)="onTabKeydown($event)"
+      >
+        @for (tab of tabs(); track tab.value) {
+          <button
+            #tabButton
+            type="button"
+            role="tab"
+            [id]="'mapping-tab-' + tab.value"
+            [attr.aria-selected]="activeDomain() === tab.value"
+            [attr.aria-controls]="'mapping-panel-' + tab.value"
+            [tabindex]="activeDomain() === tab.value ? 0 : -1"
+            class="px-4 py-2.5 text-sm font-medium whitespace-nowrap border-b-2 -mb-px transition-colors flex items-center gap-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+            [class]="
+              activeDomain() === tab.value
+                ? 'border-primary text-primary'
+                : 'border-transparent text-slate-500 hover:text-slate-700'
+            "
+            (click)="selectTab(tab.value)"
+          >
+            {{ tab.label }}
+            @if (tab.isMeasured) {
+              <tas-tag
+                [severity]="tab.missingCount > 0 ? 'warning' : 'success'"
+                class="tabular-nums"
+                [title]="
+                  tab.missingCount > 0
+                    ? tab.missingCount + ' code(s) CRM sans correspondance'
+                    : 'Tous les codes CRM connus ont une correspondance'
+                "
+              >
+                {{ tab.missingCount }}
+              </tas-tag>
+            } @else {
+              <!--
+                Pas de « 0 » quand le CRM n'expose pas la liste des codes du domaine :
+                un zéro se lirait « tout est mappé » alors que rien n'a été mesuré.
+              -->
+              <tas-tag
+                severity="neutral"
+                title="Nombre de codes manquants non mesurable pour ce domaine"
+              >
+                —
+              </tas-tag>
+            }
+          </button>
+        }
+      </div>
+    </div>
+
+    <div
+      role="tabpanel"
+      [id]="'mapping-panel-' + activeDomain()"
+      [attr.aria-labelledby]="'mapping-tab-' + activeDomain()"
+    >
+      <!-- En-tête du domaine -->
+      <tas-card class="mb-4 block">
+        <div class="p-4 flex flex-wrap items-start justify-between gap-4">
+          <div class="min-w-0">
+            @if (currentAvailability().isMeasured) {
+              <p class="text-base font-semibold text-slate-800 tabular-nums">
+                {{ currentUnmapped()?.mappedCodes ?? 0 }} sur
+                {{ currentUnmapped()?.knownCrmCodes ?? 0 }} codes CRM mappés
+              </p>
+            } @else {
+              <p class="text-base font-semibold text-slate-800">
+                {{ (mappingsByDomain()[activeDomain()] ?? []).length }} correspondance(s)
+                enregistrée(s)
+              </p>
+            }
+
+            <div class="flex items-center gap-2 mt-1.5">
+              <tas-tag [severity]="currentAvailability().severity">
+                {{ currentAvailability().label }}
+              </tas-tag>
+              @if (currentDomainMeta().isRequired) {
+                <span class="text-xs text-slate-500">
+                  Obligatoire : une correspondance manquante bloque les écritures de ce
+                  domaine.
+                </span>
+              }
+            </div>
+
+            @if (currentUnmapped()?.source) {
+              <p class="text-xs text-slate-500 mt-1.5">{{ currentUnmapped()?.source }}</p>
+            }
+
+            @if (!currentAvailability().isMeasured) {
+              <p class="text-xs text-slate-500 mt-1">
+                Le nombre de codes manquants n'est pas mesurable ici : aucun module du CRM
+                n'expose la liste de référence de ce domaine. Les correspondances,
+                l'import et l'export fonctionnent malgré tout.
+              </p>
+            }
+          </div>
+
+          <div class="flex items-center gap-2 flex-shrink-0">
+            <div class="flex items-center gap-2 mr-2" [title]="missingOnlyTitle()">
+              <tas-switch
+                ariaLabel="Manquants uniquement"
+                [checked]="missingOnly()"
+                [disabled]="!currentAvailability().isMeasured"
+                (toggle)="onMissingOnlyChange($event)"
+              ></tas-switch>
+              <span
+                class="text-sm"
+                [class]="currentAvailability().isMeasured ? 'text-slate-600' : 'text-slate-400'"
+              >
+                Manquants uniquement
+              </span>
+            </div>
+
+            <button tas-button iconButton type="button" title="Rafraîchir" (click)="refresh()">
+              <tas-icon iconName="feather:refresh-cw" style="font-size:14px"></tas-icon>
+            </button>
+
+            <button tas-outlined-button type="button" (click)="exportCsv()">
+              <tas-icon iconName="feather:download" style="font-size:14px"></tas-icon>
+              Exporter en CSV
+            </button>
+
+            @if (canManage()) {
+              <button
+                tas-raised-button
+                color="primary"
+                type="button"
+                (click)="openImportDrawer()"
+              >
+                <tas-icon iconName="feather:upload" style="font-size:14px"></tas-icon>
+                Importer un CSV
+              </button>
+            }
+          </div>
+        </div>
+      </tas-card>
+
+      @if (hasRows() || isLoading()) {
+        <tas-table
+          [data]="rows()"
+          identifierField="crmCode"
+          [config]="tableConfig()"
+          [isLoading]="isLoading()"
+          [hasCaption]="false"
+        >
+          <ng-template #header>
+            <tr>
+              <th class="text-left">{{ currentDomainMeta().crmLabel }}</th>
+              <th class="text-left">Libellé</th>
+              <th class="text-left">Code externe</th>
+              <th class="text-right"></th>
+            </tr>
+          </ng-template>
+
+          <ng-template #body let-item>
+            <tr [class]="item.isMapped ? '' : 'bg-amber-50/60'">
+              <td class="py-3">
+                <div class="flex items-center gap-2">
+                  <span class="font-mono text-xs text-slate-800">{{ item.crmCode }}</span>
+                  @if (!item.isMapped) {
+                    <tas-tag severity="warning">Sans correspondance</tas-tag>
+                  }
+                </div>
+              </td>
+
+              @if (editingCrmCode() === item.crmCode) {
+                <td class="py-3">
+                  <tas-form-field>
+                    <tas-label class="sr-only">Libellé</tas-label>
+                    <input
+                      tasInput
+                      type="text"
+                      placeholder="Libellé lisible"
+                      [formField]="rowForm.label"
+                    />
+                  </tas-form-field>
+                </td>
+                <td class="py-3">
+                  <tas-form-field>
+                    <tas-label class="sr-only">Code externe</tas-label>
+                    <input
+                      tasInput
+                      type="text"
+                      placeholder="Code attendu par le système externe"
+                      [formField]="rowForm.externalCode"
+                    />
+                    @if (rowForm.externalCode().touched() && rowForm.externalCode().invalid()) {
+                      <tas-error>{{ rowForm.externalCode().errors()[0].message }}</tas-error>
+                    }
+                  </tas-form-field>
+                </td>
+                <td class="py-3 text-right whitespace-nowrap">
+                  <button tas-text-button type="button" (click)="cancelEdit()">Annuler</button>
+                  <button
+                    tas-raised-button
+                    color="primary"
+                    type="button"
+                    (click)="saveRow(item)"
+                    [disabled]="rowForm().invalid() || rowForm().submitting()"
+                    [isLoading]="rowForm().submitting()"
+                  >
+                    Enregistrer
+                  </button>
+                </td>
+              } @else {
+                <td class="py-3 text-sm text-slate-600">{{ item.label || '—' }}</td>
+                <td class="py-3">
+                  @if (item.externalCode) {
+                    <span class="font-mono text-xs text-slate-800">{{ item.externalCode }}</span>
+                  } @else {
+                    <span class="text-slate-400">—</span>
+                  }
+                </td>
+                <td class="py-3 text-right whitespace-nowrap">
+                  @if (canManage()) {
+                    <button
+                      tas-button
+                      iconButton
+                      type="button"
+                      [title]="
+                        item.isMapped ? 'Modifier la correspondance' : 'Renseigner le code externe'
+                      "
+                      (click)="startEdit(item)"
+                    >
+                      <tas-icon iconName="feather:edit-2" style="font-size:14px"></tas-icon>
+                    </button>
+                    @if (item.isMapped) {
+                      <button
+                        tas-button
+                        iconButton
+                        type="button"
+                        title="Supprimer la correspondance"
+                        (click)="confirmDelete(item)"
+                      >
+                        <tas-icon
+                          iconName="feather:trash-2"
+                          class="text-functional-error"
+                          style="font-size:14px"
+                        ></tas-icon>
+                      </button>
+                    }
+                  }
+                </td>
+              }
+            </tr>
+          </ng-template>
+        </tas-table>
+      } @else {
+        <tas-card class="block">
+          <div class="p-8 text-center">
+            @if (isMissingOnlyApplied()) {
+              <p class="text-sm text-slate-600">
+                Aucun code sans correspondance dans ce domaine. Décochez « Manquants
+                uniquement » pour revoir la table entière.
+              </p>
+            } @else {
+              <p class="text-sm text-slate-600">
+                Aucune correspondance pour ce domaine. Importez un CSV ou renseignez les
+                codes un par un.
+              </p>
+              @if (canManage()) {
+                <div class="mt-4 flex items-center justify-center gap-2">
+                  <button tas-outlined-button type="button" (click)="exportCsv()">
+                    <tas-icon iconName="feather:download" style="font-size:14px"></tas-icon>
+                    Exporter le modèle
+                  </button>
+                  <button
+                    tas-raised-button
+                    color="primary"
+                    type="button"
+                    (click)="openImportDrawer()"
+                  >
+                    <tas-icon iconName="feather:upload" style="font-size:14px"></tas-icon>
+                    Importer un CSV
+                  </button>
+                </div>
+              }
+            }
+          </div>
+        </tas-card>
+      }
+    </div>
+  }
+</div>

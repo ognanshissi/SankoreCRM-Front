@@ -276,6 +276,14 @@
       @case ('validation') {
         <div role="tabpanel" id="kyc-panel-validation" aria-labelledby="kyc-tab-validation">
           <!--
+            Annoncé AVANT la décision, et c'est tout l'intérêt : si le cœur bancaire du tenant ne
+            crée ses clients qu'en lot, l'agent doit le savoir avant de valider, pas en découvrant
+            après coup que le client ne peut pas encore opérer. Le composant ne rend rien quand le
+            CBS répond en direct — pas de `@if` à ajouter ici.
+          -->
+          <cbs-batch-notice class="mb-4 block"></cbs-batch-notice>
+
+          <!--
             Délai dépassé côté workflow. Affiché AVANT tout le reste de l'onglet : c'est une alerte,
             pas un changement d'état — le dossier reste gouverné par le module KYC, et le circuit
             ci-dessous est toujours celui qui décide.
@@ -328,6 +336,20 @@
                 </button>
               </div>
             </tas-card>
+          }
+
+          <!--
+            Où en est la création du client dans le cœur bancaire. Le composant se sonde lui-même
+            tant que l'état peut encore bouger, et s'arrête seul : rien à piloter depuis cet écran.
+            Les détails techniques d'un rejet restent sur l'écran Commandes — ici l'agent lit une
+            phrase métier et sait qui contacter.
+          -->
+          @if (file()?.customerId; as customerId) {
+            <cbs-provisioning-status
+              class="mb-4 block"
+              [customerId]="customerId"
+              appearance="card"
+            ></cbs-provisioning-status>
           }
 
           @if (isLoadingCircuit()) {

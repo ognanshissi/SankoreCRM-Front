@@ -1,0 +1,140 @@
+<tas-side-drawer>
+  <tas-drawer-title>
+    <TasTitle class="text-lg">Déclarer un produit d'assurance</TasTitle>
+  </tas-drawer-title>
+
+  <tas-drawer-content>
+    @if (isLoadingInsurers()) {
+      <div class="flex justify-center py-12">
+        <tas-spinner size="8" class="text-primary"></tas-spinner>
+      </div>
+    } @else if (!insurerOptions().length) {
+      <tas-alert type="info">
+        <p class="text-sm">
+          Aucune connexion assurance n'est déclarée. Déclarez d'abord l'assureur, depuis
+          Paramétrage puis Intégrations, avant d'ajouter ses produits.
+        </p>
+      </tas-alert>
+    } @else {
+      <form [formRoot]="formSchema" class="flex flex-col gap-5">
+        <p class="text-sm text-slate-500">
+          Le produit est créé hors distribution. Vous compléterez les garanties, le tarif
+          et les conditions à l'étape suivante.
+        </p>
+
+        <div class="grid grid-cols-2 gap-4">
+          <tas-form-field>
+            <tas-label>Assureur <span class="text-functional-error">*</span></tas-label>
+            <tas-select
+              [options]="insurerOptions()"
+              optionLabel="label"
+              optionValue="value"
+              placeholder="Choisissez l'assureur"
+              [formField]="formSchema.connectionId"
+            ></tas-select>
+            <tas-hint>L'assureur ne sera plus modifiable après la création.</tas-hint>
+            @if (formSchema.connectionId().touched() && formSchema.connectionId().invalid()) {
+              <tas-error>{{ formSchema.connectionId().errors()[0].message }}</tas-error>
+            }
+          </tas-form-field>
+
+          <tas-form-field>
+            <tas-label>
+              Code du produit chez l'assureur <span class="text-functional-error">*</span>
+            </tas-label>
+            <input
+              tasInput
+              type="text"
+              placeholder="ex: ORS-DECES-01"
+              [formField]="formSchema.insurerProductCode"
+            />
+            <tas-hint>Ce code ne sera plus modifiable après la création.</tas-hint>
+            @if (
+              formSchema.insurerProductCode().touched() &&
+              formSchema.insurerProductCode().invalid()
+            ) {
+              <tas-error>{{ formSchema.insurerProductCode().errors()[0].message }}</tas-error>
+            }
+          </tas-form-field>
+        </div>
+
+        <tas-form-field>
+          <tas-label>Nom du produit <span class="text-functional-error">*</span></tas-label>
+          <input
+            tasInput
+            type="text"
+            placeholder="ex: Assurance décès emprunteur"
+            [formField]="formSchema.name"
+          />
+          <tas-hint>C'est le nom que l'agent lira au guichet.</tas-hint>
+          @if (formSchema.name().touched() && formSchema.name().invalid()) {
+            <tas-error>{{ formSchema.name().errors()[0].message }}</tas-error>
+          }
+        </tas-form-field>
+
+        <div class="grid grid-cols-2 gap-4">
+          <tas-form-field>
+            <tas-label>Périodicité de la prime <span class="text-functional-error">*</span></tas-label>
+            <tas-select
+              [options]="periodicityOptions"
+              optionLabel="label"
+              optionValue="value"
+              placeholder="Choisissez la périodicité"
+              [formField]="formSchema.periodicity"
+            ></tas-select>
+            @if (formSchema.periodicity().touched() && formSchema.periodicity().invalid()) {
+              <tas-error>{{ formSchema.periodicity().errors()[0].message }}</tas-error>
+            }
+          </tas-form-field>
+
+          <tas-form-field>
+            <tas-label>Entrée en vigueur <span class="text-functional-error">*</span></tas-label>
+            <input tasInput type="date" [formField]="formSchema.effectiveFrom" />
+            <tas-hint>Avant cette date, le produit n'est pas proposable.</tas-hint>
+            @if (formSchema.effectiveFrom().touched() && formSchema.effectiveFrom().invalid()) {
+              <tas-error>{{ formSchema.effectiveFrom().errors()[0].message }}</tas-error>
+            }
+          </tas-form-field>
+        </div>
+
+        <tas-form-field>
+          <tas-label>Mode de tarification <span class="text-functional-error">*</span></tas-label>
+          <tas-select
+            [options]="pricingModeOptions"
+            optionLabel="label"
+            optionValue="value"
+            placeholder="Choisissez le mode de tarification"
+            [formField]="formSchema.pricingMode"
+          ></tas-select>
+          @if (selectedPricingModeDescription()) {
+            <tas-hint>{{ selectedPricingModeDescription() }}</tas-hint>
+          }
+          @if (formSchema.pricingMode().touched() && formSchema.pricingMode().invalid()) {
+            <tas-error>{{ formSchema.pricingMode().errors()[0].message }}</tas-error>
+          }
+        </tas-form-field>
+      </form>
+    }
+  </tas-drawer-content>
+
+  <tas-drawer-action>
+    <button tas-outlined-button color="primary" type="button" (click)="close()">
+      Annuler
+    </button>
+    <button
+      tas-raised-button
+      color="primary"
+      type="button"
+      (click)="handleSubmit()"
+      [disabled]="
+        formSchema().invalid() ||
+        formSchema().submitting() ||
+        isLoadingInsurers() ||
+        !insurerOptions().length
+      "
+      [isLoading]="formSchema().submitting()"
+    >
+      Déclarer le produit
+    </button>
+  </tas-drawer-action>
+</tas-side-drawer>

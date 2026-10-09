@@ -1,0 +1,207 @@
+<tas-side-drawer>
+  <tas-drawer-title>
+    <TasTitle class="text-lg">Importer des correspondances</TasTitle>
+  </tas-drawer-title>
+
+  <tas-drawer-content>
+    <div class="flex flex-col gap-5">
+      <p class="text-sm text-slate-600">
+        Domaine : <span class="font-medium text-slate-800">{{ domainLabel }}</span>
+      </p>
+
+      <!-- Format attendu -->
+      <div class="rounded-lg border border-slate-200 p-4">
+        <p class="text-sm font-medium text-slate-700">Format du fichier</p>
+        <p class="text-sm text-slate-600 mt-1">
+          Un fichier .csv avec une ligne d'en-tête et trois colonnes :
+          <span class="font-mono text-xs">crm_code</span>,
+          <span class="font-mono text-xs">external_code</span>,
+          <span class="font-mono text-xs">label</span>. La colonne
+          <span class="font-mono text-xs">label</span> est facultative.
+        </p>
+        <ul class="text-sm text-slate-600 mt-2 list-disc pl-5 space-y-1">
+          <li>
+            Une ligne dont le {{ crmLabel }} a déjà une correspondance la met à jour.
+          </li>
+          <li>
+            Deux lignes portant le même {{ crmLabel }} sont toutes les deux refusées : le
+            fichier ne dit pas lequel des deux codes externes était voulu.
+          </li>
+          <li>Une ligne en échec ne crée rien ; les lignes valides autour passent.</li>
+        </ul>
+        <button
+          tas-text-button
+          type="button"
+          class="mt-2"
+          (click)="exportTemplate()"
+          [isLoading]="isExportingTemplate()"
+        >
+          <tas-icon iconName="feather:download" style="font-size:14px"></tas-icon>
+          Exporter le modèle
+        </button>
+      </div>
+
+      <!-- Fichier -->
+      <div>
+        <tas-file-uploader
+          accept=".csv"
+          [maxSizeMb]="maxFileSizeMb"
+          [value]="file()"
+          (valueChange)="onFileChange($event)"
+        ></tas-file-uploader>
+        @if (fileError()) {
+          <p class="text-xs text-functional-error mt-2">{{ fileError() }}</p>
+        }
+      </div>
+
+      <!-- Rapport -->
+      @if (report()) {
+        <div class="flex flex-col gap-3">
+          <div class="flex items-center gap-6">
+            <div>
+              <p class="text-xs text-slate-500">Lignes lues</p>
+              <p class="text-base font-semibold text-slate-800 tabular-nums">
+                {{ totalRows() }}
+              </p>
+            </div>
+            <div>
+              <p class="text-xs text-slate-500">Lignes valides</p>
+              <p class="text-base font-semibold text-functional-success tabular-nums">
+                {{ validRows() }}
+              </p>
+            </div>
+            <div>
+              <p class="text-xs text-slate-500">Lignes rejetées</p>
+              <p
+                class="text-base font-semibold tabular-nums"
+                [class]="invalidRows() > 0 ? 'text-functional-error' : 'text-slate-800'"
+              >
+                {{ invalidRows() }}
+              </p>
+            </div>
+          </div>
+
+          @if (stage() === 'validated') {
+            @if (invalidRows() > 0) {
+              <tas-alert type="info">
+                <p class="text-sm">
+                  Rien n'a encore été écrit. Si vous importez maintenant, les
+                  {{ validRows() }} lignes valides seront enregistrées et les
+                  {{ invalidRows() }} lignes rejetées ne le seront pas. Corrigez-les dans
+                  le fichier puis importez-le à nouveau pour les rattraper.
+                </p>
+              </tas-alert>
+            } @else {
+              <tas-alert type="success">
+                <p class="text-sm">
+                  Rien n'a encore été écrit. Les {{ validRows() }} lignes du fichier sont
+                  toutes valides.
+                </p>
+              </tas-alert>
+            }
+          } @else if (stage() === 'imported') {
+            <tas-alert [type]="invalidRows() > 0 ? 'info' : 'success'">
+              <p class="text-sm">
+                {{ validRows() }} ligne(s) ont été enregistrées.
+                @if (invalidRows() > 0) {
+                  Les {{ invalidRows() }} lignes rejetées ci-dessous ne l'ont pas été :
+                  corrigez-les dans le fichier et importez-le à nouveau.
+                }
+              </p>
+            </tas-alert>
+          }
+
+          @if (rejectedRows().length) {
+            <div>
+              <p class="text-sm font-medium text-slate-700 mb-2">Lignes rejetées</p>
+              <tas-table
+                [data]="rejectedRows()"
+                identifierField="id"
+                [config]="tableConfig()"
+                [isLoading]="false"
+                [hasCaption]="false"
+              >
+                <ng-template #header>
+                  <tr>
+                    <th class="text-left">Ligne</th>
+                    <th class="text-left">{{ crmLabel }}</th>
+                    <th class="text-left">Code externe</th>
+                    <th class="text-left">Motif du rejet</th>
+                  </tr>
+                </ng-template>
+
+                <ng-template #body let-item>
+                  <tr>
+                    <td class="py-3 tabular-nums text-sm text-slate-600">
+                      {{ item.rowNumber ?? '—' }}
+                    </td>
+                    <td class="py-3">
+                      @if (item.crmCode) {
+                        <span class="font-mono text-xs text-slate-800">{{ item.crmCode }}</span>
+                      } @else {
+                        <span class="text-slate-400">—</span>
+                      }
+                    </td>
+                    <td class="py-3">
+                      @if (item.externalCode) {
+                        <span class="font-mono text-xs text-slate-800">
+                          {{ item.externalCode }}
+                        </span>
+                      } @else {
+                        <span class="text-slate-400">—</span>
+                      }
+                    </td>
+                    <td class="py-3">
+                      @if (item.errors.length) {
+                        <ul class="text-sm text-functional-error space-y-0.5">
+                          @for (error of item.errors; track $index) {
+                            <li>{{ error }}</li>
+                          }
+                        </ul>
+                      } @else {
+                        <span class="text-slate-400">—</span>
+                      }
+                    </td>
+                  </tr>
+                </ng-template>
+              </tas-table>
+            </div>
+          }
+        </div>
+      }
+    </div>
+  </tas-drawer-content>
+
+  <tas-drawer-action>
+    <button tas-outlined-button color="primary" type="button" (click)="close()">Fermer</button>
+
+    @if (stage() !== 'imported') {
+      <button
+        tas-outlined-button
+        color="primary"
+        type="button"
+        (click)="verify()"
+        [disabled]="!file() || isValidating() || isImporting()"
+        [isLoading]="isValidating()"
+      >
+        Vérifier le fichier
+      </button>
+    }
+
+    <!-- Le bouton d'import n'apparaît qu'après une vérification : importer sans avoir vu
+         le rapport, c'est découvrir une colonne de codes inversés une fois qu'ils sont
+         partis dans le système externe. -->
+    @if (stage() === 'validated' && validRows() > 0) {
+      <button
+        tas-raised-button
+        color="primary"
+        type="button"
+        (click)="runImport()"
+        [disabled]="isImporting() || isValidating()"
+        [isLoading]="isImporting()"
+      >
+        Importer les {{ validRows() }} lignes valides
+      </button>
+    }
+  </tas-drawer-action>
+</tas-side-drawer>

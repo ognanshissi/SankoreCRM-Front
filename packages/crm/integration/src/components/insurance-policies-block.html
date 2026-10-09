@@ -1,0 +1,154 @@
+<tas-card class="block">
+  <div class="flex flex-wrap items-start justify-between gap-3 p-4">
+    <div class="min-w-0">
+      <div class="flex items-center gap-2">
+        <tas-icon iconName="feather:shield" style="font-size:16px" class="text-primary"></tas-icon>
+        <p class="text-sm font-medium text-slate-700">Contrats d'assurance</p>
+        <span class="text-xs text-slate-500 tabular-nums">({{ rows().length }})</span>
+        @if (atRiskCount() > 0) {
+          <tas-tag severity="error">
+            {{ atRiskCount() }} à régulariser
+          </tas-tag>
+        }
+      </div>
+
+      <!--
+        La fraîcheur est affichée en toutes circonstances : un contrat lu « il y a trois
+        jours » ne se commente pas comme un contrat lu à l'instant.
+      -->
+      @if (asOf()) {
+        <p class="mt-1 text-xs text-slate-500" [title]="asOf()">
+          Données arrêtées {{ asOf() | dateTimeAgo }}
+        </p>
+      } @else {
+        <p class="mt-1 text-xs text-slate-500">Fraîcheur inconnue</p>
+      }
+    </div>
+
+    <div class="flex flex-wrap items-center gap-2">
+      @if (canDeclareClaim()) {
+        <button
+          tas-outlined-button
+          color="primary"
+          type="button"
+          [disabled]="rows().length === 0"
+          title="Un sinistre se déclare depuis un contrat : utilisez l'action de la ligne concernée."
+        >
+          <tas-icon iconName="feather:alert-circle" style="font-size:14px"></tas-icon>
+          Déclarer un sinistre
+        </button>
+      }
+      @if (canSubscribe()) {
+        <a
+          tas-raised-button
+          color="primary"
+          [routerLink]="['/customers', customerId(), 'souscrire-assurance']"
+        >
+          <tas-icon iconName="feather:plus" style="font-size:14px"></tas-icon>
+          Souscrire une assurance
+        </a>
+      }
+    </div>
+  </div>
+
+  @if (!isLoading() && rows().length === 0) {
+    <div class="border-t border-slate-100 p-4">
+      <tas-alert type="info">
+        <p class="text-sm font-medium">La liste des contrats attend une livraison serveur</p>
+        <p class="mt-1 text-sm">
+          Les contrats d'assurance d'un client ne sont pas encore lisibles : l'endpoint
+          correspondant n'est pas en service. Ce bloc n'affiche donc rien, et cela ne veut pas
+          dire que ce client n'a aucun contrat.
+        </p>
+        <p class="mt-2 text-sm">
+          Ce qui est disponible dès maintenant : le catalogue des produits d'assurance et le
+          parcours de souscription, qui donne le tarif de l'assureur et le solde du compte à
+          débiter.
+        </p>
+      </tas-alert>
+    </div>
+  } @else {
+    <div class="border-t border-slate-100">
+      <tas-table
+        [data]="rows()"
+        identifierField="policyId"
+        [config]="tableConfig()"
+        [isLoading]="isLoading()"
+        [hasCaption]="false"
+      >
+        <ng-template #header>
+          <tr>
+            <th>Produit</th>
+            <th>Statut</th>
+            <th>Date d'effet</th>
+            <th class="text-right">Prime</th>
+            <th>Prochaine échéance</th>
+            <th>Dernière échéance</th>
+            <th class="text-right"></th>
+          </tr>
+        </ng-template>
+
+        <ng-template #body let-row>
+          <!-- Un contrat suspendu ou en impayé est signalé par la ligne entière. -->
+          <tr [class]="isAtRisk(row) ? 'bg-red-50' : ''">
+            <td class="py-3">
+              <p class="text-sm font-medium text-slate-800">{{ row.productName }}</p>
+              <p class="text-xs text-slate-500">{{ row.insurerName }}</p>
+              @if (row.policyNumber) {
+                <p class="font-mono text-xs text-slate-400">{{ row.policyNumber }}</p>
+              }
+            </td>
+
+            <td>
+              <tas-tag [severity]="statusSeverity(row)">{{ statusLabel(row) }}</tas-tag>
+            </td>
+
+            <td class="text-sm text-slate-700">{{ formatDate(row.effectiveFrom) }}</td>
+
+            <td class="text-right text-sm text-slate-800 tabular-nums">
+              {{ premiumLabel(row) }}
+            </td>
+
+            <td class="text-sm text-slate-700">{{ formatDate(row.nextInstalmentDate) }}</td>
+
+            <td class="text-sm" [class]="row.lastInstalmentPaid === false ? 'text-functional-error' : 'text-slate-700'">
+              {{ lastInstalmentLabel(row) }}
+            </td>
+
+            <td class="text-right" (click)="$event.stopPropagation()">
+              <div class="flex items-center justify-end gap-2">
+                @if (row.certificateAvailable) {
+                  <!--
+                    L'attestation est annoncée disponible par le serveur, mais aucun endpoint
+                    ne la renvoie encore : le bouton reste visible et désactivé, avec le motif
+                    dans son infobulle, plutôt que de disparaître.
+                  -->
+                  <button
+                    tas-outlined-button
+                    color="primary"
+                    type="button"
+                    disabled
+                    title="Le téléchargement de l'attestation attend une livraison serveur."
+                  >
+                    <tas-icon iconName="feather:download" style="font-size:14px"></tas-icon>
+                    Attestation
+                  </button>
+                }
+                @if (canDeclareClaim()) {
+                  <button
+                    tas-text-button
+                    color="primary"
+                    type="button"
+                    (click)="declareClaim(row)"
+                  >
+                    Déclarer un sinistre
+                  </button>
+                }
+              </div>
+            </td>
+          </tr>
+        </ng-template>
+      </tas-table>
+    </div>
+  }
+</tas-card>

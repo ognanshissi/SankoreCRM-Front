@@ -1,0 +1,47 @@
+@if (canView()) {
+  <div class="p-6">
+    <div class="mb-6">
+      <h1 class="text-xl font-semibold text-slate-800">Réconciliation</h1>
+      <p class="mt-1 text-sm text-slate-500">
+        Les divergences relevées chaque nuit entre le CRM et les systèmes externes,
+        de la plus ancienne à la plus récente.
+      </p>
+    </div>
+
+    <tas-card class="mb-4 block">
+      <div class="p-4">
+        <div class="grid grid-cols-4 gap-3">
+          <tas-form-field>
+            <tas-label>Connexion</tas-label>
+            @if (isLoadingConnections()) {
+              <div class="flex h-10 items-center">
+                <tas-spinner size="6" class="text-primary"></tas-spinner>
+              </div>
+            } @else {
+              <tas-select
+                clearable
+                [options]="connectionOptions()"
+                optionLabel="label"
+                optionValue="value"
+                placeholder="Toutes les connexions"
+                [ngModel]="selectedConnectionId() ?? ''"
+                [ngModelOptions]="{ standalone: true }"
+                (ngModelChange)="onConnectionChange($event)"
+              ></tas-select>
+            }
+          </tas-form-field>
+        </div>
+      </div>
+    </tas-card>
+
+    <reconciliation-gaps-list
+      [connectionId]="selectedConnectionId()"
+      [resolvePermission]="resolvePermission"
+    ></reconciliation-gaps-list>
+  </div>
+} @else {
+  <div class="p-10 text-center text-sm text-slate-500">
+    La consultation des écarts de réconciliation demande le droit
+    « Integration.Reconciliation.View ». Demandez-le à votre administrateur.
+  </div>
+}

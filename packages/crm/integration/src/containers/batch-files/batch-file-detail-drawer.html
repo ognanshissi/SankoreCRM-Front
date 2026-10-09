@@ -1,0 +1,114 @@
+<tas-side-drawer>
+  <tas-drawer-title>
+    <tas-title>Fichier batch</tas-title>
+  </tas-drawer-title>
+
+  <tas-drawer-content>
+    <div class="flex flex-col gap-5">
+      <div class="flex items-start justify-between gap-3">
+        <div class="min-w-0">
+          <p class="truncate text-sm font-semibold text-slate-800">{{ data.file.fileName }}</p>
+          <p class="mt-0.5 text-xs text-slate-500">
+            Fichier {{ directionLabel | lowercase }}, séquence
+            <span class="tabular-nums">{{ data.file.sequence }}</span>
+          </p>
+        </div>
+        <tas-tag [severity]="acknowledgement().severity">{{ acknowledgement().label }}</tas-tag>
+      </div>
+
+      @if (acknowledgement().isOverdue) {
+        <div class="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 p-3">
+          <tas-icon
+            iconName="feather:alert-triangle"
+            class="text-functional-error"
+            style="font-size:14px"
+          ></tas-icon>
+          <p class="text-xs text-slate-700">{{ acknowledgement().detail }}</p>
+        </div>
+      }
+
+      <dl class="divide-y divide-slate-100 rounded-lg border border-slate-200">
+        <div class="flex items-start justify-between gap-4 p-3">
+          <dt class="text-xs text-slate-500">Connexion</dt>
+          <dd class="text-right text-sm text-slate-800">
+            {{ data.connectionName ?? '—' }}
+            @if (!data.connectionName) {
+              <span class="block font-mono text-xs text-slate-400">
+                {{ data.file.connectionId }}
+              </span>
+            }
+          </dd>
+        </div>
+        <div class="flex items-start justify-between gap-4 p-3">
+          <dt class="text-xs text-slate-500">Produit le</dt>
+          <dd class="text-sm text-slate-800">{{ data.file.producedAt | date: 'dd/MM/yyyy HH:mm' }}</dd>
+        </div>
+        <div class="flex items-start justify-between gap-4 p-3">
+          <dt class="text-xs text-slate-500">Enregistrements</dt>
+          <dd class="text-sm text-slate-800 tabular-nums">{{ data.file.recordCount }}</dd>
+        </div>
+        <div class="flex items-start justify-between gap-4 p-3">
+          <dt class="text-xs text-slate-500">Accusé reçu le</dt>
+          <dd class="text-right text-sm text-slate-800">
+            @if (data.file.acknowledgedAt) {
+              {{ data.file.acknowledgedAt | date: 'dd/MM/yyyy HH:mm' }}
+            } @else {
+              <span class="text-slate-400">—</span>
+            }
+          </dd>
+        </div>
+        <div class="flex items-start justify-between gap-4 p-3">
+          <dt class="text-xs text-slate-500">Enregistrements refusés</dt>
+          <dd class="text-sm text-slate-800 tabular-nums">
+            {{ data.file.rejectedRecordCount ?? '—' }}
+          </dd>
+        </div>
+      </dl>
+
+      <div>
+        <p class="mb-2 text-xs font-medium text-slate-600">Commandes contenues</p>
+
+        @if (isPending) {
+          <tas-alert type="info" class="mb-3 block">
+            La composition des fichiers arrivera avec le suivi des fichiers. Les écritures de
+            cette connexion sont déjà consultables dans l'écran Commandes.
+          </tas-alert>
+        }
+
+        @if (isLoading()) {
+          <div class="flex justify-center py-8">
+            <tas-spinner size="8" class="text-primary"></tas-spinner>
+          </div>
+        } @else {
+          <tas-table
+            [data]="commands()"
+            identifierField="commandId"
+            [config]="tableConfig()"
+            [hasCaption]="false"
+          >
+            <ng-template #header>
+              <tr>
+                <th>Commande</th>
+              </tr>
+            </ng-template>
+            <ng-template #body let-item>
+              <tr>
+                <td class="py-2 font-mono text-xs break-all text-slate-600">
+                  {{ item.commandId }}
+                </td>
+              </tr>
+            </ng-template>
+          </tas-table>
+        }
+      </div>
+    </div>
+  </tas-drawer-content>
+
+  <tas-drawer-action>
+    <button tas-outlined-button type="button" (click)="close()">Fermer</button>
+    <button tas-raised-button color="primary" type="button" (click)="openCommands()">
+      <tas-icon iconName="feather:list" style="font-size:14px"></tas-icon>
+      Voir les commandes de cette connexion
+    </button>
+  </tas-drawer-action>
+</tas-side-drawer>

@@ -179,6 +179,39 @@ export const PERMISSIONS = {
   KYC_DOCUMENT_REVEAL: 'kyc:document:reveal',
   KYC_DOCUMENT_VALIDATE: 'kyc:document:validate',
   KYC_SETTINGS_MANAGE: 'kyc:settings:manage',
+
+  // ——— Intégrations (core banking, assurance) ———
+  //
+  // Ces codes sont en PascalCase pointé, contrairement à tout le reste du catalogue.
+  // Ce n'est pas une incohérence à « harmoniser » : c'est la forme exacte que les
+  // endpoints `/api/v1/integration/**` déclarent dans leur description (par ex.
+  // « Requires permission: Integration.Connection.Manage. »). Les renommer en
+  // `integration:connection:manage` produirait des gardes qui ne matchent jamais ce
+  // que le serveur accorde.
+  INTEGRATION_CONNECTION_VIEW: 'Integration.Connection.View',
+  INTEGRATION_CONNECTION_MANAGE: 'Integration.Connection.Manage',
+  INTEGRATION_MAPPING_MANAGE: 'Integration.Mapping.Manage',
+  INTEGRATION_COMMAND_VIEW: 'Integration.Command.View',
+  INTEGRATION_COMMAND_REPLAY: 'Integration.Command.Replay',
+  INTEGRATION_RECONCILIATION_VIEW: 'Integration.Reconciliation.View',
+  INTEGRATION_RECONCILIATION_RESOLVE: 'Integration.Reconciliation.Resolve',
+
+  CORE_BANKING_BALANCE_VIEW_LIVE: 'CoreBanking.Balance.ViewLive',
+
+  INS_PRODUCT_MANAGE: 'Ins.Product.Manage',
+
+  // Exigés par les US front ASS-15 à ASS-18, mais aucun endpoint du swagger ne les
+  // déclare encore : les lots back correspondants (ASS-04 à ASS-10 — souscription,
+  // contrats, sinistres, bordereaux) ne sont pas livrés. À confirmer à l'arrivée de
+  // ces endpoints ; si le serveur ne les accorde jamais, les actions concernées
+  // restent masquées, ce qui est le comportement voulu en attendant.
+  INS_POLICY_VIEW: 'Ins.Policy.View',
+  INS_POLICY_SUBSCRIBE: 'Ins.Policy.Subscribe',
+  INS_CLAIM_VIEW: 'Ins.Claim.View',
+  INS_CLAIM_DECLARE: 'Ins.Claim.Declare',
+  INS_CLAIM_DOCUMENT_REVEAL: 'Ins.Claim.Document.Reveal',
+  INS_STATEMENT_VIEW: 'Ins.Statement.View',
+  INS_RECONCILIATION_RESOLVE: 'Ins.Reconciliation.Resolve',
 } as const;
 
 /** Code de permission valide. Tout autre littéral est refusé à la compilation. */

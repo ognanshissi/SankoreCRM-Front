@@ -59,6 +59,19 @@ export const customersRoutes: Route[] = [
     loadComponent: () => import('./containers/duplicates/merge-compare'),
   },
   {
+    // Avant `:id` : le parcours est un écran plein, pas un onglet de la fiche. Le
+    // paramètre s'appelle `customerId` parce que c'est le nom de l'`input()` du
+    // composant, lié par `withComponentInputBinding()`.
+    path: ':customerId/souscrire-assurance',
+    canActivate: [hasPermissionGuard('Ins.Policy.Subscribe')],
+    loadComponent: () =>
+      // Chargé depuis la barrique de la lib `integration`, qui porte déjà les blocs
+      // Core banking et Assurances de cette fiche : l'écran arrive donc dans un
+      // morceau déjà téléchargé, sans alias profond à déclarer.
+      // eslint-disable-next-line @nx/enforce-module-boundaries
+      import('@sankore/crm/integration').then((m) => m.SubscribePolicyPage),
+  },
+  {
     path: ':id',
     canActivate: [hasPermissionGuard('customers:read')],
     loadComponent: () =>
@@ -88,6 +101,14 @@ export const customersRoutes: Route[] = [
       {
         path: 'kyc',
         loadComponent: () => import('./containers/client-detail/kyc'),
+      },
+      {
+        path: 'core-banking',
+        loadComponent: () => import('./containers/client-detail/core-banking'),
+      },
+      {
+        path: 'assurances',
+        loadComponent: () => import('./containers/client-detail/assurances'),
       },
       {
         path: 'historique',

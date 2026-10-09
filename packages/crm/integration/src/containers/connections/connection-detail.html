@@ -1,0 +1,366 @@
+@if (isLoading() && !connection()) {
+  <div class="flex justify-center py-24">
+    <tas-spinner size="10" class="text-primary"></tas-spinner>
+  </div>
+} @else if (loadFailed()) {
+  <tas-card class="block">
+    <div class="p-10 text-center">
+      <p class="text-sm font-medium text-slate-700">{{ loadFailed() }}</p>
+      <div class="mt-4 flex items-center justify-center gap-2">
+        <button tas-outlined-button color="primary" type="button" (click)="reload()">
+          Réessayer
+        </button>
+        <button tas-text-button type="button" (click)="backToList()">Revenir à la liste</button>
+      </div>
+    </div>
+  </tas-card>
+} @else if (connection(); as dto) {
+  <div class="flex items-start justify-between mb-5">
+    <div>
+      <button tas-text-button type="button" class="-ml-2 mb-1" (click)="backToList()">
+        <tas-icon iconName="feather:chevron-left" iconSize="sm"></tas-icon>
+        {{ family() === 'Insurance' ? 'Connexions assurance' : 'Connexions' }}
+      </button>
+      <div class="flex items-center gap-2.5">
+        <h1 class="text-lg font-semibold text-slate-800">{{ dto.name || kindLabel() }}</h1>
+        <tas-tag [severity]="dto.isActive ? 'success' : 'neutral'">
+          {{ dto.isActive ? 'Active' : 'Inactive' }}
+        </tas-tag>
+      </div>
+      <p class="text-sm text-slate-400 mt-0.5">
+        {{ familyLabel() }} · {{ kindLabel() }} · {{ savedModeLabel() }}
+      </p>
+    </div>
+    <div class="text-right">
+      <connection-health-badge
+        [status]="dto.lastHealthStatus"
+        [checkedAt]="dto.lastHealthAt"
+      ></connection-health-badge>
+      <p class="text-xs text-slate-400 mt-2">
+        Modifiée {{ dto.updatedAt | dateTimeAgo }}@if (dto.updatedBy) { par {{ dto.updatedBy }} }
+      </p>
+    </div>
+  </div>
+
+  <form [formRoot]="formSchema" class="flex flex-col gap-4">
+    <tas-card class="block">
+      <div class="p-4">
+        <h2 class="text-sm font-semibold text-slate-700 mb-4">Informations générales</h2>
+
+        <div class="grid grid-cols-2 gap-4">
+          <tas-form-field>
+            <tas-label>Nom <span class="text-functional-error">*</span></tas-label>
+            <input tasInput type="text" [formField]="formSchema.name" />
+            @if (formSchema.name().touched() && formSchema.name().invalid()) {
+              <tas-error>{{ formSchema.name().errors()[0].message }}</tas-error>
+            }
+          </tas-form-field>
+
+          <tas-form-field>
+            <tas-label>Mode d'échange <span class="text-functional-error">*</span></tas-label>
+            <tas-select
+              [options]="modeOptions"
+              optionLabel="label"
+              optionValue="value"
+              [formField]="formSchema.mode"
+            ></tas-select>
+            @if (formSchema.mode().touched() && formSchema.mode().invalid()) {
+              <tas-error>{{ formSchema.mode().errors()[0].message }}</tas-error>
+            } @else if (formMode() === 'Relay' && !isRelay()) {
+              <tas-hint>Enregistrez pour pouvoir enrôler un agent relais.</tas-hint>
+            }
+          </tas-form-field>
+        </div>
+
+        <dl class="mt-4 grid grid-cols-4 gap-x-8 gap-y-2 text-sm border-t border-slate-100 pt-4">
+          <div>
+            <dt class="text-xs text-slate-400">Famille</dt>
+            <dd class="text-slate-700">{{ familyLabel() }}</dd>
+          </div>
+          <div>
+            <dt class="text-xs text-slate-400">Système</dt>
+            <dd class="text-slate-700">{{ kindLabel() }}</dd>
+          </div>
+          <div>
+            <dt class="text-xs text-slate-400">Déclarée</dt>
+            <dd class="text-slate-700">{{ dto.createdAt | dateTimeAgo }}</dd>
+          </div>
+          <div>
+            <dt class="text-xs text-slate-400">Par</dt>
+            <dd class="text-slate-700">{{ dto.createdBy || '—' }}</dd>
+          </div>
+        </dl>
+        <p class="text-xs text-slate-400 mt-3">
+          La famille et le système ne se changent pas : un autre système est une autre connexion.
+        </p>
+      </div>
+    </tas-card>
+
+    <tas-card class="block">
+      <div class="p-4">
+        <h2 class="text-sm font-semibold text-slate-700 mb-4">Réglages techniques</h2>
+        <connection-settings-form
+          [fields]="formSchema.settings"
+          [family]="family()"
+          [mode]="formMode()"
+          [expectedKind]="dto.settings?.expectedKind ?? null"
+        ></connection-settings-form>
+      </div>
+    </tas-card>
+
+    @if (canManage()) {
+      <div class="flex items-center justify-end gap-2">
+        <button
+          tas-raised-button
+          color="primary"
+          type="button"
+          (click)="handleSave()"
+          [disabled]="formSchema().invalid() || formSchema().submitting()"
+          [isLoading]="formSchema().submitting()"
+        >
+          Enregistrer les modifications
+        </button>
+      </div>
+    }
+  </form>
+
+  <tas-card class="block mt-4">
+    <div class="p-4">
+      <h2 class="text-sm font-semibold text-slate-700">Identifiants</h2>
+      <p class="text-sm text-slate-500 mt-1 mb-4">
+        Les valeurs partent dans un coffre et ne sont relisibles par aucun écran. Seul l'indice
+        masqué revient, assez pour distinguer deux identifiants pendant une rotation.
+      </p>
+      @if (canManage()) {
+        <connection-secrets-panel
+          [connectionId]="id()"
+          [mode]="savedMode()"
+          [canManage]="canManage()"
+        ></connection-secrets-panel>
+      } @else {
+        <p class="text-sm text-slate-500">
+          La gestion des identifiants demande le droit de gestion des connexions.
+        </p>
+      }
+    </div>
+  </tas-card>
+
+  <tas-card class="block mt-4">
+    <div class="p-4">
+      <div class="flex items-start justify-between gap-4">
+        <div>
+          <h2 class="text-sm font-semibold text-slate-700">Test de connexion</h2>
+          <p class="text-sm text-slate-500 mt-1">
+            Le test appelle le système externe et enregistre sa réponse sur la connexion. C'est lui
+            qui débloque l'activation.
+          </p>
+        </div>
+        @if (canManage()) {
+          <button
+            tas-outlined-button
+            color="primary"
+            type="button"
+            (click)="testConnection()"
+            [disabled]="isTesting()"
+            [isLoading]="isTesting()"
+          >
+            Tester la connexion
+          </button>
+        }
+      </div>
+
+      @if (dto.lastHealthDetail && dto.lastHealthStatus === false) {
+        <p class="text-sm text-functional-error mt-3">{{ dto.lastHealthDetail }}</p>
+      }
+
+      <div class="mt-4">
+        <p class="text-xs text-slate-400 mb-2">
+          Le serveur ne conserve que le dernier test. Les lignes « test de cette session » sont
+          celles lancées depuis cet écran et disparaissent au rechargement de la page.
+        </p>
+        <tas-table
+          [data]="healthRows()"
+          identifierField="id"
+          [config]="healthTableConfig()"
+          [isLoading]="isTesting()"
+          [hasCaption]="false"
+        >
+          <ng-template #header>
+            <tr>
+              <th>Résultat</th>
+              <th>Moment</th>
+              <th>Latence</th>
+              <th>Détail</th>
+            </tr>
+          </ng-template>
+          <ng-template #body let-item>
+            <tr>
+              <td class="py-3">
+                <tas-tag [severity]="item.isHealthy ? 'success' : 'error'">
+                  {{ item.isHealthy ? 'Réussi' : 'Échoué' }}
+                </tas-tag>
+              </td>
+              <td class="text-sm text-slate-700">
+                {{ item.checkedAt | dateTimeAgo }}
+                <span class="block text-xs text-slate-400">
+                  {{ item.origin === 'server' ? 'enregistré sur la connexion' : 'test de cette session' }}
+                </span>
+              </td>
+              <td class="text-sm text-slate-700 tabular-nums">
+                {{ item.latencyMs != null ? item.latencyMs + ' ms' : '—' }}
+              </td>
+              <td class="text-sm text-slate-600">{{ item.detail || '—' }}</td>
+            </tr>
+          </ng-template>
+        </tas-table>
+      </div>
+    </div>
+  </tas-card>
+
+  @if (isRelay()) {
+    <tas-card class="block mt-4">
+      <div class="p-4">
+        <h2 class="text-sm font-semibold text-slate-700 mb-4">Agent relais</h2>
+        @if (canManage()) {
+          <relay-agent-panel
+            [connectionName]="dto.name || ''"
+            [relayAgentId]="dto.relayAgentId ?? null"
+            [canManage]="canManage()"
+            (agentChanged)="reload()"
+          ></relay-agent-panel>
+        } @else {
+          <p class="text-sm text-slate-500">
+            La gestion de l'agent relais demande le droit de gestion des connexions.
+          </p>
+        }
+      </div>
+    </tas-card>
+  }
+
+  <tas-card class="block mt-4">
+    <div class="p-4">
+      <h2 class="text-sm font-semibold text-slate-700">Activation</h2>
+      <p class="text-sm text-slate-500 mt-1">
+        Une connexion active est celle par laquelle partent les écritures de votre institution.
+      </p>
+
+      @if (dto.isActive) {
+        <div class="mt-4 flex items-start justify-between gap-4">
+          <p class="text-sm text-slate-700">
+            Cette connexion est active.
+            @if (family() === 'Insurance') {
+              Les produits de cet assureur peuvent être souscrits.
+            }
+          </p>
+          @if (canManage()) {
+            <button
+              tas-outlined-button
+              color="warn"
+              type="button"
+              (click)="confirmDeactivate()"
+              [disabled]="isActivating()"
+              [isLoading]="isActivating()"
+            >
+              Désactiver la connexion
+            </button>
+          }
+        </div>
+      } @else {
+        <p class="text-sm text-slate-500 mt-1">
+          @if (family() === 'Insurance') {
+            Plusieurs connexions assurance peuvent être actives en même temps, une par assureur
+            que vous distribuez.
+          } @else {
+            Une seule connexion core banking peut être active : un client ne peut pas être créé
+            dans deux systèmes de comptes.
+          }
+        </p>
+
+        @if (blockers().length > 0) {
+          <p class="text-sm font-medium text-slate-700 mt-4">
+            {{ blockers().length }} point(s) à lever avant l'activation
+          </p>
+          <ul class="mt-2 divide-y divide-slate-100 border-t border-slate-100">
+            @for (blocker of blockers(); track blocker.title) {
+              <li class="py-3 flex items-start gap-3">
+                <tas-icon
+                  iconName="feather:alert-triangle"
+                  iconSize="sm"
+                  class="text-functional-error mt-0.5"
+                ></tas-icon>
+                <div class="min-w-0">
+                  <p class="text-sm font-medium text-slate-800">{{ blocker.title }}</p>
+                  @if (blocker.detail) {
+                    <p class="text-sm text-slate-500 mt-0.5">{{ blocker.detail }}</p>
+                  }
+                  @if (blocker.link && blocker.linkLabel) {
+                    <button
+                      tas-text-button
+                      type="button"
+                      class="-ml-2 mt-1"
+                      (click)="followBlocker(blocker)"
+                    >
+                      {{ blocker.linkLabel }}
+                    </button>
+                  }
+                </div>
+              </li>
+            }
+          </ul>
+        } @else {
+          <p class="text-sm text-functional-success mt-4">
+            Rien ne bloque : le test est passé et aucune correspondance obligatoire ne manque.
+          </p>
+        }
+
+        @if (mappingNotices().length > 0) {
+          <div class="mt-4 rounded-lg border border-slate-200 p-3">
+            <p class="text-sm font-medium text-slate-700">
+              Correspondances que SANKORE ne peut pas vérifier
+            </p>
+            <ul class="mt-2 space-y-2">
+              @for (notice of mappingNotices(); track notice.domain) {
+                <li class="text-sm text-slate-600">
+                  <span class="font-medium text-slate-700">{{ notice.label }}</span> —
+                  {{ notice.availabilityLabel }}.
+                  @if (notice.source) {
+                    {{ notice.source }}
+                  }
+                </li>
+              }
+            </ul>
+            <p class="text-sm text-slate-500 mt-2">
+              Une liste vide ne veut pas dire que tout est mappé : vérifiez les correspondances
+              avant d'activer.
+            </p>
+            <button tas-text-button type="button" class="-ml-2 mt-1" (click)="openMappings()">
+              Ouvrir les correspondances de codes
+            </button>
+          </div>
+        }
+
+        @if (!canManageMappings()) {
+          <p class="text-sm text-slate-500 mt-3">
+            La vérification des correspondances obligatoires demande le droit de gestion des
+            correspondances.
+          </p>
+        }
+
+        <div class="mt-4 flex items-center justify-end">
+          @if (canManage()) {
+            <button
+              tas-raised-button
+              color="primary"
+              type="button"
+              (click)="activate()"
+              [disabled]="!canActivateNow() || isActivating()"
+              [isLoading]="isActivating()"
+            >
+              Activer la connexion
+            </button>
+          }
+        </div>
+      }
+    </div>
+  </tas-card>
+}

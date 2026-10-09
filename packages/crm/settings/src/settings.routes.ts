@@ -321,6 +321,16 @@ const settingsRoutes: Routes = [
     loadComponent: () => import('./containers/integrations/integrations-hub'),
   },
   {
+    // Deuxième entrée sur le même segment, volontairement. La précédente n'a pas
+    // d'enfants : Angular exige qu'une route consomme toute l'URL, donc elle ne
+    // matche que `/settings/integrations` exactement, et tout ce qui est plus
+    // profond retombe ici. Fusionner les deux obligerait à déplacer la vue
+    // d'ensemble dans la lib `integration`, où elle n'a rien à faire : elle
+    // renvoie vers des écrans de `settings` (e-mail, webhooks, import).
+    path: 'integrations',
+    loadChildren: () => import('@sankore/crm/integration'),
+  },
+  {
     path: 'audit',
     canActivate: [hasPermissionGuard('audit:read')],
     loadComponent: () =>

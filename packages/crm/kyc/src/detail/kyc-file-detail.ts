@@ -37,6 +37,14 @@ import {
   ManuallyValidateKycFileDrawer,
   ManuallyValidateKycFileDrawerData,
 } from '../verification/manually-validate-kyc-file-drawer';
+// Le suivi de création dans le cœur bancaire appartient au module Intégration, pas au
+// KYC : il se nourrit des commandes d'intégration et sert aussi la fiche client. On
+// l'importe donc, plutôt que d'en écrire une seconde version ici.
+// eslint-disable-next-line @nx/enforce-module-boundaries
+import {
+  CbsBatchNoticeComponent,
+  CbsProvisioningStatusComponent,
+} from '@sankore/crm/integration';
 
 type KycDetailTab = 'identite' | 'piece' | 'score' | 'validation' | 'historique';
 
@@ -87,6 +95,8 @@ const HISTORY_ICONS: Record<KycHistoryKind, string> = {
     KycDocumentsPanel,
     KycScorePanel,
     KycStatusBadge,
+    CbsBatchNoticeComponent,
+    CbsProvisioningStatusComponent,
   ],
 })
 export class KycFileDetailPage implements OnInit {

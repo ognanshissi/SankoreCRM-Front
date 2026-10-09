@@ -1,19 +1,25 @@
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { Component, computed, inject, OnInit } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { TasCard } from '@talisoft/ui/card';
 import { TasIcon } from '@talisoft/ui/icon';
 import { TasTag, Severity } from '@talisoft/ui/tag';
 import { Anchor, Button } from '@talisoft/ui/button';
-import { BreadcrumbService } from '@sankore/crm/common';
+import {
+  BreadcrumbService,
+  PermissionCode,
+  PermissionsService,
+} from '@sankore/crm/common';
 
 interface Integration {
   id: string;
   name: string;
   description: string;
   icon: string;
-  category: 'communication' | 'capture' | 'banking' | 'data';
+  category: 'banking' | 'insurance' | 'communication' | 'capture' | 'data';
   status: 'connected' | 'configured' | 'available' | 'coming_soon';
   link: string | null;
+  /** Sans permission déclarée, la tuile est visible de tous. */
+  permission?: PermissionCode;
 }
 
 const INTEGRATIONS: Integration[] = [
@@ -91,12 +97,78 @@ const INTEGRATIONS: Integration[] = [
   },
   {
     id: 'cbs',
-    name: 'Core Banking (CBS)',
-    description: 'Synchroniser les produits et clients avec votre système bancaire central.',
+    name: 'Système bancaire (core banking)',
+    description:
+      'Déclarer votre système bancaire, tester la connexion et créer vos clients dedans.',
     icon: 'feather:database',
     category: 'banking',
     status: 'available',
-    link: '/settings/products',
+    link: '/settings/integrations/connections',
+    permission: 'Integration.Connection.View',
+  },
+  {
+    id: 'mappings',
+    name: 'Correspondances de codes',
+    description:
+      'Faire correspondre les codes du CRM à ceux qu\'attend chaque système externe.',
+    icon: 'feather:git-merge',
+    category: 'banking',
+    status: 'available',
+    link: '/settings/integrations/mappings',
+    permission: 'Integration.Mapping.Manage',
+  },
+  {
+    id: 'commands',
+    name: 'Écritures et rejets',
+    description:
+      'Suivre les écritures envoyées aux systèmes externes et traiter les rejets.',
+    icon: 'feather:send',
+    category: 'banking',
+    status: 'available',
+    link: '/settings/integrations/commands',
+    permission: 'Integration.Command.View',
+  },
+  {
+    id: 'reconciliation',
+    name: 'Réconciliation',
+    description:
+      'Consulter et traiter les écarts entre le CRM et les systèmes externes.',
+    icon: 'feather:check-square',
+    category: 'banking',
+    status: 'available',
+    link: '/settings/integrations/reconciliation',
+    permission: 'Integration.Reconciliation.View',
+  },
+  {
+    id: 'insurance-connections',
+    name: 'Back-offices assurance',
+    description: 'Connecter les back-offices de vos assureurs partenaires.',
+    icon: 'feather:shield',
+    category: 'insurance',
+    status: 'available',
+    link: '/settings/integrations/insurance-connections',
+    permission: 'Integration.Connection.View',
+  },
+  {
+    id: 'insurance-products',
+    name: 'Produits d\'assurance',
+    description:
+      'Gérer les produits d\'assurance que vos agents peuvent proposer au guichet.',
+    icon: 'feather:umbrella',
+    category: 'insurance',
+    status: 'available',
+    link: '/settings/integrations/insurance-products',
+    permission: 'Ins.Product.Manage',
+  },
+  {
+    id: 'insurance-statements',
+    name: 'Bordereaux assurance',
+    description: 'Justifier les primes reversées et les commissions, par assureur.',
+    icon: 'feather:file-text',
+    category: 'insurance',
+    status: 'available',
+    link: '/settings/integrations/insurance-statements',
+    permission: 'Ins.Statement.View',
   },
   {
     id: 'import',
@@ -110,13 +182,20 @@ const INTEGRATIONS: Integration[] = [
 ];
 
 const CATEGORY_LABELS: Record<string, string> = {
+  banking: 'Système bancaire',
+  insurance: 'Assurance',
   communication: 'Communication',
   capture: 'Capture de leads',
-  banking: 'Services bancaires',
   data: 'Données & Webhooks',
 };
 
-const CATEGORY_ORDER: string[] = ['communication', 'capture', 'banking', 'data'];
+const CATEGORY_ORDER: string[] = [
+  'banking',
+  'insurance',
+  'communication',
+  'capture',
+  'data',
+];
 
 @Component({
   selector: 'integrations-hub',
@@ -260,23 +339,34 @@ const CATEGORY_ORDER: string[] = ['communication', 'capture', 'banking', 'data']
 })
 export class IntegrationsHub implements OnInit {
   private readonly _breadcrumb = inject(BreadcrumbService);
-
-  private readonly integrations = signal<Integration[]>(INTEGRATIONS);
+  private readonly _permissions = inject(PermissionsService);
 
   public readonly categories = CATEGORY_ORDER;
 
-  public readonly connectedCount = signal(
-    INTEGRATIONS.filter(
-      (i) =>
-        i.status === 'available' ||
-        i.status === 'connected' ||
-        i.status === 'configured',
-    ).length,
+  /**
+   * Les tuiles menant aux écrans d'intégration sont gardées par les mêmes
+   * permissions que leurs routes. Sans ce filtre, la vue d'ensemble proposait des
+   * raccourcis vers des écrans que le garde de route refuse ensuite — un cul-de-sac
+   * plutôt qu'une absence.
+   */
+  public readonly visibleIntegrations = computed(() => {
+    const granted = this._permissions.granted();
+    return INTEGRATIONS.filter((i) => !i.permission || granted.has(i.permission));
+  });
+
+  public readonly connectedCount = computed(
+    () =>
+      this.visibleIntegrations().filter(
+        (i) =>
+          i.status === 'available' ||
+          i.status === 'connected' ||
+          i.status === 'configured',
+      ).length,
   );
-  public readonly comingSoonCount = signal(
-    INTEGRATIONS.filter((i) => i.status === 'coming_soon').length,
+  public readonly comingSoonCount = computed(
+    () => this.visibleIntegrations().filter((i) => i.status === 'coming_soon').length,
   );
-  public readonly totalCount = signal(INTEGRATIONS.length);
+  public readonly totalCount = computed(() => this.visibleIntegrations().length);
 
   public ngOnInit(): void {
     this._breadcrumb.set([
@@ -286,7 +376,7 @@ export class IntegrationsHub implements OnInit {
   }
 
   public integrationsByCategory(category: string): Integration[] {
-    return this.integrations().filter((i) => i.category === category);
+    return this.visibleIntegrations().filter((i) => i.category === category);
   }
 
   public categoryLabel(category: string): string {

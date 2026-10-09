@@ -1,0 +1,196 @@
+<tas-side-drawer>
+  <tas-drawer-title>
+    <tas-title>Détail de la commande</tas-title>
+  </tas-drawer-title>
+
+  <tas-drawer-content>
+    @if (isLoading()) {
+      <div class="flex justify-center py-24">
+        <tas-spinner size="10" class="text-primary"></tas-spinner>
+      </div>
+    } @else if (loadError()) {
+      <p class="py-12 text-center text-sm text-functional-error" role="alert">{{ loadError() }}</p>
+    } @else if (command(); as cmd) {
+      <div class="flex flex-col gap-5">
+        <!-- Ce qui décide de l'action : le statut et l'âge -->
+        <div class="flex items-start justify-between gap-3">
+          <div class="min-w-0">
+            <p class="text-sm font-semibold text-slate-800">{{ typeLabel() }}</p>
+            <p class="mt-0.5 font-mono text-xs break-all text-slate-400">{{ cmd.commandId }}</p>
+          </div>
+          <div class="flex shrink-0 flex-col items-end gap-1">
+            <tas-tag [severity]="statusMeta().severity">{{ statusMeta().label }}</tas-tag>
+            <span class="text-xs text-slate-500 tabular-nums">créée il y a {{ age() }}</span>
+          </div>
+        </div>
+
+        @if (cmd.errorDetail || cmd.errorFamily || cmd.errorCode) {
+          <div class="rounded-lg border border-red-200 bg-red-50 p-3">
+            <div class="flex items-center gap-2">
+              <tas-icon
+                iconName="feather:alert-triangle"
+                class="text-functional-error"
+                style="font-size:14px"
+              ></tas-icon>
+              <span class="text-sm font-medium text-slate-800">{{ errorFamily() }}</span>
+              @if (cmd.errorCode) {
+                <span class="font-mono text-xs text-slate-500">{{ cmd.errorCode }}</span>
+              }
+            </div>
+            <p class="mt-2 text-xs leading-relaxed break-words text-slate-700">
+              {{ cmd.errorDetail ?? 'Le système externe a refusé la demande sans détail.' }}
+            </p>
+          </div>
+        }
+
+        <dl class="divide-y divide-slate-100 rounded-lg border border-slate-200">
+          <div class="flex items-start justify-between gap-4 p-3">
+            <dt class="text-xs text-slate-500">Connexion</dt>
+            <dd class="text-right text-sm text-slate-800">
+              {{ data.connectionName ?? '—' }}
+              @if (!data.connectionName && cmd.connectionId) {
+                <span class="block font-mono text-xs text-slate-400">{{ cmd.connectionId }}</span>
+              }
+            </dd>
+          </div>
+
+          <div class="flex items-start justify-between gap-4 p-3">
+            <dt class="text-xs text-slate-500">Entité concernée</dt>
+            <dd class="text-right text-sm text-slate-800">
+              <span>{{ entityLabel() }}</span>
+              @if (customerLink()) {
+                <button
+                  tas-text-button
+                  color="primary"
+                  type="button"
+                  size="small"
+                  class="ml-1"
+                  (click)="openCustomer()"
+                >
+                  <tas-icon iconName="feather:external-link" style="font-size:12px"></tas-icon>
+                  Ouvrir la fiche client
+                </button>
+              } @else if (cmd.crmId) {
+                <span class="block font-mono text-xs break-all text-slate-400">{{ cmd.crmId }}</span>
+              }
+            </dd>
+          </div>
+
+          <div class="flex items-start justify-between gap-4 p-3">
+            <dt class="text-xs text-slate-500">Tentatives</dt>
+            <dd class="text-sm text-slate-800 tabular-nums">{{ cmd.attempts ?? 0 }}</dd>
+          </div>
+
+          <div class="flex items-start justify-between gap-4 p-3">
+            <dt class="text-xs text-slate-500">Prochaine tentative</dt>
+            <dd class="text-right text-sm text-slate-800">
+              @if (cmd.nextAttemptAt) {
+                {{ cmd.nextAttemptAt | date: 'dd/MM/yyyy HH:mm' }}
+              } @else {
+                <span class="text-slate-400">—</span>
+              }
+            </dd>
+          </div>
+
+          <div class="flex items-start justify-between gap-4 p-3">
+            <dt class="text-xs text-slate-500">Référence du système externe</dt>
+            <dd class="max-w-[60%] text-right font-mono text-xs break-all text-slate-700">
+              {{ cmd.externalResponseRef || '—' }}
+            </dd>
+          </div>
+
+          <div class="flex items-start justify-between gap-4 p-3">
+            <dt class="text-xs text-slate-500">Clé d'idempotence</dt>
+            <dd class="max-w-[60%] text-right font-mono text-xs break-all text-slate-700">
+              {{ cmd.idempotencyKey || '—' }}
+            </dd>
+          </div>
+
+          <div class="flex items-start justify-between gap-4 p-3">
+            <dt class="text-xs text-slate-500">Fichier batch d'origine</dt>
+            <dd class="text-right text-sm text-slate-800">
+              @if (cmd.batchFileId) {
+                <button tas-text-button color="primary" type="button" size="small" (click)="openBatchFile()">
+                  <tas-icon iconName="feather:file-text" style="font-size:12px"></tas-icon>
+                  Voir le fichier
+                </button>
+              } @else {
+                <span class="text-slate-400">Envoi direct</span>
+              }
+            </dd>
+          </div>
+
+          <div class="flex items-start justify-between gap-4 p-3">
+            <dt class="text-xs text-slate-500">Créée par</dt>
+            <dd class="max-w-[60%] text-right font-mono text-xs break-all text-slate-700">
+              {{ cmd.createdBy || '—' }}
+            </dd>
+          </div>
+
+          <div class="flex items-start justify-between gap-4 p-3">
+            <dt class="text-xs text-slate-500">Créée le</dt>
+            <dd class="text-right text-sm text-slate-800">
+              {{ cmd.createdAt | date: 'dd/MM/yyyy HH:mm' }}
+              <span class="block text-xs text-slate-400">{{ cmd.createdAt | dateTimeAgo }}</span>
+            </dd>
+          </div>
+
+          <div class="flex items-start justify-between gap-4 p-3">
+            <dt class="text-xs text-slate-500">Terminée le</dt>
+            <dd class="text-right text-sm text-slate-800">
+              @if (cmd.completedAt) {
+                {{ cmd.completedAt | date: 'dd/MM/yyyy HH:mm' }}
+              } @else {
+                <span class="text-slate-400">—</span>
+              }
+            </dd>
+          </div>
+        </dl>
+
+        <div>
+          <p class="text-xs font-medium text-slate-600">
+            Champs envoyés (noms seuls — les valeurs ne sont jamais affichées)
+          </p>
+          <p class="mt-1 text-xs text-slate-400">
+            Le contenu de la commande est chiffré et aucun écran ne le restitue. Cette liste
+            sert à vérifier qu'un champ attendu était bien du voyage.
+          </p>
+          @if (fieldNames().length) {
+            <div class="mt-2 flex flex-wrap gap-1.5">
+              @for (name of fieldNames(); track name) {
+                <span class="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-xs text-slate-700">
+                  {{ name }}
+                </span>
+              }
+            </div>
+          } @else {
+            <p class="mt-2 text-sm text-slate-400">—</p>
+          }
+        </div>
+      </div>
+    }
+  </tas-drawer-content>
+
+  <tas-drawer-action>
+    <button tas-outlined-button type="button" (click)="close()">Fermer</button>
+    @if (showCancel()) {
+      <button tas-outlined-button color="warn" type="button" (click)="requestCancel()">
+        <tas-icon iconName="feather:slash" style="font-size:14px"></tas-icon>
+        Annuler la commande
+      </button>
+    }
+    @if (showReplay()) {
+      <button
+        tas-raised-button
+        color="primary"
+        type="button"
+        [disabled]="isActing()"
+        [isLoading]="isActing()"
+        (click)="confirmReplay()"
+      >
+        <tas-icon iconName="feather:refresh-cw" style="font-size:14px"></tas-icon>
+        Rejouer
+      </button>
+    }
+  </tas-drawer-action>
+</tas-side-drawer>
