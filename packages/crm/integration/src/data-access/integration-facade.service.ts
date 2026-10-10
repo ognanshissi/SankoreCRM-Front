@@ -7,7 +7,6 @@ import {
   ConnectionListDto,
   ConnectionListDtoPagedResult,
   ConnectionSecretStatusDto,
-  ConnectionSettings,
   CreateConnectionRequest,
   CreateInsuranceProductRequest,
   InsuranceProductDto,
@@ -26,6 +25,7 @@ import {
   RelayAgentEnrolmentDto,
   ReplayIntegrationCommandResult,
   ResolveReconciliationGapResult,
+  TemenosSettings,
   UnmappedCodesResponse,
   UpdateConnectionRequest,
   UpsertMappingResponse,
@@ -326,7 +326,27 @@ export class IntegrationFacadeService {
  * remplit rien : sans ces valeurs, une connexion est créée avec des zéros, donc une
  * limite d'appels nulle et un délai d'attente nul.
  */
-export function defaultConnectionSettings(): ConnectionSettings {
+/**
+ * Socle commun des réglages, sans discriminant.
+ *
+ * Le type n'est plus `ConnectionSettings` : depuis que le contrat publie la variante par
+ * `$kind`, `ConnectionSettings` est une union dont chaque membre EXIGE son discriminant, et
+ * des valeurs par défaut ne peuvent pas en nommer un — elles servent à amorcer le
+ * formulaire, pas à décrire une connexion existante.
+ */
+export type ConnectionSettingsDefaults = Pick<
+  TemenosSettings,
+  | 'schemaVersion'
+  | 'rateLimitPerMinute'
+  | 'timeoutSeconds'
+  | 'circuitBreakerFailureThreshold'
+  | 'circuitBreakerBreakSeconds'
+  // Reprise par `Pick` et non importée : le générateur nomme ce dictionnaire d'après le
+  // premier schéma qui le porte, un nom qui change dès qu'un `$kind` s'ajoute avant.
+  | 'syncIntervalMinutes'
+>;
+
+export function defaultConnectionSettings(): ConnectionSettingsDefaults {
   return {
     schemaVersion: 1,
     rateLimitPerMinute: 60,

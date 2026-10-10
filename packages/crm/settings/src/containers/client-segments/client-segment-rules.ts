@@ -309,6 +309,7 @@ export class ClientSegmentRulesPage implements OnInit {
     return catchAll >= 0 ? list.length - catchAll - 1 : 0;
   });
 
+  public isOrdering = signal(false);
   public ngOnInit(): void {
     this._breadcrumbService.set([
       { label: 'Paramétrage', link: ['/settings'] },
@@ -477,13 +478,19 @@ export class ClientSegmentRulesPage implements OnInit {
   // ─── Réordonnancement ──────────────────────────────────────────────────────
 
   public onReorderRule(event: CdkDragDrop<void>): void {
+    console.log('onReorderRule', event);
     if (event.previousIndex === event.currentIndex) return;
     this.rules.update((list) => {
       const reordered = [...list];
       moveItemInArray(reordered, event.previousIndex, event.currentIndex);
       return reordered;
     });
+    this.isOrdering.set(false);
     this.hasUnsavedChanges.set(true);
+  }
+
+  public onDragHandler() {
+    this.isOrdering.set(true);
   }
 
   public moveRule(index: number, offset: number): void {

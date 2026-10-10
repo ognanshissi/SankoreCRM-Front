@@ -214,9 +214,15 @@ export class CreateConnectionDrawer {
             kind: KIND_ENUM[value.kind as ConnectionKind],
             mode: MODE_ENUM[mode],
             name: value.name,
-            settings: connectionSettingsToDto(value.settings, null),
-            $kind: KIND_ENUM[value.kind as ConnectionKind],
-          } as any)
+            // `$kind` descend DANS `settings` — il y était posé à la racine de la requête,
+            // d'où le `as any` qui le laissait passer et le 422 « settings is required and
+            // must carry a "$kind" » que le serveur renvoyait ensuite systématiquement.
+            settings: connectionSettingsToDto(
+              value.settings,
+              null,
+              value.kind as ConnectionKind,
+            ),
+          })
           .pipe(
             catchError((err: HttpErrorResponse) => {
               this._snackbar.error(

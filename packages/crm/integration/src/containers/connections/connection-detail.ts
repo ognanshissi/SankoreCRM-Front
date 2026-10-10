@@ -42,6 +42,7 @@ import {
   CONNECTION_MODES,
   CONNECTION_MODE_LABELS,
   ConnectionFamily,
+  ConnectionKind,
   ConnectionMode,
   MAPPING_DOMAINS,
   MappingDomain,
@@ -346,7 +347,11 @@ export class ConnectionDetailPage {
           .updateConnection(this.id(), {
             name: value.name,
             mode: MODE_ENUM[value.mode as ConnectionMode],
-            settings: connectionSettingsToDto(value.settings, dto.settings),
+            settings: connectionSettingsToDto(
+              value.settings,
+              dto.settings,
+              dto.kind as ConnectionKind,
+            ),
             // Le contrat veut l'une des deux sentinelles : sans elles, deux
             // administrateurs qui enregistrent en même temps s'écrasent en silence.
             expectedVersion: dto.version ?? null,

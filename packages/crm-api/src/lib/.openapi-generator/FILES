@@ -85,6 +85,8 @@ model/agency-dto.interface.ts
 model/agency-factor.interface.ts
 model/agency-tree-node-dto.interface.ts
 model/agent-performance-dto.interface.ts
+model/amplitude-settings-sync-interval-minutes.interface.ts
+model/amplitude-settings.interface.ts
 model/anonymize-client-request.interface.ts
 model/approve-client-merge-request.interface.ts
 model/approve-step-request.interface.ts
@@ -159,8 +161,8 @@ model/connection-health-dto.interface.ts
 model/connection-list-dto-paged-result.interface.ts
 model/connection-list-dto.interface.ts
 model/connection-secret-status-dto.interface.ts
-model/connection-settings-sync-interval-minutes.interface.ts
 model/connection-settings.interface.ts
+model/consent-config.interface.ts
 model/consent-dto.interface.ts
 model/contact-point-dto.interface.ts
 model/convert-lead-request.interface.ts
@@ -234,9 +236,12 @@ model/duplicate-candidate-dto.interface.ts
 model/duplicate-hit.interface.ts
 model/duplicate-match-result.interface.ts
 model/duplicate-reason-dto.interface.ts
+model/embedded-script-settings.interface.ts
 model/exchange-enrolment-token-request.interface.ts
 model/execution-monitor-dto.interface.ts
+model/fake-settings.interface.ts
 model/field-changed-dto.interface.ts
+model/field-mapping-rule.interface.ts
 model/forgot-password-request.interface.ts
 model/forgot-password-result.interface.ts
 model/funnel-metrics-dto.interface.ts
@@ -247,6 +252,8 @@ model/group-detail-dto.interface.ts
 model/group-list-item-dto-paged-result.interface.ts
 model/group-list-item-dto.interface.ts
 model/group-member-dto.interface.ts
+model/hosted-form-config.interface.ts
+model/hosted-form-field.interface.ts
 model/import-job-created-result.interface.ts
 model/import-leads-accepted.interface.ts
 model/import-row-failure.interface.ts
@@ -262,6 +269,7 @@ model/integration-command-dto.interface.ts
 model/integration-command-list-item.interface.ts
 model/integration-command-list-page.interface.ts
 model/integration-reference-dto.interface.ts
+model/internal-settings.interface.ts
 model/kyc-approval-circuit-dto.interface.ts
 model/kyc-approval-step-dto.interface.ts
 model/kyc-caps-dto.interface.ts
@@ -321,8 +329,10 @@ model/nurture-lead-request.interface.ts
 model/nurturing-sequence-dto.interface.ts
 model/nurturing-step-dto.interface.ts
 model/opportunity-dto.interface.ts
+model/orass-settings.interface.ts
 model/overdue-step-dto.interface.ts
 model/owner-assignment-dto.interface.ts
+model/perfect-vision-settings.interface.ts
 model/performance-factor.interface.ts
 model/permission-dto.interface.ts
 model/permission-group-dto.interface.ts
@@ -330,6 +340,7 @@ model/pipeline-card.interface.ts
 model/pipeline-column.interface.ts
 model/pipeline-stage-config-dto.interface.ts
 model/pipeline-view.interface.ts
+model/platform-settings.interface.ts
 model/postal-address-input.interface.ts
 model/preview-mapping-request.interface.ts
 model/preview-mapping-result.interface.ts
@@ -337,6 +348,7 @@ model/problem-details.interface.ts
 model/product-dto.interface.ts
 model/product-factor.interface.ts
 model/publish-sdk-version-result.interface.ts
+model/pull-config.interface.ts
 model/qualification-answer-input.interface.ts
 model/qualification-question-dto.interface.ts
 model/qualification-section-dto.interface.ts
@@ -399,10 +411,13 @@ model/run-dto-paged-result.interface.ts
 model/run-dto.interface.ts
 model/run-kyc-verification-request.interface.ts
 model/run-kyc-verification-response.interface.ts
+model/sab-settings.interface.ts
+model/scheduled-pull-settings.interface.ts
 model/scoped-permission-dto.interface.ts
 model/score-history-dto.interface.ts
 model/scoring-config-dto.interface.ts
 model/scoring-weights-dto.interface.ts
+model/script-config.interface.ts
 model/secret-hint-dto.interface.ts
 model/secret-hint.interface.ts
 model/section-input.interface.ts
@@ -413,6 +428,7 @@ model/segment-rule-dto.interface.ts
 model/segment-rules-dto.interface.ts
 model/send-snippet-request.interface.ts
 model/send-test-email-request.interface.ts
+model/server-webhook-settings.interface.ts
 model/set-biometry-token-request.interface.ts
 model/set-connection-secret-request.interface.ts
 model/set-intent-level-request.interface.ts
@@ -427,6 +443,7 @@ model/sla-config-dto.interface.ts
 model/sla-dashboard-dto.interface.ts
 model/sla-template-breach-dto.interface.ts
 model/snippet-result.interface.ts
+model/social-tracking-settings.interface.ts
 model/source-count.interface.ts
 model/source-metadata-response.interface.ts
 model/source-quality-dto.interface.ts
@@ -450,6 +467,7 @@ model/tag-dto.interface.ts
 model/task-dto.interface.ts
 model/task-generation-rule-dto.interface.ts
 model/task-type-dto.interface.ts
+model/temenos-settings.interface.ts
 model/template-diff-dto.interface.ts
 model/template-queue-dto.interface.ts
 model/template-stats-dto.interface.ts

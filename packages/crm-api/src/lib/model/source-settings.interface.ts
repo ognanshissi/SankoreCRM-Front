@@ -9,23 +9,26 @@
  * https://openapi-generator.tech
  * Do not edit the class manually.
  */
+import { ConsentConfig } from './consent-config.interface';
+import { InternalSettings } from './internal-settings.interface';
+import { ServerWebhookSettings } from './server-webhook-settings.interface';
+import { PlatformSettings } from './platform-settings.interface';
+import { FieldMappingRule } from './field-mapping-rule.interface';
+import { HostedFormConfig } from './hosted-form-config.interface';
+import { EmbeddedScriptSettings } from './embedded-script-settings.interface';
+import { ScriptConfig } from './script-config.interface';
+import { SocialTrackingSettings } from './social-tracking-settings.interface';
+import { PullConfig } from './pull-config.interface';
+import { ScheduledPullSettings } from './scheduled-pull-settings.interface';
 
 
-export interface SourceSettings { 
-    schemaVersion?: number;
-    /**
-     * One of: EmbeddedScript, ServerWebhook, ScheduledPull, PlatformConnection, SocialTracking, Internal
-     */
-    readonly expectedMode?: SourceSettingsExpectedModeEnum;
-}
-export enum SourceSettingsExpectedModeEnum {
-    EmbeddedScript = 'EmbeddedScript',
-    ServerWebhook = 'ServerWebhook',
-    ScheduledPull = 'ScheduledPull',
-    PlatformConnection = 'PlatformConnection',
-    SocialTracking = 'SocialTracking',
-    Internal = 'Internal'
-};
-
-
+/**
+ * Mode-specific lead-source settings. The \"$mode\" discriminator names the integration mode and must agree with the source\'s own \"mode\". ALWAYS send it: the server infers it from the payload\'s shape when absent and falls back to Internal, which silently drops every mode-specific field. Never carries a credential — only a vault reference.
+ */
+/**
+ * @type SourceSettings
+ * Mode-specific lead-source settings. The \"$mode\" discriminator names the integration mode and must agree with the source\'s own \"mode\". ALWAYS send it: the server infers it from the payload\'s shape when absent and falls back to Internal, which silently drops every mode-specific field. Never carries a credential — only a vault reference.
+ * @export
+ */
+export type SourceSettings = EmbeddedScriptSettings | InternalSettings | PlatformSettings | ScheduledPullSettings | ServerWebhookSettings | SocialTrackingSettings;
 

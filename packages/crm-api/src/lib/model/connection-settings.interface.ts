@@ -9,29 +9,22 @@
  * https://openapi-generator.tech
  * Do not edit the class manually.
  */
-import { ConnectionSettingsSyncIntervalMinutes } from './connection-settings-sync-interval-minutes.interface';
+import { FakeSettings } from './fake-settings.interface';
+import { AmplitudeSettingsSyncIntervalMinutes } from './amplitude-settings-sync-interval-minutes.interface';
+import { OrassSettings } from './orass-settings.interface';
+import { TemenosSettings } from './temenos-settings.interface';
+import { AmplitudeSettings } from './amplitude-settings.interface';
+import { PerfectVisionSettings } from './perfect-vision-settings.interface';
+import { SabSettings } from './sab-settings.interface';
 
 
-export interface ConnectionSettings { 
-    schemaVersion?: number;
-    /**
-     * One of: Temenos, Amplitude, Sab, PerfectVision, Orass, Fake
-     */
-    readonly expectedKind?: ConnectionSettingsExpectedKindEnum;
-    rateLimitPerMinute?: number;
-    circuitBreakerFailureThreshold?: number;
-    circuitBreakerBreakSeconds?: number;
-    timeoutSeconds?: number;
-    syncIntervalMinutes?: ConnectionSettingsSyncIntervalMinutes | null;
-}
-export enum ConnectionSettingsExpectedKindEnum {
-    Temenos = 'Temenos',
-    Amplitude = 'Amplitude',
-    Sab = 'Sab',
-    PerfectVision = 'PerfectVision',
-    Orass = 'Orass',
-    Fake = 'Fake'
-};
-
-
+/**
+ * Per-kind connection coordinates. The \"$kind\" discriminator is REQUIRED and names the connection kind; it is matched case-insensitively and must agree with the row\'s own \"kind\". Never carries a credential — only a vault reference.
+ */
+/**
+ * @type ConnectionSettings
+ * Per-kind connection coordinates. The \"$kind\" discriminator is REQUIRED and names the connection kind; it is matched case-insensitively and must agree with the row\'s own \"kind\". Never carries a credential — only a vault reference.
+ * @export
+ */
+export type ConnectionSettings = AmplitudeSettings | FakeSettings | OrassSettings | PerfectVisionSettings | SabSettings | TemenosSettings;
 

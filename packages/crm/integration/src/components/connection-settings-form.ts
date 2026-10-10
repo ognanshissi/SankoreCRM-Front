@@ -1,11 +1,14 @@
 import { ChangeDetectionStrategy, Component, computed, input, linkedSignal } from '@angular/core';
 import { FieldTree, FormField, schema, validate } from '@angular/forms/signals';
-import { ConnectionSettings, ConnectionSettingsSyncIntervalMinutes } from '@sankore/crm-api';
+import { ConnectionSettings } from '@sankore/crm-api';
 import { Button } from '@talisoft/ui/button';
 import { TasError, TasFormField, TasHint, TasLabel } from '@talisoft/ui/form-field';
 import { TasIcon } from '@talisoft/ui/icon';
 import { TasInput } from '@talisoft/ui/input';
-import { defaultConnectionSettings } from '../data-access/integration-facade.service';
+import {
+  ConnectionSettingsDefaults,
+  defaultConnectionSettings,
+} from '../data-access/integration-facade.service';
 import {
   CONNECTION_KIND_LABELS,
   CONNECTION_SETTING_FIELDS,
@@ -16,6 +19,17 @@ import {
 } from '../data-access/integration-referential';
 
 export type ConnectionSyncFlowKey = (typeof CONNECTION_SYNC_FLOWS)[number]['key'];
+
+/**
+ * Périodes de synchronisation, décrites ici plutôt qu'importées du contrat.
+ *
+ * Le générateur nomme ce dictionnaire d'après le PREMIER schéma qui le porte, par ordre
+ * alphabétique : c'était `ConnectionSettingsSyncIntervalMinutes` tant que le socle commun
+ * était le seul schéma, c'est devenu `AmplitudeSettingsSyncIntervalMinutes` le jour où le
+ * contrat a publié les variantes par `$kind`. Un nouveau `$kind` placé avant Amplitude le
+ * renommerait encore. Le référentiel tient déjà la liste des flux : on en dérive la forme.
+ */
+export type ConnectionSyncIntervals = Partial<Record<ConnectionSyncFlowKey, number>>;
 
 /**
  * Réglages d'une connexion, en saisie.
@@ -43,7 +57,9 @@ export class ConnectionSettingsFormModel {
     return ConnectionSettingsFormModel.fromDto(defaultConnectionSettings());
   }
 
-  public static fromDto(settings: ConnectionSettings | null | undefined): ConnectionSettingsFormModel {
+  public static fromDto(
+    settings: ConnectionSettings | ConnectionSettingsDefaults | null | undefined,
+  ): ConnectionSettingsFormModel {
     const defaults = defaultConnectionSettings();
     const source = settings ?? defaults;
     const sync = source.syncIntervalMinutes ?? null;
@@ -77,7 +93,20 @@ function numberToField(value: number | null | undefined, fallback: number | unde
 }
 
 /**
- * Réglages prêts pour `PUT connections/{id}`, qui réécrit l'objet ENTIER.
+ * Réglages prêts pour `POST connections` / `PUT connections/{id}`, qui réécrivent l'objet
+ * ENTIER.
+ *
+ * Deux points dont dépend l'enregistrement, et qui manquaient tous les deux :
+ *
+ * 1. `$kind` est le discriminant que le serveur exige DANS `settings`, jamais à la racine de
+ *    la requête. Sans lui son convertisseur rend `null` et l'API refuse en 422 « settings is
+ *    required and must carry a "$kind" » — sur un formulaire correctement rempli. Il vient du
+ *    `kind` de la connexion, pas de l'objet existant, parce qu'à la création il n'y a pas
+ *    d'objet existant.
+ * 2. Le sac existant est REPORTÉ. Le formulaire n'édite que le socle commun (quatre bornes et
+ *    six périodes), alors que l'appel réécrit tout : repartir d'un objet neuf effaçait à
+ *    chaque enregistrement les coordonnées propres au `$kind` — `baseUrl`, `entity`,
+ *    `sftpHost`, `companyId` — que l'écran n'affiche même pas.
  *
  * `expectedKind` est déclaré `readonly` par le contrat : il est affiché mais jamais renvoyé,
  * le serveur le tient depuis la nature de la connexion. `schemaVersion` est reprise de
@@ -86,8 +115,9 @@ function numberToField(value: number | null | undefined, fallback: number | unde
 export function connectionSettingsToDto(
   value: ConnectionSettingsFormModel,
   current: ConnectionSettings | null | undefined,
+  kind: ConnectionKind,
 ): ConnectionSettings {
-  const sync: ConnectionSettingsSyncIntervalMinutes = {};
+  const sync: ConnectionSyncIntervals = {};
   for (const flow of CONNECTION_SYNC_FLOWS) {
     const raw = value.syncIntervalMinutes[flow.key];
     if (raw !== '' && raw !== null && raw !== undefined) {
@@ -96,13 +126,15 @@ export function connectionSettingsToDto(
   }
 
   return {
+    ...(current ?? {}),
+    $kind: kind,
     schemaVersion: current?.schemaVersion ?? defaultConnectionSettings().schemaVersion,
     rateLimitPerMinute: Number(value.rateLimitPerMinute),
     timeoutSeconds: Number(value.timeoutSeconds),
     circuitBreakerFailureThreshold: Number(value.circuitBreakerFailureThreshold),
     circuitBreakerBreakSeconds: Number(value.circuitBreakerBreakSeconds),
     syncIntervalMinutes: Object.keys(sync).length > 0 ? sync : null,
-  };
+  } as ConnectionSettings;
 }
 
 function boundedField(raw: string, min: number, max: number): string | null {

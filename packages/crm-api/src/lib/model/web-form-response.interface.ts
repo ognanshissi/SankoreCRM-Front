@@ -19,5 +19,7 @@ export interface WebFormResponse {
     theme?: string | null;
     submitLabel?: string | null;
     captchaProvider?: string | null;
+    accentColor?: string | null;
+    fontFamily?: string | null;
 }
 

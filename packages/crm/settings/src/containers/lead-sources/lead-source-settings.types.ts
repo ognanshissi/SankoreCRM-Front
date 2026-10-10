@@ -504,7 +504,14 @@ export function writeSettings(
   // On fusionne sur le sac TEL QUEL (pas normalise) : renommer les cles que ce
   // patch ne touche pas ferait perdre les reglages des autres onglets.
   const current_ = (current ?? {}) as Record<string, unknown>;
-  const merged: Record<string, unknown> = { ...current_, $mode: mode ?? null };
+
+  // `$mode` ne retombe plus a `null` quand le mode est inconnu : il est REPRIS du sac
+  // existant. Le serveur, prive de discriminant, deduit le mode de la forme du payload et
+  // retombe sur `Internal` — ce qui jette en silence tous les champs du mode reel.
+  const merged: Record<string, unknown> = {
+    ...current_,
+    $mode: mode ?? current_['$mode'] ?? null,
+  };
 
   // Un patch camelCase doit ecraser son homologue PascalCase eventuel.
   for (const key of Object.keys(patch)) {
@@ -512,5 +519,9 @@ export function writeSettings(
     if (pascal !== key && pascal in merged) delete merged[pascal];
   }
 
-  return { ...merged, ...patch } as SourceSettings;
+  // Double conversion assumee : `SourceSettings` est devenu une union discriminee dont
+  // chaque membre exige son `$mode` litteral, alors que ce sac est construit cle par cle a
+  // partir de l'existant. Le cast direct est refuse (TS2352) ; celui-ci reste l'UNIQUE
+  // frontiere entre le sac et le contrat, comme l'en-tete de ce module l'etablit.
+  return { ...merged, ...patch } as unknown as SourceSettings;
 }
