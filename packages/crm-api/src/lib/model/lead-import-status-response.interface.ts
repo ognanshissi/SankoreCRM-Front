@@ -9,7 +9,7 @@
  * https://openapi-generator.tech
  * Do not edit the class manually.
  */
-import { ImportRowFailure } from './import-row-failure.interface';
+import { LeadsImportRowFailure } from './leads-import-row-failure.interface';
 
 
 export interface LeadImportStatusResponse { 
@@ -30,7 +30,7 @@ export interface LeadImportStatusResponse {
     createdAt?: string;
     completedAt?: string | null;
     errorMessage?: string | null;
-    failures?: Array<ImportRowFailure> | null;
+    failures?: Array<LeadsImportRowFailure> | null;
 }
 export enum LeadImportStatusResponseStatusEnum {
     Pending = 'Pending',

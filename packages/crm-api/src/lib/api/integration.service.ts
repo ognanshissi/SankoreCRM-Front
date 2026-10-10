@@ -31,8 +31,6 @@ import { ConnectionDetailDto } from '../model/connection-detail-dto.interface';
 // @ts-ignore
 import { ConnectionHealthDto } from '../model/connection-health-dto.interface';
 // @ts-ignore
-import { ConnectionListDtoPagedResult } from '../model/connection-list-dto-paged-result.interface';
-// @ts-ignore
 import { ConnectionSecretStatusDto } from '../model/connection-secret-status-dto.interface';
 // @ts-ignore
 import { CreateConnectionRequest } from '../model/create-connection-request.interface';
@@ -44,8 +42,6 @@ import { CreateInsuranceProductRequest } from '../model/create-insurance-product
 import { ExchangeEnrolmentTokenRequest } from '../model/exchange-enrolment-token-request.interface';
 // @ts-ignore
 import { InsuranceProductDto } from '../model/insurance-product-dto.interface';
-// @ts-ignore
-import { InsuranceProductDtoPagedResult } from '../model/insurance-product-dto-paged-result.interface';
 // @ts-ignore
 import { InsuranceProductWriteRequest } from '../model/insurance-product-write-request.interface';
 // @ts-ignore
@@ -62,6 +58,10 @@ import { ListMappingsResponse } from '../model/list-mappings-response.interface'
 import { LiveBalanceDto } from '../model/live-balance-dto.interface';
 // @ts-ignore
 import { MappingImportReport } from '../model/mapping-import-report.interface';
+// @ts-ignore
+import { PagedResultOfConnectionListDto } from '../model/paged-result-of-connection-list-dto.interface';
+// @ts-ignore
+import { PagedResultOfInsuranceProductDto } from '../model/paged-result-of-insurance-product-dto.interface';
 // @ts-ignore
 import { ProblemDetails } from '../model/problem-details.interface';
 // @ts-ignore
@@ -1719,9 +1719,9 @@ export class IntegrationApiService {
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      */
-    public listInsuranceProducts(connectionId?: string, isActive?: boolean, offerableOnly?: boolean, page?: number, pageSize?: number, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<InsuranceProductDtoPagedResult>;
-    public listInsuranceProducts(connectionId?: string, isActive?: boolean, offerableOnly?: boolean, page?: number, pageSize?: number, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<InsuranceProductDtoPagedResult>>;
-    public listInsuranceProducts(connectionId?: string, isActive?: boolean, offerableOnly?: boolean, page?: number, pageSize?: number, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<InsuranceProductDtoPagedResult>>;
+    public listInsuranceProducts(connectionId?: string, isActive?: boolean, offerableOnly?: boolean, page?: number, pageSize?: number, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<PagedResultOfInsuranceProductDto>;
+    public listInsuranceProducts(connectionId?: string, isActive?: boolean, offerableOnly?: boolean, page?: number, pageSize?: number, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<PagedResultOfInsuranceProductDto>>;
+    public listInsuranceProducts(connectionId?: string, isActive?: boolean, offerableOnly?: boolean, page?: number, pageSize?: number, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<PagedResultOfInsuranceProductDto>>;
     public listInsuranceProducts(connectionId?: string, isActive?: boolean, offerableOnly?: boolean, page?: number, pageSize?: number, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
 
         let localVarQueryParameters = new HttpParams({encoder: this.encoder});
@@ -1785,7 +1785,7 @@ export class IntegrationApiService {
         }
 
         let localVarPath = `/api/v1/integration/insurance/products`;
-        return this.httpClient.request<InsuranceProductDtoPagedResult>('get', `${this.configuration.basePath}${localVarPath}`,
+        return this.httpClient.request<PagedResultOfInsuranceProductDto>('get', `${this.configuration.basePath}${localVarPath}`,
             {
                 context: localVarHttpContext,
                 params: localVarQueryParameters,
@@ -2030,9 +2030,9 @@ export class IntegrationApiService {
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      */
-    public listIntegrationConnections(family?: 'CoreBanking' | 'Insurance', isActive?: boolean, page?: number, pageSize?: number, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<ConnectionListDtoPagedResult>;
-    public listIntegrationConnections(family?: 'CoreBanking' | 'Insurance', isActive?: boolean, page?: number, pageSize?: number, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<ConnectionListDtoPagedResult>>;
-    public listIntegrationConnections(family?: 'CoreBanking' | 'Insurance', isActive?: boolean, page?: number, pageSize?: number, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<ConnectionListDtoPagedResult>>;
+    public listIntegrationConnections(family?: 'CoreBanking' | 'Insurance', isActive?: boolean, page?: number, pageSize?: number, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<PagedResultOfConnectionListDto>;
+    public listIntegrationConnections(family?: 'CoreBanking' | 'Insurance', isActive?: boolean, page?: number, pageSize?: number, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<PagedResultOfConnectionListDto>>;
+    public listIntegrationConnections(family?: 'CoreBanking' | 'Insurance', isActive?: boolean, page?: number, pageSize?: number, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<PagedResultOfConnectionListDto>>;
     public listIntegrationConnections(family?: 'CoreBanking' | 'Insurance', isActive?: boolean, page?: number, pageSize?: number, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
 
         let localVarQueryParameters = new HttpParams({encoder: this.encoder});
@@ -2092,7 +2092,7 @@ export class IntegrationApiService {
         }
 
         let localVarPath = `/api/v1/integration/connections`;
-        return this.httpClient.request<ConnectionListDtoPagedResult>('get', `${this.configuration.basePath}${localVarPath}`,
+        return this.httpClient.request<PagedResultOfConnectionListDto>('get', `${this.configuration.basePath}${localVarPath}`,
             {
                 context: localVarHttpContext,
                 params: localVarQueryParameters,

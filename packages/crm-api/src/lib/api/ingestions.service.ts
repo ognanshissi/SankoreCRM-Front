@@ -19,9 +19,9 @@ import { CustomHttpParameterCodec }                          from '../encoder';
 import { Observable }                                        from 'rxjs';
 
 // @ts-ignore
-import { IngestionDtoPagedResult } from '../model/ingestion-dto-paged-result.interface';
-// @ts-ignore
 import { IngestionPayloadDto } from '../model/ingestion-payload-dto.interface';
+// @ts-ignore
+import { PagedResultOfIngestionDto } from '../model/paged-result-of-ingestion-dto.interface';
 
 // @ts-ignore
 import { BASE_PATH, COLLECTION_FORMATS }                     from '../variables';
@@ -165,9 +165,9 @@ export class IngestionsApiService {
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      */
-    public listIngestions(sourceId: string, status?: 'Accepted' | 'Rejected' | 'Duplicate' | 'Failed', page?: number, pageSize?: number, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<IngestionDtoPagedResult>;
-    public listIngestions(sourceId: string, status?: 'Accepted' | 'Rejected' | 'Duplicate' | 'Failed', page?: number, pageSize?: number, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<IngestionDtoPagedResult>>;
-    public listIngestions(sourceId: string, status?: 'Accepted' | 'Rejected' | 'Duplicate' | 'Failed', page?: number, pageSize?: number, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<IngestionDtoPagedResult>>;
+    public listIngestions(sourceId: string, status?: 'Accepted' | 'Rejected' | 'Duplicate' | 'Failed', page?: number, pageSize?: number, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<PagedResultOfIngestionDto>;
+    public listIngestions(sourceId: string, status?: 'Accepted' | 'Rejected' | 'Duplicate' | 'Failed', page?: number, pageSize?: number, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<PagedResultOfIngestionDto>>;
+    public listIngestions(sourceId: string, status?: 'Accepted' | 'Rejected' | 'Duplicate' | 'Failed', page?: number, pageSize?: number, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<PagedResultOfIngestionDto>>;
     public listIngestions(sourceId: string, status?: 'Accepted' | 'Rejected' | 'Duplicate' | 'Failed', page?: number, pageSize?: number, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
         if (sourceId === null || sourceId === undefined) {
             throw new Error('Required parameter sourceId was null or undefined when calling listIngestions.');
@@ -226,7 +226,7 @@ export class IngestionsApiService {
         }
 
         let localVarPath = `/api/v1/leads/lead-sources/${this.configuration.encodeParam({name: "sourceId", value: sourceId, in: "path", style: "simple", explode: false, dataType: "string", dataFormat: "uuid"})}/ingestions`;
-        return this.httpClient.request<IngestionDtoPagedResult>('get', `${this.configuration.basePath}${localVarPath}`,
+        return this.httpClient.request<PagedResultOfIngestionDto>('get', `${this.configuration.basePath}${localVarPath}`,
             {
                 context: localVarHttpContext,
                 params: localVarQueryParameters,

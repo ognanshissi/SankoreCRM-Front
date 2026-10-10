@@ -37,7 +37,7 @@ import { DissolveGroupResult } from '../model/dissolve-group-result.interface';
 // @ts-ignore
 import { GroupDetailDto } from '../model/group-detail-dto.interface';
 // @ts-ignore
-import { GroupListItemDtoPagedResult } from '../model/group-list-item-dto-paged-result.interface';
+import { PagedResultOfGroupListItemDto } from '../model/paged-result-of-group-list-item-dto.interface';
 // @ts-ignore
 import { RemoveGroupMemberResult } from '../model/remove-group-member-result.interface';
 // @ts-ignore
@@ -521,9 +521,9 @@ export class ClientGroupsApiService {
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      */
-    public listClientGroups(type?: 'SolidarityGroup' | 'Tontine' | 'Vsla', status?: 'Forming' | 'Active' | 'Suspended' | 'Dissolved', agencyId?: string, search?: string, page?: number, pageSize?: number, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<GroupListItemDtoPagedResult>;
-    public listClientGroups(type?: 'SolidarityGroup' | 'Tontine' | 'Vsla', status?: 'Forming' | 'Active' | 'Suspended' | 'Dissolved', agencyId?: string, search?: string, page?: number, pageSize?: number, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<GroupListItemDtoPagedResult>>;
-    public listClientGroups(type?: 'SolidarityGroup' | 'Tontine' | 'Vsla', status?: 'Forming' | 'Active' | 'Suspended' | 'Dissolved', agencyId?: string, search?: string, page?: number, pageSize?: number, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<GroupListItemDtoPagedResult>>;
+    public listClientGroups(type?: 'SolidarityGroup' | 'Tontine' | 'Vsla', status?: 'Forming' | 'Active' | 'Suspended' | 'Dissolved', agencyId?: string, search?: string, page?: number, pageSize?: number, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<PagedResultOfGroupListItemDto>;
+    public listClientGroups(type?: 'SolidarityGroup' | 'Tontine' | 'Vsla', status?: 'Forming' | 'Active' | 'Suspended' | 'Dissolved', agencyId?: string, search?: string, page?: number, pageSize?: number, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<PagedResultOfGroupListItemDto>>;
+    public listClientGroups(type?: 'SolidarityGroup' | 'Tontine' | 'Vsla', status?: 'Forming' | 'Active' | 'Suspended' | 'Dissolved', agencyId?: string, search?: string, page?: number, pageSize?: number, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<PagedResultOfGroupListItemDto>>;
     public listClientGroups(type?: 'SolidarityGroup' | 'Tontine' | 'Vsla', status?: 'Forming' | 'Active' | 'Suspended' | 'Dissolved', agencyId?: string, search?: string, page?: number, pageSize?: number, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
 
         let localVarQueryParameters = new HttpParams({encoder: this.encoder});
@@ -591,7 +591,7 @@ export class ClientGroupsApiService {
         }
 
         let localVarPath = `/api/v1/client-groups`;
-        return this.httpClient.request<GroupListItemDtoPagedResult>('get', `${this.configuration.basePath}${localVarPath}`,
+        return this.httpClient.request<PagedResultOfGroupListItemDto>('get', `${this.configuration.basePath}${localVarPath}`,
             {
                 context: localVarHttpContext,
                 params: localVarQueryParameters,

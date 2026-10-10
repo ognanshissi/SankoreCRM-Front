@@ -17,7 +17,7 @@ export interface CreateQualificationTemplateRequest {
     name?: string | null;
     description?: string | null;
     /**
-     * One of: Loan, Savings, Insurance, HealthInsurance, ForecastInsurance, Tontine, GroupCredit, Agriculture
+     * One of: Loan, Savings, Insurance, HealthInsurance, ForecastInsurance, Tontine, GroupCredit, Agriculture, CurrentAccount
      */
     productCategory?: CreateQualificationTemplateRequestProductCategoryEnum | null;
     productCode?: string | null;
@@ -32,7 +32,8 @@ export enum CreateQualificationTemplateRequestProductCategoryEnum {
     ForecastInsurance = 'ForecastInsurance',
     Tontine = 'Tontine',
     GroupCredit = 'GroupCredit',
-    Agriculture = 'Agriculture'
+    Agriculture = 'Agriculture',
+    CurrentAccount = 'CurrentAccount'
 };
 
 

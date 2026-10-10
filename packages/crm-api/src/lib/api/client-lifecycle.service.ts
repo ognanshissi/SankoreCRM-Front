@@ -25,7 +25,7 @@ import { AssignAdvisorRequest } from '../model/assign-advisor-request.interface'
 // @ts-ignore
 import { ClientLifecycleStateDto } from '../model/client-lifecycle-state-dto.interface';
 // @ts-ignore
-import { ClientStatusHistoryDtoPagedResult } from '../model/client-status-history-dto-paged-result.interface';
+import { PagedResultOfClientStatusHistoryDto } from '../model/paged-result-of-client-status-history-dto.interface';
 // @ts-ignore
 import { SuspendClientRequest } from '../model/suspend-client-request.interface';
 // @ts-ignore
@@ -270,9 +270,9 @@ export class ClientLifecycleApiService {
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      */
-    public getClientStatusHistory(clientId: string, page?: number, pageSize?: number, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<ClientStatusHistoryDtoPagedResult>;
-    public getClientStatusHistory(clientId: string, page?: number, pageSize?: number, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<ClientStatusHistoryDtoPagedResult>>;
-    public getClientStatusHistory(clientId: string, page?: number, pageSize?: number, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<ClientStatusHistoryDtoPagedResult>>;
+    public getClientStatusHistory(clientId: string, page?: number, pageSize?: number, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<PagedResultOfClientStatusHistoryDto>;
+    public getClientStatusHistory(clientId: string, page?: number, pageSize?: number, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<PagedResultOfClientStatusHistoryDto>>;
+    public getClientStatusHistory(clientId: string, page?: number, pageSize?: number, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<PagedResultOfClientStatusHistoryDto>>;
     public getClientStatusHistory(clientId: string, page?: number, pageSize?: number, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
         if (clientId === null || clientId === undefined) {
             throw new Error('Required parameter clientId was null or undefined when calling getClientStatusHistory.');
@@ -327,7 +327,7 @@ export class ClientLifecycleApiService {
         }
 
         let localVarPath = `/api/v1/clients/${this.configuration.encodeParam({name: "clientId", value: clientId, in: "path", style: "simple", explode: false, dataType: "string", dataFormat: "uuid"})}/status-history`;
-        return this.httpClient.request<ClientStatusHistoryDtoPagedResult>('get', `${this.configuration.basePath}${localVarPath}`,
+        return this.httpClient.request<PagedResultOfClientStatusHistoryDto>('get', `${this.configuration.basePath}${localVarPath}`,
             {
                 context: localVarHttpContext,
                 params: localVarQueryParameters,

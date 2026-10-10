@@ -21,7 +21,7 @@ import { Observable }                                        from 'rxjs';
 // @ts-ignore
 import { ClientLoyaltyScoreDto } from '../model/client-loyalty-score-dto.interface';
 // @ts-ignore
-import { ClientTimelineEntryDtoPagedResult } from '../model/client-timeline-entry-dto-paged-result.interface';
+import { PagedResultOfClientTimelineEntryDto } from '../model/paged-result-of-client-timeline-entry-dto.interface';
 // @ts-ignore
 import { SegmentDistributionDto } from '../model/segment-distribution-dto.interface';
 // @ts-ignore
@@ -313,9 +313,9 @@ export class ClientTimelineSegmentsApiService {
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      */
-    public getClientTimeline(clientId: string, page: number, pageSize: number, sourceModule?: string, entryType?: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<ClientTimelineEntryDtoPagedResult>;
-    public getClientTimeline(clientId: string, page: number, pageSize: number, sourceModule?: string, entryType?: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<ClientTimelineEntryDtoPagedResult>>;
-    public getClientTimeline(clientId: string, page: number, pageSize: number, sourceModule?: string, entryType?: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<ClientTimelineEntryDtoPagedResult>>;
+    public getClientTimeline(clientId: string, page: number, pageSize: number, sourceModule?: string, entryType?: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<PagedResultOfClientTimelineEntryDto>;
+    public getClientTimeline(clientId: string, page: number, pageSize: number, sourceModule?: string, entryType?: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<PagedResultOfClientTimelineEntryDto>>;
+    public getClientTimeline(clientId: string, page: number, pageSize: number, sourceModule?: string, entryType?: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<PagedResultOfClientTimelineEntryDto>>;
     public getClientTimeline(clientId: string, page: number, pageSize: number, sourceModule?: string, entryType?: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
         if (clientId === null || clientId === undefined) {
             throw new Error('Required parameter clientId was null or undefined when calling getClientTimeline.');
@@ -384,7 +384,7 @@ export class ClientTimelineSegmentsApiService {
         }
 
         let localVarPath = `/api/v1/clients/${this.configuration.encodeParam({name: "clientId", value: clientId, in: "path", style: "simple", explode: false, dataType: "string", dataFormat: "uuid"})}/timeline`;
-        return this.httpClient.request<ClientTimelineEntryDtoPagedResult>('get', `${this.configuration.basePath}${localVarPath}`,
+        return this.httpClient.request<PagedResultOfClientTimelineEntryDto>('get', `${this.configuration.basePath}${localVarPath}`,
             {
                 context: localVarHttpContext,
                 params: localVarQueryParameters,

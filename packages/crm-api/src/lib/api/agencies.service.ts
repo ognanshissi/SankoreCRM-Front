@@ -21,8 +21,6 @@ import { Observable }                                        from 'rxjs';
 // @ts-ignore
 import { AgencyDto } from '../model/agency-dto.interface';
 // @ts-ignore
-import { AgencyDtoPagedResult } from '../model/agency-dto-paged-result.interface';
-// @ts-ignore
 import { AgencyTreeNodeDto } from '../model/agency-tree-node-dto.interface';
 // @ts-ignore
 import { AssignAgencyManagerRequest } from '../model/assign-agency-manager-request.interface';
@@ -34,6 +32,8 @@ import { CreateAgencyRequest } from '../model/create-agency-request.interface';
 import { CreateAgencyResult } from '../model/create-agency-result.interface';
 // @ts-ignore
 import { MoveAgencyRequest } from '../model/move-agency-request.interface';
+// @ts-ignore
+import { PagedResultOfAgencyDto } from '../model/paged-result-of-agency-dto.interface';
 // @ts-ignore
 import { UpdateAgencyRequest } from '../model/update-agency-request.interface';
 
@@ -617,9 +617,9 @@ export class AgenciesApiService {
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      */
-    public listAgencies(includeDeleted: boolean, page: number, pageSize: number, parentId?: string, search?: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<AgencyDtoPagedResult>;
-    public listAgencies(includeDeleted: boolean, page: number, pageSize: number, parentId?: string, search?: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<AgencyDtoPagedResult>>;
-    public listAgencies(includeDeleted: boolean, page: number, pageSize: number, parentId?: string, search?: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<AgencyDtoPagedResult>>;
+    public listAgencies(includeDeleted: boolean, page: number, pageSize: number, parentId?: string, search?: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<PagedResultOfAgencyDto>;
+    public listAgencies(includeDeleted: boolean, page: number, pageSize: number, parentId?: string, search?: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<PagedResultOfAgencyDto>>;
+    public listAgencies(includeDeleted: boolean, page: number, pageSize: number, parentId?: string, search?: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<PagedResultOfAgencyDto>>;
     public listAgencies(includeDeleted: boolean, page: number, pageSize: number, parentId?: string, search?: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
         if (includeDeleted === null || includeDeleted === undefined) {
             throw new Error('Required parameter includeDeleted was null or undefined when calling listAgencies.');
@@ -692,7 +692,7 @@ export class AgenciesApiService {
         }
 
         let localVarPath = `/api/v1/agencies`;
-        return this.httpClient.request<AgencyDtoPagedResult>('get', `${this.configuration.basePath}${localVarPath}`,
+        return this.httpClient.request<PagedResultOfAgencyDto>('get', `${this.configuration.basePath}${localVarPath}`,
             {
                 context: localVarHttpContext,
                 params: localVarQueryParameters,

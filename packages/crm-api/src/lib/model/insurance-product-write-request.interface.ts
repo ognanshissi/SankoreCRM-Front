@@ -37,6 +37,7 @@ export interface InsuranceProductWriteRequest {
     requiresCbsAccount?: boolean;
     requiresActiveLoan?: boolean;
     linkedCreditProductCode?: string | null;
+    crmProductCode?: string | null;
     commissionRate?: number;
     premiumRetryLimit?: number;
     premiumRetryIntervalDays?: number;

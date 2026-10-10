@@ -25,17 +25,17 @@ import { DryRunResult } from '../model/dry-run-result.interface';
 // @ts-ignore
 import { LeadSourceDetailDto } from '../model/lead-source-detail-dto.interface';
 // @ts-ignore
-import { LeadSourceListDtoPagedResult } from '../model/lead-source-list-dto-paged-result.interface';
-// @ts-ignore
 import { ManualPullResult } from '../model/manual-pull-result.interface';
+// @ts-ignore
+import { PagedResultOfLeadSourceListDto } from '../model/paged-result-of-lead-source-list-dto.interface';
+// @ts-ignore
+import { PagedResultOfRunDto } from '../model/paged-result-of-run-dto.interface';
 // @ts-ignore
 import { PreviewMappingRequest } from '../model/preview-mapping-request.interface';
 // @ts-ignore
 import { PreviewMappingResult } from '../model/preview-mapping-result.interface';
 // @ts-ignore
 import { RotateHmacSecretResult } from '../model/rotate-hmac-secret-result.interface';
-// @ts-ignore
-import { RunDtoPagedResult } from '../model/run-dto-paged-result.interface';
 // @ts-ignore
 import { SecretHint } from '../model/secret-hint.interface';
 // @ts-ignore
@@ -782,9 +782,9 @@ export class LeadSourcesApiService {
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      */
-    public listLeadSourceRuns(id: string, page?: number, pageSize?: number, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<RunDtoPagedResult>;
-    public listLeadSourceRuns(id: string, page?: number, pageSize?: number, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<RunDtoPagedResult>>;
-    public listLeadSourceRuns(id: string, page?: number, pageSize?: number, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<RunDtoPagedResult>>;
+    public listLeadSourceRuns(id: string, page?: number, pageSize?: number, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<PagedResultOfRunDto>;
+    public listLeadSourceRuns(id: string, page?: number, pageSize?: number, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<PagedResultOfRunDto>>;
+    public listLeadSourceRuns(id: string, page?: number, pageSize?: number, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<PagedResultOfRunDto>>;
     public listLeadSourceRuns(id: string, page?: number, pageSize?: number, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
         if (id === null || id === undefined) {
             throw new Error('Required parameter id was null or undefined when calling listLeadSourceRuns.');
@@ -839,7 +839,7 @@ export class LeadSourcesApiService {
         }
 
         let localVarPath = `/api/v1/leads/lead-sources/${this.configuration.encodeParam({name: "id", value: id, in: "path", style: "simple", explode: false, dataType: "string", dataFormat: "uuid"})}/runs`;
-        return this.httpClient.request<RunDtoPagedResult>('get', `${this.configuration.basePath}${localVarPath}`,
+        return this.httpClient.request<PagedResultOfRunDto>('get', `${this.configuration.basePath}${localVarPath}`,
             {
                 context: localVarHttpContext,
                 params: localVarQueryParameters,
@@ -862,9 +862,9 @@ export class LeadSourcesApiService {
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      */
-    public listLeadSources(channelType?: 'WebForm' | 'InboundWebhook' | 'ExternalApiPull' | 'FacebookLeadAds' | 'InstagramLeadAds' | 'LinkedInLeadGen' | 'WhatsAppInbound' | 'SocialEngagement' | 'MobileAgent' | 'WalkIn' | 'SmsUssdCampaign' | 'Referral' | 'FileImport' | 'InboundCall', mode?: 'EmbeddedScript' | 'ServerWebhook' | 'ScheduledPull' | 'PlatformConnection' | 'SocialTracking' | 'Internal', status?: 'Draft' | 'Testing' | 'Active' | 'Paused' | 'Error' | 'Archived', q?: string, page?: number, pageSize?: number, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<LeadSourceListDtoPagedResult>;
-    public listLeadSources(channelType?: 'WebForm' | 'InboundWebhook' | 'ExternalApiPull' | 'FacebookLeadAds' | 'InstagramLeadAds' | 'LinkedInLeadGen' | 'WhatsAppInbound' | 'SocialEngagement' | 'MobileAgent' | 'WalkIn' | 'SmsUssdCampaign' | 'Referral' | 'FileImport' | 'InboundCall', mode?: 'EmbeddedScript' | 'ServerWebhook' | 'ScheduledPull' | 'PlatformConnection' | 'SocialTracking' | 'Internal', status?: 'Draft' | 'Testing' | 'Active' | 'Paused' | 'Error' | 'Archived', q?: string, page?: number, pageSize?: number, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<LeadSourceListDtoPagedResult>>;
-    public listLeadSources(channelType?: 'WebForm' | 'InboundWebhook' | 'ExternalApiPull' | 'FacebookLeadAds' | 'InstagramLeadAds' | 'LinkedInLeadGen' | 'WhatsAppInbound' | 'SocialEngagement' | 'MobileAgent' | 'WalkIn' | 'SmsUssdCampaign' | 'Referral' | 'FileImport' | 'InboundCall', mode?: 'EmbeddedScript' | 'ServerWebhook' | 'ScheduledPull' | 'PlatformConnection' | 'SocialTracking' | 'Internal', status?: 'Draft' | 'Testing' | 'Active' | 'Paused' | 'Error' | 'Archived', q?: string, page?: number, pageSize?: number, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<LeadSourceListDtoPagedResult>>;
+    public listLeadSources(channelType?: 'WebForm' | 'InboundWebhook' | 'ExternalApiPull' | 'FacebookLeadAds' | 'InstagramLeadAds' | 'LinkedInLeadGen' | 'WhatsAppInbound' | 'SocialEngagement' | 'MobileAgent' | 'WalkIn' | 'SmsUssdCampaign' | 'Referral' | 'FileImport' | 'InboundCall', mode?: 'EmbeddedScript' | 'ServerWebhook' | 'ScheduledPull' | 'PlatformConnection' | 'SocialTracking' | 'Internal', status?: 'Draft' | 'Testing' | 'Active' | 'Paused' | 'Error' | 'Archived', q?: string, page?: number, pageSize?: number, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<PagedResultOfLeadSourceListDto>;
+    public listLeadSources(channelType?: 'WebForm' | 'InboundWebhook' | 'ExternalApiPull' | 'FacebookLeadAds' | 'InstagramLeadAds' | 'LinkedInLeadGen' | 'WhatsAppInbound' | 'SocialEngagement' | 'MobileAgent' | 'WalkIn' | 'SmsUssdCampaign' | 'Referral' | 'FileImport' | 'InboundCall', mode?: 'EmbeddedScript' | 'ServerWebhook' | 'ScheduledPull' | 'PlatformConnection' | 'SocialTracking' | 'Internal', status?: 'Draft' | 'Testing' | 'Active' | 'Paused' | 'Error' | 'Archived', q?: string, page?: number, pageSize?: number, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<PagedResultOfLeadSourceListDto>>;
+    public listLeadSources(channelType?: 'WebForm' | 'InboundWebhook' | 'ExternalApiPull' | 'FacebookLeadAds' | 'InstagramLeadAds' | 'LinkedInLeadGen' | 'WhatsAppInbound' | 'SocialEngagement' | 'MobileAgent' | 'WalkIn' | 'SmsUssdCampaign' | 'Referral' | 'FileImport' | 'InboundCall', mode?: 'EmbeddedScript' | 'ServerWebhook' | 'ScheduledPull' | 'PlatformConnection' | 'SocialTracking' | 'Internal', status?: 'Draft' | 'Testing' | 'Active' | 'Paused' | 'Error' | 'Archived', q?: string, page?: number, pageSize?: number, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<PagedResultOfLeadSourceListDto>>;
     public listLeadSources(channelType?: 'WebForm' | 'InboundWebhook' | 'ExternalApiPull' | 'FacebookLeadAds' | 'InstagramLeadAds' | 'LinkedInLeadGen' | 'WhatsAppInbound' | 'SocialEngagement' | 'MobileAgent' | 'WalkIn' | 'SmsUssdCampaign' | 'Referral' | 'FileImport' | 'InboundCall', mode?: 'EmbeddedScript' | 'ServerWebhook' | 'ScheduledPull' | 'PlatformConnection' | 'SocialTracking' | 'Internal', status?: 'Draft' | 'Testing' | 'Active' | 'Paused' | 'Error' | 'Archived', q?: string, page?: number, pageSize?: number, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
 
         let localVarQueryParameters = new HttpParams({encoder: this.encoder});
@@ -932,7 +932,7 @@ export class LeadSourcesApiService {
         }
 
         let localVarPath = `/api/v1/leads/lead-sources`;
-        return this.httpClient.request<LeadSourceListDtoPagedResult>('get', `${this.configuration.basePath}${localVarPath}`,
+        return this.httpClient.request<PagedResultOfLeadSourceListDto>('get', `${this.configuration.basePath}${localVarPath}`,
             {
                 context: localVarHttpContext,
                 params: localVarQueryParameters,

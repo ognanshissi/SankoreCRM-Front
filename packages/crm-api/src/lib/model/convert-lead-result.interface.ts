@@ -9,6 +9,8 @@
  * https://openapi-generator.tech
  * Do not edit the class manually.
  */
+import { LeadCompletenessDto } from './lead-completeness-dto.interface';
+import { MissingQuestionnaire } from './missing-questionnaire.interface';
 import { DuplicateMatchResult } from './duplicate-match-result.interface';
 
 
@@ -21,5 +23,10 @@ export interface ConvertLeadResult {
     existingCustomerNumber?: string | null;
     duplicateDetected?: boolean;
     potentialDuplicates?: Array<DuplicateMatchResult> | null;
+    missingQuestionnaires?: Array<MissingQuestionnaire> | null;
+    conversionType?: string | null;
+    alreadyConverted?: boolean;
+    holdingId?: string | null;
+    completeness?: LeadCompletenessDto;
 }
 

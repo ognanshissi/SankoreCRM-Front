@@ -9,6 +9,8 @@
  * https://openapi-generator.tech
  * Do not edit the class manually.
  */
+import { CaptureHouseholdMember } from './capture-household-member.interface';
+import { CaptureQuestionnaire } from './capture-questionnaire.interface';
 
 
 export interface CaptureLeadRequest { 
@@ -60,6 +62,8 @@ export interface CaptureLeadRequest {
     minConfidenceThreshold?: number | null;
     force?: boolean;
     leadSourceConfigId?: string | null;
+    household?: Array<CaptureHouseholdMember> | null;
+    questionnaires?: Array<CaptureQuestionnaire> | null;
 }
 export enum CaptureLeadRequestSourceEnum {
     Web = 'Web',

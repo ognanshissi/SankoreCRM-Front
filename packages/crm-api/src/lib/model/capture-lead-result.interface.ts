@@ -17,5 +17,6 @@ export interface CaptureLeadResult {
     status?: string | null;
     duplicateDetected?: boolean;
     potentialDuplicates?: Array<DuplicateMatchResult> | null;
+    linkedCustomerId?: string | null;
 }
 

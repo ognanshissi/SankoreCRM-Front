@@ -15,7 +15,7 @@ export interface CreateProductRequest {
     name?: string | null;
     code?: string | null;
     /**
-     * One of: Loan, Savings, Insurance, HealthInsurance, ForecastInsurance, Tontine, GroupCredit, Agriculture
+     * One of: Loan, Savings, Insurance, HealthInsurance, ForecastInsurance, Tontine, GroupCredit, Agriculture, CurrentAccount
      */
     category?: CreateProductRequestCategoryEnum;
     description?: string | null;
@@ -30,7 +30,8 @@ export enum CreateProductRequestCategoryEnum {
     ForecastInsurance = 'ForecastInsurance',
     Tontine = 'Tontine',
     GroupCredit = 'GroupCredit',
-    Agriculture = 'Agriculture'
+    Agriculture = 'Agriculture',
+    CurrentAccount = 'CurrentAccount'
 };
 
 

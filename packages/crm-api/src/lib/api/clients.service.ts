@@ -21,11 +21,11 @@ import { Observable }                                        from 'rxjs';
 // @ts-ignore
 import { ClientDetailDto } from '../model/client-detail-dto.interface';
 // @ts-ignore
-import { ClientSearchItemDtoPagedResult } from '../model/client-search-item-dto-paged-result.interface';
-// @ts-ignore
 import { CreateClientResult } from '../model/create-client-result.interface';
 // @ts-ignore
 import { CreateIndividualClientRequest } from '../model/create-individual-client-request.interface';
+// @ts-ignore
+import { PagedResultOfClientSearchItemDto } from '../model/paged-result-of-client-search-item-dto.interface';
 // @ts-ignore
 import { RevealSensitiveFieldRequest } from '../model/reveal-sensitive-field-request.interface';
 // @ts-ignore
@@ -344,9 +344,9 @@ export class ClientsApiService {
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      */
-    public searchClients(clientNumber?: string, phone?: string, identityDocumentNumber?: string, name?: string, status?: 'PendingKyc' | 'Active' | 'Suspended' | 'KycRejected' | 'Archived' | 'Merged', agencyId?: string, advisorUserId?: string, type?: 'Individual' | 'Legal', segmentCode?: string, page?: number, pageSize?: number, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<ClientSearchItemDtoPagedResult>;
-    public searchClients(clientNumber?: string, phone?: string, identityDocumentNumber?: string, name?: string, status?: 'PendingKyc' | 'Active' | 'Suspended' | 'KycRejected' | 'Archived' | 'Merged', agencyId?: string, advisorUserId?: string, type?: 'Individual' | 'Legal', segmentCode?: string, page?: number, pageSize?: number, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<ClientSearchItemDtoPagedResult>>;
-    public searchClients(clientNumber?: string, phone?: string, identityDocumentNumber?: string, name?: string, status?: 'PendingKyc' | 'Active' | 'Suspended' | 'KycRejected' | 'Archived' | 'Merged', agencyId?: string, advisorUserId?: string, type?: 'Individual' | 'Legal', segmentCode?: string, page?: number, pageSize?: number, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<ClientSearchItemDtoPagedResult>>;
+    public searchClients(clientNumber?: string, phone?: string, identityDocumentNumber?: string, name?: string, status?: 'PendingKyc' | 'Active' | 'Suspended' | 'KycRejected' | 'Archived' | 'Merged', agencyId?: string, advisorUserId?: string, type?: 'Individual' | 'Legal', segmentCode?: string, page?: number, pageSize?: number, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<PagedResultOfClientSearchItemDto>;
+    public searchClients(clientNumber?: string, phone?: string, identityDocumentNumber?: string, name?: string, status?: 'PendingKyc' | 'Active' | 'Suspended' | 'KycRejected' | 'Archived' | 'Merged', agencyId?: string, advisorUserId?: string, type?: 'Individual' | 'Legal', segmentCode?: string, page?: number, pageSize?: number, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<PagedResultOfClientSearchItemDto>>;
+    public searchClients(clientNumber?: string, phone?: string, identityDocumentNumber?: string, name?: string, status?: 'PendingKyc' | 'Active' | 'Suspended' | 'KycRejected' | 'Archived' | 'Merged', agencyId?: string, advisorUserId?: string, type?: 'Individual' | 'Legal', segmentCode?: string, page?: number, pageSize?: number, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<PagedResultOfClientSearchItemDto>>;
     public searchClients(clientNumber?: string, phone?: string, identityDocumentNumber?: string, name?: string, status?: 'PendingKyc' | 'Active' | 'Suspended' | 'KycRejected' | 'Archived' | 'Merged', agencyId?: string, advisorUserId?: string, type?: 'Individual' | 'Legal', segmentCode?: string, page?: number, pageSize?: number, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
 
         let localVarQueryParameters = new HttpParams({encoder: this.encoder});
@@ -434,7 +434,7 @@ export class ClientsApiService {
         }
 
         let localVarPath = `/api/v1/clients`;
-        return this.httpClient.request<ClientSearchItemDtoPagedResult>('get', `${this.configuration.basePath}${localVarPath}`,
+        return this.httpClient.request<PagedResultOfClientSearchItemDto>('get', `${this.configuration.basePath}${localVarPath}`,
             {
                 context: localVarHttpContext,
                 params: localVarQueryParameters,

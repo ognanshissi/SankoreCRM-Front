@@ -21,7 +21,7 @@ import { Observable }                                        from 'rxjs';
 // @ts-ignore
 import { BackfillPhoneticKeysResult } from '../model/backfill-phonetic-keys-result.interface';
 // @ts-ignore
-import { DuplicateCandidateDtoPagedResult } from '../model/duplicate-candidate-dto-paged-result.interface';
+import { PagedResultOfDuplicateCandidateDto } from '../model/paged-result-of-duplicate-candidate-dto.interface';
 // @ts-ignore
 import { RejectDuplicateCandidateRequest } from '../model/reject-duplicate-candidate-request.interface';
 
@@ -166,9 +166,9 @@ export class ClientDuplicatesApiService {
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      */
-    public listDuplicateCandidates(status?: 'ToReview' | 'Rejected' | 'Merged', page?: number, pageSize?: number, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<DuplicateCandidateDtoPagedResult>;
-    public listDuplicateCandidates(status?: 'ToReview' | 'Rejected' | 'Merged', page?: number, pageSize?: number, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<DuplicateCandidateDtoPagedResult>>;
-    public listDuplicateCandidates(status?: 'ToReview' | 'Rejected' | 'Merged', page?: number, pageSize?: number, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<DuplicateCandidateDtoPagedResult>>;
+    public listDuplicateCandidates(status?: 'ToReview' | 'Rejected' | 'Merged', page?: number, pageSize?: number, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<PagedResultOfDuplicateCandidateDto>;
+    public listDuplicateCandidates(status?: 'ToReview' | 'Rejected' | 'Merged', page?: number, pageSize?: number, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<PagedResultOfDuplicateCandidateDto>>;
+    public listDuplicateCandidates(status?: 'ToReview' | 'Rejected' | 'Merged', page?: number, pageSize?: number, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<PagedResultOfDuplicateCandidateDto>>;
     public listDuplicateCandidates(status?: 'ToReview' | 'Rejected' | 'Merged', page?: number, pageSize?: number, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
 
         let localVarQueryParameters = new HttpParams({encoder: this.encoder});
@@ -224,7 +224,7 @@ export class ClientDuplicatesApiService {
         }
 
         let localVarPath = `/api/v1/clients/duplicates`;
-        return this.httpClient.request<DuplicateCandidateDtoPagedResult>('get', `${this.configuration.basePath}${localVarPath}`,
+        return this.httpClient.request<PagedResultOfDuplicateCandidateDto>('get', `${this.configuration.basePath}${localVarPath}`,
             {
                 context: localVarHttpContext,
                 params: localVarQueryParameters,

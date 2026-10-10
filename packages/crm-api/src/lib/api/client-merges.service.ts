@@ -23,7 +23,7 @@ import { ApproveClientMergeRequest } from '../model/approve-client-merge-request
 // @ts-ignore
 import { ClientMergeRequestDto } from '../model/client-merge-request-dto.interface';
 // @ts-ignore
-import { ClientMergeRequestDtoPagedResult } from '../model/client-merge-request-dto-paged-result.interface';
+import { PagedResultOfClientMergeRequestDto } from '../model/paged-result-of-client-merge-request-dto.interface';
 // @ts-ignore
 import { RejectClientMergeRequest } from '../model/reject-client-merge-request.interface';
 // @ts-ignore
@@ -252,9 +252,9 @@ export class ClientMergesApiService {
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      */
-    public listClientMerges(status?: 'PendingApproval' | 'Approved' | 'Rejected' | 'Executed' | 'Cancelled', page?: number, pageSize?: number, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<ClientMergeRequestDtoPagedResult>;
-    public listClientMerges(status?: 'PendingApproval' | 'Approved' | 'Rejected' | 'Executed' | 'Cancelled', page?: number, pageSize?: number, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<ClientMergeRequestDtoPagedResult>>;
-    public listClientMerges(status?: 'PendingApproval' | 'Approved' | 'Rejected' | 'Executed' | 'Cancelled', page?: number, pageSize?: number, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<ClientMergeRequestDtoPagedResult>>;
+    public listClientMerges(status?: 'PendingApproval' | 'Approved' | 'Rejected' | 'Executed' | 'Cancelled', page?: number, pageSize?: number, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<PagedResultOfClientMergeRequestDto>;
+    public listClientMerges(status?: 'PendingApproval' | 'Approved' | 'Rejected' | 'Executed' | 'Cancelled', page?: number, pageSize?: number, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<PagedResultOfClientMergeRequestDto>>;
+    public listClientMerges(status?: 'PendingApproval' | 'Approved' | 'Rejected' | 'Executed' | 'Cancelled', page?: number, pageSize?: number, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<PagedResultOfClientMergeRequestDto>>;
     public listClientMerges(status?: 'PendingApproval' | 'Approved' | 'Rejected' | 'Executed' | 'Cancelled', page?: number, pageSize?: number, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
 
         let localVarQueryParameters = new HttpParams({encoder: this.encoder});
@@ -310,7 +310,7 @@ export class ClientMergesApiService {
         }
 
         let localVarPath = `/api/v1/clients/merges`;
-        return this.httpClient.request<ClientMergeRequestDtoPagedResult>('get', `${this.configuration.basePath}${localVarPath}`,
+        return this.httpClient.request<PagedResultOfClientMergeRequestDto>('get', `${this.configuration.basePath}${localVarPath}`,
             {
                 context: localVarHttpContext,
                 params: localVarQueryParameters,

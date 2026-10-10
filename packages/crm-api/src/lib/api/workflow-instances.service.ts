@@ -23,11 +23,11 @@ import { ApproveStepRequest } from '../model/approve-step-request.interface';
 // @ts-ignore
 import { AssignRequest } from '../model/assign-request.interface';
 // @ts-ignore
-import { CompletedTaskDtoPagedResult } from '../model/completed-task-dto-paged-result.interface';
-// @ts-ignore
 import { DelegateRequest } from '../model/delegate-request.interface';
 // @ts-ignore
 import { MyStepDto } from '../model/my-step-dto.interface';
+// @ts-ignore
+import { PagedResultOfCompletedTaskDto } from '../model/paged-result-of-completed-task-dto.interface';
 // @ts-ignore
 import { RejectStepRequest } from '../model/reject-step-request.interface';
 // @ts-ignore
@@ -422,9 +422,9 @@ export class WorkflowInstancesApiService {
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      */
-    public getMyCompletedTasks(page?: number, pageSize?: number, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<CompletedTaskDtoPagedResult>;
-    public getMyCompletedTasks(page?: number, pageSize?: number, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<CompletedTaskDtoPagedResult>>;
-    public getMyCompletedTasks(page?: number, pageSize?: number, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<CompletedTaskDtoPagedResult>>;
+    public getMyCompletedTasks(page?: number, pageSize?: number, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<PagedResultOfCompletedTaskDto>;
+    public getMyCompletedTasks(page?: number, pageSize?: number, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<PagedResultOfCompletedTaskDto>>;
+    public getMyCompletedTasks(page?: number, pageSize?: number, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<PagedResultOfCompletedTaskDto>>;
     public getMyCompletedTasks(page?: number, pageSize?: number, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
 
         let localVarQueryParameters = new HttpParams({encoder: this.encoder});
@@ -476,7 +476,7 @@ export class WorkflowInstancesApiService {
         }
 
         let localVarPath = `/api/v1/workflow/instances/my-completed-tasks`;
-        return this.httpClient.request<CompletedTaskDtoPagedResult>('get', `${this.configuration.basePath}${localVarPath}`,
+        return this.httpClient.request<PagedResultOfCompletedTaskDto>('get', `${this.configuration.basePath}${localVarPath}`,
             {
                 context: localVarHttpContext,
                 params: localVarQueryParameters,
@@ -497,9 +497,9 @@ export class WorkflowInstancesApiService {
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      */
-    public getUserCompletedTasks(userId: string, page?: number, pageSize?: number, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<CompletedTaskDtoPagedResult>;
-    public getUserCompletedTasks(userId: string, page?: number, pageSize?: number, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<CompletedTaskDtoPagedResult>>;
-    public getUserCompletedTasks(userId: string, page?: number, pageSize?: number, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<CompletedTaskDtoPagedResult>>;
+    public getUserCompletedTasks(userId: string, page?: number, pageSize?: number, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<PagedResultOfCompletedTaskDto>;
+    public getUserCompletedTasks(userId: string, page?: number, pageSize?: number, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<PagedResultOfCompletedTaskDto>>;
+    public getUserCompletedTasks(userId: string, page?: number, pageSize?: number, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<PagedResultOfCompletedTaskDto>>;
     public getUserCompletedTasks(userId: string, page?: number, pageSize?: number, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
         if (userId === null || userId === undefined) {
             throw new Error('Required parameter userId was null or undefined when calling getUserCompletedTasks.');
@@ -554,7 +554,7 @@ export class WorkflowInstancesApiService {
         }
 
         let localVarPath = `/api/v1/workflow/instances/users/${this.configuration.encodeParam({name: "userId", value: userId, in: "path", style: "simple", explode: false, dataType: "string", dataFormat: "uuid"})}/completed-tasks`;
-        return this.httpClient.request<CompletedTaskDtoPagedResult>('get', `${this.configuration.basePath}${localVarPath}`,
+        return this.httpClient.request<PagedResultOfCompletedTaskDto>('get', `${this.configuration.basePath}${localVarPath}`,
             {
                 context: localVarHttpContext,
                 params: localVarQueryParameters,

@@ -23,11 +23,11 @@ import { AnonymizeClientRequest } from '../model/anonymize-client-request.interf
 // @ts-ignore
 import { ClientExportStatusDto } from '../model/client-export-status-dto.interface';
 // @ts-ignore
+import { PagedResultOfRetentionCandidateDto } from '../model/paged-result-of-retention-candidate-dto.interface';
+// @ts-ignore
 import { RequestClientExportRequest } from '../model/request-client-export-request.interface';
 // @ts-ignore
 import { RequestClientExportResult } from '../model/request-client-export-result.interface';
-// @ts-ignore
-import { RetentionCandidateDtoPagedResult } from '../model/retention-candidate-dto-paged-result.interface';
 
 // @ts-ignore
 import { BASE_PATH, COLLECTION_FORMATS }                     from '../variables';
@@ -326,9 +326,9 @@ export class CustomerComplianceApiService {
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      */
-    public listClientRetentionCandidates(page?: number, pageSize?: number, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<RetentionCandidateDtoPagedResult>;
-    public listClientRetentionCandidates(page?: number, pageSize?: number, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<RetentionCandidateDtoPagedResult>>;
-    public listClientRetentionCandidates(page?: number, pageSize?: number, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<RetentionCandidateDtoPagedResult>>;
+    public listClientRetentionCandidates(page?: number, pageSize?: number, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<PagedResultOfRetentionCandidateDto>;
+    public listClientRetentionCandidates(page?: number, pageSize?: number, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<PagedResultOfRetentionCandidateDto>>;
+    public listClientRetentionCandidates(page?: number, pageSize?: number, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<PagedResultOfRetentionCandidateDto>>;
     public listClientRetentionCandidates(page?: number, pageSize?: number, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
 
         let localVarQueryParameters = new HttpParams({encoder: this.encoder});
@@ -380,7 +380,7 @@ export class CustomerComplianceApiService {
         }
 
         let localVarPath = `/api/v1/clients/retention/candidates`;
-        return this.httpClient.request<RetentionCandidateDtoPagedResult>('get', `${this.configuration.basePath}${localVarPath}`,
+        return this.httpClient.request<PagedResultOfRetentionCandidateDto>('get', `${this.configuration.basePath}${localVarPath}`,
             {
                 context: localVarHttpContext,
                 params: localVarQueryParameters,

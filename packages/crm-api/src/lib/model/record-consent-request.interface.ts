@@ -13,7 +13,7 @@
 
 export interface RecordConsentRequest { 
     /**
-     * One of: Marketing, DataProcessing, EmailContact, SmsContact, PhoneContact, ThirdPartySharing, ProfilingAndAnalytics, LocationTracking
+     * One of: Marketing, DataProcessing, EmailContact, SmsContact, PhoneContact, ThirdPartySharing, ProfilingAndAnalytics, LocationTracking, HealthData
      */
     type?: RecordConsentRequestTypeEnum;
     /**
@@ -30,7 +30,8 @@ export enum RecordConsentRequestTypeEnum {
     PhoneContact = 'PhoneContact',
     ThirdPartySharing = 'ThirdPartySharing',
     ProfilingAndAnalytics = 'ProfilingAndAnalytics',
-    LocationTracking = 'LocationTracking'
+    LocationTracking = 'LocationTracking',
+    HealthData = 'HealthData'
 };
 export enum RecordConsentRequestChannelEnum {
     WebForm = 'WebForm',

@@ -19,7 +19,7 @@ import { CustomHttpParameterCodec }                          from '../encoder';
 import { Observable }                                        from 'rxjs';
 
 // @ts-ignore
-import { AuditEntryDtoPagedResult } from '../model/audit-entry-dto-paged-result.interface';
+import { PagedResultOfAuditEntryDto } from '../model/paged-result-of-audit-entry-dto.interface';
 
 // @ts-ignore
 import { BASE_PATH, COLLECTION_FORMATS }                     from '../variables';
@@ -105,9 +105,9 @@ export class AuditApiService {
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      */
-    public getAuditEntries(userId?: string, action?: string, resourceType?: string, resourceId?: string, outcome?: string, from?: string, to?: string, page?: number, pageSize?: number, sortAscending?: boolean, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<AuditEntryDtoPagedResult>;
-    public getAuditEntries(userId?: string, action?: string, resourceType?: string, resourceId?: string, outcome?: string, from?: string, to?: string, page?: number, pageSize?: number, sortAscending?: boolean, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<AuditEntryDtoPagedResult>>;
-    public getAuditEntries(userId?: string, action?: string, resourceType?: string, resourceId?: string, outcome?: string, from?: string, to?: string, page?: number, pageSize?: number, sortAscending?: boolean, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<AuditEntryDtoPagedResult>>;
+    public getAuditEntries(userId?: string, action?: string, resourceType?: string, resourceId?: string, outcome?: string, from?: string, to?: string, page?: number, pageSize?: number, sortAscending?: boolean, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<PagedResultOfAuditEntryDto>;
+    public getAuditEntries(userId?: string, action?: string, resourceType?: string, resourceId?: string, outcome?: string, from?: string, to?: string, page?: number, pageSize?: number, sortAscending?: boolean, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<PagedResultOfAuditEntryDto>>;
+    public getAuditEntries(userId?: string, action?: string, resourceType?: string, resourceId?: string, outcome?: string, from?: string, to?: string, page?: number, pageSize?: number, sortAscending?: boolean, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<PagedResultOfAuditEntryDto>>;
     public getAuditEntries(userId?: string, action?: string, resourceType?: string, resourceId?: string, outcome?: string, from?: string, to?: string, page?: number, pageSize?: number, sortAscending?: boolean, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
 
         let localVarQueryParameters = new HttpParams({encoder: this.encoder});
@@ -191,7 +191,7 @@ export class AuditApiService {
         }
 
         let localVarPath = `/api/v1/audit/entries`;
-        return this.httpClient.request<AuditEntryDtoPagedResult>('get', `${this.configuration.basePath}${localVarPath}`,
+        return this.httpClient.request<PagedResultOfAuditEntryDto>('get', `${this.configuration.basePath}${localVarPath}`,
             {
                 context: localVarHttpContext,
                 params: localVarQueryParameters,

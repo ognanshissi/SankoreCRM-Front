@@ -9,6 +9,7 @@
  * https://openapi-generator.tech
  * Do not edit the class manually.
  */
+import { BeneficiaryPolicy } from './beneficiary-policy.interface';
 
 
 export interface ProductDto { 
@@ -16,7 +17,7 @@ export interface ProductDto {
     name?: string | null;
     code?: string | null;
     /**
-     * One of: Loan, Savings, Insurance, HealthInsurance, ForecastInsurance, Tontine, GroupCredit, Agriculture
+     * One of: Loan, Savings, Insurance, HealthInsurance, ForecastInsurance, Tontine, GroupCredit, Agriculture, CurrentAccount
      */
     category?: ProductDtoCategoryEnum;
     description?: string | null;
@@ -26,6 +27,8 @@ export interface ProductDto {
     effectiveTo?: string | null;
     businessProductId?: string | null;
     businessPlatformName?: string | null;
+    beneficiaryPolicy?: BeneficiaryPolicy;
+    allowMultipleHoldings?: boolean;
 }
 export enum ProductDtoCategoryEnum {
     Loan = 'Loan',
@@ -35,7 +38,8 @@ export enum ProductDtoCategoryEnum {
     ForecastInsurance = 'ForecastInsurance',
     Tontine = 'Tontine',
     GroupCredit = 'GroupCredit',
-    Agriculture = 'Agriculture'
+    Agriculture = 'Agriculture',
+    CurrentAccount = 'CurrentAccount'
 };
 
 
