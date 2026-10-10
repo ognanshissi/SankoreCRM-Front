@@ -1,4 +1,5 @@
 import {
+  ProductDtoCategoryEnum,
   QuestionInputTypeEnum,
   RuleInputActionEnum,
 } from '@sankore/crm-api';
@@ -23,6 +24,12 @@ export interface EditableQuestion {
   sectionIndex: number;
   expanded: boolean;
   rules: EditableRule[];
+  /**
+   * BNF-F-16 — question non médicale, réutilisable pour pré-remplir un autre
+   * questionnaire. `QuestionInput` ne porte ni `isShareable` ni `isMedical` au
+   * contrat : la valeur ne vit qu'en mémoire, le temps que l'API l'expose.
+   */
+  isShareable: boolean;
 }
 
 export interface EditableRule {
@@ -49,6 +56,37 @@ export const QUESTION_TYPE_OPTIONS = [
   { label: 'Numérique',        value: QuestionInputTypeEnum.Numeric },
   { label: 'Texte libre',      value: QuestionInputTypeEnum.Text },
 ];
+
+/**
+ * BNF-F-16 — « S'applique à ». Aucun champ de portée n'existe au contrat :
+ * ni `appliesTo` ni `scope` sur `QualificationTemplateDto`,
+ * `CreateQualificationTemplateRequest` ou `UpdateQualificationTemplateRequest`.
+ * Les codes proposés suivent la nomenclature du foyer déjà utilisée par le
+ * socle (principal / conjoint / enfants) et restent à confirmer côté back.
+ */
+export const APPLIES_TO_OPTIONS = [
+  { label: 'Lead', value: 'Lead' },
+  { label: 'Chaque assuré', value: 'EachInsured' },
+  { label: 'Principal seulement', value: 'PrincipalOnly' },
+  { label: 'Conjoint seulement', value: 'SpouseOnly' },
+  { label: 'Enfants seulement', value: 'ChildrenOnly' },
+];
+
+/**
+ * Catégories d'assurance de l'enum `ProductDtoCategoryEnum` : un questionnaire
+ * santé n'est proposé que pour celles-ci (BNF-F-14 et BNF-F-16).
+ */
+export const INSURANCE_PRODUCT_CATEGORIES: string[] = [
+  ProductDtoCategoryEnum.Insurance,
+  ProductDtoCategoryEnum.HealthInsurance,
+  ProductDtoCategoryEnum.ForecastInsurance,
+];
+
+export function isInsuranceCategory(
+  category: string | null | undefined,
+): boolean {
+  return !!category && INSURANCE_PRODUCT_CATEGORIES.includes(category);
+}
 
 export const RULE_ACTION_OPTIONS = [
   { label: 'Afficher',      value: RuleInputActionEnum.Show },

@@ -1,0 +1,152 @@
+@if (compliance.isLoading()) {
+  <div class="flex justify-center py-24">
+    <tas-spinner size="10" class="text-primary"></tas-spinner>
+  </div>
+} @else if (hasFailed()) {
+  <tas-card class="block">
+    <div class="p-10 flex flex-col items-center text-center gap-3" role="alert">
+      <tas-icon
+        iconName="feather:alert-triangle"
+        class="text-functional-error"
+        style="font-size:28px"
+      ></tas-icon>
+      <div>
+        <p class="text-sm font-medium text-slate-700">Dossier indisponible</p>
+        <p class="text-sm text-slate-500 mt-1">
+          L'identité du principal et la complétude n'ont pas pu être chargées.
+        </p>
+      </div>
+      <button
+        tas-outlined-button
+        color="primary"
+        type="button"
+        (click)="retry()"
+        [disabled]="isRetrying()"
+        [isLoading]="isRetrying()"
+      >
+        Réessayer
+      </button>
+    </div>
+  </tas-card>
+} @else {
+  <div class="pb-6 flex flex-col gap-4">
+    <converted-lead-notice></converted-lead-notice>
+
+    <completeness-gauge
+      [completeness]="compliance.completeness()"
+      (gapSelected)="goToGap($event)"
+    ></completeness-gauge>
+
+    <tas-card class="block" #identiteSection>
+      <div class="p-4 border-b border-slate-100">
+        <p class="font-semibold text-slate-800">Identité du principal</p>
+        <p class="text-sm text-slate-500 mt-0.5">
+          Nom, naissance et adresse de la personne porteuse du dossier.
+        </p>
+      </div>
+
+      <div class="p-4 flex flex-col gap-5">
+        @if (isPrincipalEmpty()) {
+          <div
+            class="flex gap-3 p-3 rounded-lg bg-slate-50 border border-slate-200"
+            aria-live="polite"
+          >
+            <tas-icon
+              iconName="feather:info"
+              class="text-slate-400 shrink-0 mt-0.5"
+              style="font-size:14px"
+            ></tas-icon>
+            <p class="text-sm text-slate-600">
+              Aucune information d'identité n'est encore renseignée pour le principal.
+              @if (canEdit()) {
+                Complétez la section ci-dessous : la jauge se met à jour à l'enregistrement.
+              }
+            </p>
+          </div>
+        }
+
+        @if (canEdit()) {
+          @if (submitError(); as message) {
+            <div
+              class="p-3 rounded-lg border border-functional-error/40 bg-functional-error/5"
+              role="alert"
+            >
+              <p class="text-sm text-functional-error">{{ message }}</p>
+            </div>
+          }
+
+          <form [formRoot]="formSchema" class="flex flex-col gap-5">
+            <person-identity-fields
+              [field]="formSchema.identity"
+              [showAddress]="true"
+            ></person-identity-fields>
+
+            <div class="rounded-lg border border-slate-200 p-3">
+              <tas-form-field>
+                <tas-label>Activité d'origine</tas-label>
+                <tas-select
+                  [options]="activityOptions()"
+                  placeholder="Aucune activité rattachée"
+                  [formField]="formSchema.sourceActivityId"
+                ></tas-select>
+                @if (activities().length === 0) {
+                  <tas-hint>
+                    Aucune activité n'est enregistrée sur ce lead : rattachez l'enrichissement
+                    depuis l'onglet Activités après avoir journalisé l'appel ou la visite.
+                  </tas-hint>
+                } @else {
+                  <tas-hint>
+                    Rattachez cet enrichissement à l'appel ou à la visite qui l'a produit.
+                  </tas-hint>
+                }
+              </tas-form-field>
+            </div>
+
+            @if (formSchema().touched() && formSchema().invalid()) {
+              <tas-error>
+                Certains champs sont invalides : corrigez-les avant d'enregistrer.
+              </tas-error>
+            }
+          </form>
+
+          <div class="flex items-center justify-end gap-2 pt-1 border-t border-slate-100">
+            <button
+              tas-raised-button
+              color="primary"
+              type="button"
+              class="mt-3"
+              (click)="handleSubmit()"
+              [disabled]="formSchema().invalid() || formSchema().submitting()"
+              [isLoading]="formSchema().submitting()"
+            >
+              Enregistrer l'identité
+            </button>
+          </div>
+        } @else {
+          @if (!hasUpdatePermission()) {
+            <div class="flex gap-3 p-3 rounded-lg bg-slate-50 border border-slate-200">
+              <tas-icon
+                iconName="feather:lock"
+                class="text-slate-400 shrink-0 mt-0.5"
+                style="font-size:14px"
+              ></tas-icon>
+              <p class="text-sm text-slate-600">
+                Vous ne disposez pas du droit de modification des leads : cette section est
+                en lecture seule.
+              </p>
+            </div>
+          }
+
+          <dl class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3">
+            @for (row of readOnlyRows(); track row.label) {
+              <div class="flex flex-col">
+                <dt class="text-xs font-semibold text-slate-400">{{ row.label }}</dt>
+                <dd class="text-sm text-slate-800 mt-0.5">{{ row.value }}</dd>
+              </div>
+            }
+          </dl>
+        }
+      </div>
+    </tas-card>
+  </div>
+}

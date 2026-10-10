@@ -1,0 +1,265 @@
+<tas-side-drawer>
+  <tas-drawer-title>
+    <div class="flex items-center gap-2">
+      <tas-icon iconName="feather:plus-circle" style="font-size:18px"></tas-icon>
+      <span>Nouvelle souscription</span>
+    </div>
+  </tas-drawer-title>
+
+  <tas-drawer-content>
+    <!-- Progression -->
+    <ol class="mb-4 flex flex-wrap items-center gap-2 text-xs" aria-label="Étapes de la souscription">
+      @for (label of ['Ligne de produit', 'Termes', 'Bénéficiaires', 'Signature et envoi']; track label; let i = $index) {
+        <li
+          class="flex items-center gap-1.5 rounded-full border px-2.5 py-1"
+          [class.border-primary]="step() === i + 1"
+          [class.text-primary]="step() === i + 1"
+          [class.border-slate-200]="step() !== i + 1"
+          [class.text-slate-500]="step() !== i + 1"
+          [attr.aria-current]="step() === i + 1 ? 'step' : null"
+        >
+          <span class="tabular-nums font-medium">{{ i + 1 }}</span>
+          <span>{{ label }}</span>
+        </li>
+      }
+    </ol>
+
+    @if (submitError(); as message) {
+      <div class="mb-4 rounded-lg border border-functional-error/40 bg-functional-error/5 p-3">
+        <p class="text-sm text-functional-error">{{ message }}</p>
+      </div>
+    }
+
+    <!-- Étape 1 : choix de la ligne de produit -->
+    @if (step() === 1) {
+      @if (loadFailed()) {
+        <div class="rounded-lg border border-slate-200 p-8 text-center">
+          <p class="text-sm font-medium text-slate-700">Le catalogue n'a pas pu être chargé</p>
+          <p class="mt-1 text-sm text-slate-500">Fermez le panneau et réessayez.</p>
+        </div>
+      } @else {
+        <tas-form-field class="mb-3 block">
+          <tas-label>Rechercher une ligne de produit</tas-label>
+          <input
+            tasInput
+            type="search"
+            placeholder="Nom, code ou catégorie"
+            [ngModel]="search()"
+            (ngModelChange)="search.set($event)"
+            [ngModelOptions]="{ standalone: true }"
+          />
+        </tas-form-field>
+
+        <tas-table
+          [data]="productRows()"
+          identifierField="id"
+          [config]="tableConfig"
+          [isLoading]="isLoadingProducts()"
+        >
+          <ng-template #body let-item>
+            <tr>
+              @if (item.kind === 'group') {
+                <td [attr.colspan]="1" class="bg-slate-50">
+                  <div class="flex items-center gap-2 px-3 py-2">
+                    <tas-icon iconName="feather:folder" class="text-slate-400" style="font-size:13px"></tas-icon>
+                    <span class="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      {{ item.categoryLabel }}
+                    </span>
+                    <span class="text-xs text-slate-400 tabular-nums">({{ item.count }})</span>
+                  </div>
+                </td>
+              } @else {
+                <td [attr.colspan]="1">
+                  <div class="flex flex-wrap items-center justify-between gap-2 p-3">
+                    <div class="min-w-0">
+                      <p class="text-sm font-medium text-slate-800">{{ item.name }}</p>
+                      <p class="text-xs text-slate-500">
+                        @if (item.code) { {{ item.code }} · }
+                        {{ item.roleCount }} rôle(s) de bénéficiaire
+                        @if (item.product?.allowMultipleHoldings === false) {
+                          · un seul contrat par client
+                        }
+                      </p>
+                    </div>
+                    <button
+                      tas-outlined-button
+                      color="primary"
+                      type="button"
+                      class="text-xs"
+                      (click)="selectProduct(item.product)"
+                    >
+                      Choisir
+                      <tas-icon iconName="feather:arrow-right" style="font-size:12px"></tas-icon>
+                    </button>
+                  </div>
+                </td>
+              }
+            </tr>
+          </ng-template>
+        </tas-table>
+      }
+    }
+
+    <!-- Étape 2 : termes -->
+    @if (step() === 2) {
+      <div class="mb-3 rounded-lg border border-slate-200 p-3">
+        <p class="text-sm font-semibold text-slate-800">{{ productLabel() }}</p>
+        <p class="text-xs text-slate-500">{{ categoryLabel() }}</p>
+      </div>
+
+      <p class="mb-3 text-xs text-slate-500">
+        Tous les termes sont facultatifs ici : le contrat ne dit pas lesquels s'appliquent à
+        chaque catégorie, et le serveur refuse la souscription s'il en manque un.
+      </p>
+
+      <form [formRoot]="termsForm" class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <tas-form-field>
+          <tas-label>Capital assuré</tas-label>
+          <input tasInput type="number" [formField]="termsForm.insuredCapital" />
+        </tas-form-field>
+        <tas-form-field>
+          <tas-label>Prime</tas-label>
+          <input tasInput type="number" [formField]="termsForm.premium" />
+        </tas-form-field>
+        <tas-form-field>
+          <tas-label>Périodicité</tas-label>
+          <input tasInput type="text" [formField]="termsForm.periodicity" />
+          <tas-hint>Mensuelle, trimestrielle, annuelle…</tas-hint>
+        </tas-form-field>
+        <tas-form-field>
+          <tas-label>Durée (mois)</tas-label>
+          <input tasInput type="number" [formField]="termsForm.durationMonths" />
+        </tas-form-field>
+        <tas-form-field>
+          <tas-label>Taux annuel (%)</tas-label>
+          <input tasInput type="number" [formField]="termsForm.annualRatePercent" />
+        </tas-form-field>
+        <tas-form-field>
+          <tas-label>Dépôt initial</tas-label>
+          <input tasInput type="number" [formField]="termsForm.initialDeposit" />
+        </tas-form-field>
+        <tas-form-field>
+          <tas-label>Devise</tas-label>
+          <input tasInput type="text" [formField]="termsForm.currency" />
+        </tas-form-field>
+        <tas-form-field>
+          <tas-label>Prise d'effet</tas-label>
+          <input tasInput type="date" [formField]="termsForm.effectiveFrom" />
+        </tas-form-field>
+        <tas-form-field class="sm:col-span-2">
+          <tas-label>Remarques</tas-label>
+          <input tasInput type="text" [formField]="termsForm.notes" />
+        </tas-form-field>
+      </form>
+    }
+
+    <!-- Étape 3 : désignations -->
+    @if (step() === 3) {
+      <div class="mb-3 rounded-lg border border-slate-200 p-3">
+        <p class="text-sm font-semibold text-slate-800">{{ productLabel() }}</p>
+        <p class="text-xs text-slate-500">{{ categoryLabel() }}</p>
+      </div>
+
+      @if (requiredFields().length > 0) {
+        <tas-alert type="info" class="mb-3 block">
+          <p class="text-sm">
+            Cette ligne de produit exige : {{ requiredFields().join(', ') }}.
+          </p>
+        </tas-alert>
+      }
+
+      <designations-editor
+        [clientId]="data.clientId"
+        [roles]="policyRoles()"
+        [householdEnabled]="householdEnabled()"
+      ></designations-editor>
+    }
+
+    <!-- Étape 4 : signature puis envoi -->
+    @if (step() === 4) {
+      @if (holding(); as h) {
+        <div class="flex flex-col gap-4">
+          <div class="rounded-lg border border-slate-200 p-3">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <p class="text-sm font-semibold text-slate-800">{{ productLabel() }}</p>
+                <p class="text-xs text-slate-500">
+                  {{ categoryLabel() }}
+                  @if (h.externalRef) { · {{ h.externalRef }} }
+                </p>
+              </div>
+              <tas-tag [severity]="statusSeverity()">{{ statusLabel() }}</tas-tag>
+            </div>
+          </div>
+
+          @if (h.status === 'PendingSync') {
+            <tas-alert type="info">
+              <p class="text-sm">
+                Envoi en cours au back-office. Le statut se met à jour automatiquement ici.
+              </p>
+            </tas-alert>
+          }
+
+          <div class="rounded-lg border border-slate-200 p-3">
+            <p class="text-sm font-semibold text-slate-800">Suivi</p>
+            <holding-timeline [holding]="h" class="mt-2 block"></holding-timeline>
+          </div>
+
+          <holding-signature-actions
+            [holding]="h"
+            (changed)="onHoldingChanged()"
+          ></holding-signature-actions>
+
+          <p class="text-xs text-slate-500">
+            Vous pouvez fermer ce panneau : le produit reste accessible depuis l'onglet
+            « Produits détenus », où la signature et l'envoi peuvent être reprises.
+          </p>
+        </div>
+      } @else {
+        <div class="flex justify-center py-20">
+          <tas-spinner size="10" class="text-primary"></tas-spinner>
+        </div>
+      }
+    }
+  </tas-drawer-content>
+
+  <tas-drawer-action>
+    <div class="flex flex-wrap items-center justify-end gap-2">
+      @switch (step()) {
+        @case (1) {
+          <button tas-outlined-button color="primary" type="button" (click)="close()">
+            Annuler
+          </button>
+        }
+        @case (2) {
+          <button tas-outlined-button color="primary" type="button" (click)="backToProducts()">
+            Retour
+          </button>
+          <button tas-raised-button color="primary" type="button" (click)="goToDesignations()">
+            Continuer
+          </button>
+        }
+        @case (3) {
+          <button tas-outlined-button color="primary" type="button" (click)="backToTerms()">
+            Retour
+          </button>
+          <button
+            tas-raised-button
+            color="primary"
+            type="button"
+            [isLoading]="isSubscribing()"
+            [disabled]="isSubscribing() || designationProblems().length > 0"
+            (click)="createSubscription()"
+          >
+            Créer la souscription
+          </button>
+        }
+        @case (4) {
+          <button tas-raised-button color="primary" type="button" (click)="close()">
+            Terminer
+          </button>
+        }
+      }
+    </div>
+  </tas-drawer-action>
+</tas-side-drawer>

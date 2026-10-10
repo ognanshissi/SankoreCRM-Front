@@ -1,0 +1,253 @@
+@if (householdStore.isLoading()) {
+  <div class="flex justify-center py-24">
+    <tas-spinner size="10" class="text-primary"></tas-spinner>
+  </div>
+} @else if (householdStore.loadFailed()) {
+  <tas-card class="block">
+    <div class="p-10 text-center">
+      <tas-icon
+        iconName="feather:alert-circle"
+        class="text-functional-error"
+        style="font-size:28px"
+      ></tas-icon>
+      <p class="text-sm font-medium text-slate-700 mt-2">Le foyer n'a pas pu être chargé</p>
+      <p class="text-sm text-slate-500 mt-1">
+        La composition du foyer est momentanément indisponible.
+      </p>
+      <button tas-outlined-button color="primary" type="button" class="mt-4" (click)="reload()">
+        <tas-icon iconName="feather:refresh-cw" style="font-size:13px"></tas-icon>
+        Réessayer
+      </button>
+    </div>
+  </tas-card>
+} @else {
+  <div class="flex flex-col gap-4">
+    <!-- Le client lui-même : c'est le principal du foyer -->
+    <tas-card class="block">
+      <div class="p-4">
+        <div class="flex items-start justify-between gap-3 flex-wrap">
+          <div class="min-w-0">
+            <p class="text-xs text-slate-400">Principal du foyer</p>
+            <div class="flex items-center gap-2 flex-wrap mt-0.5">
+              <p class="text-sm font-medium text-slate-800">
+                {{ householdStore.principalLabel() }}
+              </p>
+              <pep-exposure-badge [exposed]="principalPepExposed()"></pep-exposure-badge>
+            </div>
+            <p class="text-xs text-slate-500 mt-1">{{ principalAddressLabel() }}</p>
+
+            @if (principalDesignations().length > 0) {
+              <ul class="mt-2 flex flex-col gap-1">
+                @for (d of principalDesignations(); track d.holdingId + d.roleLabel) {
+                  <li class="text-xs text-slate-600 flex items-center gap-1.5 flex-wrap">
+                    <span class="font-medium">{{ d.productLabel }}</span>
+                    <span>— {{ d.roleLabel }}</span>
+                    @if (d.toReview) {
+                      <tas-tag severity="warning">À revoir</tas-tag>
+                    }
+                  </li>
+                }
+              </ul>
+            }
+          </div>
+
+          @if (canEdit()) {
+            <button
+              tas-outlined-button
+              color="primary"
+              type="button"
+              [attr.aria-label]="'Statut PPE de ' + householdStore.principalLabel()"
+              (click)="openPrincipalPep()"
+            >
+              <tas-icon iconName="feather:flag" style="font-size:13px"></tas-icon>
+              Statut PPE
+            </button>
+          }
+        </div>
+
+        <div
+          class="grid grid-cols-2 sm:grid-cols-4 gap-x-6 gap-y-3 mt-4 pt-4 border-t border-slate-100"
+        >
+          <div>
+            <p class="text-xs text-slate-400 mb-1">Membres actifs</p>
+            <p class="text-sm font-medium text-slate-800 tabular-nums">{{ members().length }}</p>
+          </div>
+          <div>
+            <p class="text-xs text-slate-400 mb-1">Conjoint</p>
+            <p class="text-sm font-medium text-slate-800">
+              {{ hasActiveSpouse() ? 'Renseigné' : 'Non renseigné' }}
+            </p>
+          </div>
+          <div>
+            <p class="text-xs text-slate-400 mb-1">Enfants</p>
+            <p class="text-sm font-medium text-slate-800 tabular-nums">
+              {{ childrenCount() }}
+              @if (householdStore.maxChildren() !== null) {
+                <span class="text-xs font-normal text-slate-400">
+                  / {{ householdStore.maxChildren() }} autorisés
+                </span>
+              }
+            </p>
+          </div>
+          <div>
+            <p class="text-xs text-slate-400 mb-1">Exposition PPE du foyer</p>
+            <p class="text-sm font-medium text-slate-800">
+              {{ householdStore.hasPepExposure() ? 'Oui' : 'Non' }}
+            </p>
+          </div>
+        </div>
+      </div>
+    </tas-card>
+
+    <!-- Statut PPE de la personne choisie (client ou membre) -->
+    @if (pepPanelOpen()) {
+      <tas-card class="block">
+        <div class="p-4">
+          <div class="flex items-start justify-between gap-3">
+            <div class="min-w-0">
+              <p class="text-sm font-medium text-slate-800">
+                Statut PPE — {{ pepSubject().label }}
+              </p>
+              <p class="text-xs text-slate-500 mt-0.5">
+                L'exposition est conservée avec son auteur et sa date.
+              </p>
+            </div>
+            <button
+              tas-button
+              iconButton
+              type="button"
+              aria-label="Fermer le bloc PPE"
+              (click)="closePepPanel()"
+            >
+              <tas-icon iconName="feather:x" style="font-size:14px"></tas-icon>
+            </button>
+          </div>
+
+          <form [formRoot]="pepForm" class="mt-4">
+            <pep-fieldset
+              [field]="pepForm"
+              [subjectLabel]="pepSubject().label"
+              [canReadDetails]="canReadPep()"
+              [readOnly]="!canEdit()"
+            ></pep-fieldset>
+          </form>
+
+          <div class="flex items-center justify-end gap-2 mt-4 pt-4 border-t border-slate-100">
+            <button tas-outlined-button color="primary" type="button" (click)="closePepPanel()">
+              Annuler
+            </button>
+            <button
+              tas-raised-button
+              color="primary"
+              type="button"
+              [disabled]="!canEdit() || pepForm().invalid() || pepForm().submitting()"
+              [isLoading]="pepForm().submitting()"
+              (click)="savePep()"
+            >
+              Enregistrer
+            </button>
+          </div>
+        </div>
+      </tas-card>
+    }
+
+    <!-- Membres du foyer -->
+    <div class="flex items-end justify-between gap-3 flex-wrap">
+      <div>
+        <p class="text-sm font-medium text-slate-800">Membres du foyer</p>
+        <p class="text-xs text-slate-500 mt-0.5">
+          Conjoint, enfants et personnes à charge, avec les produits sur lesquels chacun est
+          désigné.
+        </p>
+      </div>
+
+      @if (canEdit()) {
+        <div class="flex items-center gap-2 flex-wrap">
+          @if (!hasActiveSpouse()) {
+            <button tas-outlined-button color="primary" type="button" (click)="addSpouse()">
+              <tas-icon iconName="feather:heart" style="font-size:13px"></tas-icon>
+              Ajouter le conjoint
+            </button>
+          }
+          <button tas-raised-button color="primary" type="button" (click)="addChild()">
+            <tas-icon iconName="feather:plus" style="font-size:13px"></tas-icon>
+            Ajouter un enfant
+          </button>
+        </div>
+      } @else {
+        <p class="text-xs text-slate-400">
+          @if (clientStore.isReadOnly()) {
+            Cette fiche est en lecture seule : le foyer ne peut plus être modifié.
+          } @else {
+            Vous n'avez pas le droit de modifier ce foyer.
+          }
+        </p>
+      }
+    </div>
+
+    @if (designationsFailed()) {
+      <div
+        class="flex items-start gap-3 p-3 rounded-lg border border-amber-300 bg-amber-50"
+        role="alert"
+      >
+        <tas-icon
+          iconName="feather:alert-triangle"
+          class="text-amber-600 mt-0.5"
+          style="font-size:16px"
+        ></tas-icon>
+        <div class="text-sm">
+          <p class="font-medium text-amber-900">Désignations indisponibles</p>
+          <p class="text-amber-800">
+            Les produits détenus n'ont pas pu être lus : la colonne « Désignations » reste vide,
+            ce qui ne veut pas dire qu'un membre n'est désigné nulle part. Un retrait resterait
+            donc sans avertissement complet.
+          </p>
+        </div>
+      </div>
+    }
+
+    <!--
+      Le chargement affiché est celui des désignations, pas celui du foyer, déjà
+      traité plus haut : montrer les membres avant que les désignations soient lues
+      afficherait une colonne « Désignations » vide, et un retrait décidé sur cette
+      vue partirait sans son avertissement.
+    -->
+    <household-members-list
+      [members]="members()"
+      [isLoading]="designationsLoading()"
+      [canEdit]="canEdit()"
+      [canReadPep]="canReadPep()"
+      [showDesignations]="true"
+      emptyTitle="Aucun membre dans le foyer"
+      emptyMessage="Ajoutez le conjoint ou un enfant pour refléter la situation familiale du client."
+      (edit)="editMember($event)"
+      (remove)="removeMember($event)"
+      (editPep)="openMemberPep($event)"
+    ></household-members-list>
+
+    <!-- Historique : les retraits sont logiques, la ligne reste -->
+    @if (removedMembers().length > 0) {
+      <div class="mt-2">
+        <p class="text-sm font-medium text-slate-800">Membres retirés</p>
+        <p class="text-xs text-slate-500 mt-0.5 mb-2">
+          Conservés pour l'historique du foyer, avec le motif de leur retrait.
+        </p>
+        <household-members-list
+          [members]="removedMembers()"
+          [canEdit]="false"
+          [canReadPep]="canReadPep()"
+          [showDesignations]="true"
+          emptyTitle="Aucun membre retiré"
+          emptyMessage="Les retraits apparaîtront ici."
+        ></household-members-list>
+      </div>
+    }
+
+    @if (members().length > 0) {
+      <p class="text-xs text-slate-400">
+        <tas-tag severity="info">Repris du lead</tas-tag>
+        signale un membre créé par la conversion du lead d'origine.
+      </p>
+    }
+  </div>
+}

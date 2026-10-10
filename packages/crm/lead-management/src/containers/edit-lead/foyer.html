@@ -1,0 +1,164 @@
+@if (compliance.isLoading()) {
+  <div class="flex justify-center py-24">
+    <tas-spinner size="10" class="text-primary"></tas-spinner>
+  </div>
+} @else if (compliance.loadFailed()) {
+  <tas-card class="block">
+    <div class="p-10 text-center">
+      <tas-icon
+        iconName="feather:alert-triangle"
+        class="text-functional-error"
+        style="font-size:28px"
+      ></tas-icon>
+      <p class="text-sm font-medium text-slate-700 mt-2">Foyer indisponible</p>
+      <p class="text-sm text-slate-500 mt-1">
+        Le foyer de ce lead n'a pas pu être chargé.
+      </p>
+      <div class="mt-4">
+        <button tas-outlined-button color="primary" type="button" (click)="reload()">
+          <tas-icon iconName="feather:refresh-cw" style="font-size:13px"></tas-icon>
+          Réessayer
+        </button>
+      </div>
+    </div>
+  </tas-card>
+} @else if (!compliance.householdEnabled()) {
+  <tas-card class="block">
+    <div class="p-10 text-center">
+      <tas-icon iconName="feather:info" class="text-slate-300" style="font-size:28px"></tas-icon>
+      <p class="text-sm font-medium text-slate-700 mt-2">Foyer non applicable</p>
+      <p class="text-sm text-slate-500 mt-1 max-w-md mx-auto">
+        La ligne de produit de ce lead n'active pas la gestion du foyer. Le conjoint et les
+        enfants ne sont donc pas demandés pour ce dossier.
+      </p>
+    </div>
+  </tas-card>
+} @else {
+  <div class="pb-6 flex flex-col gap-4">
+    <!-- Principal -->
+    <tas-card class="block">
+      <div class="p-4 flex flex-col gap-3">
+        <div class="flex items-start justify-between gap-3 flex-wrap">
+          <div class="min-w-0">
+            <p class="text-xs uppercase tracking-wide text-slate-400">Principal</p>
+            <p class="text-sm font-medium text-slate-800 mt-0.5">
+              {{ compliance.principalLabel() }}
+            </p>
+            <p class="text-xs text-slate-500 mt-1">{{ principalAddressLabel() }}</p>
+          </div>
+
+          <div class="flex items-center gap-2 flex-wrap">
+            @if (principalPep().isPep) {
+              <pep-exposure-badge [exposed]="true"></pep-exposure-badge>
+            } @else {
+              <tas-tag severity="neutral">Pas d'exposition PPE</tas-tag>
+            }
+            <button
+              tas-outlined-button
+              color="primary"
+              type="button"
+              [attr.aria-label]="'Statut PPE de ' + compliance.principalLabel()"
+              (click)="openPrincipalPep()"
+            >
+              <tas-icon iconName="feather:flag" style="font-size:13px"></tas-icon>
+              {{ canEditPep() ? 'Statut PPE' : 'Voir le statut PPE' }}
+            </button>
+          </div>
+        </div>
+
+        @if (principalPep().isPep && canReadPep()) {
+          <dl class="grid grid-cols-1 sm:grid-cols-4 gap-3 pt-3 border-t border-slate-100">
+            <div>
+              <dt class="text-xs text-slate-400">Fonction</dt>
+              <dd class="text-sm text-slate-700">{{ principalPep().function ?? '—' }}</dd>
+            </div>
+            <div>
+              <dt class="text-xs text-slate-400">Pays</dt>
+              <dd class="text-sm text-slate-700">{{ principalPep().countryCode ?? '—' }}</dd>
+            </div>
+            <div>
+              <dt class="text-xs text-slate-400">Fin de fonction</dt>
+              <dd class="text-sm text-slate-700">{{ principalPep().functionEndDate ?? '—' }}</dd>
+            </div>
+            <div>
+              <dt class="text-xs text-slate-400">Lien</dt>
+              <dd class="text-sm text-slate-700">{{ linkLabel(principalPep().link) }}</dd>
+            </div>
+          </dl>
+        } @else if (principalPep().isPep && !canReadPep()) {
+          <p class="flex items-center gap-2 text-xs text-slate-500 pt-3 border-t border-slate-100">
+            <tas-icon iconName="feather:lock" style="font-size:12px"></tas-icon>
+            Le détail de l'exposition PPE ne vous est pas accessible.
+          </p>
+        }
+      </div>
+    </tas-card>
+
+    <!-- Actions et limites de la ligne de produit -->
+    <tas-card class="block">
+      <div class="p-4 flex items-start justify-between gap-3 flex-wrap">
+        <div class="min-w-0">
+          <p class="text-sm font-medium text-slate-800">Membres du foyer</p>
+          <p class="text-xs text-slate-500 mt-1">{{ limitsLabel() }}</p>
+          @if (!canEdit()) {
+            <p class="text-xs text-slate-500 mt-1">
+              @if (readOnlyBecauseConverted()) {
+                Ce lead est converti : le foyer se modifie désormais depuis la fiche client.
+              } @else {
+                Vous n'avez pas le droit de modifier ce lead.
+              }
+            </p>
+          }
+        </div>
+
+        @if (canEdit()) {
+          <div class="flex items-center gap-2 flex-wrap">
+            @if (canAddSpouse()) {
+              <button tas-outlined-button color="primary" type="button" (click)="addSpouse()">
+                <tas-icon iconName="feather:heart" style="font-size:13px"></tas-icon>
+                Ajouter le conjoint
+              </button>
+            }
+            @if (childrenLimitReached()) {
+              <span class="text-xs text-slate-500">
+                Nombre maximal d'enfants atteint pour cette ligne de produit.
+              </span>
+            } @else {
+              <button tas-raised-button color="primary" type="button" (click)="addChild()">
+                <tas-icon iconName="feather:plus" style="font-size:13px"></tas-icon>
+                Ajouter un enfant
+              </button>
+            }
+          </div>
+        }
+      </div>
+    </tas-card>
+
+    <household-members-list
+      [members]="activeMembers()"
+      [canEdit]="canEdit()"
+      [canReadPep]="canReadPep()"
+      emptyTitle="Aucun membre dans le foyer"
+      emptyMessage="Ajoutez le conjoint ou un enfant pour constituer le foyer du prospect."
+      (edit)="editMember($event)"
+      (remove)="removeMember($event)"
+      (editPep)="openMemberPep($event)"
+    ></household-members-list>
+
+    <!-- Historique : les membres retirés restent consultables -->
+    @if (removedMembers().length > 0) {
+      <section class="flex flex-col gap-2" aria-labelledby="foyer-historique">
+        <h3 id="foyer-historique" class="text-sm font-medium text-slate-700">
+          Historique du foyer ({{ removedMembers().length }})
+        </h3>
+        <household-members-list
+          [members]="removedMembers()"
+          [canEdit]="false"
+          [canReadPep]="canReadPep()"
+          emptyTitle="Aucun retrait"
+          emptyMessage="Aucun membre n'a été retiré de ce foyer."
+        ></household-members-list>
+      </section>
+    }
+  </div>
+}

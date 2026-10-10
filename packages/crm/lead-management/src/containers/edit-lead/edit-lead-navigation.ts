@@ -6,7 +6,12 @@ import { TasSpinner } from '@talisoft/ui/spinner';
 import { Anchor, Button } from '@talisoft/ui/button';
 import { LeadsApiService, LeadDto, NextActionDto, LeadIntentLevelDto, CloseLeadRequestReasonEnum } from '@sankore/crm-api';
 import { ConfirmDialogService } from '@talisoft/ui/confirm-dialog';
-import { BreadcrumbService, PermissionsService } from '@sankore/crm/common';
+import {
+  BreadcrumbService,
+  FatcaStatusBadge,
+  PepExposureBadge,
+  PermissionsService,
+} from '@sankore/crm/common';
 import { SnackbarService } from '@talisoft/ui/snackbar';
 import { SideDrawerService } from '@talisoft/ui/side-drawer';
 import { ReassignLeadDrawer } from './reassign-lead-drawer';
@@ -18,6 +23,7 @@ import { TimeagoPipe } from '@talisoft/ui/timeago';
 import { Menu, MenuItem, TasMenuTrigger } from '@talisoft/ui/menu';
 import { catchError, EMPTY, exhaustMap, finalize } from 'rxjs';
 import { LeadEditContext } from './lead-edit-context';
+import { LeadComplianceStore } from './lead-compliance-store';
 
 interface LeadMenuItem {
   label: string;
@@ -94,6 +100,8 @@ function parseFactors(factorsJson: string | null | undefined): ScoreFactor[] {
     Anchor,
     Button,
     TasTag,
+    PepExposureBadge,
+    FatcaStatusBadge,
     TimeagoPipe,
     Menu,
     MenuItem,
@@ -132,6 +140,10 @@ function parseFactors(factorsJson: string | null | undefined): ScoreFactor[] {
         </div>
         @if (!isLoading() && lead()) {
           <tas-tag [severity]="statusMeta().severity">{{ statusMeta().label }}</tas-tag>
+          <pep-exposure-badge [exposed]="compliance.hasPepExposure()"></pep-exposure-badge>
+          @if (compliance.fatcaEnabled()) {
+            <fatca-status-badge [status]="compliance.principalFatcaStatus()"></fatca-status-badge>
+          }
 
           <!-- Primary actions (always visible) -->
           @if (lead()!.status === 'New' && !lead()!.lastActivityAt) {
@@ -143,10 +155,24 @@ function parseFactors(factorsJson: string | null | undefined): ScoreFactor[] {
             </button>
           }
           @if (lead()!.status !== 'Converted' && lead()!.status !== 'Lost' && lead()!.status !== 'Expired') {
-            <button tas-raised-button color="primary" type="button" (click)="openConvertWizard()">
+            <!--
+              Désactivé sur le canConvert de l'API (BNF-F-08), jamais sur une règle recalculée
+              ici. Le libellé change pour un lead rattaché à un client existant (BNF-F-19) :
+              aucune fiche ne sera créée, c'est une souscription.
+            -->
+            <button tas-raised-button color="primary" type="button"
+              [disabled]="convertDisabled()"
+              [attr.title]="convertDisabledHint()"
+              [attr.aria-describedby]="convertDisabled() ? 'convert-disabled-hint' : null"
+              (click)="openConvertWizard()">
               <tas-icon iconName="feather:user-check" style="font-size:14px"></tas-icon>
-              Convertir en client
+              {{ convertActionLabel() }}
             </button>
+            @if (convertDisabled() && !compliance.isLoading()) {
+              <span id="convert-disabled-hint" class="sr-only">
+                {{ convertDisabledHint() }}
+              </span>
+            }
           }
           @if (lead()!.status === 'Lost' || lead()!.status === 'Expired' || lead()!.status === 'Recycled') {
             <button tas-button color="primary" type="button"
@@ -448,6 +474,7 @@ export class EditLeadNavigation implements OnDestroy {
   private readonly _confirmDialog = inject(ConfirmDialogService);
   private readonly _router = inject(Router);
   private readonly _leadEditContext = inject(LeadEditContext);
+  protected readonly compliance = inject(LeadComplianceStore);
   private _pollTimer: ReturnType<typeof setInterval> | null = null;
 
   public readonly id = input.required<string>();
@@ -456,6 +483,33 @@ export class EditLeadNavigation implements OnDestroy {
   public lead = signal<LeadDto | null>(null);
   /** Lu par le template : un lead converti n'offre plus d'action d'écriture. */
   public readonly isConverted = computed(() => this.lead()?.status === 'Converted');
+
+  /**
+   * BNF-F-08 : « Convertir » n'est actif que si l'API l'autorise. La complétude *indisponible*
+   * n'est pas un refus : si l'appel a échoué, on laisse le serveur trancher (il répond 409 avec
+   * le motif) plutôt que de rendre l'action inatteignable.
+   */
+  public readonly convertDisabled = computed(() => {
+    if (this.compliance.isLoading()) return true;
+    if (this.compliance.completeness() === null) return false;
+    return !this.compliance.canConvert();
+  });
+
+  public readonly convertDisabledHint = computed(() => {
+    if (!this.convertDisabled()) return null;
+    if (this.compliance.isLoading()) return 'Contrôle du dossier en cours…';
+    return "Dossier incomplet : complétez les éléments manquants listés dans l'onglet Identité.";
+  });
+
+  /**
+   * BNF-F-19 : un lead rattaché à un client existant ne crée pas de fiche. Le contrat n'a pas de
+   * drapeau dédié — `customerReference`, saisie à la capture, est le seul indice disponible.
+   */
+  public readonly convertActionLabel = computed(() => {
+    const lead = this.lead();
+    const attached = !!lead?.customerReference?.trim() || !!lead?.convertedToCustomerId;
+    return attached ? 'Créer la souscription' : 'Convertir en client';
+  });
   public notFound = signal(false);
   public showFactors = signal(false);
   public isReopening = signal(false);
@@ -495,6 +549,10 @@ export class EditLeadNavigation implements OnDestroy {
 
   public readonly menuItems: LeadMenuItem[] = [
     { label: 'Informations',  icon: 'feather:user',        route: 'informations' },
+    { label: 'Identité',      icon: 'feather:user-check',   route: 'identite' },
+    { label: 'Foyer',         icon: 'feather:users',        route: 'foyer' },
+    { label: 'Conformité',    icon: 'feather:flag',         route: 'conformite' },
+    { label: 'Questionnaires', icon: 'feather:clipboard',   route: 'questionnaires' },
     { label: 'Qualification', icon: 'feather:clipboard',    route: 'qualification' },
     { label: 'Score',         icon: 'feather:bar-chart-2',  route: 'score' },
     { label: 'Timeline',      icon: 'feather:clock',        route: 'timeline' },
@@ -512,6 +570,11 @@ export class EditLeadNavigation implements OnDestroy {
     // fois : il suffit qu'un jour un `lead.set()` de plus soit ajouté ici pour
     // que les onglets restent corrects.
     effect(() => this._leadEditContext.set(this.lead()));
+
+    // Le foyer, la PPE, FATCA et les questionnaires sont chargés une fois pour
+    // la fiche entière : l'en-tête en a besoin pour ses badges, et chaque onglet
+    // les relirait sinon pour son compte.
+    effect(() => this.compliance.load(this.id()));
 
     effect(() => {
       const id = this.id();

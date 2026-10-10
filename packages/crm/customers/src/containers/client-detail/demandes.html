@@ -1,0 +1,370 @@
+@if (!canRead()) {
+  <tas-card class="block">
+    <div class="p-10 text-center">
+      <tas-icon iconName="feather:lock" class="text-slate-300" style="font-size:28px"></tas-icon>
+      <p class="text-sm font-medium text-slate-700 mt-2">Demandes non accessibles</p>
+      <p class="text-sm text-slate-500 mt-1">
+        La lecture des demandes d'un client demande le droit « Opportunités : lecture ».
+      </p>
+    </div>
+  </tas-card>
+} @else {
+  <div class="flex flex-col gap-4">
+    <div class="flex items-end justify-between gap-3 flex-wrap">
+      <div>
+        <p class="text-sm font-medium text-slate-800">Demandes en cours</p>
+        <p class="text-xs text-slate-500 mt-0.5">
+          Les demandes ouvertes pour de nouveaux produits, avec leur statut, l'agent assigné et
+          leur date.
+        </p>
+      </div>
+
+      <div class="flex items-center gap-2 flex-wrap">
+        @if (closedRows().length > 0) {
+          <button
+            tas-text-button
+            color="primary"
+            type="button"
+            [attr.aria-pressed]="showClosed()"
+            (click)="toggleClosed()"
+          >
+            {{ showClosed() ? 'Masquer' : 'Afficher' }} les demandes clôturées ({{
+              closedRows().length
+            }})
+          </button>
+        }
+        <button
+          tas-outlined-button
+          color="primary"
+          type="button"
+          aria-label="Rafraîchir les demandes"
+          (click)="reload()"
+        >
+          <tas-icon iconName="feather:refresh-cw" style="font-size:13px"></tas-icon>
+          Rafraîchir
+        </button>
+        @if (canCreate()) {
+          <button tas-raised-button color="primary" type="button" (click)="openForm()">
+            <tas-icon iconName="feather:plus" style="font-size:13px"></tas-icon>
+            Nouvelle demande
+          </button>
+        }
+      </div>
+    </div>
+
+    @if (!canCreate() && clientStore.isReadOnly()) {
+      <p class="text-xs text-slate-400">
+        Cette fiche est en lecture seule : aucune nouvelle demande ne peut y être rattachée.
+      </p>
+    }
+
+    <!-- Nouvelle demande, rattachée d'emblée au client -->
+    @if (formOpen()) {
+      <tas-card class="block">
+        <div class="p-4">
+          <div class="flex items-start justify-between gap-3">
+            <div class="min-w-0">
+              <p class="text-sm font-medium text-slate-800">Nouvelle demande</p>
+              <p class="text-xs text-slate-500 mt-0.5">
+                Elle est créée rattachée à ce client : inutile de ressaisir son identité.
+              </p>
+            </div>
+            <button
+              tas-button
+              iconButton
+              type="button"
+              aria-label="Fermer le formulaire de demande"
+              (click)="closeForm()"
+            >
+              <tas-icon iconName="feather:x" style="font-size:14px"></tas-icon>
+            </button>
+          </div>
+
+          @if (submitError(); as message) {
+            <div
+              class="mt-4 p-3 rounded-lg border border-functional-error/40 bg-functional-error/5"
+              role="alert"
+            >
+              <p class="text-sm text-functional-error">{{ message }}</p>
+            </div>
+          }
+
+          @if (duplicateWarning() !== null) {
+            <div
+              class="mt-4 p-3 rounded-lg border border-amber-300 bg-amber-50"
+              role="alert"
+            >
+              <p class="text-sm font-medium text-amber-900">
+                Une demande semblable existe déjà
+                @if (duplicateWarning()! > 0) {
+                  ({{ duplicateWarning() }}
+                  {{ duplicateWarning()! > 1 ? 'demandes' : 'demande' }})
+                }
+              </p>
+              <p class="text-xs text-amber-800 mt-0.5">
+                Rien n'a été créé. Vérifiez la liste ci-dessous avant d'insister.
+              </p>
+              <button
+                tas-outlined-button
+                color="warn"
+                type="button"
+                class="mt-2"
+                (click)="createAnyway()"
+              >
+                Créer quand même
+              </button>
+            </div>
+          }
+
+          <form [formRoot]="formSchema" class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <tas-form-field>
+              <tas-label>
+                Produit demandé <span class="text-functional-error">*</span>
+              </tas-label>
+              @if (productAsFreeText()) {
+                <input
+                  tasInput
+                  type="text"
+                  placeholder="Produit souhaité par le client"
+                  [formField]="formSchema.product"
+                />
+              } @else {
+                <tas-select
+                  [options]="productOptions()"
+                  placeholder="Choisissez le produit"
+                  [formField]="formSchema.product"
+                ></tas-select>
+              }
+              @if (formSchema.product().touched() && formSchema.product().invalid()) {
+                <tas-error>{{ formSchema.product().errors()[0].message }}</tas-error>
+              }
+            </tas-form-field>
+
+            <tas-form-field>
+              <tas-label>Intitulé</tas-label>
+              <input
+                tasInput
+                type="text"
+                placeholder="Laissez vide pour reprendre le produit"
+                [formField]="formSchema.title"
+              />
+            </tas-form-field>
+
+            <tas-form-field>
+              <tas-label>Montant estimé</tas-label>
+              <input tasInput type="text" placeholder="0" [formField]="formSchema.estimatedAmount" />
+              <tas-hint>Facultatif.</tas-hint>
+            </tas-form-field>
+
+            <tas-form-field>
+              <tas-label>Devise</tas-label>
+              <input tasInput type="text" placeholder="XOF" [formField]="formSchema.estimatedCurrency" />
+            </tas-form-field>
+
+            <tas-form-field>
+              <tas-label>Date de clôture prévue</tas-label>
+              <input tasInput type="date" [formField]="formSchema.expectedCloseDate" />
+            </tas-form-field>
+
+            <div class="sm:col-span-2">
+              <tas-form-field>
+                <tas-label>Contexte</tas-label>
+                <textarea
+                  tasInput
+                  rows="3"
+                  placeholder="Ce que le client demande, et pourquoi maintenant"
+                  [formField]="formSchema.description"
+                ></textarea>
+              </tas-form-field>
+            </div>
+          </form>
+
+          <div class="flex items-center justify-end gap-2 mt-4 pt-4 border-t border-slate-100">
+            <button tas-outlined-button color="primary" type="button" (click)="closeForm()">
+              Annuler
+            </button>
+            <button
+              tas-raised-button
+              color="primary"
+              type="button"
+              [disabled]="formSchema().invalid() || formSchema().submitting()"
+              [isLoading]="formSchema().submitting()"
+              (click)="handleSubmit()"
+            >
+              Créer la demande
+            </button>
+          </div>
+        </div>
+      </tas-card>
+    }
+
+    @if (isLoading()) {
+      <div class="flex justify-center py-16">
+        <tas-spinner size="10" class="text-primary"></tas-spinner>
+      </div>
+    } @else if (loadFailed()) {
+      <tas-card class="block">
+        <div class="p-10 text-center">
+          <tas-icon
+            iconName="feather:alert-circle"
+            class="text-functional-error"
+            style="font-size:28px"
+          ></tas-icon>
+          <p class="text-sm font-medium text-slate-700 mt-2">
+            Les demandes n'ont pas pu être chargées
+          </p>
+          <p class="text-sm text-slate-500 mt-1">
+            La liste est momentanément indisponible. Elle n'est pas vide pour autant.
+          </p>
+          <button tas-outlined-button color="primary" type="button" class="mt-4" (click)="reload()">
+            <tas-icon iconName="feather:refresh-cw" style="font-size:13px"></tas-icon>
+            Réessayer
+          </button>
+        </div>
+      </tas-card>
+    } @else if (visibleRows().length === 0) {
+      <tas-card class="block">
+        <div class="p-10 text-center">
+          <tas-icon iconName="feather:inbox" class="text-slate-300" style="font-size:28px"></tas-icon>
+          <p class="text-sm font-medium text-slate-700 mt-2">Aucune demande en cours</p>
+          <p class="text-sm text-slate-500 mt-1">
+            Créez une demande dès qu'un besoin de produit est exprimé : elle restera rattachée à
+            ce client.
+          </p>
+        </div>
+      </tas-card>
+    } @else {
+      <tas-table
+        [data]="visibleRows()"
+        identifierField="opportunityId"
+        [config]="tableConfig"
+        [isLoading]="isLoading()"
+      >
+        <ng-template #header>
+          <tr>
+            <th class="hidden md:table-cell">Produit demandé</th>
+            <th class="hidden md:table-cell">Statut</th>
+            <th class="hidden md:table-cell">Agent assigné</th>
+            <th class="hidden md:table-cell">Date</th>
+            <th class="hidden md:table-cell">Souscription</th>
+          </tr>
+        </ng-template>
+
+        <ng-template #body let-item>
+          <tr>
+            <!-- Carte, sous 768 px : la fiche client se consulte sur le terrain -->
+            <td class="md:hidden" [attr.colspan]="5">
+              <div class="p-3 flex flex-col gap-2">
+                <div class="flex items-start justify-between gap-2">
+                  <div class="min-w-0">
+                    <p class="text-sm font-medium text-slate-800 truncate">
+                      {{ item.productLabel }}
+                    </p>
+                    <p class="text-xs text-slate-500 truncate">{{ item.title }}</p>
+                  </div>
+                  <tas-tag [severity]="item.stageSeverity">{{ item.stageLabel }}</tas-tag>
+                </div>
+
+                @if (item.leadStatusLabel) {
+                  <p class="text-xs text-slate-600 flex items-center gap-1.5 flex-wrap">
+                    <span>Lead :</span>
+                    <tas-tag [severity]="item.leadStatusSeverity">{{
+                      item.leadStatusLabel
+                    }}</tas-tag>
+                  </p>
+                }
+
+                <p class="text-xs text-slate-500">
+                  {{ item.ownerLabel }}
+                  @if (item.createdAt) {
+                    · {{ item.createdAt | date: 'dd/MM/yyyy' }}
+                  }
+                  @if (item.amountLabel) {
+                    · {{ item.amountLabel }}
+                  }
+                </p>
+
+                <div class="flex items-center gap-3 flex-wrap pt-1">
+                  @if (item.leadId && canReadLead()) {
+                    <a
+                      tas-button
+                      color="primary"
+                      class="text-xs"
+                      [routerLink]="['/leads', item.leadId]"
+                    >
+                      Voir le lead
+                    </a>
+                  }
+                  @if (item.holdingId) {
+                    <a
+                      tas-button
+                      color="primary"
+                      class="text-xs"
+                      [routerLink]="['/customers', clientId(), 'produits']"
+                      [queryParams]="{ holding: item.holdingId }"
+                    >
+                      Voir la souscription
+                    </a>
+                  }
+                </div>
+              </div>
+            </td>
+
+            <!-- Colonnes, à partir de 768 px -->
+            <td class="hidden md:table-cell py-3">
+              <span class="text-sm font-medium text-slate-800">{{ item.productLabel }}</span>
+              <span class="block text-xs text-slate-400">{{ item.title }}</span>
+            </td>
+
+            <td class="hidden md:table-cell">
+              <tas-tag [severity]="item.stageSeverity">{{ item.stageLabel }}</tas-tag>
+              @if (item.leadStatusLabel) {
+                <span class="block text-xs text-slate-400 mt-1">
+                  Lead : {{ item.leadStatusLabel }}
+                </span>
+              }
+            </td>
+
+            <td class="hidden md:table-cell">
+              <span class="text-sm text-slate-700">{{ item.ownerLabel }}</span>
+            </td>
+
+            <td class="hidden md:table-cell">
+              <span class="text-sm text-slate-700 tabular-nums">
+                {{ item.createdAt ? (item.createdAt | date: 'dd/MM/yyyy') : '—' }}
+              </span>
+              @if (item.expectedCloseDate) {
+                <span class="block text-xs text-slate-400 tabular-nums">
+                  Clôture prévue {{ item.expectedCloseDate | date: 'dd/MM/yyyy' }}
+                </span>
+              }
+            </td>
+
+            <td class="hidden md:table-cell">
+              @if (item.holdingId) {
+                <a
+                  class="text-sm text-primary hover:underline"
+                  [routerLink]="['/customers', clientId(), 'produits']"
+                  [queryParams]="{ holding: item.holdingId }"
+                >
+                  Voir la souscription
+                </a>
+              } @else if (item.isWon) {
+                <span class="text-xs text-slate-400">Souscription non rapprochée</span>
+              } @else if (item.leadId && canReadLead()) {
+                <a
+                  class="text-sm text-primary hover:underline"
+                  [routerLink]="['/leads', item.leadId]"
+                >
+                  Voir le lead
+                </a>
+              } @else {
+                <span class="text-sm text-slate-400">—</span>
+              }
+            </td>
+          </tr>
+        </ng-template>
+      </tas-table>
+    }
+  </div>
+}

@@ -20,8 +20,13 @@ import { TasSpinner } from '@talisoft/ui/spinner';
 import { ProductsApiService, ProductDto } from '@sankore/crm-api';
 import { SnackbarService } from '@talisoft/ui/snackbar';
 import { ConfirmDialogService } from '@talisoft/ui/confirm-dialog';
-import { BreadcrumbService, PermissionsService } from '@sankore/crm/common';
+import {
+  BreadcrumbService,
+  PermissionsService,
+  productCategoryLabel,
+} from '@sankore/crm/common';
 import { ProductParametersEditor } from '../product-parameters-editor';
+import { BeneficiaryPolicyEditor } from '../beneficiary-policy-editor';
 
 @Component({
   selector: 'edit-product',
@@ -38,11 +43,43 @@ import { ProductParametersEditor } from '../product-parameters-editor';
     SlicePipe,
     Anchor,
     ProductParametersEditor,
+    BeneficiaryPolicyEditor,
   ],
   template: `
     @if (isLoading()) {
       <div class="flex justify-center py-24">
         <tas-spinner size="10" class="text-primary"></tas-spinner>
+      </div>
+    } @else if (loadFailed()) {
+      <div class="max-w-2xl">
+        <tas-card>
+          <div class="p-6 flex flex-col items-center text-center gap-2">
+            <tas-icon
+              iconName="feather:alert-triangle"
+              class="text-functional-error"
+              style="font-size:22px"
+            ></tas-icon>
+            <p class="text-sm font-medium text-slate-700">
+              Impossible de charger ce produit.
+            </p>
+            <p class="text-xs text-slate-400">
+              Vérifiez votre connexion, puis réessayez.
+            </p>
+            <div class="flex gap-2 mt-2">
+              <button
+                tas-raised-button
+                color="primary"
+                type="button"
+                (click)="reloadProduct()"
+              >
+                Réessayer
+              </button>
+              <a [routerLink]="['/settings/products']" tas-outlined-button>
+                Retour aux produits
+              </a>
+            </div>
+          </div>
+        </tas-card>
       </div>
     } @else if (product()) {
       <div class="max-w-2xl pb-6 flex flex-col gap-4">
@@ -220,6 +257,13 @@ import { ProductParametersEditor } from '../product-parameters-editor';
           </div>
         </tas-card>
 
+        <!-- Politique bénéficiaires, foyer et questionnaires (BNF-F-14) -->
+        <beneficiary-policy-editor
+          [product]="product()"
+          [canUpdate]="canUpdate()"
+          (saved)="reloadProduct()"
+        ></beneficiary-policy-editor>
+
         <!-- Danger zone -->
         <h2 class="text-lg font-semibold text-slate-800">Zone de danger</h2>
 
@@ -279,16 +323,25 @@ export class EditProductPage {
 
   public readonly id = input.required<string>();
 
-  public categoryMeta(cat: any): { label: string; severity: Severity } {
+  /**
+   * Le libellé vient du référentiel partagé : la version précédente ne
+   * connaissait que trois catégories et affichait le code brut
+   * (« HealthInsurance ») pour toutes les autres.
+   */
+  public categoryMeta(
+    cat: string | null | undefined,
+  ): { label: string; severity: Severity } {
+    const label = productCategoryLabel(cat);
     switch (cat) {
-      case 'Loan': return { label: 'Prêt', severity: 'info' };
-      case 'Savings': return { label: 'Épargne', severity: 'success' };
-      case 'Tontine': return { label: 'Tontine', severity: 'warning' };
-      default: return { label: cat ?? '—', severity: 'neutral' };
+      case 'Loan': return { label, severity: 'info' };
+      case 'Savings': return { label, severity: 'success' };
+      case 'Tontine': return { label, severity: 'warning' };
+      default: return { label, severity: 'neutral' };
     }
   }
 
   public isLoading = signal(true);
+  public loadFailed = signal(false);
   public isSaving = signal(false);
   public isDeleting = signal(false);
   public product = signal<ProductDto | null>(null);
@@ -315,30 +368,45 @@ export class EditProductPage {
 
   constructor() {
     effect(() => {
-      this.isLoading.set(true);
-      this._productsApiService.getProduct(this.id()).subscribe({
-        next: (product) => {
-          this.product.set(product);
-          this.editedName.set(product.name ?? '');
-          this.cbsPlatform.set(product.businessPlatformName ?? '');
-          this.cbsProductId.set(product.businessProductId ?? '');
-          this.editedDescription.set(product.description ?? '');
-          this.editedParametersJson.set(product.parametersJson ?? '');
-          this.isLoading.set(false);
-          this._breadcrumbService.set([
-            { label: 'Paramétrage', link: ['/settings'] },
-            { label: 'Produits', link: ['/settings/products'] },
-            { label: product.name ?? product.code ?? 'Produit' },
-          ]);
-        },
-        error: () => {
-          this._snackbarService.error(
-            'Erreur',
-            'Impossible de charger le produit.',
-          );
-          this.isLoading.set(false);
-        },
-      });
+      const productId = this.id();
+      this._load(productId);
+    });
+  }
+
+  /**
+   * Rechargement après une écriture composée (politique bénéficiaires et
+   * foyer) : le 204 ne dit pas ce que le serveur a réellement retenu.
+   */
+  public reloadProduct(): void {
+    this._load(this.id());
+  }
+
+  private _load(productId: string): void {
+    this.isLoading.set(true);
+    this.loadFailed.set(false);
+    this._productsApiService.getProduct(productId).subscribe({
+      next: (product) => {
+        this.product.set(product);
+        this.editedName.set(product.name ?? '');
+        this.cbsPlatform.set(product.businessPlatformName ?? '');
+        this.cbsProductId.set(product.businessProductId ?? '');
+        this.editedDescription.set(product.description ?? '');
+        this.editedParametersJson.set(product.parametersJson ?? '');
+        this.isLoading.set(false);
+        this._breadcrumbService.set([
+          { label: 'Paramétrage', link: ['/settings'] },
+          { label: 'Produits', link: ['/settings/products'] },
+          { label: product.name ?? product.code ?? 'Produit' },
+        ]);
+      },
+      error: () => {
+        this._snackbarService.error(
+          'Erreur',
+          'Impossible de charger le produit.',
+        );
+        this.loadFailed.set(true);
+        this.isLoading.set(false);
+      },
     });
   }
 
@@ -349,7 +417,7 @@ export class EditProductPage {
         name: this.editedName().trim() || null,
         description: this.editedDescription().trim() || null,
         parametersJson: this.editedParametersJson().trim() || null,
-      } as any)
+      })
       .pipe(
         catchError(() => {
           this._snackbarService.error(

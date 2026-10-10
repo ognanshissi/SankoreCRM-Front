@@ -7,44 +7,18 @@
     <form [formRoot]="formSchema" class="flex flex-col gap-5">
 
       <!-- Prospect type -->
-      <tas-form-field>
-        <tas-label>Type de prospect</tas-label>
-        <tas-select
-          [options]="prospectTypeOptions"
-          placeholder="Sélectionnez un type"
-          [formField]="formSchema.prospectType"
-        ></tas-select>
-      </tas-form-field>
-
-      <!-- Identity -->
-      <div class="grid grid-cols-2 gap-3">
+      @if (!isExistingCustomer()) {
         <tas-form-field>
-          <tas-label>Prénom <span class="text-functional-error">*</span></tas-label>
-          <input
-            tasInput
-            type="text"
-            placeholder="Prénom"
-            [formField]="formSchema.firstName"
-          />
-          @if (formSchema.firstName().touched() && formSchema.firstName().invalid()) {
-            <tas-error>{{ formSchema.firstName().errors()[0].message }}</tas-error>
-          }
+          <tas-label>Type de prospect</tas-label>
+          <tas-select
+            [options]="prospectTypeOptions"
+            placeholder="Sélectionnez un type"
+            [formField]="formSchema.prospectType"
+          ></tas-select>
         </tas-form-field>
+      }
 
-        <tas-form-field>
-          <tas-label>Nom <span class="text-functional-error">*</span></tas-label>
-          <input
-            tasInput
-            type="text"
-            placeholder="Nom de famille"
-            [formField]="formSchema.lastName"
-          />
-          @if (formSchema.lastName().touched() && formSchema.lastName().invalid()) {
-            <tas-error>{{ formSchema.lastName().errors()[0].message }}</tas-error>
-          }
-        </tas-form-field>
-      </div>
-
+      <!-- Téléphone : clé de détection du doublon de lead et du client existant -->
       <tas-form-field>
         <tas-label>Téléphone <span class="text-functional-error">*</span></tas-label>
         <tas-input-phone
@@ -56,57 +30,110 @@
         }
       </tas-form-field>
 
+      <!-- Client existant (BNF-F-18) : aucun encart si aucune correspondance -->
+      <customer-match-banner
+        [matches]="customerMatches()"
+        [isLoading]="isCheckingCustomers()"
+        [loadFailed]="customerLookupFailed()"
+        [selectedCustomerId]="selectedCustomerId()"
+        [canAct]="true"
+        [canOpenCustomer]="canReadCustomers()"
+        (select)="retainCustomer($event)"
+        (reject)="rejectCustomers()"
+        (openCustomer)="viewCustomer($event)"
+      ></customer-match-banner>
+
+      <!-- Doublon de lead sur téléphone ou e-mail (BNF-F-01) -->
       <duplicate-warning-banner
         [duplicates]="duplicates()"
         (viewDuplicate)="viewDuplicate($event)"
       ></duplicate-warning-banner>
 
-      <tas-form-field>
-        <tas-label>E-mail</tas-label>
-        <input
-          tasInput
-          type="email"
-          placeholder="exemple@domaine.com"
-          [formField]="formSchema.email"
-        />
-      </tas-form-field>
+      @if (!isExistingCustomer()) {
+        <!-- Identity -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <tas-form-field>
+            <tas-label>Prénom <span class="text-functional-error">*</span></tas-label>
+            <input
+              tasInput
+              type="text"
+              placeholder="Prénom"
+              [formField]="formSchema.firstName"
+            />
+            @if (formSchema.firstName().touched() && formSchema.firstName().invalid()) {
+              <tas-error>{{ formSchema.firstName().errors()[0].message }}</tas-error>
+            }
+          </tas-form-field>
 
-      <tas-form-field>
-        <tas-label>Pièce d'identité</tas-label>
-        <input
-          tasInput
-          type="text"
-          placeholder="Numéro CNI / passeport"
-          [formField]="formSchema.nationalId"
-        />
-      </tas-form-field>
+          <tas-form-field>
+            <tas-label>Nom <span class="text-functional-error">*</span></tas-label>
+            <input
+              tasInput
+              type="text"
+              placeholder="Nom de famille"
+              [formField]="formSchema.lastName"
+            />
+            @if (formSchema.lastName().touched() && formSchema.lastName().invalid()) {
+              <tas-error>{{ formSchema.lastName().errors()[0].message }}</tas-error>
+            }
+          </tas-form-field>
+        </div>
 
-      @if (isCompany()) {
         <tas-form-field>
-          <tas-label>Nom de l'entreprise</tas-label>
+          <tas-label>E-mail</tas-label>
+          <input
+            tasInput
+            type="email"
+            placeholder="exemple@domaine.com"
+            [formField]="formSchema.email"
+          />
+          <tas-hint>Facultatif.</tas-hint>
+          @if (formSchema.email().touched() && formSchema.email().invalid()) {
+            <tas-error>{{ formSchema.email().errors()[0].message }}</tas-error>
+          }
+        </tas-form-field>
+
+        <tas-form-field>
+          <tas-label>Pièce d'identité</tas-label>
           <input
             tasInput
             type="text"
-            placeholder="Raison sociale"
-            [formField]="formSchema.companyName"
+            placeholder="Numéro CNI / passeport"
+            [formField]="formSchema.nationalId"
           />
         </tas-form-field>
+
+        @if (isCompany()) {
+          <tas-form-field>
+            <tas-label>Nom de l'entreprise</tas-label>
+            <input
+              tasInput
+              type="text"
+              placeholder="Raison sociale"
+              [formField]="formSchema.companyName"
+            />
+          </tas-form-field>
+        }
       }
 
       <!-- Commercial interest -->
       <div class="border-t border-gray-200 pt-4 mt-1">
-        <p class="text-sm font-medium text-slate-600 mb-3">Intérêt commercial</p>
+        <p class="text-sm font-medium text-slate-600 mb-3">
+          {{ isExistingCustomer() ? 'Demande' : 'Intérêt commercial' }}
+        </p>
         <div class="flex flex-col gap-4">
-          <tas-form-field>
-            <tas-label>Source configurée</tas-label>
-            <tas-select
-              [options]="leadSourceOptions()"
-              optionLabel="label"
-              optionValue="value"
-              placeholder="Aucune"
-              [formField]="formSchema.leadSourceConfigId"
-            ></tas-select>
-          </tas-form-field>
+          @if (!isExistingCustomer()) {
+            <tas-form-field>
+              <tas-label>Source configurée</tas-label>
+              <tas-select
+                [options]="leadSourceOptions()"
+                optionLabel="label"
+                optionValue="value"
+                placeholder="Aucune"
+                [formField]="formSchema.leadSourceConfigId"
+              ></tas-select>
+            </tas-form-field>
+          }
 
           <tas-form-field>
             <tas-label>Produit souhaité</tas-label>
@@ -119,41 +146,57 @@
             ></tas-select>
           </tas-form-field>
 
-          <div class="grid grid-cols-2 gap-3">
-            <tas-form-field>
-              <tas-label>Montant souhaité</tas-label>
-              <input
-                tasInput
-                type="number"
-                placeholder="0"
-                [formField]="formSchema.desiredAmount"
-              />
-            </tas-form-field>
+          <tas-form-field>
+            <tas-label>Canal</tas-label>
+            <tas-select
+              [options]="channelOptions"
+              placeholder="Sélectionnez un canal"
+              [formField]="formSchema.channel"
+            ></tas-select>
+          </tas-form-field>
 
-            <tas-form-field>
-              <tas-label>Devise</tas-label>
-              <tas-select
-                [options]="currencyOptions"
-                [formField]="formSchema.desiredCurrency"
-              ></tas-select>
-            </tas-form-field>
-          </div>
+          @if (!isExistingCustomer()) {
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <tas-form-field>
+                <tas-label>Montant souhaité</tas-label>
+                <input
+                  tasInput
+                  type="number"
+                  placeholder="0"
+                  [formField]="formSchema.desiredAmount"
+                />
+              </tas-form-field>
 
+              <tas-form-field>
+                <tas-label>Devise</tas-label>
+                <tas-select
+                  [options]="currencyOptions"
+                  [formField]="formSchema.desiredCurrency"
+                ></tas-select>
+              </tas-form-field>
+            </div>
+          }
         </div>
       </div>
 
-      <!-- Assignment -->
-      <div class="border-t border-gray-200 pt-4 mt-1">
-        <p class="text-sm font-medium text-slate-600 mb-3">Affectation</p>
-        <tas-form-field>
-          <tas-label>Agence</tas-label>
-          <tas-select
-            [options]="agencies()"
-            placeholder="Sélectionnez une agence"
-            [formField]="formSchema.agencyId"
-          ></tas-select>
-        </tas-form-field>
-      </div>
+      <!-- Assignment : l'agence du client retenu est reprise, pas ressaisie -->
+      @if (!isExistingCustomer()) {
+        <div class="border-t border-gray-200 pt-4 mt-1">
+          <p class="text-sm font-medium text-slate-600 mb-3">Affectation</p>
+          <tas-form-field>
+            <tas-label>Agence</tas-label>
+            <tas-select
+              [options]="agencies()"
+              placeholder="Sélectionnez une agence"
+              [formField]="formSchema.agencyId"
+            ></tas-select>
+          </tas-form-field>
+        </div>
+      } @else if (retainedCustomer()!.agencyLabel) {
+        <p class="text-xs text-slate-500">
+          Le lead sera affecté à l'agence du client : {{ retainedCustomer()!.agencyLabel }}.
+        </p>
+      }
 
       <tas-form-field>
         <tas-label>Commentaire</tas-label>
@@ -178,7 +221,7 @@
       [disabled]="formSchema().invalid() || formSchema().submitting()"
       [isLoading]="formSchema().submitting()"
     >
-      Créer le lead
+      {{ isExistingCustomer() ? 'Créer la demande' : 'Créer le lead' }}
     </button>
   </tas-drawer-action>
 </tas-side-drawer>

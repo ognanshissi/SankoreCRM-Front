@@ -2,6 +2,7 @@ import { hasPermissionGuard } from '@sankore/crm/common';
 import LeadHomepage from './containers/lead-homepage/lead-homepage';
 import EditLeadNavigation from './containers/edit-lead/edit-lead-navigation';
 import { LeadEditContext } from './containers/edit-lead/lead-edit-context';
+import { LeadComplianceStore } from './containers/edit-lead/lead-compliance-store';
 
 export const leadManagementRoutes = [
   {
@@ -27,12 +28,28 @@ export const leadManagementRoutes = [
     // Fourni au niveau de la route, et non du composant : les onglets sont des
     // routes enfants chargées en lazy, et c'est l'injecteur de la route parente
     // qu'elles héritent toutes de façon garantie.
-    providers: [LeadEditContext],
+    providers: [LeadEditContext, LeadComplianceStore],
     children: [
       { path: '', redirectTo: 'informations', pathMatch: 'full' as const },
       {
         path: 'informations',
         loadComponent: () => import('./containers/edit-lead/informations'),
+      },
+      {
+        path: 'identite',
+        loadComponent: () => import('./containers/edit-lead/identite'),
+      },
+      {
+        path: 'foyer',
+        loadComponent: () => import('./containers/edit-lead/foyer'),
+      },
+      {
+        path: 'conformite',
+        loadComponent: () => import('./containers/edit-lead/conformite'),
+      },
+      {
+        path: 'questionnaires',
+        loadComponent: () => import('./containers/edit-lead/questionnaires'),
       },
       {
         path: 'qualification',

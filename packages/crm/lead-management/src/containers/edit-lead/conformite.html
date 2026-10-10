@@ -1,0 +1,311 @@
+@if (compliance.isLoading()) {
+  <div class="flex justify-center py-24">
+    <tas-spinner size="10" class="text-primary"></tas-spinner>
+  </div>
+} @else {
+  <div class="flex flex-col gap-4">
+    <!-- Rappel du statut PPE du principal, saisi dans l'onglet Foyer -->
+    <tas-card class="block">
+      <div class="p-4 flex flex-col gap-3">
+        <div class="flex items-start justify-between gap-3 flex-wrap">
+          <div class="min-w-0">
+            <h2 class="text-sm font-semibold text-slate-800">
+              Personne politiquement exposée (PPE)
+            </h2>
+            <p class="text-xs text-slate-500 mt-1">
+              {{ compliance.principalLabel() }} — en lecture seule, la saisie se fait dans
+              l'onglet Foyer.
+            </p>
+          </div>
+          <a [routerLink]="foyerLink()" tas-outlined-button color="primary" class="text-xs">
+            <tas-icon iconName="feather:users" style="font-size:13px"></tas-icon>
+            Ouvrir l'onglet Foyer
+          </a>
+        </div>
+
+        @if (compliance.household() === null) {
+          <p class="text-sm text-slate-500">
+            Le foyer n'a pas pu être chargé : le statut PPE n'est pas disponible.
+          </p>
+        } @else if (principalPepExposed()) {
+          <div class="flex flex-col gap-2">
+            <div class="flex items-center gap-2 flex-wrap">
+              <pep-exposure-badge [exposed]="true"></pep-exposure-badge>
+              <span class="text-sm text-slate-700">Personne exposée</span>
+            </div>
+            @if (canReadPep()) {
+              <dl class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <dt class="text-xs text-slate-500">Fonction exercée</dt>
+                  <dd class="text-sm text-slate-800">{{ principalPep().function ?? '—' }}</dd>
+                </div>
+                <div>
+                  <dt class="text-xs text-slate-500">Pays</dt>
+                  <dd class="text-sm text-slate-800">{{ principalPep().countryCode ?? '—' }}</dd>
+                </div>
+                <div>
+                  <dt class="text-xs text-slate-500">Lien</dt>
+                  <dd class="text-sm text-slate-800">{{ principalPepLinkLabel() }}</dd>
+                </div>
+              </dl>
+            } @else {
+              <p class="text-xs text-slate-500">
+                Le détail de la fonction exercée demande une autorisation particulière.
+              </p>
+            }
+          </div>
+        } @else {
+          <p class="text-sm text-slate-500">
+            Le prospect principal n'est pas déclaré politiquement exposé.
+          </p>
+        }
+      </div>
+    </tas-card>
+
+    <!-- FATCA -->
+    @if (fatcaUnavailable()) {
+      <tas-card class="block">
+        <div class="p-8 text-center">
+          <tas-icon
+            iconName="feather:alert-circle"
+            class="text-functional-error"
+            style="font-size:28px"
+          ></tas-icon>
+          <p class="text-sm font-medium text-slate-700 mt-2">
+            La position FATCA n'a pas pu être chargée
+          </p>
+          <p class="text-sm text-slate-500 mt-1">
+            La déclaration FATCA est momentanément indisponible. Réessayez dans un instant.
+          </p>
+          <button
+            tas-outlined-button
+            color="primary"
+            type="button"
+            class="mt-4"
+            [disabled]="isRetrying()"
+            [isLoading]="isRetrying()"
+            (click)="retry()"
+          >
+            <tas-icon iconName="feather:refresh-cw" style="font-size:13px"></tas-icon>
+            Réessayer
+          </button>
+        </div>
+      </tas-card>
+    } @else if (!fatcaEnabled()) {
+      <tas-card class="block">
+        <div class="p-8 text-center">
+          <tas-icon iconName="feather:info" class="text-slate-300" style="font-size:28px"></tas-icon>
+          <p class="text-sm font-medium text-slate-700 mt-2">Déclaration FATCA</p>
+          <p class="text-sm text-slate-500 mt-1">
+            FATCA n'est pas activé pour votre établissement.
+          </p>
+        </div>
+      </tas-card>
+    } @else {
+      <tas-card class="block">
+        <div class="p-4 flex flex-col gap-3">
+          <div class="flex items-start justify-between gap-3 flex-wrap">
+            <div class="min-w-0">
+              <h2 class="text-sm font-semibold text-slate-800">Déclaration FATCA</h2>
+              <p class="text-xs text-slate-500 mt-1">
+                Indices d'américanité et auto-certification de chaque personne du dossier. Le
+                statut est déterminé par la conformité.
+              </p>
+            </div>
+            <div class="flex items-center gap-2 flex-wrap">
+              <span class="text-xs text-slate-500">Statut du principal</span>
+              @if (principalFatcaStatus()) {
+                <fatca-status-badge [status]="principalFatcaStatus()"></fatca-status-badge>
+              } @else {
+                <tas-tag severity="neutral">Non déclaré</tas-tag>
+              }
+            </div>
+          </div>
+
+          <div class="flex items-center gap-2 flex-wrap">
+            @if (isComplete()) {
+              <tas-tag severity="success">Dossier FATCA complet</tas-tag>
+            } @else if (missingCount() > 0) {
+              <tas-tag severity="warning">
+                {{ missingCount() }} déclaration(s) à recueillir
+              </tas-tag>
+            } @else {
+              <tas-tag severity="warning">Dossier FATCA incomplet</tas-tag>
+            }
+            @if (actionableCount() > 0) {
+              <tas-tag severity="warning">
+                {{ actionableCount() }} dossier(s) en attente de documentation
+              </tas-tag>
+            }
+            @if (requiredAtEnrichment()) {
+              <span class="text-xs text-slate-500">
+                Déclaration exigée dès l'enrichissement du lead.
+              </span>
+            } @else {
+              <span class="text-xs text-slate-500">
+                Déclaration exigée au plus tard à la conversion.
+              </span>
+            }
+          </div>
+        </div>
+      </tas-card>
+
+      @if (rows().length === 0) {
+        <tas-card class="block">
+          <div class="p-8 text-center">
+            <tas-icon iconName="feather:flag" class="text-slate-300" style="font-size:28px"></tas-icon>
+            <p class="text-sm font-medium text-slate-700 mt-2">Aucune personne à déclarer</p>
+            <p class="text-sm text-slate-500 mt-1">
+              Le dossier ne porte encore aucune personne pour laquelle une déclaration FATCA est
+              attendue.
+            </p>
+          </div>
+        </tas-card>
+      } @else {
+        <tas-table [data]="rows()" identifierField="rowId" [config]="tableConfig">
+          <ng-template #header>
+            <tr>
+              <th class="hidden sm:table-cell">Personne</th>
+              <th class="hidden sm:table-cell">Statut FATCA</th>
+              <th class="hidden sm:table-cell">Documentation</th>
+              <th class="hidden sm:table-cell">Auto-certification</th>
+              <th class="hidden sm:table-cell"></th>
+            </tr>
+          </ng-template>
+
+          <ng-template #body let-item>
+            <tr>
+              <!-- Carte, sous 640 px -->
+              <td class="sm:hidden" [attr.colspan]="5">
+                <div class="p-3 flex flex-col gap-2">
+                  <div class="flex items-start justify-between gap-2">
+                    <div class="min-w-0">
+                      <p class="text-sm font-medium text-slate-800 truncate">{{ item.label }}</p>
+                      <p class="text-xs text-slate-500">{{ item.roleLabel }}</p>
+                    </div>
+                    <div class="shrink-0">
+                      @if (item.declaration) {
+                        <fatca-status-badge [status]="item.status"></fatca-status-badge>
+                      } @else if (item.notRequired) {
+                        <tas-tag severity="neutral">Non requise</tas-tag>
+                      } @else {
+                        <tas-tag severity="warning">À déclarer</tas-tag>
+                      }
+                    </div>
+                  </div>
+
+                  @if (item.declaration) {
+                    <p class="text-xs text-slate-600">
+                      Documentation : {{ item.documentationLabel }}
+                    </p>
+                    @if (item.signedAt) {
+                      <p class="text-xs text-slate-500">
+                        Signée le {{ item.signedAt | date: 'dd/MM/yyyy à HH:mm' }}
+                      </p>
+                    } @else {
+                      <p class="text-xs text-slate-500">Auto-certification non signée</p>
+                    }
+                    @if (item.declaredIndicia.length > 0) {
+                      <ul class="flex flex-col gap-1">
+                        @for (key of item.declaredIndicia; track key) {
+                          <li class="text-xs text-slate-600">· {{ indiciaLabel(key) }}</li>
+                        }
+                      </ul>
+                    }
+                    @if (item.requiresComplianceReview) {
+                      <p class="text-xs text-amber-800">Revue conformité attendue</p>
+                    }
+                  } @else if (item.missingReason) {
+                    <p class="text-xs text-slate-500">{{ item.missingReason }}</p>
+                  }
+
+                  @if (canDeclare() && !item.notRequired) {
+                    <div class="pt-1">
+                      <button
+                        tas-outlined-button
+                        color="primary"
+                        type="button"
+                        class="text-xs"
+                        (click)="openDeclaration(item)"
+                      >
+                        <tas-icon iconName="feather:edit-3" style="font-size:12px"></tas-icon>
+                        {{ item.declaration ? 'Mettre à jour' : 'Déclarer' }}
+                      </button>
+                    </div>
+                  }
+                </div>
+              </td>
+
+              <!-- Colonnes, à partir de 640 px -->
+              <td class="hidden sm:table-cell py-3">
+                <span class="text-sm font-medium text-slate-800">{{ item.label }}</span>
+                <span class="block text-xs text-slate-400">{{ item.roleLabel }}</span>
+              </td>
+
+              <td class="hidden sm:table-cell">
+                @if (item.declaration) {
+                  <fatca-status-badge [status]="item.status"></fatca-status-badge>
+                  @if (item.requiresComplianceReview) {
+                    <span class="block text-xs text-amber-800 mt-1">Revue conformité attendue</span>
+                  }
+                } @else if (item.notRequired) {
+                  <tas-tag severity="neutral">Non requise</tas-tag>
+                } @else {
+                  <tas-tag severity="warning">À déclarer</tas-tag>
+                  @if (item.missingReason) {
+                    <span class="block text-xs text-slate-400 mt-1">{{ item.missingReason }}</span>
+                  }
+                }
+              </td>
+
+              <td class="hidden sm:table-cell">
+                @if (item.declaration) {
+                  <span class="text-sm text-slate-700">{{ item.documentationLabel }}</span>
+                  @if (item.declaredIndicia.length > 0) {
+                    <span class="block text-xs text-slate-400">
+                      {{ item.declaredIndicia.length }} indice(s) déclaré(s)
+                    </span>
+                  } @else {
+                    <span class="block text-xs text-slate-400">Aucun indice déclaré</span>
+                  }
+                } @else {
+                  <span class="text-sm text-slate-400">—</span>
+                }
+              </td>
+
+              <td class="hidden sm:table-cell">
+                @if (item.signedAt) {
+                  <span class="text-sm text-slate-700 tabular-nums">
+                    {{ item.signedAt | date: 'dd/MM/yyyy HH:mm' }}
+                  </span>
+                } @else if (item.declaration) {
+                  <span class="text-sm text-slate-500">Non signée</span>
+                } @else {
+                  <span class="text-sm text-slate-400">—</span>
+                }
+              </td>
+
+              <td class="hidden sm:table-cell text-right">
+                @if (canDeclare() && !item.notRequired) {
+                  <button
+                    tas-outlined-button
+                    color="primary"
+                    type="button"
+                    class="text-xs"
+                    [attr.aria-label]="'Déclaration FATCA de ' + item.label"
+                    (click)="openDeclaration(item)"
+                  >
+                    <tas-icon iconName="feather:edit-3" style="font-size:12px"></tas-icon>
+                    {{ item.declaration ? 'Mettre à jour' : 'Déclarer' }}
+                  </button>
+                } @else {
+                  <span class="text-xs text-slate-400">—</span>
+                }
+              </td>
+            </tr>
+          </ng-template>
+        </tas-table>
+      }
+    }
+  </div>
+}

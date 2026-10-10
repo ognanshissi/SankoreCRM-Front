@@ -144,6 +144,12 @@ export const PERMISSIONS = {
   CUSTOMERS_EXPORT: 'customers:export',
   CUSTOMERS_GROUPS_MANAGE: 'customers:groups_manage',
 
+  // Déclaré par `GET /api/v1/clients/{clientId}/household` : « PEP detail (function,
+  // country, family link) requires customers:pep_read; the exposure flag is always
+  // visible ». C'est le seul droit de lecture *partielle* du catalogue — sans lui, la
+  // fiche affiche le badge d'exposition mais pas la fonction exercée (BNF-F-04).
+  CUSTOMERS_PEP_READ: 'customers:pep_read',
+
   // ——— Prêts ———
   LOAN_CREATE: 'loan:create',
 

@@ -1,0 +1,835 @@
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  effect,
+  inject,
+  input,
+  output,
+  signal,
+  viewChild,
+} from '@angular/core';
+import { RouterLink } from '@angular/router';
+import { FormsModule } from '@angular/forms';
+import {
+  disabled,
+  form,
+  FormField,
+  FormRoot,
+  submit,
+  validate,
+} from '@angular/forms/signals';
+import { catchError, EMPTY, firstValueFrom } from 'rxjs';
+import { HttpErrorResponse } from '@angular/common/http';
+import { TasCard } from '@talisoft/ui/card';
+import { Button } from '@talisoft/ui/button';
+import { TasIcon } from '@talisoft/ui/icon';
+import { TasTag } from '@talisoft/ui/tag';
+import { TasError, TasFormField, TasHint, TasLabel } from '@talisoft/ui/form-field';
+import { TasInput } from '@talisoft/ui/input';
+import { TasMultiSelect } from '@talisoft/ui/multi-select';
+import { TasSelect } from '@talisoft/ui/select';
+import { TableConfig, TasTable } from '@talisoft/ui/table';
+import { SnackbarService } from '@talisoft/ui/snackbar';
+import {
+  DesignationRoleInput,
+  LeadsApiService,
+  ProductDto,
+  ProductDtoCategoryEnum,
+  ProductsApiService,
+  QualificationTemplateDto,
+  SetBeneficiaryPolicyRequest,
+} from '@sankore/crm-api';
+import { designationRoleLabel, productCategoryLabel } from '@sankore/crm/common';
+import {
+  isInsuranceCategory,
+  statusLabel,
+  statusSeverity,
+} from '../qualification-templates/qualification-template.models';
+
+/**
+ * Rôles de désignation proposés. `DesignationRoleInput.code` est une chaîne
+ * libre au contrat (aucun enum, aucun endpoint de référentiel) : la liste
+ * fermée vient donc du référentiel du socle, dont `designationRoleLabel`
+ * porte déjà les libellés français. Un code renvoyé par l'API et absent de
+ * cette liste est ajouté aux options au chargement, pour ne jamais le perdre
+ * en enregistrant.
+ */
+const DESIGNATION_ROLE_CODES = [
+  'Subscriber',
+  'Insured',
+  'CoInsured',
+  'CoHolder',
+  'PrimaryBeneficiary',
+  'ContingentBeneficiary',
+  'Beneficiary',
+  'Guarantor',
+  'LegalRepresentative',
+];
+
+/**
+ * Codes de `requiredFieldsBeforeConversion`. Le contrat ne déclare qu'un
+ * `Array<string>` sans énumération ni endpoint de référentiel : ces codes sont
+ * une proposition front, alignée sur les champs du formulaire d'identité du
+ * socle (`PersonIdentityModel`) et sur les sujets de conformité déjà gérés
+ * (PPE, FATCA, consentement santé, KYC). Ils devront être confirmés côté
+ * back-office. L'administrateur ne voit jamais le code, seulement le libellé.
+ */
+const REQUIRED_FIELD_GROUPS: {
+  title: string;
+  fields: { code: string; label: string }[];
+}[] = [
+  {
+    title: 'Identité',
+    fields: [
+      { code: 'LastName', label: 'Nom' },
+      { code: 'FirstName', label: 'Prénom' },
+      { code: 'BirthDate', label: 'Date de naissance' },
+      { code: 'Gender', label: 'Sexe' },
+      { code: 'AddressLine', label: 'Adresse' },
+      { code: 'City', label: 'Ville' },
+      { code: 'CountryCode', label: 'Pays' },
+      { code: 'NationalId', label: "Pièce d'identité" },
+      { code: 'SpouseUnionType', label: "Type d'union du conjoint" },
+    ],
+  },
+  {
+    title: 'Conformité',
+    fields: [
+      { code: 'PepStatus', label: 'Statut PPE' },
+      { code: 'FatcaDeclaration', label: 'Déclaration FATCA' },
+      { code: 'HealthConsent', label: 'Consentement santé' },
+      { code: 'KycTier', label: 'Niveau KYC' },
+    ],
+  },
+];
+
+const KNOWN_REQUIRED_FIELD_CODES = REQUIRED_FIELD_GROUPS.flatMap((g) =>
+  g.fields.map((f) => f.code),
+);
+
+/**
+ * Systèmes cibles. `integrationSystem` est une chaîne libre sur
+ * `SetBeneficiaryPolicyRequest`, mais le contrat énumère les connecteurs
+ * disponibles (`ConnectionListDto.kind`) : on s'appuie sur ces valeurs plutôt
+ * que sur une saisie libre, qui produirait des codes jamais reconnus.
+ */
+const INTEGRATION_SYSTEM_OPTIONS = [
+  { value: 'Temenos', label: 'Temenos' },
+  { value: 'Amplitude', label: 'Amplitude' },
+  { value: 'Sab', label: 'SAB' },
+  { value: 'PerfectVision', label: 'PerfectVision' },
+  { value: 'Orass', label: 'Orass' },
+];
+
+class BeneficiaryPolicyFormModel {
+  public householdEnabled!: boolean;
+  public allowMultipleHoldings!: boolean;
+  /** Chaînes : les `input` rendent du texte, la conversion se fait à la soumission. */
+  public maxChildren!: string;
+  public childMaxAge!: string;
+  public requiredKycTier!: string;
+  public integrationSystem!: string;
+  public allowedRoles!: string[];
+  public requiredFields!: string[];
+
+  public static fromProduct(
+    product: ProductDto | null | undefined,
+  ): BeneficiaryPolicyFormModel {
+    const policy = product?.beneficiaryPolicy;
+    const model = new BeneficiaryPolicyFormModel();
+    model.householdEnabled = policy?.householdEnabled ?? false;
+    // `allowMultipleHoldings` est porté par le produit en lecture et par la
+    // requête de politique en écriture : on lit donc le produit.
+    model.allowMultipleHoldings = product?.allowMultipleHoldings ?? false;
+    model.maxChildren =
+      policy?.maxChildren === null || policy?.maxChildren === undefined
+        ? ''
+        : String(policy.maxChildren);
+    model.childMaxAge =
+      policy?.childMaxAge === null || policy?.childMaxAge === undefined
+        ? ''
+        : String(policy.childMaxAge);
+    model.requiredKycTier = policy?.requiredKycTier ?? '';
+    model.integrationSystem = policy?.integrationSystem ?? '';
+    model.allowedRoles = (policy?.allowedRoles ?? [])
+      .map((r) => r.code)
+      .filter((c): c is string => !!c);
+    model.requiredFields = (policy?.requiredFieldsBeforeConversion ?? []).filter(
+      (c): c is string => !!c,
+    );
+    return model;
+  }
+}
+
+function positiveIntegerValidator(max: number, message: string) {
+  return (ctx: { value: () => string }) => {
+    const raw = (ctx.value() ?? '').trim();
+    if (!raw) return undefined;
+    const parsed = Number(raw);
+    return Number.isInteger(parsed) && parsed >= 0 && parsed <= max
+      ? undefined
+      : { kind: 'range', message };
+  };
+}
+
+@Component({
+  selector: 'beneficiary-policy-editor',
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [
+    RouterLink,
+    FormsModule,
+    FormRoot,
+    FormField,
+    TasCard,
+    Button,
+    TasIcon,
+    TasTag,
+    TasFormField,
+    TasLabel,
+    TasHint,
+    TasError,
+    TasInput,
+    TasMultiSelect,
+    TasSelect,
+    TasTable,
+  ],
+  template: `
+    <!-- ——— Politique bénéficiaires et foyer (BNF-F-14) ——— -->
+    <tas-card class="block">
+      <div class="p-4 border-b border-slate-100">
+        <h2 class="text-sm font-semibold text-slate-700 flex items-center gap-2">
+          <tas-icon
+            iconName="feather:users"
+            class="text-slate-400"
+            style="font-size:14px"
+          ></tas-icon>
+          Politique bénéficiaires et foyer
+        </h2>
+        <p class="text-xs text-slate-400 mt-0.5">
+          Foyer, rôles de bénéficiaires et champs exigés avant conversion pour
+          cette ligne de produit.
+        </p>
+      </div>
+
+      <form [formRoot]="formSchema" class="p-4 flex flex-col gap-5">
+        <!-- Identification de la ligne de produit -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <p class="text-xs text-slate-400 mb-1" id="policy-category-label">
+              Catégorie
+            </p>
+            <p
+              class="text-sm text-slate-800"
+              aria-describedby="policy-category-label"
+            >
+              {{ categoryLabel() }}
+            </p>
+            <p class="text-[11px] text-slate-400 mt-0.5">
+              La catégorie est fixée à la création du produit.
+            </p>
+          </div>
+
+          <tas-form-field>
+            <tas-label>Système cible</tas-label>
+            <tas-select
+              [options]="integrationSystemOptions"
+              optionLabel="label"
+              optionValue="value"
+              placeholder="Aucun"
+              [formField]="formSchema.integrationSystem"
+            ></tas-select>
+            <tas-hint>
+              Back-office qui porte les contrats de cette ligne de produit.
+            </tas-hint>
+          </tas-form-field>
+        </div>
+
+        <!-- Foyer -->
+        <fieldset class="border-t border-slate-100 pt-4">
+          <legend class="text-xs font-semibold text-slate-600 uppercase tracking-wide">
+            Foyer
+          </legend>
+
+          <label class="flex items-start gap-2 mt-3 cursor-pointer text-sm">
+            <input
+              type="checkbox"
+              class="mt-0.5 accent-primary"
+              [formField]="formSchema.householdEnabled"
+            />
+            <span>
+              Activer le foyer pour cette ligne de produit
+              <span class="block text-xs text-slate-400">
+                Autorise la saisie du conjoint et des enfants sur les leads et
+                les clients.
+              </span>
+            </span>
+          </label>
+
+          <label class="flex items-start gap-2 mt-3 cursor-pointer text-sm">
+            <input
+              type="checkbox"
+              class="mt-0.5 accent-primary"
+              [formField]="formSchema.allowMultipleHoldings"
+            />
+            <span>
+              Autoriser plusieurs détentions par client
+              <span class="block text-xs text-slate-400">
+                Un même client peut détenir plusieurs contrats de ce produit.
+              </span>
+            </span>
+          </label>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+            <tas-form-field>
+              <tas-label>Nombre maximal d'enfants</tas-label>
+              <input
+                tasInput
+                type="number"
+                placeholder="Sans limite"
+                [formField]="formSchema.maxChildren"
+              />
+              @if (
+                formSchema.maxChildren().touched() &&
+                formSchema.maxChildren().invalid()
+              ) {
+                <tas-error>
+                  {{ formSchema.maxChildren().errors()[0].message }}
+                </tas-error>
+              } @else {
+                <tas-hint>Laissez vide pour ne pas limiter.</tas-hint>
+              }
+            </tas-form-field>
+
+            <tas-form-field>
+              <tas-label>Âge maximal d'un enfant</tas-label>
+              <input
+                tasInput
+                type="number"
+                placeholder="Sans limite"
+                [formField]="formSchema.childMaxAge"
+              />
+              @if (
+                formSchema.childMaxAge().touched() &&
+                formSchema.childMaxAge().invalid()
+              ) {
+                <tas-error>
+                  {{ formSchema.childMaxAge().errors()[0].message }}
+                </tas-error>
+              } @else {
+                <tas-hint>En années révolues.</tas-hint>
+              }
+            </tas-form-field>
+          </div>
+
+          @if (!formSchema.householdEnabled().value()) {
+            <p class="text-xs text-slate-400 mt-2">
+              Les limites d'enfants ne s'appliquent que si le foyer est activé.
+            </p>
+          }
+        </fieldset>
+
+        <!-- Rôles autorisés -->
+        <fieldset class="border-t border-slate-100 pt-4">
+          <legend class="text-xs font-semibold text-slate-600 uppercase tracking-wide">
+            Rôles de bénéficiaires autorisés
+          </legend>
+
+          <tas-form-field class="mt-3">
+            <tas-label>Rôles autorisés</tas-label>
+            <tas-multi-select
+              [options]="roleOptions()"
+              placeholder="Sélectionnez les rôles autorisés"
+              [ngModel]="selectedRoles()"
+              [ngModelOptions]="{ standalone: true }"
+              (ngModelChange)="setAllowedRoles($event)"
+            ></tas-multi-select>
+            <tas-hint>
+              Seuls ces rôles pourront être désignés sur un contrat de ce
+              produit.
+            </tas-hint>
+          </tas-form-field>
+
+          <!--
+            Le multi-select n'affiche ses puces qu'à partir de son modèle de
+            sélection interne, que writeValue ne remplit pas : une sélection
+            venue du serveur serait invisible. Ce rappel garantit que
+            l'administrateur voit toujours ce qui est réellement enregistré.
+          -->
+          <div class="flex flex-wrap gap-1.5 mt-2" aria-live="polite">
+            @if (selectedRoles().length === 0) {
+              <p class="text-xs text-slate-400">
+                Aucun rôle autorisé : aucune désignation ne sera possible.
+              </p>
+            } @else {
+              @for (code of selectedRoles(); track code) {
+                <tas-tag severity="info">{{ roleLabel(code) }}</tas-tag>
+              }
+            }
+          </div>
+        </fieldset>
+
+        <!-- Champs exigés avant conversion -->
+        <fieldset class="border-t border-slate-100 pt-4">
+          <legend class="text-xs font-semibold text-slate-600 uppercase tracking-wide">
+            Champs exigés avant conversion
+          </legend>
+          <p class="text-xs text-slate-400 mt-1">
+            Un lead ne pourra pas être converti tant que ces informations ne
+            sont pas renseignées.
+          </p>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-3">
+            @for (group of requiredFieldGroups; track group.title) {
+              <div>
+                <p class="text-xs font-medium text-slate-500 mb-1.5">
+                  {{ group.title }}
+                </p>
+                <div class="flex flex-col gap-1.5">
+                  @for (field of group.fields; track field.code) {
+                    <label class="flex items-center gap-2 cursor-pointer text-sm">
+                      <input
+                        type="checkbox"
+                        class="accent-primary"
+                        [checked]="isRequiredField(field.code)"
+                        (change)="toggleRequiredField(field.code)"
+                      />
+                      {{ field.label }}
+                    </label>
+                  }
+                </div>
+              </div>
+            }
+          </div>
+
+          @if (unknownRequiredFieldCount() > 0) {
+            <p class="text-xs text-slate-500 mt-3">
+              {{ unknownRequiredFieldCount() }} champ(s) supplémentaire(s)
+              définis côté back-office sont conservés tels quels.
+            </p>
+          }
+
+          <tas-form-field class="mt-4 block max-w-xs">
+            <tas-label>Niveau KYC requis</tas-label>
+            <input
+              tasInput
+              type="text"
+              placeholder="Ex : Tier1"
+              [formField]="formSchema.requiredKycTier"
+            />
+            <tas-hint>
+              Code attendu par le back-office. Laissez vide pour ne rien exiger.
+            </tas-hint>
+          </tas-form-field>
+        </fieldset>
+
+        @if (canUpdate()) {
+          <div class="flex justify-end border-t border-slate-100 pt-4">
+            <button
+              tas-raised-button
+              color="primary"
+              type="button"
+              [disabled]="formSchema().invalid() || formSchema().submitting()"
+              [isLoading]="formSchema().submitting()"
+              (click)="handleSubmit()"
+            >
+              <tas-icon iconName="feather:save" iconSize="sm"></tas-icon>
+              Enregistrer la politique
+            </button>
+          </div>
+        }
+      </form>
+    </tas-card>
+
+    <!-- ——— Questionnaires de qualification ——— -->
+    <tas-card class="block mt-4">
+      <div class="p-4 border-b border-slate-100">
+        <h2 class="text-sm font-semibold text-slate-700 flex items-center gap-2">
+          <tas-icon
+            iconName="feather:clipboard"
+            class="text-slate-400"
+            style="font-size:14px"
+          ></tas-icon>
+          Questionnaires de qualification
+        </h2>
+        <p class="text-xs text-slate-400 mt-0.5">
+          Questionnaires de la catégorie « {{ categoryLabel() }} ». Le
+          rattachement se règle sur le questionnaire lui-même, via sa catégorie
+          et son produit.
+        </p>
+      </div>
+
+      @if (templatesFailed()) {
+        <div class="p-4 flex items-start gap-3">
+          <tas-icon
+            iconName="feather:alert-triangle"
+            class="text-functional-error"
+            style="font-size:16px"
+          ></tas-icon>
+          <div>
+            <p class="text-sm text-slate-700">
+              Impossible de charger les questionnaires.
+            </p>
+            <button
+              tas-text-button
+              color="primary"
+              type="button"
+              class="text-xs"
+              (click)="reloadTemplates()"
+            >
+              Réessayer
+            </button>
+          </div>
+        </div>
+      } @else {
+        <div class="p-4">
+          <tas-table
+            [data]="templates()"
+            [config]="tableConfig"
+            [isLoading]="templatesLoading()"
+            [hasCaption]="false"
+          >
+            <ng-template #header>
+              <tr>
+                <th scope="col">Questionnaire</th>
+                <th scope="col">Portée</th>
+                <th scope="col">Statut</th>
+                <th scope="col"></th>
+              </tr>
+            </ng-template>
+
+            <ng-template #body let-item>
+              <tr class="hover:bg-slate-50">
+                <td class="py-3">
+                  <div class="text-sm font-medium text-slate-800">
+                    {{ item.name ?? 'Questionnaire' }}
+                  </div>
+                  <div class="text-xs text-slate-400">
+                    version {{ item.version ?? 1 }}
+                  </div>
+                </td>
+                <td>
+                  <tas-tag
+                    [severity]="item.productCode === code() ? 'success' : 'neutral'"
+                  >
+                    {{ scopeLabel(item) }}
+                  </tas-tag>
+                </td>
+                <td>
+                  <tas-tag [severity]="templateStatusSeverity(item.status)">
+                    {{ templateStatusLabel(item.status) }}
+                  </tas-tag>
+                </td>
+                <td class="text-right">
+                  <a
+                    [routerLink]="[
+                      '/settings/qualification-templates',
+                      item.id,
+                      'edit'
+                    ]"
+                    class="text-xs text-primary hover:underline"
+                    [attr.aria-label]="
+                      'Ouvrir le questionnaire ' + (item.name ?? '')
+                    "
+                  >
+                    Ouvrir
+                  </a>
+                </td>
+              </tr>
+            </ng-template>
+          </tas-table>
+        </div>
+      }
+
+      <div class="px-4 pb-4">
+        @if (isInsurance()) {
+          <div
+            class="rounded-lg border border-slate-200 bg-slate-50 p-3 flex gap-2.5"
+          >
+            <tas-icon
+              iconName="feather:heart"
+              class="text-slate-400 shrink-0 mt-0.5"
+              style="font-size:14px"
+            ></tas-icon>
+            <p class="text-xs text-slate-500">
+              Catégorie d'assurance : un questionnaire santé peut être rattaché à
+              cette ligne de produit. Le marquage « questionnaire santé » se
+              fait sur le questionnaire, à l'écran « Formulaires ».
+            </p>
+          </div>
+        } @else {
+          <div
+            class="rounded-lg border border-slate-200 bg-slate-50 p-3 flex gap-2.5"
+          >
+            <tas-icon
+              iconName="feather:info"
+              class="text-slate-400 shrink-0 mt-0.5"
+              style="font-size:14px"
+            ></tas-icon>
+            <p class="text-xs text-slate-500">
+              Les questionnaires santé ne sont proposés que pour les catégories
+              d'assurance.
+            </p>
+          </div>
+        }
+      </div>
+    </tas-card>
+  `,
+})
+export class BeneficiaryPolicyEditor {
+  private readonly _productsApi = inject(ProductsApiService);
+  private readonly _leadsApi = inject(LeadsApiService);
+  private readonly _snackbar = inject(SnackbarService);
+
+  public readonly product = input<ProductDto | null>(null);
+  public readonly canUpdate = input(false);
+  /** Le parent recharge le produit : un 204 ne prouve pas ce qui a été retenu. */
+  public readonly saved = output<void>();
+
+  public readonly requiredFieldGroups = REQUIRED_FIELD_GROUPS;
+  public readonly integrationSystemOptions = INTEGRATION_SYSTEM_OPTIONS;
+  public readonly roleLabel = designationRoleLabel;
+  public readonly templateStatusLabel = statusLabel;
+  public readonly templateStatusSeverity = statusSeverity;
+
+  public readonly tableConfig: TableConfig = {
+    property: 'id',
+    pagination: {
+      serverSide: false,
+      pageIndex: 0,
+      pageSize: 10,
+      pageSizeOptions: [10, 20, 50],
+      totalElements: 0,
+    },
+  };
+
+  public readonly model = signal(BeneficiaryPolicyFormModel.fromProduct(null));
+
+  public readonly formSchema = form(this.model, (schema) => {
+    validate(
+      schema.maxChildren,
+      positiveIntegerValidator(30, 'Indiquez un entier entre 0 et 30'),
+    );
+    validate(
+      schema.childMaxAge,
+      positiveIntegerValidator(99, 'Indiquez un âge entre 0 et 99'),
+    );
+    // Les limites d'enfants n'ont pas de sens sans foyer. Les champs restent
+    // dans le modèle : `disabled` ne les retire pas du payload, il les rend
+    // seulement non modifiables.
+    disabled(schema.maxChildren, {
+      when: ({ valueOf }) => !valueOf(schema.householdEnabled),
+    });
+    disabled(schema.childMaxAge, {
+      when: ({ valueOf }) => !valueOf(schema.householdEnabled),
+    });
+  });
+
+  public readonly roleOptions = signal<{ label: string; value: string }[]>([]);
+  public readonly templates = signal<QualificationTemplateDto[]>([]);
+  public readonly templatesLoading = signal(false);
+  public readonly templatesFailed = signal(false);
+
+  public readonly code = computed(() => this.product()?.code ?? null);
+
+  public readonly categoryLabel = computed(() =>
+    productCategoryLabel(this.product()?.category),
+  );
+
+  public readonly isInsurance = computed(() =>
+    isInsuranceCategory(this.product()?.category),
+  );
+
+  public readonly selectedRoles = computed(() =>
+    this.formSchema.allowedRoles().value(),
+  );
+
+  public readonly unknownRequiredFieldCount = computed(
+    () =>
+      this.formSchema
+        .requiredFields()
+        .value()
+        .filter((code) => !KNOWN_REQUIRED_FIELD_CODES.includes(code)).length,
+  );
+
+  private readonly _rolesSelect = viewChild(TasMultiSelect);
+  private _rolesSeeded = false;
+
+  constructor() {
+    effect(() => {
+      const product = this.product();
+      if (!product) return;
+      this.model.set(BeneficiaryPolicyFormModel.fromProduct(product));
+      this._rolesSeeded = false;
+      // Un code de rôle venu du serveur et inconnu du référentiel reste
+      // proposé — sinon l'enregistrement suivant le supprimerait en silence.
+      const codes = new Set([
+        ...DESIGNATION_ROLE_CODES,
+        ...(product.beneficiaryPolicy?.allowedRoles ?? [])
+          .map((r) => r.code)
+          .filter((c): c is string => !!c),
+      ]);
+      this.roleOptions.set(
+        [...codes].map((code) => ({
+          value: code,
+          label: designationRoleLabel(code),
+        })),
+      );
+      this._loadTemplates(product.category ?? null);
+    });
+
+    // Le multi-select du design system ne synchronise pas son `selectionModel`
+    // depuis `writeValue` : sans cette amorce, une sélection chargée depuis
+    // l'API n'apparaîtrait pas cochée, et le premier clic dans la liste
+    // écraserait les rôles déjà enregistrés.
+    effect(() => {
+      const select = this._rolesSelect();
+      const options = this.roleOptions();
+      if (!select || options.length === 0 || this._rolesSeeded) return;
+      this._rolesSeeded = true;
+      const selected = this.selectedRoles();
+      const toSelect = options.filter((o) => selected.includes(o.value));
+      // La sélection de l'affichage précédent survit à un rechargement du
+      // produit : on repart de l'état du serveur.
+      select.selectionModel.clear(true);
+      if (toSelect.length > 0) {
+        select.selectionModel.select(...toSelect);
+      }
+    });
+  }
+
+  public setAllowedRoles(codes: string[] | null | undefined): void {
+    this.formSchema.allowedRoles().value.set(codes ?? []);
+  }
+
+  public isRequiredField(code: string): boolean {
+    return this.formSchema.requiredFields().value().includes(code);
+  }
+
+  public toggleRequiredField(code: string): void {
+    const field = this.formSchema.requiredFields();
+    const current = field.value();
+    field.value.set(
+      current.includes(code)
+        ? current.filter((c) => c !== code)
+        : [...current, code],
+    );
+  }
+
+  public scopeLabel(template: QualificationTemplateDto): string {
+    if (!template.productCode) return 'Toute la catégorie';
+    return template.productCode === this.code()
+      ? 'Ce produit'
+      : 'Autre produit';
+  }
+
+  public reloadTemplates(): void {
+    this._loadTemplates(this.product()?.category ?? null);
+  }
+
+  public handleSubmit(): void {
+    submit(this.formSchema, async (field) => {
+      const value = field().value();
+      const productId = this.product()?.id;
+      if (!productId) return;
+
+      const previousRoles = this.product()?.beneficiaryPolicy?.allowedRoles ?? [];
+      // Les contraintes de comptage d'un rôle déjà configuré (`minCount`,
+      // `maxCount`, `sharesMustTotal100`) ne sont pas éditables ici : on les
+      // réémet telles quelles pour ne pas les écraser avec des valeurs par
+      // défaut.
+      const allowedRoles: DesignationRoleInput[] = value.allowedRoles.map(
+        (code) => {
+          const previous = previousRoles.find((r) => r.code === code);
+          return {
+            code,
+            label: previous?.label ?? designationRoleLabel(code),
+            minCount: previous?.minCount ?? 0,
+            maxCount: previous?.maxCount ?? null,
+            sharesMustTotal100: previous?.sharesMustTotal100 ?? false,
+          };
+        },
+      );
+
+      const payload: SetBeneficiaryPolicyRequest = {
+        householdEnabled: value.householdEnabled,
+        allowMultipleHoldings: value.allowMultipleHoldings,
+        allowedRoles,
+        maxChildren: toNullableInteger(value.maxChildren),
+        childMaxAge: toNullableInteger(value.childMaxAge),
+        requiredFieldsBeforeConversion: value.requiredFields,
+        requiredKycTier: value.requiredKycTier.trim() || null,
+        integrationSystem: value.integrationSystem.trim() || null,
+      };
+
+      const result = await firstValueFrom(
+        this._productsApi
+          .setProductBeneficiaryPolicy(productId, payload, 'response')
+          .pipe(
+            catchError((error: HttpErrorResponse) => {
+              this._snackbar.error(
+                'Erreur',
+                policyErrorMessage(error),
+              );
+              return EMPTY;
+            }),
+          ),
+      );
+
+      if (result) {
+        this._snackbar.success(
+          'Enregistré',
+          'Politique bénéficiaires et foyer mise à jour.',
+        );
+        // L'écriture est composée (foyer, rôles, champs exigés) : le 204 ne dit
+        // pas ce que le serveur a retenu, on recharge le produit.
+        this.saved.emit();
+      }
+    });
+  }
+
+  private _loadTemplates(category: string | null): void {
+    if (!category) {
+      this.templates.set([]);
+      return;
+    }
+    this.templatesLoading.set(true);
+    this.templatesFailed.set(false);
+    this._leadsApi
+      // Le filtre `productCategory` de cet endpoint est une chaîne au
+      // contrat, pas un entier : l'enum de lecture s'y applique directement.
+      .listQualificationTemplates(undefined, category as ProductDtoCategoryEnum)
+      .pipe(
+        catchError(() => {
+          this.templatesFailed.set(true);
+          this.templatesLoading.set(false);
+          return EMPTY;
+        }),
+      )
+      .subscribe((templates) => {
+        this.templates.set(templates ?? []);
+        this.templatesLoading.set(false);
+      });
+  }
+}
+
+function toNullableInteger(raw: string): number | null {
+  const trimmed = (raw ?? '').trim();
+  if (!trimmed) return null;
+  const parsed = Number(trimmed);
+  return Number.isInteger(parsed) ? parsed : null;
+}
+
+function policyErrorMessage(error: HttpErrorResponse): string {
+  const body = error.error ?? {};
+  const errors = body.errors as Record<string, string[]> | undefined;
+  if (errors) {
+    const first = Object.values(errors)[0]?.[0];
+    if (first) return first;
+  }
+  if (typeof body.title === 'string' && body.title) return body.title;
+  if (error.status === 403) {
+    return "Vous n'avez pas le droit de modifier la politique de ce produit.";
+  }
+  return 'Impossible d’enregistrer la politique bénéficiaires et foyer.';
+}

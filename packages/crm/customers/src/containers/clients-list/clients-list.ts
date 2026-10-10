@@ -22,7 +22,7 @@ import { TasSelect } from '@talisoft/ui/select';
 import {
   AgenciesApiService,
   ClientSearchItemDto,
-  ClientSearchItemDtoPagedResult,
+  PagedResultOfClientSearchItemDto,
   ClientsApiService,
   UsersApiService,
 } from '@sankore/crm-api';
@@ -437,7 +437,7 @@ export class ClientsListPage implements OnInit {
     this._reload$.next();
   }
 
-  private _searchRequest(): Observable<ClientSearchItemDtoPagedResult> {
+  private _searchRequest(): Observable<PagedResultOfClientSearchItemDto> {
     const criterion = this.criterion();
     const value = this.filterQuery().trim() || undefined;
 
@@ -467,7 +467,7 @@ export class ClientsListPage implements OnInit {
       );
   }
 
-  private _onResult(result: ClientSearchItemDtoPagedResult): void {
+  private _onResult(result: PagedResultOfClientSearchItemDto): void {
     this.items.set(result.items ?? []);
     this.totalCount.set(result.totalCount ?? 0);
     this.totalPages.set(Math.max(result.totalPages ?? 1, 1));

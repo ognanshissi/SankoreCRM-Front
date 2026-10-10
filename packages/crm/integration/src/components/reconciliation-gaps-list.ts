@@ -20,7 +20,12 @@ import {
   ReconciliationGapRow,
   ResolveReconciliationGapResult,
 } from '@sankore/crm-api';
-import { PermissionCode, PermissionsService } from '@sankore/crm/common';
+import {
+  PermissionCode,
+  PermissionsService,
+  reconciliationGapTypeLabel,
+  UNKNOWN_CODE_LABEL,
+} from '@sankore/crm/common';
 import { TasAlert } from '@talisoft/ui/alert';
 import { Button } from '@talisoft/ui/button';
 import { TasCard } from '@talisoft/ui/card';
@@ -44,7 +49,12 @@ import {
   gapResolutionMeta,
   gapTypeLabel,
 } from '../data-access/integration-referential';
-import { ResolveGapDrawer, ResolveGapDrawerData } from './resolve-gap-drawer';
+import {
+  ComparedValues,
+  parseComparedValues,
+  ResolveGapDrawer,
+  ResolveGapDrawerData,
+} from './resolve-gap-drawer';
 
 interface GapTypeCounter {
   gapType: string;
@@ -191,7 +201,8 @@ const EXPORT_MAX_PAGES = 40;
       <!-- Filtres -->
       <tas-card class="mb-4 block">
       <div class="p-4">
-        <div class="grid grid-cols-4 gap-3">
+        <!-- Empilé à 360 px : une grille à 4 colonnes y rendrait chaque champ illisible. -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           <tas-form-field>
             <tas-label>Type d'écart</tas-label>
             <tas-select
@@ -221,6 +232,18 @@ const EXPORT_MAX_PAGES = 40;
           </tas-form-field>
 
           <tas-form-field>
+            <tas-label>Client (identifiant CRM)</tas-label>
+            <input
+              tasInput
+              type="text"
+              placeholder="Identifiant du client"
+              [ngModel]="filterCrmId()"
+              [ngModelOptions]="{ standalone: true }"
+              (ngModelChange)="onCrmIdChange($event)"
+            />
+          </tas-form-field>
+
+          <tas-form-field>
             <tas-label>Détecté à partir du</tas-label>
             <input
               tasInput
@@ -243,13 +266,13 @@ const EXPORT_MAX_PAGES = 40;
           </tas-form-field>
         </div>
 
-        <div class="mt-3 flex items-center justify-between gap-4">
+        <div class="mt-3 flex flex-wrap items-center justify-between gap-4">
           <div>
             <p class="text-xs text-slate-400">{{ totalCount() }} écart(s) dans ce filtre</p>
-            @if (isDateFilterActive()) {
+            @if (isLocalFilterActive()) {
               <p class="text-xs text-slate-400">
-                Le filtre de date s'applique aux lignes chargées, le serveur ne le
-                connaît pas.
+                Les filtres client et date s'appliquent aux lignes chargées : le serveur
+                ne les connaît pas, et le total ci-dessus reste celui du périmètre.
               </p>
             }
           </div>
@@ -308,14 +331,14 @@ const EXPORT_MAX_PAGES = 40;
             <td>
               <div class="flex items-stretch gap-3">
                 <div class="min-w-0">
-                  <p class="text-xs text-slate-400">CRM</p>
+                  <p class="text-xs text-slate-400">Identifiant CRM</p>
                   <p class="font-mono text-xs text-slate-700 truncate" [title]="gap.crmId ?? ''">
                     {{ gap.crmId || '—' }}
                   </p>
                 </div>
                 <div class="border-l border-slate-200"></div>
                 <div class="min-w-0">
-                  <p class="text-xs text-slate-400">Système externe</p>
+                  <p class="text-xs text-slate-400">Identifiant externe</p>
                   <p
                     class="font-mono text-xs text-slate-700 truncate"
                     [title]="gap.externalId ?? ''"
@@ -324,7 +347,31 @@ const EXPORT_MAX_PAGES = 40;
                   </p>
                 </div>
               </div>
-              @if (gap.details) {
+
+              <!--
+                Côte à côte seulement quand le champ details étiquette les deux côtés lui-même ;
+                sinon le texte brut, qui reste la seule source sûre.
+              -->
+              @if (compared(gap.details); as values) {
+                <div class="mt-2 rounded-lg border border-slate-200 p-2">
+                  @if (values.field) {
+                    <p class="text-xs font-medium text-slate-600">{{ values.field }}</p>
+                  }
+                  <div class="mt-1 flex items-stretch gap-3">
+                    <div class="min-w-0">
+                      <p class="text-xs text-slate-400">Valeur CRM</p>
+                      <p class="text-xs font-medium text-slate-800 break-all">{{ values.crm }}</p>
+                    </div>
+                    <div class="border-l border-slate-200"></div>
+                    <div class="min-w-0">
+                      <p class="text-xs text-slate-400">Valeur système externe</p>
+                      <p class="text-xs font-medium text-slate-800 break-all">
+                        {{ values.external }}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              } @else if (gap.details) {
                 <p class="mt-1 text-xs text-slate-500">{{ gap.details }}</p>
               }
             </td>
@@ -423,6 +470,12 @@ export class ReconciliationGapsList implements OnInit {
   public filterGapType = signal<string | null>(null);
   public filterFrom = signal<string>('');
   public filterTo = signal<string>('');
+  /**
+   * Filtre client. Le contrat ne propose aucun paramètre `crmId` sur `reconciliation/gaps` : il
+   * s'applique donc aux lignes chargées, comme les dates, et l'interface le dit. Il est restauré
+   * depuis l'URL, ce qui permet d'arriver ici depuis un dossier client avec son identifiant.
+   */
+  public filterCrmId = signal<string>('');
 
   public tableConfig = signal<TableConfig>({
     property: 'gapId',
@@ -459,7 +512,7 @@ export class ReconciliationGapsList implements OnInit {
     const counts = this._pageMeta()?.openCountsByType;
     if (!counts) return [];
     return Object.entries(counts)
-      .map(([gapType, count]) => ({ gapType, label: gapTypeLabel(gapType), count }))
+      .map(([gapType, count]) => ({ gapType, label: this.gapLabel(gapType), count }))
       .sort((a, b) => b.count - a.count);
   });
 
@@ -478,33 +531,31 @@ export class ReconciliationGapsList implements OnInit {
       if (row.gapType && !undetectable.has(row.gapType)) types.add(row.gapType);
     }
     return [...types]
-      .map((gapType) => ({ label: gapTypeLabel(gapType), value: gapType }))
+      .map((gapType) => ({ label: this.gapLabel(gapType), value: gapType }))
       .sort((a, b) => a.label.localeCompare(b.label, 'fr'));
   });
 
   public readonly isDateFilterActive = computed(() => !!this.filterFrom() || !!this.filterTo());
 
+  /** Les filtres que le serveur ne connaît pas, et qui ne portent donc que sur la page chargée. */
+  public readonly isLocalFilterActive = computed(
+    () => this.isDateFilterActive() || !!this.filterCrmId().trim(),
+  );
+
   public readonly isScopeMissing = computed(() => !!this.family() && !this.connectionId());
 
   /**
-   * Le contrat ne propose aucun paramètre de date sur `reconciliation/gaps` : le
-   * filtre de date est appliqué aux lignes de la page chargée. `totalCount` reste
-   * donc celui du serveur, et l'interface le dit — sans quoi un écart filtré
-   * localement passerait pour un écart absent du périmètre.
+   * Le contrat ne propose ni paramètre de date ni paramètre de client sur
+   * `reconciliation/gaps` : ces deux filtres sont appliqués aux lignes de la page
+   * chargée. `totalCount` reste donc celui du serveur, et l'interface le dit —
+   * sans quoi un écart filtré localement passerait pour un écart absent du
+   * périmètre.
    */
-  public readonly visibleRows = computed(() => {
-    const from = this.filterFrom();
-    const to = this.filterTo();
-    if (!from && !to) return this.rows();
-
-    const min = from ? Date.parse(`${from}T00:00:00`) : null;
-    const max = to ? Date.parse(`${to}T23:59:59`) : null;
-    return this.rows().filter((row) => this._isWithin(row.detectedAt, min, max));
-  });
+  public readonly visibleRows = computed(() => this._applyLocalFilters(this.rows()));
 
   public readonly emptyMessage = computed(() => {
-    if (this.isDateFilterActive()) {
-      return 'Aucun écart sur cette période parmi les lignes chargées. Changez de page ou élargissez les dates.';
+    if (this.isLocalFilterActive()) {
+      return 'Aucun écart ne correspond au client ou à la période parmi les lignes chargées. Changez de page ou élargissez les filtres.';
     }
     if (this.filterResolution() === 'Open') {
       return 'Aucun écart ouvert sur ce périmètre.';
@@ -534,6 +585,7 @@ export class ReconciliationGapsList implements OnInit {
     if (params['resolution']) this.filterResolution.set(params['resolution']);
     if (params['detectedFrom']) this.filterFrom.set(params['detectedFrom']);
     if (params['detectedTo']) this.filterTo.set(params['detectedTo']);
+    if (params['crmId']) this.filterCrmId.set(params['crmId']);
 
     this._reload$
       .pipe(
@@ -552,8 +604,23 @@ export class ReconciliationGapsList implements OnInit {
       });
   }
 
+  /**
+   * Le référentiel de l'intégration et celui du socle conformité ne couvrent pas exactement les
+   * mêmes types (`OrphanReference` d'un côté, `DesignationMismatch` de l'autre). On garde le
+   * premier, et on ne retombe sur le second que pour un code qu'il ne connaît pas : sans cela,
+   * un type livré par l'un des deux s'afficherait en code brut.
+   */
   public gapLabel(gapType: string | null | undefined): string {
-    return gapTypeLabel(gapType);
+    const label = gapTypeLabel(gapType);
+    if (gapType && label === gapType) {
+      const fromCommon = reconciliationGapTypeLabel(gapType);
+      if (fromCommon !== UNKNOWN_CODE_LABEL) return fromCommon;
+    }
+    return label;
+  }
+
+  public compared(details: string | null | undefined): ComparedValues | null {
+    return parseComparedValues(details);
   }
 
   public resolutionMeta(resolution: string | null | undefined) {
@@ -577,6 +644,11 @@ export class ReconciliationGapsList implements OnInit {
   public onResolutionChange(value: string | null): void {
     this.filterResolution.set(value ?? '');
     this._applyFilters();
+  }
+
+  public onCrmIdChange(value: string | null): void {
+    this.filterCrmId.set(value ?? '');
+    this._pushFiltersToUrl();
   }
 
   public onDateChange(bound: 'from' | 'to', value: string | null): void {
@@ -630,7 +702,7 @@ export class ReconciliationGapsList implements OnInit {
     this.isExporting.set(true);
     this._fetchAllPages(1, []).subscribe({
       next: ({ rows, truncated }) => {
-        const exported = this._applyDateFilter(rows);
+        const exported = this._applyLocalFilters(rows);
         this._download(this._toCsv(exported));
         this.isExporting.set(false);
 
@@ -686,6 +758,9 @@ export class ReconciliationGapsList implements OnInit {
       "Type d'écart",
       'Identifiant CRM',
       'Identifiant externe',
+      'Champ comparé',
+      'Valeur CRM',
+      'Valeur système externe',
       'Valeurs comparées',
       'Statut',
       'Détecté le',
@@ -695,11 +770,17 @@ export class ReconciliationGapsList implements OnInit {
       'Note de résolution',
     ];
 
-    const lines = rows.map((row) =>
-      [
-        gapTypeLabel(row.gapType),
+    const lines = rows.map((row) => {
+      // Les trois colonnes dérivées restent vides quand le texte n'étiquette pas les deux
+      // côtés : une colonne vide se lit, une colonne devinée se recopie dans un rapport.
+      const compared = parseComparedValues(row.details);
+      return [
+        this.gapLabel(row.gapType),
         row.crmId ?? '',
         row.externalId ?? '',
+        compared?.field ?? '',
+        compared?.crm ?? '',
+        compared?.external ?? '',
         row.details ?? '',
         gapResolutionMeta(row.resolution).label,
         row.detectedAt ?? '',
@@ -709,8 +790,8 @@ export class ReconciliationGapsList implements OnInit {
         row.resolutionNote ?? '',
       ]
         .map((field) => this._escapeCsv(field))
-        .join(';'),
-    );
+        .join(';');
+    });
 
     return [header.map((field) => this._escapeCsv(field)).join(';'), ...lines].join('\r\n');
   }
@@ -768,13 +849,19 @@ export class ReconciliationGapsList implements OnInit {
       );
   }
 
-  private _applyDateFilter(rows: ReconciliationGapRow[]): ReconciliationGapRow[] {
+  private _applyLocalFilters(rows: ReconciliationGapRow[]): ReconciliationGapRow[] {
     const from = this.filterFrom();
     const to = this.filterTo();
-    if (!from && !to) return rows;
+    const crmId = this.filterCrmId().trim().toLowerCase();
+    if (!from && !to && !crmId) return rows;
+
     const min = from ? Date.parse(`${from}T00:00:00`) : null;
     const max = to ? Date.parse(`${to}T23:59:59`) : null;
-    return rows.filter((row) => this._isWithin(row.detectedAt, min, max));
+    return rows.filter((row) => {
+      if (crmId && !(row.crmId ?? '').toLowerCase().includes(crmId)) return false;
+      if (!min && !max) return true;
+      return this._isWithin(row.detectedAt, min, max);
+    });
   }
 
   private _isWithin(
@@ -808,6 +895,7 @@ export class ReconciliationGapsList implements OnInit {
         resolution: this.filterResolution() || null,
         detectedFrom: this.filterFrom() || null,
         detectedTo: this.filterTo() || null,
+        crmId: this.filterCrmId().trim() || null,
       },
       queryParamsHandling: 'merge',
       replaceUrl: true,

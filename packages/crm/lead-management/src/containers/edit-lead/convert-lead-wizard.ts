@@ -1,6 +1,7 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { DIALOG_DATA, DialogRef } from '@angular/cdk/dialog';
 import { HttpErrorResponse } from '@angular/common/http';
+import { Router } from '@angular/router';
 import {
   email as emailValidator,
   form,
@@ -15,6 +16,7 @@ import { TasIcon } from '@talisoft/ui/icon';
 import { TasTag } from '@talisoft/ui/tag';
 import { Button } from '@talisoft/ui/button';
 import { TasCard } from '@talisoft/ui/card';
+import { TasSpinner } from '@talisoft/ui/spinner';
 import { TasError, TasFormField, TasHint, TasLabel } from '@talisoft/ui/form-field';
 import { TasInput } from '@talisoft/ui/input';
 import { TasSelect } from '@talisoft/ui/select';
@@ -27,17 +29,33 @@ import {
 } from '@talisoft/ui/side-drawer';
 import { TasTitle } from '@talisoft/ui/title';
 import { SnackbarService } from '@talisoft/ui/snackbar';
-import { PermissionsService } from '@sankore/crm/common';
+import {
+  CompletenessGapView,
+  CompletenessGauge,
+  completenessGapSection,
+  FatcaStatusBadge,
+  fatcaStatusLabel,
+  householdMemberFromLead,
+  HouseholdMemberView,
+  HouseholdMembersList,
+  PepExposureBadge,
+  pepFromDto,
+  pepLinkLabel,
+  PERMISSIONS,
+  PermissionsService,
+} from '@sankore/crm/common';
 import {
   ConvertLeadRequest,
   ConvertLeadResult,
   DuplicateMatchResult,
+  LeadCompletenessDto,
   LeadDto,
   LeadsApiService,
   UpdateLeadRequest,
   UpdateLeadRequestGenderEnum,
 } from '@sankore/crm-api';
 import { GENDER_OPTIONS, genderFromLead, genderLabel } from './edit-lead-info-drawer';
+import { LeadComplianceStore } from './lead-compliance-store';
 
 export interface ConvertLeadWizardData {
   lead: LeadDto;
@@ -54,10 +72,25 @@ export interface ConvertLeadWizardResult {
 
 type Step = 'recap' | 'complete' | 'duplicate';
 
-interface EligibilityCheck {
-  label: string;
-  passed: boolean;
-  detail: string;
+/** Résultat de conversion accompagné du canal par lequel il est arrivé (200 ou 409). */
+interface ConvertOutcome {
+  accepted: boolean;
+  result: ConvertLeadResult;
+}
+
+/** Statut FATCA d'une personne du dossier, tel que le récapitulatif l'affiche. */
+interface FatcaRow {
+  subjectLabel: string;
+  status: string | null;
+  statusLabel: string;
+  reason: string | null;
+}
+
+/** Une personne exposée PPE, avec son lien et — si le droit le permet — sa fonction. */
+interface PepRow {
+  subjectLabel: string;
+  linkLabel: string;
+  function: string | null;
 }
 
 /**
@@ -72,6 +105,33 @@ const CLIENT_ONLY_FIELDS = [
   'Profession et employeur',
   'Revenus déclarés',
 ];
+
+/**
+ * Motifs de refus connus de la conversion. Le contrat déclare `blockingCode` en chaîne libre,
+ * sans énumération : un code inconnu ne doit donc jamais bloquer l'écran — il est rendu tel quel
+ * à côté d'un libellé générique, ce qui laisse au support une information exploitable.
+ */
+const BLOCKING_CODE: Record<string, string> = {
+  INCOMPLETE: "Le dossier n'est pas complet.",
+  FILE_INCOMPLETE: "Le dossier n'est pas complet.",
+  COMPLETENESS_NOT_MET: "Le dossier n'est pas complet.",
+  MISSING_QUESTIONNAIRE: "Un questionnaire obligatoire n'est pas complété.",
+  MISSING_QUESTIONNAIRES: "Un questionnaire obligatoire n'est pas complété.",
+  QUESTIONNAIRE_MISSING: "Un questionnaire obligatoire n'est pas complété.",
+  FATCA_REQUIRED: 'La déclaration FATCA est obligatoire avant conversion.',
+  FATCA_DECLARATION_MISSING: 'La déclaration FATCA est obligatoire avant conversion.',
+  PEP_REVIEW_REQUIRED: "L'exposition PPE doit être validée par la conformité.",
+  CONSENT_MISSING: 'Un consentement obligatoire manque au dossier.',
+  DUPLICATE_DETECTED: 'Des prospects similaires ont été détectés.',
+  CUSTOMER_EXISTS: 'Un client existe déjà pour cette personne.',
+  ALREADY_CONVERTED: 'Ce lead est déjà converti.',
+  KYC_INVALID: "Le dossier KYC n'est pas valide.",
+};
+
+function blockingCodeLabel(code: string | null | undefined): string {
+  if (!code) return 'La conversion a été refusée par le serveur.';
+  return BLOCKING_CODE[code] ?? 'La conversion a été refusée par le serveur.';
+}
 
 function todayISODate(): string {
   const now = new Date();
@@ -115,6 +175,22 @@ function missingOnClient(lead: LeadDto): string[] {
   return missing;
 }
 
+/** Libellé de la personne concernée par une déclaration FATCA ou un questionnaire. */
+function subjectFallback(subjectType: string | null | undefined): string {
+  switch (subjectType) {
+    case 'Principal':
+      return 'Titulaire principal';
+    case 'Spouse':
+      return 'Conjoint';
+    case 'Child':
+      return 'Enfant';
+    case 'Dependent':
+      return 'Personne à charge';
+    default:
+      return 'Dossier';
+  }
+}
+
 export class CompleteLeadFormModel {
   public firstName!: string;
   public lastName!: string;
@@ -137,6 +213,14 @@ export class CompleteLeadFormModel {
 @Component({
   selector: 'convert-lead-wizard',
   templateUrl: './convert-lead-wizard.html',
+  /**
+   * Le store est fourni ici, et non repris de la route `leads/:id` : un drawer ouvert par
+   * `SideDrawerService` est créé depuis l'injecteur racine du CDK (ni `injector` ni
+   * `viewContainerRef` ne sont passés à `Dialog.open`), donc les fournisseurs de route sont hors
+   * de portée. Une instance locale a l'avantage de relire le dossier au moment du contrôle :
+   * c'est exactement la fraîcheur qu'on veut avant de convertir.
+   */
+  providers: [LeadComplianceStore],
   imports: [
     TasSideDrawer,
     TasDrawerTitle,
@@ -146,6 +230,7 @@ export class CompleteLeadFormModel {
     TasTag,
     Button,
     TasCard,
+    TasSpinner,
     TasTitle,
     TasFormField,
     TasLabel,
@@ -156,17 +241,25 @@ export class CompleteLeadFormModel {
     TasDatePicker,
     FormRoot,
     FormField,
+    CompletenessGauge,
+    HouseholdMembersList,
+    PepExposureBadge,
+    FatcaStatusBadge,
   ],
 })
-export class ConvertLeadWizard {
+export class ConvertLeadWizard implements OnInit {
   public readonly data: ConvertLeadWizardData = inject(DIALOG_DATA);
   private readonly _dialogRef = inject(DialogRef<ConvertLeadWizardResult | false>);
   private readonly _leadsApi = inject(LeadsApiService);
   private readonly _permissions = inject(PermissionsService);
   private readonly _snackbar = inject(SnackbarService);
+  private readonly _router = inject(Router);
+  public readonly compliance = inject(LeadComplianceStore);
 
-  public readonly canConvert = this._permissions.can('lead:convert');
-  public readonly canReadCustomers = this._permissions.can('customers:read');
+  public readonly hasConvertPermission = this._permissions.can(PERMISSIONS.LEAD_CONVERT);
+  public readonly canReadCustomers = this._permissions.can(PERMISSIONS.CUSTOMERS_READ);
+  /** Sans ce droit, l'exposition PPE reste visible mais la fonction exercée est masquée. */
+  public readonly canReadPep = this._permissions.can(PERMISSIONS.CUSTOMERS_PEP_READ);
 
   public readonly genderOptions = GENDER_OPTIONS;
 
@@ -177,6 +270,14 @@ export class ConvertLeadWizard {
   /** Garde de réentrance : testée en première ligne de chaque action d'écriture. */
   public isSubmitting = signal(false);
   public duplicates = signal<DuplicateMatchResult[]>([]);
+
+  /**
+   * Complétude renvoyée par la conversion elle-même (corps du 409 comme du 200). Elle est plus
+   * fraîche que celle du store : c'est celle que le serveur vient d'évaluer pour refuser.
+   */
+  public serverCompleteness = signal<LeadCompletenessDto | null>(null);
+  /** Dernier refus serveur, affiché tel quel au-dessus du contrôle. */
+  public refusal = signal<ConvertLeadResult | null>(null);
 
   public model = signal(CompleteLeadFormModel.fromLead(this.data.lead));
 
@@ -208,53 +309,122 @@ export class ConvertLeadWizard {
 
   public readonly genderText = computed(() => genderLabel(this.lead().gender));
 
-  public readonly eligibilityChecks = computed<EligibilityCheck[]>(() => {
-    const lead = this.lead();
-    const checks: EligibilityCheck[] = [];
+  // ——— Contrôle avant conversion (BNF-F-08) : tout vient de l'API ———
 
-    const status = lead.status ?? '';
-    const isQualified = ['Qualified', 'Qualifying', 'Contacted'].includes(status);
-    checks.push({
-      label: 'Statut du lead',
-      passed: isQualified,
-      detail: isQualified
-        ? `Statut actuel : ${status}`
-        : `Le lead doit être au moins « Contacté » (actuellement : ${status || '—'})`,
-    });
+  public readonly completeness = computed<LeadCompletenessDto | null>(
+    () => this.serverCompleteness() ?? this.compliance.completeness(),
+  );
 
-    const completeness = lead.qualificationCompleteness?? 0;
-    const qualOk = (completeness * 100) >= 50;
-    checks.push({
-      label: 'Qualification',
-      passed: qualOk,
-      detail: qualOk
-        ? `Qualification à ${completeness * 100}%`
-        : `Qualification insuffisante (${completeness * 100}% — minimum 50% requis)`,
-    });
+  /** `canConvert` est une décision de l'API : jamais recalculée ici. */
+  public readonly canConvert = computed(() => this.completeness()?.canConvert === true);
 
-    const hasContact = !!(lead.phoneNumber || lead.email);
-    checks.push({
-      label: 'Coordonnées',
-      passed: hasContact,
-      detail: hasContact
-        ? 'Téléphone ou e-mail renseigné'
-        : 'Un téléphone ou un e-mail est requis',
-    });
+  /** La complétude n'a pas pu être lue : l'écran le dit, et laisse le serveur trancher. */
+  public readonly completenessUnavailable = computed(
+    () => !this.compliance.isLoading() && this.completeness() === null,
+  );
 
-    checks.push({
-      label: 'Droits',
-      passed: this.canConvert(),
-      detail: this.canConvert()
-        ? 'Vous pouvez convertir ce lead'
-        : 'Le droit « Convertir un lead » est requis',
-    });
-
-    return checks;
+  /**
+   * Le bouton se désactive sur le `canConvert` de l'API, et seulement quand l'API a répondu :
+   * si la complétude est indisponible, l'écran ne doit pas interdire une tentative que le serveur
+   * refusera lui-même avec un motif (409).
+   */
+  public readonly convertBlocked = computed(() => {
+    if (this.compliance.isLoading()) return true;
+    if (this.completeness() === null) return false;
+    return !this.canConvert();
   });
 
-  public readonly isEligible = computed(() =>
-    this.eligibilityChecks().every((c) => c.passed),
+  public readonly members = computed<HouseholdMemberView[]>(() =>
+    this.compliance.members().map(householdMemberFromLead),
   );
+
+  public readonly principalIdentity = computed(() => this.compliance.principal());
+
+  public readonly principalName = computed(
+    () => this.compliance.principalLabel() || this.leadDisplayName(),
+  );
+
+  public readonly pepRows = computed<PepRow[]>(() => {
+    const rows: PepRow[] = [];
+    const household = this.compliance.household();
+    if (!household) return rows;
+
+    const principalPep = pepFromDto(household.principalPep);
+    if (household.principalIsPepExposed === true || principalPep.isPep) {
+      rows.push({
+        subjectLabel: this.principalName(),
+        linkLabel: pepLinkLabel(principalPep.link),
+        function: principalPep.function,
+      });
+    }
+
+    for (const member of this.members()) {
+      if (!member.isPepExposed && !member.pep.isPep) continue;
+      rows.push({
+        subjectLabel: member.displayName,
+        linkLabel: pepLinkLabel(member.pep.link),
+        function: member.pep.function,
+      });
+    }
+    return rows;
+  });
+
+  public readonly fatcaRows = computed<FatcaRow[]>(() => {
+    const dto = this.compliance.fatca();
+    if (!dto) return [];
+
+    const rows: FatcaRow[] = (dto.declarations ?? [])
+      .filter((declaration) => declaration.isActive !== false)
+      .map((declaration) => ({
+        subjectLabel:
+          declaration.subjectLabel?.trim() || subjectFallback(declaration.subjectType),
+        status: declaration.status ?? null,
+        statusLabel: fatcaStatusLabel(declaration.status),
+        reason: null,
+      }));
+
+    for (const missing of dto.missing ?? []) {
+      rows.push({
+        subjectLabel: missing.subjectLabel?.trim() || subjectFallback(missing.subjectType),
+        status: null,
+        statusLabel: 'Déclaration manquante',
+        reason: missing.reason ?? null,
+      });
+    }
+    return rows;
+  });
+
+  /** « 2/4 questionnaires complétés » (BNF-F-06, repris dans le récapitulatif). */
+  public readonly questionnaireText = computed(() => {
+    const { done, total } = this.compliance.questionnaireProgress();
+    if (total === 0) return 'Aucun questionnaire requis';
+    return `${done}/${total} questionnaire${total > 1 ? 's' : ''} complété${done > 1 ? 's' : ''}`;
+  });
+
+  public readonly missingQuestionnaires = computed(
+    () => this.compliance.questionnaires()?.missing ?? [],
+  );
+
+  public readonly refusalLabel = computed(() => blockingCodeLabel(this.refusal()?.blockingCode));
+
+  /**
+   * Le lead a été capté pour un client déjà au portefeuille : la conversion ne crée aucune fiche,
+   * elle ouvre une souscription (BNF-F-19). Le contrat n'expose pas de drapeau dédié —
+   * `customerReference` (référence du client saisie à la capture) est le seul indice disponible.
+   */
+  public readonly isExistingCustomerLead = computed(() => {
+    const lead = this.lead();
+    return !!lead.customerReference?.trim() || !!lead.convertedToCustomerId;
+  });
+
+  public readonly primaryActionLabel = computed(() =>
+    this.isExistingCustomerLead() ? 'Créer la souscription' : 'Convertir en client',
+  );
+
+  public ngOnInit(): void {
+    const leadId = this.lead().id;
+    if (leadId) this.compliance.load(leadId);
+  }
 
   public leadDisplayName(): string {
     const l = this.lead();
@@ -266,6 +436,27 @@ export class ConvertLeadWizard {
   /** Un lead déjà converti porte la fiche client à rattacher ; les autres n'en ont aucune. */
   public canAttach(duplicate: DuplicateMatchResult): boolean {
     return duplicate.status === 'Converted' && !!duplicate.leadId;
+  }
+
+  /**
+   * Chaque élément manquant renvoie à l'onglet où le corriger. La navigation est absolue plutôt
+   * que relative (`../identite`) : un drawer n'a pas de `ActivatedRoute` — il est créé hors de
+   * l'arbre de routes — et `['/leads', id, section]` est le même chemin.
+   */
+  public onGapSelected(gap: CompletenessGapView): void {
+    const section = completenessGapSection(gap.code);
+    if (section === 'client') {
+      this._snackbar.info(
+        'À corriger sur la fiche client',
+        'Ce point se traite dans le module Clients, une fois la fiche créée.',
+      );
+      return;
+    }
+
+    const leadId = this.lead().id;
+    if (!leadId) return;
+    this._dialogRef.close(false);
+    this._router.navigate(['/leads', leadId, section]);
   }
 
   public goToComplete(): void {
@@ -294,7 +485,8 @@ export class ConvertLeadWizard {
    */
   public handleConvert(): void {
     if (this.isSubmitting()) return;
-    if (!this.isEligible()) return;
+    if (!this.hasConvertPermission()) return;
+    if (this.convertBlocked()) return;
     this.isSubmitting.set(true);
     this._convert({}).finally(() => this.isSubmitting.set(false));
   }
@@ -325,6 +517,18 @@ export class ConvertLeadWizard {
         await this._convert({ customerId });
       })
       .finally(() => this.isSubmitting.set(false));
+  }
+
+  /**
+   * Rattachement au client que le serveur a lui-même désigné dans son refus
+   * (`existingCustomerId`) : aucune fiche n'est créée, la demande devient une souscription.
+   */
+  public attachToExistingCustomer(): void {
+    if (this.isSubmitting()) return;
+    const customerId = this.refusal()?.existingCustomerId;
+    if (!customerId) return;
+    this.isSubmitting.set(true);
+    this._convert({ customerId }).finally(() => this.isSubmitting.set(false));
   }
 
   /** Complète sur le lead les champs que `UpdateLeadRequest` couvre, puis revient au récapitulatif. */
@@ -387,6 +591,11 @@ export class ConvertLeadWizard {
         if (!saved) return;
 
         await this._reloadLead(leadId);
+        // Un 200 sur le lead périme la complétude : la jauge du récapitulatif doit la relire,
+        // sinon l'écran continue d'afficher un manque qui vient d'être corrigé.
+        this.serverCompleteness.set(null);
+        this.refusal.set(null);
+        this.compliance.reloadCompleteness().subscribe();
         this._snackbar.success(
           'Lead complété',
           'Les informations sont enregistrées sur le lead.',
@@ -401,13 +610,28 @@ export class ConvertLeadWizard {
   private async _convert(request: ConvertLeadRequest): Promise<void> {
     const leadId = this.lead().id ?? '';
 
-    const result = await firstValueFrom(
+    const outcome = await firstValueFrom(
       this._leadsApi.convertLead(leadId, request).pipe(
+        map((result): ConvertOutcome => ({ accepted: true, result: result ?? {} })),
         catchError((error: HttpErrorResponse) => {
-          // 409 : le serveur renvoie un `ConvertLeadResult` porteur des doublons dans le corps
-          // d'erreur — ce n'est pas une panne, c'est la réponse métier à traiter.
-          const body = error.status === 409 ? (error.error as ConvertLeadResult) : null;
-          if (body?.duplicateDetected) return of(body);
+          // 409 et 422 : le serveur renvoie un `ConvertLeadResult` dans le corps d'erreur —
+          // doublons, motif de blocage, complétude évaluée. Ce n'est pas une panne, c'est la
+          // réponse métier à afficher, et elle vaut mieux qu'un message générique.
+          const body =
+            error.status === 409 || error.status === 422
+              ? (error.error as ConvertLeadResult | null)
+              : null;
+          const isBusinessBody =
+            !!body &&
+            typeof body === 'object' &&
+            (body.duplicateDetected === true ||
+              !!body.blockingCode ||
+              !!body.completeness ||
+              !!body.existingCustomerId ||
+              (body.missingQuestionnaires?.length ?? 0) > 0);
+          if (isBusinessBody) {
+            return of<ConvertOutcome>({ accepted: false, result: body as ConvertLeadResult });
+          }
           this._snackbar.error('Erreur', this._errorMessage(error));
           // `of(null)` et non `EMPTY` : `firstValueFrom` rejette sur un flux vide, et la promesse
           // cassée remonterait hors de l'action sans message utile.
@@ -416,16 +640,27 @@ export class ConvertLeadWizard {
       ),
     );
 
-    if (!result) return;
+    if (!outcome) return;
+    const result = outcome.result;
 
-    if (result.duplicateDetected && (result.potentialDuplicates?.length ?? 0) > 0) {
-      this.duplicates.set(result.potentialDuplicates ?? []);
-      this.currentStep.set('duplicate');
-      // `SnackbarService` n'expose pas `warning` : un avertissement passe par `info`.
-      this._snackbar.info(
-        'Doublons détectés',
-        'Le serveur a identifié des prospects similaires.',
+    // La complétude du corps de réponse est celle que le serveur vient d'évaluer : elle alimente
+    // la jauge et la liste bloquante, même quand le store a une photo plus ancienne.
+    if (result.completeness) this.serverCompleteness.set(result.completeness);
+
+    if (!outcome.accepted) {
+      this._handleRefusal(result);
+      return;
+    }
+
+    // Rattachement à un client existant — demandé explicitement, ou décidé par le serveur :
+    // aucune fiche n'est créée, on ouvre l'onglet des produits détenus où vit le brouillon.
+    const attachedCustomerId = request.customerId ?? result.existingCustomerId ?? null;
+    if (attachedCustomerId) {
+      this._snackbar.success(
+        'Souscription rattachée',
+        'Aucune fiche client créée : données reprises du lead sur le client existant.',
       );
+      this._openExistingCustomerProducts(attachedCustomerId, result.holdingId ?? null);
       return;
     }
 
@@ -437,11 +672,54 @@ export class ConvertLeadWizard {
       return;
     }
 
-    this._snackbar.success(
-      'Lead converti en client',
-      'La fiche client est créée, en attente de validation KYC.',
-    );
+    if (result.alreadyConverted === true) {
+      this._snackbar.info('Lead déjà converti', 'La fiche client existe déjà, elle s\'ouvre.');
+      this._dialogRef.close({ clientId: result.customerId, converted: false });
+      return;
+    }
+
+    this._snackbar.success('Client créé', 'Données reprises du lead.');
     this._dialogRef.close({ clientId: result.customerId, converted: true });
+  }
+
+  /** Refus serveur : on reste sur l'écran et on montre pourquoi, au lieu d'un message générique. */
+  private _handleRefusal(result: ConvertLeadResult): void {
+    if (result.duplicateDetected === true && (result.potentialDuplicates?.length ?? 0) > 0) {
+      this.duplicates.set(result.potentialDuplicates ?? []);
+      this.currentStep.set('duplicate');
+      // `SnackbarService` n'expose pas `warning` : un avertissement passe par `info`.
+      this._snackbar.info(
+        'Doublons détectés',
+        'Le serveur a identifié des prospects similaires.',
+      );
+      return;
+    }
+
+    if (result.alreadyConverted === true && (result.customerId || result.existingCustomerId)) {
+      const customerId = (result.customerId || result.existingCustomerId) as string;
+      this._snackbar.info('Lead déjà converti', "La fiche client existe déjà, elle s'ouvre.");
+      this._dialogRef.close({ clientId: customerId, converted: false });
+      return;
+    }
+
+    this.refusal.set(result);
+    this.currentStep.set('recap');
+    this._snackbar.error('Conversion refusée', this.refusalLabel());
+    // Le refus signifie que la complétude du store est périmée : on la relit pour que la liste
+    // bloquante affiche les mêmes manques que le serveur vient d'évaluer.
+    this.compliance.reloadCompleteness().subscribe();
+  }
+
+  /**
+   * BNF-F-19 : un lead rattaché à un client existant ne crée aucune fiche. La navigation est
+   * faite ici, puis le drawer se ferme sur `false` — la redirection par défaut de l'en-tête
+   * (`/customers/<id>`) irait sur l'identité du client, pas sur le produit en brouillon.
+   */
+  private _openExistingCustomerProducts(customerId: string, holdingId: string | null): void {
+    this._dialogRef.close(false);
+    this._router.navigate(['/customers', customerId, 'produits'], {
+      queryParams: holdingId ? { holding: holdingId } : undefined,
+    });
   }
 
   /**

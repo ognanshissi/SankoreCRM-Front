@@ -1,0 +1,104 @@
+<tas-side-drawer>
+  <tas-drawer-title>
+    <div class="flex items-center gap-2">
+      <tas-icon iconName="feather:shield" style="font-size:18px"></tas-icon>
+      <span>Recueillir le consentement santé</span>
+    </div>
+  </tas-drawer-title>
+
+  <tas-drawer-content>
+    @if (submitError(); as message) {
+      <div
+        class="mb-4 p-3 rounded-lg border border-functional-error/40 bg-functional-error/5"
+        role="alert"
+      >
+        <p class="text-sm text-functional-error">{{ message }}</p>
+      </div>
+    }
+
+    <div class="mb-5 rounded-lg border border-slate-200 bg-slate-50 p-3">
+      <p class="text-xs font-medium uppercase tracking-wide text-slate-500">Personne concernée</p>
+      <p class="text-sm font-medium text-slate-800 mt-0.5">{{ data.subjectLabel }}</p>
+      @if (data.isMinor) {
+        <p class="text-xs text-slate-500 mt-1">
+          Mineur : le consentement doit être donné par un parent, désigné ci-dessous.
+        </p>
+      }
+    </div>
+
+    <form [formRoot]="formSchema" class="flex flex-col gap-5">
+      <tas-form-field>
+        <tas-label>Mode de preuve <span class="text-functional-error">*</span></tas-label>
+        <tas-select
+          [options]="proofOptions"
+          placeholder="Choisissez le mode de preuve"
+          [formField]="formSchema.proofMode"
+        ></tas-select>
+        <tas-hint>Case cochée avec signature, réponse SMS ou document signé.</tas-hint>
+        @if (formSchema.proofMode().touched() && formSchema.proofMode().invalid()) {
+          <tas-error>{{ formSchema.proofMode().errors()[0].message }}</tas-error>
+        }
+      </tas-form-field>
+
+      @if (formSchema.proofMode().value() === 'CheckboxWithSignature') {
+        <div class="rounded-lg border border-slate-200 p-3">
+          <tas-checkbox
+            [formField]="formSchema.signatureAttested"
+            label="La case de consentement a été cochée et signée par la personne"
+          ></tas-checkbox>
+          @if (formSchema.signatureAttested().touched() && formSchema.signatureAttested().invalid()) {
+            <p class="text-xs text-functional-error mt-2">
+              {{ formSchema.signatureAttested().errors()[0].message }}
+            </p>
+          }
+        </div>
+      }
+
+      @if (data.isMinor) {
+        <tas-form-field>
+          <tas-label>Consentement donné par <span class="text-functional-error">*</span></tas-label>
+          <tas-select
+            [options]="data.givenByOptions"
+            placeholder="Choisissez le parent"
+            [formField]="formSchema.givenById"
+          ></tas-select>
+          @if (!hasGivenByOptions()) {
+            <tas-hint>
+              Aucun parent identifiable pour l'instant : complétez le foyer du lead.
+            </tas-hint>
+          }
+          @if (formSchema.givenById().touched() && formSchema.givenById().invalid()) {
+            <tas-error>{{ formSchema.givenById().errors()[0].message }}</tas-error>
+          }
+        </tas-form-field>
+      }
+
+      <tas-form-field>
+        <tas-label>Référence de la preuve</tas-label>
+        <input
+          tasInput
+          type="text"
+          placeholder="Ex : SMS-2026-0412, GED-1187"
+          [formField]="formSchema.proofReference"
+        />
+        <tas-hint>Identifiant du SMS, du document archivé ou du formulaire signé.</tas-hint>
+      </tas-form-field>
+    </form>
+  </tas-drawer-content>
+
+  <tas-drawer-action>
+    <div class="flex items-center justify-end gap-2">
+      <button tas-outlined-button color="primary" type="button" (click)="close()">Annuler</button>
+      <button
+        tas-raised-button
+        color="primary"
+        type="button"
+        (click)="handleSubmit()"
+        [disabled]="formSchema().invalid() || formSchema().submitting()"
+        [isLoading]="formSchema().submitting()"
+      >
+        Enregistrer le consentement
+      </button>
+    </div>
+  </tas-drawer-action>
+</tas-side-drawer>

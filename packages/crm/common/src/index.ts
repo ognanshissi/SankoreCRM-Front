@@ -1,4 +1,5 @@
 export * from './components';
+export * from './compliance';
 export * from './interceptors';
 export * from './pipes';
 export * from './initializers/tenant.initializer';

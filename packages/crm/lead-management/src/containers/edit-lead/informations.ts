@@ -1,7 +1,8 @@
 import { Component, computed, effect, inject, input, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { DecimalPipe } from '@angular/common';
-import { catchError, EMPTY } from 'rxjs';
+import { Router } from '@angular/router';
+import { catchError, EMPTY, forkJoin, map, of, switchMap } from 'rxjs';
 import { TasCard } from '@talisoft/ui/card';
 import { TasSpinner } from '@talisoft/ui/spinner';
 import { TasIcon } from '@talisoft/ui/icon';
@@ -11,12 +12,44 @@ import { TasFormField } from '@talisoft/ui/form-field';
 import { Button } from '@talisoft/ui/button';
 import { TimeagoPipe } from '@talisoft/ui/timeago';
 import { SnackbarService } from '@talisoft/ui/snackbar';
-import { LeadsApiService, LeadDto, TagDto } from '@sankore/crm-api';
+import {
+  AgenciesApiService,
+  CustomerMatchDto,
+  HoldingDto,
+  LeadsApiService,
+  LeadDto,
+  OpportunitiesApiService,
+  OpportunityDto,
+  ProductHoldingsApiService,
+  TagDto,
+} from '@sankore/crm-api';
 import { LeadEditContext } from './lead-edit-context';
+import { LeadComplianceStore } from './lead-compliance-store';
 import { ConvertedLeadNotice } from './converted-lead-notice';
-import { AuthenticationService, PermissionsService } from '@sankore/crm/common';
+import {
+  AuthenticationService,
+  PERMISSIONS,
+  PermissionsService,
+} from '@sankore/crm/common';
 import { SideDrawerService } from '@talisoft/ui/side-drawer';
 import { EditLeadInfoDrawer, genderLabel } from './edit-lead-info-drawer';
+import {
+  CustomerMatchBanner,
+  CustomerMatchView,
+  customerMatchViewFromDto,
+} from './customer-match-banner';
+import {
+  AttachCustomerDrawer,
+  AttachCustomerDrawerData,
+  AttachCustomerResult,
+} from './attach-customer-drawer';
+
+/** Une correspondance client, avec ses produits et demandes, avant mise en forme. */
+interface LeadCustomerMatchRaw {
+  dto: CustomerMatchDto;
+  holdings: HoldingDto[] | null;
+  opportunities: OpportunityDto[] | null;
+}
 
 function sourceLabel(source: string | null | undefined): string {
   switch (source) {
@@ -65,7 +98,7 @@ function intentLabel(level: string | null | undefined): string {
 
 @Component({
   selector: 'lead-informations',
-  imports: [FormsModule, DecimalPipe, TasCard, TasSpinner, TasIcon, TasTag, TasInput, TasFormField, Button, TimeagoPipe, ConvertedLeadNotice],
+  imports: [FormsModule, DecimalPipe, TasCard, TasSpinner, TasIcon, TasTag, TasInput, TasFormField, Button, TimeagoPipe, ConvertedLeadNotice, CustomerMatchBanner],
   template: `
     @if (isLoading()) {
       <div class="flex justify-center py-24">
@@ -74,6 +107,29 @@ function intentLabel(level: string | null | undefined): string {
     } @else if (lead()) {
       <div class="pb-6 flex flex-col gap-4">
         <converted-lead-notice></converted-lead-notice>
+
+        <!--
+          Bandeau « Client existant » (BNF-F-19) et rattachement motivé (BNF-F-18).
+          Rien ne s'affiche quand l'API ne renvoie aucune correspondance, et c'est
+          l'état normal d'un prospect qui n'est pas déjà client.
+        -->
+        <customer-match-banner
+          [matches]="customerMatches()"
+          [isLoading]="isLoadingMatches()"
+          [loadFailed]="matchesFailed()"
+          [fatcaEnabled]="fatcaEnabled()"
+          [fatcaStatus]="fatcaStatus()"
+          [canAct]="canLinkCustomer()"
+          [canDetach]="canLinkCustomer()"
+          [canOpenCustomer]="canReadCustomers()"
+          [actionsDisabledReason]="linkDisabledReason()"
+          selectLabel="Rattacher…"
+          [showRejectAction]="false"
+          (select)="openAttachDrawer($event)"
+          (detach)="openDetachDrawer($event)"
+          (openCustomer)="openCustomer($event)"
+          (openCustomerKyc)="openCustomerKyc($event)"
+        ></customer-match-banner>
 
         <!-- Identity -->
         <tas-card>
@@ -355,10 +411,35 @@ export class LeadInformationsPage {
     () => this._canUpdate() && !this._leadEditContext.isReadOnly(),
   );
 
+  private readonly _canReadCustomers = this._permissions.can(PERMISSIONS.CUSTOMERS_READ);
+  public readonly canReadCustomers = this._canReadCustomers;
+
+  /**
+   * Rattacher et détacher sont des écritures sur le lead : le contrat n'expose pas de
+   * droit dédié pour `PUT /leads/{id}/customer`, et `lead:update` est le droit
+   * d'écriture du lead le plus proche. Un lead converti reste en lecture seule.
+   */
+  public readonly canLinkCustomer = computed(
+    () => this._canUpdate() && !this._leadEditContext.isReadOnly(),
+  );
+
+  public readonly linkDisabledReason = computed(() => {
+    if (this.canLinkCustomer()) return null;
+    if (this._leadEditContext.isConverted()) {
+      return 'Lead converti : le rattachement client n\'est plus modifiable.';
+    }
+    return 'Vous n\'avez pas le droit de modifier ce lead.';
+  });
+
   private readonly _leadsApiService = inject(LeadsApiService);
   private readonly _snackbar = inject(SnackbarService);
   private readonly _auth = inject(AuthenticationService);
   private readonly _sideDrawerService = inject(SideDrawerService);
+  private readonly _router = inject(Router);
+  private readonly _agenciesApi = inject(AgenciesApiService);
+  private readonly _holdingsApi = inject(ProductHoldingsApiService);
+  private readonly _opportunitiesApi = inject(OpportunitiesApiService);
+  private readonly _compliance = inject(LeadComplianceStore);
 
   public readonly id = input.required<string>();
 
@@ -371,6 +452,30 @@ export class LeadInformationsPage {
   public showQualOverride = signal(false);
   public qualOverrideValue = signal(50);
   public isSavingQual = signal(false);
+
+  // ——— Client existant (BNF-F-18 / BNF-F-19) ———
+
+  private readonly _matchRaw = signal<LeadCustomerMatchRaw[]>([]);
+  private readonly _agencyNames = signal<Record<string, string>>({});
+  public isLoadingMatches = signal(false);
+  public matchesFailed = signal(false);
+
+  /** Le statut FATCA du bandeau vient du socle, jamais d'un calcul local. */
+  public readonly fatcaEnabled = this._compliance.fatcaEnabled;
+  public readonly fatcaStatus = this._compliance.principalFatcaStatus;
+
+  public readonly customerMatches = computed<CustomerMatchView[]>(() => {
+    const names = this._agencyNames();
+    const requested = this.lead()?.interestedProduct ?? null;
+    return this._matchRaw().map((raw) =>
+      customerMatchViewFromDto(raw.dto, {
+        agencyLabel: names[raw.dto.agencyId ?? ''] ?? null,
+        products: raw.holdings,
+        opportunities: raw.opportunities,
+        requestedProductCode: requested,
+      }),
+    );
+  });
 
   public readonly sourceLabel = sourceLabel;
   public readonly pipelineLabel = pipelineLabel;
@@ -391,7 +496,118 @@ export class LeadInformationsPage {
       this._leadsApiService.listLeadTags(leadId).pipe(
         catchError(() => EMPTY),
       ).subscribe((t) => this.tags.set(t ?? []));
+      this._loadCustomerMatches(leadId);
     });
+
+    this._loadAgencyNames();
+  }
+
+  public openCustomer(customerId: string): void {
+    this._router.navigate(['/customers', customerId, 'identite']);
+  }
+
+  /**
+   * Lien profond vers l'action côté client : un KYC à reprendre se corrige sur la fiche
+   * client, pas sur le lead (BNF-F-19).
+   */
+  public openCustomerKyc(customerId: string): void {
+    this._router.navigate(['/customers', customerId, 'kyc']);
+  }
+
+  public openAttachDrawer(match: CustomerMatchView): void {
+    this._openLinkDrawer('attach', match);
+  }
+
+  public openDetachDrawer(match: CustomerMatchView): void {
+    this._openLinkDrawer('detach', match);
+  }
+
+  private _openLinkDrawer(mode: 'attach' | 'detach', match: CustomerMatchView): void {
+    const data: AttachCustomerDrawerData = {
+      leadId: this.id(),
+      mode,
+      customer: match,
+      expectedUpdatedAt: this.lead()?.updatedAt ?? null,
+    };
+
+    const ref = this._sideDrawerService.open(AttachCustomerDrawer, {
+      width: '100%',
+      height: '100%',
+      panelClass: 'side-drawer-panel',
+      data,
+    });
+
+    ref.closed.subscribe((raw) => {
+      const result = raw as AttachCustomerResult | false | undefined;
+      if (!result) return;
+      // Un 204 ne dit pas ce que le serveur a retenu : on relit les correspondances et
+      // le lead, dont le `updatedAt` sert de jeton au prochain enregistrement.
+      this._loadCustomerMatches(this.id());
+      this._leadsApiService.getLead(this.id()).pipe(
+        catchError(() => EMPTY),
+      ).subscribe((lead) => this.lead.set(lead));
+      this._compliance.reloadAfterWrite();
+    });
+  }
+
+  private _loadCustomerMatches(leadId: string): void {
+    this.isLoadingMatches.set(true);
+    this.matchesFailed.set(false);
+
+    this._leadsApiService
+      .getLeadCustomerMatches(leadId)
+      .pipe(
+        switchMap((matches) => this._withProductsAndRequests(matches ?? [])),
+        catchError(() => {
+          // La correspondance est un confort : son échec ne doit pas vider l'onglet.
+          this.matchesFailed.set(true);
+          return of([] as LeadCustomerMatchRaw[]);
+        }),
+      )
+      .subscribe((raws) => {
+        this._matchRaw.set(raws);
+        this.isLoadingMatches.set(false);
+      });
+  }
+
+  /**
+   * Produits détenus et demandes en cours de chaque correspondance : l'un est affiché,
+   * l'autre porte l'alerte « demande ouverte ou produit actif sur la même ligne ».
+   * Chaque appel retombe sur `null` pour qu'un refus de droit n'emporte pas le bandeau.
+   */
+  private _withProductsAndRequests(matches: CustomerMatchDto[]) {
+    if (matches.length === 0) return of([] as LeadCustomerMatchRaw[]);
+    return forkJoin(
+      matches.map((dto) =>
+        forkJoin({
+          holdings: this._holdingsApi
+            .listClientHoldings(dto.customerId!, undefined, undefined, 1, 50)
+            .pipe(
+              map((page) => page.items ?? []),
+              catchError(() => of(null)),
+            ),
+          opportunities: this._opportunitiesApi
+            .listOpportunities(undefined, dto.customerId!)
+            .pipe(catchError(() => of(null))),
+        }).pipe(map(({ holdings, opportunities }) => ({ dto, holdings, opportunities }))),
+      ),
+    );
+  }
+
+  private _loadAgencyNames(): void {
+    this._agenciesApi
+      .listAgencies(false, 1, 200)
+      .pipe(
+        map((res) => {
+          const index: Record<string, string> = {};
+          for (const a of res.items ?? []) {
+            if (a.id) index[a.id] = a.name ?? '';
+          }
+          return index;
+        }),
+        catchError(() => EMPTY),
+      )
+      .subscribe((index) => this._agencyNames.set(index));
   }
 
   public openEditInfoDrawer(): void {

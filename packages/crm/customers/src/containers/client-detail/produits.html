@@ -1,0 +1,275 @@
+<div class="flex flex-col gap-4">
+  <!-- En-tête et action principale -->
+  <tas-card class="block">
+    <div class="flex flex-wrap items-start justify-between gap-3 p-4">
+      <div>
+        <p class="text-sm font-semibold text-slate-800">Produits détenus</p>
+        <p class="mt-0.5 text-sm text-slate-500">
+          Comptes, épargne, crédits et assurances du client, groupés par catégorie.
+        </p>
+      </div>
+
+      @if (canSubscribe()) {
+        <button tas-raised-button color="primary" type="button" (click)="openSubscribe()">
+          <tas-icon iconName="feather:plus" style="font-size:14px"></tas-icon>
+          Nouvelle souscription
+        </button>
+      } @else if (isReadOnly()) {
+        <p class="text-xs text-slate-500">
+          Fiche en lecture seule : aucune nouvelle souscription possible.
+        </p>
+      }
+    </div>
+
+    @if (toReviewCount() > 0) {
+      <div class="mx-4 mb-4 rounded-lg border border-amber-300 bg-amber-50 p-3">
+        <p class="text-sm font-medium text-amber-900">
+          {{ toReviewCount() }} désignation(s) à revoir
+        </p>
+        <p class="mt-0.5 text-sm text-amber-800">
+          Action attendue : ouvrez le produit concerné, puis « Modifier les bénéficiaires »
+          pour confirmer le rôle et la quote-part de chaque personne signalée.
+        </p>
+      </div>
+    }
+
+    @if (pendingSyncCount() > 0) {
+      <div class="mx-4 mb-4 rounded-lg border border-primary/30 bg-primary/5 p-3">
+        <p class="text-sm text-slate-700">
+          {{ pendingSyncCount() }} produit(s) en synchronisation avec le back-office. Les
+          statuts se mettent à jour automatiquement sur cet écran.
+        </p>
+      </div>
+    }
+  </tas-card>
+
+  <!-- Filtres -->
+  <tas-card class="block">
+    <div class="grid grid-cols-1 gap-3 p-4 sm:grid-cols-2 lg:grid-cols-4">
+      <tas-form-field>
+        <tas-label>Catégorie</tas-label>
+        <tas-select
+          [options]="categoryOptions"
+          placeholder="Toutes les catégories"
+          clearable
+          [ngModel]="category()"
+          (ngModelChange)="setCategory($event)"
+          [ngModelOptions]="{ standalone: true }"
+        ></tas-select>
+      </tas-form-field>
+
+      <tas-form-field>
+        <tas-label>Statut</tas-label>
+        <tas-select
+          [options]="statusOptions"
+          placeholder="Tous les statuts"
+          clearable
+          [ngModel]="status()"
+          (ngModelChange)="setStatus($event)"
+          [ngModelOptions]="{ standalone: true }"
+        ></tas-select>
+      </tas-form-field>
+
+      <div class="flex items-end">
+        @if (hasFilters()) {
+          <button tas-text-button color="primary" type="button" (click)="resetFilters()">
+            Réinitialiser les filtres
+          </button>
+        }
+      </div>
+    </div>
+  </tas-card>
+
+  <!-- Liste -->
+  @if (loadFailed()) {
+    <tas-card class="block">
+      <div class="p-10 text-center">
+        <tas-icon iconName="feather:alert-circle" class="text-slate-300" style="font-size:28px"></tas-icon>
+        <p class="mt-2 text-sm font-medium text-slate-700">
+          Les produits détenus n'ont pas pu être chargés
+        </p>
+        <p class="mt-1 text-sm text-slate-500">
+          Le service des produits détenus n'a pas répondu. Réessayez dans un instant.
+        </p>
+        <button tas-outlined-button color="primary" type="button" class="mt-4" (click)="reload()">
+          Réessayer
+        </button>
+      </div>
+    </tas-card>
+  } @else if (!isLoading() && rows().length === 0) {
+    <tas-card class="block">
+      <div class="p-10 text-center">
+        <tas-icon iconName="feather:package" class="text-slate-300" style="font-size:28px"></tas-icon>
+        <p class="mt-2 text-sm font-medium text-slate-700">
+          {{ hasFilters() ? 'Aucun produit pour ces filtres' : 'Aucun produit détenu' }}
+        </p>
+        <p class="mt-1 text-sm text-slate-500">
+          {{
+            hasFilters()
+              ? 'Élargissez les filtres pour voir les autres produits du client.'
+              : "Ce client ne détient aucun produit. Lancez une souscription pour en créer un."
+          }}
+        </p>
+        @if (hasFilters()) {
+          <button tas-outlined-button color="primary" type="button" class="mt-4" (click)="resetFilters()">
+            Réinitialiser les filtres
+          </button>
+        } @else if (canSubscribe()) {
+          <button tas-raised-button color="primary" type="button" class="mt-4" (click)="openSubscribe()">
+            Nouvelle souscription
+          </button>
+        }
+      </div>
+    </tas-card>
+  } @else {
+    <tas-table
+      [data]="rows()"
+      identifierField="id"
+      [config]="tableConfig()"
+      [isLoading]="isLoading()"
+      (pageEventChange)="onPageChange($event)"
+    >
+      <ng-template #header>
+        <tr>
+          <th class="hidden sm:table-cell">Produit</th>
+          <th class="hidden sm:table-cell">Statut</th>
+          <th class="hidden sm:table-cell">Référence externe</th>
+          <th class="hidden sm:table-cell">Date</th>
+          <th class="hidden sm:table-cell">Bénéficiaires</th>
+          <th class="hidden sm:table-cell"></th>
+        </tr>
+      </ng-template>
+
+      <ng-template #body let-item>
+        @if (item.kind === 'group') {
+          <tr class="bg-slate-50">
+            <td [attr.colspan]="6">
+              <div class="flex items-center gap-2 px-3 py-2">
+                <tas-icon iconName="feather:folder" class="text-slate-400" style="font-size:13px"></tas-icon>
+                <span class="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  {{ item.categoryLabel }}
+                </span>
+                <span class="tabular-nums text-xs text-slate-400">({{ item.count }})</span>
+              </div>
+            </td>
+          </tr>
+        } @else {
+          <tr
+            [class.bg-amber-50]="item.toReviewCount > 0"
+            [class.ring-2]="item.holding?.holdingId === highlightedHoldingId()"
+            [class.ring-primary]="item.holding?.holdingId === highlightedHoldingId()"
+          >
+            <!-- Carte, sous 640 px -->
+            <td class="sm:hidden" [attr.colspan]="6">
+              <div class="flex flex-col gap-2 p-3">
+                <div class="flex items-start justify-between gap-2">
+                  <div class="min-w-0">
+                    <p class="truncate text-sm font-medium text-slate-800">
+                      {{ item.productLabel }}
+                    </p>
+                    <p class="text-xs text-slate-500">
+                      {{ item.categoryLabel }} · {{ item.dateCaption }} {{ item.dateLabel }}
+                    </p>
+                  </div>
+                  <div class="flex shrink-0 flex-col items-end gap-1">
+                    <tas-tag [severity]="item.statusSeverity">{{ item.statusLabel }}</tas-tag>
+                    @if (item.isImported) {
+                      <tas-tag severity="neutral">Lecture seule</tas-tag>
+                    }
+                  </div>
+                </div>
+
+                <p class="text-xs text-slate-500">
+                  Référence externe : {{ item.externalRef }} · {{ item.originLabel }}
+                </p>
+
+                @if (item.isRejected) {
+                  <p class="text-xs text-functional-error">
+                    Rejet : {{ item.rejectionReason || 'motif non communiqué' }}
+                  </p>
+                }
+
+                @if (item.toReviewCount > 0) {
+                  <p class="text-xs text-amber-800">
+                    {{ item.toReviewCount }} désignation(s) à revoir — confirmez le rôle et la
+                    quote-part.
+                  </p>
+                } @else if (item.designationCount > 0) {
+                  <p class="text-xs text-slate-500">
+                    {{ item.designationCount }} bénéficiaire(s) désigné(s)
+                  </p>
+                }
+
+                <div>
+                  <button
+                    tas-outlined-button
+                    color="primary"
+                    type="button"
+                    class="text-xs"
+                    (click)="openHolding(item.holding)"
+                  >
+                    Ouvrir le détail
+                  </button>
+                </div>
+              </div>
+            </td>
+
+            <!-- Colonnes, à partir de 640 px -->
+            <td class="hidden py-3 sm:table-cell">
+              <div class="flex flex-wrap items-center gap-2">
+                <span class="text-sm font-medium text-slate-800">{{ item.productLabel }}</span>
+                @if (item.isImported) {
+                  <tas-tag severity="neutral">Lecture seule</tas-tag>
+                }
+              </div>
+              <span class="block text-xs text-slate-400">{{ item.originLabel }}</span>
+            </td>
+
+            <td class="hidden sm:table-cell">
+              <tas-tag [severity]="item.statusSeverity">{{ item.statusLabel }}</tas-tag>
+              @if (item.isRejected) {
+                <span class="block text-xs text-functional-error">
+                  {{ item.rejectionReason || 'Motif non communiqué' }}
+                </span>
+              }
+            </td>
+
+            <td class="hidden sm:table-cell">
+              <span class="text-sm text-slate-700">{{ item.externalRef }}</span>
+            </td>
+
+            <td class="hidden sm:table-cell">
+              <span class="text-sm text-slate-700">{{ item.dateLabel }}</span>
+              <span class="block text-xs text-slate-400">{{ item.dateCaption }}</span>
+            </td>
+
+            <td class="hidden sm:table-cell">
+              @if (item.toReviewCount > 0) {
+                <tas-tag severity="warning">{{ item.toReviewCount }} à revoir</tas-tag>
+                <span class="block text-xs text-amber-800">Confirmez rôle et quote-part</span>
+              } @else if (item.designationCount > 0) {
+                <span class="tabular-nums text-sm text-slate-700">
+                  {{ item.designationCount }} désigné(s)
+                </span>
+              } @else {
+                <span class="text-sm text-slate-400">—</span>
+              }
+            </td>
+
+            <td class="hidden text-right sm:table-cell">
+              <button
+                tas-button
+                iconButton
+                type="button"
+                [attr.aria-label]="'Ouvrir le détail de ' + item.productLabel"
+                (click)="openHolding(item.holding)"
+              >
+                <tas-icon iconName="feather:chevron-right" style="font-size:14px"></tas-icon>
+              </button>
+            </td>
+          </tr>
+        }
+      </ng-template>
+    </tas-table>
+  }
+</div>

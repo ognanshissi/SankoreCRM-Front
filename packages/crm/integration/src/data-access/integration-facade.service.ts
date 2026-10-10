@@ -5,12 +5,12 @@ import {
   ConnectionDetailDto,
   ConnectionHealthDto,
   ConnectionListDto,
-  ConnectionListDtoPagedResult,
+  PagedResultOfConnectionListDto,
   ConnectionSecretStatusDto,
   CreateConnectionRequest,
   CreateInsuranceProductRequest,
   InsuranceProductDto,
-  InsuranceProductDtoPagedResult,
+  PagedResultOfInsuranceProductDto,
   InsuranceProductWriteRequest,
   InsuranceQuoteDto,
   IntegrationApiService,
@@ -55,7 +55,7 @@ export class IntegrationFacadeService {
     isActive?: boolean;
     page?: number;
     pageSize?: number;
-  }): Observable<ConnectionListDtoPagedResult> {
+  }): Observable<PagedResultOfConnectionListDto> {
     return this._api.listIntegrationConnections(
       filters.family,
       filters.isActive,
@@ -277,7 +277,7 @@ export class IntegrationFacadeService {
     offerableOnly?: boolean;
     page?: number;
     pageSize?: number;
-  }): Observable<InsuranceProductDtoPagedResult> {
+  }): Observable<PagedResultOfInsuranceProductDto> {
     return this._api.listInsuranceProducts(
       filters.connectionId,
       filters.isActive,

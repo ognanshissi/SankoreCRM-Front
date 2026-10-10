@@ -383,6 +383,15 @@ export class OverviewComponent implements OnInit {
             "Plafonds du KYC simplifié, seuils d'alerte, périodicité de revue et tentatives de comparaison faciale",
         },
         {
+          title: 'FATCA et conformité',
+          type: 'basic',
+          id: 'security_compliance_settings',
+          link: '/settings/conformite',
+          permission: 'kyc:read',
+          description:
+            "Activation de FATCA, régime de l'institution, GIIN et durée de maintien du statut PPE",
+        },
+        {
           title: "Journal d'audit",
           type: 'basic',
           id: 'security_audit',

@@ -28,6 +28,7 @@ export const PRODUCT_CATEGORY_OPTIONS: { label: string; value: ProductDtoCategor
   { label: 'Tontine',               value: ProductDtoCategoryEnum.Tontine },
   { label: 'Crédit groupe',         value: ProductDtoCategoryEnum.GroupCredit },
   { label: 'Agriculture',           value: ProductDtoCategoryEnum.Agriculture },
+  { label: 'Compte courant',        value: ProductDtoCategoryEnum.CurrentAccount },
 ];
 
 export const PRODUCT_CATEGORY_LABELS: Record<string, string> = {
@@ -39,6 +40,9 @@ export const PRODUCT_CATEGORY_LABELS: Record<string, string> = {
   [ProductDtoCategoryEnum.Tontine]: 'Tontine',
   [ProductDtoCategoryEnum.GroupCredit]: 'Crédit groupe',
   [ProductDtoCategoryEnum.Agriculture]: 'Agriculture',
+  // Ajoutée au contrat après ce référentiel : sans elle, l'onglet Produits détenus
+  // affichait « CurrentAccount » en brut et la catégorie manquait dans son filtre.
+  [ProductDtoCategoryEnum.CurrentAccount]: 'Compte courant',
 };
 
 export function productCategoryLabel(category: string | null | undefined): string {

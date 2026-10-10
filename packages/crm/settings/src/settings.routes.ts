@@ -243,6 +243,15 @@ const settingsRoutes: Routes = [
     loadComponent: () => import('./containers/scoring-configs/scoring-configs'),
   },
   {
+    // Lecture sur `kyc:read` comme l'écran KYC voisin, pour la même raison : consulter
+    // le régime FATCA en vigueur est légitime pour qui lit déjà les dossiers, et
+    // `GET /api/v1/compliance-settings` ne déclare aucune permission propre au contrat.
+    // L'écran vérifie `kyc:settings:manage` avant toute écriture.
+    path: 'conformite',
+    canActivate: [hasPermissionGuard('kyc:read')],
+    loadComponent: () => import('./containers/compliance/compliance-settings'),
+  },
+  {
     // Lecture sur `kyc:read`, comme `GET /kyc-settings` : la modification, elle, exige
     // `kyc:settings:manage`, vérifié dans l'écran et non par le garde — consulter les plafonds en
     // vigueur est légitime pour qui lit déjà les dossiers.

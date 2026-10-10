@@ -17,7 +17,7 @@ import { ConfirmDialogService } from '@talisoft/ui/confirm-dialog';
 import {
   IngestionDto,
   IngestionPayloadDto,
-  IngestionDtoPagedResult,
+  PagedResultOfIngestionDto,
   IngestionsApiService,
 } from '@sankore/crm-api';
 
@@ -495,7 +495,7 @@ export class IngestionList implements OnInit {
         return EMPTY;
       }),
       finalize(() => this.isLoading.set(false)),
-    ).subscribe((result: IngestionDtoPagedResult) => {
+    ).subscribe((result: PagedResultOfIngestionDto) => {
       const items = result.items ?? [];
       if (reset) {
         this.ingestions.set(items);

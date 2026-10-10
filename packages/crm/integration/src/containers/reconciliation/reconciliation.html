@@ -10,7 +10,8 @@
 
     <tas-card class="mb-4 block">
       <div class="p-4">
-        <div class="grid grid-cols-4 gap-3">
+        <!-- Empilé à 360 px : un quart de largeur rendrait la liste de connexions illisible. -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           <tas-form-field>
             <tas-label>Connexion</tas-label>
             @if (isLoadingConnections()) {

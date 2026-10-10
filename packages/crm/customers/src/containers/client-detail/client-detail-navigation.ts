@@ -21,6 +21,7 @@ import {
 import { AgenciesApiService, UsersApiService } from '@sankore/crm-api';
 import { catchError, EMPTY } from 'rxjs';
 import { ClientDetailStore } from '../../models/client-detail.store';
+import { ClientHouseholdStore } from '../../models/client-household.store';
 import {
   clientStatusLabel,
   clientStatusSeverity,
@@ -56,7 +57,7 @@ const PENDING_KYC_ALERT_DAYS = 15;
 @Component({
   selector: 'client-detail-navigation',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  providers: [ClientDetailStore],
+  providers: [ClientDetailStore, ClientHouseholdStore],
   imports: [
     RouterOutlet,
     RouterLink,
@@ -234,6 +235,7 @@ const PENDING_KYC_ALERT_DAYS = 15;
 })
 export class ClientDetailNavigation {
   protected readonly store = inject(ClientDetailStore);
+  protected readonly householdStore = inject(ClientHouseholdStore);
   private readonly _breadcrumb = inject(BreadcrumbService);
   private readonly _agenciesApi = inject(AgenciesApiService);
   private readonly _usersApi = inject(UsersApiService);
@@ -266,6 +268,9 @@ export class ClientDetailNavigation {
   private readonly _tabs: ClientTab[] = [
     { label: 'Identité', icon: 'feather:user', route: 'identite' },
     { label: 'Coordonnées', icon: 'feather:phone', route: 'coordonnees' },
+    { label: 'Foyer', icon: 'feather:home', route: 'foyer' },
+    { label: 'Produits détenus', icon: 'feather:package', route: 'produits' },
+    { label: 'Demandes en cours', icon: 'feather:inbox', route: 'demandes' },
     { label: 'Relations', icon: 'feather:users', route: 'relations' },
     { label: 'Groupes', icon: 'feather:layers', route: 'groupes' },
     { label: 'Bénéficiaires effectifs', icon: 'feather:pie-chart', route: 'beneficiaires', legalOnly: true },
@@ -340,6 +345,10 @@ export class ClientDetailNavigation {
 
   constructor() {
     effect(() => this.store.load(this.id()));
+
+    // Le foyer est chargé une fois pour la fiche : l'onglet Foyer l'édite et le
+    // parcours de souscription y puise les personnes à désigner.
+    effect(() => this.householdStore.load(this.id()));
 
     effect(() => {
       const client = this.client();

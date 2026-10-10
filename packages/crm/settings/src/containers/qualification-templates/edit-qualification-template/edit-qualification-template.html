@@ -2,6 +2,29 @@
   <div class="flex justify-center py-24">
     <tas-spinner size="10" class="text-primary"></tas-spinner>
   </div>
+} @else if (loadFailed()) {
+  <tas-card class="block max-w-xl">
+    <div class="p-6 flex flex-col items-center text-center gap-2">
+      <tas-icon
+        iconName="feather:alert-triangle"
+        class="text-functional-error"
+        style="font-size:22px"></tas-icon>
+      <p class="text-sm font-medium text-slate-700">
+        Impossible de charger ce questionnaire.
+      </p>
+      <p class="text-xs text-slate-400">
+        Il a peut-être été supprimé, ou la connexion a échoué.
+      </p>
+      <div class="flex gap-2 mt-2">
+        <button tas-raised-button color="primary" type="button" (click)="reload()">
+          Réessayer
+        </button>
+        <button tas-outlined-button type="button" (click)="goBack()">
+          Retour à la liste
+        </button>
+      </div>
+    </div>
+  </tas-card>
 } @else {
   <div class="pb-6">
     <!-- Header -->
@@ -14,9 +37,21 @@
           style="font-size:14px"
         ></tas-icon>
       </button>
-      <h1 class="text-lg font-semibold text-slate-800 flex-1">
-        {{ isReadonly() ? 'Formulaire (lecture seule)' : 'Modifier le formulaire' }}
-      </h1>
+      <div class="flex-1 min-w-0">
+        <h1 class="text-lg font-semibold text-slate-800">
+          {{ isReadonly() ? 'Formulaire (lecture seule)' : 'Modifier le formulaire' }}
+        </h1>
+        @if (templateStatus()) {
+          <div class="flex items-center gap-2 mt-0.5">
+            <tas-tag [severity]="statusSeverity(templateStatus())">
+              {{ statusLabel(templateStatus()) }}
+            </tas-tag>
+            <span class="text-xs text-slate-400 tabular-nums">
+              version {{ templateVersion() }}
+            </span>
+          </div>
+        }
+      </div>
       @if (!isReadonly()) {
         <button
           tas-raised-button
@@ -29,8 +64,38 @@
           }
           Enregistrer
         </button>
+        @if (isDraft() && canManage()) {
+          <button
+            tas-outlined-button
+            color="primary"
+            type="button"
+            [disabled]="isPublishing() || isSaving() || !editName()"
+            [isLoading]="isPublishing()"
+            (click)="publish()">
+            <tas-icon iconName="feather:upload-cloud" style="font-size:12px"></tas-icon>
+            Publier
+          </button>
+        }
       }
     </div>
+
+    @if (isDraft() && canManage()) {
+      <!-- BNF-F-16 : avertissement à la publication -->
+      <div
+        class="mb-4 p-3 rounded-lg bg-amber-50 border border-amber-200 flex items-start gap-2"
+        role="note">
+        <tas-icon
+          iconName="feather:alert-triangle"
+          class="text-amber-500 shrink-0 mt-0.5"
+          style="font-size:14px"></tas-icon>
+        <p class="text-xs text-amber-800">
+          <span class="font-semibold">La publication crée une nouvelle version.</span>
+          La version {{ templateVersion() + 1 }} deviendra active pour le produit
+          associé ; les réponses déjà collectées restent rattachées à leur
+          version et ce questionnaire ne sera plus modifiable.
+        </p>
+      </div>
+    }
 
     @if (isReadonly()) {
       <div
@@ -100,6 +165,94 @@
           (ngModelChange)="editProductCode.set($event)"></tas-select>
         </tas-form-field>
       </div>
+    </tas-card>
+
+    <!-- Portée et santé (BNF-F-16) -->
+    <tas-card class="mb-4 block">
+      <div class="p-4 border-b border-slate-100">
+        <h2 class="text-sm font-semibold text-slate-700">Portée et santé</h2>
+        <p class="text-xs text-slate-400 mt-0.5">
+          À qui s'applique ce questionnaire, et s'il porte sur la santé.
+        </p>
+      </div>
+
+      <form [formRoot]="scopeForm" class="p-4 flex flex-col gap-4">
+        <tas-form-field>
+          <tas-label>S'applique à</tas-label>
+          <tas-select
+            [options]="appliesToOptions"
+            optionLabel="label"
+            optionValue="value"
+            placeholder="Sélectionnez"
+            [readonly]="isReadonly()"
+            [formField]="scopeForm.appliesTo"></tas-select>
+          <tas-hint>
+            Détermine si le questionnaire est rempli une fois pour le lead ou
+            une fois par personne du foyer.
+          </tas-hint>
+        </tas-form-field>
+
+        <label class="flex items-start gap-2 text-sm"
+          [class.cursor-pointer]="!scopeForm.isHealthQuestionnaire().disabled()"
+          [class.opacity-60]="scopeForm.isHealthQuestionnaire().disabled()">
+          <input
+            type="checkbox"
+            class="mt-0.5 accent-primary"
+            [formField]="scopeForm.isHealthQuestionnaire" />
+          <span>
+            Questionnaire santé
+            <span class="block text-xs text-slate-400">
+              @if (isInsurance()) {
+                Les réponses sont des données de santé : elles ne participent
+                jamais au scoring et sont soumises au consentement santé.
+              } @else {
+                Disponible uniquement pour les catégories d'assurance
+                (Assurance, Assurance santé, Assurance prévoyance).
+              }
+            </span>
+          </span>
+        </label>
+
+        <label class="flex items-start gap-2 text-sm"
+          [class.cursor-pointer]="!scopeForm.excludedFromScoring().disabled()"
+          [class.opacity-60]="scopeForm.excludedFromScoring().disabled()">
+          <input
+            type="checkbox"
+            class="mt-0.5 accent-primary"
+            [formField]="scopeForm.excludedFromScoring" />
+          <span>
+            Exclu du scoring
+            <span class="block text-xs text-slate-400">
+              @if (scopeForm.isHealthQuestionnaire().value()) {
+                Forcé et non modifiable : un questionnaire santé est toujours
+                exclu du scoring.
+              } @else {
+                Les réponses ne pèsent pas dans le score de qualification.
+              }
+            </span>
+          </span>
+        </label>
+
+        @if (excludedFromScoring()) {
+          <p class="text-xs text-slate-500" role="note">
+            À l'enregistrement, le poids de toutes les questions sera remis à
+            zéro — c'est le seul champ dont dispose l'API pour exclure un
+            questionnaire du scoring.
+          </p>
+        }
+
+        <div class="rounded-lg border border-slate-200 bg-slate-50 p-3 flex gap-2.5">
+          <tas-icon
+            iconName="feather:info"
+            class="text-slate-400 shrink-0 mt-0.5"
+            style="font-size:14px"></tas-icon>
+          <p class="text-xs text-slate-500">
+            « S'applique à » et « Questionnaire santé » ne sont pas encore
+            enregistrés : l'API ne les expose pas sur un questionnaire de
+            qualification. Seule l'exclusion du scoring est persistée.
+          </p>
+        </div>
+      </form>
     </tas-card>
 
     <!-- Sections -->
@@ -316,10 +469,13 @@
                         type="number"
                         min="0"
                         max="100"
-                        [ngModel]="q.weight"
+                        [ngModel]="excludedFromScoring() ? 0 : q.weight"
                         (ngModelChange)="q.weight = $event"
-                        [disabled]="isReadonly()"
+                        [disabled]="isReadonly() || excludedFromScoring()"
                       />
+                      @if (excludedFromScoring()) {
+                        <tas-hint>Questionnaire exclu du scoring.</tas-hint>
+                      }
                     </tas-form-field>
                     @if (editSections().length > 0) {
                       <tas-form-field>
@@ -349,6 +505,26 @@
                       </label>
                     </div>
                   </div>
+
+                  <!-- BNF-F-16 : marquage des questions non médicales partageables -->
+                  <label
+                    class="flex items-start gap-2 cursor-pointer text-sm mb-3"
+                  >
+                    <input
+                      type="checkbox"
+                      class="mt-0.5 accent-primary"
+                      [checked]="q.isShareable"
+                      (change)="q.isShareable = !q.isShareable"
+                      [disabled]="isReadonly()"
+                    />
+                    <span>
+                      Question non médicale, partageable pour le pré-remplissage
+                      <span class="block text-xs text-slate-400">
+                        Non enregistré : l'API ne porte pas encore ce marquage
+                        sur une question.
+                      </span>
+                    </span>
+                  </label>
 
                   <!-- Choice options -->
                   @if (

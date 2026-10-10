@@ -6,7 +6,7 @@ import { IntegrationMode, LeadChannelType, LeadSourceStatus } from './lead-sourc
 import {
   LeadSourcesApiService,
   LeadSourceDetailDto,
-  LeadSourceListDtoPagedResult,
+  PagedResultOfLeadSourceListDto,
   CreateLeadSourceRequest,
   UpdateLeadSourceRequest,
   SnippetResult,
@@ -17,7 +17,7 @@ import {
   SetSecretRequest,
   SecretHint,
   RotateHmacSecretResult,
-  RunDtoPagedResult,
+  PagedResultOfRunDto,
   ManualPullResult,
   SourceQualityDto,
 } from '@sankore/crm-api';
@@ -77,7 +77,7 @@ export class LeadSourcesService {
     q?: string,
     page?: number,
     pageSize?: number,
-  ): Observable<LeadSourceListDtoPagedResult> {
+  ): Observable<PagedResultOfLeadSourceListDto> {
     this.forbidden.set(false);
     return this._api
       .listLeadSources(channelType, mode, status, q, page, pageSize)
@@ -161,7 +161,7 @@ export class LeadSourcesService {
     return this._api.getProviderDoc(id).pipe(this._handleErrors());
   }
 
-  public listRuns(id: string, page?: number, pageSize?: number): Observable<RunDtoPagedResult> {
+  public listRuns(id: string, page?: number, pageSize?: number): Observable<PagedResultOfRunDto> {
     return this._api.listLeadSourceRuns(id, page, pageSize).pipe(this._handleErrors());
   }
 

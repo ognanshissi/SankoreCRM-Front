@@ -1,0 +1,454 @@
+<tas-side-drawer>
+  <tas-drawer-title>
+    <div class="flex items-center gap-2">
+      <tas-icon iconName="feather:package" style="font-size:18px"></tas-icon>
+      <span>{{ productLabel() }}</span>
+    </div>
+  </tas-drawer-title>
+
+  <tas-drawer-content>
+    @if (isLoading()) {
+      <div class="flex justify-center py-20">
+        <tas-spinner size="10" class="text-primary"></tas-spinner>
+      </div>
+    } @else if (loadFailed() || !holding()) {
+      <div class="rounded-lg border border-slate-200 p-8 text-center">
+        <tas-icon iconName="feather:alert-circle" class="text-slate-300" style="font-size:28px"></tas-icon>
+        <p class="mt-2 text-sm font-medium text-slate-700">Ce produit n'a pas pu être chargé</p>
+        <p class="mt-1 text-sm text-slate-500">
+          Fermez le panneau et réessayez. Si l'erreur persiste, le produit a peut-être été
+          supprimé côté back-office.
+        </p>
+      </div>
+    } @else if (holding(); as h) {
+      <div class="flex flex-col gap-4">
+        <!-- En-tête -->
+        <div class="rounded-lg border border-slate-200 p-3">
+          <div class="flex flex-wrap items-start justify-between gap-3">
+            <div class="min-w-0">
+              <div class="flex flex-wrap items-center gap-2">
+                <p class="text-sm font-semibold text-slate-800">{{ productLabel() }}</p>
+                <tas-tag [severity]="statusSeverity()">{{ statusLabel() }}</tas-tag>
+                @if (h.isReadOnly) {
+                  <tas-tag severity="neutral">Lecture seule</tas-tag>
+                }
+              </div>
+              <p class="mt-0.5 text-xs text-slate-500">
+                {{ categoryLabel() }}
+                @if (h.productCode) { · {{ h.productCode }} }
+                · {{ originLabel() }}
+              </p>
+            </div>
+            <div class="text-right">
+              <p class="text-xs text-slate-400">Version de clause</p>
+              <p class="text-sm font-medium text-slate-800 tabular-nums">
+                {{ h.clauseVersion ?? 0 }}
+              </p>
+            </div>
+          </div>
+
+          <dl class="mt-3 grid grid-cols-2 gap-x-6 gap-y-3 border-t border-slate-100 pt-3 sm:grid-cols-3">
+            <div>
+              <dt class="text-xs text-slate-400">Référence externe</dt>
+              <dd class="text-sm font-medium text-slate-800">{{ h.externalRef || '—' }}</dd>
+            </div>
+            <div>
+              <dt class="text-xs text-slate-400">Système</dt>
+              <dd class="text-sm font-medium text-slate-800">{{ h.externalSystem || '—' }}</dd>
+            </div>
+            <div>
+              <dt class="text-xs text-slate-400">Souscrit le</dt>
+              <dd class="text-sm font-medium text-slate-800">{{ formatDate(h.createdAt) }}</dd>
+            </div>
+          </dl>
+        </div>
+
+        @if (h.status === 'Rejected') {
+          <div class="rounded-lg border border-functional-error/40 bg-functional-error/5 p-3">
+            <p class="text-sm font-medium text-functional-error">Rejeté par le back-office</p>
+            <p class="mt-1 text-sm text-slate-700">
+              {{ h.rejectionReason || 'Motif non communiqué par le back-office.' }}
+            </p>
+          </div>
+        }
+
+        @if (toReviewCount() > 0) {
+          <div class="rounded-lg border border-amber-300 bg-amber-50 p-3">
+            <p class="text-sm font-medium text-amber-900">
+              {{ toReviewCount() }} désignation(s) à revoir
+            </p>
+            <p class="mt-1 text-sm text-amber-800">
+              Action attendue : ouvrez « Modifier les bénéficiaires », confirmez le rôle et la
+              quote-part de chaque personne signalée, puis enregistrez la clause.
+            </p>
+          </div>
+        }
+
+        @if (h.status === 'PendingSync') {
+          <tas-alert type="info">
+            <p class="text-sm">
+              Produit en cours de synchronisation avec le back-office. Le statut se met à jour
+              automatiquement sur cet écran.
+            </p>
+          </tas-alert>
+        }
+
+        <!-- Frise de suivi -->
+        <div class="rounded-lg border border-slate-200 p-3">
+          <p class="text-sm font-semibold text-slate-800">Suivi</p>
+          <holding-timeline [holding]="h" class="mt-2 block"></holding-timeline>
+        </div>
+
+        <!-- Actions de signature et d'envoi -->
+        <holding-signature-actions
+          [holding]="h"
+          [readOnly]="isReadOnly()"
+          (changed)="onActionChanged()"
+        ></holding-signature-actions>
+
+        <!-- Termes -->
+        <div class="rounded-lg border border-slate-200 p-3">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <p class="text-sm font-semibold text-slate-800">Termes du contrat</p>
+            @if (canEditSpecifics() && mode() !== 'specifics') {
+              <button
+                tas-outlined-button
+                color="primary"
+                type="button"
+                class="text-xs"
+                (click)="startSpecifics()"
+              >
+                <tas-icon iconName="feather:edit-2" style="font-size:12px"></tas-icon>
+                Modifier les termes
+              </button>
+            }
+          </div>
+
+          @if (mode() === 'specifics') {
+            <form [formRoot]="specificsForm" class="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <tas-form-field>
+                <tas-label>Capital assuré</tas-label>
+                <input tasInput type="number" [formField]="specificsForm.insuredCapital" />
+              </tas-form-field>
+              <tas-form-field>
+                <tas-label>Prime</tas-label>
+                <input tasInput type="number" [formField]="specificsForm.premium" />
+              </tas-form-field>
+              <tas-form-field>
+                <tas-label>Périodicité</tas-label>
+                <input tasInput type="text" [formField]="specificsForm.periodicity" />
+              </tas-form-field>
+              <tas-form-field>
+                <tas-label>Durée (mois)</tas-label>
+                <input tasInput type="number" [formField]="specificsForm.durationMonths" />
+              </tas-form-field>
+              <tas-form-field>
+                <tas-label>Taux annuel (%)</tas-label>
+                <input tasInput type="number" [formField]="specificsForm.annualRatePercent" />
+              </tas-form-field>
+              <tas-form-field>
+                <tas-label>Dépôt initial</tas-label>
+                <input tasInput type="number" [formField]="specificsForm.initialDeposit" />
+              </tas-form-field>
+              <tas-form-field>
+                <tas-label>Devise</tas-label>
+                <input tasInput type="text" [formField]="specificsForm.currency" />
+              </tas-form-field>
+              <tas-form-field>
+                <tas-label>Prise d'effet</tas-label>
+                <input tasInput type="date" [formField]="specificsForm.effectiveFrom" />
+              </tas-form-field>
+              <tas-form-field class="sm:col-span-2">
+                <tas-label>Remarques</tas-label>
+                <input tasInput type="text" [formField]="specificsForm.notes" />
+              </tas-form-field>
+
+              <div class="flex items-center justify-end gap-2 sm:col-span-2">
+                <button tas-outlined-button color="primary" type="button" (click)="cancelEdition()">
+                  Annuler
+                </button>
+                <button
+                  tas-raised-button
+                  color="primary"
+                  type="button"
+                  [isLoading]="savingSpecifics()"
+                  [disabled]="savingSpecifics()"
+                  (click)="saveSpecifics()"
+                >
+                  Enregistrer les termes
+                </button>
+              </div>
+            </form>
+          } @else {
+            <dl class="mt-3 grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-3">
+              <div>
+                <dt class="text-xs text-slate-400">Capital assuré</dt>
+                <dd class="text-sm font-medium text-slate-800 tabular-nums">
+                  {{ formatAmount(h.specifics?.insuredCapital, h.specifics?.currency) }}
+                </dd>
+              </div>
+              <div>
+                <dt class="text-xs text-slate-400">Prime</dt>
+                <dd class="text-sm font-medium text-slate-800 tabular-nums">
+                  {{ formatAmount(h.specifics?.premium, h.specifics?.currency) }}
+                </dd>
+              </div>
+              <div>
+                <dt class="text-xs text-slate-400">Périodicité</dt>
+                <dd class="text-sm font-medium text-slate-800">
+                  {{ h.specifics?.periodicity || '—' }}
+                </dd>
+              </div>
+              <div>
+                <dt class="text-xs text-slate-400">Durée</dt>
+                <dd class="text-sm font-medium text-slate-800 tabular-nums">
+                  {{ h.specifics?.durationMonths ? h.specifics.durationMonths + ' mois' : '—' }}
+                </dd>
+              </div>
+              <div>
+                <dt class="text-xs text-slate-400">Taux annuel</dt>
+                <dd class="text-sm font-medium text-slate-800 tabular-nums">
+                  {{ h.specifics?.annualRatePercent != null ? h.specifics.annualRatePercent + ' %' : '—' }}
+                </dd>
+              </div>
+              <div>
+                <dt class="text-xs text-slate-400">Prise d'effet</dt>
+                <dd class="text-sm font-medium text-slate-800">
+                  {{ formatDate(h.specifics?.effectiveFrom) }}
+                </dd>
+              </div>
+            </dl>
+            @if (h.specifics?.notes) {
+              <p class="mt-3 text-sm text-slate-600">{{ h.specifics.notes }}</p>
+            }
+          }
+        </div>
+
+        <!-- Clause bénéficiaire -->
+        <div class="rounded-lg border border-slate-200 p-3">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <p class="text-sm font-semibold text-slate-800">Clause bénéficiaire</p>
+              <p class="text-xs text-slate-500">
+                Version affichée : {{ visibleVersion() }}
+                @if (visibleVersion() !== (h.clauseVersion ?? 0)) { (version précédente) }
+              </p>
+            </div>
+            @if (canDesignate() && mode() !== 'designations') {
+              <button
+                tas-outlined-button
+                color="primary"
+                type="button"
+                class="text-xs"
+                (click)="startDesignations()"
+              >
+                <tas-icon iconName="feather:users" style="font-size:12px"></tas-icon>
+                Modifier les bénéficiaires
+              </button>
+            }
+          </div>
+
+          @if (mode() === 'designations') {
+            @if (isAmendment()) {
+              <tas-alert type="info" class="mt-3 block">
+                <p class="text-sm">
+                  Ce produit est actif : enregistrer la clause crée un <strong>avenant</strong>,
+                  c'est-à-dire une nouvelle version. La version
+                  {{ h.clauseVersion ?? 0 }} restera consultable.
+                </p>
+              </tas-alert>
+            }
+
+            <designations-editor
+              class="mt-3 block"
+              [clientId]="data.clientId"
+              [roles]="policyRoles()"
+              [initial]="currentDesignations()"
+              [householdEnabled]="householdEnabled()"
+            ></designations-editor>
+
+            @if (designationError(); as message) {
+              <div class="mt-3 rounded-lg border border-functional-error/40 bg-functional-error/5 p-3">
+                <p class="text-sm text-functional-error">{{ message }}</p>
+              </div>
+            }
+
+            <div class="mt-3 flex items-center justify-end gap-2">
+              <button tas-outlined-button color="primary" type="button" (click)="cancelEdition()">
+                Annuler
+              </button>
+              <button
+                tas-raised-button
+                color="primary"
+                type="button"
+                [isLoading]="savingDesignations()"
+                [disabled]="savingDesignations()"
+                (click)="saveDesignations()"
+              >
+                {{ isAmendment() ? "Enregistrer l'avenant" : 'Enregistrer la clause' }}
+              </button>
+            </div>
+          } @else {
+            <tas-table
+              class="mt-3 block"
+              [data]="visibleDesignations()"
+              identifierField="id"
+              [config]="tableConfig"
+            >
+              <ng-template #header>
+                <tr>
+                  <th class="hidden sm:table-cell">Bénéficiaire</th>
+                  <th class="hidden sm:table-cell">Rôle</th>
+                  <th class="hidden sm:table-cell">Rang</th>
+                  <th class="hidden sm:table-cell">Quote-part</th>
+                  <th class="hidden sm:table-cell">Statut</th>
+                </tr>
+              </ng-template>
+
+              <ng-template #body let-item>
+                <tr [class.bg-amber-50]="item.toReview">
+                  <!-- Carte, sous 640 px -->
+                  <td class="sm:hidden" [attr.colspan]="5">
+                    <div class="flex flex-col gap-1 p-3">
+                      <div class="flex items-start justify-between gap-2">
+                        <p class="text-sm font-medium text-slate-800">{{ item.subjectLabel }}</p>
+                        <tas-tag [severity]="item.statusSeverity">{{ item.statusLabel }}</tas-tag>
+                      </div>
+                      <p class="text-xs text-slate-500">
+                        {{ item.roleLabel }} · rang {{ item.rank }} · {{ item.share }}
+                      </p>
+                      @if (item.toReview) {
+                        <p class="text-xs text-amber-800">
+                          À revoir —
+                          {{ item.statusReason || 'confirmez cette désignation dans un avenant.' }}
+                        </p>
+                      }
+                    </div>
+                  </td>
+
+                  <!-- Colonnes, à partir de 640 px -->
+                  <td class="hidden py-3 sm:table-cell">
+                    <span class="text-sm font-medium text-slate-800">{{ item.subjectLabel }}</span>
+                    @if (item.relationship) {
+                      <span class="block text-xs text-slate-400">{{ item.relationship }}</span>
+                    }
+                  </td>
+                  <td class="hidden sm:table-cell">
+                    <span class="text-sm text-slate-700">{{ item.roleLabel }}</span>
+                  </td>
+                  <td class="hidden sm:table-cell">
+                    <span class="text-sm text-slate-700 tabular-nums">{{ item.rank }}</span>
+                  </td>
+                  <td class="hidden sm:table-cell">
+                    <span class="text-sm text-slate-700 tabular-nums">{{ item.share }}</span>
+                  </td>
+                  <td class="hidden sm:table-cell">
+                    <tas-tag [severity]="item.statusSeverity">{{ item.statusLabel }}</tas-tag>
+                    @if (item.toReview) {
+                      <span class="block text-xs text-amber-800">
+                        {{ item.statusReason || 'Confirmez cette désignation.' }}
+                      </span>
+                    }
+                  </td>
+                </tr>
+              </ng-template>
+            </tas-table>
+          }
+        </div>
+
+        <!-- Versions de clause -->
+        @if (versions().length > 1) {
+          <div class="rounded-lg border border-slate-200 p-3">
+            <p class="text-sm font-semibold text-slate-800">Versions de la clause</p>
+            <p class="text-xs text-slate-500">
+              Chaque avenant crée une version ; les précédentes restent consultables.
+            </p>
+
+            <tas-table
+              class="mt-3 block"
+              [data]="versions()"
+              identifierField="id"
+              [config]="tableConfig"
+            >
+              <ng-template #header>
+                <tr>
+                  <th class="hidden sm:table-cell">Version</th>
+                  <th class="hidden sm:table-cell">Désignations</th>
+                  <th class="hidden sm:table-cell">En vigueur du</th>
+                  <th class="hidden sm:table-cell">Au</th>
+                  <th class="hidden sm:table-cell"></th>
+                </tr>
+              </ng-template>
+
+              <ng-template #body let-item>
+                <tr>
+                  <td class="sm:hidden" [attr.colspan]="5">
+                    <div class="flex items-center justify-between gap-2 p-3">
+                      <div>
+                        <p class="text-sm font-medium text-slate-800">
+                          Version {{ item.version }}
+                          @if (item.isCurrent) {
+                            <tas-tag severity="success">En vigueur</tas-tag>
+                          }
+                        </p>
+                        <p class="text-xs text-slate-500">
+                          {{ item.count }} désignation(s) · du {{ formatDate(item.validFrom) }}
+                          @if (item.validTo) { au {{ formatDate(item.validTo) }} }
+                        </p>
+                      </div>
+                      <button
+                        tas-text-button
+                        color="primary"
+                        type="button"
+                        class="text-xs"
+                        (click)="selectVersion(item.version)"
+                      >
+                        Consulter
+                      </button>
+                    </div>
+                  </td>
+
+                  <td class="hidden py-3 sm:table-cell">
+                    <span class="text-sm font-medium text-slate-800 tabular-nums">
+                      {{ item.version }}
+                    </span>
+                    @if (item.isCurrent) {
+                      <tas-tag severity="success">En vigueur</tas-tag>
+                    }
+                  </td>
+                  <td class="hidden sm:table-cell">
+                    <span class="text-sm text-slate-700 tabular-nums">{{ item.count }}</span>
+                  </td>
+                  <td class="hidden sm:table-cell">
+                    <span class="text-sm text-slate-700">{{ formatDate(item.validFrom) }}</span>
+                  </td>
+                  <td class="hidden sm:table-cell">
+                    <span class="text-sm text-slate-700">{{ formatDate(item.validTo) }}</span>
+                  </td>
+                  <td class="hidden text-right sm:table-cell">
+                    <button
+                      tas-text-button
+                      color="primary"
+                      type="button"
+                      class="text-xs"
+                      [attr.aria-label]="'Consulter la version ' + item.version"
+                      (click)="selectVersion(item.version)"
+                    >
+                      Consulter
+                    </button>
+                  </td>
+                </tr>
+              </ng-template>
+            </tas-table>
+          </div>
+        }
+      </div>
+    }
+  </tas-drawer-content>
+
+  <tas-drawer-action>
+    <div class="flex items-center justify-end gap-2">
+      <button tas-raised-button color="primary" type="button" (click)="close()">Fermer</button>
+    </div>
+  </tas-drawer-action>
+</tas-side-drawer>

@@ -1,0 +1,270 @@
+<div class="flex flex-col gap-4">
+  <div class="flex flex-wrap items-start justify-between gap-3">
+    <div>
+      <p class="text-sm font-semibold text-slate-800">Désignation des bénéficiaires</p>
+      <p class="mt-0.5 text-xs text-slate-500">
+        Cochez les personnes à désigner. Les rôles proposés sont ceux de la ligne de produit.
+      </p>
+    </div>
+
+    @if (!readOnly() && householdEnabled()) {
+      <div class="flex flex-wrap items-center gap-2">
+        @if (!hasSpouse()) {
+          <button
+            tas-outlined-button
+            color="primary"
+            type="button"
+            class="text-xs"
+            (click)="openAddMember('Spouse')"
+          >
+            <tas-icon iconName="feather:user-plus" style="font-size:12px"></tas-icon>
+            Ajouter le conjoint au foyer
+          </button>
+        }
+        <button
+          tas-outlined-button
+          color="primary"
+          type="button"
+          class="text-xs"
+          (click)="openAddMember('Child')"
+        >
+          <tas-icon iconName="feather:user-plus" style="font-size:12px"></tas-icon>
+          Ajouter un enfant au foyer
+        </button>
+      </div>
+    }
+  </div>
+
+  @if (roleOptions().length === 0) {
+    <div class="rounded-lg border border-amber-300 bg-amber-50 p-3">
+      <p class="text-sm font-medium text-amber-900">Aucun rôle de désignation disponible</p>
+      <p class="mt-0.5 text-sm text-amber-800">
+        La ligne de produit ne déclare pas de rôle de bénéficiaire. Aucune clause ne peut
+        être saisie ici : faites compléter la politique du produit dans les réglages.
+      </p>
+    </div>
+  }
+
+  @if (!householdEnabled()) {
+    <p class="text-xs text-slate-500">
+      Cette ligne de produit n'active pas le foyer : les personnes désignées se saisissent
+      une par une, sans passer par les membres du foyer.
+    </p>
+  }
+
+  <!-- Éditeur de collection dynamique : HTML ordinaire, pas une liste d'entités. -->
+  <ul class="flex flex-col gap-2" role="list">
+    @for (row of rows(); track row.key) {
+      <li
+        class="rounded-lg border p-3"
+        [class.border-slate-200]="!toReview(row.status)"
+        [class.border-amber-300]="toReview(row.status)"
+        [class.bg-amber-50]="toReview(row.status)"
+      >
+        <div class="flex items-start gap-3">
+          <input
+            type="checkbox"
+            class="form-checkbox mt-1 shrink-0"
+            [id]="'designation-' + row.key"
+            [checked]="row.selected"
+            [disabled]="readOnly() || roleOptions().length === 0"
+            (change)="toggle(row.key, $any($event.target).checked)"
+          />
+
+          <div class="min-w-0 flex-1">
+            <div class="flex flex-wrap items-center gap-2">
+              <label
+                class="text-sm font-medium text-slate-800"
+                [attr.for]="'designation-' + row.key"
+              >
+                {{ row.isExternal ? (row.externalFullName || 'Personne hors foyer') : row.label }}
+              </label>
+
+              @if (row.status) {
+                <tas-tag [severity]="toReview(row.status) ? 'warning' : 'neutral'">
+                  {{ statusLabel(row.status) }}
+                </tas-tag>
+              }
+              @if (row.isOrphan) {
+                <tas-tag severity="neutral">Hors foyer</tas-tag>
+              }
+            </div>
+
+            @if (row.sublabel) {
+              <p class="text-xs text-slate-500">{{ row.sublabel }}</p>
+            }
+
+            @if (toReview(row.status)) {
+              <p class="mt-1 text-xs text-amber-800">
+                À revoir —
+                {{
+                  row.statusReason ||
+                    'confirmez le rôle et la quote-part de cette personne, puis enregistrez la clause.'
+                }}
+              </p>
+            }
+
+            @if (row.selected) {
+              <div class="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                @if (row.isExternal) {
+                  <tas-form-field>
+                    <tas-label>Nom complet <span class="text-functional-error">*</span></tas-label>
+                    <input
+                      tasInput
+                      type="text"
+                      placeholder="Nom et prénom"
+                      [disabled]="readOnly()"
+                      [ngModel]="row.externalFullName"
+                      (ngModelChange)="setExternalName(row.key, $event)"
+                      [ngModelOptions]="{ standalone: true }"
+                    />
+                  </tas-form-field>
+
+                  <tas-form-field>
+                    <tas-label>Lien avec le client</tas-label>
+                    <input
+                      tasInput
+                      type="text"
+                      placeholder="Neveu, ami…"
+                      [disabled]="readOnly()"
+                      [ngModel]="row.externalRelationship"
+                      (ngModelChange)="setExternalRelationship(row.key, $event)"
+                      [ngModelOptions]="{ standalone: true }"
+                    />
+                  </tas-form-field>
+                }
+
+                <tas-form-field>
+                  <tas-label>Rôle <span class="text-functional-error">*</span></tas-label>
+                  <tas-select
+                    [options]="roleOptions()"
+                    placeholder="Choisissez un rôle"
+                    [readonly]="readOnly()"
+                    [ngModel]="row.roleCode"
+                    (ngModelChange)="setRole(row.key, $event)"
+                    [ngModelOptions]="{ standalone: true }"
+                  ></tas-select>
+                </tas-form-field>
+
+                <tas-form-field>
+                  <tas-label>Rang <span class="text-functional-error">*</span></tas-label>
+                  <input
+                    tasInput
+                    type="number"
+                    min="1"
+                    step="1"
+                    [disabled]="readOnly()"
+                    [ngModel]="row.rank"
+                    (ngModelChange)="setRank(row.key, $event)"
+                    [ngModelOptions]="{ standalone: true }"
+                  />
+                </tas-form-field>
+
+                @if (roleRequiresShares(row.roleCode)) {
+                  <tas-form-field>
+                    <tas-label>
+                      Quote-part (%) <span class="text-functional-error">*</span>
+                    </tas-label>
+                    <input
+                      tasInput
+                      type="number"
+                      min="0"
+                      max="100"
+                      step="0.01"
+                      [disabled]="readOnly()"
+                      [ngModel]="row.sharePercent"
+                      (ngModelChange)="setShare(row.key, $event)"
+                      [ngModelOptions]="{ standalone: true }"
+                    />
+                  </tas-form-field>
+                }
+              </div>
+            }
+          </div>
+
+          @if (row.isExternal && !readOnly()) {
+            <button
+              tas-button
+              iconButton
+              type="button"
+              class="shrink-0"
+              [attr.aria-label]="'Retirer ' + (row.externalFullName || 'cette personne hors foyer')"
+              (click)="removeExternal(row.key)"
+            >
+              <tas-icon iconName="feather:trash-2" style="font-size:13px"></tas-icon>
+            </button>
+          }
+        </div>
+      </li>
+    } @empty {
+      <li class="rounded-lg border border-slate-200 p-6 text-center">
+        <p class="text-sm font-medium text-slate-700">Aucune personne désignable</p>
+        <p class="mt-1 text-sm text-slate-500">
+          Ajoutez d'abord une personne au foyer du client.
+        </p>
+      </li>
+    }
+  </ul>
+
+  @if (!readOnly() && roleOptions().length > 0) {
+    <div>
+      <button
+        tas-text-button
+        color="primary"
+        type="button"
+        class="text-xs"
+        (click)="addExternal()"
+      >
+        <tas-icon iconName="feather:plus" style="font-size:12px"></tas-icon>
+        Désigner une personne hors foyer
+      </button>
+    </div>
+  }
+
+  @if (rankTotals().length > 0) {
+    <div class="rounded-lg border border-slate-200 bg-slate-50 p-3">
+      <p class="text-xs font-medium text-slate-600">Total des quotes-parts par rang</p>
+      <ul class="mt-2 flex flex-col gap-2" role="list">
+        @for (total of rankTotals(); track total.rank) {
+          <li class="flex flex-wrap items-center gap-2 text-sm">
+            <span class="text-slate-700">Rang {{ total.rank }}</span>
+            <span
+              class="tabular-nums font-medium"
+              [class.text-functional-error]="!total.isComplete"
+              [class.text-green-700]="total.isComplete"
+            >
+              {{ total.total }} %
+            </span>
+            <tas-tag [severity]="total.isComplete ? 'success' : 'error'">
+              {{ total.isComplete ? 'Complet' : 'À corriger' }}
+            </tas-tag>
+            @if (!total.isComplete && !readOnly()) {
+              <button
+                tas-text-button
+                color="primary"
+                type="button"
+                class="text-xs"
+                (click)="splitRank(total.rank)"
+              >
+                Répartir également
+              </button>
+            }
+          </li>
+        }
+      </ul>
+    </div>
+  }
+
+  @if (!readOnly() && draft().problems.length > 0) {
+    <div class="rounded-lg border border-functional-error/40 bg-functional-error/5 p-3">
+      <p class="text-sm font-medium text-functional-error">
+        {{ draft().problems.length }} point(s) à corriger avant d'enregistrer la clause
+      </p>
+      <ul class="mt-1 flex flex-col gap-0.5" role="list">
+        @for (problem of draft().problems; track problem) {
+          <li class="text-sm text-functional-error">{{ problem }}</li>
+        }
+      </ul>
+    </div>
+  }
+</div>

@@ -1,0 +1,446 @@
+<!-- En-tête -->
+<div class="flex flex-wrap items-start justify-between gap-3 mb-5">
+  <div class="min-w-0">
+    <div class="flex flex-wrap items-center gap-2.5">
+      <h1 class="text-lg font-semibold text-slate-800">FATCA et conformité</h1>
+      @if (!isLoading() && !loadError()) {
+        @if (settings()?.fatcaEnabled) {
+          <tas-tag severity="success">FATCA actif</tas-tag>
+        } @else {
+          <tas-tag severity="neutral">FATCA inactif</tas-tag>
+        }
+      }
+    </div>
+    <p class="text-sm text-slate-400 mt-0.5">
+      Régime FATCA de l'institution et durée de maintien du statut PPE, appliqués à tous les
+      leads et dossiers clients de votre organisation.
+    </p>
+  </div>
+  <button tas-outlined-button type="button" (click)="reload()">
+    <tas-icon iconName="feather:refresh-cw" style="font-size:14px"></tas-icon>
+    Actualiser
+  </button>
+</div>
+
+@if (!canManage()) {
+  <!--
+    Dit en tête plutôt que sous chaque champ : la lecture est ouverte à `kyc:read`, la
+    modification exige `kyc:settings:manage`. Sans ce rappel, l'absence de formulaire se lit
+    comme une panne.
+  -->
+  <div class="mb-4 flex items-start gap-2 rounded-lg border border-slate-200 bg-slate-50 p-3">
+    <tas-icon
+      iconName="feather:lock"
+      class="mt-0.5 shrink-0 text-slate-500"
+      style="font-size:14px"
+    ></tas-icon>
+    <p class="text-xs text-slate-600">
+      Lecture seule : modifier les paramètres de conformité demande une habilitation dédiée.
+    </p>
+  </div>
+}
+
+<!--
+  Trois états strictement distincts. Une panne ne doit jamais s'afficher « FATCA inactif » : on
+  en conclurait que l'institution n'y est pas soumise, alors que le régime en vigueur reste
+  inconnu.
+-->
+@if (isLoading()) {
+  <div class="flex items-center justify-center gap-3 rounded-lg border border-slate-200 p-10">
+    <tas-spinner size="10" class="text-primary"></tas-spinner>
+    <p class="text-sm text-slate-500">Lecture des paramètres de conformité…</p>
+  </div>
+} @else if (loadError()) {
+  <div
+    class="flex flex-col items-center gap-3 rounded-lg border border-red-200 bg-red-50 p-10 text-center"
+    role="alert"
+  >
+    <tas-icon iconName="feather:wifi-off" class="text-red-600" style="font-size:18px"></tas-icon>
+    <div>
+      <p class="text-sm font-medium text-slate-800">Chargement impossible</p>
+      <p class="text-xs text-slate-500 mt-1">{{ loadError() }}</p>
+    </div>
+    <button tas-raised-button color="primary" type="button" (click)="reload()">
+      <tas-icon iconName="feather:refresh-cw" style="font-size:14px"></tas-icon>
+      Réessayer
+    </button>
+  </div>
+} @else if (canManage()) {
+  <form [formRoot]="formSchema" class="flex flex-col gap-5">
+    <!-- ——— Déclaration FATCA ——— -->
+    <tas-card class="block">
+      <div class="p-4 flex flex-col gap-5">
+        <div class="flex flex-wrap items-start justify-between gap-3">
+          <div class="min-w-0">
+            <p class="text-sm font-medium text-slate-800">Appliquer FATCA</p>
+            <p class="text-xs text-slate-500 mt-1 max-w-prose">
+              Activé, la section de déclaration FATCA apparaît sur tous les leads et dossiers
+              clients. Désactivé, elle disparaît et aucune auto-certification n'est demandée.
+            </p>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="text-xs font-medium text-slate-600">
+              {{ fatcaEnabled() ? 'Activé' : 'Désactivé' }}
+            </span>
+            <tas-switch
+              [checked]="fatcaEnabled()"
+              ariaLabel="Appliquer FATCA à l'organisation"
+              (toggle)="onFatcaToggle($event)"
+            ></tas-switch>
+          </div>
+        </div>
+
+        @if (pendingToggle()) {
+          <div
+            class="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3"
+            role="status"
+          >
+            <tas-icon
+              iconName="feather:alert-triangle"
+              class="mt-0.5 shrink-0 text-amber-600"
+              style="font-size:14px"
+            ></tas-icon>
+            <p class="text-xs text-slate-700">
+              @if (fatcaEnabled()) {
+                L'activation de FATCA n'est pas encore appliquée. Elle vous sera confirmée à
+                l'enregistrement.
+              } @else {
+                La désactivation de FATCA n'est pas encore appliquée. Elle vous sera confirmée à
+                l'enregistrement.
+              }
+            </p>
+          </div>
+        }
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <tas-form-field>
+            <tas-label>
+              Régime de l'institution
+              @if (fatcaEnabled()) {
+                <span class="text-functional-error">*</span>
+              }
+            </tas-label>
+            <tas-select
+              clearable
+              [options]="regimeOptions()"
+              optionLabel="label"
+              optionValue="value"
+              placeholder="Choisissez le régime applicable"
+              [formField]="formSchema.fatcaRegime"
+            ></tas-select>
+            @if (formSchema.fatcaRegime().touched() && formSchema.fatcaRegime().invalid()) {
+              <tas-error>{{ formSchema.fatcaRegime().errors()[0].message }}</tas-error>
+            } @else {
+              <tas-hint>IGA modèle 1, IGA modèle 2 ou accord FFI direct.</tas-hint>
+            }
+          </tas-form-field>
+
+          <tas-form-field>
+            <tas-label>
+              Moment d'exigence
+              @if (fatcaEnabled()) {
+                <span class="text-functional-error">*</span>
+              }
+            </tas-label>
+            <tas-select
+              clearable
+              [options]="requirementMomentOptions()"
+              optionLabel="label"
+              optionValue="value"
+              placeholder="Choisissez le moment d'exigence"
+              [formField]="formSchema.fatcaRequiredAt"
+            ></tas-select>
+            @if (formSchema.fatcaRequiredAt().touched() && formSchema.fatcaRequiredAt().invalid()) {
+              <tas-error>{{ formSchema.fatcaRequiredAt().errors()[0].message }}</tas-error>
+            } @else {
+              <tas-hint>
+                Étape à laquelle l'auto-certification devient exigible : enrichissement du lead ou
+                conversion en client.
+              </tas-hint>
+            }
+          </tas-form-field>
+
+          <tas-form-field class="sm:col-span-2">
+            <tas-label>
+              GIIN de l'institution
+              @if (fatcaEnabled()) {
+                <span class="text-functional-error">*</span>
+              }
+            </tas-label>
+            <input
+              tasInput
+              type="text"
+              placeholder="XXXXXX.XXXXX.XX.XXX"
+              [formField]="formSchema.fatcaGiin"
+            />
+            @if (formSchema.fatcaGiin().touched() && formSchema.fatcaGiin().invalid()) {
+              <tas-error>{{ formSchema.fatcaGiin().errors()[0].message }}</tas-error>
+            } @else {
+              <tas-hint>
+                Numéro d'identification d'intermédiaire mondial, au format XXXXXX.XXXXX.XX.XXX
+                (lettres majuscules et chiffres). Il figure sur l'enregistrement IRS de
+                l'institution.
+              </tas-hint>
+            }
+          </tas-form-field>
+        </div>
+
+        <div class="rounded-lg border border-slate-200 p-3">
+          <tas-checkbox [formField]="formSchema.fatcaForCoHolders">
+            Étendre la déclaration FATCA aux co-titulaires
+          </tas-checkbox>
+          <p class="text-xs text-slate-500 mt-2">
+            Chaque co-titulaire d'un compte joint renseigne alors sa propre auto-certification,
+            en plus du titulaire principal.
+          </p>
+        </div>
+      </div>
+    </tas-card>
+
+    <!-- ——— Personnes politiquement exposées ——— -->
+    <tas-card class="block">
+      <div class="p-4 flex flex-col gap-4">
+        <div>
+          <p class="text-sm font-medium text-slate-800">Personnes politiquement exposées</p>
+          <p class="text-xs text-slate-500 mt-1 max-w-prose">
+            Durée pendant laquelle une personne conserve son statut PPE après la fin de ses
+            fonctions. Le statut reste visible et vigilé sur le dossier pendant toute cette
+            période.
+          </p>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <tas-form-field>
+            <tas-label>
+              Maintien du statut après la fin de fonction (mois)
+              <span class="text-functional-error">*</span>
+            </tas-label>
+            <!--
+              Pas d'attribut min/max ici : le compilateur l'interdit sur un nœud porteur de
+              [formField] (NG8022), parce que ces bornes viennent du schéma. La borne haute est
+              portée par le validateur, qui donne en plus un message en français.
+            -->
+            <input
+              tasInput
+              type="number"
+              placeholder="12"
+              [formField]="formSchema.pepPostMandateMonths"
+            />
+            @if (
+              formSchema.pepPostMandateMonths().touched() &&
+              formSchema.pepPostMandateMonths().invalid()
+            ) {
+              <tas-error>{{ formSchema.pepPostMandateMonths().errors()[0].message }}</tas-error>
+            } @else if (pepWindowLabel()) {
+              <tas-hint>{{ pepWindowLabel() }}</tas-hint>
+            }
+          </tas-form-field>
+        </div>
+      </div>
+    </tas-card>
+
+    <!-- Barre d'actions -->
+    <div class="flex flex-wrap items-center justify-between gap-3">
+      <p class="text-xs text-slate-400">
+        @if (settings()?.updatedAt) {
+          Dernière modification le {{ settings()?.updatedAt | date: 'dd/MM/yyyy à HH:mm' }}
+        } @else {
+          Aucune modification enregistrée pour l'instant.
+        }
+      </p>
+      <div class="flex flex-wrap items-center gap-2">
+        <button
+          tas-outlined-button
+          type="button"
+          [disabled]="!hasChanges() || formSchema().submitting()"
+          (click)="cancelChanges()"
+        >
+          Annuler les modifications
+        </button>
+        <button
+          tas-raised-button
+          color="primary"
+          type="button"
+          [disabled]="formSchema().invalid() || formSchema().submitting()"
+          [isLoading]="formSchema().submitting()"
+          (click)="handleSubmit()"
+        >
+          Enregistrer
+        </button>
+      </div>
+    </div>
+  </form>
+} @else {
+  <!--
+    Lecture seule : les mêmes valeurs, sans contrôle de saisie. Un formulaire désactivé serait
+    plus fragile — `tas-select` n'implémente pas l'état désactivé, il resterait cliquable.
+  -->
+  <tas-card class="block">
+    <dl class="p-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div>
+        <dt class="text-xs text-slate-400">Application de FATCA</dt>
+        <dd class="text-sm text-slate-800 mt-0.5">
+          {{ settings()?.fatcaEnabled ? 'Activée' : 'Désactivée' }}
+        </dd>
+      </div>
+      <div>
+        <dt class="text-xs text-slate-400">Régime de l'institution</dt>
+        <dd class="text-sm text-slate-800 mt-0.5">{{ regimeLabel(settings()?.fatcaRegime) }}</dd>
+      </div>
+      <div>
+        <dt class="text-xs text-slate-400">GIIN</dt>
+        <dd class="text-sm text-slate-800 mt-0.5 font-mono break-all">
+          {{ settings()?.fatcaGiin || '—' }}
+        </dd>
+      </div>
+      <div>
+        <dt class="text-xs text-slate-400">Moment d'exigence</dt>
+        <dd class="text-sm text-slate-800 mt-0.5">
+          {{ requirementMomentLabel(settings()?.fatcaRequiredAt) }}
+        </dd>
+      </div>
+      <div>
+        <dt class="text-xs text-slate-400">Co-titulaires</dt>
+        <dd class="text-sm text-slate-800 mt-0.5">
+          {{ settings()?.fatcaForCoHolders ? 'Déclaration étendue' : 'Titulaire principal seul' }}
+        </dd>
+      </div>
+      <div>
+        <dt class="text-xs text-slate-400">Maintien du statut PPE</dt>
+        <dd class="text-sm text-slate-800 mt-0.5 tabular-nums">
+          {{ settings()?.pepPostMandateMonths ?? 0 }} mois après la fin de fonction
+        </dd>
+      </div>
+      <div class="sm:col-span-2">
+        <dt class="text-xs text-slate-400">Dernière modification</dt>
+        <dd class="text-sm text-slate-800 mt-0.5">
+          @if (settings()?.updatedAt) {
+            {{ settings()?.updatedAt | date: 'dd/MM/yyyy à HH:mm' }}
+          } @else {
+            —
+          }
+        </dd>
+      </div>
+    </dl>
+  </tas-card>
+}
+
+<!-- ——— Historique des changements ——— -->
+@if (!isLoading() && !loadError() && canReadAudit()) {
+  <div class="mt-6">
+    <div class="mb-3">
+      <h2 class="text-sm font-semibold text-slate-800">Historique des changements</h2>
+      <p class="text-xs text-slate-400 mt-0.5">
+        Tracé par le journal d'audit, auteur compris.
+      </p>
+    </div>
+
+    @if (historyUnavailable()) {
+      <div class="rounded-lg border border-slate-200 bg-slate-50 p-4" role="status">
+        <p class="text-xs text-slate-600">
+          Le journal d'audit n'a pas pu être lu. La date de la dernière modification reste
+          affichée ci-dessus.
+        </p>
+      </div>
+    } @else if (!isLoadingHistory() && history().length === 0) {
+      <!--
+        « Rien » ne veut pas dire « rien n'a changé » : le contrat ne dit pas sous quel nom de
+        ressource le journal indexe ces paramètres. On renvoie donc au journal complet plutôt que
+        d'affirmer qu'aucun changement n'a eu lieu.
+      -->
+      <div
+        class="flex flex-col items-center gap-3 rounded-lg border border-dashed border-slate-300 p-8 text-center"
+      >
+        <tas-icon iconName="feather:clock" class="text-slate-400" style="font-size:18px"></tas-icon>
+        <div>
+          <p class="text-sm font-medium text-slate-800">Aucun changement remonté</p>
+          <p class="text-xs text-slate-500 mt-1 max-w-prose">
+            Le journal d'audit ne renvoie aucune entrée pour cette ressource. Si des paramètres
+            ont bien été modifiés, le journal les classe peut-être sous un autre nom de ressource.
+          </p>
+        </div>
+        <a tas-outlined-button [routerLink]="['/settings/audit']">
+          <tas-icon iconName="feather:external-link" style="font-size:14px"></tas-icon>
+          Ouvrir le journal d'audit
+        </a>
+      </div>
+    } @else {
+      <tas-table
+        [data]="history()"
+        [config]="historyConfig()"
+        [isLoading]="isLoadingHistory()"
+        identifierField="id"
+        [hasCaption]="false"
+        (pageEventChange)="onHistoryPageChange($event)"
+      >
+        <ng-template #header>
+          <tr>
+            <th class="text-left whitespace-nowrap">Date</th>
+            <th class="text-left">Action</th>
+            <th class="text-left whitespace-nowrap">Auteur</th>
+            <th class="text-left whitespace-nowrap">Résultat</th>
+            <th></th>
+          </tr>
+        </ng-template>
+
+        <ng-template #body let-item>
+          <tr class="hover:bg-slate-50 transition-colors">
+            <td class="py-3 whitespace-nowrap">
+              <span class="text-sm text-slate-600">
+                {{ item.timestamp | date: 'dd/MM/yyyy à HH:mm' }}
+              </span>
+            </td>
+            <td class="py-3">
+              <p class="text-sm text-slate-700 break-all">{{ item.action || '—' }}</p>
+              @if (item.errorDetail) {
+                <p class="text-xs text-functional-error mt-0.5">{{ item.errorDetail }}</p>
+              }
+            </td>
+            <td class="py-3 whitespace-nowrap">
+              <span class="text-sm text-slate-600">{{ authorLabel(item) }}</span>
+            </td>
+            <td class="py-3 whitespace-nowrap">
+              @if (item.outcome === 'Success') {
+                <tas-tag severity="success">Succès</tas-tag>
+              } @else if (item.outcome) {
+                <tas-tag severity="error">Échec</tas-tag>
+              } @else {
+                <span class="text-sm text-slate-400">—</span>
+              }
+            </td>
+            <td class="py-3 text-right">
+              @if (item.payloadJson) {
+                <button
+                  tas-button
+                  iconButton
+                  type="button"
+                  title="Voir les valeurs enregistrées"
+                  [attr.aria-label]="'Voir les valeurs enregistrées de ce changement'"
+                  [attr.aria-expanded]="expandedEntryId() === item.id"
+                  (click)="toggleEntry(item)"
+                >
+                  <tas-icon
+                    [iconName]="
+                      expandedEntryId() === item.id ? 'feather:chevron-up' : 'feather:chevron-down'
+                    "
+                    iconSize="sm"
+                  ></tas-icon>
+                </button>
+              }
+            </td>
+          </tr>
+          @if (expandedEntryId() === item.id && item.payloadJson) {
+            <tr>
+              <td [attr.colspan]="5" class="pb-3">
+                <pre
+                  class="overflow-x-auto rounded-lg bg-slate-50 p-3 text-xs text-slate-600 whitespace-pre-wrap break-all"
+                  >{{ item.payloadJson }}</pre
+                >
+              </td>
+            </tr>
+          }
+        </ng-template>
+      </tas-table>
+    }
+  </div>
+}

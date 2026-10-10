@@ -18,7 +18,7 @@ import {
   GoogleContactsImportRequestSourceEnum,
   GoogleSheetImportRequestSourceEnum,
   ImportLeadsAccepted,
-  ImportRowFailure,
+  LeadsImportRowFailure,
   LeadImportApiService,
   LeadImportStatusResponse,
   LeadImportStatusResponseStatusEnum,
@@ -248,7 +248,7 @@ export class LeadImportWizard implements OnDestroy {
   public importError = signal('');
   public currentJobId = signal('');
   public trackingStopped = signal(false);
-  public importFailures = signal<ImportRowFailure[]>([]);
+  public importFailures = signal<LeadsImportRowFailure[]>([]);
   /** Les échecs sont identifiés par `row` et non `rowNumber` : c'est le champ du contrat des leads. */
   public failuresTableConfig = signal<TableConfig>(this._tableConfig(0, 'row'));
 

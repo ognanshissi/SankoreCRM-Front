@@ -87,6 +87,18 @@ export const customersRoutes: Route[] = [
         loadComponent: () => import('./containers/client-detail/coordonnees'),
       },
       {
+        path: 'foyer',
+        loadComponent: () => import('./containers/client-detail/foyer'),
+      },
+      {
+        path: 'produits',
+        loadComponent: () => import('./containers/client-detail/produits'),
+      },
+      {
+        path: 'demandes',
+        loadComponent: () => import('./containers/client-detail/demandes'),
+      },
+      {
         path: 'relations',
         loadComponent: () => import('./containers/client-detail/relations'),
       },

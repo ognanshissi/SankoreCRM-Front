@@ -1,6 +1,13 @@
 import { Component, computed, effect, inject, input, signal, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
+import { HttpErrorResponse } from '@angular/common/http';
+import {
+  disabled,
+  form,
+  FormField,
+  FormRoot,
+} from '@angular/forms/signals';
 import { catchError, EMPTY, map } from 'rxjs';
 import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
 import { TasCard } from '@talisoft/ui/card';
@@ -8,10 +15,11 @@ import { TasSpinner } from '@talisoft/ui/spinner';
 import { TasIcon } from '@talisoft/ui/icon';
 import { TasTag } from '@talisoft/ui/tag';
 import { Button } from '@talisoft/ui/button';
-import { TasFormField, TasLabel } from '@talisoft/ui/form-field';
+import { TasFormField, TasHint, TasLabel } from '@talisoft/ui/form-field';
 import { TasInput } from '@talisoft/ui/input';
 import { TasSelect } from '@talisoft/ui/select';
 import { SnackbarService } from '@talisoft/ui/snackbar';
+import { ConfirmDialogService } from '@talisoft/ui/confirm-dialog';
 
 import {
   LeadsApiService,
@@ -20,14 +28,44 @@ import {
   SectionInput,
   RuleInputActionEnum,
   UpdateQualificationTemplateRequest,
+  UpdateQualificationTemplateRequestProductCategoryEnum,
+  ProductDtoCategoryEnum,
   ProductsApiService,
 } from '@sankore/crm-api';
-import { BreadcrumbService, ProductConfigService } from '@sankore/crm/common';
+import {
+  BreadcrumbService,
+  PermissionsService,
+  ProductConfigService,
+} from '@sankore/crm/common';
 import {
   EditableQuestion, EditableSection,
   uid, QUESTION_TYPE_OPTIONS, RULE_ACTION_OPTIONS,
-  questionTypeLabel,
+  questionTypeLabel, APPLIES_TO_OPTIONS, isInsuranceCategory,
+  statusLabel, statusSeverity,
 } from '../qualification-template.models';
+
+/**
+ * BNF-F-16 — portée et santé du questionnaire.
+ *
+ * Aucun de ces trois réglages n'existe au contrat (`appliesTo`,
+ * `isHealthQuestionnaire`, `excludedFromScoring` sont absents de
+ * `QualificationTemplateDto` comme des requêtes de création et de mise à
+ * jour). Seul « Exclu du scoring » est persistable, par le seul champ
+ * disponible : le poids des questions, mis à zéro.
+ */
+class TemplateScopeFormModel {
+  public appliesTo!: string;
+  public isHealthQuestionnaire!: boolean;
+  public excludedFromScoring!: boolean;
+
+  public static instantiate(): TemplateScopeFormModel {
+    const model = new TemplateScopeFormModel();
+    model.appliesTo = 'Lead';
+    model.isHealthQuestionnaire = false;
+    model.excludedFromScoring = false;
+    return model;
+  }
+}
 
 @Component({
   selector: 'edit-qualification-template',
@@ -41,16 +79,25 @@ import {
     Button,
     TasFormField,
     TasLabel,
+    TasHint,
     TasInput,
     TasSelect,
+    FormRoot,
+    FormField,
   ],
   templateUrl: 'edit-qualification-template.html',
 })
 export class EditQualificationTemplate implements OnInit {
   private readonly _leadsApi = inject(LeadsApiService);
   private readonly _snackbar = inject(SnackbarService);
+  private readonly _confirmDialog = inject(ConfirmDialogService);
   private readonly _breadcrumbService = inject(BreadcrumbService);
   private readonly _router = inject(Router);
+  private readonly _permissions = inject(PermissionsService);
+
+  public readonly canManage = this._permissions.can(
+    'lead:qualification-template:manage',
+  );
 
   private readonly _productsApiService = inject(ProductsApiService);
 
@@ -64,7 +111,7 @@ export class EditQualificationTemplate implements OnInit {
     const category = this.editProductType();
     if (!category) { this.productsOptions.set([]); return; }
     this._productsApiService
-      .listProducts(true, category as any)
+      .listProducts(true, category as ProductDtoCategoryEnum)
       .pipe(
         map((products) =>
           products.map((product) => ({ value: product.code, label: product.name })),
@@ -74,11 +121,16 @@ export class EditQualificationTemplate implements OnInit {
   });
   public readonly questionTypeOptions = QUESTION_TYPE_OPTIONS;
   public readonly ruleActionOptions = RULE_ACTION_OPTIONS;
+  public readonly appliesToOptions = APPLIES_TO_OPTIONS;
   public readonly questionTypeLabel = questionTypeLabel;
+  public readonly statusLabel = statusLabel;
+  public readonly statusSeverity = statusSeverity;
   public readonly String = String;
 
   public isLoading = signal(false);
+  public loadFailed = signal(false);
   public isSaving = signal(false);
+  public isPublishing = signal(false);
   public isReadonly = signal(false);
 
   public editName = signal('');
@@ -87,10 +139,56 @@ export class EditQualificationTemplate implements OnInit {
   public editProductCode = signal('');
   public editSections = signal<EditableSection[]>([]);
   public editQuestions = signal<EditableQuestion[]>([]);
+  public templateStatus = signal<string | null>(null);
+  public templateVersion = signal<number>(1);
+
+  /** Un questionnaire santé n'est proposé que pour une catégorie d'assurance. */
+  public readonly isInsurance = computed(() =>
+    isInsuranceCategory(this.editProductType()),
+  );
+
+  public readonly isDraft = computed(() => this.templateStatus() === 'Draft');
+
+  public scopeModel = signal(TemplateScopeFormModel.instantiate());
+
+  public scopeForm = form(this.scopeModel, (schema) => {
+    disabled(schema.appliesTo, { when: () => this.isReadonly() });
+    disabled(schema.isHealthQuestionnaire, {
+      when: () => this.isReadonly() || !this.isInsurance(),
+    });
+    // « Questionnaire santé » force « Exclu du scoring » : la case est à vrai
+    // et non modifiable. `disabled` ne retire pas la valeur du modèle, elle
+    // reste donc appliquée aux poids à l'enregistrement.
+    disabled(schema.excludedFromScoring, {
+      when: ({ valueOf }) =>
+        this.isReadonly() || valueOf(schema.isHealthQuestionnaire),
+    });
+  });
+
+  public readonly excludedFromScoring = computed(() =>
+    this.scopeForm.excludedFromScoring().value(),
+  );
 
   /** `RuleInput.triggerQuestionId` est un `uuid` côté API : les ids locaux (`__q1`) sont refusés. */
   private static readonly UUID_PATTERN =
     /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+  /**
+   * Valeur dérivée de la case « Questionnaire santé » : cocher la santé force
+   * l'exclusion du scoring, et quitter une catégorie d'assurance retire le
+   * marquage santé — sinon un questionnaire de prêt resterait marqué santé.
+   */
+  private readonly _deriveScoringExclusion = effect(() => {
+    const health = this.scopeForm.isHealthQuestionnaire();
+    if (!this.isInsurance() && health.value()) {
+      health.value.set(false);
+      return;
+    }
+    const excluded = this.scopeForm.excludedFromScoring();
+    if (health.value() && !excluded.value()) {
+      excluded.value.set(true);
+    }
+  });
 
   public readonly sectionOptions = computed(() => [
     { label: '(aucune section)', value: '-1' },
@@ -169,6 +267,7 @@ export class EditQualificationTemplate implements OnInit {
         sectionIndex: -1,
         expanded: true,
         rules: [],
+        isShareable: false,
       },
     ]);
   }
@@ -226,7 +325,9 @@ export class EditQualificationTemplate implements OnInit {
       return {
         label: q.label || null,
         type: q.type,
-        weight: q.weight,
+        // « Exclu du scoring » n'a aucun champ au contrat : le seul levier
+        // disponible est le poids des questions, mis à zéro.
+        weight: this.excludedFromScoring() ? 0 : q.weight,
         isRequired: q.isRequired,
         options:
           q.type === QuestionInputTypeEnum.SingleChoice ||
@@ -279,7 +380,8 @@ export class EditQualificationTemplate implements OnInit {
       name: this.editName(),
       description: this.editDescription() || null,
       productCode: this.editProductCode() || null,
-      productCategory: (this.editProductType() || null) as any,
+      productCategory: (this.editProductType() ||
+        null) as UpdateQualificationTemplateRequestProductCategoryEnum | null,
       sections: sections.length > 0 ? sections : null,
       questions: orphanQuestions.length > 0 ? orphanQuestions : null,
     };
@@ -313,26 +415,82 @@ export class EditQualificationTemplate implements OnInit {
               `${droppedRules} règle(s) pointaient vers une question pas encore enregistrée et n'ont pas été sauvegardées. Enregistrez d'abord la question déclencheuse, puis reconfigurez la règle.`,
             );
           }
-          // this._router.navigate(['/settings/qualification-templates']);
+          // L'écriture remplace sections et questions d'un bloc : on relit ce
+          // que le serveur a réellement retenu plutôt que de faire confiance
+          // au 204 (poids remis à zéro, règles écartées, ordre des sections).
+          this._loadTemplate(templateId);
         },
         complete: () => this.isSaving.set(false),
       });
+  }
+
+  /**
+   * BNF-F-16 — avertissement à la publication : une nouvelle version du
+   * questionnaire est créée, les réponses déjà collectées restent attachées à
+   * leur version.
+   */
+  public publish(): void {
+    const templateId = this.id();
+    if (!templateId) return;
+
+    this._confirmDialog.confirm({
+      title: 'Publier ce questionnaire ?',
+      message: `La publication crée la version ${this.templateVersion() + 1} du questionnaire « ${this.editName()} ». Les réponses déjà collectées restent rattachées à leur version et le questionnaire ne sera plus modifiable.`,
+      closable: true,
+      showCancelButton: true,
+      acceptButtonProps: { label: 'Publier', theme: 'primary' },
+      rejectButtonProps: { label: 'Annuler' },
+      accept: () => {
+        this.isPublishing.set(true);
+        this._leadsApi
+          .publishQualificationTemplate(templateId)
+          .pipe(
+            catchError((err: HttpErrorResponse) => {
+              this.isPublishing.set(false);
+              this._snackbar.error(
+                'Erreur',
+                err.status === 422
+                  ? 'Le questionnaire ne peut pas être publié en l’état : vérifiez qu’il contient au moins une question valide.'
+                  : 'Publication échouée.',
+              );
+              return EMPTY;
+            }),
+          )
+          .subscribe(() => {
+            this.isPublishing.set(false);
+            this._snackbar.success(
+              'Publié',
+              'Une nouvelle version du questionnaire est active.',
+            );
+            this._loadTemplate(templateId);
+          });
+      },
+    });
+  }
+
+  public reload(): void {
+    const templateId = this.id();
+    if (templateId) this._loadTemplate(templateId);
   }
 
   // ——— Private ———
 
   private _loadTemplate(templateId: string): void {
     this.isLoading.set(true);
+    this.loadFailed.set(false);
     this._leadsApi
       .getQualificationTemplate(templateId)
       .pipe(
         catchError(() => {
           this.isLoading.set(false);
+          this.loadFailed.set(true);
           this._snackbar.error('Erreur', 'Formulaire introuvable.');
           return EMPTY;
         }),
       )
       .subscribe((tpl) => {
+        this.templateStatus.set(tpl.status ?? null);
+        this.templateVersion.set(tpl.version ?? 1);
         // Published : figé pour ne pas modifier un formulaire déjà actif.
         // Archived : fin de vie, aucune transition ne permet de le
         // réactiver (voir qualification-templates.ts) — donc pas modifiable
@@ -378,6 +536,8 @@ export class EditQualificationTemplate implements OnInit {
               ? (sectionIdToIndex.get(q.sectionId) ?? -1)
               : -1,
             expanded: false,
+            // Pas de champ au contrat : la valeur ne survit pas au rechargement.
+            isShareable: false,
             rules: (q.rules ?? []).map((r) => ({
               triggerQuestionUid: r.triggerQuestionId ?? '',
               triggerValue: r.triggerValue ?? '',
@@ -386,6 +546,13 @@ export class EditQualificationTemplate implements OnInit {
             })),
           })),
         );
+
+        // « Exclu du scoring » se relit du seul champ qui le porte : des poids
+        // tous nuls. Le marquage santé, lui, n'a aucun champ et repart à faux.
+        const scope = TemplateScopeFormModel.instantiate();
+        scope.excludedFromScoring =
+          questions.length > 0 && questions.every((q) => (q.weight ?? 0) === 0);
+        this.scopeModel.set(scope);
 
         this.isLoading.set(false);
       });

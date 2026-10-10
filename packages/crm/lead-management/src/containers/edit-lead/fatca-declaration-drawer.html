@@ -1,0 +1,305 @@
+<tas-side-drawer>
+  <tas-drawer-title>
+    <div class="flex items-center gap-2 min-w-0">
+      <tas-icon iconName="feather:flag" style="font-size:18px"></tas-icon>
+      <span class="truncate">Déclaration FATCA — {{ data.subjectLabel }}</span>
+    </div>
+  </tas-drawer-title>
+
+  <tas-drawer-content>
+    @if (submitError(); as message) {
+      <div
+        class="mb-4 p-3 rounded-lg border border-functional-error/40 bg-functional-error/5"
+        role="alert"
+      >
+        <p class="text-sm text-functional-error">{{ message }}</p>
+      </div>
+    }
+
+    @if (isUpdate()) {
+      <div class="mb-5 p-3 rounded-lg border border-slate-200 bg-slate-50">
+        <div class="flex items-center gap-2 flex-wrap">
+          <span class="text-xs font-medium text-slate-600">Déclaration en cours</span>
+          <fatca-status-badge [status]="previousStatus()"></fatca-status-badge>
+          <span class="text-xs text-slate-500">{{ previousDocumentation() }}</span>
+        </div>
+        <p class="text-xs text-slate-500 mt-2">
+          Une nouvelle déclaration remplace la précédente : les réponses, le numéro fiscal et les
+          références de pièces sont à ressaisir intégralement.
+        </p>
+      </div>
+    }
+
+    <form [formRoot]="formSchema" class="flex flex-col gap-6">
+      <!-- 1. Les sept questions d'américanité -->
+      <section aria-labelledby="fatca-indicia-heading" class="flex flex-col gap-4">
+        <div>
+          <h3 id="fatca-indicia-heading" class="text-sm font-semibold text-slate-800">
+            Indices d'américanité
+          </h3>
+          <p class="text-xs text-slate-500 mt-1">
+            Les sept questions sont obligatoires.
+            <span class="tabular-nums">{{ answeredCount() }}/7</span> renseignée(s).
+          </p>
+        </div>
+
+        @for (item of indiciaFields; track item.key) {
+          <tas-form-field>
+            <tas-label>
+              {{ item.label }}
+              <span class="text-functional-error">*</span>
+            </tas-label>
+            <tas-select
+              [options]="yesNoOptions"
+              placeholder="À renseigner"
+              [formField]="item.field"
+            ></tas-select>
+            @if (item.field().touched() && item.field().invalid()) {
+              <tas-error>{{ item.field().errors()[0].message }}</tas-error>
+            }
+          </tas-form-field>
+        }
+      </section>
+
+      <!-- 2. Conséquence des réponses : statut Non US attendu, ou documentation -->
+      @if (showNoIndiciaNotice()) {
+        <div class="flex items-start gap-2 p-3 rounded-lg border border-slate-200 bg-slate-50">
+          <tas-icon
+            iconName="feather:info"
+            class="text-slate-500 mt-0.5"
+            style="font-size:14px"
+          ></tas-icon>
+          <p class="text-xs text-slate-600">
+            Aucun indice d'américanité déclaré : aucune pièce n'est à recueillir. Le statut FATCA
+            est déterminé par la conformité après l'enregistrement et s'affiche sur l'en-tête du
+            lead.
+          </p>
+        </div>
+
+        <tas-form-field>
+          <tas-label>Référence de l'auto-certification signée</tas-label>
+          <input
+            tasInput
+            type="text"
+            placeholder="Référence du document archivé"
+            [formField]="formSchema.selfCertificationRef"
+          />
+          <tas-hint>
+            Facultatif. À renseigner si l'auto-certification papier a été archivée : c'est la
+            pièce, et non l'horodatage, que la conformité attend.
+          </tas-hint>
+        </tas-form-field>
+      }
+
+      @if (showDocumentation()) {
+        <section aria-labelledby="fatca-documentation-heading" class="flex flex-col gap-4">
+          <div>
+            <h3 id="fatca-documentation-heading" class="text-sm font-semibold text-slate-800">
+              Parcours de documentation
+            </h3>
+            <p class="text-xs text-slate-500 mt-1">
+              Au moins un indice a été déclaré : les pièces justificatives sont à recueillir.
+            </p>
+          </div>
+
+          <tas-form-field>
+            <tas-label>
+              Parcours retenu
+              <span class="text-functional-error">*</span>
+            </tas-label>
+            <tas-select
+              [options]="documentationOptions"
+              placeholder="Choisissez le parcours"
+              [formField]="formSchema.documentation"
+            ></tas-select>
+            @if (formSchema.documentation().touched() && formSchema.documentation().invalid()) {
+              <tas-error>{{ formSchema.documentation().errors()[0].message }}</tas-error>
+            }
+          </tas-form-field>
+
+          @if (isUsPerson() || isNonUsPerson()) {
+            <div class="flex items-start gap-2 p-3 rounded-lg border border-slate-200 bg-slate-50">
+              <tas-icon
+                iconName="feather:paperclip"
+                class="text-slate-500 mt-0.5"
+                style="font-size:14px"
+              ></tas-icon>
+              <p class="text-xs text-slate-600">
+                Le téléversement direct d'une pièce FATCA n'est pas exposé par l'API : archivez le
+                document, puis reportez ici sa référence. C'est elle qui est transmise à la
+                conformité.
+              </p>
+            </div>
+          }
+
+          @if (isUsPerson()) {
+            <tas-form-field>
+              <tas-label>
+                Numéro fiscal américain (TIN)
+                <span class="text-functional-error">*</span>
+              </tas-label>
+              <input tasInput type="text" placeholder="123456789" [formField]="formSchema.usTin" />
+              <tas-hint>9 chiffres, sans séparateur.</tas-hint>
+              @if (formSchema.usTin().touched() && formSchema.usTin().invalid()) {
+                <tas-error>{{ formSchema.usTin().errors()[0].message }}</tas-error>
+              }
+            </tas-form-field>
+
+            <tas-form-field>
+              <tas-label>
+                Référence du formulaire W-9 signé
+                <span class="text-functional-error">*</span>
+              </tas-label>
+              <input
+                tasInput
+                type="text"
+                placeholder="Référence du document archivé"
+                [formField]="formSchema.selfCertificationRef"
+              />
+              @if (
+                formSchema.selfCertificationRef().touched() &&
+                formSchema.selfCertificationRef().invalid()
+              ) {
+                <tas-error>{{ formSchema.selfCertificationRef().errors()[0].message }}</tas-error>
+              }
+            </tas-form-field>
+          }
+
+          @if (isNonUsPerson()) {
+            <tas-form-field>
+              <tas-label>
+                Référence du formulaire W-8BEN signé
+                <span class="text-functional-error">*</span>
+              </tas-label>
+              <input
+                tasInput
+                type="text"
+                placeholder="Référence du document archivé"
+                [formField]="formSchema.selfCertificationRef"
+              />
+              @if (
+                formSchema.selfCertificationRef().touched() &&
+                formSchema.selfCertificationRef().invalid()
+              ) {
+                <tas-error>{{ formSchema.selfCertificationRef().errors()[0].message }}</tas-error>
+              }
+            </tas-form-field>
+
+            <div class="rounded-lg border border-slate-200 p-3 flex flex-col gap-3">
+              <tas-checkbox [formField]="formSchema.evidenceProvided">
+                <span class="text-sm text-slate-700">
+                  Justificatif de résidence fiscale hors États-Unis fourni et archivé
+                </span>
+              </tas-checkbox>
+              @if (
+                formSchema.evidenceProvided().touched() && formSchema.evidenceProvided().invalid()
+              ) {
+                <p class="text-xs text-functional-error">
+                  {{ formSchema.evidenceProvided().errors()[0].message }}
+                </p>
+              }
+
+              @if (evidenceProvided()) {
+                <tas-form-field>
+                  <tas-label>
+                    Référence du justificatif
+                    <span class="text-functional-error">*</span>
+                  </tas-label>
+                  <input
+                    tasInput
+                    type="text"
+                    placeholder="Référence du document archivé"
+                    [formField]="formSchema.evidenceRef"
+                  />
+                  @if (formSchema.evidenceRef().touched() && formSchema.evidenceRef().invalid()) {
+                    <tas-error>{{ formSchema.evidenceRef().errors()[0].message }}</tas-error>
+                  }
+                </tas-form-field>
+              }
+            </div>
+          }
+
+          @if (isRefusal()) {
+            <div
+              class="flex items-start gap-3 p-3 rounded-lg border border-amber-300 bg-amber-50"
+              role="alert"
+            >
+              <tas-icon
+                iconName="feather:alert-triangle"
+                class="text-amber-600 mt-0.5"
+                style="font-size:16px"
+              ></tas-icon>
+              <div>
+                <p class="text-sm font-medium text-amber-900">Refus de documenter</p>
+                <p class="text-xs text-amber-800 mt-1">
+                  Sans pièce justificative, la conformité classe la personne « Récalcitrant » :
+                  le dossier est signalé, la conversion peut être bloquée et une déclaration
+                  réglementaire peut en découler. Informez le prospect avant d'enregistrer.
+                </p>
+              </div>
+            </div>
+
+            <tas-form-field>
+              <tas-label>
+                Motif du refus
+                <span class="text-functional-error">*</span>
+              </tas-label>
+              <input
+                tasInput
+                type="text"
+                placeholder="Ce que le prospect a déclaré"
+                [formField]="formSchema.refusalReason"
+              />
+              @if (formSchema.refusalReason().touched() && formSchema.refusalReason().invalid()) {
+                <tas-error>{{ formSchema.refusalReason().errors()[0].message }}</tas-error>
+              }
+            </tas-form-field>
+          }
+        </section>
+      }
+
+      <!-- 3. Signature électronique de l'auto-certification -->
+      <section aria-labelledby="fatca-signature-heading" class="flex flex-col gap-3">
+        <div>
+          <h3 id="fatca-signature-heading" class="text-sm font-semibold text-slate-800">
+            {{ isRefusal() ? 'Reconnaissance du refus' : 'Signature de l’auto-certification' }}
+          </h3>
+          <p class="text-xs text-slate-500 mt-1">
+            {{
+              isRefusal()
+                ? 'Le refus n’est pas une auto-certification : aucune signature n’est horodatée.'
+                : 'L’horodatage de la signature est posé à l’enregistrement.'
+            }}
+          </p>
+        </div>
+
+        <div class="rounded-lg border border-slate-200 p-3">
+          <tas-checkbox [formField]="formSchema.confirmed">
+            <span class="text-sm text-slate-700">{{ signatureLabel() }}</span>
+          </tas-checkbox>
+          @if (formSchema.confirmed().touched() && formSchema.confirmed().invalid()) {
+            <p class="text-xs text-functional-error mt-2">
+              {{ formSchema.confirmed().errors()[0].message }}
+            </p>
+          }
+        </div>
+      </section>
+    </form>
+  </tas-drawer-content>
+
+  <tas-drawer-action>
+    <div class="flex items-center justify-end gap-2">
+      <button tas-outlined-button color="primary" type="button" (click)="close()">Annuler</button>
+      <button
+        tas-raised-button
+        color="primary"
+        type="button"
+        (click)="handleSubmit()"
+        [disabled]="formSchema().invalid() || formSchema().submitting()"
+        [isLoading]="formSchema().submitting()"
+      >
+        {{ isRefusal() ? 'Enregistrer le refus' : 'Signer et enregistrer' }}
+      </button>
+    </div>
+  </tas-drawer-action>
+</tas-side-drawer>
