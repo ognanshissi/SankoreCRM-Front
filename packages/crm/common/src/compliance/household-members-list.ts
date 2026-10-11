@@ -1,4 +1,11 @@
-import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  inject,
+  input,
+  output,
+} from '@angular/core';
 import { TasCard } from '@talisoft/ui/card';
 import { TasIcon } from '@talisoft/ui/icon';
 import { TasTag } from '@talisoft/ui/tag';
@@ -6,6 +13,7 @@ import { Button } from '@talisoft/ui/button';
 import { TableConfig, TasTable } from '@talisoft/ui/table';
 import { HouseholdMemberView } from './household-view';
 import { pepLinkLabel } from './compliance-labels';
+import { ComplianceConfigService } from '../services/compliance-config.service';
 
 /**
  * Liste des membres du foyer, partagée par l'onglet Foyer du lead et celui du
@@ -47,7 +55,9 @@ import { pepLinkLabel } from './compliance-labels';
             <th class="hidden sm:table-cell">Membre</th>
             <th class="hidden sm:table-cell">Lien</th>
             <th class="hidden sm:table-cell">Âge</th>
-            <th class="hidden sm:table-cell">PPE</th>
+            @if (pepEnabled()) {
+              <th class="hidden sm:table-cell">PPE</th>
+            }
             @if (showDesignations()) {
               <th class="hidden sm:table-cell">Désignations</th>
             }
@@ -72,7 +82,7 @@ import { pepLinkLabel } from './compliance-labels';
                     @if (!item.isActive) {
                       <tas-tag severity="neutral">Retiré</tas-tag>
                     }
-                    @if (item.isPepExposed) {
+                    @if (item.isPepExposed && pepEnabled()) {
                       <tas-tag severity="warning">PPE</tas-tag>
                     }
                     @if (item.fromLead) {
@@ -107,11 +117,13 @@ import { pepLinkLabel } from './compliance-labels';
                         <tas-icon iconName="feather:edit-2" style="font-size:12px"></tas-icon>
                         Modifier
                       </button>
-                      <button tas-outlined-button color="primary" type="button" class="text-xs"
-                              (click)="editPep.emit(item)">
-                        <tas-icon iconName="feather:flag" style="font-size:12px"></tas-icon>
-                        PPE
-                      </button>
+                      @if (pepEnabled()) {
+                        <button tas-outlined-button color="primary" type="button" class="text-xs"
+                                (click)="editPep.emit(item)">
+                          <tas-icon iconName="feather:flag" style="font-size:12px"></tas-icon>
+                          PPE
+                        </button>
+                      }
                       <button tas-text-button color="warn" type="button" class="text-xs"
                               (click)="remove.emit(item)">
                         Retirer
@@ -153,16 +165,18 @@ import { pepLinkLabel } from './compliance-labels';
               </span>
             </td>
 
-            <td class="hidden sm:table-cell">
-              @if (item.isPepExposed) {
-                <tas-tag severity="warning">Exposé</tas-tag>
-                @if (canReadPep() && item.pep.link) {
-                  <span class="block text-xs text-slate-400">{{ linkLabel(item.pep.link) }}</span>
+            @if (pepEnabled()) {
+              <td class="hidden sm:table-cell">
+                @if (item.isPepExposed) {
+                  <tas-tag severity="warning">Exposé</tas-tag>
+                  @if (canReadPep() && item.pep.link) {
+                    <span class="block text-xs text-slate-400">{{ linkLabel(item.pep.link) }}</span>
+                  }
+                } @else {
+                  <span class="text-sm text-slate-400">Non</span>
                 }
-              } @else {
-                <span class="text-sm text-slate-400">Non</span>
-              }
-            </td>
+              </td>
+            }
 
             @if (showDesignations()) {
               <td class="hidden sm:table-cell">
@@ -190,11 +204,13 @@ import { pepLinkLabel } from './compliance-labels';
                           (click)="edit.emit(item)">
                     <tas-icon iconName="feather:edit-2" style="font-size:13px"></tas-icon>
                   </button>
-                  <button tas-button iconButton type="button"
-                          [attr.aria-label]="'Statut PPE de ' + item.displayName"
-                          (click)="editPep.emit(item)">
-                    <tas-icon iconName="feather:flag" style="font-size:13px"></tas-icon>
-                  </button>
+                  @if (pepEnabled()) {
+                    <button tas-button iconButton type="button"
+                            [attr.aria-label]="'Statut PPE de ' + item.displayName"
+                            (click)="editPep.emit(item)">
+                      <tas-icon iconName="feather:flag" style="font-size:13px"></tas-icon>
+                    </button>
+                  }
                   <button tas-button iconButton type="button"
                           [attr.aria-label]="'Retirer ' + item.displayName"
                           (click)="remove.emit(item)">
@@ -212,6 +228,15 @@ import { pepLinkLabel } from './compliance-labels';
   `,
 })
 export class HouseholdMembersList {
+  private readonly _complianceConfig = inject(ComplianceConfigService);
+
+  /**
+   * Vigilance PPE du tenant. Lue ici et non passée en entrée : c'est un réglage
+   * d'établissement, pas une propriété du foyer affiché, et les deux onglets Foyer
+   * (lead et client) devraient sinon la répéter à l'identique.
+   */
+  public readonly pepEnabled = this._complianceConfig.pepEnabled;
+
   public readonly members = input.required<HouseholdMemberView[]>();
   public readonly isLoading = input(false);
   public readonly canEdit = input(false);
@@ -241,7 +266,18 @@ export class HouseholdMembersList {
     },
   };
 
-  public readonly columnCount = computed(() => (this.showDesignations() ? 6 : 5));
+  /**
+   * Nombre de colonnes réellement rendues, pour le `colspan` de la cellule carte : membre,
+   * lien, âge, actions, plus la PPE et les désignations quand elles sont affichées. Un
+   * `colspan` figé décalerait la carte dès qu'une colonne disparaît.
+   */
+  public readonly columnCount = computed(
+    () => 4 + (this.pepEnabled() ? 1 : 0) + (this.showDesignations() ? 1 : 0),
+  );
+
+  constructor() {
+    this._complianceConfig.load();
+  }
 
   public linkLabel(link: string | null): string {
     return pepLinkLabel(link);

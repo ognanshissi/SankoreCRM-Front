@@ -1,6 +1,14 @@
 import { DatePipe } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, computed, inject, OnInit, signal } from '@angular/core';
+import {
+  Component,
+  computed,
+  inject,
+  input,
+  linkedSignal,
+  OnInit,
+  signal,
+} from '@angular/core';
 import {
   form,
   FormField,
@@ -10,7 +18,7 @@ import {
   validate,
 } from '@angular/forms/signals';
 import { PageEvent } from '@angular/material/paginator';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { catchError, EMPTY, firstValueFrom, map, of } from 'rxjs';
 import { Anchor, Button } from '@talisoft/ui/button';
 import { TasCard } from '@talisoft/ui/card';
@@ -35,6 +43,7 @@ import {
 } from '@sankore/crm-api';
 import {
   BreadcrumbService,
+  ComplianceConfigService,
   FATCA_REGIME_OPTIONS,
   FATCA_REQUIREMENT_MOMENT_OPTIONS,
   fatcaRegimeLabel,
@@ -59,6 +68,15 @@ interface CodeOption {
  */
 const COMPLIANCE_RESOURCE_TYPE = 'ComplianceSettings';
 
+/**
+ * Les deux volets de l'écran. Un seul `PUT /compliance-settings` porte les deux : les onglets
+ * découpent la lecture, pas l'enregistrement (cf. `handleSubmit`).
+ */
+export type ComplianceTab = 'fatca' | 'pep';
+
+/** Valeur du query param `?onglet=` pour chaque volet, pour que les deux soient adressables. */
+const TAB_PARAM: Record<ComplianceTab, string> = { fatca: 'fatca', pep: 'ppe' };
+
 /** Borne de saisie de la fenêtre PPE. Le contrat ne déclare qu'un `int32` : 100 ans suffisent. */
 const MAX_PEP_MONTHS = 1200;
 
@@ -68,6 +86,7 @@ class ComplianceSettingsFormModel {
   public fatcaGiin!: string;
   public fatcaRequiredAt!: string;
   public fatcaForCoHolders!: boolean;
+  public pepEnabled!: boolean;
   /** Saisi en texte : la conversion en entier se fait à la soumission, pas dans le modèle. */
   public pepPostMandateMonths!: string;
 
@@ -80,6 +99,9 @@ class ComplianceSettingsFormModel {
     model.fatcaGiin = response?.fatcaGiin ?? '';
     model.fatcaRequiredAt = response?.fatcaRequiredAt ?? '';
     model.fatcaForCoHolders = response?.fatcaForCoHolders ?? false;
+    // L'absence du champ vaut « activé », comme dans `ComplianceConfigService` : un back qui
+    // n'expose pas encore `pepEnabled` ne doit pas faire lire « vigilance PPE désactivée ».
+    model.pepEnabled = response?.pepEnabled !== false;
     model.pepPostMandateMonths = String(response?.pepPostMandateMonths ?? 0);
     return model;
   }
@@ -131,10 +153,25 @@ export class ComplianceSettingsPage implements OnInit {
   private readonly _breadcrumb = inject(BreadcrumbService);
   private readonly _confirmDialog = inject(ConfirmDialogService);
   private readonly _snackbar = inject(SnackbarService);
+  private readonly _router = inject(Router);
+  private readonly _route = inject(ActivatedRoute);
+  private readonly _complianceConfig = inject(ComplianceConfigService);
 
   /** Deux droits distincts : consulter le régime en vigueur n'est pas le modifier. */
   public readonly canManage = this._permissions.can('kyc:settings:manage');
   public readonly canReadAudit = this._permissions.can('audit:read');
+
+  /**
+   * Volet courant, adressable par `?onglet=fatca|ppe`. `withComponentInputBinding()` est actif
+   * dans `app.config.ts`, les query params se lient donc aux entrées. Un `linkedSignal` plutôt
+   * qu'un `signal` : il suit l'URL quand elle change (lien profond, retour arrière) tout en
+   * restant inscriptible au clic sur un onglet.
+   */
+  public readonly onglet = input<string | undefined>(undefined);
+
+  public readonly activeTab = linkedSignal<ComplianceTab>(() =>
+    this.onglet() === TAB_PARAM.pep ? 'pep' : 'fatca',
+  );
 
   public isLoading = signal(true);
   /**
@@ -187,6 +224,9 @@ export class ComplianceSettingsPage implements OnInit {
     });
 
     validate(schema.pepPostMandateMonths, (ctx) => {
+      // Comme pour FATCA : la fenêtre n'est exigée que si la vigilance PPE est active. Un
+      // `required` inconditionnel bloquerait l'enregistrement d'un tenant qui la désactive.
+      if (!ctx.valueOf(schema.pepEnabled)) return null;
       // `String(...)` et pas `.trim()` direct : l'input `type=number` peut remonter un nombre,
       // et un `trim` sur un nombre ferait planter la validation au premier caractère saisi.
       const raw = String(ctx.value() ?? '').trim();
@@ -207,11 +247,17 @@ export class ComplianceSettingsPage implements OnInit {
   });
 
   public readonly fatcaEnabled = computed(() => this.formSchema.fatcaEnabled().value());
+  public readonly pepEnabled = computed(() => this.formSchema.pepEnabled().value());
 
-  /** Le basculement n'est engagé qu'à l'enregistrement : l'écran le dit avant de le faire. */
+  /** Les basculements ne sont engagés qu'à l'enregistrement : l'écran le dit avant de le faire. */
   public readonly pendingToggle = computed(() => {
     const loaded = this.settings()?.fatcaEnabled ?? false;
     return this.fatcaEnabled() !== loaded;
+  });
+
+  public readonly pendingPepToggle = computed(() => {
+    const loaded = this.settings()?.pepEnabled !== false;
+    return this.pepEnabled() !== loaded;
   });
 
   /**
@@ -219,7 +265,7 @@ export class ComplianceSettingsPage implements OnInit {
    * que chaque contrôle du kit notifie, et un contrôle qui ne le notifie pas laisserait le
    * bouton « Annuler » grisé sur un formulaire pourtant modifié.
    */
-  public readonly hasChanges = computed(() => {
+  public readonly fatcaTabChanged = computed(() => {
     const loaded = ComplianceSettingsFormModel.fromResponse(this.settings());
     const current = this.model();
     return (
@@ -227,9 +273,42 @@ export class ComplianceSettingsPage implements OnInit {
       (current.fatcaRegime ?? '') !== loaded.fatcaRegime ||
       String(current.fatcaGiin ?? '') !== loaded.fatcaGiin ||
       (current.fatcaRequiredAt ?? '') !== loaded.fatcaRequiredAt ||
-      current.fatcaForCoHolders !== loaded.fatcaForCoHolders ||
+      current.fatcaForCoHolders !== loaded.fatcaForCoHolders
+    );
+  });
+
+  public readonly pepTabChanged = computed(() => {
+    const loaded = ComplianceSettingsFormModel.fromResponse(this.settings());
+    const current = this.model();
+    return (
+      current.pepEnabled !== loaded.pepEnabled ||
       String(current.pepPostMandateMonths ?? '') !== loaded.pepPostMandateMonths
     );
+  });
+
+  public readonly hasChanges = computed(() => this.fatcaTabChanged() || this.pepTabChanged());
+
+  /**
+   * Validité par volet. Les deux onglets partagent **un seul** formulaire et **un seul**
+   * enregistrement : sans ces deux indicateurs, un GIIN mal saisi désactiverait « Enregistrer »
+   * pendant que l'administrateur regarde l'onglet PPE, sans rien à l'écran qui l'explique.
+   */
+  public readonly fatcaTabInvalid = computed(
+    () =>
+      this.formSchema.fatcaRegime().invalid() ||
+      this.formSchema.fatcaRequiredAt().invalid() ||
+      this.formSchema.fatcaGiin().invalid(),
+  );
+
+  public readonly pepTabInvalid = computed(() =>
+    this.formSchema.pepPostMandateMonths().invalid(),
+  );
+
+  /** Volet à corriger, quand il n'est pas celui qu'on regarde. */
+  public readonly blockingOtherTab = computed<ComplianceTab | null>(() => {
+    if (this.activeTab() !== 'fatca' && this.fatcaTabInvalid()) return 'fatca';
+    if (this.activeTab() !== 'pep' && this.pepTabInvalid()) return 'pep';
+    return null;
   });
 
   public readonly regimeOptions = computed(() =>
@@ -252,6 +331,7 @@ export class ComplianceSettingsPage implements OnInit {
 
   /** Lecture humaine de la fenêtre PPE : 18 mois se lit mal, « 1 an et 6 mois » se lit. */
   public readonly pepWindowLabel = computed(() => {
+    if (!this.pepEnabled()) return null;
     const raw = String(this.formSchema.pepPostMandateMonths().value() ?? '').trim();
     if (!/^\d+$/.test(raw)) return null;
     const months = Number(raw);
@@ -331,6 +411,28 @@ export class ComplianceSettingsPage implements OnInit {
     this.formSchema.fatcaEnabled().markAsDirty();
   }
 
+  public onPepToggle(value: boolean): void {
+    if (!this.canManage()) return;
+    this.formSchema.pepEnabled().value.set(value);
+    this.formSchema.pepEnabled().markAsDirty();
+  }
+
+  /**
+   * Le volet est reflété dans l'URL : un lien profond depuis un dossier ou depuis l'aperçu des
+   * réglages doit pouvoir ouvrir directement le bon volet. `replaceUrl` pour qu'un va-et-vient
+   * entre onglets n'empile pas d'entrées dans l'historique du navigateur.
+   */
+  public selectTab(tab: ComplianceTab): void {
+    if (this.activeTab() === tab) return;
+    this.activeTab.set(tab);
+    this._router.navigate([], {
+      relativeTo: this._route,
+      queryParams: { onglet: TAB_PARAM[tab] },
+      queryParamsHandling: 'merge',
+      replaceUrl: true,
+    });
+  }
+
   public cancelChanges(): void {
     const next = ComplianceSettingsFormModel.fromResponse(this.settings());
     this.model.set(next);
@@ -344,10 +446,17 @@ export class ComplianceSettingsPage implements OnInit {
       const value = field()?.value();
       if (!value) return;
 
-      // Activer ou désactiver FATCA change ce que voient tous les chargés de clientèle :
-      // la confirmation dit la conséquence, et rien ne part avant qu'elle soit acceptée.
+      // Activer ou désactiver FATCA ou la vigilance PPE change ce que voient tous les chargés
+      // de clientèle : la confirmation dit la conséquence, et rien ne part avant qu'elle soit
+      // acceptée. Les deux bascules sont confirmées séparément — un administrateur qui change
+      // les deux d'un coup doit valider les deux conséquences, pas une seule.
       if (this.pendingToggle()) {
-        const confirmed = await this._confirmToggle(value.fatcaEnabled);
+        const confirmed = await this._confirmFatcaToggle(value.fatcaEnabled);
+        if (!confirmed) return;
+      }
+
+      if (this.pendingPepToggle()) {
+        const confirmed = await this._confirmPepToggle(value.pepEnabled);
         if (!confirmed) return;
       }
 
@@ -357,7 +466,12 @@ export class ComplianceSettingsPage implements OnInit {
         fatcaGiin: String(value.fatcaGiin ?? '').trim() || null,
         fatcaRequiredAt: value.fatcaRequiredAt || null,
         fatcaForCoHolders: value.fatcaForCoHolders,
-        pepPostMandateMonths: Number(value.pepPostMandateMonths),
+        pepEnabled: value.pepEnabled,
+        // Désactivée, la fenêtre n'est plus saisie : on renvoie la valeur en vigueur plutôt
+        // qu'un `NaN` issu d'un champ vide, pour ne pas écraser le réglage à la réactivation.
+        pepPostMandateMonths: value.pepEnabled
+          ? Number(value.pepPostMandateMonths)
+          : (this.settings()?.pepPostMandateMonths ?? 0),
       };
 
       const saved = await firstValueFrom(
@@ -378,16 +492,44 @@ export class ComplianceSettingsPage implements OnInit {
       if (saved) {
         this._snackbar.success(
           'Paramètres enregistrés',
-          value.fatcaEnabled
-            ? 'FATCA est actif pour votre organisation.'
-            : "FATCA est inactif : aucune déclaration n'est demandée.",
+          this._savedSummary(value.fatcaEnabled, value.pepEnabled),
         );
         this._load();
       }
     });
   }
 
-  private _confirmToggle(enabling: boolean): Promise<boolean> {
+  private _savedSummary(fatcaEnabled: boolean, pepEnabled: boolean): string {
+    const fatca = fatcaEnabled
+      ? 'FATCA est actif'
+      : "FATCA est inactif : aucune déclaration n'est demandée";
+    const pep = pepEnabled
+      ? 'la vigilance PPE est active'
+      : "la vigilance PPE est inactive : aucun bloc PPE n'est proposé";
+    return `${fatca} ; ${pep}.`;
+  }
+
+  private _confirmPepToggle(enabling: boolean): Promise<boolean> {
+    return new Promise((resolve) => {
+      this._confirmDialog.confirm({
+        title: enabling ? 'Activer la vigilance PPE' : 'Désactiver la vigilance PPE',
+        message: enabling
+          ? 'Activer la vigilance PPE fait apparaître le bloc PPE sur le principal, le conjoint et chaque enfant de tous les leads et dossiers clients. Confirmez-vous l\'activation ?'
+          : "Désactiver la vigilance PPE fait disparaître le bloc PPE de tous les leads et dossiers clients : aucune exposition politique ne sera plus demandée ni signalée. Les expositions déjà déclarées sont conservées mais ne sont plus affichées. Confirmez-vous la désactivation ?",
+        closable: true,
+        showCancelButton: true,
+        acceptButtonProps: {
+          label: enabling ? 'Activer la vigilance PPE' : 'Désactiver la vigilance PPE',
+          theme: enabling ? 'primary' : 'warn',
+        },
+        rejectButtonProps: { label: 'Annuler' },
+        accept: () => resolve(true),
+        reject: () => resolve(false),
+      });
+    });
+  }
+
+  private _confirmFatcaToggle(enabling: boolean): Promise<boolean> {
     return new Promise((resolve) => {
       this._confirmDialog.confirm({
         title: enabling ? 'Activer FATCA' : 'Désactiver FATCA',
@@ -461,6 +603,10 @@ export class ComplianceSettingsPage implements OnInit {
       )
       .subscribe((response) => {
         this.settings.set(response);
+        // Le porteur partagé est mis à jour ici, et non après la soumission : `_load()` est
+        // aussi appelé après l'enregistrement, donc les fiches ouvertes ensuite voient le
+        // nouveau drapeau sans recharger l'application.
+        this._complianceConfig.patch(response);
         const next = ComplianceSettingsFormModel.fromResponse(response);
         this.model.set(next);
         this.formSchema().reset(next);

@@ -36,26 +36,28 @@
             <p class="text-xs text-slate-500 mt-1">{{ principalAddressLabel() }}</p>
           </div>
 
-          <div class="flex items-center gap-2 flex-wrap">
-            @if (principalPep().isPep) {
-              <pep-exposure-badge [exposed]="true"></pep-exposure-badge>
-            } @else {
-              <tas-tag severity="neutral">Pas d'exposition PPE</tas-tag>
-            }
-            <button
-              tas-outlined-button
-              color="primary"
-              type="button"
-              [attr.aria-label]="'Statut PPE de ' + compliance.principalLabel()"
-              (click)="openPrincipalPep()"
-            >
-              <tas-icon iconName="feather:flag" style="font-size:13px"></tas-icon>
-              {{ canEditPep() ? 'Statut PPE' : 'Voir le statut PPE' }}
-            </button>
-          </div>
+          @if (pepEnabled()) {
+            <div class="flex items-center gap-2 flex-wrap">
+              @if (principalPep().isPep) {
+                <pep-exposure-badge [exposed]="true"></pep-exposure-badge>
+              } @else {
+                <tas-tag severity="neutral">Pas d'exposition PPE</tas-tag>
+              }
+              <button
+                tas-outlined-button
+                color="primary"
+                type="button"
+                [attr.aria-label]="'Statut PPE de ' + compliance.principalLabel()"
+                (click)="openPrincipalPep()"
+              >
+                <tas-icon iconName="feather:flag" style="font-size:13px"></tas-icon>
+                {{ canEditPep() ? 'Statut PPE' : 'Voir le statut PPE' }}
+              </button>
+            </div>
+          }
         </div>
 
-        @if (principalPep().isPep && canReadPep()) {
+        @if (pepEnabled() && principalPep().isPep && canReadPep()) {
           <dl class="grid grid-cols-1 sm:grid-cols-4 gap-3 pt-3 border-t border-slate-100">
             <div>
               <dt class="text-xs text-slate-400">Fonction</dt>
@@ -74,7 +76,7 @@
               <dd class="text-sm text-slate-700">{{ linkLabel(principalPep().link) }}</dd>
             </div>
           </dl>
-        } @else if (principalPep().isPep && !canReadPep()) {
+        } @else if (pepEnabled() && principalPep().isPep && !canReadPep()) {
           <p class="flex items-center gap-2 text-xs text-slate-500 pt-3 border-t border-slate-100">
             <tas-icon iconName="feather:lock" style="font-size:12px"></tas-icon>
             Le détail de l'exposition PPE ne vous est pas accessible.

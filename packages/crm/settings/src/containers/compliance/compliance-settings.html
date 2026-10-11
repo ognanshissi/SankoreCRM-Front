@@ -9,6 +9,11 @@
         } @else {
           <tas-tag severity="neutral">FATCA inactif</tas-tag>
         }
+        @if (settings()?.pepEnabled !== false) {
+          <tas-tag severity="success">PPE active</tas-tag>
+        } @else {
+          <tas-tag severity="neutral">PPE inactive</tas-tag>
+        }
       }
     </div>
     <p class="text-sm text-slate-400 mt-0.5">
@@ -65,9 +70,75 @@
       Réessayer
     </button>
   </div>
-} @else if (canManage()) {
+} @else {
+  <!--
+    Onglets locaux, pas des routes : les deux volets partagent un seul formulaire et un seul
+    `PUT`, donc les séparer en routes enfants ferait perdre la saisie en cours au changement
+    d'onglet. Tous les onglets restent atteignables au clavier par Tab (pas de `tabindex=-1`),
+    ce qui rend le motif accessible sans gestion des flèches.
+  -->
+  <div class="mb-5 border-b border-slate-200">
+    <nav
+      class="flex gap-1 overflow-x-auto"
+      role="tablist"
+      aria-label="Volets des paramètres de conformité"
+    >
+      <button
+        type="button"
+        role="tab"
+        id="tab-fatca"
+        aria-controls="panel-fatca"
+        [attr.aria-selected]="activeTab() === 'fatca'"
+        class="flex items-center gap-2 whitespace-nowrap border-b-2 px-3 py-2.5 text-sm font-medium"
+        [class.border-transparent]="activeTab() !== 'fatca'"
+        [class.text-slate-500]="activeTab() !== 'fatca'"
+        [class.border-primary]="activeTab() === 'fatca'"
+        [class.text-primary]="activeTab() === 'fatca'"
+        (click)="selectTab('fatca')"
+      >
+        <tas-icon iconName="feather:flag" style="font-size:14px"></tas-icon>
+        FATCA
+        @if (fatcaTabInvalid()) {
+          <tas-tag severity="error">À corriger</tas-tag>
+        } @else if (fatcaTabChanged()) {
+          <tas-tag severity="warning">Modifié</tas-tag>
+        }
+      </button>
+
+      <button
+        type="button"
+        role="tab"
+        id="tab-ppe"
+        aria-controls="panel-ppe"
+        [attr.aria-selected]="activeTab() === 'pep'"
+        class="flex items-center gap-2 whitespace-nowrap border-b-2 px-3 py-2.5 text-sm font-medium"
+        [class.border-transparent]="activeTab() !== 'pep'"
+        [class.text-slate-500]="activeTab() !== 'pep'"
+        [class.border-primary]="activeTab() === 'pep'"
+        [class.text-primary]="activeTab() === 'pep'"
+        (click)="selectTab('pep')"
+      >
+        <tas-icon iconName="feather:alert-triangle" style="font-size:14px"></tas-icon>
+        Personnes politiquement exposées
+        @if (pepTabInvalid()) {
+          <tas-tag severity="error">À corriger</tas-tag>
+        } @else if (pepTabChanged()) {
+          <tas-tag severity="warning">Modifié</tas-tag>
+        }
+      </button>
+    </nav>
+  </div>
+
+  @if (canManage()) {
   <form [formRoot]="formSchema" class="flex flex-col gap-5">
     <!-- ——— Déclaration FATCA ——— -->
+    <div
+      id="panel-fatca"
+      role="tabpanel"
+      aria-labelledby="tab-fatca"
+      tabindex="0"
+      [hidden]="activeTab() !== 'fatca'"
+    >
     <tas-card class="block">
       <div class="p-4 flex flex-col gap-5">
         <div class="flex flex-wrap items-start justify-between gap-3">
@@ -196,8 +267,16 @@
         </div>
       </div>
     </tas-card>
+    </div>
 
     <!-- ——— Personnes politiquement exposées ——— -->
+    <div
+      id="panel-ppe"
+      role="tabpanel"
+      aria-labelledby="tab-ppe"
+      tabindex="0"
+      [hidden]="activeTab() !== 'pep'"
+    >
     <tas-card class="block">
       <div class="p-4 flex flex-col gap-4">
         <div>
@@ -209,6 +288,51 @@
           </p>
         </div>
 
+        <div
+          class="flex items-start justify-between gap-4 rounded-lg border border-slate-200 p-3"
+        >
+          <div class="min-w-0">
+            <p class="text-sm font-medium text-slate-800">Vigilance PPE</p>
+            <p class="text-xs text-slate-500 mt-0.5 max-w-prose">
+              Activée, le bloc PPE est proposé sur le principal, le conjoint et chaque enfant de
+              tous les leads et dossiers clients. Désactivée, aucune exposition politique n'est
+              demandée ni signalée.
+            </p>
+          </div>
+          <tas-switch
+            [checked]="pepEnabled()"
+            [disabled]="formSchema().submitting()"
+            ariaLabel="Activer la vigilance PPE"
+            (toggle)="onPepToggle($event)"
+          ></tas-switch>
+        </div>
+
+        @if (pendingPepToggle()) {
+          <!--
+            Le basculement n'est engagé qu'à l'enregistrement : le dire évite de croire que le
+            commutateur a déjà pris effet.
+          -->
+          <div
+            class="flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 p-3"
+            role="status"
+          >
+            <tas-icon
+              iconName="feather:alert-triangle"
+              class="mt-0.5 shrink-0 text-amber-600"
+              style="font-size:14px"
+            ></tas-icon>
+            <p class="text-xs text-amber-900">
+              @if (pepEnabled()) {
+                La vigilance PPE sera activée à l'enregistrement.
+              } @else {
+                La vigilance PPE sera désactivée à l'enregistrement : le bloc PPE disparaîtra de
+                tous les leads et dossiers clients.
+              }
+            </p>
+          </div>
+        }
+
+        @if (pepEnabled()) {
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <tas-form-field>
             <tas-label>
@@ -236,8 +360,47 @@
             }
           </tas-form-field>
         </div>
+        }
       </div>
     </tas-card>
+    </div>
+
+    <!--
+      Une seule barre d'actions pour les deux volets : l'enregistrement est un `PUT` unique qui
+      porte FATCA et PPE. D'où l'avertissement ci-dessous — sans lui, un champ invalide dans le
+      volet qu'on ne regarde pas désactiverait « Enregistrer » sans explication à l'écran.
+    -->
+    @if (blockingOtherTab(); as blocking) {
+      <div
+        class="flex items-start gap-2 rounded-lg border border-functional-error/40 bg-functional-error/5 p-3"
+        role="alert"
+      >
+        <tas-icon
+          iconName="feather:alert-circle"
+          class="mt-0.5 shrink-0 text-functional-error"
+          style="font-size:14px"
+        ></tas-icon>
+        <p class="text-xs text-slate-700">
+          Un champ reste à corriger dans le volet
+          @if (blocking === 'fatca') {
+            <button
+              type="button"
+              class="font-medium text-primary underline"
+              (click)="selectTab('fatca')"
+            >
+              FATCA</button>.
+          } @else {
+            <button
+              type="button"
+              class="font-medium text-primary underline"
+              (click)="selectTab('pep')"
+            >
+              Personnes politiquement exposées</button>.
+          }
+          L'enregistrement porte les deux volets à la fois.
+        </p>
+      </div>
+    }
 
     <!-- Barre d'actions -->
     <div class="flex flex-wrap items-center justify-between gap-3">
@@ -270,59 +433,93 @@
       </div>
     </div>
   </form>
-} @else {
-  <!--
-    Lecture seule : les mêmes valeurs, sans contrôle de saisie. Un formulaire désactivé serait
-    plus fragile — `tas-select` n'implémente pas l'état désactivé, il resterait cliquable.
-  -->
-  <tas-card class="block">
-    <dl class="p-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
-      <div>
-        <dt class="text-xs text-slate-400">Application de FATCA</dt>
-        <dd class="text-sm text-slate-800 mt-0.5">
-          {{ settings()?.fatcaEnabled ? 'Activée' : 'Désactivée' }}
-        </dd>
+  } @else {
+    <!--
+      Lecture seule : les mêmes valeurs, sans contrôle de saisie. Un formulaire désactivé serait
+      plus fragile — `tas-select` n'implémente pas l'état désactivé, il resterait cliquable.
+      Les volets sont les mêmes qu'en édition, pour qu'un lien `?onglet=` ouvre la même chose
+      selon l'habilitation.
+    -->
+    <tas-card class="block">
+      <div
+        id="panel-fatca"
+        role="tabpanel"
+        aria-labelledby="tab-fatca"
+        tabindex="0"
+        [hidden]="activeTab() !== 'fatca'"
+      >
+        <dl class="p-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <dt class="text-xs text-slate-400">Application de FATCA</dt>
+            <dd class="text-sm text-slate-800 mt-0.5">
+              {{ settings()?.fatcaEnabled ? 'Activée' : 'Désactivée' }}
+            </dd>
+          </div>
+          <div>
+            <dt class="text-xs text-slate-400">Régime de l'institution</dt>
+            <dd class="text-sm text-slate-800 mt-0.5">
+              {{ regimeLabel(settings()?.fatcaRegime) }}
+            </dd>
+          </div>
+          <div>
+            <dt class="text-xs text-slate-400">GIIN</dt>
+            <dd class="text-sm text-slate-800 mt-0.5 font-mono break-all">
+              {{ settings()?.fatcaGiin || '—' }}
+            </dd>
+          </div>
+          <div>
+            <dt class="text-xs text-slate-400">Moment d'exigence</dt>
+            <dd class="text-sm text-slate-800 mt-0.5">
+              {{ requirementMomentLabel(settings()?.fatcaRequiredAt) }}
+            </dd>
+          </div>
+          <div>
+            <dt class="text-xs text-slate-400">Co-titulaires</dt>
+            <dd class="text-sm text-slate-800 mt-0.5">
+              {{
+                settings()?.fatcaForCoHolders
+                  ? 'Déclaration étendue'
+                  : 'Titulaire principal seul'
+              }}
+            </dd>
+          </div>
+        </dl>
       </div>
-      <div>
-        <dt class="text-xs text-slate-400">Régime de l'institution</dt>
-        <dd class="text-sm text-slate-800 mt-0.5">{{ regimeLabel(settings()?.fatcaRegime) }}</dd>
-      </div>
-      <div>
-        <dt class="text-xs text-slate-400">GIIN</dt>
-        <dd class="text-sm text-slate-800 mt-0.5 font-mono break-all">
-          {{ settings()?.fatcaGiin || '—' }}
-        </dd>
-      </div>
-      <div>
-        <dt class="text-xs text-slate-400">Moment d'exigence</dt>
-        <dd class="text-sm text-slate-800 mt-0.5">
-          {{ requirementMomentLabel(settings()?.fatcaRequiredAt) }}
-        </dd>
-      </div>
-      <div>
-        <dt class="text-xs text-slate-400">Co-titulaires</dt>
-        <dd class="text-sm text-slate-800 mt-0.5">
-          {{ settings()?.fatcaForCoHolders ? 'Déclaration étendue' : 'Titulaire principal seul' }}
-        </dd>
-      </div>
-      <div>
-        <dt class="text-xs text-slate-400">Maintien du statut PPE</dt>
-        <dd class="text-sm text-slate-800 mt-0.5 tabular-nums">
-          {{ settings()?.pepPostMandateMonths ?? 0 }} mois après la fin de fonction
-        </dd>
-      </div>
-      <div class="sm:col-span-2">
-        <dt class="text-xs text-slate-400">Dernière modification</dt>
-        <dd class="text-sm text-slate-800 mt-0.5">
-          @if (settings()?.updatedAt) {
-            {{ settings()?.updatedAt | date: 'dd/MM/yyyy à HH:mm' }}
-          } @else {
-            —
+
+      <div
+        id="panel-ppe"
+        role="tabpanel"
+        aria-labelledby="tab-ppe"
+        tabindex="0"
+        [hidden]="activeTab() !== 'pep'"
+      >
+        <dl class="p-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <dt class="text-xs text-slate-400">Vigilance PPE</dt>
+            <dd class="text-sm text-slate-800 mt-0.5">
+              {{ settings()?.pepEnabled !== false ? 'Activée' : 'Désactivée' }}
+            </dd>
+          </div>
+          @if (settings()?.pepEnabled !== false) {
+            <div>
+              <dt class="text-xs text-slate-400">Maintien du statut PPE</dt>
+              <dd class="text-sm text-slate-800 mt-0.5 tabular-nums">
+                {{ settings()?.pepPostMandateMonths ?? 0 }} mois après la fin de fonction
+              </dd>
+            </div>
           }
-        </dd>
+        </dl>
       </div>
-    </dl>
-  </tas-card>
+
+      <p class="border-t border-slate-100 px-4 py-3 text-xs text-slate-400">
+        @if (settings()?.updatedAt) {
+          Dernière modification le {{ settings()?.updatedAt | date: 'dd/MM/yyyy à HH:mm' }}
+        } @else {
+          Aucune modification enregistrée pour l'instant.
+        }
+      </p>
+    </tas-card>
+  }
 }
 
 <!-- ——— Historique des changements ——— -->

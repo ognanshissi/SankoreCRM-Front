@@ -12,32 +12,33 @@ import {
   validate,
 } from '@angular/forms/signals';
 import { catchError, firstValueFrom, map, of } from 'rxjs';
-import { TasIcon } from '@talisoft/ui/icon';
-import { TasTag } from '@talisoft/ui/tag';
 import { Button } from '@talisoft/ui/button';
 import { TasCard } from '@talisoft/ui/card';
-import { TasSpinner } from '@talisoft/ui/spinner';
+import { TasDatePicker } from '@talisoft/ui/date-picker';
 import { TasError, TasFormField, TasHint, TasLabel } from '@talisoft/ui/form-field';
+import { TasIcon } from '@talisoft/ui/icon';
 import { TasInput } from '@talisoft/ui/input';
 import { TasSelect } from '@talisoft/ui/select';
-import { TasDatePicker } from '@talisoft/ui/date-picker';
 import {
-  TasSideDrawer,
-  TasDrawerTitle,
-  TasDrawerContent,
   TasDrawerAction,
+  TasDrawerContent,
+  TasDrawerTitle,
+  TasSideDrawer,
 } from '@talisoft/ui/side-drawer';
-import { TasTitle } from '@talisoft/ui/title';
 import { SnackbarService } from '@talisoft/ui/snackbar';
+import { TasSpinner } from '@talisoft/ui/spinner';
+import { TasTag } from '@talisoft/ui/tag';
+import { TasTitle } from '@talisoft/ui/title';
 import {
+  completenessGapSection,
   CompletenessGapView,
   CompletenessGauge,
-  completenessGapSection,
+  ComplianceConfigService,
   FatcaStatusBadge,
   fatcaStatusLabel,
   householdMemberFromLead,
-  HouseholdMemberView,
   HouseholdMembersList,
+  HouseholdMemberView,
   PepExposureBadge,
   pepFromDto,
   pepLinkLabel,
@@ -252,6 +253,7 @@ export class ConvertLeadWizard implements OnInit {
   private readonly _dialogRef = inject(DialogRef<ConvertLeadWizardResult | false>);
   private readonly _leadsApi = inject(LeadsApiService);
   private readonly _permissions = inject(PermissionsService);
+  private readonly _complianceConfig = inject(ComplianceConfigService);
   private readonly _snackbar = inject(SnackbarService);
   private readonly _router = inject(Router);
   public readonly compliance = inject(LeadComplianceStore);
@@ -260,6 +262,12 @@ export class ConvertLeadWizard implements OnInit {
   public readonly canReadCustomers = this._permissions.can(PERMISSIONS.CUSTOMERS_READ);
   /** Sans ce droit, l'exposition PPE reste visible mais la fonction exercée est masquée. */
   public readonly canReadPep = this._permissions.can(PERMISSIONS.CUSTOMERS_PEP_READ);
+  /**
+   * Vigilance PPE du tenant (`pepEnabled` des réglages de conformité). Désactivée, aucun bloc
+   * PPE n'est proposé : ni badge, ni détail, ni saisie.
+   */
+  public readonly pepEnabled = this._complianceConfig.pepEnabled;
+
 
   public readonly genderOptions = GENDER_OPTIONS;
 

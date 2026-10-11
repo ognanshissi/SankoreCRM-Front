@@ -51,7 +51,7 @@
             }
           </div>
 
-          @if (canEdit()) {
+          @if (canEdit() && pepEnabled()) {
             <button
               tas-outlined-button
               color="primary"
@@ -89,18 +89,20 @@
               }
             </p>
           </div>
-          <div>
-            <p class="text-xs text-slate-400 mb-1">Exposition PPE du foyer</p>
-            <p class="text-sm font-medium text-slate-800">
-              {{ householdStore.hasPepExposure() ? 'Oui' : 'Non' }}
-            </p>
-          </div>
+          @if (pepEnabled()) {
+            <div>
+              <p class="text-xs text-slate-400 mb-1">Exposition PPE du foyer</p>
+              <p class="text-sm font-medium text-slate-800">
+                {{ householdStore.hasPepExposure() ? 'Oui' : 'Non' }}
+              </p>
+            </div>
+          }
         </div>
       </div>
     </tas-card>
 
     <!-- Statut PPE de la personne choisie (client ou membre) -->
-    @if (pepPanelOpen()) {
+    @if (pepPanelOpen() && pepEnabled()) {
       <tas-card class="block">
         <div class="p-4">
           <div class="flex items-start justify-between gap-3">

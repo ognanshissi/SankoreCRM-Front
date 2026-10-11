@@ -6,16 +6,17 @@ import { SideDrawerService } from '@talisoft/ui/side-drawer';
 import { TasSpinner } from '@talisoft/ui/spinner';
 import { TasTag } from '@talisoft/ui/tag';
 import {
+  ComplianceConfigService,
   HouseholdMemberDrawer,
   HouseholdMemberDrawerData,
-  HouseholdMemberView,
-  HouseholdMembersList,
-  PepExposureBadge,
-  PERMISSIONS,
-  PermissionsService,
   householdMemberFromLead,
+  HouseholdMembersList,
+  HouseholdMemberView,
+  PepExposureBadge,
   pepFromDto,
   pepLinkLabel,
+  PERMISSIONS,
+  PermissionsService,
 } from '@sankore/crm/common';
 import { LeadComplianceStore } from './lead-compliance-store';
 import { LeadEditContext } from './lead-edit-context';
@@ -65,12 +66,19 @@ export class LeadFoyer {
   protected readonly compliance = inject(LeadComplianceStore);
   private readonly _leadEditContext = inject(LeadEditContext);
   private readonly _permissions = inject(PermissionsService);
+  private readonly _complianceConfig = inject(ComplianceConfigService);
   private readonly _sideDrawer = inject(SideDrawerService);
 
   private readonly _canUpdateLead = this._permissions.can(PERMISSIONS.LEAD_UPDATE);
 
   /** Sans `customers:pep_read`, seul le badge d'exposition est montré (BNF-F-04). */
   public readonly canReadPep = this._permissions.can(PERMISSIONS.CUSTOMERS_PEP_READ);
+  /**
+   * Vigilance PPE du tenant (`pepEnabled` des réglages de conformité). Désactivée, aucun bloc
+   * PPE n'est proposé : ni badge, ni détail, ni saisie.
+   */
+  public readonly pepEnabled = this._complianceConfig.pepEnabled;
+
 
   /** Un lead converti est figé : son foyer se modifie depuis la fiche client. */
   public readonly canEdit = computed(

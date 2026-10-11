@@ -186,7 +186,8 @@
           ></household-members-list>
         </div>
 
-        <!-- Exposition PPE -->
+        <!-- Exposition PPE, seulement si l'établissement collecte la PPE -->
+        @if (pepEnabled()) {
         <tas-card class="block mb-4">
           <div class="p-4 border-b border-slate-100">
             <div class="flex items-center gap-2 flex-wrap">
@@ -219,6 +220,7 @@
             }
           </div>
         </tas-card>
+        }
 
         <!-- FATCA, par personne -->
         @if (compliance.fatcaEnabled()) {

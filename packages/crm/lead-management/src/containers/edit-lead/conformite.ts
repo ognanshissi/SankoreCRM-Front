@@ -10,17 +10,18 @@ import { TableConfig, TasTable } from '@talisoft/ui/table';
 import { SideDrawerService } from '@talisoft/ui/side-drawer';
 import { FatcaDeclarationDto, MissingFatcaDeclaration } from '@sankore/crm-api';
 import {
-  FatcaStatusBadge,
-  PepExposureBadge,
-  PERMISSIONS,
-  PermissionsService,
+  ComplianceConfigService,
   fatcaDocumentationLabel,
   fatcaIndiciaLabel,
+  FatcaStatusBadge,
   householdMemberTypeLabel,
   identityLabel,
   isFatcaActionable,
+  PepExposureBadge,
   pepFromDto,
   pepLinkLabel,
+  PERMISSIONS,
+  PermissionsService,
 } from '@sankore/crm/common';
 import { LeadComplianceStore } from './lead-compliance-store';
 import { LeadEditContext } from './lead-edit-context';
@@ -81,12 +82,19 @@ export class LeadConformite {
   protected readonly compliance = inject(LeadComplianceStore);
   private readonly _leadEditContext = inject(LeadEditContext);
   private readonly _permissions = inject(PermissionsService);
+  private readonly _complianceConfig = inject(ComplianceConfigService);
   private readonly _sideDrawerService = inject(SideDrawerService);
 
   private readonly _canUpdate = this._permissions.can(PERMISSIONS.LEAD_UPDATE);
 
   /** Le détail de la fonction PPE est protégé ; l'exposition, elle, est toujours visible. */
   public readonly canReadPep = this._permissions.can(PERMISSIONS.CUSTOMERS_PEP_READ);
+  /**
+   * Vigilance PPE du tenant (`pepEnabled` des réglages de conformité). Désactivée, aucun bloc
+   * PPE n'est proposé : ni badge, ni détail, ni saisie.
+   */
+  public readonly pepEnabled = this._complianceConfig.pepEnabled;
+
 
   public readonly canDeclare = computed(
     () => this._canUpdate() && !this._leadEditContext.isReadOnly(),

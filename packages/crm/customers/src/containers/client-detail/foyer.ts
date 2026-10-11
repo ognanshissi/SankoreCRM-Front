@@ -6,25 +6,26 @@ import {
   inject,
   signal,
 } from '@angular/core';
+import { Button } from '@talisoft/ui/button';
+import { catchError, EMPTY, firstValueFrom, of } from 'rxjs';
 import { form, submit } from '@angular/forms/signals';
 import { FormRoot } from '@angular/forms/signals';
-import { catchError, EMPTY, firstValueFrom, of } from 'rxjs';
-import { Button } from '@talisoft/ui/button';
+import { SideDrawerService } from '@talisoft/ui/side-drawer';
+import { SnackbarService } from '@talisoft/ui/snackbar';
 import { TasCard } from '@talisoft/ui/card';
 import { TasIcon } from '@talisoft/ui/icon';
-import { SnackbarService } from '@talisoft/ui/snackbar';
-import { SideDrawerService } from '@talisoft/ui/side-drawer';
 import { TasSpinner } from '@talisoft/ui/spinner';
 import { TasTag } from '@talisoft/ui/tag';
 import {
+  ComplianceConfigService,
   designationRoleLabel,
   designationStatusLabel,
   HouseholdDesignationView,
   HouseholdMemberDrawer,
   HouseholdMemberDrawerData,
-  HouseholdMemberView,
   householdMemberFromClient,
   HouseholdMembersList,
+  HouseholdMemberView,
   isDesignationToReview,
   PepExposureBadge,
   PepFieldset,
@@ -89,9 +90,16 @@ export class ClientFoyer {
   private readonly _sideDrawer = inject(SideDrawerService);
   private readonly _snackbar = inject(SnackbarService);
   private readonly _permissions = inject(PermissionsService);
+  private readonly _complianceConfig = inject(ComplianceConfigService);
 
   /** Sans ce droit, seule l'exposition est montrée — jamais la fonction exercée. */
   protected readonly canReadPep = this._permissions.can('customers:pep_read');
+  /**
+   * Vigilance PPE du tenant (`pepEnabled` des réglages de conformité). Désactivée, aucun bloc
+   * PPE n'est proposé : ni badge, ni détail, ni saisie.
+   */
+  protected readonly pepEnabled = this._complianceConfig.pepEnabled;
+
 
   private readonly _holdings = signal<HoldingDto[]>([]);
   private readonly _designationsLoading = signal(false);
