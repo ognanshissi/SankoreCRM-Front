@@ -35,10 +35,13 @@ import {
  * Onglet « Foyer » de la fiche lead : conjoint, enfants et statut PPE de chaque
  * personne (BNF-F-03 et BNF-F-04).
  *
- * L'écran n'apporte aucune règle métier : `householdEnabled`, `maxChildren` et
- * `childMaxAge` viennent de la ligne de produit via `LeadHouseholdDto`, et c'est
- * l'API qui refuse un second conjoint ou un enfant de trop. Le front ne fait que
- * ne pas proposer ce qui est de toute façon refusé.
+ * L'écran n'apporte aucune règle métier : `maxChildren` et `childMaxAge` viennent de
+ * la ligne de produit via `LeadHouseholdDto`, et c'est l'API qui refuse un second
+ * conjoint ou un enfant de trop. Le front ne fait que ne pas proposer ce qui est de
+ * toute façon refusé.
+ *
+ * Il n'y a plus de `householdEnabled` : le foyer se saisit sur n'importe quel lead,
+ * quelle que soit sa ligne de produit.
  *
  * La liste, le drawer d'ajout/modification et le bloc PPE sont ceux du socle
  * `@sankore/crm/common`, partagés avec la fiche client : les dupliquer ici

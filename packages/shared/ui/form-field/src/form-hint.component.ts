@@ -1,16 +1,17 @@
-import { Component, HostBinding, Input } from '@angular/core';
+import { Component, HostBinding, Input, ViewEncapsulation } from '@angular/core';
 
 @Component({
   selector: 'tas-hint',
   template: `<ng-content></ng-content>`,
   standalone: true,
+  encapsulation: ViewEncapsulation.None,
+
   styles: [
     `
-    @reference "../../tailwind-ref.css";
-    tas-hint {
+    .tas-hint {
       display: block;
-      font-size: 10px;
-      color: var(--color-neutral);
+      font-size: 12px !important;
+      color: var(--color-slate-400);
     }`
   ]
 })
@@ -18,5 +19,10 @@ export class TasHint {
   @Input() ariaLabel!: string
 
   @HostBinding('attr.aria-label')
-  ariaLabelAttribute = this.ariaLabel
+  ariaLabelAttribute = this.ariaLabel;
+
+  @HostBinding("class")
+  get classes() {
+    return { 'tas-hint': true };
+  }
 }

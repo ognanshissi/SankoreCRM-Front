@@ -16,7 +16,6 @@ import { LeadsHouseholdMemberDto } from './leads-household-member-dto.interface'
 
 export interface LeadHouseholdDto { 
     leadId?: string;
-    householdEnabled?: boolean;
     maxChildren?: number | null;
     childMaxAge?: number | null;
     principal?: LeadsPersonIdentityDto;

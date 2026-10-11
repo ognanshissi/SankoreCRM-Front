@@ -101,6 +101,14 @@ const DEFAULT_EXTERNAL_SUBJECT_TYPE = 'External';
  * Le foyer vient de `ClientHouseholdStore`, fourni par la coquille de la fiche :
  * « Ajouter au foyer » ouvre le drawer partagé puis recharge le store, et la
  * nouvelle personne apparaît dans les cases à cocher sans quitter le parcours.
+ *
+ * Il n'y a **pas** d'entrée `householdEnabled` : « Ajouter au foyer » s'affiche quelle
+ * que soit la ligne de produit. Elle existait et masquait les deux boutons quand
+ * `beneficiaryPolicy.householdEnabled` était faux — c'est-à-dire par défaut, la case
+ * n'étant pas cochée à la création d'une politique — alors qu'aucun contrôle serveur ne
+ * s'y rattache : `DesignationSubjectValidator` vérifie que le sujet est un membre actif
+ * du foyer ou un client du tenant, et rien de plus. Les boutons étaient donc cachés sans
+ * que l'écriture correspondante soit refusée. Ne remets pas de condition de produit ici.
  */
 @Component({
   selector: 'designations-editor',
@@ -128,8 +136,6 @@ export class DesignationsEditor {
   /** Clause en vigueur, rejouée à l'ouverture (avenant) ou vide (souscription). */
   public readonly initial = input<DesignationDto[]>([]);
   public readonly readOnly = input(false);
-  /** Faux quand la politique du produit n'active pas le foyer. */
-  public readonly householdEnabled = input(true);
 
   public readonly members = computed(() => this._household.members());
   public readonly principalLabel = computed(() => this._household.principalLabel());

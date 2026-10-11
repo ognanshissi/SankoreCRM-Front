@@ -22,17 +22,6 @@
       </div>
     </div>
   </tas-card>
-} @else if (!compliance.householdEnabled()) {
-  <tas-card class="block">
-    <div class="p-10 text-center">
-      <tas-icon iconName="feather:info" class="text-slate-300" style="font-size:28px"></tas-icon>
-      <p class="text-sm font-medium text-slate-700 mt-2">Foyer non applicable</p>
-      <p class="text-sm text-slate-500 mt-1 max-w-md mx-auto">
-        La ligne de produit de ce lead n'active pas la gestion du foyer. Le conjoint et les
-        enfants ne sont donc pas demandés pour ce dossier.
-      </p>
-    </div>
-  </tas-card>
 } @else {
   <div class="pb-6 flex flex-col gap-4">
     <!-- Principal -->

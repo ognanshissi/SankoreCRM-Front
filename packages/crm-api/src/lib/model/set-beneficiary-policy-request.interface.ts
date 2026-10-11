@@ -13,7 +13,6 @@ import { DesignationRoleInput } from './designation-role-input.interface';
 
 
 export interface SetBeneficiaryPolicyRequest { 
-    householdEnabled?: boolean;
     allowMultipleHoldings?: boolean;
     allowedRoles?: Array<DesignationRoleInput> | null;
     maxChildren?: number | null;

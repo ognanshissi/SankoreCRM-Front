@@ -13,7 +13,6 @@ import { DesignationRoleDefinition } from './designation-role-definition.interfa
 
 
 export interface BeneficiaryPolicy { 
-    householdEnabled?: boolean;
     allowedRoles?: Array<DesignationRoleDefinition> | null;
     maxChildren?: number | null;
     childMaxAge?: number | null;

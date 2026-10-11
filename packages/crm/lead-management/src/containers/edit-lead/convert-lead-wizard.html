@@ -163,28 +163,28 @@
           </div>
         </tas-card>
 
-        <!-- Foyer : la liste partagée du socle (lead et client affichent la même chose) -->
-        @if (compliance.householdEnabled()) {
-          <div class="mb-4">
-            <div class="flex items-center justify-between gap-2 mb-2">
-              <p class="text-sm font-semibold text-slate-700">
-                Foyer ({{ members().length }})
-              </p>
-              @if (compliance.removedMembers().length > 0) {
-                <span class="text-xs text-slate-400">
-                  {{ compliance.removedMembers().length }} membre(s) retiré(s), non repris
-                </span>
-              }
-            </div>
-            <household-members-list
-              [members]="members()"
-              [canEdit]="false"
-              [canReadPep]="canReadPep()"
-              emptyTitle="Aucun membre dans le foyer"
-              emptyMessage="Le foyer est vide : seul le titulaire principal sera repris."
-            ></household-members-list>
+        <!-- Foyer : la liste partagée du socle (lead et client affichent la même chose).
+             Toujours affichée — le foyer n'est plus conditionné par la ligne de produit, et
+             `household-members-list` rend déjà son propre état vide. -->
+        <div class="mb-4">
+          <div class="flex items-center justify-between gap-2 mb-2">
+            <p class="text-sm font-semibold text-slate-700">
+              Foyer ({{ members().length }})
+            </p>
+            @if (compliance.removedMembers().length > 0) {
+              <span class="text-xs text-slate-400">
+                {{ compliance.removedMembers().length }} membre(s) retiré(s), non repris
+              </span>
+            }
           </div>
-        }
+          <household-members-list
+            [members]="members()"
+            [canEdit]="false"
+            [canReadPep]="canReadPep()"
+            emptyTitle="Aucun membre dans le foyer"
+            emptyMessage="Le foyer est vide : seul le titulaire principal sera repris."
+          ></household-members-list>
+        </div>
 
         <!-- Exposition PPE -->
         <tas-card class="block mb-4">

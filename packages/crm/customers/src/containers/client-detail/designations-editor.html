@@ -7,7 +7,7 @@
       </p>
     </div>
 
-    @if (!readOnly() && householdEnabled()) {
+    @if (!readOnly()) {
       <div class="flex flex-wrap items-center gap-2">
         @if (!hasSpouse()) {
           <button
@@ -43,13 +43,6 @@
         être saisie ici : faites compléter la politique du produit dans les réglages.
       </p>
     </div>
-  }
-
-  @if (!householdEnabled()) {
-    <p class="text-xs text-slate-500">
-      Cette ligne de produit n'active pas le foyer : les personnes désignées se saisissent
-      une par une, sans passer par les membres du foyer.
-    </p>
   }
 
   <!-- Éditeur de collection dynamique : HTML ordinaire, pas une liste d'entités. -->

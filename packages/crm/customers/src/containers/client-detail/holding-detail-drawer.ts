@@ -843,9 +843,6 @@ export class HoldingDetailDrawer implements OnInit, OnDestroy {
   public readonly policyRoles = computed(
     () => this.product()?.beneficiaryPolicy?.allowedRoles ?? [],
   );
-  public readonly householdEnabled = computed(
-    () => this.product()?.beneficiaryPolicy?.householdEnabled !== false,
-  );
 
   public readonly isAmendment = computed(() => this.holding()?.status === 'Active');
 

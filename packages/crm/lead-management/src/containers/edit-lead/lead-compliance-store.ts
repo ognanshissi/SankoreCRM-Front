@@ -50,8 +50,12 @@ export class LeadComplianceStore {
   public readonly isLoading = this._isLoading.asReadonly();
   public readonly loadFailed = this._loadFailed.asReadonly();
 
-  /** Le foyer n'est proposé que si la ligne de produit l'active (BNF-F-03). */
-  public readonly householdEnabled = computed(() => this._household()?.householdEnabled === true);
+  // `householdEnabled` a été retiré : le foyer se saisit sur n'importe quel lead. Le serveur
+  // refusait l'écriture avec HOUSEHOLD_DISABLED_FOR_PRODUCT_LINE et la ligne ci-dessus masquait
+  // l'écran en conséquence — mais `BeneficiaryPolicy.HouseholdEnabled` vaut FALSE par défaut, donc
+  // toute ligne de produit enregistrée sans cocher la case refusait un conjoint que personne
+  // n'avait voulu interdire. Ne réintroduis pas de condition de produit ici : `maxChildren` et
+  // `childMaxAge` restent les seules règles du produit, et elles sont appliquées à l'écriture.
 
   public readonly principal = computed(() => this._household()?.principal ?? null);
   public readonly principalLabel = computed(() => identityLabel(this.principal()));

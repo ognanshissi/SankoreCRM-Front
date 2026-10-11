@@ -12,7 +12,6 @@ import {
 import { RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import {
-  disabled,
   form,
   FormField,
   FormRoot,
@@ -123,7 +122,6 @@ const INTEGRATION_SYSTEM_OPTIONS = [
 ];
 
 class BeneficiaryPolicyFormModel {
-  public householdEnabled!: boolean;
   public allowMultipleHoldings!: boolean;
   /** Chaînes : les `input` rendent du texte, la conversion se fait à la soumission. */
   public maxChildren!: string;
@@ -138,7 +136,6 @@ class BeneficiaryPolicyFormModel {
   ): BeneficiaryPolicyFormModel {
     const policy = product?.beneficiaryPolicy;
     const model = new BeneficiaryPolicyFormModel();
-    model.householdEnabled = policy?.householdEnabled ?? false;
     // `allowMultipleHoldings` est porté par le produit en lecture et par la
     // requête de politique en écriture : on lit donc le produit.
     model.allowMultipleHoldings = product?.allowMultipleHoldings ?? false;
@@ -255,21 +252,6 @@ function positiveIntegerValidator(max: number, message: string) {
             <input
               type="checkbox"
               class="mt-0.5 accent-primary"
-              [formField]="formSchema.householdEnabled"
-            />
-            <span>
-              Activer le foyer pour cette ligne de produit
-              <span class="block text-xs text-slate-400">
-                Autorise la saisie du conjoint et des enfants sur les leads et
-                les clients.
-              </span>
-            </span>
-          </label>
-
-          <label class="flex items-start gap-2 mt-3 cursor-pointer text-sm">
-            <input
-              type="checkbox"
-              class="mt-0.5 accent-primary"
               [formField]="formSchema.allowMultipleHoldings"
             />
             <span>
@@ -321,12 +303,6 @@ function positiveIntegerValidator(max: number, message: string) {
               }
             </tas-form-field>
           </div>
-
-          @if (!formSchema.householdEnabled().value()) {
-            <p class="text-xs text-slate-400 mt-2">
-              Les limites d'enfants ne s'appliquent que si le foyer est activé.
-            </p>
-          }
         </fieldset>
 
         <!-- Rôles autorisés -->
@@ -614,15 +590,11 @@ export class BeneficiaryPolicyEditor {
       schema.childMaxAge,
       positiveIntegerValidator(99, 'Indiquez un âge entre 0 et 99'),
     );
-    // Les limites d'enfants n'ont pas de sens sans foyer. Les champs restent
-    // dans le modèle : `disabled` ne les retire pas du payload, il les rend
-    // seulement non modifiables.
-    disabled(schema.maxChildren, {
-      when: ({ valueOf }) => !valueOf(schema.householdEnabled),
-    });
-    disabled(schema.childMaxAge, {
-      when: ({ valueOf }) => !valueOf(schema.householdEnabled),
-    });
+    // Les deux limites sont toujours modifiables : le foyer se saisit sur
+    // n'importe quel lead et n'importe quel client, il n'y a plus de case à
+    // cocher dont elles dépendraient. Avant, elles étaient grisées tant que
+    // `householdEnabled` était faux — c'est-à-dire par défaut — et le serveur
+    // les effaçait en plus à l'enregistrement.
   });
 
   public readonly roleOptions = signal<{ label: string; value: string }[]>([]);
@@ -752,7 +724,6 @@ export class BeneficiaryPolicyEditor {
       );
 
       const payload: SetBeneficiaryPolicyRequest = {
-        householdEnabled: value.householdEnabled,
         allowMultipleHoldings: value.allowMultipleHoldings,
         allowedRoles,
         maxChildren: toNullableInteger(value.maxChildren),

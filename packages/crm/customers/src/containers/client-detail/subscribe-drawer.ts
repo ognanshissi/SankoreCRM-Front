@@ -168,9 +168,6 @@ export class SubscribeDrawer implements OnInit, OnDestroy {
   public readonly policyRoles = computed(
     () => this.selectedProduct()?.beneficiaryPolicy?.allowedRoles ?? [],
   );
-  public readonly householdEnabled = computed(
-    () => this.selectedProduct()?.beneficiaryPolicy?.householdEnabled !== false,
-  );
   public readonly requiredFields = computed(
     () => this.selectedProduct()?.beneficiaryPolicy?.requiredFieldsBeforeConversion ?? [],
   );

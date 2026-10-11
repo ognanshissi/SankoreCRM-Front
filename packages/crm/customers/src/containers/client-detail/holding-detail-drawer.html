@@ -264,8 +264,7 @@
               [clientId]="data.clientId"
               [roles]="policyRoles()"
               [initial]="currentDesignations()"
-              [householdEnabled]="householdEnabled()"
-            ></designations-editor>
+                  ></designations-editor>
 
             @if (designationError(); as message) {
               <div class="mt-3 rounded-lg border border-functional-error/40 bg-functional-error/5 p-3">
