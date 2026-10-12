@@ -426,6 +426,9 @@
                     <th scope="col">Décision</th>
                     <th scope="col">Commentaire</th>
                     <th scope="col">Date</th>
+                    @if (showCircuitActions()) {
+                      <th scope="col"><span class="sr-only">Actions</span></th>
+                    }
                   </tr>
                 </ng-template>
                 <ng-template #body let-step>
@@ -452,6 +455,24 @@
                     <td class="text-slate-600">
                       {{ step.decidedAt ? (step.decidedAt | date: 'dd/MM/yyyy HH:mm') : '—' }}
                     </td>
+                    @if (showCircuitActions()) {
+                      <td class="text-right">
+                        @if (step.isNext) {
+                          <div class="flex items-center justify-end gap-1.5">
+                            <button tas-raised-button color="primary" type="button" size="small" (click)="decide('approve')">
+                              <tas-icon iconName="feather:check" style="font-size:12px"></tas-icon>
+                              Approuver
+                            </button>
+                            <button tas-outlined-button color="primary" type="button" size="small" (click)="decide('complement')">
+                              Complément
+                            </button>
+                            <button tas-outlined-button color="warn" type="button" size="small" (click)="decide('reject')">
+                              Rejeter
+                            </button>
+                          </div>
+                        }
+                      </td>
+                    }
                   </tr>
                 </ng-template>
               </tas-table>

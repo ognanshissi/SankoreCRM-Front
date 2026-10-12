@@ -21,7 +21,7 @@ import { SideDrawerService } from '@talisoft/ui/side-drawer';
 import { TasSpinner } from '@talisoft/ui/spinner';
 import { TasTable, TableConfig } from '@talisoft/ui/table';
 import { TasTag } from '@talisoft/ui/tag';
-import { KycApprovalCircuitDto, KycFileDto, UsersApiService } from '@sankore/crm-api';
+import { DecideKycApprovalRequestLevelEnum, KycApprovalCircuitDto, KycFileDto, UsersApiService } from '@sankore/crm-api';
 import { BreadcrumbService, PermissionsService } from '@sankore/crm/common';
 import { KycFacadeService } from '../data-access/kyc-facade.service';
 import {
@@ -33,6 +33,11 @@ import { KycHistoryEntry, KycHistoryKind } from '../data-access/kyc.types';
 import { KycStatusBadge } from '../ui/kyc-status-badge';
 import { KycDocumentsPanel } from '../documents/kyc-documents-panel';
 import { KycScorePanel } from '../verification/kyc-score-panel';
+import {
+  KycApprovalDecisionDrawer,
+  KycApprovalDecisionDrawerData,
+  KycDecisionAction,
+} from '../approval/kyc-approval-decision-drawer';
 import {
   ManuallyValidateKycFileDrawer,
   ManuallyValidateKycFileDrawerData,
@@ -127,6 +132,13 @@ export class KycFileDetailPage implements OnInit {
    */
   public readonly canValidateDocuments = this._permissions.can('kyc:document:validate');
 
+  /**
+   * Signer un niveau du circuit. Le serveur n'exige que ce droit et le bon ordre : aucun rôle n'est
+   * rattaché à un niveau, donc les actions s'affichent sur la ligne en attente pour tout porteur du
+   * droit. Les quatre yeux (pas de signature par le soumissionnaire) sont tranchés côté serveur.
+   */
+  public readonly canApprove = this._permissions.can('kyc:approve');
+
   public readonly tabs = TABS;
   public readonly activeTab = signal<KycDetailTab>('identite');
 
@@ -172,8 +184,14 @@ export class KycFileDetailPage implements OnInit {
       decision: kycApprovalDecisionMeta(step.decision),
       comment: step.comment ?? null,
       decidedAt: step.decidedAt ?? null,
+      level: step.level,
       isNext: !!step.level && step.level === this.circuit()?.nextLevel,
     })),
+  );
+
+  /** Colonne d'actions seulement quand quelqu'un peut agir : sinon elle resterait vide partout. */
+  public readonly showCircuitActions = computed(
+    () => this.canApprove() && this.circuitRows().some((row) => row.isNext),
   );
 
   public readonly historyRows = computed(() =>
@@ -285,6 +303,30 @@ export class KycFileDetailPage implements OnInit {
     this._historyRequested = false;
     this._reloadToken.update((token) => token + 1);
     this._ensureTabData(this.activeTab());
+  }
+
+  /** Décision sur le niveau en attente, puis relecture : statut, circuit et historique ont bougé. */
+  public decide(action: KycDecisionAction): void {
+    const circuit = this.circuit();
+    const level = circuit?.nextLevel;
+    const steps = circuit?.steps ?? [];
+    if (!level || !this.canApprove()) return;
+
+    const ref = this._sideDrawerService.open(KycApprovalDecisionDrawer, {
+      data: {
+        kycFileId: this.id(),
+        // `nextLevel` est une chaîne libre au DTO de lecture, l'énumération au contrat d'écriture :
+        // mêmes valeurs (Agent, BranchManager, ComplianceOfficer).
+        level: level as DecideKycApprovalRequestLevelEnum,
+        action,
+        isFinalLevel: steps[steps.length - 1]?.level === level,
+      } satisfies KycApprovalDecisionDrawerData,
+      panelClass: 'side-drawer-panel',
+    });
+
+    ref.closed.subscribe((decided) => {
+      if (decided) this.refresh();
+    });
   }
 
   public reloadCircuit(): void {
