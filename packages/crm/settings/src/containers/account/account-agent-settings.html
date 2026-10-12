@@ -1,0 +1,249 @@
+@if (isLoading() && !dto()) {
+  <div class="flex justify-center py-24"><tas-spinner size="10" class="text-primary"></tas-spinner></div>
+} @else if (loadFailed() && !dto()) {
+  <div class="flex flex-col items-center py-24 text-center">
+    <p class="text-sm text-slate-600">Votre paramétrage n'a pas pu être chargé.</p>
+  </div>
+} @else {
+  <form [formRoot]="formSchema" class="flex flex-col gap-5">
+    <div class="grid grid-cols-1 xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] gap-5 items-start">
+      <!-- ═══════ Colonne principale ═══════ -->
+      <div class="flex flex-col gap-5">
+        <!-- Disponibilité -->
+        <section class="rounded-2xl bg-white shadow-sm border border-slate-100 p-6">
+          <h2 class="text-xl font-bold text-primary">Disponibilité</h2>
+          <p class="text-sm text-slate-600 mt-1">Le dispatching ne vous attribue de nouveaux leads que lorsque vous êtes disponible.</p>
+
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-5" role="radiogroup" aria-label="Disponibilité">
+            @for (option of availabilityOptions; track option.value) {
+              <button type="button" role="radio"
+                class="text-left p-3 rounded-lg border transition-colors"
+                [attr.aria-checked]="model().availability === option.value"
+                [class]="model().availability === option.value ? 'border-2 border-primary bg-primary/10' : 'border-slate-200 hover:border-slate-300'"
+                (click)="setAvailability(option.value)">
+                <span class="block text-sm font-semibold text-slate-900">{{ option.label }}</span>
+                <span class="block text-xs text-slate-600 mt-0.5">{{ option.hint }}</span>
+              </button>
+            }
+          </div>
+
+          @if (isAbsent()) {
+            <div class="mt-4 p-4 rounded-lg bg-slate-50 border border-slate-200 flex flex-col gap-3">
+              <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <tas-form-field>
+                  <tas-label>Du</tas-label>
+                  <input tasInput type="date" [formField]="formSchema.absenceFrom" />
+                  @if (formSchema.absenceFrom().touched() && formSchema.absenceFrom().invalid()) {
+                    <tas-error>{{ formSchema.absenceFrom().errors()[0].message }}</tas-error>
+                  }
+                </tas-form-field>
+                <tas-form-field>
+                  <tas-label>Au</tas-label>
+                  <input tasInput type="date" [formField]="formSchema.absenceTo" />
+                  @if (formSchema.absenceTo().touched() && formSchema.absenceTo().invalid()) {
+                    <tas-error>{{ formSchema.absenceTo().errors()[0].message }}</tas-error>
+                  }
+                </tas-form-field>
+                <tas-form-field>
+                  <tas-label>Remplaçant</tas-label>
+                  <tas-select [options]="replacementOptions()" placeholder="Aucun" [formField]="formSchema.replacementUserId"></tas-select>
+                  @if (formSchema.replacementUserId().touched() && formSchema.replacementUserId().invalid()) {
+                    <tas-error>{{ formSchema.replacementUserId().errors()[0].message }}</tas-error>
+                  }
+                </tas-form-field>
+              </div>
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" class="form-checkbox accent-primary w-4 h-4" [formField]="formSchema.transferTasks" />
+                <span class="text-sm text-slate-800">
+                  Transférer mes {{ openTasksCount() }} tâche{{ openTasksCount() > 1 ? 's' : '' }} en cours au remplaçant pendant l'absence
+                </span>
+              </label>
+              <p class="text-xs text-slate-500">Votre superviseur est informé de l'absence et du remplaçant choisi.</p>
+            </div>
+          }
+        </section>
+
+        <!-- Horaires -->
+        <section class="rounded-2xl bg-white shadow-sm border border-slate-100 p-6">
+          <h2 class="text-xl font-bold text-primary">Horaires de travail</h2>
+          <p class="text-sm text-slate-600 mt-1">Hors de ces plages, aucun lead ne vous est attribué.</p>
+          @if (dto() && !dto()!.workingHoursConfigured) {
+            <p class="text-xs text-slate-500 mt-1">Proposition par défaut : rien n'est appliqué tant que vous n'avez pas enregistré.</p>
+          }
+
+          <ul class="mt-4 divide-y divide-slate-100 border-t border-slate-100">
+            @for (day of model().days; track day.day; let i = $index) {
+              <li class="flex flex-wrap items-center gap-3 py-3">
+                <tas-switch [checked]="day.enabled" [ariaLabel]="dayLabels[day.day] ?? day.day" (toggle)="toggleDay(i, $event)"></tas-switch>
+                <span class="w-24 text-sm font-medium text-slate-800">{{ dayLabels[day.day] ?? day.day }}</span>
+                @if (day.enabled) {
+                  <input tasInput type="time" class="w-28" [formField]="formSchema.days[i].start" [attr.aria-label]="dayLabels[day.day] + ', début'" />
+                  <span class="text-sm text-slate-500">à</span>
+                  <input tasInput type="time" class="w-28" [formField]="formSchema.days[i].end" [attr.aria-label]="dayLabels[day.day] + ', fin'" />
+                  @if (formSchema.days[i].end().invalid()) {
+                    <span class="text-xs text-functional-error">{{ formSchema.days[i].end().errors()[0].message }}</span>
+                  }
+                } @else {
+                  <span class="text-sm text-slate-500">Non travaillé</span>
+                }
+              </li>
+            }
+          </ul>
+        </section>
+
+        <!-- Capacité -->
+        <section class="rounded-2xl bg-white shadow-sm border border-slate-100 p-6">
+          <h2 class="text-xl font-bold text-primary">Capacité</h2>
+          <p class="text-sm text-slate-600 mt-1">Nombre de leads actifs que vous pouvez suivre en même temps.</p>
+
+          <div class="flex flex-wrap items-center gap-6 mt-5">
+            <div class="flex items-center gap-4">
+              <button type="button" class="w-11 h-11 rounded-full border border-slate-300 flex items-center justify-center text-slate-700 hover:border-primary disabled:opacity-40"
+                [disabled]="model().maxActiveLeads <= 1" aria-label="Diminuer la capacité" (click)="stepCapacity(-1)">
+                <tas-icon iconName="feather:minus" style="font-size:16px"></tas-icon>
+              </button>
+              <span class="w-10 text-center text-2xl font-semibold text-slate-900 tabular-nums">{{ model().maxActiveLeads }}</span>
+              <button type="button" class="w-11 h-11 rounded-full border border-slate-300 flex items-center justify-center text-slate-700 hover:border-primary disabled:opacity-40"
+                [disabled]="model().maxActiveLeads >= ceiling()" aria-label="Augmenter la capacité" (click)="stepCapacity(1)">
+                <tas-icon iconName="feather:plus" style="font-size:16px"></tas-icon>
+              </button>
+            </div>
+            <div class="flex-1 min-w-[220px]">
+              <div class="flex justify-between text-xs text-slate-600">
+                <span>Charge actuelle : <span class="tabular-nums">{{ activeLeads() }}</span> leads</span>
+                <span>Plafond fixé par votre superviseur : <span class="tabular-nums">{{ ceiling() }}</span></span>
+              </div>
+              <div class="relative mt-2 h-2 rounded-full bg-slate-100 overflow-hidden"
+                role="progressbar" [attr.aria-valuenow]="activeLeads()" aria-valuemin="0" [attr.aria-valuemax]="ceiling()"
+                [attr.aria-label]="'Charge ' + activeLeads() + ' sur ' + ceiling()">
+                <div class="absolute inset-y-0 left-0 bg-primary/20" [style.width.%]="capacityPercent()"></div>
+                <div class="absolute inset-y-0 left-0 bg-primary rounded-full" [style.width.%]="loadPercent()"></div>
+              </div>
+              <p class="text-xs text-slate-600 mt-2 tabular-nums">
+                {{ freeSlots() }} place{{ freeSlots() > 1 ? 's' : '' }} libre{{ freeSlots() > 1 ? 's' : '' }} pour de nouveaux leads
+              </p>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <!-- ═══════ Colonne latérale ═══════ -->
+      <div class="flex flex-col gap-5">
+        <!-- Compétences -->
+        <section class="rounded-2xl bg-white shadow-sm border border-slate-100 p-6">
+          <div class="flex items-center justify-between gap-2">
+            <h2 class="text-xl font-bold text-primary">Compétences</h2>
+            <span class="flex items-center gap-1 text-xs text-slate-500">
+              <tas-icon iconName="feather:lock" style="font-size:11px"></tas-icon>
+              Géré par l'administrateur
+            </span>
+          </div>
+
+          <p class="text-sm font-semibold text-slate-800 mt-4">Produits</p>
+          <div class="flex flex-wrap gap-1.5 mt-2">
+            @for (product of dto()?.products ?? []; track product) {
+              <span class="px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 text-xs font-medium">{{ product }}</span>
+            } @empty {
+              <span class="text-sm text-slate-500">Aucun produit attribué</span>
+            }
+          </div>
+
+          <p class="text-sm font-semibold text-slate-800 mt-4">Agence de rattachement</p>
+          <p class="text-sm text-slate-600 mt-1">{{ dto()?.agencyName ?? '—' }}</p>
+
+          <p class="text-xs text-slate-500 mt-4">
+            Pour modifier vos produits ou votre agence, adressez-vous à
+            {{ dto()?.managerName ?? 'votre administrateur' }}.
+          </p>
+
+          <div class="mt-5 pt-5 border-t border-slate-200">
+            <p class="text-sm font-semibold text-slate-800">Langues parlées</p>
+            <p class="text-xs text-slate-500 mt-1">Utilisées pour vous attribuer les leads qui ont indiqué une langue.</p>
+            <div class="flex flex-wrap gap-2 mt-3">
+              @for (lang of languageOptions(); track lang.code) {
+                @let selected = model().languages.includes(lang.code);
+                <button type="button"
+                  class="px-3.5 py-1.5 rounded-full text-sm font-medium border transition-colors"
+                  [class]="selected ? 'bg-primary border-primary text-white' : 'bg-white border-slate-300 text-slate-700 hover:border-primary'"
+                  [attr.aria-pressed]="selected"
+                  (click)="toggleLanguage(lang.code)">
+                  {{ lang.label }}
+                </button>
+              }
+            </div>
+          </div>
+        </section>
+
+        <!-- Notifications -->
+        <section class="rounded-2xl bg-white shadow-sm border border-slate-100 p-6">
+          <h2 class="text-xl font-bold text-primary">Notifications</h2>
+          <table class="w-full mt-4">
+            <thead>
+              <tr class="text-left text-xs font-medium uppercase tracking-wide text-slate-500 border-b border-slate-200">
+                <th class="py-2 font-medium">Évènement</th>
+                <th class="py-2 w-16 text-center font-medium">Email</th>
+                <th class="py-2 w-16 text-center font-medium">SMS</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+              @for (pref of model().preferences; track pref.event; let i = $index) {
+                <tr>
+                  <td class="py-3 text-sm text-slate-800">{{ eventLabels[pref.event] ?? pref.event }}</td>
+                  <td class="py-3 text-center">
+                    <input type="checkbox" class="form-checkbox accent-primary w-4 h-4"
+                      [formField]="formSchema.preferences[i].email" [attr.aria-label]="(eventLabels[pref.event] ?? pref.event) + ' par email'" />
+                  </td>
+                  <td class="py-3 text-center">
+                    <input type="checkbox" class="form-checkbox accent-primary w-4 h-4"
+                      [formField]="formSchema.preferences[i].sms" [attr.aria-label]="(eventLabels[pref.event] ?? pref.event) + ' par SMS'" />
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </section>
+
+        <!-- Délégations -->
+        <section class="rounded-2xl bg-white shadow-sm border border-slate-100 p-6">
+          <h2 class="text-xl font-bold text-primary">Délégations en cours</h2>
+          <div class="flex flex-col gap-2 mt-4">
+            @for (delegation of delegations(); track delegation.id) {
+              <div class="p-4 rounded-lg bg-slate-50 border border-slate-200">
+                <p class="text-sm font-semibold text-slate-900">
+                  {{ delegation.permissionLabel }}@if (delegation.scopeLabel) { — {{ delegation.scopeLabel }}}
+                </p>
+                <p class="text-xs text-slate-600 mt-0.5">
+                  @if (delegation.assignedByName) { Attribuée par {{ delegation.assignedByName }} · }
+                  du {{ delegation.startDate | date: 'd MMM' }} au {{ delegation.endDate | date: 'd MMM yyyy' }}
+                </p>
+              </div>
+            } @empty {
+              <p class="text-sm text-slate-500">Aucune délégation en cours.</p>
+            }
+          </div>
+          <p class="text-xs text-slate-500 mt-3">Les délégations sont accordées par votre superviseur ou l'administrateur.</p>
+        </section>
+      </div>
+    </div>
+
+    <!-- Barre d'enregistrement -->
+    <div class="flex flex-wrap items-center justify-between gap-3 px-6 py-4 rounded-2xl bg-white shadow-sm border border-slate-100">
+      <p class="text-xs text-slate-500">
+        @if (dto()?.updatedAt) {
+          Dernière modification le {{ dto()!.updatedAt | date: 'd MMM yyyy' }}
+        } @else {
+          Jamais enregistré
+        }
+      </p>
+      <div class="flex items-center gap-3">
+        <button tas-outlined-button type="button" [disabled]="formSchema().submitting()" (click)="cancel()">Annuler</button>
+        <button tas-raised-button color="primary" type="button"
+          [disabled]="formSchema().invalid() || formSchema().submitting()"
+          [isLoading]="formSchema().submitting()"
+          (click)="handleSubmit()">
+          Enregistrer
+        </button>
+      </div>
+    </div>
+  </form>
+}

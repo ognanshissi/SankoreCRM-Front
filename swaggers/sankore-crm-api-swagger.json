@@ -19111,6 +19111,93 @@
         }
       }
     },
+    "/api/v1/users/me/agent-settings": {
+      "get": {
+        "tags": [
+          "Users"
+        ],
+        "summary": "Paramétrage agent de l'utilisateur connecté : disponibilité, horaires, capacité, notifications, délégations.",
+        "operationId": "GetMyAgentSettings",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentSettingsDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Users"
+        ],
+        "summary": "Enregistre le paramétrage agent de l'utilisateur connecté. Une absence nouvelle prévient le superviseur et peut transférer les tâches en cours au remplaçant.",
+        "operationId": "UpdateMyAgentSettings",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateMyAgentSettingsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "description": "Bad Request"
+          }
+        }
+      }
+    },
+    "/api/v1/users/{userId}/agent-settings/ceiling": {
+      "put": {
+        "tags": [
+          "Users"
+        ],
+        "summary": "Fixe le plafond de leads actifs d'un agent. Une capacité déclarée au-dessus est ramenée au plafond.",
+        "operationId": "SetAgentCapacityCeiling",
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetAgentCapacityCeilingRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "description": "Bad Request"
+          }
+        }
+      }
+    },
     "/api/v1/webhooks/email/{tenantId}": {
       "post": {
         "tags": [
@@ -21057,6 +21144,54 @@
   },
   "components": {
     "schemas": {
+      "AbsenceDto": {
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": "string",
+            "format": "date"
+          },
+          "to": {
+            "type": "string",
+            "format": "date"
+          },
+          "replacementUserId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "replacementName": {
+            "type": "string",
+            "nullable": true
+          },
+          "transferTasks": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "AbsenceRequest": {
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": "string",
+            "format": "date"
+          },
+          "to": {
+            "type": "string",
+            "format": "date"
+          },
+          "replacementUserId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "transferTasks": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
       "AccountActivationRequest": {
         "type": "object",
         "properties": {
@@ -21849,6 +21984,83 @@
           "convertedLeads": {
             "type": "integer",
             "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "AgentSettingsDto": {
+        "type": "object",
+        "properties": {
+          "availability": {
+            "type": "string",
+            "nullable": true
+          },
+          "absence": {
+            "$ref": "#/components/schemas/AbsenceDto"
+          },
+          "workingHoursConfigured": {
+            "type": "boolean"
+          },
+          "workingHours": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WorkingDayDto"
+            },
+            "nullable": true
+          },
+          "maxActiveLeads": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "capacityCeiling": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "activeLeadsCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "notificationPreferences": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NotificationPreferenceDto"
+            },
+            "nullable": true
+          },
+          "products": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "agencyName": {
+            "type": "string",
+            "nullable": true
+          },
+          "spokenLanguages": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "managerName": {
+            "type": "string",
+            "nullable": true
+          },
+          "delegations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DelegationDto"
+            },
+            "nullable": true
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -27175,6 +27387,44 @@
         },
         "additionalProperties": false
       },
+      "DelegationDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "permissionCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "permissionLabel": {
+            "type": "string",
+            "nullable": true
+          },
+          "scopeType": {
+            "type": "string",
+            "nullable": true
+          },
+          "scopeLabel": {
+            "type": "string",
+            "nullable": true
+          },
+          "assignedByName": {
+            "type": "string",
+            "nullable": true
+          },
+          "startDate": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "endDate": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false
+      },
       "DesignateRequest": {
         "type": "object",
         "properties": {
@@ -32245,6 +32495,22 @@
         },
         "additionalProperties": false
       },
+      "NotificationPreferenceDto": {
+        "type": "object",
+        "properties": {
+          "event": {
+            "type": "string",
+            "nullable": true
+          },
+          "email": {
+            "type": "boolean"
+          },
+          "sms": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
       "NotificationSettingsDto": {
         "type": "object",
         "properties": {
@@ -36976,6 +37242,16 @@
         },
         "additionalProperties": false
       },
+      "SetAgentCapacityCeilingRequest": {
+        "type": "object",
+        "properties": {
+          "capacityCeiling": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
       "SetBeneficiaryPolicyRequest": {
         "type": "object",
         "properties": {
@@ -39795,6 +40071,45 @@
         },
         "additionalProperties": false
       },
+      "UpdateMyAgentSettingsRequest": {
+        "type": "object",
+        "properties": {
+          "availability": {
+            "type": "string",
+            "nullable": true
+          },
+          "absence": {
+            "$ref": "#/components/schemas/AbsenceRequest"
+          },
+          "workingHours": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WorkingDayDto"
+            },
+            "nullable": true
+          },
+          "maxActiveLeads": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "notificationPreferences": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NotificationPreferenceDto"
+            },
+            "nullable": true
+          },
+          "spokenLanguages": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "UpdateNotificationSettingsCommand": {
         "type": "object",
         "properties": {
@@ -41042,6 +41357,36 @@
             "items": {
               "$ref": "#/components/schemas/WorkflowStepDto"
             },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "WorkingDayDto": {
+        "type": "object",
+        "properties": {
+          "day": {
+            "enum": [
+              "Sunday",
+              "Monday",
+              "Tuesday",
+              "Wednesday",
+              "Thursday",
+              "Friday",
+              "Saturday"
+            ],
+            "type": "string",
+            "description": "One of: Sunday, Monday, Tuesday, Wednesday, Thursday, Friday, Saturday"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "start": {
+            "type": "string",
+            "nullable": true
+          },
+          "end": {
+            "type": "string",
             "nullable": true
           }
         },

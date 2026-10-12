@@ -1,86 +1,126 @@
-import { Component, inject, OnInit } from '@angular/core';
-import { RouterLink } from '@angular/router';
-import { Navigation } from '../../components/navigation/navigation';
-import { TasIcon } from '@talisoft/ui/icon';
-import { Anchor } from '@talisoft/ui/button';
-import { BreadcrumbService, MenuItem, AuthenticationService } from '@sankore/crm/common';
+import { Component, computed, inject, Injectable, OnInit, signal } from '@angular/core';
+import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { catchError, forkJoin, of } from 'rxjs';
+import { RolesApiService, UserDto, UsersApiService } from '@sankore/crm-api';
+import { AuthenticationService, BreadcrumbService } from '@sankore/crm/common';
+
+export type AgentAvailabilityCode = 'Available' | 'Paused' | 'Absent';
+
+/**
+ * État partagé entre l'en-tête « Mon compte » et ses onglets. L'onglet Paramétrage agent y pousse
+ * le statut enregistré pour que la pastille de l'en-tête ne contredise pas ce qui vient d'être
+ * sauvegardé. Fourni par la coque, donc propre à cette page.
+ */
+@Injectable()
+export class AccountHeaderState {
+  public readonly availability = signal<AgentAvailabilityCode | null>(null);
+}
+
+const AVAILABILITY_PILL: Record<AgentAvailabilityCode, { label: string; classes: string; dot: string }> = {
+  Available: { label: 'Disponible', classes: 'bg-green-50 text-green-700', dot: 'bg-green-600' },
+  Paused: { label: 'En pause', classes: 'bg-amber-50 text-amber-800', dot: 'bg-amber-500' },
+  Absent: { label: 'Absent', classes: 'bg-slate-100 text-slate-600', dot: 'bg-slate-400' },
+};
 
 @Component({
-  imports: [Navigation, RouterLink, TasIcon, Anchor],
+  imports: [RouterLink, RouterLinkActive, RouterOutlet],
+  providers: [AccountHeaderState],
   template: `
-    <crm-navigation [menuItems]="menuItems">
-      <div tas-navigation-top>
-        <div class="flex items-center gap-3 mb-2">
-          <a [routerLink]="['/settings']" tas-button iconButton>
-            <tas-icon iconName="feather:chevron-left"></tas-icon>
-          </a>
-          <div class="flex-1 min-w-0">
-            <h1 class="text-lg font-semibold text-slate-900">Mon compte</h1>
-            <p class="text-xs text-slate-400 mt-0.5">Profil et sécurité.</p>
-          </div>
+    <div class="flex flex-col gap-5 pb-6">
+      <!-- En-tête : qui, rôle, agence, statut -->
+      <div class="flex flex-wrap items-center gap-4 p-6 rounded-2xl bg-white shadow-sm border border-slate-100">
+        <div class="w-14 h-14 rounded-full bg-slate-100 flex items-center justify-center text-lg font-bold text-primary shrink-0">
+          {{ initials() }}
         </div>
+        <div class="min-w-0 flex-1">
+          <p class="text-lg font-semibold text-slate-900 truncate">{{ userName() }}</p>
+          <p class="text-sm text-slate-500 truncate">{{ subtitle() }}</p>
+        </div>
+        @if (pill(); as p) {
+          <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold" [class]="p.classes">
+            <span class="w-1.5 h-1.5 rounded-full" [class]="p.dot"></span>
+            {{ p.label }}
+          </span>
+        }
       </div>
 
-      <div tas-navigation-info>
-        <div class="p-4 border-b border-gray-100">
-          <div class="flex items-center gap-3">
-            <div
-              class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-sm font-bold text-primary shrink-0"
-            >
-              {{ userInitials }}
-            </div>
-            <div class="min-w-0">
-              <p class="text-sm font-medium text-slate-800 truncate">
-                {{ userName }}
-              </p>
-              <p class="text-xs text-slate-400 truncate">{{ userEmail }}</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    </crm-navigation>
+      <!-- Onglets -->
+      <nav class="flex gap-1 border-b border-slate-200 overflow-x-auto" aria-label="Sections du compte">
+        @for (tab of tabs; track tab.route) {
+          <a
+            [routerLink]="tab.route"
+            routerLinkActive="!text-primary !border-primary font-semibold"
+            class="px-4 py-3 text-sm text-slate-600 border-b-2 border-transparent -mb-px whitespace-nowrap hover:text-slate-900"
+          >
+            {{ tab.label }}
+          </a>
+        }
+      </nav>
+
+      <router-outlet></router-outlet>
+    </div>
   `,
 })
 export class AccountNavigation implements OnInit {
   private readonly _breadcrumbService = inject(BreadcrumbService);
   private readonly _auth = inject(AuthenticationService);
+  private readonly _usersApi = inject(UsersApiService);
+  private readonly _rolesApi = inject(RolesApiService);
+  private readonly _state = inject(AccountHeaderState);
 
-  public readonly menuItems: MenuItem[] = [
-    {
-      label: 'Mon profil',
-      icon: 'feather:user',
-      route: 'profil',
-      active: true,
-    },
-    {
-      label: 'Sécurité',
-      icon: 'feather:lock',
-      route: 'securite',
-      active: true,
-    },
-    {
-      label: 'Paramétrage',
-      icon: 'feather:settings',
-      route: 'account-settings',
-      active: true,
-    },
+  public readonly tabs = [
+    { label: 'Informations', route: 'profil' },
+    { label: 'Sécurité', route: 'securite' },
+    { label: 'Paramétrage agent', route: 'agent' },
+    { label: 'Préférences', route: 'account-settings' },
   ];
 
-  public userName = '';
-  public userEmail = '';
-  public userInitials = '?';
+  public user = signal<UserDto | null>(null);
+  public roleLabel = signal('');
+
+  public readonly userName = computed(() => {
+    const connected = this._auth.connectedUser();
+    return this.user()?.fullName ?? connected?.fullName ?? connected?.email ?? 'Utilisateur';
+  });
+
+  public readonly initials = computed(() => {
+    const parts = this.userName().split(/\s+/);
+    return ((parts[0]?.[0] ?? '') + (parts[1]?.[0] ?? '')).toUpperCase() || '?';
+  });
+
+  public readonly subtitle = computed(() =>
+    [this.roleLabel(), this.user()?.agencyName, this.user()?.email ?? this._auth.connectedUser()?.email]
+      .filter((v) => !!v)
+      .join(' · '),
+  );
+
+  public readonly pill = computed(() => {
+    const status = this._state.availability();
+    return status ? AVAILABILITY_PILL[status] : null;
+  });
 
   ngOnInit(): void {
     this._breadcrumbService.set([
       { label: 'Paramétrage', link: ['/settings'] },
       { label: 'Mon compte' },
     ]);
-    const user = this._auth.connectedUser();
-    this.userName = user?.fullName ?? user?.email ?? 'Utilisateur';
-    this.userEmail = user?.email ?? '';
-    const parts = this.userName.split(/\s+/);
-    this.userInitials =
-      ((parts[0]?.[0] ?? '') + (parts[1]?.[0] ?? '')).toUpperCase() || '?';
+
+    const userId = this._auth.connectedUser()?.id;
+    if (!userId) return;
+
+    forkJoin({
+      user: this._usersApi.getUser(userId).pipe(catchError(() => of(null))),
+      roles: this._rolesApi.listRoles().pipe(catchError(() => of([]))),
+      settings: this._usersApi.getMyAgentSettings().pipe(catchError(() => of(null))),
+    }).subscribe(({ user, roles, settings }) => {
+      this.user.set(user);
+      const firstRole = user?.roles?.[0];
+      this.roleLabel.set(roles.find((r) => r.name === firstRole)?.label ?? firstRole ?? '');
+      // Ne pas écraser un statut que l'onglet aurait déjà publié entre-temps.
+      if (settings?.availability && !this._state.availability()) {
+        this._state.availability.set(settings.availability as AgentAvailabilityCode);
+      }
+    });
   }
 }
 

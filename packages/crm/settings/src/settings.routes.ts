@@ -25,6 +25,10 @@ const settingsRoutes: Routes = [
         path: 'securite',
         loadComponent: () => import('./containers/account/account-security'),
       },
+      {
+        path: 'agent',
+        loadComponent: () => import('./containers/account/account-agent-settings'),
+      },
       { path: 'account-settings', loadComponent: () => AccountSettings },
     ],
   },

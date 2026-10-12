@@ -67,6 +67,8 @@ configuration.ts
 encoder.ts
 git_push.sh
 index.ts
+model/absence-dto.interface.ts
+model/absence-request.interface.ts
 model/account-activation-request.interface.ts
 model/account-activation-result.interface.ts
 model/acknowledge-next-action-request.interface.ts
@@ -90,6 +92,7 @@ model/agency-dto.interface.ts
 model/agency-factor.interface.ts
 model/agency-tree-node-dto.interface.ts
 model/agent-performance-dto.interface.ts
+model/agent-settings-dto.interface.ts
 model/amplitude-settings-sync-interval-minutes.interface.ts
 model/amplitude-settings.interface.ts
 model/anonymize-client-request.interface.ts
@@ -240,6 +243,7 @@ model/declare-claim-request.interface.ts
 model/declare-claim-result.interface.ts
 model/decline-task-request.interface.ts
 model/delegate-request.interface.ts
+model/delegation-dto.interface.ts
 model/designate-request.interface.ts
 model/designate-result.interface.ts
 model/designation-dto.interface.ts
@@ -374,6 +378,7 @@ model/money.interface.ts
 model/move-agency-request.interface.ts
 model/my-step-dto.interface.ts
 model/next-action-dto.interface.ts
+model/notification-preference-dto.interface.ts
 model/notification-settings-dto.interface.ts
 model/nurture-lead-request.interface.ts
 model/nurturing-sequence-dto.interface.ts
@@ -510,6 +515,7 @@ model/segment-rules-dto.interface.ts
 model/send-snippet-request.interface.ts
 model/send-test-email-request.interface.ts
 model/server-webhook-settings.interface.ts
+model/set-agent-capacity-ceiling-request.interface.ts
 model/set-beneficiary-policy-request.interface.ts
 model/set-biometry-token-request.interface.ts
 model/set-connection-secret-request.interface.ts
@@ -593,6 +599,7 @@ model/update-lead-owner-request.interface.ts
 model/update-lead-request.interface.ts
 model/update-lead-setting-request.interface.ts
 model/update-lead-source-request.interface.ts
+model/update-my-agent-settings-request.interface.ts
 model/update-notification-settings-command.interface.ts
 model/update-nurturing-sequence-request.interface.ts
 model/update-pipeline-stage-config-request.interface.ts
@@ -632,6 +639,7 @@ model/workflow-instance-dto.interface.ts
 model/workflow-instance-step-dto.interface.ts
 model/workflow-step-dto.interface.ts
 model/workflow-template-dto.interface.ts
+model/working-day-dto.interface.ts
 model/workload-factor.interface.ts
 param.ts
 variables.ts
