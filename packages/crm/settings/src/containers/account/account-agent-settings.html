@@ -77,9 +77,15 @@
                 <tas-switch [checked]="day.enabled" [ariaLabel]="dayLabels[day.day] ?? day.day" (toggle)="toggleDay(i, $event)"></tas-switch>
                 <span class="w-24 text-sm font-medium text-slate-800">{{ dayLabels[day.day] ?? day.day }}</span>
                 @if (day.enabled) {
-                  <input tasInput type="time" class="w-28" [formField]="formSchema.days[i].start" [attr.aria-label]="dayLabels[day.day] + ', début'" />
-                  <span class="text-sm text-slate-500">à</span>
-                  <input tasInput type="time" class="w-28" [formField]="formSchema.days[i].end" [attr.aria-label]="dayLabels[day.day] + ', fin'" />
+                  <div class="flex space-x-2 items-center">
+                    <tas-form-field>
+                      <input tasInput type="time" class="w-28" [formField]="formSchema.days[i].start" [attr.aria-label]="dayLabels[day.day] + ', début'" />
+                    </tas-form-field>
+                    <span class="text-lg text-slate-500">à</span>
+                    <tas-form-field>
+                      <input tasInput type="time" class="w-28" [formField]="formSchema.days[i].end" [attr.aria-label]="dayLabels[day.day] + ', fin'" />
+                    </tas-form-field>
+                  </div>
                   @if (formSchema.days[i].end().invalid()) {
                     <span class="text-xs text-functional-error">{{ formSchema.days[i].end().errors()[0].message }}</span>
                   }

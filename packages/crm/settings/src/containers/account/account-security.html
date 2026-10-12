@@ -1,0 +1,177 @@
+<div class="grid grid-cols-1 xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] gap-5 items-start pb-6">
+  <!-- ═══════ Colonne principale ═══════ -->
+  <div class="flex flex-col gap-5 min-w-0">
+    <!-- Mot de passe -->
+    <section class="flex flex-wrap items-center justify-between gap-4 rounded-2xl bg-white shadow-sm border border-slate-100 p-6">
+      <div>
+        <h2 class="text-xl font-bold text-primary">Mot de passe</h2>
+        <p class="text-sm text-slate-600 mt-1">
+          @if (overview()?.passwordChangedAt; as changedAt) {
+            Modifié le {{ changedAt | date: 'd MMMM yyyy' }}
+          } @else {
+            Date de modification inconnue
+          }
+          @if (passwordExpiresInDays(); as days) {
+            @if (days > 0) {
+              · expire dans {{ days }} jour{{ days > 1 ? 's' : '' }}
+            } @else {
+              · <span class="text-functional-error font-medium">expiré</span>
+            }
+          }
+        </p>
+      </div>
+      <button tas-outlined-button type="button" (click)="openChangePassword()">Modifier le mot de passe</button>
+    </section>
+
+    <!-- Sessions actives -->
+    <section class="rounded-2xl bg-white shadow-sm border border-slate-100 p-6">
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <h2 class="text-xl font-bold text-primary">Sessions actives</h2>
+        @if (hasOtherSessions()) {
+          <button type="button" class="text-sm font-semibold text-functional-error hover:underline disabled:opacity-50"
+            [disabled]="endingOthers()" (click)="endOtherSessions()">
+            Déconnecter les autres sessions
+          </button>
+        }
+      </div>
+
+      <div class="mt-3 [&_mat-paginator]:hidden">
+        <tas-table [data]="sessions()" identifierField="id" [config]="tableConfig" [isLoading]="sessionsLoading()">
+          <ng-template #body let-row>
+            <tr>
+              <td class="py-3 whitespace-normal">
+                <div class="flex items-center gap-3">
+                  <div class="w-10 h-10 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center shrink-0">
+                    <tas-icon [iconName]="row.icon" style="font-size:16px"></tas-icon>
+                  </div>
+                  <div class="flex-1 min-w-0">
+                    <p class="text-sm font-medium text-slate-900">{{ row.device }}</p>
+                    <p class="text-xs text-slate-500 truncate">
+                      {{ row.ipAddress || 'Adresse inconnue' }} ·
+                      @if (row.activeNow) {
+                        active maintenant
+                      } @else {
+                        {{ row.lastSeenAt | dateTimeAgo }}
+                      }
+                    </p>
+                  </div>
+                  @if (row.isCurrent) {
+                    <span class="px-2.5 py-1 rounded-full bg-green-50 text-green-700 text-xs font-semibold shrink-0">Cette session</span>
+                  } @else {
+                    <button tas-outlined-button type="button" class="shrink-0"
+                      [disabled]="endingSessionId() === row.id" [isLoading]="endingSessionId() === row.id"
+                      (click)="endSession(row)">
+                      Déconnecter
+                    </button>
+                  }
+                </div>
+              </td>
+            </tr>
+          </ng-template>
+        </tas-table>
+      </div>
+    </section>
+
+    <!-- Activité de connexion -->
+    <section class="rounded-2xl bg-white shadow-sm border border-slate-100 p-6">
+      <h2 class="text-xl font-bold text-primary">Activité de connexion</h2>
+
+      <div class="mt-3 overflow-x-auto [&_mat-paginator]:hidden">
+        <tas-table [data]="activity()" identifierField="key" [config]="tableConfig" [isLoading]="activityLoading()">
+          <ng-template #header>
+            <tr class="text-left text-xs uppercase tracking-wide text-slate-500 border-b border-slate-200">
+              <th class="py-2 pr-4 font-medium">Date</th>
+              <th class="py-2 pr-4 font-medium">Événement</th>
+              <th class="py-2 pr-4 font-medium">Appareil</th>
+              <th class="py-2 font-medium"><span class="sr-only">Actions</span></th>
+            </tr>
+          </ng-template>
+          <ng-template #body let-row>
+            <tr class="text-sm">
+              <td class="py-2.5 pr-4 tabular-nums whitespace-nowrap text-slate-800">{{ row.occuredAt | date: 'dd/MM/yyyy HH:mm' }}</td>
+              <td class="py-2.5 pr-4">
+                @if (row.failed) {
+                  <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-50 text-functional-error text-xs font-medium">
+                    <tas-icon iconName="feather:x" style="font-size:11px"></tas-icon>
+                    {{ row.outcomeLabel }}
+                  </span>
+                } @else {
+                  <span class="text-slate-800">{{ row.outcomeLabel }}</span>
+                }
+                @if (row.reportedAt) {
+                  <span class="ml-1 text-xs text-amber-700">· signalée</span>
+                }
+              </td>
+              <td class="py-2.5 pr-4 text-slate-700">
+                {{ row.device }}
+                @if (row.ipAddress) {
+                  <span class="text-xs text-slate-400 tabular-nums"> · {{ row.ipAddress }}</span>
+                }
+              </td>
+              <td class="py-2.5 text-right">
+                @if (!row.reportedAt) {
+                  <button type="button" class="text-xs text-slate-500 hover:text-functional-error hover:underline"
+                    [attr.aria-label]="'Signaler la connexion du ' + (row.occuredAt | date: 'dd/MM/yyyy HH:mm')"
+                    (click)="reportLogin(row.id)">
+                    Signaler
+                  </button>
+                }
+              </td>
+            </tr>
+          </ng-template>
+        </tas-table>
+      </div>
+
+      <div class="flex flex-wrap items-center justify-between gap-3 mt-4">
+        <button type="button" class="text-sm font-medium text-primary underline underline-offset-2" (click)="reportLogin()">
+          Une connexion ne vient pas de vous ? Signalez-la
+        </button>
+        @if (activityHasMore()) {
+          <button tas-text-button type="button" [disabled]="activityLoading()" (click)="showMoreActivity()">Afficher plus</button>
+        }
+      </div>
+    </section>
+  </div>
+
+  <!-- ═══════ Colonne latérale ═══════ -->
+  <div class="flex flex-col gap-5">
+    <!-- Validation en deux étapes : affichée pour ce qu'elle est, sans action tant qu'aucun
+         second facteur n'est vérifié à la connexion. -->
+    <section class="rounded-2xl bg-white shadow-sm border border-slate-100 p-6">
+      <div class="flex items-start justify-between gap-3">
+        <h2 class="text-xl font-bold text-primary">Validation en deux étapes</h2>
+        @if (overview()?.twoFactorConfigured) {
+          <span class="px-2.5 py-1 rounded-full bg-green-50 text-green-700 text-xs font-semibold shrink-0">Activée</span>
+        } @else {
+          <span class="px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 text-xs font-semibold shrink-0">Non configurée</span>
+        }
+      </div>
+
+      <div class="flex flex-col gap-3 mt-4">
+        <div class="p-4 rounded-lg border border-slate-200 bg-slate-50">
+          <p class="text-sm font-medium text-slate-900">Application d'authentification</p>
+          <p class="text-xs text-slate-500 mt-0.5">Non configurée</p>
+        </div>
+        <div class="p-4 rounded-lg border border-slate-200 bg-slate-50">
+          <p class="text-sm font-medium text-slate-900">Codes de secours</p>
+          <p class="text-xs text-slate-500 mt-0.5">Aucun code généré</p>
+        </div>
+      </div>
+      <p class="text-xs text-slate-500 mt-4">
+        La validation en deux étapes n'est pas encore disponible sur la plateforme. Elle se configurera ici dès sa mise en service.
+      </p>
+    </section>
+
+    <!-- Accès aux données -->
+    <section class="rounded-2xl bg-white shadow-sm border border-slate-100 p-6">
+      <h2 class="text-xl font-bold text-primary">Accès aux données</h2>
+      <p class="text-sm text-slate-700 mt-3 leading-relaxed">
+        Vous consultez des données clients protégées. Chaque ouverture de dossier KYC est enregistrée dans le journal d'audit.
+      </p>
+      <button type="button" class="mt-4 text-sm font-medium text-primary underline underline-offset-2" (click)="openKycAccess()">
+        Voir mes 30 derniers accès
+      </button>
+    </section>
+  </div>
+</div>
+

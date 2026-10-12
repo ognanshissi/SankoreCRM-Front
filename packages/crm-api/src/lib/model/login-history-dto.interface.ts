@@ -22,5 +22,7 @@ export interface LoginHistoryDto {
     browserVersion?: string | null;
     platform?: string | null;
     clientKind?: string | null;
+    outcome?: string | null;
+    reportedAt?: string | null;
 }
 

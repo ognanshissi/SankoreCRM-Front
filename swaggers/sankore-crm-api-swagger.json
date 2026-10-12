@@ -9338,6 +9338,41 @@
         }
       }
     },
+    "/api/v1/kyc-files/access-log/me": {
+      "get": {
+        "tags": [
+          "KYC"
+        ],
+        "summary": "Les dernières pièces KYC ouvertes par l'utilisateur connecté (30 par défaut, 100 au plus).",
+        "operationId": "GetMyKycAccessLog",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 30
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MyKycAccessDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/kyc-files/{kycFileId}/approval": {
       "get": {
         "tags": [
@@ -19299,6 +19334,140 @@
         }
       }
     },
+    "/api/v1/users/me/security": {
+      "get": {
+        "tags": [
+          "Users"
+        ],
+        "summary": "Mot de passe (dernier changement, expiration) et état de la validation en deux étapes de l'utilisateur connecté.",
+        "operationId": "GetMySecurityOverview",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SecurityOverviewDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/api/v1/users/me/sessions": {
+      "get": {
+        "tags": [
+          "Users"
+        ],
+        "summary": "Sessions ouvertes de l'utilisateur connecté, la session courante en tête.",
+        "operationId": "ListMySessions",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/UserSessionDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/users/me/sessions/{sessionId}": {
+      "delete": {
+        "tags": [
+          "Users"
+        ],
+        "summary": "Déconnecte à distance une autre session de l'utilisateur connecté.",
+        "operationId": "EndMySession",
+        "parameters": [
+          {
+            "name": "sessionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "description": "Bad Request"
+          }
+        }
+      }
+    },
+    "/api/v1/users/me/sessions/end-others": {
+      "post": {
+        "tags": [
+          "Users"
+        ],
+        "summary": "Déconnecte toutes les sessions de l'utilisateur connecté sauf celle-ci.",
+        "operationId": "EndMyOtherSessions",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EndSessionsResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request"
+          }
+        }
+      }
+    },
+    "/api/v1/users/me/login-history/report": {
+      "post": {
+        "tags": [
+          "Users"
+        ],
+        "summary": "Signale une connexion qui ne vient pas de l'utilisateur : ses autres sessions sont fermées et son superviseur est prévenu.",
+        "operationId": "ReportSuspiciousLogin",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReportSuspiciousLoginRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EndSessionsResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request"
+          }
+        }
+      }
+    },
     "/api/v1/webhooks/email/{tenantId}": {
       "post": {
         "tags": [
@@ -28400,6 +28569,16 @@
         },
         "additionalProperties": false
       },
+      "EndSessionsResult": {
+        "type": "object",
+        "properties": {
+          "endedSessions": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
       "EnrichLeadRequest": {
         "type": "object",
         "properties": {
@@ -32072,6 +32251,15 @@
           "clientKind": {
             "type": "string",
             "nullable": true
+          },
+          "outcome": {
+            "type": "string",
+            "nullable": true
+          },
+          "reportedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -32515,6 +32703,28 @@
           "newParentAgencyId": {
             "type": "string",
             "format": "uuid",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "MyKycAccessDto": {
+        "type": "object",
+        "properties": {
+          "accessedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "kycFileId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "customerName": {
+            "type": "string",
+            "nullable": true
+          },
+          "documentKind": {
+            "type": "string",
             "nullable": true
           }
         },
@@ -35975,6 +36185,21 @@
         },
         "additionalProperties": false
       },
+      "ReportSuspiciousLoginRequest": {
+        "type": "object",
+        "properties": {
+          "loginId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "comment": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "RequestClientExportRequest": {
         "type": "object",
         "properties": {
@@ -37149,6 +37374,24 @@
               "$ref": "#/components/schemas/QuestionInput"
             },
             "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "SecurityOverviewDto": {
+        "type": "object",
+        "properties": {
+          "passwordChangedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "passwordExpiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "twoFactorConfigured": {
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -41120,6 +41363,43 @@
           "assignedAt": {
             "type": "string",
             "format": "date-time"
+          }
+        },
+        "additionalProperties": false
+      },
+      "UserSessionDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "browser": {
+            "type": "string",
+            "nullable": true
+          },
+          "platform": {
+            "type": "string",
+            "nullable": true
+          },
+          "clientKind": {
+            "type": "string",
+            "nullable": true
+          },
+          "ipAddress": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "lastSeenAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "isCurrent": {
+            "type": "boolean"
           }
         },
         "additionalProperties": false

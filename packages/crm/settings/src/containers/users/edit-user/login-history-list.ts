@@ -18,6 +18,7 @@ import { TasTable, TableConfig } from '@talisoft/ui/table';
 import { SnackbarService } from '@talisoft/ui/snackbar';
 import { TimeagoPipe } from '@talisoft/ui/timeago';
 import { LoginHistoryDto, UsersApiService } from '@sankore/crm-api';
+import { describeLoginOutcome } from '../../account/security-labels';
 
 /** Valeur par défaut de `pageSize` au contrat. */
 const PAGE_SIZE = 20;
@@ -48,6 +49,9 @@ interface LoginHistoryRow {
   clientKind: string | null;
   ipAddress: string | null;
   icon: string;
+  /** Libellé de l'échec, null pour une connexion réussie. */
+  failure: string | null;
+  reported: boolean;
 }
 
 /**
@@ -65,8 +69,9 @@ interface LoginHistoryRow {
  * serveur a réellement renseigné : un « — » de remplissage ferait passer pour
  * manquante une information qui n'est simplement pas produite.
  *
- * Ce que le contrat **ne** donne toujours pas : un indicateur de succès ou
- * d'échec. L'écran ne préjuge donc pas de l'issue des connexions listées.
+ * `outcome` dit si la tentative a réussi ; les échecs (mot de passe incorrect,
+ * compte verrouillé ou inactif) sont journalisés depuis l'onglet Sécurité du
+ * compte et ressortent ici en rouge. Une ligne d'avant ce champ vaut « réussie ».
  *
  * Le rendu passe par `tas-table` bien qu'il ressemble à une pile de cartes :
  * c'est la règle du projet pour toute liste. Le `ng-template #body` produit une
@@ -162,6 +167,12 @@ interface LoginHistoryRow {
                       <p class="text-sm text-slate-800" [title]="row.absoluteDate">
                         {{ row.occuredAt | dateTimeAgo }}
                       </p>
+                      @if (row.failure) {
+                        <span class="text-[11px] font-medium text-functional-error bg-red-50 rounded-full px-2 py-0.5">{{ row.failure }}</span>
+                      }
+                      @if (row.reported) {
+                        <span class="text-[11px] font-medium text-amber-800 bg-amber-50 rounded-full px-2 py-0.5">Signalée par l'utilisateur</span>
+                      }
                       @if (row.clientKind) {
                         <span
                           class="text-[10px] font-medium uppercase tracking-wide text-slate-500 bg-slate-100 rounded px-1.5 py-0.5"
@@ -305,6 +316,8 @@ export class LoginHistoryList {
           clientKind: entry.clientKind?.trim() || null,
           ipAddress: entry.ipAddress?.trim() || null,
           icon: this._icon(entry),
+          failure: describeLoginOutcome(entry.outcome).failed ? describeLoginOutcome(entry.outcome).label : null,
+          reported: !!entry.reportedAt,
         };
       }),
   );

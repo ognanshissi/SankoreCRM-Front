@@ -272,6 +272,7 @@ model/duplicate-hit.interface.ts
 model/duplicate-match-result.interface.ts
 model/duplicate-reason-dto.interface.ts
 model/embedded-script-settings.interface.ts
+model/end-sessions-result.interface.ts
 model/enrich-lead-request.interface.ts
 model/escalate-complaint-request.interface.ts
 model/exchange-enrolment-token-request.interface.ts
@@ -376,6 +377,7 @@ model/missing-questionnaire.interface.ts
 model/models.ts
 model/money.interface.ts
 model/move-agency-request.interface.ts
+model/my-kyc-access-dto.interface.ts
 model/my-profile-dto.interface.ts
 model/my-step-dto.interface.ts
 model/next-action-dto.interface.ts
@@ -471,6 +473,7 @@ model/reminder-dto.interface.ts
 model/remove-group-member-result.interface.ts
 model/remove-household-member-result.interface.ts
 model/replay-integration-command-result.interface.ts
+model/report-suspicious-login-request.interface.ts
 model/request-client-export-request.interface.ts
 model/request-client-export-result.interface.ts
 model/request-client-merge-request.interface.ts
@@ -508,6 +511,7 @@ model/script-config.interface.ts
 model/secret-hint-dto.interface.ts
 model/secret-hint.interface.ts
 model/section-input.interface.ts
+model/security-overview-dto.interface.ts
 model/segment-bucket-dto.interface.ts
 model/segment-distribution-dto.interface.ts
 model/segment-rule-definition.interface.ts
@@ -628,6 +632,7 @@ model/user-google-sheet-import-request.interface.ts
 model/user-import-status-dto.interface.ts
 model/user-permissions-dto.interface.ts
 model/user-role-dto.interface.ts
+model/user-session-dto.interface.ts
 model/user-status-stats-dto.interface.ts
 model/validate-client-import-response.interface.ts
 model/validate-import-response.interface.ts
