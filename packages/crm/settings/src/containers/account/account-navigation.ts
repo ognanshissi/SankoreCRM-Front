@@ -76,6 +76,7 @@ export class AccountNavigation implements OnInit {
     { label: 'Informations', route: 'profil' },
     { label: 'Sécurité', route: 'securite' },
     { label: 'Paramétrage agent', route: 'agent' },
+    { label: 'Performance', route: 'performance' },
   ];
 
   public readonly userName = computed(() => {

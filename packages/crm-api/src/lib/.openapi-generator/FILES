@@ -378,6 +378,7 @@ model/models.ts
 model/money.interface.ts
 model/move-agency-request.interface.ts
 model/my-kyc-access-dto.interface.ts
+model/my-performance-dto.interface.ts
 model/my-profile-dto.interface.ts
 model/my-step-dto.interface.ts
 model/next-action-dto.interface.ts
@@ -412,6 +413,7 @@ model/paged-result-of-run-dto.interface.ts
 model/paged-result-of-stalled-holding-dto.interface.ts
 model/perfect-vision-settings.interface.ts
 model/performance-factor.interface.ts
+model/performance-figures-dto.interface.ts
 model/permission-dto.interface.ts
 model/permission-group-dto.interface.ts
 model/pipeline-card.interface.ts
@@ -425,6 +427,7 @@ model/preview-mapping-result.interface.ts
 model/problem-details.interface.ts
 model/product-dto.interface.ts
 model/product-factor.interface.ts
+model/product-performance-dto.interface.ts
 model/product-routing-dto.interface.ts
 model/product-routing-line-dto.interface.ts
 model/publish-sdk-version-result.interface.ts
@@ -554,6 +557,7 @@ model/status-count.interface.ts
 model/step-bottleneck-dto.interface.ts
 model/step-changed-dto.interface.ts
 model/step-input.interface.ts
+model/step-sla-dto.interface.ts
 model/step-snapshot-dto.interface.ts
 model/step-stats-dto.interface.ts
 model/steps-diff-dto.interface.ts
@@ -640,6 +644,7 @@ model/validate-lead-import-response.interface.ts
 model/verify-token-response.interface.ts
 model/web-form-field-dto.interface.ts
 model/web-form-response.interface.ts
+model/weekly-conversions-dto.interface.ts
 model/withdraw-consent-request.interface.ts
 model/workflow-audit-entry-dto.interface.ts
 model/workflow-instance-dto.interface.ts

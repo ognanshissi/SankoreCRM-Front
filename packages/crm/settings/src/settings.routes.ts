@@ -28,6 +28,10 @@ const settingsRoutes: Routes = [
         path: 'agent',
         loadComponent: () => import('./containers/account/account-agent-settings'),
       },
+      {
+        path: 'performance',
+        loadComponent: () => import('./containers/account/account-performance'),
+      },
       // Ancien onglet « Préférences » : la langue et les formats sont passés dans Informations.
       { path: 'account-settings', redirectTo: 'profil' },
     ],

@@ -13674,6 +13674,40 @@
         }
       }
     },
+    "/api/v1/leads/me/performance": {
+      "get": {
+        "tags": [
+          "Leads — Analytics"
+        ],
+        "summary": "Performance de l'agent connecté (leads, conversion, premier contact, échéances, SLA par étape, produits), comparée à son agence.",
+        "operationId": "GetMyPerformance",
+        "parameters": [
+          {
+            "name": "period",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "default": "30d"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyPerformanceDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request"
+          }
+        }
+      }
+    },
     "/api/v1/leads/funnel": {
       "get": {
         "tags": [
@@ -32730,6 +32764,63 @@
         },
         "additionalProperties": false
       },
+      "MyPerformanceDto": {
+        "type": "object",
+        "properties": {
+          "period": {
+            "type": "string",
+            "nullable": true
+          },
+          "from": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "to": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "agencyName": {
+            "type": "string",
+            "nullable": true
+          },
+          "agent": {
+            "$ref": "#/components/schemas/PerformanceFiguresDto"
+          },
+          "agency": {
+            "$ref": "#/components/schemas/PerformanceFiguresDto"
+          },
+          "weekly": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WeeklyConversionsDto"
+            },
+            "nullable": true
+          },
+          "conversionsInPeriod": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "stepSla": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StepSlaDto"
+            },
+            "nullable": true
+          },
+          "slaTargetPercent": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "products": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProductPerformanceDto"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "MyProfileDto": {
         "type": "object",
         "properties": {
@@ -34238,6 +34329,31 @@
         },
         "additionalProperties": false
       },
+      "PerformanceFiguresDto": {
+        "type": "object",
+        "properties": {
+          "leadsHandled": {
+            "type": "number",
+            "format": "double"
+          },
+          "conversionRate": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "avgFirstContactMinutes": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "deadlinesRespectedRate": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "PermissionDto": {
         "type": "object",
         "properties": {
@@ -34641,6 +34757,34 @@
           "contribution": {
             "type": "number",
             "format": "double"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ProductPerformanceDto": {
+        "type": "object",
+        "properties": {
+          "product": {
+            "type": "string",
+            "nullable": true
+          },
+          "received": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "converted": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "rate": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "avgDaysToConvert": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -38629,6 +38773,29 @@
         },
         "additionalProperties": false
       },
+      "StepSlaDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "total": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "onTime": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "rate": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "StepSnapshotDto": {
         "type": "object",
         "properties": {
@@ -41619,6 +41786,32 @@
           "fontFamily": {
             "type": "string",
             "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "WeeklyConversionsDto": {
+        "type": "object",
+        "properties": {
+          "year": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "week": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "label": {
+            "type": "string",
+            "nullable": true
+          },
+          "startsOn": {
+            "type": "string",
+            "format": "date"
+          },
+          "conversions": {
+            "type": "integer",
+            "format": "int32"
           }
         },
         "additionalProperties": false

@@ -1,0 +1,141 @@
+<div class="flex flex-col gap-5 pb-6">
+  <!-- Période -->
+  <div class="flex flex-wrap items-center justify-between gap-3">
+    <p class="text-sm text-slate-600">
+      @if (agencyLabel(); as agencyLabel) {
+        Comparé à la moyenne de {{ agencyLabel }} sur la même période.
+      } @else if (data() && !data()!.agency) {
+        Vous n'êtes rattaché à aucune agence : pas de comparaison possible.
+      } @else {
+        Comparé à la moyenne de votre agence sur la même période.
+      }
+    </p>
+    <div class="inline-flex p-1 rounded-full bg-white border border-slate-200" role="radiogroup" aria-label="Période">
+      @for (p of periods; track p.value) {
+        <button type="button" role="radio" [attr.aria-checked]="period() === p.value"
+          class="px-4 py-1.5 rounded-full text-sm font-medium transition-colors"
+          [class.bg-primary]="period() === p.value" [class.text-white]="period() === p.value"
+          [class.text-slate-700]="period() !== p.value"
+          (click)="setPeriod(p.value)">
+          {{ p.label }}
+        </button>
+      }
+    </div>
+  </div>
+
+  @if (isLoading() && !data()) {
+    <div class="flex justify-center py-24"><tas-spinner size="10" class="text-primary"></tas-spinner></div>
+  } @else if (loadFailed() && !data()) {
+    <div class="flex flex-col items-center py-24 text-center">
+      <p class="text-sm text-slate-600">Vos indicateurs n'ont pas pu être chargés.</p>
+    </div>
+  } @else if (data(); as d) {
+    <div class="flex flex-col gap-5 transition-opacity" [class.opacity-60]="isLoading()">
+      <!-- Indicateurs -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
+        @for (kpi of kpis(); track kpi.label) {
+          <section class="rounded-2xl bg-white shadow-sm border border-slate-100 p-5">
+            <p class="text-sm text-slate-600">{{ kpi.label }}</p>
+            <p class="text-3xl font-bold text-slate-900 mt-1 tabular-nums">{{ kpi.value }}</p>
+            @if (kpi.delta; as delta) {
+              <p class="text-xs mt-1 inline-flex items-center gap-1 tabular-nums"
+                [class.text-green-700]="delta.better" [class.text-functional-error]="!delta.better">
+                <tas-icon [iconName]="delta.up ? 'feather:chevron-up' : 'feather:chevron-down'" style="font-size:12px"></tas-icon>
+                {{ delta.text }}
+              </p>
+            } @else {
+              <p class="text-xs mt-1 text-slate-400">Pas de comparaison</p>
+            }
+          </section>
+        }
+      </div>
+
+      <div class="grid grid-cols-1 xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] gap-5 items-start">
+        <!-- Conversions par semaine -->
+        <section class="rounded-2xl bg-white shadow-sm border border-slate-100 p-6">
+          <h2 class="text-xl font-bold text-primary">Conversions par semaine</h2>
+          <p class="text-xs text-slate-500 mt-0.5">
+            Leads devenus clients · {{ d.conversionsInPeriod ?? 0 }} conversion{{ (d.conversionsInPeriod ?? 0) > 1 ? 's' : '' }} sur la période
+          </p>
+
+          <div class="mt-6 overflow-x-auto">
+            <div class="min-w-[18rem]">
+              <div class="flex items-end justify-around gap-2 h-48 border-b border-slate-200" role="img"
+                [attr.aria-label]="'Conversions par semaine : ' + d.conversionsInPeriod + ' sur la période'">
+                @for (week of weeks(); track week.label) {
+                  <div class="flex-1 flex flex-col items-center justify-end h-full max-w-16">
+                    @if (week.conversions) {
+                      <span class="text-xs font-semibold text-slate-800 mb-1 tabular-nums">{{ week.conversions }}</span>
+                    }
+                    <div class="w-10 max-w-full rounded-t bg-primary" [style.height.%]="week.height"
+                      [class.min-h-0.5]="!week.conversions" [class.bg-slate-200]="!week.conversions"></div>
+                  </div>
+                }
+              </div>
+              <div class="flex justify-around gap-2 mt-2">
+                @for (week of weeks(); track week.label) {
+                  <span class="flex-1 max-w-16 text-center text-xs text-slate-500">{{ week.label }}</span>
+                }
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Respect des SLA par étape -->
+        <section class="rounded-2xl bg-white shadow-sm border border-slate-100 p-6">
+          <h2 class="text-xl font-bold text-primary">Respect des SLA par étape</h2>
+          <div class="flex flex-col gap-4 mt-4">
+            @for (step of d.stepSla ?? []; track step.name) {
+              <div>
+                <div class="flex items-center justify-between gap-3 text-sm">
+                  <span class="text-slate-800">{{ step.name }}</span>
+                  @if (step.rate != null) {
+                    <span class="font-semibold tabular-nums"
+                      [class.text-slate-900]="step.rate >= (d.slaTargetPercent ?? 0)"
+                      [class.text-functional-error]="step.rate < (d.slaTargetPercent ?? 0)">{{ step.rate | number: '1.0-0' }}%</span>
+                  } @else {
+                    <span class="text-xs text-slate-400">Aucune étape close</span>
+                  }
+                </div>
+                <div class="relative h-2 rounded-full bg-slate-100 mt-1.5 overflow-hidden"
+                  [attr.title]="step.onTime + ' sur ' + step.total + ' dans les délais'">
+                  <div class="h-full rounded-full" [style.width.%]="step.rate ?? 0"
+                    [class.bg-primary]="(step.rate ?? 0) >= (d.slaTargetPercent ?? 0)"
+                    [class.bg-functional-error]="(step.rate ?? 0) < (d.slaTargetPercent ?? 0)"></div>
+                </div>
+              </div>
+            }
+          </div>
+          <p class="text-xs text-slate-500 mt-4">Objectif de l'institution : {{ d.slaTargetPercent }} % des étapes dans les délais.</p>
+        </section>
+      </div>
+
+      <!-- Par produit -->
+      <section class="rounded-2xl bg-white shadow-sm border border-slate-100 p-6">
+        <h2 class="text-xl font-bold text-primary">Par produit</h2>
+        <div class="mt-3 overflow-x-auto [&_mat-paginator]:hidden">
+          <tas-table [data]="products()" identifierField="key" [config]="tableConfig" [isLoading]="isLoading()">
+            <ng-template #header>
+              <tr class="text-xs uppercase tracking-wide text-slate-500 border-b border-slate-200">
+                <th class="py-2 pr-4 text-left font-medium">Produit</th>
+                <th class="py-2 px-4 text-right font-medium">Leads reçus</th>
+                <th class="py-2 px-4 text-right font-medium">Convertis</th>
+                <th class="py-2 px-4 text-right font-medium">Taux</th>
+                <th class="py-2 pl-4 text-right font-medium">Délai moyen</th>
+              </tr>
+            </ng-template>
+            <ng-template #body let-row>
+              <tr class="text-sm">
+                <td class="py-3 pr-4 font-medium text-slate-900">{{ row.product }}</td>
+                <td class="py-3 px-4 text-right tabular-nums text-slate-700">{{ row.received }}</td>
+                <td class="py-3 px-4 text-right tabular-nums text-slate-700">{{ row.converted }}</td>
+                <td class="py-3 px-4 text-right tabular-nums font-semibold text-slate-900">{{ row.rate != null ? (row.rate | number: '1.0-0') + ' %' : '—' }}</td>
+                <td class="py-3 pl-4 text-right tabular-nums text-slate-700">{{ row.avgDaysToConvert != null ? (row.avgDaysToConvert | number: '1.0-0') + ' j' : '—' }}</td>
+              </tr>
+            </ng-template>
+          </tas-table>
+        </div>
+      </section>
+    </div>
+  }
+</div>
