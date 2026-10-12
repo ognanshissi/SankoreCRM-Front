@@ -153,9 +153,11 @@ model/client-household-dto.interface.ts
 model/client-import-job-created-result.interface.ts
 model/client-import-row-failure.interface.ts
 model/client-import-status-dto.interface.ts
+model/client-kyc-journey-dto.interface.ts
 model/client-lifecycle-state-dto.interface.ts
 model/client-loyalty-score-dto.interface.ts
 model/client-merge-request-dto.interface.ts
+model/client-quick-counts-dto.interface.ts
 model/client-row-validation-result.interface.ts
 model/client-search-item-dto.interface.ts
 model/client-status-history-dto.interface.ts

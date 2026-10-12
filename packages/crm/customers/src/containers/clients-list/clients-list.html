@@ -1,292 +1,383 @@
-<div class="pb-6">
+<div class="pb-6 flex flex-col gap-4">
   <!-- En-tête -->
-  <div class="flex items-start justify-between mb-6 gap-3">
-    <div>
-      <h1 class="text-lg font-semibold text-slate-800">Clients</h1>
-      <p class="text-sm text-slate-500 mt-0.5">
-        Retrouvez un client par son nom, son téléphone, son numéro ou sa pièce d'identité.
-      </p>
-    </div>
-    <div class="flex items-center gap-2 shrink-0">
-      @if (canRead()) {
-        <button tas-outlined-button type="button" (click)="goToGroups()">
-          <tas-icon iconName="feather:users" style="font-size:14px"></tas-icon>
-          Groupes
-        </button>
-      }
-      @if (canMerge()) {
-        <button tas-outlined-button type="button" (click)="goToDuplicates()">
-          <tas-icon iconName="feather:copy" style="font-size:14px"></tas-icon>
-          Doublons
-        </button>
-      }
-      @if (canCreate()) {
-        <button tas-outlined-button type="button" (click)="goToImport()">
-          <tas-icon iconName="feather:upload" style="font-size:14px"></tas-icon>
-          Importer
-        </button>
-        <button tas-raised-button color="primary" type="button" (click)="goToNewClient()">
-          <tas-icon iconName="feather:plus" style="font-size:14px"></tas-icon>
-          Nouveau client
-        </button>
-      }
-    </div>
+  <div>
+    <h1 class="text-xl font-semibold text-slate-900">
+      Clients <span class="text-slate-500 font-normal">· {{ counts()?.all ?? totalCount() }}</span>
+    </h1>
+    <p class="text-sm text-slate-600 mt-0.5">Retrouvez un client par son nom, son téléphone, son numéro ou sa pièce d'identité.</p>
   </div>
 
-  <!-- Recherche et filtres -->
-  <tas-card class="mb-4 block">
-    <div class="p-4 flex flex-col gap-3">
-      <div class="grid grid-cols-4 gap-3 items-start">
-        <div class="col-span-2">
-          <tas-form-field>
-            <tas-label>Rechercher un client</tas-label>
-            <input
-              tasInput
-              type="text"
-              placeholder="Nom, téléphone, numéro client ou pièce d'identité..."
-              [ngModel]="filterQuery()"
-              (ngModelChange)="onSearchChange($event)"
-            />
-          </tas-form-field>
+  <div class="flex flex-wrap items-center gap-2">
+    @if (canMerge()) {
+      <button tas-outlined-button type="button" class="!rounded-full" (click)="goToDuplicates()">
+        <tas-icon iconName="feather:copy" style="font-size:14px"></tas-icon>
+        Doublons
+        @if (counts()?.duplicatesToReview) {
+          <span class="ml-1 px-2 py-0.5 rounded-full bg-red-50 text-functional-error text-xs font-semibold tabular-nums">{{ counts()!.duplicatesToReview }}</span>
+        }
+      </button>
+    }
+    @if (canRead()) {
+      <button tas-outlined-button type="button" class="!rounded-full" (click)="goToGroups()">
+        <tas-icon iconName="feather:users" style="font-size:14px"></tas-icon>
+        Groupes
+      </button>
+    }
+    @if (canCreate()) {
+      <button tas-outlined-button type="button" class="!rounded-full" (click)="goToImport()">
+        <tas-icon iconName="feather:upload" style="font-size:14px"></tas-icon>
+        Importer
+      </button>
+      <button tas-raised-button color="primary" type="button" class="!rounded-full" (click)="goToNewClient()">
+        <tas-icon iconName="feather:plus" style="font-size:14px"></tas-icon>
+        Nouveau client
+      </button>
+    }
+  </div>
 
-          <!-- Critère détecté, et puces pour le forcer (AC1) -->
-          <div class="mt-2 flex flex-wrap items-center gap-1.5">
-            <span class="text-xs font-medium text-slate-600">{{ criterionHint() }}</span>
-            @if (forcedCriterion() !== 'auto') {
-              <span class="text-xs text-slate-400">critère forcé</span>
-            }
-            <span class="text-slate-200">|</span>
-            @for (chip of criterionChips; track chip.value) {
-              <button
-                type="button"
-                class="rounded-full border px-2.5 py-1 text-xs transition-colors"
-                [class.border-primary]="forcedCriterion() === chip.value"
-                [class.text-primary]="forcedCriterion() === chip.value"
-                [class.border-slate-200]="forcedCriterion() !== chip.value"
-                [class.text-slate-500]="forcedCriterion() !== chip.value"
-                (click)="onCriterionChange(chip.value)"
-              >
-                {{ chip.label }}
-              </button>
-            }
+  <!-- Raccourcis -->
+  <div class="flex flex-wrap gap-2" role="radiogroup" aria-label="Vue">
+    @for (q of quickFilters; track q.value) {
+      <button type="button" role="radio" [attr.aria-checked]="quick() === q.value"
+        class="inline-flex items-center gap-2 px-4 py-2 rounded-full border text-sm font-medium transition-colors"
+        [class.bg-primary]="quick() === q.value" [class.text-white]="quick() === q.value" [class.border-primary]="quick() === q.value"
+        [class.bg-white]="quick() !== q.value" [class.text-slate-800]="quick() !== q.value" [class.border-slate-200]="quick() !== q.value"
+        (click)="onQuickChange(q.value)">
+        {{ q.label }}
+        @if (counts(); as c) {
+          <span class="px-2 py-0.5 rounded-full text-xs tabular-nums"
+            [class]="quick() === q.value ? 'bg-white/20' : 'bg-slate-100'">{{ c[q.count] }}</span>
+        }
+      </button>
+    }
+  </div>
+
+  <div class="grid grid-cols-1 xl:grid-cols-1 gap-5 items-start"
+    [ngClass]="{ 'xl:grid-cols-[minmax(0,1fr)_22rem]': selected() }">
+    <!-- ═══════ Liste ═══════ -->
+    <section class="rounded-2xl bg-white shadow-sm border border-slate-100 min-w-0">
+      <!-- Recherche et filtres -->
+      <div class="p-4 flex flex-col gap-3 border-b border-slate-100">
+        <div class="flex flex-wrap items-center gap-2">
+          <div class="flex items-stretch flex-1 min-w-[18rem] rounded-lg border border-slate-200 bg-white">
+            <div class="w-40 shrink-0 border-r border-slate-200">
+              <tas-form-field>
+                <tas-select [options]="criterionOptions" optionLabel="label" optionValue="value"
+                [ngModel]="forcedCriterion()" (ngModelChange)="onCriterionChange($event)"
+                aria-label="Champ recherché"></tas-select>
+              </tas-form-field>
+            </div>
+            <label class="flex items-center gap-2 px-3 flex-1 min-w-0">
+              <tas-icon iconName="feather:search" class="text-slate-400 shrink-0" style="font-size:14px"></tas-icon>
+              <input type="text" class="flex-1 min-w-0 py-2.5 text-sm outline-none bg-transparent"
+                placeholder="Nom, téléphone, n° client, pièce d'identité…" aria-label="Rechercher un client"
+                [ngModel]="filterQuery()" (ngModelChange)="onSearchChange($event)" />
+            </label>
           </div>
-          @if (criterionNote()) {
-            <p class="mt-1 text-xs text-slate-400">{{ criterionNote() }}</p>
-          }
-        </div>
-
-        <tas-form-field>
-          <tas-label>Statut</tas-label>
-          <tas-select
-            clearable
-            [options]="statusOptions"
-            optionLabel="label"
-            optionValue="value"
-            placeholder="Tous les statuts"
-            [ngModel]="filterStatus()"
-            (ngModelChange)="onFilterChange('status', $event)"
-          ></tas-select>
-        </tas-form-field>
-
-        <tas-form-field>
-          <tas-label>Type de client</tas-label>
-          <tas-select
-            clearable
-            [options]="typeOptions"
-            optionLabel="label"
-            optionValue="value"
-            placeholder="Tous les types"
-            [ngModel]="filterType()"
-            (ngModelChange)="onFilterChange('type', $event)"
-          ></tas-select>
-        </tas-form-field>
-      </div>
-
-      <div class="grid grid-cols-4 gap-3 items-end">
-        <tas-form-field>
-          <tas-label>Agence</tas-label>
-          <tas-select
-            clearable
-            [options]="agencyOptions()"
-            optionLabel="label"
-            optionValue="value"
-            placeholder="Toutes les agences"
-            [searchable]="true"
-            [ngModel]="filterAgency()"
-            (ngModelChange)="onFilterChange('agency', $event)"
-          ></tas-select>
-        </tas-form-field>
-
-        <tas-form-field>
-          <tas-label>Conseiller</tas-label>
-          <tas-select
-            clearable
-            [options]="advisorOptions()"
-            optionLabel="label"
-            optionValue="value"
-            placeholder="Tous les conseillers"
-            [searchable]="true"
-            [ngModel]="filterAdvisor()"
-            (ngModelChange)="onFilterChange('advisor', $event)"
-          ></tas-select>
-        </tas-form-field>
-
-        <div class="col-span-2 flex justify-end">
-          @if (hasActiveFilters()) {
-            <button tas-text-button type="button" (click)="resetFilters()">
-              <tas-icon iconName="feather:x" style="font-size:14px"></tas-icon>
-              Réinitialiser
-            </button>
-          }
-        </div>
-      </div>
-    </div>
-  </tas-card>
-
-  <!-- Résultats -->
-  <tas-card class="block">
-    <div class="p-4 border-b border-slate-100 flex items-center justify-between">
-      <p class="text-sm font-semibold text-slate-700">Clients</p>
-      <span class="text-xs text-slate-400 tabular-nums">
-        {{ totalCount() }} client(s)
-      </span>
-    </div>
-
-    <!--
-      Le spinner ne recouvre QUE la liste. S'il remplaçait tout l'écran, chaque
-      frappe détruirait le champ de recherche, qui perdrait le focus.
-    -->
-    @if (isLoading()) {
-      <div class="flex justify-center py-24">
-        <tas-spinner size="10" class="text-primary"></tas-spinner>
-      </div>
-    } @else if (hasFailed()) {
-      <div class="flex flex-col items-center justify-center py-16 text-center">
-        <tas-icon
-          iconName="feather:alert-triangle"
-          class="text-functional-error mb-3"
-          style="font-size:32px"
-        ></tas-icon>
-        <p class="text-sm font-medium text-slate-600 mb-1">La recherche a échoué</p>
-        <p class="text-xs text-slate-400 mb-4">
-          Le serveur n'a pas répondu. Relancez la recherche dans un instant.
-        </p>
-      </div>
-    } @else if (rows().length === 0) {
-      <div class="flex flex-col items-center justify-center py-16 text-center">
-        <tas-icon
-          iconName="feather:search"
-          class="text-slate-300 mb-3"
-          style="font-size:32px"
-        ></tas-icon>
-        <p class="text-sm font-medium text-slate-500 mb-1">Aucun client ne correspond</p>
-        <p class="text-xs text-slate-400 mb-4">
-          @if (filterQuery().trim()) {
-            Aucun résultat pour « {{ filterQuery().trim() }} ». Changez de critère, ou créez
-            la fiche.
-          } @else {
-            Ajustez les filtres pour élargir la recherche.
-          }
-        </p>
-        @if (canCreate() && filterQuery().trim()) {
-          <button tas-button color="primary" type="button" (click)="createFromSearch()">
-            <tas-icon iconName="feather:user-plus" style="font-size:14px"></tas-icon>
-            Créer ce client
+          <div class="w-36">
+            <tas-form-field>
+              <tas-select clearable [options]="typeOptions" optionLabel="label" optionValue="value" placeholder="Type"
+              [ngModel]="filterType()" (ngModelChange)="onFilterChange('type', $event)"></tas-select>
+            </tas-form-field>
+          </div>
+          <div class="w-48">
+            <tas-form-field>
+              <tas-select clearable [searchable]="true" [options]="agencyOptions()" optionLabel="label" optionValue="value" placeholder="Agence"
+              [ngModel]="filterAgency()" (ngModelChange)="onFilterChange('agency', $event)"></tas-select>
+            </tas-form-field>
+          </div>
+          <div class="w-48">
+            <tas-form-field>
+                          <tas-select clearable [searchable]="true" [options]="advisorOptions()" optionLabel="label" optionValue="value" placeholder="Conseiller"
+              [ngModel]="filterAdvisor()" (ngModelChange)="onFilterChange('advisor', $event)"></tas-select>
+            </tas-form-field>
+          </div>
+          <button type="button"
+            class="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-dashed text-sm font-medium"
+            [class]="showMoreFilters() || moreFiltersCount() > 0 ? 'border-primary text-primary' : 'border-slate-300 text-primary'"
+            [attr.aria-expanded]="showMoreFilters()" (click)="showMoreFilters.set(!showMoreFilters())">
+            <tas-icon iconName="feather:sliders" style="font-size:13px"></tas-icon>
+            Plus de filtres
+            @if (moreFiltersCount()) {
+              <span class="px-1.5 rounded-full bg-primary text-white text-xs">{{ moreFiltersCount() }}</span>
+            }
           </button>
-        }
-      </div>
-    } @else {
-      <!-- En-tête de tableau -->
-      <div
-        class="flex items-center px-4 py-2 bg-slate-50 text-xs font-medium text-slate-500 border-b border-slate-100"
-      >
-        <div class="w-[26%]">Client</div>
-        <div class="w-[12%]">Type</div>
-        <div class="w-[12%] text-center">Statut</div>
-        <div class="w-[12%] text-center">KYC</div>
-        <div class="w-[10%] text-center">Risque</div>
-        <div class="w-[14%]">Agence</div>
-        <div class="w-[14%]">Conseiller</div>
-      </div>
+          @if (hasActiveFilters()) {
+            <button tas-text-button type="button" (click)="resetFilters()">Réinitialiser</button>
+          }
+        </div>
 
-      <!-- Lignes -->
-      <div class="divide-y divide-slate-100">
-        @for (row of rows(); track row.id) {
-          <div
-            class="flex items-center px-4 py-3 hover:bg-slate-50 transition-colors cursor-pointer"
-            (click)="openClient(row.id)"
-          >
-            <div class="w-[26%] min-w-0 pr-2">
-              <p class="text-sm font-medium text-slate-800 truncate">
-                {{ row.displayName }}
-              </p>
-              <div class="flex items-center gap-1.5 mt-0.5">
-                <span
-                  class="text-[10px] text-slate-400 font-mono bg-slate-50 px-1.5 py-0.5 rounded"
-                >
-                  {{ row.clientNumber }}
-                </span>
-                <span class="text-xs text-slate-400 tabular-nums truncate">
-                  {{ row.phoneMasked }}
-                </span>
-              </div>
+        @if (showMoreFilters()) {
+          <div class="flex flex-wrap gap-2">
+            <div class="w-48">
+              <tas-form-field>
+                <tas-select clearable [options]="statusOptions" optionLabel="label" optionValue="value" placeholder="Statut du client"
+                [ngModel]="filterStatus()" (ngModelChange)="onFilterChange('status', $event)"></tas-select>
+              </tas-form-field>
             </div>
-
-            <div class="w-[12%] pr-2">
-              <span class="text-xs text-slate-600">{{ row.typeLabel }}</span>
+            <div class="w-48">
+              <tas-form-field>
+                <tas-select clearable [options]="riskOptions" optionLabel="label" optionValue="value" placeholder="Niveau de risque"
+                  [ngModel]="filterRisk()" (ngModelChange)="onFilterChange('risk', $event)"></tas-select>
+              </tas-form-field>
             </div>
-
-            <div class="w-[12%] text-center">
-              <tas-tag [severity]="row.statusSeverity">{{ row.statusLabel }}</tas-tag>
-            </div>
-
-            <div class="w-[12%] text-center">
-              <tas-tag [severity]="row.kycSeverity">{{ row.kycLabel }}</tas-tag>
-            </div>
-
-            <div class="w-[10%] text-center">
-              <tas-tag [severity]="row.riskSeverity">{{ row.riskLabel }}</tas-tag>
-            </div>
-
-            <div class="w-[14%] pr-2 min-w-0">
-              <span class="text-xs text-slate-600 truncate block">{{ row.agencyName }}</span>
-            </div>
-
-            <div class="w-[14%] min-w-0">
-              <span class="text-xs text-slate-600 truncate block">{{ row.advisorName }}</span>
+            <div class="w-48">
+              <tas-form-field>
+                <tas-select clearable [options]="pepOptions" optionLabel="label" optionValue="value" placeholder="Exposition PPE"
+                  [ngModel]="filterPep()" (ngModelChange)="onFilterChange('pep', $event)"></tas-select>
+              </tas-form-field>
             </div>
           </div>
         }
+
+        @if (filterQuery().trim()) {
+          <p class="text-xs text-slate-500">
+            {{ criterionHint() }}@if (criterionNote()) { — {{ criterionNote() }} }
+          </p>
+        }
       </div>
 
-      <!-- Pagination : la page courante vit dans l'URL (AC3) -->
-      @if (totalPages() > 1) {
-        <div class="p-4 border-t border-slate-100 flex items-center justify-between">
-          <span class="text-xs text-slate-400 tabular-nums">
-            Page {{ page() }} sur {{ totalPages() }}
-          </span>
-          <div class="flex items-center gap-2">
-            <button
-              tas-outlined-button
-              type="button"
-              [disabled]="page() <= 1"
-              (click)="goToPage(page() - 1)"
-            >
-              <tas-icon iconName="feather:chevron-left" style="font-size:14px"></tas-icon>
-              Précédent
-            </button>
-            <button
-              tas-outlined-button
-              type="button"
-              [disabled]="page() >= totalPages()"
-              (click)="goToPage(page() + 1)"
-            >
-              Suivant
-              <tas-icon iconName="feather:chevron-right" style="font-size:14px"></tas-icon>
-            </button>
+      <!-- Attribution groupée -->
+      @if (checked().size > 0 && canAssign()) {
+        <div class="flex flex-wrap items-center gap-3 px-4 py-3 bg-slate-50 border-b border-slate-100">
+          <span class="text-sm font-medium text-slate-800">{{ checked().size }} client(s) sélectionné(s)</span>
+          <div class="w-56">
+            <tas-form-field>
+              <tas-select [searchable]="true" [options]="advisorOptions()" optionLabel="label" optionValue="value" placeholder="Choisir un conseiller…"
+                [ngModel]="bulkAdvisor()" (ngModelChange)="bulkAdvisor.set($event)"></tas-select>
+            </tas-form-field>
           </div>
+          <button tas-raised-button color="primary" type="button" [disabled]="!bulkAdvisor() || isAssigning()" [isLoading]="isAssigning()" (click)="assignChecked()">
+            Attribuer
+          </button>
+          <button tas-text-button type="button" (click)="toggleAll(false)">Désélectionner</button>
         </div>
       }
+
+      @if (hasFailed()) {
+        <div class="flex flex-col items-center py-16 text-center">
+          <tas-icon iconName="feather:alert-triangle" class="text-functional-error mb-2" style="font-size:22px"></tas-icon>
+          <p class="text-sm text-slate-600">La liste des clients n'a pas pu être chargée.</p>
+          <button tas-outlined-button type="button" class="mt-3" (click)="resetFilters()">Réessayer</button>
+        </div>
+      } @else {
+        <div class="overflow-x-auto [&_tas-card]:shadow-none [&_tas-card]:border-0">
+          <tas-table [data]="rows()" identifierField="id" [config]="tableConfig()" [isLoading]="isLoading()" (pageEventChange)="onPageChange($event)">
+            <ng-template #header>
+              <tr class="text-left text-xs uppercase tracking-wide text-slate-500 border-b border-slate-200">
+                <th class="w-10 py-3 pl-4">
+                  <input type="checkbox" class="w-4 h-4 accent-primary" aria-label="Tout sélectionner"
+                    [checked]="allChecked()" (change)="toggleAll($any($event.target).checked)" />
+                </th>
+                <th class="py-3 px-3 font-medium">Client</th>
+                <th class="py-3 px-3 font-medium">Parcours KYC</th>
+                <th class="py-3 px-3 font-medium">Risque</th>
+                <th class="py-3 px-3 font-medium">Produits</th>
+                <th class="py-3 px-3 font-medium">Suivi</th>
+                <th class="py-3 px-3 font-medium">Activité</th>
+              </tr>
+            </ng-template>
+            <ng-template #body let-row>
+              <tr class="cursor-pointer align-middle transition-colors hover:bg-slate-50"
+                [ngClass]="{'bg-slate-100 shadow-lg': selectedId() === row.id}"
+                (click)="select(row)">
+                <td class="py-3 pl-4" (click)="$event.stopPropagation()">
+                  <input type="checkbox" class="w-4 h-4 accent-primary" [attr.aria-label]="'Sélectionner ' + row.displayName"
+                    [checked]="checked().has(row.id)" (change)="toggleChecked(row.id, $any($event.target).checked)" />
+                </td>
+                <td class="py-3 px-3 min-w-[14rem]">
+                  <div class="flex items-center gap-3">
+                    <div class="w-9 h-9 rounded-full bg-slate-100 text-primary text-xs font-bold flex items-center justify-center shrink-0">{{ row.initials }}</div>
+                    <div class="min-w-0">
+                      <p class="text-sm font-semibold text-slate-900 flex items-center gap-2 flex-wrap">
+                        {{ row.displayName }}
+                        @if (row.isLegal) {
+                          <span class="px-1.5 py-0.5 rounded bg-slate-100 text-[10px] font-medium text-slate-600">Personne morale</span>
+                        }
+                      </p>
+                      <p class="mt-0.5 inline-block px-1.5 py-0.5 rounded border border-slate-200 bg-slate-50 font-mono text-[11px] text-slate-600">{{ row.clientNumber }}</p>
+                      @if (row.phoneMasked) {
+                        <p class="text-xs text-slate-500 tabular-nums mt-0.5">{{ row.phoneMasked }}</p>
+                      }
+                    </div>
+                  </div>
+                </td>
+                <td class="py-3 px-3 min-w-[9rem]">
+                  <p class="text-sm font-medium"
+                    [class.text-slate-600]="row.kycTone === 'muted'" [class.text-amber-700]="row.kycTone === 'warn'"
+                    [class.text-blue-700]="row.kycTone === 'info'" [class.text-green-700]="row.kycTone === 'ok'"
+                    [class.text-functional-error]="row.kycTone === 'error'">{{ row.kycLabel }}</p>
+                  <div class="flex gap-1 mt-1.5" [attr.aria-label]="row.kycSteps + ' étape(s) sur 3'">
+                    @for (i of [0, 1, 2]; track i) {
+                      <span class="h-1 w-8 rounded-full" [class.bg-primary]="i < row.kycSteps" [class.bg-slate-200]="i >= row.kycSteps"></span>
+                    }
+                  </div>
+                </td>
+                <td class="py-3 px-3 whitespace-nowrap">
+                  @if (row.risk === 'Unknown') {
+                    <span class="text-sm text-slate-600">{{ row.riskLabel }}</span>
+                  } @else {
+                    <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-semibold"
+                      [class.bg-green-50]="row.risk === 'Low'" [class.text-green-700]="row.risk === 'Low'"
+                      [class.bg-amber-50]="row.risk === 'Medium'" [class.text-amber-800]="row.risk === 'Medium'"
+                      [class.bg-red-50]="row.risk === 'High'" [class.text-functional-error]="row.risk === 'High'">
+                      <span class="w-1.5 h-1.5 rounded-full bg-current"></span>{{ row.riskLabel }}
+                    </span>
+                  }
+                  @if (row.isPep) {
+                    <span class="mt-1 block w-fit px-2 py-0.5 rounded-full border border-functional-error text-functional-error text-[10px] font-bold">PPE</span>
+                  }
+                </td>
+                <td class="py-3 px-3 min-w-[8rem]">
+                  @if (row.products.length) {
+                    <span class="inline-block px-2 py-1 rounded-xl bg-blue-50 text-blue-700 text-xs leading-tight">{{ row.products[0] }}</span>
+                    @if (row.products.length > 1) {
+                      <span class="ml-1 mt-1 inline-block px-1.5 py-0.5 rounded-full bg-slate-100 text-xs text-slate-600" [attr.title]="row.products.slice(1).join(', ')">+{{ row.products.length - 1 }}</span>
+                    }
+                  } @else {
+                    <span class="text-sm text-slate-600">Aucun</span>
+                  }
+                </td>
+                <td class="py-3 px-3 min-w-[8rem]">
+                  @if (row.advisorName) {
+                    <p class="text-sm text-slate-900">{{ row.advisorName }}</p>
+                  } @else if (canAssign()) {
+                    <button type="button" class="text-sm font-medium text-primary underline underline-offset-2 text-left" (click)="$event.stopPropagation(); select(row)">Attribuer un conseiller</button>
+                  } @else {
+                    <p class="text-sm text-slate-500">Sans conseiller</p>
+                  }
+                  @if (row.agencyName) {
+                    <p class="text-xs text-slate-500">{{ row.agencyName }}</p>
+                  }
+                </td>
+                <td class="py-3 px-3 min-w-[10rem] max-w-[14rem]">
+                  <p class="text-sm text-slate-700 truncate" [attr.title]="row.activity">{{ row.activity ?? 'Créé' }}</p>
+                  @if (row.activityAt) {
+                    <p class="text-xs text-slate-500">{{ row.activityAt | dateTimeAgo }}</p>
+                  }
+                </td>
+              </tr>
+            </ng-template>
+          </tas-table>
+        </div>
+
+        @if (!isLoading() && rows().length === 0 && filterQuery().trim() && canCreate()) {
+          <div class="px-4 pb-4 text-center">
+            <button tas-outlined-button type="button" (click)="createFromSearch()">Créer un client à partir de cette recherche</button>
+          </div>
+        }
+
+        <p class="px-4 py-3 text-xs text-slate-500 border-t border-slate-100">
+          {{ rows().length }} affiché{{ rows().length > 1 ? 's' : '' }} sur {{ totalCount() }}@if (agencyFilterLabel(); as agency) { · {{ agency }} }
+        </p>
+      }
+    </section>
+
+    <!-- ═══════ Aperçu ═══════ -->
+    @if (selected(); as client) {
+      <aside class="rounded-2xl bg-white shadow-sm border border-slate-100 p-5 xl:sticky xl:top-4" aria-label="Aperçu du client">
+        <div class="flex items-start gap-3">
+          <div class="w-12 h-12 rounded-full bg-slate-100 text-primary font-bold flex items-center justify-center shrink-0">{{ client.initials }}</div>
+          <div class="flex-1 min-w-0">
+            <h2 class="text-lg font-bold text-primary leading-tight">{{ client.displayName }}</h2>
+            <p class="font-mono text-xs text-slate-600 mt-0.5">{{ client.clientNumber }}</p>
+            <p class="text-xs text-slate-600">
+              {{ client.isLegal ? 'Personne morale' : 'Personne physique' }}@if (client.createdAt) { · client depuis {{ client.createdAt | date: 'MMM yyyy' }} }
+            </p>
+          </div>
+          <button type="button" class="w-8 h-8 rounded-full hover:bg-slate-100 flex items-center justify-center shrink-0" aria-label="Fermer l'aperçu" (click)="closePanel()">
+            <tas-icon iconName="feather:x" style="font-size:16px"></tas-icon>
+          </button>
+        </div>
+
+        @if (canReveal() && client.phoneMasked) {
+          <div class="flex gap-2 mt-4">
+            <button tas-outlined-button type="button" class="!rounded-full" [disabled]="isRevealing()" (click)="contact(client, 'tel')">
+              <tas-icon iconName="feather:phone" style="font-size:13px"></tas-icon> Appeler
+            </button>
+            <button tas-outlined-button type="button" class="!rounded-full" [disabled]="isRevealing()" (click)="contact(client, 'sms')">
+              <tas-icon iconName="feather:message-square" style="font-size:13px"></tas-icon> SMS
+            </button>
+          </div>
+        }
+        @if (client.phoneMasked) {
+          <p class="text-xs text-slate-500 tabular-nums mt-2">{{ client.phoneMasked }}</p>
+        }
+
+        <!-- Parcours KYC -->
+        <div class="mt-4 p-4 rounded-xl border border-slate-200 bg-slate-50">
+          <div class="flex items-center justify-between gap-2">
+            <p class="text-sm font-semibold text-slate-900">Parcours KYC</p>
+            <span class="text-xs font-semibold"
+              [class.text-slate-500]="client.kycTone === 'muted'" [class.text-amber-700]="client.kycTone === 'warn'"
+              [class.text-blue-700]="client.kycTone === 'info'" [class.text-green-700]="client.kycTone === 'ok'"
+              [class.text-functional-error]="client.kycTone === 'error'">{{ client.kycLabel }}</span>
+          </div>
+          @if (client.item.kyc; as kyc) {
+            <ul class="mt-3 flex flex-col gap-2 text-sm text-slate-800">
+              @for (check of [
+                { done: kyc.identityDocumentRead, label: 'Pièce d’identité (OCR, MRZ)' },
+                { done: kyc.faceMatched, label: 'Selfie et correspondance faciale' },
+                { done: kyc.proofOfAddressProvided, label: 'Justificatif de domicile' },
+                { done: kyc.amlCheckCompleted, label: 'Contrôle LBC-FT' }
+              ]; track check.label) {
+                <li class="flex items-center gap-2">
+                  @if (check.done) {
+                    <span class="w-5 h-5 rounded-full bg-green-50 text-green-700 flex items-center justify-center"><tas-icon iconName="feather:check" style="font-size:12px"></tas-icon></span>
+                  } @else {
+                    <span class="w-5 h-5 rounded-full border-2 border-slate-300"></span>
+                  }
+                  <span [class.text-slate-500]="!check.done">{{ check.label }}</span>
+                  <span class="sr-only">{{ check.done ? 'fait' : 'à faire' }}</span>
+                </li>
+              }
+            </ul>
+            @if (kyc.confidenceScore !== null) {
+              <p class="text-xs text-slate-600 mt-3">Score de correspondance eKYC : <strong class="text-slate-900">{{ kyc.confidenceScore }} %</strong></p>
+            }
+          } @else {
+            <p class="text-xs text-slate-500 mt-2">Aucun dossier KYC n'a encore été ouvert pour ce client.</p>
+          }
+        </div>
+
+        <dl class="grid grid-cols-2 gap-x-4 gap-y-3 mt-4">
+          <div>
+            <dt class="text-xs text-slate-500">Risque</dt>
+            <dd class="text-sm font-semibold text-slate-900">{{ client.riskLabel }}@if (client.isPep) { · PPE }</dd>
+          </div>
+          <div>
+            <dt class="text-xs text-slate-500">Agence</dt>
+            <dd class="text-sm font-semibold text-slate-900">{{ client.agencyName || '—' }}</dd>
+          </div>
+          <div class="col-span-2">
+            <dt class="text-xs text-slate-500">Produits</dt>
+            <dd class="text-sm font-semibold text-slate-900">{{ client.products.length ? client.products.join(', ') : 'Aucun' }}</dd>
+          </div>
+        </dl>
+
+        <div class="mt-4">
+          <p class="text-sm font-medium text-slate-800 mb-1.5">Conseiller</p>
+          @if (canAssign()) {
+            <tas-form-field>
+              <tas-select [searchable]="true" [options]="advisorChoices()" optionLabel="label" optionValue="value" placeholder="Choisir un conseiller…"
+                [disabled]="isAssigning()" [ngModel]="client.advisorUserId" (ngModelChange)="assignAdvisor(client, $event)"
+                aria-label="Conseiller du client"></tas-select>
+            </tas-form-field>
+            <p class="text-xs text-slate-500 mt-1">Parmi les utilisateurs de l'agence du client.</p>
+          } @else {
+            <p class="text-sm text-slate-900">{{ client.advisorName ?? 'Aucun' }}</p>
+          }
+        </div>
+
+        <div class="flex flex-col gap-2 mt-5 pt-5 border-t border-slate-100">
+          <button tas-raised-button color="primary" type="button" class="!rounded-full w-full" (click)="openKyc(client)">
+            {{ client.item.kyc ? 'Vérifier le dossier' : 'Démarrer le KYC' }}
+          </button>
+          <button tas-outlined-button type="button" class="!rounded-full w-full" (click)="openClient(client.id)">
+            Ouvrir la fiche 360 <tas-icon iconName="feather:chevron-right" style="font-size:14px"></tas-icon>
+          </button>
+        </div>
+      </aside>
     }
-  </tas-card>
+  </div>
 </div>

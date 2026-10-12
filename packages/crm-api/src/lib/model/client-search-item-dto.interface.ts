@@ -9,6 +9,7 @@
  * https://openapi-generator.tech
  * Do not edit the class manually.
  */
+import { ClientKycJourneyDto } from './client-kyc-journey-dto.interface';
 
 
 export interface ClientSearchItemDto { 
@@ -23,5 +24,13 @@ export interface ClientSearchItemDto {
     riskLevel?: string | null;
     segmentCode?: string | null;
     primaryPhoneMasked?: string | null;
+    hasPepExposure?: boolean;
+    createdAt?: string | null;
+    agencyName?: string | null;
+    advisorName?: string | null;
+    products?: Array<string> | null;
+    lastActivitySummary?: string | null;
+    lastActivityAt?: string | null;
+    kyc?: ClientKycJourneyDto;
 }
 

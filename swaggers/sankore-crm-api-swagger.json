@@ -3246,7 +3246,7 @@
           "Clients"
         ],
         "summary": "Search clients",
-        "description": "Paginated, multi-criteria search. All filters are cumulative (AND). phone and identityDocumentNumber are matched by EQUALITY ON THE BLIND INDEX after normalization, so '+225 07 08 09 18' and '07080918' find the same client and no encrypted column is ever decrypted to filter. name is a prefix search on the normalized SearchKey column (upper-cased, accent-free, surname first): 'TRA' finds 'Traoré', and a given name is matched too. A name shorter than 3 characters is ignored. Results are ordered by displayName. Rows are restricted to the caller's agency perimeter (own agency + descendants + explicit attributions); a tenant-wide account sees every agency. Performance: the ux_clients_number, ux_clients_identity_doc and (TenantId, SearchKey) indexes plus the (TenantId, Status/AgencyId/AdvisorUserId/SegmentCode) indexes keep this query within the p95 < 300 ms objective at 100 000 clients per tenant — the count and the page are two server-side queries, nothing is materialised before Skip/Take. primaryPhoneMasked is masked; use POST clients/{clientId}/reveal for a clear value. Requires permission: customers:read.",
+        "description": "Paginated, multi-criteria search. All filters are cumulative (AND). phone and identityDocumentNumber are matched by EQUALITY ON THE BLIND INDEX after normalization, so '+225 07 08 09 18' and '07080918' find the same client and no encrypted column is ever decrypted to filter. name is a prefix search on the normalized SearchKey column (upper-cased, accent-free, surname first): 'TRA' finds 'Traoré', and a given name is matched too. A name shorter than 3 characters is ignored. Results are ordered by displayName. Rows are restricted to the caller's agency perimeter (own agency + descendants + explicit attributions); a tenant-wide account sees every agency. Performance: the ux_clients_number, ux_clients_identity_doc and (TenantId, SearchKey) indexes plus the (TenantId, Status/AgencyId/AdvisorUserId/SegmentCode) indexes keep this query within the p95 < 300 ms objective at 100 000 clients per tenant — the count and the page are two server-side queries, nothing is materialised before Skip/Take. quick narrows to a shortcut of the list screen (KycToStart, KycInProgress, HighRisk, WithoutAdvisor), counted the same way by GET clients/quick-counts. agencyName, advisorName, products, the last timeline entry and the KYC journey are resolved for the returned page only; a module that cannot answer leaves its column empty. primaryPhoneMasked is masked; use POST clients/{clientId}/reveal for a clear value. Requires permission: customers:read.",
         "operationId": "SearchClients",
         "parameters": [
           {
@@ -3345,6 +3345,44 @@
               "type": "integer",
               "format": "int32"
             }
+          },
+          {
+            "name": "quick",
+            "in": "query",
+            "description": "One of: All, KycToStart, KycInProgress, HighRisk, WithoutAdvisor",
+            "schema": {
+              "enum": [
+                "All",
+                "KycToStart",
+                "KycInProgress",
+                "HighRisk",
+                "WithoutAdvisor"
+              ],
+              "type": "string",
+              "description": "One of: All, KycToStart, KycInProgress, HighRisk, WithoutAdvisor"
+            }
+          },
+          {
+            "name": "riskLevel",
+            "in": "query",
+            "description": "One of: Unknown, Low, Medium, High",
+            "schema": {
+              "enum": [
+                "Unknown",
+                "Low",
+                "Medium",
+                "High"
+              ],
+              "type": "string",
+              "description": "One of: Unknown, Low, Medium, High"
+            }
+          },
+          {
+            "name": "hasPepExposure",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
           }
         ],
         "responses": {
@@ -3366,6 +3404,133 @@
           },
           "403": {
             "description": "Forbidden"
+          }
+        }
+      }
+    },
+    "/api/v1/clients/quick-counts": {
+      "get": {
+        "tags": [
+          "Clients",
+          "Clients"
+        ],
+        "summary": "Compteurs des raccourcis de la liste des clients (tous, KYC à démarrer, KYC en cours, risque élevé, sans conseiller) et doublons à examiner. Mêmes critères que SearchClients. Requires permission: customers:read.",
+        "operationId": "GetClientQuickCounts",
+        "parameters": [
+          {
+            "name": "clientNumber",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "phone",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "identityDocumentNumber",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "name",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "description": "One of: PendingKyc, Active, Suspended, KycRejected, Archived, Merged",
+            "schema": {
+              "enum": [
+                "PendingKyc",
+                "Active",
+                "Suspended",
+                "KycRejected",
+                "Archived",
+                "Merged"
+              ],
+              "type": "string",
+              "description": "One of: PendingKyc, Active, Suspended, KycRejected, Archived, Merged"
+            }
+          },
+          {
+            "name": "agencyId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "advisorUserId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "description": "One of: Individual, Legal",
+            "schema": {
+              "enum": [
+                "Individual",
+                "Legal"
+              ],
+              "type": "string",
+              "description": "One of: Individual, Legal"
+            }
+          },
+          {
+            "name": "segmentCode",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "riskLevel",
+            "in": "query",
+            "description": "One of: Unknown, Low, Medium, High",
+            "schema": {
+              "enum": [
+                "Unknown",
+                "Low",
+                "Medium",
+                "High"
+              ],
+              "type": "string",
+              "description": "One of: Unknown, Low, Medium, High"
+            }
+          },
+          {
+            "name": "hasPepExposure",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClientQuickCountsDto"
+                }
+              }
+            }
           }
         }
       }
@@ -24432,6 +24597,41 @@
         },
         "additionalProperties": false
       },
+      "ClientKycJourneyDto": {
+        "type": "object",
+        "properties": {
+          "kycFileId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "stage": {
+            "type": "string",
+            "nullable": true
+          },
+          "completedSteps": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "identityDocumentRead": {
+            "type": "boolean"
+          },
+          "faceMatched": {
+            "type": "boolean"
+          },
+          "proofOfAddressProvided": {
+            "type": "boolean"
+          },
+          "amlCheckCompleted": {
+            "type": "boolean"
+          },
+          "confidenceScore": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "ClientLifecycleStateDto": {
         "type": "object",
         "properties": {
@@ -24594,6 +24794,36 @@
         },
         "additionalProperties": false
       },
+      "ClientQuickCountsDto": {
+        "type": "object",
+        "properties": {
+          "all": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "kycToStart": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "kycInProgress": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "highRisk": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "withoutAdvisor": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "duplicatesToReview": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
       "ClientRowValidationResult": {
         "type": "object",
         "properties": {
@@ -24673,6 +24903,41 @@
           "primaryPhoneMasked": {
             "type": "string",
             "nullable": true
+          },
+          "hasPepExposure": {
+            "type": "boolean"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "agencyName": {
+            "type": "string",
+            "nullable": true
+          },
+          "advisorName": {
+            "type": "string",
+            "nullable": true
+          },
+          "products": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "lastActivitySummary": {
+            "type": "string",
+            "nullable": true
+          },
+          "lastActivityAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "kyc": {
+            "$ref": "#/components/schemas/ClientKycJourneyDto"
           }
         },
         "additionalProperties": false

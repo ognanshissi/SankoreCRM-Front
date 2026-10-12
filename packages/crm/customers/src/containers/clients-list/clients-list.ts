@@ -9,35 +9,38 @@ import {
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
+import { DatePipe, NgClass } from '@angular/common';
+import { HttpErrorResponse } from '@angular/common/http';
 import { ActivatedRoute, Router } from '@angular/router';
-import { EMPTY, Observable, Subject, catchError, debounceTime, switchMap } from 'rxjs';
-import { TasCard } from '@talisoft/ui/card';
-import { TasSpinner } from '@talisoft/ui/spinner';
+import { PageEvent } from '@angular/material/paginator';
+import { EMPTY, Observable, Subject, catchError, debounceTime, forkJoin, of, switchMap } from 'rxjs';
 import { TasIcon } from '@talisoft/ui/icon';
-import { Severity, TasTag } from '@talisoft/ui/tag';
 import { Button } from '@talisoft/ui/button';
-import { TasFormField, TasLabel } from '@talisoft/ui/form-field';
-import { TasInput } from '@talisoft/ui/input';
 import { TasSelect } from '@talisoft/ui/select';
+import { TasTable, TableConfig } from '@talisoft/ui/table';
+import { TimeagoPipe } from '@talisoft/ui/timeago';
+import { SnackbarService } from '@talisoft/ui/snackbar';
 import {
   AgenciesApiService,
+  ClientLifecycleApiService,
+  ClientQuickCountsDto,
   ClientSearchItemDto,
-  PagedResultOfClientSearchItemDto,
   ClientsApiService,
+  PagedResultOfClientSearchItemDto,
+  RevealSensitiveFieldRequestFieldEnum,
   UsersApiService,
 } from '@sankore/crm-api';
 import { BreadcrumbService, PermissionsService } from '@sankore/crm/common';
 import {
   CLIENT_STATUS_ORDER,
   CLIENT_TYPE_ORDER,
+  RISK_LEVEL_ORDER,
   clientStatusLabel,
-  clientStatusSeverity,
   clientTypeLabel,
-  kycStatusLabel,
-  kycStatusSeverity,
+  isLegalClient,
   riskLevelLabel,
-  riskLevelSeverity,
 } from '../../models/client-labels';
+import { TasFormField } from '@talisoft/ui/form-field';
 
 /** Critères de recherche du champ unique. `auto` laisse l'heuristique décider. */
 export type SearchCriterion =
@@ -103,61 +106,83 @@ export function detectSearchCriterion(raw: string): ResolvedCriterion {
   return 'name';
 }
 
-/** Nom canonique -> index attendu par `searchClients` (`status` est un entier). */
-// Le contrat nomme ces valeurs ; ces fonctions traduisaient un nom en indice tant qu'il
-// documentait les filtres optionnels en entier. Elles ne font plus que valider.
 type ClientStatusParam =
   | 'PendingKyc' | 'Active' | 'Suspended' | 'KycRejected' | 'Archived' | 'Merged';
 type ClientTypeParam = 'Individual' | 'Legal';
+type RiskParam = 'Unknown' | 'Low' | 'Medium' | 'High';
 
-function statusToIndex(name: string | null): ClientStatusParam | undefined {
-  return (name || undefined) as ClientStatusParam | undefined;
-}
+/** Raccourcis de la liste, comptés par `GET clients/quick-counts` sous les mêmes critères. */
+export type QuickFilter = 'All' | 'KycToStart' | 'KycInProgress' | 'HighRisk' | 'WithoutAdvisor';
 
-function typeToIndex(name: string | null): ClientTypeParam | undefined {
-  return (name || undefined) as ClientTypeParam | undefined;
-}
+const QUICK_FILTERS: { value: QuickFilter; label: string; count: keyof ClientQuickCountsDto }[] = [
+  { value: 'All', label: 'Tous', count: 'all' },
+  { value: 'KycToStart', label: 'KYC à démarrer', count: 'kycToStart' },
+  { value: 'KycInProgress', label: 'KYC en cours', count: 'kycInProgress' },
+  { value: 'HighRisk', label: 'Risque élevé', count: 'highRisk' },
+  { value: 'WithoutAdvisor', label: 'Sans conseiller', count: 'withoutAdvisor' },
+];
 
-/** Ligne prête à afficher : libellés et sévérités déjà résolus. */
+/** Libellé et teinte du parcours, depuis le statut interne du dossier KYC. */
+const KYC_STAGES: Record<string, { label: string; tone: 'muted' | 'warn' | 'info' | 'ok' | 'error' } | undefined> = {
+  Collecting: { label: 'Pièces manquantes', tone: 'warn' },
+  ComplementRequired: { label: 'Complément requis', tone: 'warn' },
+  Verifying: { label: 'En vérification', tone: 'info' },
+  Validating: { label: 'En validation', tone: 'info' },
+  Simplified: { label: 'Simplifié validé', tone: 'ok' },
+  Full: { label: 'Complet validé', tone: 'ok' },
+  UnderReview: { label: 'En revue', tone: 'info' },
+  Expired: { label: 'Expiré', tone: 'error' },
+  Rejected: { label: 'Rejeté', tone: 'error' },
+  Suspended: { label: 'Suspendu', tone: 'error' },
+};
+
+const PAGE_SIZES = [10, 25, 50];
+
+/** Ligne prête à afficher : libellés déjà résolus. */
 export interface ClientRow {
   id: string;
   clientNumber: string;
   displayName: string;
+  initials: string;
+  isLegal: boolean;
   phoneMasked: string;
-  typeLabel: string;
-  statusLabel: string;
-  statusSeverity: Severity;
   kycLabel: string;
-  kycSeverity: Severity;
+  kycTone: 'muted' | 'warn' | 'info' | 'ok' | 'error';
+  /** 0 à 3 segments remplis. */
+  kycSteps: number;
+  risk: string;
   riskLabel: string;
-  riskSeverity: Severity;
+  isPep: boolean;
+  products: string[];
+  agencyId: string;
   agencyName: string;
-  advisorName: string;
+  advisorUserId: string | null;
+  advisorName: string | null;
+  activity: string | null;
+  activityAt: string | null;
+  createdAt: string | null;
+  item: ClientSearchItemDto;
+}
+
+function initialsOf(name: string): string {
+  const parts = name.trim().split(/\s+/);
+  return ((parts[0]?.[0] ?? '') + (parts[1]?.[0] ?? '')).toUpperCase() || '?';
 }
 
 @Component({
   selector: 'clients-list',
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './clients-list.html',
-  imports: [
-    FormsModule,
-    TasCard,
-    TasSpinner,
-    TasIcon,
-    TasTag,
-    Button,
-    TasFormField,
-    TasLabel,
-    TasInput,
-    TasSelect,
-  ],
+  imports: [DatePipe, FormsModule, TasIcon, Button, TasSelect, TasTable, TimeagoPipe, TasFormField, NgClass],
 })
 export class ClientsListPage implements OnInit {
   private readonly _clientsApi = inject(ClientsApiService);
+  private readonly _lifecycleApi = inject(ClientLifecycleApiService);
   private readonly _agenciesApi = inject(AgenciesApiService);
   private readonly _usersApi = inject(UsersApiService);
   private readonly _breadcrumb = inject(BreadcrumbService);
   private readonly _permissions = inject(PermissionsService);
+  private readonly _snackbar = inject(SnackbarService);
   private readonly _destroyRef = inject(DestroyRef);
   private readonly _route = inject(ActivatedRoute);
   private readonly _router = inject(Router);
@@ -165,44 +190,60 @@ export class ClientsListPage implements OnInit {
   public readonly canCreate = this._permissions.can('customers:create');
   public readonly canRead = this._permissions.can('customers:read');
   public readonly canMerge = this._permissions.can('customers:merge');
+  public readonly canAssign = this._permissions.can('customers:update');
+  public readonly canReveal = this._permissions.can('customers:reveal_sensitive');
 
   public isLoading = signal(true);
   public hasFailed = signal(false);
   public items = signal<ClientSearchItemDto[]>([]);
   public totalCount = signal(0);
-  public totalPages = signal(1);
+  public counts = signal<ClientQuickCountsDto | null>(null);
 
   // Filtres, tous restitués depuis l'URL au démarrage.
   public filterQuery = signal('');
   public forcedCriterion = signal<SearchCriterion>('auto');
+  public quick = signal<QuickFilter>('All');
   public filterStatus = signal<string | null>(null);
   public filterType = signal<string | null>(null);
   public filterAgency = signal<string | null>(null);
   public filterAdvisor = signal<string | null>(null);
+  public filterRisk = signal<string | null>(null);
+  public filterPep = signal<string | null>(null);
+  public showMoreFilters = signal(false);
   public page = signal(1);
+  public pageSize = signal(25);
 
-  private readonly _pageSize = 25;
+  /** Ligne ouverte dans le panneau d'aperçu. */
+  public selectedId = signal<string | null>(null);
+  /** Cases cochées, pour l'attribution groupée. */
+  public checked = signal<ReadonlySet<string>>(new Set());
+  public advisorChoices = signal<{ label: string; value: string }[]>([]);
+  public isAssigning = signal(false);
+  public isRevealing = signal(false);
+  public bulkAdvisor = signal<string | null>(null);
 
   private readonly _agencies = signal<{ label: string; value: string }[]>([]);
   private readonly _advisors = signal<{ label: string; value: string }[]>([]);
 
   public readonly agencyOptions = this._agencies.asReadonly();
   public readonly advisorOptions = this._advisors.asReadonly();
+  public readonly quickFilters = QUICK_FILTERS;
+  public readonly pageSizes = PAGE_SIZES;
 
-  public readonly statusOptions = CLIENT_STATUS_ORDER.map((name) => ({
-    label: clientStatusLabel(name),
-    value: name,
+  public readonly statusOptions = CLIENT_STATUS_ORDER.map((name) => ({ label: clientStatusLabel(name), value: name }));
+  public readonly typeOptions = CLIENT_TYPE_ORDER.map((name) => ({ label: clientTypeLabel(name), value: name }));
+  public readonly riskOptions = RISK_LEVEL_ORDER.map((name) => ({ label: riskLevelLabel(name), value: name }));
+  public readonly pepOptions = [
+    { label: 'Exposés (PPE)', value: 'true' },
+    { label: 'Non exposés', value: 'false' },
+  ];
+  public readonly criterionOptions = CRITERION_CHIPS.map((c) => ({
+    label: c.value === 'auto' ? 'Tous les champs' : c.label,
+    value: c.value,
   }));
-  public readonly typeOptions = CLIENT_TYPE_ORDER.map((name) => ({
-    label: clientTypeLabel(name),
-    value: name,
-  }));
-  public readonly criterionChips = CRITERION_CHIPS;
 
   /** Critère déduit de la saisie, avant tout forçage. */
-  public readonly detectedCriterion = computed<ResolvedCriterion>(() =>
-    detectSearchCriterion(this.filterQuery()),
-  );
+  public readonly detectedCriterion = computed<ResolvedCriterion>(() => detectSearchCriterion(this.filterQuery()));
 
   /** Critère finalement appliqué : le forçage manuel gagne sur l'heuristique. */
   public readonly criterion = computed<ResolvedCriterion>(() => {
@@ -222,13 +263,11 @@ export class ClientsListPage implements OnInit {
     if (!value) return '';
     switch (this.criterion()) {
       case 'name':
-        return value.length < 3
-          ? 'Saisissez au moins 3 caractères pour lancer la recherche par nom.'
-          : 'Le nom est cherché par début de mot.';
+        return value.length < 3 ? 'Saisissez au moins 3 caractères pour lancer la recherche par nom.' : '';
       case 'phone':
         return 'Le numéro doit correspondre exactement, quel que soit son format.';
       case 'identityDocument':
-        return "Le numéro de pièce doit correspondre exactement.";
+        return 'Le numéro de pièce doit correspondre exactement.';
       case 'clientNumber':
         return 'Le numéro client doit correspondre exactement.';
     }
@@ -237,38 +276,71 @@ export class ClientsListPage implements OnInit {
   public readonly hasActiveFilters = computed(
     () =>
       this.filterQuery().trim().length > 0 ||
-      this.forcedCriterion() !== 'auto' ||
+      this.quick() !== 'All' ||
       this.filterStatus() !== null ||
       this.filterType() !== null ||
       this.filterAgency() !== null ||
-      this.filterAdvisor() !== null,
+      this.filterAdvisor() !== null ||
+      this.filterRisk() !== null ||
+      this.filterPep() !== null,
   );
 
-  /**
-   * `ClientSearchItemDto` ne porte que `agencyId` et `advisorUserId` : les noms
-   * viennent des listes déroulantes, chargées une fois au démarrage.
-   */
-  public readonly rows = computed<ClientRow[]>(() => {
-    const agencies = new Map(this._agencies().map((a) => [a.value, a.label]));
-    const advisors = new Map(this._advisors().map((a) => [a.value, a.label]));
+  public readonly moreFiltersCount = computed(
+    () => [this.filterStatus(), this.filterRisk(), this.filterPep()].filter((v) => v !== null).length,
+  );
 
-    return this.items().map((item) => ({
-      id: item.id ?? '',
-      clientNumber: item.clientNumber ?? '—',
-      displayName: item.displayName ?? 'Client sans nom',
-      phoneMasked: item.primaryPhoneMasked ?? '—',
-      typeLabel: clientTypeLabel(item.clientType),
-      statusLabel: clientStatusLabel(item.status),
-      statusSeverity: clientStatusSeverity(item.status),
-      kycLabel: kycStatusLabel(item.kycStatus),
-      kycSeverity: kycStatusSeverity(item.kycStatus),
-      riskLabel: riskLevelLabel(item.riskLevel),
-      riskSeverity: riskLevelSeverity(item.riskLevel),
-      agencyName: (item.agencyId && agencies.get(item.agencyId)) || 'Agence inconnue',
-      advisorName:
-        (item.advisorUserId && advisors.get(item.advisorUserId)) || 'Non attribué',
-    }));
+  public readonly agencyFilterLabel = computed(() => {
+    const id = this.filterAgency();
+    return id ? this._agencies().find((a) => a.value === id)?.label ?? null : null;
   });
+
+  public readonly rows = computed<ClientRow[]>(() =>
+    this.items().map((item) => {
+      const name = item.displayName ?? 'Client sans nom';
+      const stage = item.kyc?.stage ? KYC_STAGES[item.kyc.stage] : null;
+      return {
+        id: item.id ?? '',
+        clientNumber: item.clientNumber ?? '—',
+        displayName: name,
+        initials: initialsOf(name),
+        isLegal: isLegalClient(item.clientType),
+        phoneMasked: item.primaryPhoneMasked ?? '',
+        kycLabel: stage?.label ?? (item.kyc ? item.kyc.stage ?? 'Dossier ouvert' : 'Non démarré'),
+        kycTone: stage?.tone ?? 'muted',
+        kycSteps: item.kyc?.completedSteps ?? 0,
+        risk: item.riskLevel ?? 'Unknown',
+        riskLabel: riskLevelLabel(item.riskLevel),
+        isPep: !!item.hasPepExposure,
+        products: item.products ?? [],
+        agencyId: item.agencyId ?? '',
+        agencyName: item.agencyName ?? '',
+        advisorUserId: item.advisorUserId ?? null,
+        advisorName: item.advisorName ?? null,
+        activity: item.lastActivitySummary ?? null,
+        activityAt: item.lastActivityAt ?? item.createdAt ?? null,
+        createdAt: item.createdAt ?? null,
+        item,
+      };
+    }),
+  );
+
+  public readonly selected = computed(() => this.rows().find((r) => r.id === this.selectedId()) ?? null);
+
+  public readonly allChecked = computed(() => {
+    const rows = this.rows();
+    return rows.length > 0 && rows.every((r) => this.checked().has(r.id));
+  });
+
+  public readonly tableConfig = computed<TableConfig>(() => ({
+    property: 'id',
+    pagination: {
+      serverSide: true,
+      pageIndex: this.page() - 1,
+      pageSize: this.pageSize(),
+      totalElements: this.totalCount(),
+      pageSizeOptions: PAGE_SIZES,
+    },
+  }));
 
   /** Frappes de recherche, regroupées avant l'appel réseau. */
   private readonly _search$ = new Subject<void>();
@@ -289,7 +361,7 @@ export class ClientsListPage implements OnInit {
         switchMap(() => this._searchRequest()),
         takeUntilDestroyed(this._destroyRef),
       )
-      .subscribe((result) => this._onResult(result));
+      .subscribe(({ page, counts }) => this._onResult(page, counts));
 
     this._restoreFromUrl();
     this._loadFilterLists();
@@ -300,56 +372,164 @@ export class ClientsListPage implements OnInit {
 
   /**
    * La recherche texte passe par un debounce de 300 ms : sans lui, chaque
-   * frappe déclenchait un appel HTTP. Les listes déroulantes et les puces de
-   * critère restent immédiates, un clic étant déjà une intention ferme.
+   * frappe déclenchait un appel HTTP. Les listes déroulantes et les raccourcis
+   * restent immédiats, un clic étant déjà une intention ferme.
    */
   public onSearchChange(value: string | null): void {
     this.filterQuery.set(value ?? '');
     this._search$.next();
   }
 
-  public onCriterionChange(value: SearchCriterion): void {
-    this.forcedCriterion.set(value);
+  public onCriterionChange(value: SearchCriterion | null): void {
+    this.forcedCriterion.set(value ?? 'auto');
+    this._applyFilters();
+  }
+
+  public onQuickChange(value: QuickFilter): void {
+    if (value === this.quick()) return;
+    this.quick.set(value);
     this._applyFilters();
   }
 
   public onFilterChange(
-    key: 'status' | 'type' | 'agency' | 'advisor',
+    key: 'status' | 'type' | 'agency' | 'advisor' | 'risk' | 'pep',
     value: string | null,
   ): void {
     const next = value || null;
-    switch (key) {
-      case 'status':
-        this.filterStatus.set(next);
-        break;
-      case 'type':
-        this.filterType.set(next);
-        break;
-      case 'agency':
-        this.filterAgency.set(next);
-        break;
-      case 'advisor':
-        this.filterAdvisor.set(next);
-        break;
-    }
+    const target = {
+      status: this.filterStatus,
+      type: this.filterType,
+      agency: this.filterAgency,
+      advisor: this.filterAdvisor,
+      risk: this.filterRisk,
+      pep: this.filterPep,
+    }[key];
+    target.set(next);
     this._applyFilters();
   }
 
   public resetFilters(): void {
     this.filterQuery.set('');
     this.forcedCriterion.set('auto');
+    this.quick.set('All');
     this.filterStatus.set(null);
     this.filterType.set(null);
     this.filterAgency.set(null);
     this.filterAdvisor.set(null);
+    this.filterRisk.set(null);
+    this.filterPep.set(null);
     this._applyFilters();
   }
 
-  public goToPage(page: number): void {
-    if (page < 1 || page > this.totalPages() || page === this.page()) return;
-    this.page.set(page);
+  public onPageChange(event: PageEvent): void {
+    const sizeChanged = event.pageSize !== this.pageSize();
+    this.pageSize.set(event.pageSize);
+    this.page.set(sizeChanged ? 1 : event.pageIndex + 1);
     this._syncUrl();
     this._load();
+  }
+
+  // ——— Sélection ———
+
+  public toggleChecked(id: string, value: boolean): void {
+    const next = new Set(this.checked());
+    if (value) next.add(id);
+    else next.delete(id);
+    this.checked.set(next);
+  }
+
+  public toggleAll(value: boolean): void {
+    this.checked.set(value ? new Set(this.rows().map((r) => r.id)) : new Set());
+  }
+
+  public select(row: ClientRow): void {
+    if (this.selectedId() === row.id) return;
+    this.selectedId.set(row.id);
+    this._loadAdvisorChoices(row.agencyId);
+  }
+
+  public closePanel(): void {
+    this.selectedId.set(null);
+  }
+
+  // ——— Actions du panneau ———
+
+  /**
+   * Le numéro en clair passe par l'endpoint de révélation, qui journalise l'accès : appeler un
+   * client est une consultation de donnée protégée comme une autre.
+   */
+  public contact(row: ClientRow, channel: 'tel' | 'sms'): void {
+    this.isRevealing.set(true);
+    this._clientsApi
+      .revealSensitiveField(row.id, { field: RevealSensitiveFieldRequestFieldEnum.Phone })
+      .pipe(
+        catchError(() => {
+          this._snackbar.error('Numéro indisponible', 'Le numéro du client n’a pas pu être lu.');
+          this.isRevealing.set(false);
+          return EMPTY;
+        }),
+      )
+      .subscribe((result) => {
+        this.isRevealing.set(false);
+        const number = (result.value ?? '').replace(/[^\d+]/g, '');
+        if (!number) {
+          this._snackbar.info('Aucun numéro', 'Ce client n’a pas de téléphone enregistré.');
+          return;
+        }
+        window.location.href = `${channel}:${number}`;
+      });
+  }
+
+  public assignAdvisor(row: ClientRow, advisorUserId: string | null): void {
+    if ((advisorUserId || null) === row.advisorUserId) return;
+    this.isAssigning.set(true);
+    this._lifecycleApi
+      .assignClientAdvisor(row.id, { advisorUserId: advisorUserId || null })
+      .pipe(
+        catchError((err: HttpErrorResponse) => {
+          this._snackbar.error('Attribution impossible', err.error?.detail ?? err.error?.title ?? 'Le conseiller n’a pas été attribué.');
+          this.isAssigning.set(false);
+          return EMPTY;
+        }),
+      )
+      .subscribe(() => {
+        this.isAssigning.set(false);
+        this._snackbar.success('Conseiller attribué', `${row.displayName} est suivi par son nouveau conseiller.`);
+        this._load();
+      });
+  }
+
+  /**
+   * Un conseiller doit appartenir à l'agence du client (règle serveur). L'attribution groupée
+   * envoie donc chaque client séparément et dit combien ont été refusés, plutôt que de tout annuler.
+   */
+  public assignChecked(): void {
+    const advisor = this.bulkAdvisor();
+    const ids = [...this.checked()];
+    if (!advisor || ids.length === 0) return;
+
+    this.isAssigning.set(true);
+    forkJoin(
+      ids.map((id) =>
+        this._lifecycleApi.assignClientAdvisor(id, { advisorUserId: advisor }).pipe(
+          switchMap(() => of(true)),
+          catchError(() => of(false)),
+        ),
+      ),
+    ).subscribe((results) => {
+      this.isAssigning.set(false);
+      const failed = results.filter((ok) => !ok).length;
+      if (failed === 0) this._snackbar.success('Conseiller attribué', `${ids.length} client(s) mis à jour.`);
+      else this._snackbar.error('Attribution partielle', `${failed} client(s) sur ${ids.length} n’ont pas pu être attribués (agence différente ?).`);
+      this.checked.set(new Set());
+      this.bulkAdvisor.set(null);
+      this._load();
+    });
+  }
+
+  public openKyc(row: ClientRow): void {
+    if (row.item.kyc?.kycFileId) this._router.navigate(['/kyc', row.item.kyc.kycFileId]);
+    else this._router.navigate(['/kyc/enrolment', row.id]);
   }
 
   // ——— Navigation ———
@@ -363,10 +543,6 @@ export class ClientsListPage implements OnInit {
     this._router.navigate(['/customers/nouveau']);
   }
 
-  /**
-   * L'écran d'import vit dans le module Paramétrage, avec celui des utilisateurs : c'est là que
-   * le repo regroupe les imports (cf. le groupe « Données & Importation » de l'aperçu).
-   */
   public goToImport(): void {
     this._router.navigate(['/customers/import-clients']);
   }
@@ -398,18 +574,25 @@ export class ClientsListPage implements OnInit {
     if (CRITERION_CHIPS.some((c) => c.value === params['critere'])) {
       this.forcedCriterion.set(params['critere'] as SearchCriterion);
     }
+    if (QUICK_FILTERS.some((q) => q.value === params['vue'])) this.quick.set(params['vue'] as QuickFilter);
     if (params['statut']) this.filterStatus.set(params['statut']);
     if (params['type']) this.filterType.set(params['type']);
     if (params['agence']) this.filterAgency.set(params['agence']);
     if (params['conseiller']) this.filterAdvisor.set(params['conseiller']);
+    if (params['risque']) this.filterRisk.set(params['risque']);
+    if (params['ppe'] === 'true' || params['ppe'] === 'false') this.filterPep.set(params['ppe']);
+    if (this.filterStatus() || this.filterRisk() || this.filterPep()) this.showMoreFilters.set(true);
 
     const page = Number(params['page']);
     if (Number.isInteger(page) && page > 0) this.page.set(page);
+    const size = Number(params['taille']);
+    if (PAGE_SIZES.includes(size)) this.pageSize.set(size);
   }
 
   /** Point de passage unique : URL, retour en page 1, rechargement. */
   private _applyFilters(): void {
     this.page.set(1);
+    this.checked.set(new Set());
     this._syncUrl();
     this._load();
   }
@@ -420,11 +603,15 @@ export class ClientsListPage implements OnInit {
       queryParams: {
         q: this.filterQuery().trim() || null,
         critere: this.forcedCriterion() === 'auto' ? null : this.forcedCriterion(),
+        vue: this.quick() === 'All' ? null : this.quick(),
         statut: this.filterStatus() || null,
         type: this.filterType() || null,
         agence: this.filterAgency() || null,
         conseiller: this.filterAdvisor() || null,
+        risque: this.filterRisk() || null,
+        ppe: this.filterPep() || null,
         page: this.page() > 1 ? this.page() : null,
+        taille: this.pageSize() !== 25 ? this.pageSize() : null,
       },
       queryParamsHandling: 'merge',
       replaceUrl: true,
@@ -437,41 +624,61 @@ export class ClientsListPage implements OnInit {
     this._reload$.next();
   }
 
-  private _searchRequest(): Observable<PagedResultOfClientSearchItemDto> {
+  /** La page et ses compteurs partent ensemble, sous les mêmes critères. */
+  private _searchRequest(): Observable<{ page: PagedResultOfClientSearchItemDto; counts: ClientQuickCountsDto | null }> {
     const criterion = this.criterion();
     const value = this.filterQuery().trim() || undefined;
+    const clientNumber = criterion === 'clientNumber' ? value : undefined;
+    const phone = criterion === 'phone' ? value : undefined;
+    const document = criterion === 'identityDocument' ? value : undefined;
+    const name = criterion === 'name' ? value : undefined;
+    const status = (this.filterStatus() || undefined) as ClientStatusParam | undefined;
+    const agency = this.filterAgency() ?? undefined;
+    const advisor = this.filterAdvisor() ?? undefined;
+    const type = (this.filterType() || undefined) as ClientTypeParam | undefined;
+    const risk = (this.filterRisk() || undefined) as RiskParam | undefined;
+    const pep = this.filterPep() === null ? undefined : this.filterPep() === 'true';
 
-    return this._clientsApi
-      .searchClients(
-        criterion === 'clientNumber' ? value : undefined,
-        criterion === 'phone' ? value : undefined,
-        criterion === 'identityDocument' ? value : undefined,
-        criterion === 'name' ? value : undefined,
-        statusToIndex(this.filterStatus()),
-        this.filterAgency() ?? undefined,
-        this.filterAdvisor() ?? undefined,
-        typeToIndex(this.filterType()),
-        undefined,
-        this.page(),
-        this._pageSize,
-      )
-      .pipe(
-        catchError(() => {
-          this.items.set([]);
-          this.totalCount.set(0);
-          this.totalPages.set(1);
-          this.hasFailed.set(true);
-          this.isLoading.set(false);
-          return EMPTY;
-        }),
-      );
+    return forkJoin({
+      page: this._clientsApi.searchClients(
+        clientNumber, phone, document, name, status, agency, advisor, type, undefined,
+        this.page(), this.pageSize(), this.quick(), risk, pep,
+      ),
+      // Les compteurs sont un confort : leur panne ne doit pas vider la liste.
+      counts: this._clientsApi
+        .getClientQuickCounts(clientNumber, phone, document, name, status, agency, advisor, type, undefined, risk, pep)
+        .pipe(catchError(() => of(null))),
+    }).pipe(
+      catchError(() => {
+        this.items.set([]);
+        this.totalCount.set(0);
+        this.hasFailed.set(true);
+        this.isLoading.set(false);
+        return EMPTY;
+      }),
+    );
   }
 
-  private _onResult(result: PagedResultOfClientSearchItemDto): void {
+  private _onResult(result: PagedResultOfClientSearchItemDto, counts: ClientQuickCountsDto | null): void {
     this.items.set(result.items ?? []);
     this.totalCount.set(result.totalCount ?? 0);
-    this.totalPages.set(Math.max(result.totalPages ?? 1, 1));
+    if (counts) this.counts.set(counts);
     this.isLoading.set(false);
+  }
+
+  private _loadAdvisorChoices(agencyId: string): void {
+    this.advisorChoices.set([]);
+    if (!agencyId || !this.canAssign()) return;
+    this._usersApi
+      .listUsers('Active', agencyId, undefined, 1, 200)
+      .pipe(catchError(() => EMPTY))
+      .subscribe((result) =>
+        this.advisorChoices.set(
+          (result.items ?? [])
+            .filter((u) => !!u.id)
+            .map((u) => ({ label: u.fullName ?? u.email ?? 'Conseiller', value: u.id as string })),
+        ),
+      );
   }
 
   private _loadFilterLists(): void {
@@ -482,10 +689,7 @@ export class ClientsListPage implements OnInit {
         this._agencies.set(
           (result.items ?? [])
             .filter((agency) => !!agency.id)
-            .map((agency) => ({
-              label: agency.name ?? agency.code ?? 'Agence',
-              value: agency.id as string,
-            })),
+            .map((agency) => ({ label: agency.name ?? agency.code ?? 'Agence', value: agency.id as string })),
         );
       });
 
@@ -496,10 +700,7 @@ export class ClientsListPage implements OnInit {
         this._advisors.set(
           (result.items ?? [])
             .filter((user) => !!user.id)
-            .map((user) => ({
-              label: user.fullName ?? user.email ?? 'Conseiller',
-              value: user.id as string,
-            })),
+            .map((user) => ({ label: user.fullName ?? user.email ?? 'Conseiller', value: user.id as string })),
         );
       });
   }

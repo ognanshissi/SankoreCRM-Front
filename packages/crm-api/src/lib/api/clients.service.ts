@@ -21,6 +21,8 @@ import { Observable }                                        from 'rxjs';
 // @ts-ignore
 import { ClientDetailDto } from '../model/client-detail-dto.interface';
 // @ts-ignore
+import { ClientQuickCountsDto } from '../model/client-quick-counts-dto.interface';
+// @ts-ignore
 import { CreateClientResult } from '../model/create-client-result.interface';
 // @ts-ignore
 import { CreateIndividualClientRequest } from '../model/create-individual-client-request.interface';
@@ -248,6 +250,244 @@ export class ClientsApiService {
     }
 
     /**
+     * Compteurs des raccourcis de la liste des clients (tous, KYC à démarrer, KYC en cours, risque élevé, sans conseiller) et doublons à examiner. Mêmes critères que SearchClients. Requires permission: customers:read.
+     * @param clientNumber 
+     * @param phone 
+     * @param identityDocumentNumber 
+     * @param name 
+     * @param status One of: PendingKyc, Active, Suspended, KycRejected, Archived, Merged
+     * @param agencyId 
+     * @param advisorUserId 
+     * @param type One of: Individual, Legal
+     * @param segmentCode 
+     * @param riskLevel One of: Unknown, Low, Medium, High
+     * @param hasPepExposure 
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     */
+    public getClientQuickCounts(clientNumber?: string, phone?: string, identityDocumentNumber?: string, name?: string, status?: 'PendingKyc' | 'Active' | 'Suspended' | 'KycRejected' | 'Archived' | 'Merged', agencyId?: string, advisorUserId?: string, type?: 'Individual' | 'Legal', segmentCode?: string, riskLevel?: 'Unknown' | 'Low' | 'Medium' | 'High', hasPepExposure?: boolean, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<ClientQuickCountsDto>;
+    public getClientQuickCounts(clientNumber?: string, phone?: string, identityDocumentNumber?: string, name?: string, status?: 'PendingKyc' | 'Active' | 'Suspended' | 'KycRejected' | 'Archived' | 'Merged', agencyId?: string, advisorUserId?: string, type?: 'Individual' | 'Legal', segmentCode?: string, riskLevel?: 'Unknown' | 'Low' | 'Medium' | 'High', hasPepExposure?: boolean, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<ClientQuickCountsDto>>;
+    public getClientQuickCounts(clientNumber?: string, phone?: string, identityDocumentNumber?: string, name?: string, status?: 'PendingKyc' | 'Active' | 'Suspended' | 'KycRejected' | 'Archived' | 'Merged', agencyId?: string, advisorUserId?: string, type?: 'Individual' | 'Legal', segmentCode?: string, riskLevel?: 'Unknown' | 'Low' | 'Medium' | 'High', hasPepExposure?: boolean, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<ClientQuickCountsDto>>;
+    public getClientQuickCounts(clientNumber?: string, phone?: string, identityDocumentNumber?: string, name?: string, status?: 'PendingKyc' | 'Active' | 'Suspended' | 'KycRejected' | 'Archived' | 'Merged', agencyId?: string, advisorUserId?: string, type?: 'Individual' | 'Legal', segmentCode?: string, riskLevel?: 'Unknown' | 'Low' | 'Medium' | 'High', hasPepExposure?: boolean, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
+
+        let localVarQueryParameters = new HttpParams({encoder: this.encoder});
+        if (clientNumber !== undefined && clientNumber !== null) {
+          localVarQueryParameters = this.addToHttpParams(localVarQueryParameters,
+            <any>clientNumber, 'clientNumber');
+        }
+        if (phone !== undefined && phone !== null) {
+          localVarQueryParameters = this.addToHttpParams(localVarQueryParameters,
+            <any>phone, 'phone');
+        }
+        if (identityDocumentNumber !== undefined && identityDocumentNumber !== null) {
+          localVarQueryParameters = this.addToHttpParams(localVarQueryParameters,
+            <any>identityDocumentNumber, 'identityDocumentNumber');
+        }
+        if (name !== undefined && name !== null) {
+          localVarQueryParameters = this.addToHttpParams(localVarQueryParameters,
+            <any>name, 'name');
+        }
+        if (status !== undefined && status !== null) {
+          localVarQueryParameters = this.addToHttpParams(localVarQueryParameters,
+            <any>status, 'status');
+        }
+        if (agencyId !== undefined && agencyId !== null) {
+          localVarQueryParameters = this.addToHttpParams(localVarQueryParameters,
+            <any>agencyId, 'agencyId');
+        }
+        if (advisorUserId !== undefined && advisorUserId !== null) {
+          localVarQueryParameters = this.addToHttpParams(localVarQueryParameters,
+            <any>advisorUserId, 'advisorUserId');
+        }
+        if (type !== undefined && type !== null) {
+          localVarQueryParameters = this.addToHttpParams(localVarQueryParameters,
+            <any>type, 'type');
+        }
+        if (segmentCode !== undefined && segmentCode !== null) {
+          localVarQueryParameters = this.addToHttpParams(localVarQueryParameters,
+            <any>segmentCode, 'segmentCode');
+        }
+        if (riskLevel !== undefined && riskLevel !== null) {
+          localVarQueryParameters = this.addToHttpParams(localVarQueryParameters,
+            <any>riskLevel, 'riskLevel');
+        }
+        if (hasPepExposure !== undefined && hasPepExposure !== null) {
+          localVarQueryParameters = this.addToHttpParams(localVarQueryParameters,
+            <any>hasPepExposure, 'hasPepExposure');
+        }
+
+        let localVarHeaders = this.defaultHeaders;
+
+        let localVarCredential: string | undefined;
+        // authentication (BearerToken) required
+        localVarCredential = this.configuration.lookupCredential('BearerToken');
+        if (localVarCredential) {
+            localVarHeaders = localVarHeaders.set('Authorization', 'Bearer ' + localVarCredential);
+        }
+
+        let localVarHttpHeaderAcceptSelected: string | undefined = options && options.httpHeaderAccept;
+        if (localVarHttpHeaderAcceptSelected === undefined) {
+            // to determine the Accept header
+            const httpHeaderAccepts: string[] = [
+                'application/json'
+            ];
+            localVarHttpHeaderAcceptSelected = this.configuration.selectHeaderAccept(httpHeaderAccepts);
+        }
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+
+        let localVarHttpContext: HttpContext | undefined = options && options.context;
+        if (localVarHttpContext === undefined) {
+            localVarHttpContext = new HttpContext();
+        }
+
+
+        let responseType_: 'text' | 'json' | 'blob' = 'json';
+        if (localVarHttpHeaderAcceptSelected) {
+            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+                responseType_ = 'text';
+            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+                responseType_ = 'json';
+            } else {
+                responseType_ = 'blob';
+            }
+        }
+
+        let localVarPath = `/api/v1/clients/quick-counts`;
+        return this.httpClient.request<ClientQuickCountsDto>('get', `${this.configuration.basePath}${localVarPath}`,
+            {
+                context: localVarHttpContext,
+                params: localVarQueryParameters,
+                responseType: <any>responseType_,
+                withCredentials: this.configuration.withCredentials,
+                headers: localVarHeaders,
+                observe: observe,
+                reportProgress: reportProgress
+            }
+        );
+    }
+
+    /**
+     * Compteurs des raccourcis de la liste des clients (tous, KYC à démarrer, KYC en cours, risque élevé, sans conseiller) et doublons à examiner. Mêmes critères que SearchClients. Requires permission: customers:read.
+     * @param clientNumber 
+     * @param phone 
+     * @param identityDocumentNumber 
+     * @param name 
+     * @param status One of: PendingKyc, Active, Suspended, KycRejected, Archived, Merged
+     * @param agencyId 
+     * @param advisorUserId 
+     * @param type One of: Individual, Legal
+     * @param segmentCode 
+     * @param riskLevel One of: Unknown, Low, Medium, High
+     * @param hasPepExposure 
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     */
+    public getClientQuickCounts_1(clientNumber?: string, phone?: string, identityDocumentNumber?: string, name?: string, status?: 'PendingKyc' | 'Active' | 'Suspended' | 'KycRejected' | 'Archived' | 'Merged', agencyId?: string, advisorUserId?: string, type?: 'Individual' | 'Legal', segmentCode?: string, riskLevel?: 'Unknown' | 'Low' | 'Medium' | 'High', hasPepExposure?: boolean, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<ClientQuickCountsDto>;
+    public getClientQuickCounts_1(clientNumber?: string, phone?: string, identityDocumentNumber?: string, name?: string, status?: 'PendingKyc' | 'Active' | 'Suspended' | 'KycRejected' | 'Archived' | 'Merged', agencyId?: string, advisorUserId?: string, type?: 'Individual' | 'Legal', segmentCode?: string, riskLevel?: 'Unknown' | 'Low' | 'Medium' | 'High', hasPepExposure?: boolean, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<ClientQuickCountsDto>>;
+    public getClientQuickCounts_1(clientNumber?: string, phone?: string, identityDocumentNumber?: string, name?: string, status?: 'PendingKyc' | 'Active' | 'Suspended' | 'KycRejected' | 'Archived' | 'Merged', agencyId?: string, advisorUserId?: string, type?: 'Individual' | 'Legal', segmentCode?: string, riskLevel?: 'Unknown' | 'Low' | 'Medium' | 'High', hasPepExposure?: boolean, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<ClientQuickCountsDto>>;
+    public getClientQuickCounts_1(clientNumber?: string, phone?: string, identityDocumentNumber?: string, name?: string, status?: 'PendingKyc' | 'Active' | 'Suspended' | 'KycRejected' | 'Archived' | 'Merged', agencyId?: string, advisorUserId?: string, type?: 'Individual' | 'Legal', segmentCode?: string, riskLevel?: 'Unknown' | 'Low' | 'Medium' | 'High', hasPepExposure?: boolean, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
+
+        let localVarQueryParameters = new HttpParams({encoder: this.encoder});
+        if (clientNumber !== undefined && clientNumber !== null) {
+          localVarQueryParameters = this.addToHttpParams(localVarQueryParameters,
+            <any>clientNumber, 'clientNumber');
+        }
+        if (phone !== undefined && phone !== null) {
+          localVarQueryParameters = this.addToHttpParams(localVarQueryParameters,
+            <any>phone, 'phone');
+        }
+        if (identityDocumentNumber !== undefined && identityDocumentNumber !== null) {
+          localVarQueryParameters = this.addToHttpParams(localVarQueryParameters,
+            <any>identityDocumentNumber, 'identityDocumentNumber');
+        }
+        if (name !== undefined && name !== null) {
+          localVarQueryParameters = this.addToHttpParams(localVarQueryParameters,
+            <any>name, 'name');
+        }
+        if (status !== undefined && status !== null) {
+          localVarQueryParameters = this.addToHttpParams(localVarQueryParameters,
+            <any>status, 'status');
+        }
+        if (agencyId !== undefined && agencyId !== null) {
+          localVarQueryParameters = this.addToHttpParams(localVarQueryParameters,
+            <any>agencyId, 'agencyId');
+        }
+        if (advisorUserId !== undefined && advisorUserId !== null) {
+          localVarQueryParameters = this.addToHttpParams(localVarQueryParameters,
+            <any>advisorUserId, 'advisorUserId');
+        }
+        if (type !== undefined && type !== null) {
+          localVarQueryParameters = this.addToHttpParams(localVarQueryParameters,
+            <any>type, 'type');
+        }
+        if (segmentCode !== undefined && segmentCode !== null) {
+          localVarQueryParameters = this.addToHttpParams(localVarQueryParameters,
+            <any>segmentCode, 'segmentCode');
+        }
+        if (riskLevel !== undefined && riskLevel !== null) {
+          localVarQueryParameters = this.addToHttpParams(localVarQueryParameters,
+            <any>riskLevel, 'riskLevel');
+        }
+        if (hasPepExposure !== undefined && hasPepExposure !== null) {
+          localVarQueryParameters = this.addToHttpParams(localVarQueryParameters,
+            <any>hasPepExposure, 'hasPepExposure');
+        }
+
+        let localVarHeaders = this.defaultHeaders;
+
+        let localVarCredential: string | undefined;
+        // authentication (BearerToken) required
+        localVarCredential = this.configuration.lookupCredential('BearerToken');
+        if (localVarCredential) {
+            localVarHeaders = localVarHeaders.set('Authorization', 'Bearer ' + localVarCredential);
+        }
+
+        let localVarHttpHeaderAcceptSelected: string | undefined = options && options.httpHeaderAccept;
+        if (localVarHttpHeaderAcceptSelected === undefined) {
+            // to determine the Accept header
+            const httpHeaderAccepts: string[] = [
+                'application/json'
+            ];
+            localVarHttpHeaderAcceptSelected = this.configuration.selectHeaderAccept(httpHeaderAccepts);
+        }
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+
+        let localVarHttpContext: HttpContext | undefined = options && options.context;
+        if (localVarHttpContext === undefined) {
+            localVarHttpContext = new HttpContext();
+        }
+
+
+        let responseType_: 'text' | 'json' | 'blob' = 'json';
+        if (localVarHttpHeaderAcceptSelected) {
+            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+                responseType_ = 'text';
+            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+                responseType_ = 'json';
+            } else {
+                responseType_ = 'blob';
+            }
+        }
+
+        let localVarPath = `/api/v1/clients/quick-counts`;
+        return this.httpClient.request<ClientQuickCountsDto>('get', `${this.configuration.basePath}${localVarPath}`,
+            {
+                context: localVarHttpContext,
+                params: localVarQueryParameters,
+                responseType: <any>responseType_,
+                withCredentials: this.configuration.withCredentials,
+                headers: localVarHeaders,
+                observe: observe,
+                reportProgress: reportProgress
+            }
+        );
+    }
+
+    /**
      * Reveal one encrypted field of a client in clear text
      * Decrypts and returns a SINGLE protected field. Every call writes a SensitiveDataAccessLog row (actor, client, field, timestamp, correlation id) and is audited, so each access is individually traceable. field is one of IdentityDocumentNumber, DateOfBirth, DeclaredIncome, Phone, Email, PostalAddress, RegistrationNumber, TaxIdNumber. For Phone, Email and PostalAddress, pass contactPointId to choose among several; omit it to get the active primary one. Beyond the tenant\&#39;s reveal-limit-per-hour quota (per USER, rolling hour) the call answers 429 REVEAL_RATE_LIMIT_EXCEEDED and raises a compliance alert. A field with nothing stored answers 404 UNKNOWN_SENSITIVE_FIELD; an unknown or out-of-perimeter client answers 404 CLIENT_NOT_FOUND. The response is sent with Cache-Control: no-store and Pragma: no-cache — it must never be cached, logged or replayed. It is a POST rather than a GET precisely so that no proxy or browser history keeps the value. Requires permission: customers:reveal_sensitive.
      * @param clientId 
@@ -329,7 +569,7 @@ export class ClientsApiService {
 
     /**
      * Search clients
-     * Paginated, multi-criteria search. All filters are cumulative (AND). phone and identityDocumentNumber are matched by EQUALITY ON THE BLIND INDEX after normalization, so \&#39;+225 07 08 09 18\&#39; and \&#39;07080918\&#39; find the same client and no encrypted column is ever decrypted to filter. name is a prefix search on the normalized SearchKey column (upper-cased, accent-free, surname first): \&#39;TRA\&#39; finds \&#39;Traoré\&#39;, and a given name is matched too. A name shorter than 3 characters is ignored. Results are ordered by displayName. Rows are restricted to the caller\&#39;s agency perimeter (own agency + descendants + explicit attributions); a tenant-wide account sees every agency. Performance: the ux_clients_number, ux_clients_identity_doc and (TenantId, SearchKey) indexes plus the (TenantId, Status/AgencyId/AdvisorUserId/SegmentCode) indexes keep this query within the p95 &lt; 300 ms objective at 100 000 clients per tenant — the count and the page are two server-side queries, nothing is materialised before Skip/Take. primaryPhoneMasked is masked; use POST clients/{clientId}/reveal for a clear value. Requires permission: customers:read.
+     * Paginated, multi-criteria search. All filters are cumulative (AND). phone and identityDocumentNumber are matched by EQUALITY ON THE BLIND INDEX after normalization, so \&#39;+225 07 08 09 18\&#39; and \&#39;07080918\&#39; find the same client and no encrypted column is ever decrypted to filter. name is a prefix search on the normalized SearchKey column (upper-cased, accent-free, surname first): \&#39;TRA\&#39; finds \&#39;Traoré\&#39;, and a given name is matched too. A name shorter than 3 characters is ignored. Results are ordered by displayName. Rows are restricted to the caller\&#39;s agency perimeter (own agency + descendants + explicit attributions); a tenant-wide account sees every agency. Performance: the ux_clients_number, ux_clients_identity_doc and (TenantId, SearchKey) indexes plus the (TenantId, Status/AgencyId/AdvisorUserId/SegmentCode) indexes keep this query within the p95 &lt; 300 ms objective at 100 000 clients per tenant — the count and the page are two server-side queries, nothing is materialised before Skip/Take. quick narrows to a shortcut of the list screen (KycToStart, KycInProgress, HighRisk, WithoutAdvisor), counted the same way by GET clients/quick-counts. agencyName, advisorName, products, the last timeline entry and the KYC journey are resolved for the returned page only; a module that cannot answer leaves its column empty. primaryPhoneMasked is masked; use POST clients/{clientId}/reveal for a clear value. Requires permission: customers:read.
      * @param clientNumber 
      * @param phone 
      * @param identityDocumentNumber 
@@ -341,13 +581,16 @@ export class ClientsApiService {
      * @param segmentCode 
      * @param page 
      * @param pageSize 
+     * @param quick One of: All, KycToStart, KycInProgress, HighRisk, WithoutAdvisor
+     * @param riskLevel One of: Unknown, Low, Medium, High
+     * @param hasPepExposure 
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      */
-    public searchClients(clientNumber?: string, phone?: string, identityDocumentNumber?: string, name?: string, status?: 'PendingKyc' | 'Active' | 'Suspended' | 'KycRejected' | 'Archived' | 'Merged', agencyId?: string, advisorUserId?: string, type?: 'Individual' | 'Legal', segmentCode?: string, page?: number, pageSize?: number, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<PagedResultOfClientSearchItemDto>;
-    public searchClients(clientNumber?: string, phone?: string, identityDocumentNumber?: string, name?: string, status?: 'PendingKyc' | 'Active' | 'Suspended' | 'KycRejected' | 'Archived' | 'Merged', agencyId?: string, advisorUserId?: string, type?: 'Individual' | 'Legal', segmentCode?: string, page?: number, pageSize?: number, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<PagedResultOfClientSearchItemDto>>;
-    public searchClients(clientNumber?: string, phone?: string, identityDocumentNumber?: string, name?: string, status?: 'PendingKyc' | 'Active' | 'Suspended' | 'KycRejected' | 'Archived' | 'Merged', agencyId?: string, advisorUserId?: string, type?: 'Individual' | 'Legal', segmentCode?: string, page?: number, pageSize?: number, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<PagedResultOfClientSearchItemDto>>;
-    public searchClients(clientNumber?: string, phone?: string, identityDocumentNumber?: string, name?: string, status?: 'PendingKyc' | 'Active' | 'Suspended' | 'KycRejected' | 'Archived' | 'Merged', agencyId?: string, advisorUserId?: string, type?: 'Individual' | 'Legal', segmentCode?: string, page?: number, pageSize?: number, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
+    public searchClients(clientNumber?: string, phone?: string, identityDocumentNumber?: string, name?: string, status?: 'PendingKyc' | 'Active' | 'Suspended' | 'KycRejected' | 'Archived' | 'Merged', agencyId?: string, advisorUserId?: string, type?: 'Individual' | 'Legal', segmentCode?: string, page?: number, pageSize?: number, quick?: 'All' | 'KycToStart' | 'KycInProgress' | 'HighRisk' | 'WithoutAdvisor', riskLevel?: 'Unknown' | 'Low' | 'Medium' | 'High', hasPepExposure?: boolean, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<PagedResultOfClientSearchItemDto>;
+    public searchClients(clientNumber?: string, phone?: string, identityDocumentNumber?: string, name?: string, status?: 'PendingKyc' | 'Active' | 'Suspended' | 'KycRejected' | 'Archived' | 'Merged', agencyId?: string, advisorUserId?: string, type?: 'Individual' | 'Legal', segmentCode?: string, page?: number, pageSize?: number, quick?: 'All' | 'KycToStart' | 'KycInProgress' | 'HighRisk' | 'WithoutAdvisor', riskLevel?: 'Unknown' | 'Low' | 'Medium' | 'High', hasPepExposure?: boolean, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<PagedResultOfClientSearchItemDto>>;
+    public searchClients(clientNumber?: string, phone?: string, identityDocumentNumber?: string, name?: string, status?: 'PendingKyc' | 'Active' | 'Suspended' | 'KycRejected' | 'Archived' | 'Merged', agencyId?: string, advisorUserId?: string, type?: 'Individual' | 'Legal', segmentCode?: string, page?: number, pageSize?: number, quick?: 'All' | 'KycToStart' | 'KycInProgress' | 'HighRisk' | 'WithoutAdvisor', riskLevel?: 'Unknown' | 'Low' | 'Medium' | 'High', hasPepExposure?: boolean, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<PagedResultOfClientSearchItemDto>>;
+    public searchClients(clientNumber?: string, phone?: string, identityDocumentNumber?: string, name?: string, status?: 'PendingKyc' | 'Active' | 'Suspended' | 'KycRejected' | 'Archived' | 'Merged', agencyId?: string, advisorUserId?: string, type?: 'Individual' | 'Legal', segmentCode?: string, page?: number, pageSize?: number, quick?: 'All' | 'KycToStart' | 'KycInProgress' | 'HighRisk' | 'WithoutAdvisor', riskLevel?: 'Unknown' | 'Low' | 'Medium' | 'High', hasPepExposure?: boolean, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
 
         let localVarQueryParameters = new HttpParams({encoder: this.encoder});
         if (clientNumber !== undefined && clientNumber !== null) {
@@ -393,6 +636,18 @@ export class ClientsApiService {
         if (pageSize !== undefined && pageSize !== null) {
           localVarQueryParameters = this.addToHttpParams(localVarQueryParameters,
             <any>pageSize, 'pageSize');
+        }
+        if (quick !== undefined && quick !== null) {
+          localVarQueryParameters = this.addToHttpParams(localVarQueryParameters,
+            <any>quick, 'quick');
+        }
+        if (riskLevel !== undefined && riskLevel !== null) {
+          localVarQueryParameters = this.addToHttpParams(localVarQueryParameters,
+            <any>riskLevel, 'riskLevel');
+        }
+        if (hasPepExposure !== undefined && hasPepExposure !== null) {
+          localVarQueryParameters = this.addToHttpParams(localVarQueryParameters,
+            <any>hasPepExposure, 'hasPepExposure');
         }
 
         let localVarHeaders = this.defaultHeaders;
