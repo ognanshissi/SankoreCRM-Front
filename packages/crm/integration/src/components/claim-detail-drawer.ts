@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { DIALOG_DATA, DialogRef } from '@angular/cdk/dialog';
+import { firstValueFrom } from 'rxjs';
 import { TasAlert } from '@talisoft/ui/alert';
 import { Button } from '@talisoft/ui/button';
 import { TasFileUploader } from '@talisoft/ui/file-uploader';
@@ -12,9 +13,10 @@ import {
 } from '@talisoft/ui/side-drawer';
 import { SnackbarService } from '@talisoft/ui/snackbar';
 import { TasSpinner } from '@talisoft/ui/spinner';
-import { TableConfig, TasTable } from '@talisoft/ui/table';
+import { TasTable } from '@talisoft/ui/table';
 import { Severity, TasTag } from '@talisoft/ui/tag';
 import { TimeagoPipe } from '@talisoft/ui/timeago';
+import { ClaimDocumentDto, ClaimDto } from '@sankore/crm-api';
 import { PERMISSIONS, PermissionsService } from '@sankore/crm/common';
 import {
   CLAIM_DOCUMENT_ACCEPT,
@@ -22,37 +24,50 @@ import {
   claimStatusMeta,
   formatAmount,
   formatContractDate,
+  scanStatusMeta,
 } from '../data-access/integration-referential';
+import { HttpErrorResponse } from '@angular/common/http';
 import {
-  ClaimDetail,
-  ClaimTimelineEntry,
-  PendingIntegrationEndpoints,
-} from '../data-access/pending-endpoints';
+  IntegrationFacadeService,
+  integrationErrorMessage,
+} from '../data-access/integration-facade.service';
 
 export interface ClaimDetailDrawerData {
   claimId: string;
   productName: string;
 }
 
-/** Une ligne de chronologie, enrichie de son libellé et de sa sévérité. */
-interface TimelineRow extends ClaimTimelineEntry {
+/** Un jalon du dossier : un instant que le serveur tient vraiment, et son libellé. */
+interface Milestone {
   id: string;
+  at: string;
   label: string;
   severity: Severity;
 }
 
+/** Une pièce, enrichie de la lecture de son verdict antivirus. */
+interface DocumentRow {
+  /** Remonté à plat : `identifierField` de la table du kit ne suit pas un chemin imbriqué. */
+  id: string;
+  doc: ClaimDocumentDto;
+  scanLabel: string;
+  scanSeverity: Severity;
+  scanHint: string | null;
+}
+
 /**
- * Détail et suivi d'un sinistre — ASS-17.
+ * Détail et suivi d'un sinistre, et les pièces de son dossier — ASS-09.
  *
- * **Aucun endpoint de sinistre n'est déclaré dans le swagger** (lot back ASS-09 non
- * livré) : `PendingIntegrationEndpoints.getClaim()` répond `null`, et le drawer affiche
- * un vide expliqué plutôt qu'une erreur. La chronologie, la demande de pièce
- * complémentaire, l'indemnisation et le masquage des pièces sensibles sont écrits pour
- * de vrai et fonctionneront tels quels.
+ * **Il n'y a pas de chronologie, et c'est délibéré.** Cet écran en affichait une,
+ * écrite avant la livraison du lot : le serveur ne tient AUCUN historique de statut par
+ * sinistre — `ins_claim` porte le statut courant et une poignée d'instants
+ * (`declaredAt`, `statusChangedAt`, `indemnityPaidAt`, `lastSyncedAt`). Fabriquer une
+ * frise à partir d'un seul statut aurait affiché une histoire que personne n'a
+ * enregistrée. Les jalons réels sont montrés à la place, et ils sont peu nombreux.
  *
- * À l'arrivée de l'endpoint : mettre à jour le swagger, lancer
- * `npm run openapi-generator`, nommer la méthode dans `IntegrationFacadeService`, puis
- * remplacer l'appel et retirer le bandeau.
+ * L'enregistrement horodaté opposable que demande le règlement 01/CIMA/2024 existe,
+ * mais dans `audit.entries` — immuable au niveau de la base — et pas dans une table
+ * que cet écran peut lire. Une vue d'audit serait son propre écran.
  */
 @Component({
   selector: 'claim-detail-drawer',
@@ -83,60 +98,88 @@ interface TimelineRow extends ClaimTimelineEntry {
             <tas-spinner size="10" class="text-primary"></tas-spinner>
           </div>
         } @else if (!claim()) {
-          <tas-alert type="info">
-            <p class="text-sm font-medium">Le suivi des sinistres attend une livraison serveur</p>
+          <tas-alert type="error">
+            <p class="text-sm font-medium">Ce dossier est introuvable</p>
             <p class="text-xs mt-1">
-              Le dossier « {{ data.productName }} » est suivi chez l'assureur. Son avancement
-              apparaîtra ici dès que l'échange avec SANKORE sera en place ; demandez-le à
-              l'assureur en attendant.
+              Le sinistre « {{ data.productName }} » n'existe plus, ou n'appartient pas à votre
+              périmètre. Rechargez la liste des sinistres.
             </p>
           </tas-alert>
         } @else {
           <div class="flex flex-col gap-5">
-            <!-- Résumé : trois valeurs, pas une liste -->
+            <!-- Résumé : ce qu'un agent lit d'abord -->
             <div class="flex flex-wrap items-start gap-x-8 gap-y-3">
               <div>
                 <p class="text-xs text-slate-500">Statut</p>
                 <tas-tag class="mt-1" [severity]="statusSeverity()">{{ statusLabel() }}</tas-tag>
               </div>
               <div>
-                <p class="text-xs text-slate-500">Référence assureur</p>
+                <p class="text-xs text-slate-500">Numéro du dossier</p>
                 <p class="mt-1 font-mono text-xs text-slate-800">
-                  {{ claim()!.insurerClaimRef || '—' }}
+                  {{ claim()!.claimNumber || claim()!.externalClaimId || '—' }}
                 </p>
+              </div>
+              <div>
+                <p class="text-xs text-slate-500">Nature</p>
+                <p class="mt-1 text-sm text-slate-800">{{ claim()!.nature }}</p>
               </div>
               <div>
                 <p class="text-xs text-slate-500">Survenu le</p>
                 <p class="mt-1 text-sm text-slate-800">{{ formatDate(claim()!.occurredOn) }}</p>
               </div>
-              <div>
-                <p class="text-xs text-slate-500">Dernière mise à jour</p>
-                <p class="mt-1 text-sm text-slate-800">{{ claim()!.updatedAt | dateTimeAgo }}</p>
-              </div>
             </div>
 
-            <!-- Indemnisation versée sur le compte CBS -->
-            @if (claim()!.settlementAmount !== null) {
+            <!--
+              La déclaration n'est pas encore partie chez l'assureur : tant qu'il n'a pas
+              rendu sa référence, aucune pièce ne peut lui être jointe — le serveur a besoin
+              de son identifiant de dossier pour les rattacher.
+            -->
+            @if (!claim()!.externalClaimId) {
+              <tas-alert type="info">
+                <p class="text-sm font-medium">L'assureur n'a pas encore accusé la déclaration</p>
+                <p class="text-xs mt-1">
+                  Les pièces peuvent être déposées dès maintenant ; elles partiront
+                  automatiquement dès que l'assureur aura rendu sa référence de dossier.
+                </p>
+              </tas-alert>
+            }
+
+            <!-- Indemnisation créditée sur le compte du client -->
+            @if (claim()!.indemnityAmount !== null) {
               <div class="rounded-lg border border-slate-200 bg-slate-50 p-4">
-                <p class="text-sm font-medium text-slate-800">Indemnisation versée</p>
+                <p class="text-sm font-medium text-slate-800">Indemnisation</p>
                 <p class="mt-1 text-lg font-semibold text-slate-800 tabular-nums">
                   {{ settlementLabel() }}
                 </p>
-                <p class="mt-0.5 text-xs text-slate-500">
-                  Créditée sur le compte du client le {{ formatDate(claim()!.settledAt) }}.
-                </p>
+                @if (claim()!.indemnityPaidAt) {
+                  <p class="mt-0.5 text-xs text-slate-500">
+                    Créditée le {{ formatDate(claim()!.indemnityPaidAt) }}
+                    @if (claim()!.indemnityCbsReference) {
+                      — référence {{ claim()!.indemnityCbsReference }}
+                    }
+                  </p>
+                } @else {
+                  <!--
+                    L'assureur a annoncé un montant ; l'argent n'est pas arrivé. La
+                    distinction compte : un agent ne doit pas dire à un client qu'il a été
+                    payé parce que l'assureur l'a chiffré.
+                  -->
+                  <p class="mt-0.5 text-xs text-slate-500">
+                    Montant annoncé par l'assureur. Le versement n'a pas encore été rapproché.
+                  </p>
+                }
               </div>
             }
 
-            <!-- Pièce complémentaire demandée : la seule action de l'agent ici -->
-            @if (requestedDocumentLabel(); as requested) {
-              <div class="flex flex-col gap-3 rounded-lg border border-slate-200 p-4">
+            <!-- Pièces demandées par l'assureur : la seule action de l'agent ici -->
+            @if (claim()!.missingDocuments; as requested) {
+              <div class="flex flex-col gap-3 rounded-lg border border-amber-200 bg-amber-50 p-4">
                 <div>
-                  <p class="text-sm font-medium text-slate-800">
-                    L'assureur demande une pièce
-                  </p>
+                  <p class="text-sm font-medium text-slate-800">L'assureur demande des pièces</p>
+                  <p class="mt-1 text-xs text-slate-700">{{ requested }}</p>
                   <p class="mt-1 text-xs text-slate-500">
-                    {{ requested }} — PDF, JPG ou PNG, {{ maxSizeMb }} Mo au plus.
+                    PDF, JPG, PNG ou HEIC, {{ maxSizeMb }} Mo au plus. La pièce est analysée par
+                    l'antivirus avant de partir chez l'assureur.
                   </p>
                 </div>
                 <tas-file-uploader
@@ -150,7 +193,7 @@ interface TimelineRow extends ClaimTimelineEntry {
                     tas-raised-button
                     color="primary"
                     type="button"
-                    [disabled]="!complementFile()"
+                    [disabled]="!complementFile() || isUploading()"
                     (click)="sendComplement()"
                   >
                     <tas-icon iconName="feather:upload" style="font-size:14px"></tas-icon>
@@ -160,90 +203,75 @@ interface TimelineRow extends ClaimTimelineEntry {
               </div>
             }
 
-            <!-- Chronologie des statuts -->
+            <!-- Jalons : les instants que le serveur tient, pas une frise reconstituée -->
             <div>
-              <p class="mb-2 text-sm font-medium text-slate-800">Chronologie</p>
-              <!--
-                Rendue par la table du kit : chaque étape est une ligne d'une seule cellule,
-                sans en-tête. La liste garde ainsi la pagination et l'état vide du kit,
-                comme la frise du dossier KYC.
-              -->
-              <tas-table [data]="timeline()" identifierField="id" [config]="timelineConfig()">
-                <ng-template #body let-entry>
-                  <tr>
-                    <td [attr.colspan]="1" class="p-0">
-                      <div class="flex gap-3 p-3">
-                        <div
-                          class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-100"
-                        >
-                          <tas-icon
-                            iconName="feather:clock"
-                            class="text-slate-500"
-                            style="font-size:14px"
-                          ></tas-icon>
-                        </div>
-                        <div class="min-w-0">
-                          <tas-tag [severity]="entry.severity">{{ entry.label }}</tas-tag>
-                          @if (entry.note) {
-                            <p class="mt-1 text-xs text-slate-600">{{ entry.note }}</p>
-                          }
-                          @if (entry.requestedDocumentLabel) {
-                            <p class="mt-1 text-xs text-slate-600">
-                              Pièce demandée :
-                              <span class="font-medium">{{ entry.requestedDocumentLabel }}</span>
-                            </p>
-                          }
-                          <p class="mt-1 text-xs text-slate-400">{{ entry.at | dateTimeAgo }}</p>
-                        </div>
-                      </div>
-                    </td>
-                  </tr>
-                </ng-template>
-              </tas-table>
+              <p class="mb-2 text-sm font-medium text-slate-800">Jalons du dossier</p>
+              <div class="flex flex-col gap-2">
+                @for (step of milestones(); track step.id) {
+                  <div class="flex items-center gap-3">
+                    <tas-tag [severity]="step.severity">{{ step.label }}</tas-tag>
+                    <span class="text-xs text-slate-500">{{ step.at | dateTimeAgo }}</span>
+                  </div>
+                }
+              </div>
             </div>
 
             <!-- Pièces du dossier -->
             <div>
               <p class="mb-2 text-sm font-medium text-slate-800">Pièces du dossier</p>
-              <tas-table [data]="claim()!.documents" identifierField="documentId">
+              <tas-table [data]="documentRows()" identifierField="id">
                 <ng-template #header>
                   <tr>
                     <th>Pièce</th>
-                    <th>Ajoutée</th>
+                    <th>Analyse</th>
+                    <th>Transmise</th>
                     <th class="text-right"></th>
                   </tr>
                 </ng-template>
-                <ng-template #body let-doc>
+                <ng-template #body let-row>
                   <tr>
                     <td class="py-3">
-                      @if (doc.isSensitive && !canRevealSensitive()) {
-                        <!--
-                          La ligne reste visible : savoir qu'une pièce existe n'est pas la
-                          voir, et la faire disparaître empêcherait l'agent de comprendre le
-                          dossier. Le texte porte l'information, pas la seule couleur.
-                        -->
-                        <tas-tag severity="neutral">
-                          <span class="inline-flex items-center gap-1.5">
-                            <tas-icon iconName="feather:eye-off" style="font-size:12px"></tas-icon>
-                            pièce sensible masquée
-                          </span>
-                        </tas-tag>
-                        <p class="mt-1 text-xs text-slate-500">
-                          Sa consultation demande le droit « Pièces sensibles des sinistres ».
-                        </p>
-                      } @else {
-                        <span class="text-sm text-slate-800">{{ doc.fileName }}</span>
+                      <p class="text-sm text-slate-800">{{ row.doc.fileName }}</p>
+                      <p class="text-xs text-slate-500">
+                        {{ row.doc.documentKind }} — {{ row.doc.uploadedAt | dateTimeAgo }}
+                        @if (row.doc.requestedByInsurer) {
+                          — demandée par l'assureur
+                        }
+                      </p>
+                    </td>
+                    <td>
+                      <tas-tag [severity]="row.scanSeverity">{{ row.scanLabel }}</tas-tag>
+                      @if (row.scanHint) {
+                        <p class="mt-1 max-w-xs text-xs text-slate-500">{{ row.scanHint }}</p>
                       }
                     </td>
-                    <td class="text-sm text-slate-600">{{ doc.uploadedAt | dateTimeAgo }}</td>
+                    <td class="text-sm text-slate-600">
+                      @if (row.doc.transmittedAt) {
+                        {{ row.doc.transmittedAt | dateTimeAgo }}
+                      } @else if (row.doc.requestedByInsurer) {
+                        <span class="text-xs text-slate-500">en attente</span>
+                      } @else {
+                        <!--
+                          Le serveur ne pousse pas une pièce que personne n'a réclamée sur un
+                          dossier à l'étude : dire « en attente » ici ferait croire à un envoi
+                          qui ne viendra pas.
+                        -->
+                        <span class="text-xs text-slate-400">—</span>
+                      }
+                    </td>
                     <td class="text-right">
-                      @if (!doc.isSensitive || canRevealSensitive()) {
+                      <!--
+                        Le téléchargement n'est offert que sur une pièce dont l'antivirus a
+                        rendu un verdict propre : le serveur répond 409 sur tout le reste, et
+                        proposer le bouton ferait cliquer l'agent sur une erreur.
+                      -->
+                      @if (row.doc.isTransmittable && canView()) {
                         <button
                           tas-button
                           iconButton
                           type="button"
-                          disabled
-                          title="Le téléchargement attend une livraison serveur."
+                          title="Télécharger la pièce"
+                          (click)="download(row.doc)"
                         >
                           <tas-icon iconName="feather:download" style="font-size:14px"></tas-icon>
                         </button>
@@ -258,9 +286,7 @@ interface TimelineRow extends ClaimTimelineEntry {
       </tas-drawer-content>
 
       <tas-drawer-action>
-        <button tas-outlined-button color="primary" type="button" (click)="close()">
-          Fermer
-        </button>
+        <button tas-button type="button" (click)="close()">Fermer</button>
       </tas-drawer-action>
     </tas-side-drawer>
   `,
@@ -269,29 +295,24 @@ export class ClaimDetailDrawer {
   private readonly _dialogRef = inject<DialogRef<boolean>>(DialogRef);
   private readonly _snackbar = inject(SnackbarService);
   private readonly _permissions = inject(PermissionsService);
-
-  /** `PendingIntegrationEndpoints` n'est pas un service Angular : il s'instancie. */
-  private readonly _pending = new PendingIntegrationEndpoints();
+  private readonly _integration = inject(IntegrationFacadeService);
 
   public readonly data = inject<ClaimDetailDrawerData>(DIALOG_DATA);
 
   /**
-   * Le serveur garde la relecture d'une pièce derrière `Ins.Claim.View`, pas derrière un
-   * droit « pièces sensibles » : celui-ci avait été anticipé ici et n'existe pas dans
-   * `Permissions.All`, donc le compilateur le refuse depuis la régénération du client.
-   *
-   * Le vrai verrou du serveur n'est pas la sensibilité de la pièce mais le VERDICT
-   * ANTIVIRUS — `GET .../content` répond 409 sur tout ce qui n'est pas `Clean`. C'est
-   * une meilleure information pour l'agent, et le bloc « Pièces du dossier » la portera
-   * quand il sera câblé sur les vrais endpoints.
+   * Le serveur garde la relecture d'une pièce derrière `Ins.Claim.View`, et pas derrière
+   * un droit « pièces sensibles » : celui-là avait été anticipé ici et n'existe pas dans
+   * `Permissions.All`.
    */
-  public readonly canRevealSensitive = this._permissions.can(PERMISSIONS.INS_CLAIM_VIEW);
+  public readonly canView = this._permissions.can(PERMISSIONS.INS_CLAIM_VIEW);
 
   public readonly accept = CLAIM_DOCUMENT_ACCEPT;
   public readonly maxSizeMb = CLAIM_DOCUMENT_MAX_SIZE_MB;
 
   public readonly isLoading = signal(true);
-  public readonly claim = signal<ClaimDetail | null>(null);
+  public readonly isUploading = signal(false);
+  public readonly claim = signal<ClaimDto | null>(null);
+  public readonly documents = signal<ClaimDocumentDto[]>([]);
   public readonly complementFile = signal<File | null>(null);
 
   public readonly statusLabel = computed(() => claimStatusMeta(this.claim()?.status).label);
@@ -299,62 +320,172 @@ export class ClaimDetailDrawer {
     () => claimStatusMeta(this.claim()?.status).severity,
   );
 
-  /** Chronologie du plus récent au plus ancien : la dernière nouvelle d'abord. */
-  public readonly timeline = computed<TimelineRow[]>(() =>
-    [...(this.claim()?.timeline ?? [])]
-      .sort((a, b) => (b.at ?? '').localeCompare(a.at ?? ''))
-      .map((entry, index) => ({
-        ...entry,
-        id: `${entry.at}-${index}`,
-        label: claimStatusMeta(entry.status).label,
-        severity: claimStatusMeta(entry.status).severity,
-      })),
-  );
-
-  /** La pièce demandée est celle de l'entrée la plus récente qui en nomme une. */
-  public readonly requestedDocumentLabel = computed(() => {
-    if (this.claim()?.status !== 'ComplementRequired') return null;
-    return this.timeline().find((e) => !!e.requestedDocumentLabel)?.requestedDocumentLabel ?? null;
-  });
-
   public readonly settlementLabel = computed(() => {
     const c = this.claim();
     if (!c) return '—';
-    return formatAmount(c.settlementAmount, c.settlementCurrency);
+    return formatAmount(c.indemnityAmount ?? null, c.indemnityCurrency ?? null);
   });
 
-  public readonly timelineConfig = computed<TableConfig>(() => ({
-    property: 'id',
-    pagination: {
-      // La chronologie arrive entière avec le sinistre : pagination côté client.
-      serverSide: false,
-      pageIndex: 0,
-      pageSize: 10,
-      pageSizeOptions: [10, 25, 50],
-      totalElements: this.timeline().length,
-    },
-  }));
+  /**
+   * Les instants que `ins_claim` porte réellement, du plus récent au plus ancien.
+   * Rien n'est déduit : un jalon absent ne s'affiche pas.
+   */
+  public readonly milestones = computed<Milestone[]>(() => {
+    const c = this.claim();
+    if (!c) return [];
+
+    // Chaque champ du DTO généré est optionnel — le générateur ne reporte pas la
+    // non-nullabilité du serveur — donc un jalon sans instant est simplement omis plutôt
+    // que rendu avec une date vide.
+    const steps: Milestone[] = [];
+
+    if (c.declaredAt) {
+      steps.push({ id: 'declared', at: c.declaredAt, label: 'Déclaré', severity: 'info' });
+    }
+
+    // Le changement de statut n'est un jalon distinct que s'il a bougé depuis la
+    // déclaration : sinon il répète la même date sous un autre nom.
+    if (c.statusChangedAt && c.statusChangedAt !== c.declaredAt) {
+      steps.push({
+        id: 'status',
+        at: c.statusChangedAt,
+        label: claimStatusMeta(c.status).label,
+        severity: claimStatusMeta(c.status).severity,
+      });
+    }
+
+    if (c.indemnityPaidAt) {
+      steps.push({
+        id: 'indemnity',
+        at: c.indemnityPaidAt,
+        label: 'Indemnisation créditée',
+        severity: 'success',
+      });
+    }
+
+    if (c.lastSyncedAt) {
+      steps.push({
+        id: 'synced',
+        at: c.lastSyncedAt,
+        label: "Dernière nouvelle de l'assureur",
+        severity: 'neutral',
+      });
+    }
+
+    return steps.sort((a, b) => (b.at ?? '').localeCompare(a.at ?? ''));
+  });
+
+  public readonly documentRows = computed<DocumentRow[]>(() =>
+    [...this.documents()]
+      .sort((a, b) => (b.uploadedAt ?? '').localeCompare(a.uploadedAt ?? ''))
+      .map((doc) => {
+        const scan = scanStatusMeta(doc.scanStatus);
+        return {
+          id: doc.id ?? doc.sha256 ?? doc.fileName ?? '',
+          doc,
+          scanLabel: scan.label,
+          scanSeverity: scan.severity,
+          scanHint: scan.hint,
+        };
+      }),
+  );
 
   constructor() {
-    this._pending.getClaim().subscribe((claim) => {
-      this.claim.set(claim);
-      this.isLoading.set(false);
-    });
+    void this._load();
   }
 
   public formatDate(value: string | null | undefined): string {
     return formatContractDate(value);
   }
 
-  public sendComplement(): void {
-    // Aucun endpoint d'ajout de pièce : on ne prétend pas que le fichier est parti.
-    this._snackbar.info(
-      'Pièce non transmise',
-      "L'envoi de pièces attend une livraison serveur. Transmettez-la par votre canal habituel.",
-    );
+  public async sendComplement(): Promise<void> {
+    const file = this.complementFile();
+    const claim = this.claim();
+    if (!file || !claim) return;
+
+    this.isUploading.set(true);
+
+    try {
+      await firstValueFrom(
+        this._integration.uploadClaimDocument(
+          claim.id!,
+          // La nature de la pièce est DÉDUITE et non demandée : le serveur la stocke en
+          // texte libre, et un agent qui répond à une demande de l'assureur n'a pas à
+          // classer le fichier pour qu'il parte. `requestedByInsurer` est ce qui compte,
+          // parce que c'est ce qui déclenche la transmission automatique.
+          'Complement',
+          file,
+          true,
+        ),
+      );
+
+      this.complementFile.set(null);
+
+      this._snackbar.success(
+        'Pièce déposée',
+        "Elle est chiffrée et analysée par l'antivirus avant de partir chez l'assureur.",
+      );
+
+      await this._load();
+    } catch (error) {
+      this._snackbar.error(
+        'Pièce non déposée',
+        integrationErrorMessage(error as HttpErrorResponse, "La pièce n'a pas pu être déposée."),
+      );
+    } finally {
+      this.isUploading.set(false);
+    }
+  }
+
+  public async download(doc: ClaimDocumentDto): Promise<void> {
+    const claim = this.claim();
+    if (!claim) return;
+
+    try {
+      const blob = await firstValueFrom(
+        this._integration.downloadClaimDocument(claim.id!, doc.id!),
+      );
+
+      // Un object URL plutôt qu'un lien direct : la route exige le jeton porteur, donc
+      // une balise <a href> ouvrirait un 401.
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = doc.fileName || 'piece';
+      anchor.click();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      this._snackbar.error(
+        'Téléchargement impossible',
+        integrationErrorMessage(error as HttpErrorResponse, "La pièce n'a pas pu être téléchargée."),
+      );
+    }
   }
 
   public close(): void {
     this._dialogRef.close(false);
+  }
+
+  private async _load(): Promise<void> {
+    this.isLoading.set(true);
+
+    try {
+      const claim = await firstValueFrom(this._integration.getClaim(this.data.claimId));
+      this.claim.set(claim);
+
+      // Les pièces sont un second appel : le détail du dossier et son registre de pièces
+      // sont deux endpoints, et le dossier reste lisible si le registre échoue.
+      try {
+        this.documents.set(
+          await firstValueFrom(this._integration.listClaimDocuments(this.data.claimId)),
+        );
+      } catch {
+        this.documents.set([]);
+      }
+    } catch {
+      this.claim.set(null);
+    } finally {
+      this.isLoading.set(false);
+    }
   }
 }

@@ -582,6 +582,15 @@ export function policyStatusMeta(status: string | null | undefined): {
 }
 
 /** Statut d'un sinistre. Valeurs de `ClaimRow.status`. */
+/**
+ * Les six valeurs de `ClaimStatus` du serveur.
+ *
+ * Trois libellés avaient été écrits ici avant la livraison du lot ASS-09 et ne
+ * correspondaient à rien — `ComplementRequired`, `Approved` et `Paid` n'existent pas
+ * dans le contrat, qui dit `DocumentsRequired`, `Accepted` et `Indemnified`. Un statut
+ * inconnu retombait sur le libellé brut, donc l'écran affichait « DocumentsRequired »
+ * en anglais au lieu de la phrase qui compte.
+ */
 export function claimStatusMeta(status: string | null | undefined): {
   label: string;
   severity: Severity;
@@ -591,13 +600,13 @@ export function claimStatusMeta(status: string | null | undefined): {
       return { label: 'Déclaré', severity: 'info' };
     case 'UnderReview':
       return { label: "À l'étude", severity: 'info' };
-    case 'ComplementRequired':
-      return { label: 'Pièce complémentaire attendue', severity: 'warning' };
-    case 'Approved':
+    case 'DocumentsRequired':
+      return { label: 'Pièces attendues', severity: 'warning' };
+    case 'Accepted':
       return { label: 'Accepté', severity: 'success' };
-    case 'Paid':
+    case 'Indemnified':
       return { label: 'Indemnisé', severity: 'success' };
-    case 'Rejected':
+    case 'Refused':
       return { label: 'Refusé', severity: 'error' };
     default:
       return { label: status || '—', severity: 'neutral' };
@@ -605,11 +614,51 @@ export function claimStatusMeta(status: string | null | undefined): {
 }
 
 /**
- * Un sinistre attend une action de l'agence quand l'assureur demande une pièce.
+ * Un sinistre attend une action de l'agence quand l'assureur demande des pièces.
  * C'est le seul statut sur lequel l'agent peut agir, et donc celui qui doit ressortir.
  */
 export function claimNeedsAction(status: string | null | undefined): boolean {
-  return status === 'ComplementRequired';
+  return status === 'DocumentsRequired';
+}
+
+/**
+ * Le verdict antivirus d'une pièce — `DocumentScanStatus` côté serveur.
+ *
+ * C'est le vrai verrou de transmission : `GET .../content` refuse par 409 tout ce qui
+ * n'est pas `Clean`, et l'assureur ne reçoit rien d'autre. Les quatre états sont donc
+ * montrés tels quels, y compris `ScanFailed`, parce que « notre antivirus n'a pas
+ * répondu » et « le fichier du client est dangereux » ne demandent pas la même action
+ * de l'agent : le premier se réessaie tout seul, le second demande une autre pièce.
+ */
+export function scanStatusMeta(status: string | null | undefined): {
+  label: string;
+  severity: Severity;
+  hint: string | null;
+} {
+  switch (status) {
+    case 'Pending':
+      return {
+        label: 'Analyse en attente',
+        severity: 'neutral',
+        hint: "La pièce est déposée et chiffrée. L'analyse antivirus passe dans les dix minutes.",
+      };
+    case 'Clean':
+      return { label: 'Analysée', severity: 'success', hint: null };
+    case 'Infected':
+      return {
+        label: 'Rejetée par l’antivirus',
+        severity: 'error',
+        hint: 'Le fichier a été supprimé du stockage. Demandez une autre pièce au client.',
+      };
+    case 'ScanFailed':
+      return {
+        label: 'Analyse indisponible',
+        severity: 'warning',
+        hint: "L'antivirus n'a pas répondu. La pièce est conservée et sera réanalysée automatiquement.",
+      };
+    default:
+      return { label: status || '—', severity: 'neutral', hint: null };
+  }
 }
 
 /**
@@ -630,8 +679,17 @@ export const CLAIM_NATURES: ReadonlyArray<{ value: string; label: string }> = [
 ];
 
 /** Extensions et poids acceptés pour une pièce justificative de sinistre. */
-export const CLAIM_DOCUMENT_ACCEPT = '.pdf,.jpg,.jpeg,.png';
-export const CLAIM_DOCUMENT_MAX_SIZE_MB = 10;
+/**
+ * Alignés sur `ClaimStorageOptions` côté serveur : image/jpeg, image/png, image/heic et
+ * application/pdf, 20 Mo. Pas d'archive — le serveur la refuse, parce que son contenu
+ * est ce qu'une analyse antivirus devrait parcourir et que la plateforme ne le fait pas.
+ *
+ * Le plafond était à 10 Mo ici, la moitié de ce que le serveur accepte : une photo de
+ * véhicule accidenté prise au téléphone était refusée par l'écran alors que l'API
+ * l'aurait prise.
+ */
+export const CLAIM_DOCUMENT_ACCEPT = '.pdf,.jpg,.jpeg,.png,.heic';
+export const CLAIM_DOCUMENT_MAX_SIZE_MB = 20;
 
 export function quoteSourceLabel(source: string | null | undefined): string {
   switch (source) {

@@ -2,6 +2,11 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import {
   CancelIntegrationCommandResult,
+  ClaimDocumentDto,
+  ClaimDto,
+  DeclareClaimRequest,
+  DeclareClaimResult,
+  UploadClaimDocumentResponse,
   ConnectionDetailDto,
   ConnectionHealthDto,
   ConnectionListDto,
@@ -318,6 +323,67 @@ export class IntegrationFacadeService {
     insuredAmount: number | null,
   ): Observable<InsuranceQuoteDto> {
     return this._api.quoteInsuranceProduct(productId, { crmCustomerId, insuredAmount });
+  }
+
+  // ——— Sinistres et pièces (ASS-09) ———
+
+  /**
+   * Les sinistres d'un client, ou les dossiers encore ouverts du tenant.
+   *
+   * `openOnly` est passé explicitement plutôt que laissé à son défaut : le serveur
+   * répond l'ensemble du registre sans lui, et une liste « sinistres du client » qui
+   * ramène aussi les dossiers clos serait une liste qu'un agent trie à la main.
+   */
+  public listClaims(filters: {
+    crmCustomerId?: string;
+    openOnly?: boolean;
+  }): Observable<ClaimDto[]> {
+    return this._api
+      .listInsuranceClaims(filters.crmCustomerId, filters.openOnly ?? false)
+      .pipe(map((rows) => rows ?? []));
+  }
+
+  public getClaim(claimId: string): Observable<ClaimDto> {
+    return this._api.getInsuranceClaim(claimId);
+  }
+
+  public declareClaim(request: DeclareClaimRequest): Observable<DeclareClaimResult> {
+    return this._api.declareInsuranceClaim(request);
+  }
+
+  public listClaimDocuments(claimId: string): Observable<ClaimDocumentDto[]> {
+    return this._api.listClaimDocuments(claimId).pipe(map((rows) => rows ?? []));
+  }
+
+  /**
+   * Dépose une pièce. `requestedByInsurer` décide si elle partira automatiquement à
+   * l'assureur une fois l'antivirus passé — le serveur ne pousse pas une pièce que
+   * personne n'a réclamée sur un dossier à l'étude.
+   */
+  public uploadClaimDocument(
+    claimId: string,
+    documentKind: string,
+    file: Blob,
+    requestedByInsurer: boolean,
+  ): Observable<UploadClaimDocumentResponse> {
+    return this._api.uploadClaimDocument(claimId, documentKind, requestedByInsurer, file);
+  }
+
+  /**
+   * Le contenu d'une pièce.
+   *
+   * <b>Le cast est nécessaire et sans risque.</b> Le générateur type la réponse
+   * `object` parce que le swagger annonce `application/octet-stream`, mais le code
+   * généré met bien `responseType: 'blob'` pour tout média non-JSON — c'est donc un
+   * `Blob` à l'exécution, et le type déclaré est le seul endroit qui l'ignore.
+   *
+   * Le serveur refuse par 409 toute pièce dont le verdict antivirus n'est pas `Clean` :
+   * l'appelant ne doit proposer ce bouton que sur `isTransmittable`.
+   */
+  public downloadClaimDocument(claimId: string, documentId: string): Observable<Blob> {
+    return this._api
+      .downloadClaimDocument(claimId, documentId)
+      .pipe(map((payload) => payload as unknown as Blob));
   }
 }
 
