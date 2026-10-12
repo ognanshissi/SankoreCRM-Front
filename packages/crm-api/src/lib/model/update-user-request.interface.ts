@@ -17,5 +17,6 @@ export interface UpdateUserRequest {
     spokenLanguages?: Array<string> | null;
     specialties?: Array<string> | null;
     enableNotifications?: boolean | null;
+    employeeNumber?: string | null;
 }
 

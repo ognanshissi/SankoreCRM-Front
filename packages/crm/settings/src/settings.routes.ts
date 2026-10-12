@@ -4,7 +4,6 @@ import AgenciesHomePage from './containers/agencies/agencies-homepage/agencies-h
 import EditRoleNavigation from './containers/roles/edit-role/edit-role-navigation';
 import EditUserNavigation from './containers/users/edit-user/edit-user-navigation';
 import EditWorkflowTemplateNavigation from './containers/workflows/edit-workflow-template/edit-workflow-template-navigation';
-import AccountSettings from './containers/account/account-settings';
 import { hasPermissionGuard } from '@sankore/crm/common';
 
 const settingsRoutes: Routes = [
@@ -29,7 +28,8 @@ const settingsRoutes: Routes = [
         path: 'agent',
         loadComponent: () => import('./containers/account/account-agent-settings'),
       },
-      { path: 'account-settings', loadComponent: () => AccountSettings },
+      // Ancien onglet « Préférences » : la langue et les formats sont passés dans Informations.
+      { path: 'account-settings', redirectTo: 'profil' },
     ],
   },
   {

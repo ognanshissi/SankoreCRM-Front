@@ -30,5 +30,6 @@ export interface UserDto {
     roles?: Array<string> | null;
     reportsToUserId?: string | null;
     reportsToFullName?: string | null;
+    employeeNumber?: string | null;
 }
 

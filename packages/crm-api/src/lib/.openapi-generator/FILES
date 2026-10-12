@@ -376,6 +376,7 @@ model/missing-questionnaire.interface.ts
 model/models.ts
 model/money.interface.ts
 model/move-agency-request.interface.ts
+model/my-profile-dto.interface.ts
 model/my-step-dto.interface.ts
 model/next-action-dto.interface.ts
 model/notification-preference-dto.interface.ts
@@ -600,6 +601,7 @@ model/update-lead-request.interface.ts
 model/update-lead-setting-request.interface.ts
 model/update-lead-source-request.interface.ts
 model/update-my-agent-settings-request.interface.ts
+model/update-my-profile-request.interface.ts
 model/update-notification-settings-command.interface.ts
 model/update-nurturing-sequence-request.interface.ts
 model/update-pipeline-stage-config-request.interface.ts

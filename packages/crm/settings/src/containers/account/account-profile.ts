@@ -1,159 +1,230 @@
-import { Component, inject, signal, OnInit } from '@angular/core';
-import { FormsModule } from '@angular/forms';
-import { catchError, EMPTY } from 'rxjs';
-import { TasCard } from '@talisoft/ui/card';
-import { TasSpinner } from '@talisoft/ui/spinner';
-import { TasIcon } from '@talisoft/ui/icon';
-import { TasTag } from '@talisoft/ui/tag';
+import { Component, inject, OnInit, signal } from '@angular/core';
+import { DatePipe, TitleCasePipe } from '@angular/common';
+import { HttpErrorResponse } from '@angular/common/http';
+import { form, FormField, FormRoot, maxLength, pattern, required, submit } from '@angular/forms/signals';
+import { catchError, EMPTY, firstValueFrom, map, of } from 'rxjs';
 import { Button } from '@talisoft/ui/button';
-import { TasSwitch } from '@talisoft/ui/switch';
-import { TasFormField, TasLabel } from '@talisoft/ui/form-field';
+import { TasFormField, TasLabel, TasError, TasHint } from '@talisoft/ui/form-field';
+import { TasIcon } from '@talisoft/ui/icon';
 import { TasInput } from '@talisoft/ui/input';
+import { TasSelect } from '@talisoft/ui/select';
+import { TasSpinner } from '@talisoft/ui/spinner';
 import { SnackbarService } from '@talisoft/ui/snackbar';
-import { UsersApiService, UserDto } from '@sankore/crm-api';
-import { AuthenticationService } from '@sankore/crm/common';
+import { MyProfileDto, UpdateMyProfileRequest, UsersApiService } from '@sankore/crm-api';
+import { AccountHeaderState } from './account-navigation';
+
+const LANGUAGE_OPTIONS = [
+  { label: 'Français', value: 'fr' },
+  { label: 'English', value: 'en' },
+];
+
+/** Fuseaux IANA de la zone. Celui qui sert à lire les horaires de travail pour le dispatching. */
+const TIME_ZONE_OPTIONS = [
+  { label: 'Abidjan (GMT+0)', value: 'Africa/Abidjan' },
+  { label: 'Dakar (GMT+0)', value: 'Africa/Dakar' },
+  { label: 'Bamako (GMT+0)', value: 'Africa/Bamako' },
+  { label: 'Ouagadougou (GMT+0)', value: 'Africa/Ouagadougou' },
+  { label: 'Lomé (GMT+0)', value: 'Africa/Lome' },
+  { label: 'Conakry (GMT+0)', value: 'Africa/Conakry' },
+  { label: 'Porto-Novo / Cotonou (GMT+1)', value: 'Africa/Porto-Novo' },
+  { label: 'Niamey (GMT+1)', value: 'Africa/Niamey' },
+  { label: 'Douala (GMT+1)', value: 'Africa/Douala' },
+  { label: 'Libreville (GMT+1)', value: 'Africa/Libreville' },
+  { label: 'Paris (GMT+1 / +2)', value: 'Europe/Paris' },
+];
+
+const AMOUNT_FORMAT_OPTIONS = [
+  { label: '250 000 FCFA', value: 'SpaceGrouped' },
+  { label: '250.000 FCFA', value: 'DotGrouped' },
+  { label: '250,000 FCFA', value: 'CommaGrouped' },
+];
+
+const PHONE_PATTERN = /^\+?[0-9 ().-]*$/;
+const AVATAR_MAX_BYTES = 2 * 1024 * 1024;
+const SIGNATURE_MAX_LENGTH = 500;
+
+class ProfileFormModel {
+  public firstName!: string;
+  public lastName!: string;
+  public workPhone!: string;
+  public whatsApp!: string;
+  public signature!: string;
+  public interfaceLanguage!: string;
+  public timeZone!: string;
+  public amountFormat!: string;
+
+  public static fromDto(dto: MyProfileDto): ProfileFormModel {
+    const m = new ProfileFormModel();
+    m.firstName = dto.firstName ?? '';
+    m.lastName = dto.lastName ?? '';
+    m.workPhone = dto.workPhone ?? '';
+    m.whatsApp = dto.whatsAppNumber ?? '';
+    m.signature = dto.signature ?? '';
+    m.interfaceLanguage = dto.interfaceLanguage ?? 'fr';
+    m.timeZone = dto.timeZone ?? 'Africa/Abidjan';
+    m.amountFormat = dto.amountFormat ?? 'SpaceGrouped';
+    return m;
+  }
+}
 
 @Component({
   selector: 'account-profile',
   imports: [
-    FormsModule, TasCard, TasSpinner, TasIcon, TasTag, Button, TasSwitch,
-    TasFormField, TasLabel, TasInput,
+    DatePipe, TitleCasePipe, FormRoot, FormField, Button, TasFormField, TasLabel, TasError, TasHint,
+    TasIcon, TasInput, TasSelect, TasSpinner,
   ],
-  template: `
-    @if (isLoading()) {
-      <div class="flex justify-center py-24"><tas-spinner size="10" class="text-primary"></tas-spinner></div>
-    } @else {
-      <div class="pb-6 flex flex-col gap-4">
-        <!-- User info (read-only) -->
-        <tas-card>
-          <div class="p-4 border-b border-slate-100">
-            <p class="text-sm font-semibold text-slate-700 flex items-center gap-2">
-              <tas-icon iconName="feather:user" class="text-slate-400" style="font-size:14px"></tas-icon>
-              Informations du compte
-            </p>
-          </div>
-          <div class="p-4 grid grid-cols-2 gap-x-6 gap-y-4">
-            <div>
-              <p class="text-xs text-slate-400 mb-1">Email</p>
-              <p class="text-sm font-medium text-slate-800 font-mono">{{ user()?.email ?? '—' }}</p>
-            </div>
-            <div>
-              <p class="text-xs text-slate-400 mb-1">Statut</p>
-              <tas-tag [severity]="user()?.status === '1' ? 'success' : 'warning'">
-                {{ user()?.status === '1' ? 'Actif' : 'Inactif' }}
-              </tas-tag>
-            </div>
-            @if (user()?.agencyName) {
-              <div>
-                <p class="text-xs text-slate-400 mb-1">Agence</p>
-                <p class="text-sm text-slate-800">{{ user()!.agencyName }}</p>
-              </div>
-            }
-            @if (user()?.roles?.length) {
-              <div>
-                <p class="text-xs text-slate-400 mb-1">Rôles</p>
-                <div class="flex gap-1 flex-wrap">
-                  @for (role of user()!.roles!; track role) {
-                    <tas-tag severity="info">{{ role }}</tas-tag>
-                  }
-                </div>
-              </div>
-            }
-          </div>
-        </tas-card>
-
-        <!-- Editable profile -->
-        <tas-card>
-          <div class="p-4 border-b border-slate-100">
-            <p class="text-sm font-semibold text-slate-700 flex items-center gap-2">
-              <tas-icon iconName="feather:edit-3" class="text-slate-400" style="font-size:14px"></tas-icon>
-              Modifier mon profil
-            </p>
-          </div>
-          <div class="p-4 flex flex-col gap-3">
-            <tas-form-field>
-              <tas-label>Nom complet</tas-label>
-              <input tasInput type="text" placeholder="Votre nom"
-                [ngModel]="editFullName()" (ngModelChange)="editFullName.set($event)" />
-            </tas-form-field>
-
-            <tas-form-field>
-              <tas-label>Langues parlées</tas-label>
-              <input tasInput type="text" placeholder="Ex : fr, en, wo (séparées par des virgules)"
-                [ngModel]="editLanguages()" (ngModelChange)="editLanguages.set($event)" />
-              <p class="text-xs text-slate-400 mt-1">Codes langue séparés par des virgules.</p>
-            </tas-form-field>
-
-            <tas-form-field>
-              <tas-label>Spécialités</tas-label>
-              <input tasInput type="text" placeholder="Ex : Loan, Savings (séparées par des virgules)"
-                [ngModel]="editSpecialties()" (ngModelChange)="editSpecialties.set($event)" />
-            </tas-form-field>
-
-            <div class="flex items-center gap-3">
-              <tas-switch [checked]="editNotifications()" ariaLabel="Notifications"
-                (toggle)="editNotifications.set($event)"></tas-switch>
-              <span class="text-sm text-slate-600">Recevoir les notifications par email</span>
-            </div>
-
-            <div class="flex justify-end mt-2">
-              <button tas-raised-button color="primary" type="button"
-                [disabled]="isSaving()" [isLoading]="isSaving()" (click)="saveProfile()">
-                <tas-icon iconName="feather:save" style="font-size:14px"></tas-icon>
-                Enregistrer
-              </button>
-            </div>
-          </div>
-        </tas-card>
-      </div>
-    }
-  `,
+  templateUrl: './account-profile.html',
 })
 export class AccountProfile implements OnInit {
   private readonly _usersApi = inject(UsersApiService);
-  private readonly _auth = inject(AuthenticationService);
   private readonly _snackbar = inject(SnackbarService);
+  private readonly _header = inject(AccountHeaderState);
+
+  public readonly languageOptions = LANGUAGE_OPTIONS;
+  public readonly amountFormatOptions = AMOUNT_FORMAT_OPTIONS;
+  public readonly timeZoneOptions = signal(TIME_ZONE_OPTIONS);
+  public readonly signatureMaxLength = SIGNATURE_MAX_LENGTH;
 
   public isLoading = signal(true);
-  public isSaving = signal(false);
-  public user = signal<UserDto | null>(null);
+  public loadFailed = signal(false);
+  public isAvatarBusy = signal(false);
+  public dto = signal<MyProfileDto | null>(null);
 
-  public editFullName = signal('');
-  public editLanguages = signal('');
-  public editSpecialties = signal('');
-  public editNotifications = signal(true);
+  public model = signal(ProfileFormModel.fromDto({}));
+  public formSchema = form(this.model, (schema) => {
+    required(schema.firstName, { message: 'Le prénom est obligatoire' });
+    required(schema.lastName, { message: 'Le nom est obligatoire' });
+    pattern(schema.workPhone, PHONE_PATTERN, { message: 'Numéro invalide' });
+    pattern(schema.whatsApp, PHONE_PATTERN, { message: 'Numéro invalide' });
+    maxLength(schema.signature, SIGNATURE_MAX_LENGTH, {
+      message: `${SIGNATURE_MAX_LENGTH} caractères au maximum`,
+    });
+  });
 
   ngOnInit(): void {
-    const userId = this._auth.connectedUser()?.id;
-    if (!userId) { this.isLoading.set(false); return; }
+    this._load();
+  }
 
-    this._usersApi.getUser(userId).pipe(
-      catchError(() => { this.isLoading.set(false); return EMPTY; }),
-    ).subscribe((u) => {
-      this.user.set(u);
-      this.editFullName.set(u.fullName ?? '');
-      this.editLanguages.set((u.spokenLanguages ?? []).join(', '));
-      this.editSpecialties.set((u.specialties ?? []).join(', '));
-      this.editNotifications.set(u.enableNotifications ?? true);
-      this.isLoading.set(false);
+  public initials(): string {
+    const m = this.model();
+    return ((m.firstName[0] ?? '') + (m.lastName[0] ?? '')).toUpperCase() || '?';
+  }
+
+  // ——— Photo : appliquée tout de suite, indépendamment du bouton Enregistrer ———
+
+  public onAvatarSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    // Remis à zéro pour que choisir deux fois le même fichier redéclenche l'évènement.
+    input.value = '';
+    if (!file) return;
+
+    if (file.type !== 'image/jpeg' && file.type !== 'image/png') {
+      this._snackbar.error('Format refusé', 'La photo doit être au format JPG ou PNG.');
+      return;
+    }
+    if (file.size > AVATAR_MAX_BYTES) {
+      this._snackbar.error('Photo trop lourde', 'La photo ne peut pas dépasser 2 Mo.');
+      return;
+    }
+
+    this.isAvatarBusy.set(true);
+    this._usersApi.uploadMyAvatar(file).pipe(
+      catchError((err: HttpErrorResponse) => {
+        this._snackbar.error('Photo non enregistrée', err.error?.detail ?? 'La photo n’a pas pu être envoyée.');
+        this.isAvatarBusy.set(false);
+        return EMPTY;
+      }),
+    ).subscribe(() => this._refreshAvatar('Photo mise à jour'));
+  }
+
+  public removeAvatar(): void {
+    this.isAvatarBusy.set(true);
+    this._usersApi.deleteMyAvatar().pipe(
+      catchError(() => {
+        this._snackbar.error('Erreur', 'La photo n’a pas pu être retirée.');
+        this.isAvatarBusy.set(false);
+        return EMPTY;
+      }),
+    ).subscribe(() => this._refreshAvatar('Photo retirée'));
+  }
+
+  // ——— Formulaire ———
+
+  public cancel(): void {
+    const dto = this.dto();
+    if (!dto) return;
+    this.model.set(ProfileFormModel.fromDto(dto));
+    this.formSchema().reset();
+  }
+
+  public handleSubmit(): void {
+    submit(this.formSchema, async (field) => {
+      const value = field()?.value();
+      if (!value) return;
+
+      const request: UpdateMyProfileRequest = {
+        firstName: value.firstName.trim(),
+        lastName: value.lastName.trim(),
+        workPhone: value.workPhone.trim() || null,
+        whatsAppNumber: value.whatsApp.trim() || null,
+        signature: value.signature.trim() || null,
+        interfaceLanguage: value.interfaceLanguage,
+        timeZone: value.timeZone,
+        amountFormat: value.amountFormat,
+      };
+
+      const ok = await firstValueFrom(
+        this._usersApi.updateMyProfile(request).pipe(
+          map(() => true),
+          catchError((err: HttpErrorResponse) => {
+            this._snackbar.error('Enregistrement impossible', err.error?.detail ?? err.error?.title ?? 'Votre profil n’a pas été enregistré.');
+            return of(false);
+          }),
+        ),
+      );
+      if (!ok) return;
+
+      this._snackbar.success('Profil enregistré', 'Vos informations ont été mises à jour.');
+      // Relecture : la date de modification et le nom affiché dans l'en-tête viennent du serveur.
+      this._load();
     });
   }
 
-  public saveProfile(): void {
-    const userId = this._auth.connectedUser()?.id;
-    if (!userId) return;
+  // ——— Chargement ———
 
-    this.isSaving.set(true);
-    this._usersApi.updateUser(userId, {
-      fullName: this.editFullName().trim() || null,
-      spokenLanguages: this.editLanguages().split(',').map((l) => l.trim()).filter(Boolean),
-      specialties: this.editSpecialties().split(',').map((s) => s.trim()).filter(Boolean),
-      enableNotifications: this.editNotifications(),
-    }).pipe(
-      catchError(() => { this._snackbar.error('Erreur', 'Mise à jour échouée.'); this.isSaving.set(false); return EMPTY; }),
-    ).subscribe(() => {
-      this._snackbar.success('Profil mis à jour', 'Vos informations ont été enregistrées.');
-      this.isSaving.set(false);
+  private _refreshAvatar(message: string): void {
+    this._usersApi.getMyProfile().pipe(catchError(() => of(null))).subscribe((profile) => {
+      this.isAvatarBusy.set(false);
+      if (!profile) return;
+      // Seule la photo est reprise : une saisie en cours dans le formulaire ne doit pas sauter.
+      this.dto.update((d) => (d ? { ...d, avatarDataUrl: profile.avatarDataUrl } : profile));
+      this._header.profile.update((p) => (p ? { ...p, avatarDataUrl: profile.avatarDataUrl } : profile));
+      this._snackbar.success(message, '');
+    });
+  }
+
+  private _load(): void {
+    this.isLoading.set(true);
+    this.loadFailed.set(false);
+
+    this._usersApi.getMyProfile().subscribe({
+      next: (profile) => {
+        this.dto.set(profile);
+        this.model.set(ProfileFormModel.fromDto(profile));
+        this.formSchema().reset();
+        this._header.profile.set(profile);
+        // Un fuseau enregistré hors de la liste reste affichable plutôt que de paraître vide.
+        const tz = profile.timeZone;
+        if (tz && !TIME_ZONE_OPTIONS.some((o) => o.value === tz)) {
+          this.timeZoneOptions.set([...TIME_ZONE_OPTIONS, { label: tz, value: tz }]);
+        }
+        this.isLoading.set(false);
+      },
+      error: () => {
+        this.loadFailed.set(true);
+        this.isLoading.set(false);
+      },
     });
   }
 }
