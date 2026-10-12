@@ -1,3 +1,7 @@
+import {
+  RecordComplaintRequestCategoryEnum,
+  RecordComplaintRequestChannelEnum,
+} from '@sankore/crm-api';
 import { Severity } from '@talisoft/ui/tag';
 
 /**
@@ -726,4 +730,110 @@ export function formatContractDate(value: string | null | undefined): string {
   if (!value) return '—';
   const [year, month, day] = value.slice(0, 10).split('-');
   return year && month && day ? `${day}/${month}/${year}` : value;
+}
+
+// ——— Réclamations (règlement n° 01/CIMA/PCMA/CE/SG/2024) ———
+
+/**
+ * Les cinq états de `ComplaintStatus`.
+ *
+ * `Escalated` n'est PAS terminal, et le libellé le dit : l'institution doit toujours
+ * une réponse au client et le délai continue de courir pendant que l'assureur ou
+ * l'autorité instruit. Un libellé comme « transmis » laisserait croire que le dossier
+ * est sorti du périmètre de l'agence.
+ *
+ * `Closed` et `Resolved` sont distincts parce que le serveur les compte séparément :
+ * un retrait du client n'est pas une réponse, et les confondre surévaluerait le
+ * mécanisme dans le rapport remis au superviseur.
+ */
+export function complaintStatusMeta(status: string | null | undefined): {
+  label: string;
+  severity: Severity;
+} {
+  switch (status) {
+    case 'Received':
+      return { label: 'Reçue', severity: 'warning' };
+    case 'Acknowledged':
+      return { label: 'Accusé envoyé', severity: 'info' };
+    case 'Escalated':
+      return { label: 'Escaladée — réponse encore due', severity: 'info' };
+    case 'Resolved':
+      return { label: 'Répondue', severity: 'success' };
+    case 'Closed':
+      return { label: 'Retirée', severity: 'neutral' };
+    default:
+      return { label: status || '—', severity: 'neutral' };
+  }
+}
+
+/**
+ * Canaux d'arrivée d'une réclamation.
+ *
+ * Les VALEURS viennent de l'énumération générée depuis le contrat, pas d'une chaîne
+ * recopiée ici : le générateur produit un vrai `enum` TypeScript pour ce champ, donc un
+ * libellé posé sur une valeur que le serveur ne connaît pas ne compile pas. Seuls les
+ * libellés sont à nous.
+ */
+export const COMPLAINT_CHANNELS: ReadonlyArray<{
+  value: RecordComplaintRequestChannelEnum;
+  label: string;
+}> = [
+  { value: RecordComplaintRequestChannelEnum.Branch, label: 'Au guichet' },
+  { value: RecordComplaintRequestChannelEnum.Telephone, label: 'Téléphone' },
+  { value: RecordComplaintRequestChannelEnum.Email, label: 'Courriel' },
+  {
+    value: RecordComplaintRequestChannelEnum.CustomerChannel,
+    label: 'Canal client (portail, USSD, appli)',
+  },
+  { value: RecordComplaintRequestChannelEnum.Post, label: 'Courrier' },
+  {
+    value: RecordComplaintRequestChannelEnum.Authority,
+    label: "Transmise par l'assureur ou l'autorité",
+  },
+];
+
+/**
+ * Objets d'une réclamation — `ComplaintCategory` côté serveur.
+ *
+ * Liste fermée et non texte libre, parce que le règlement demande un mécanisme
+ * REPORTABLE : « combien de réclamations pour vente inadaptée » est une question
+ * qu'un objet en texte libre ne sait pas répondre.
+ */
+export const COMPLAINT_CATEGORIES: ReadonlyArray<{
+  value: RecordComplaintRequestCategoryEnum;
+  label: string;
+}> = [
+  { value: RecordComplaintRequestCategoryEnum.MisSelling, label: 'Vente inadaptée' },
+  { value: RecordComplaintRequestCategoryEnum.Premium, label: 'Prime prélevée à tort' },
+  { value: RecordComplaintRequestCategoryEnum.ClaimHandling, label: 'Gestion d’un sinistre' },
+  { value: RecordComplaintRequestCategoryEnum.Information, label: 'Information précontractuelle' },
+  { value: RecordComplaintRequestCategoryEnum.DataProtection, label: 'Données personnelles' },
+  { value: RecordComplaintRequestCategoryEnum.DigitalChannel, label: 'Canal électronique' },
+  { value: RecordComplaintRequestCategoryEnum.Other, label: 'Autre' },
+];
+
+/**
+ * Ce qu'une réclamation attend de l'agent, en une phrase.
+ *
+ * Les deux délais du mécanisme sont jugés séparément — accuser réception, puis
+ * répondre — donc l'écran dit lequel est dû plutôt qu'un « en retard » qui laisserait
+ * chercher quoi faire.
+ */
+export function complaintActionLabel(complaint: {
+  status?: string | null;
+  acknowledgedAt?: string | null;
+  acknowledgementOverdue?: boolean;
+  resolutionOverdue?: boolean;
+}): { label: string; severity: Severity } | null {
+  if (complaint.status === 'Resolved' || complaint.status === 'Closed') return null;
+
+  if (!complaint.acknowledgedAt) {
+    return complaint.acknowledgementOverdue
+      ? { label: 'Accusé de réception EN RETARD', severity: 'error' }
+      : { label: 'Accusé de réception à envoyer', severity: 'warning' };
+  }
+
+  return complaint.resolutionOverdue
+    ? { label: 'Réponse EN RETARD', severity: 'error' }
+    : { label: 'Réponse à rédiger', severity: 'info' };
 }

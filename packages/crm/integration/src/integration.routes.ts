@@ -82,6 +82,15 @@ const integrationRoutes: Routes = [
     loadComponent: () =>
       import('./containers/insurance-statements/insurance-statements'),
   },
+  {
+    // Le registre des réclamations du règlement 01/CIMA/2024. Gardé sur la LECTURE :
+    // déposer et faire avancer demandent `Ins.Complaint.Handle`, et l'écran masque ces
+    // boutons lui-même — une route gardée sur l'écriture cacherait le registre aux gens
+    // dont le métier est de le lire.
+    path: 'insurance-complaints',
+    canActivate: [hasPermissionGuard('Ins.Complaint.View')],
+    loadComponent: () => import('./containers/complaints/complaints-register'),
+  },
 ];
 
 export default integrationRoutes;

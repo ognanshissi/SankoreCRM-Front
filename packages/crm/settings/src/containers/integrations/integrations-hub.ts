@@ -171,6 +171,20 @@ const INTEGRATIONS: Integration[] = [
     permission: 'Ins.Statement.View',
   },
   {
+    id: 'insurance-complaints',
+    name: 'Réclamations',
+    description:
+      'Le registre et les délais du mécanisme exigé par la réglementation CIMA sur la distribution par voie électronique.',
+    icon: 'feather:message-square',
+    category: 'insurance',
+    status: 'available',
+    // La LECTURE, comme la route : les boutons d'écriture sont masqués par l'écran, et
+    // réserver l'entrée du menu à `Ins.Complaint.Handle` cacherait le registre aux gens
+    // dont le métier est de le lire.
+    permission: 'Ins.Complaint.View',
+    link: '/settings/integrations/insurance-complaints',
+  },
+  {
     id: 'import',
     name: 'Import de données',
     description: 'Importer des utilisateurs, contacts et clients depuis des fichiers CSV/Excel.',

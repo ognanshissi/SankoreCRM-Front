@@ -4,6 +4,12 @@ import {
   CancelIntegrationCommandResult,
   ClaimDocumentDto,
   ClaimDto,
+  CloseComplaintRequest,
+  ComplaintDto,
+  ComplaintReportDto,
+  EscalateComplaintRequest,
+  RecordComplaintRequest,
+  ResolveComplaintRequest,
   DeclareClaimRequest,
   DeclareClaimResult,
   UploadClaimDocumentResponse,
@@ -385,6 +391,77 @@ export class IntegrationFacadeService {
       .downloadClaimDocument(claimId, documentId)
       .pipe(map((payload) => payload as unknown as Blob));
   }
+
+  // ——— Réclamations (règlement 01/CIMA/2024) ———
+
+  /**
+   * Le registre. Les trois filtres sont nommés parce que la signature générée les prend
+   * en positionnel (`crmCustomerId, openOnly, overdueOnly`) : deux booléens de suite,
+   * c'est exactement la forme où un appel inverse les deux sans que rien ne le dise.
+   *
+   * `overdueOnly` implique `openOnly` côté serveur — une réclamation close ne peut plus
+   * être en retard — donc l'écran n'a pas à combiner les deux.
+   */
+  public listComplaints(filters: {
+    crmCustomerId?: string;
+    openOnly?: boolean;
+    overdueOnly?: boolean;
+  }): Observable<ComplaintDto[]> {
+    return this._api
+      .listInsuranceComplaints(
+        filters.crmCustomerId,
+        filters.openOnly ?? false,
+        filters.overdueOnly ?? false,
+      )
+      .pipe(map((rows) => rows ?? []));
+  }
+
+  public getComplaint(complaintId: string): Observable<ComplaintDto> {
+    return this._api.getInsuranceComplaint(complaintId);
+  }
+
+  /**
+   * Les chiffres du mécanisme sur une fenêtre. Les bornes sont des jours (`YYYY-MM-DD`)
+   * et le serveur refuse une fenêtre inversée.
+   */
+  public getComplaintReport(from: string, to: string): Observable<ComplaintReportDto> {
+    return this._api.getInsuranceComplaintReport(from, to);
+  }
+
+  public recordComplaint(request: RecordComplaintRequest): Observable<ComplaintDto> {
+    return this._api.recordInsuranceComplaint(request);
+  }
+
+  /** Idempotent côté serveur : il garde le PREMIER instant d'accusé de réception. */
+  public acknowledgeComplaint(complaintId: string): Observable<ComplaintDto> {
+    return this._api.acknowledgeInsuranceComplaint(complaintId);
+  }
+
+  public escalateComplaint(
+    complaintId: string,
+    request: EscalateComplaintRequest,
+  ): Observable<ComplaintDto> {
+    return this._api.escalateInsuranceComplaint(complaintId, request);
+  }
+
+  public resolveComplaint(
+    complaintId: string,
+    request: ResolveComplaintRequest,
+  ): Observable<ComplaintDto> {
+    return this._api.resolveInsuranceComplaint(complaintId, request);
+  }
+
+  /**
+   * Clôture sans réponse — un retrait du client, ou une demande hors périmètre. Ce n'est
+   * PAS `resolveComplaint` : le serveur compte les deux séparément, parce qu'un rapport
+   * qui compterait un retrait comme traité surévaluerait le mécanisme.
+   */
+  public closeComplaint(
+    complaintId: string,
+    request: CloseComplaintRequest,
+  ): Observable<ComplaintDto> {
+    return this._api.closeInsuranceComplaint(complaintId, request);
+  }
 }
 
 /**
@@ -452,6 +529,26 @@ export function integrationErrorMessage(error: HttpErrorResponse, fallback: stri
       return "Ce produit d'assurance n'existe pas, ou plus.";
     case 'INSURANCE_PRODUCT_NOT_OFFERABLE':
       return "Ce produit n'est pas proposable : vérifiez son état et la connexion de l'assureur.";
+    case 'INSURANCE_CLAIM_NOT_FOUND':
+      return "Ce dossier de sinistre n'existe pas, ou plus.";
+    case 'INSURANCE_CLAIM_SETTLED':
+      return 'Ce dossier est clos : il ne prend plus de pièce.';
+    case 'INSURANCE_CLAIM_DOCUMENT_DUPLICATE':
+      return 'Cette pièce est déjà au dossier — même fichier, même empreinte.';
+    case 'INSURANCE_CLAIM_DOCUMENT_TOO_LARGE':
+      return 'Cette pièce dépasse la taille acceptée.';
+    case 'INSURANCE_CLAIM_DOCUMENT_CONTENT_TYPE_NOT_ALLOWED':
+      return 'Ce type de fichier n’est pas accepté comme pièce de sinistre.';
+    case 'INSURANCE_CLAIM_DOCUMENT_NOT_SCANNED':
+      return "L'antivirus n'a pas encore validé cette pièce : elle ne peut pas être ouverte.";
+    case 'INSURANCE_COMPLAINT_NOT_FOUND':
+      return "Cette réclamation n'existe pas, ou plus.";
+    case 'INSURANCE_COMPLAINT_ALREADY_CLOSED':
+      return 'Cette réclamation est déjà répondue ou retirée : elle ne se rouvre pas.';
+    case 'INSURANCE_COMPLAINT_RESOLUTION_REQUIRED':
+      return 'Une réponse est obligatoire, même pour une réclamation non fondée.';
+    case 'INSURANCE_COMPLAINT_ESCALATION_TARGET_REQUIRED':
+      return "Nommez l'assureur ou l'autorité à qui le dossier est transmis.";
     default:
       break;
   }
