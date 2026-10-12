@@ -3,7 +3,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { NgTemplateOutlet } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
 import { catchError, EMPTY, firstValueFrom, forkJoin, map, of } from 'rxjs';
-import { Button } from '@talisoft/ui/button';
+import { Anchor, Button } from '@talisoft/ui/button';
 import { TasIcon } from '@talisoft/ui/icon';
 import { TasSpinner } from '@talisoft/ui/spinner';
 import { TasFormField, TasLabel } from '@talisoft/ui/form-field';
@@ -57,6 +57,7 @@ type DragPayload = { type: 'step'; kind: StepKind } | { type: 'trigger'; preset:
   imports: [
     NgTemplateOutlet,
     RouterLink,
+    Anchor,
     Button,
     TasIcon,
     TasSpinner,

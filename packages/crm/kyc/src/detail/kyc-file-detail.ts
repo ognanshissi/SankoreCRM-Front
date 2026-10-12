@@ -29,7 +29,7 @@ import {
   kycApprovalLevelLabel,
   kycVigilanceMeta,
 } from '../data-access/kyc-referential';
-import { KycHistoryEntry, KycHistoryKind } from '../data-access/kyc.types';
+import { KycDocumentRow, KycHistoryEntry, KycHistoryKind } from '../data-access/kyc.types';
 import { KycStatusBadge } from '../ui/kyc-status-badge';
 import { KycDocumentsPanel } from '../documents/kyc-documents-panel';
 import { KycScorePanel } from '../verification/kyc-score-panel';
@@ -138,6 +138,22 @@ export class KycFileDetailPage implements OnInit {
    * droit. Les quatre yeux (pas de signature par le soumissionnaire) sont tranchés côté serveur.
    */
   public readonly canApprove = this._permissions.can('kyc:approve');
+  public readonly canUploadDocuments = this._permissions.can('kyc:manage');
+
+  /**
+   * Pièces du dossier, relues avec le circuit. `null` tant que la lecture n'a pas abouti : une
+   * panne ne doit pas afficher « aucune pièce » sur un dossier qui en a.
+   */
+  public readonly documents = signal<KycDocumentRow[] | null>(null);
+
+  /**
+   * Au moins une pièce déposée par un agent : une ligne du registre, avec son auteur. Les images
+   * antérieures au registre (`uploadedBy` nul) ne comptent pas — personne n'en répond.
+   */
+  public readonly hasAgentDocument = computed(() =>
+    (this.documents() ?? []).some((d) => !!d.id && !!d.uploadedBy),
+  );
+  public readonly missingAgentDocument = computed(() => this.documents() !== null && !this.hasAgentDocument());
 
   public readonly tabs = TABS;
   public readonly activeTab = signal<KycDetailTab>('identite');
@@ -311,6 +327,7 @@ export class KycFileDetailPage implements OnInit {
     const level = circuit?.nextLevel;
     const steps = circuit?.steps ?? [];
     if (!level || !this.canApprove()) return;
+    if (action === 'approve' && !this.hasAgentDocument()) return;
 
     const ref = this._sideDrawerService.open(KycApprovalDecisionDrawer, {
       data: {
@@ -327,6 +344,12 @@ export class KycFileDetailPage implements OnInit {
     ref.closed.subscribe((decided) => {
       if (decided) this.refresh();
     });
+  }
+
+  /** Le dépôt de pièces se fait dans le parcours d'enrôlement du client. */
+  public goToUpload(): void {
+    const customerId = this.file()?.customerId;
+    if (customerId) this._router.navigate(['/kyc/enrolment', customerId]);
   }
 
   public reloadCircuit(): void {
@@ -417,6 +440,11 @@ export class KycFileDetailPage implements OnInit {
   private _loadCircuit(): void {
     this.isLoadingCircuit.set(true);
     this.circuitFailed.set(false);
+    this.documents.set(null);
+    this._facade
+      .listDocuments(this.id())
+      .pipe(catchError(() => EMPTY))
+      .subscribe((list) => this.documents.set(list.documents));
     this._facade
       .getApprovalCircuit(this.id())
       .pipe(

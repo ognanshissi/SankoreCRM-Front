@@ -10,9 +10,10 @@ import {
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { HttpErrorResponse } from '@angular/common/http';
+import { RouterLink } from '@angular/router';
 import { form, FormField, FormRoot, required, submit, validate } from '@angular/forms/signals';
 import { catchError, EMPTY } from 'rxjs';
-import { Button } from '@talisoft/ui/button';
+import { Anchor, Button } from '@talisoft/ui/button';
 import { TasCard } from '@talisoft/ui/card';
 import { TasError, TasFormField, TasHint, TasLabel } from '@talisoft/ui/form-field';
 import { TasIcon } from '@talisoft/ui/icon';
@@ -28,7 +29,6 @@ import { PermissionsService } from '@sankore/crm/common';
 import { KycFacadeService } from '../data-access/kyc-facade.service';
 import { kycConfidenceMeta } from '../data-access/kyc-referential';
 import { KycImageRef } from '../data-access/kyc.types';
-import { KycStubNotice } from '../ui/kyc-stub-notice';
 import { KycCameraCapture } from './kyc-camera-capture';
 
 type SelfieStep = 'capture' | 'uploading' | 'verifying' | 'result';
@@ -116,6 +116,7 @@ class SelfieOverrideFormModel {
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './kyc-selfie-capture.html',
   imports: [
+    Anchor,
     Button,
     TasCard,
     TasError,
@@ -128,7 +129,7 @@ class SelfieOverrideFormModel {
     FormRoot,
     FormField,
     KycCameraCapture,
-    KycStubNotice,
+    RouterLink,
   ],
 })
 export class KycSelfieCapture {

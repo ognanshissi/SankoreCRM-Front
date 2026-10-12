@@ -352,6 +352,34 @@
             ></cbs-provisioning-status>
           }
 
+          <!--
+            Aucune pièce déposée par un agent : rien sur quoi fonder une approbation. L'alerte vient
+            avant le circuit, et le bouton « Approuver » reste désactivé ; demander un complément ou
+            rejeter restent possibles, c'est précisément la réponse à un dossier vide.
+          -->
+          @if (missingAgentDocument()) {
+            <tas-card class="block mb-4">
+              <div class="p-4 flex flex-wrap items-start justify-between gap-4 border-l-4 border-amber-400 rounded-lg">
+                <div class="flex gap-3 min-w-0">
+                  <tas-icon iconName="feather:alert-triangle" class="text-amber-500 shrink-0 mt-0.5" style="font-size:16px"></tas-icon>
+                  <div>
+                    <p class="text-sm font-medium text-slate-800">Aucune pièce déposée par un agent</p>
+                    <p class="text-xs text-slate-500 mt-1 max-w-prose">
+                      Ce dossier ne peut pas être approuvé tant qu'un agent n'a pas déposé au moins une
+                      pièce du client (pièce d'identité ou selfie).
+                    </p>
+                  </div>
+                </div>
+                @if (canUploadDocuments() && file()?.customerId) {
+                  <button tas-outlined-button color="primary" type="button" (click)="goToUpload()">
+                    <tas-icon iconName="feather:upload" style="font-size:14px"></tas-icon>
+                    Déposer une pièce
+                  </button>
+                }
+              </div>
+            </tas-card>
+          }
+
           @if (isLoadingCircuit()) {
             <div class="flex justify-center py-16">
               <tas-spinner size="10" class="text-primary"></tas-spinner>
@@ -459,7 +487,10 @@
                       <td class="text-right">
                         @if (step.isNext) {
                           <div class="flex items-center justify-end gap-1.5">
-                            <button tas-raised-button color="primary" type="button" size="small" (click)="decide('approve')">
+                            <button tas-raised-button color="primary" type="button" size="small"
+                              [disabled]="!hasAgentDocument()"
+                              [title]="hasAgentDocument() ? '' : 'Aucune pièce déposée par un agent'"
+                              (click)="decide('approve')">
                               <tas-icon iconName="feather:check" style="font-size:12px"></tas-icon>
                               Approuver
                             </button>

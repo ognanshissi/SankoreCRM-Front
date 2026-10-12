@@ -36,7 +36,6 @@ import {
   KycOcrField,
 } from '../data-access/kyc.types';
 import { KycScoreGauge } from '../ui/kyc-score-gauge';
-import { KycStubNotice } from '../ui/kyc-stub-notice';
 import { KycCameraCapture } from './kyc-camera-capture';
 
 /**
@@ -189,7 +188,6 @@ type VerificationState = 'idle' | 'running' | 'scored' | 'rejected' | 'queued' |
     FormField,
     KycCameraCapture,
     KycScoreGauge,
-    KycStubNotice,
   ],
 })
 export class KycDocumentCapture {
