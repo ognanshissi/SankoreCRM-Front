@@ -138,3 +138,98 @@ export function fmtDur(ms: number): string {
   const rh = h % 24;
   return rh > 0 ? `${d}j ${rh}h` : `${d}j`;
 }
+
+/** Libellé court du statut, à la manière d'une liste de travail : « À faire » plutôt que « En attente ». */
+export function workStatusLabel(status: CrmTaskDtoStatusEnum | string | undefined): string {
+  switch (status) {
+    case CrmTaskDtoStatusEnum.Pending:    return 'À faire';
+    case CrmTaskDtoStatusEnum.InProgress: return 'En cours';
+    case CrmTaskDtoStatusEnum.Completed:  return 'Terminée';
+    case CrmTaskDtoStatusEnum.Cancelled:  return 'Annulée';
+    default:                              return '—';
+  }
+}
+
+/** Ce que l'agent doit faire, à l'infinitif. Une tâche générique garde son titre, seul porteur de sens. */
+export function taskActionLabel(task: CrmTaskDto): string {
+  switch (task.type) {
+    case 'FirstContact':   return 'Contacter';
+    case 'Qualification':  return 'Qualifier';
+    case 'SlaFollowUp':    return 'Relancer';
+    case 'ScoreReview':    return 'Revoir le score';
+    case 'OwnerHandover':  return 'Reprendre le lead';
+    case 'ManualDispatch': return 'Dispatcher';
+    default:               return task.title?.trim() || typeLabel(task.type);
+  }
+}
+
+export interface DueInfo {
+  label: string;
+  /** `breach` et `soon` s'affichent en pastille ; `plain` en simple texte. */
+  tone: 'breach' | 'soon' | 'plain';
+}
+
+const DAY_FMT = new Intl.DateTimeFormat('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' });
+const TIME_FMT = new Intl.DateTimeFormat('fr-FR', { hour: '2-digit', minute: '2-digit' });
+
+export function computeDue(task: CrmTaskDto, now: number): DueInfo {
+  const deadline = task.slaDeadline ?? task.dueAt;
+  if (!deadline) return { label: '—', tone: 'plain' };
+
+  const at = new Date(deadline);
+  const isOpen =
+    task.status === CrmTaskDtoStatusEnum.Pending || task.status === CrmTaskDtoStatusEnum.InProgress;
+  const diff = at.getTime() - now;
+
+  if (isOpen && diff < 0) return { label: `Dépassée de ${fmtDur(-diff)}`, tone: 'breach' };
+
+  const today = new Date(now);
+  if (isOpen && sameDay(at, today)) return { label: `Dans ${fmtDur(diff)}`, tone: 'soon' };
+
+  const tomorrow = new Date(now);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  if (sameDay(at, today)) return { label: `Aujourd'hui, ${TIME_FMT.format(at)}`, tone: 'plain' };
+  if (sameDay(at, tomorrow)) return { label: `Demain, ${TIME_FMT.format(at)}`, tone: 'plain' };
+
+  const day = DAY_FMT.format(at);
+  return { label: day.charAt(0).toUpperCase() + day.slice(1), tone: 'plain' };
+}
+
+function sameDay(a: Date, b: Date): boolean {
+  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+}
+
+/**
+ * Le parcours du lead en cinq temps, tel que l'agent le pense. Les douze étapes du pipeline y sont
+ * regroupées ; une étape inconnue retombe sur « Qualifier » plutôt que de laisser le repère vide.
+ */
+export const LEAD_JOURNEY = ['Capture', 'Qualifier', 'Enrichir', 'KYC', 'Convertir'] as const;
+
+export function journeyIndex(pipelineStage: string | null | undefined): number {
+  switch (pipelineStage) {
+    case 'Qualified':
+    case 'ProductProposed':
+    case 'ApplicationStarted':
+      return 2;
+    case 'DocumentCollection':
+    case 'ApplicationCompleted':
+    case 'ApprovalPending':
+      return 3;
+    case 'Converted':
+      // Au-delà de la dernière étape : toutes sont cochées.
+      return LEAD_JOURNEY.length;
+    default:
+      return 1;
+  }
+}
+
+export function leadDisplayName(lead: { fullName?: string | null; firstName?: string | null; lastName?: string | null; phoneNumber?: string | null; email?: string | null } | null | undefined): string {
+  if (!lead) return '';
+  return (
+    lead.fullName?.trim() ||
+    [lead.firstName, lead.lastName].filter(Boolean).join(' ').trim() ||
+    lead.phoneNumber?.trim() ||
+    lead.email?.trim() ||
+    'Lead sans nom'
+  );
+}

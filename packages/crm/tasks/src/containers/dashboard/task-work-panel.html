@@ -1,0 +1,109 @@
+<div class="flex flex-col gap-5 p-6">
+  <!-- En-tête : tâche et lead -->
+  <div>
+    <p class="text-xs text-slate-500">Tâche · {{ actionLabel() }}</p>
+    @if (task().leadId) {
+      <button type="button" class="text-xl font-bold text-primary hover:underline text-left" (click)="openLeadRequested.emit(task().leadId!)">
+        {{ leadName() || 'Lead' }}
+      </button>
+    } @else {
+      <p class="text-xl font-bold text-primary">{{ task().title ?? typeLabel(task().type) }}</p>
+    }
+    @if (leadSubtitle()) {
+      <p class="text-xs text-slate-500 mt-0.5">{{ leadSubtitle() }}</p>
+    }
+  </div>
+
+  <!-- Alerte d'échéance -->
+  @if (isOpen() && sla().status === 'breach') {
+    <div class="p-4 rounded-lg border border-red-200 border-t-4 border-t-red-500 bg-white">
+      <p class="text-sm text-slate-700">
+        Échéance dépassée de {{ overdueBy() }}. Cette tâche est à traiter en priorité.
+      </p>
+    </div>
+  } @else if (isOpen() && sla().status === 'warning') {
+    <div class="p-4 rounded-lg border border-amber-200 border-t-4 border-t-amber-400 bg-white">
+      <p class="text-sm text-slate-700">Échéance dans {{ overdueBy() }}.</p>
+    </div>
+  }
+
+  <!-- Parcours du lead -->
+  @if (lead()) {
+    <ol class="flex flex-wrap items-center gap-x-4 gap-y-2">
+      @for (step of journey; track step; let i = $index) {
+        <li class="flex items-center gap-1.5">
+          @if (i < journeyStep()) {
+            <span class="w-6 h-6 rounded-full bg-green-100 text-green-600 flex items-center justify-center">
+              <tas-icon iconName="feather:check" style="font-size:12px"></tas-icon>
+            </span>
+            <span class="text-xs font-medium text-primary">{{ step }}</span>
+          } @else if (i === journeyStep()) {
+            <span class="w-6 h-6 rounded-full bg-slate-200 text-slate-700 text-xs font-semibold flex items-center justify-center tabular-nums">{{ i + 1 }}</span>
+            <span class="text-xs font-semibold text-primary">{{ step }}</span>
+          } @else {
+            <span class="w-6 h-6 rounded-full bg-slate-100 text-slate-500 text-xs flex items-center justify-center tabular-nums">{{ i + 1 }}</span>
+            <span class="text-xs text-slate-600">{{ step }}</span>
+          }
+        </li>
+      }
+    </ol>
+  }
+
+  @if (isOpen()) {
+    <!-- Compte rendu et clôture -->
+    <form [formRoot]="formSchema" class="flex flex-col gap-4">
+      <tas-form-field>
+        <tas-label>
+          Résultat de l'appel
+          @if (requiresResult()) { <span class="text-functional-error">*</span> }
+        </tas-label>
+        <tas-select [options]="outcomeOptions" placeholder="Sélectionnez un résultat" [formField]="formSchema.outcome"></tas-select>
+        @if (formSchema.outcome().touched() && formSchema.outcome().invalid()) {
+          <tas-error>{{ formSchema.outcome().errors()[0].message }}</tas-error>
+        }
+      </tas-form-field>
+
+      <tas-form-field>
+        <tas-label>Note</tas-label>
+        <textarea tasInput rows="3" placeholder="Ce qu'il faut retenir de l'échange…" [formField]="formSchema.note"></textarea>
+      </tas-form-field>
+    </form>
+
+    <div class="flex flex-wrap items-center gap-3">
+      <button
+        tas-raised-button
+        color="primary"
+        type="button"
+        (click)="handleComplete()"
+        [disabled]="formSchema().submitting()"
+        [isLoading]="formSchema().submitting()"
+      >
+        Terminer la tâche
+      </button>
+      <button tas-outlined-button type="button" [disabled]="formSchema().submitting()" (click)="reassignRequested.emit(task())">
+        Réassigner
+      </button>
+      <!--
+        Aucun point d'API ne permet aujourd'hui de déplacer l'échéance d'une tâche (`reassign` refuse
+        le même agent). Le bouton reste visible et désactivé plutôt que de détourner un autre appel.
+      -->
+      <button tas-text-button color="primary" type="button" disabled title="Le report d'échéance n'est pas encore disponible.">
+        Reporter
+      </button>
+    </div>
+  } @else {
+    <p class="text-sm text-slate-500">Cette tâche est {{ task().status === 'Completed' ? 'terminée' : 'annulée' }}.</p>
+  }
+
+  <!-- Historique -->
+  @if (history().length) {
+    <div class="pt-5 border-t border-slate-200">
+      <p class="text-sm font-semibold text-slate-800 mb-2">Historique</p>
+      <ul class="flex flex-col gap-1.5">
+        @for (entry of history(); track $index) {
+          <li class="text-xs text-slate-600"><span class="tabular-nums">{{ entry.time }}</span> · {{ entry.label }}</li>
+        }
+      </ul>
+    </div>
+  }
+</div>
