@@ -1,58 +1,72 @@
-<!-- Page header -->
-<div class="flex items-start justify-between mb-5">
+<!-- En-tête -->
+<div class="flex flex-wrap items-start justify-between gap-4 mb-4">
   <div>
-    <div class="flex items-center gap-2.5">
-      <h1 class="text-lg font-semibold text-slate-800">Leads</h1>
-      @if ((tableConfig().pagination.totalElements ?? 0) > 0) {
-        <span class="px-2 py-0.5 rounded-md bg-slate-100 text-slate-500 text-xs font-medium tabular-nums">
-          {{ tableConfig().pagination.totalElements }}
-        </span>
+    <h1 class="text-lg font-semibold text-slate-800">{{ viewMode() === 'kanban' ? 'Pipeline des leads' : 'Leads' }}</h1>
+    <p class="text-sm text-slate-500 mt-0.5">
+      @if (viewMode() === 'kanban') {
+        <span class="tabular-nums">{{ activeLeadCount() }}</span> lead{{ activeLeadCount() > 1 ? 's' : '' }} actif{{ activeLeadCount() > 1 ? 's' : '' }}
+        @if (agencyLabel()) { · {{ agencyLabel() }} }
+        · <span class="tabular-nums">{{ slaRiskCount() }}</span> SLA en risque
+      } @else {
+        <span class="tabular-nums">{{ tableConfig().pagination.totalElements ?? 0 }}</span> leads
       }
-    </div>
-    <p class="text-sm text-slate-400 mt-0.5">Retrouvez et pilotez vos prospects.</p>
+    </p>
   </div>
-  <div class="flex items-center gap-2">
-    <div class="flex border border-slate-200 rounded-full overflow-hidden">
-      <button
-        class="px-3 py-1.5 text-xs transition-colors flex items-center gap-1"
-        [class]="viewMode() === 'list'
-          ? 'bg-primary text-white'
-          : 'bg-white text-slate-500 hover:bg-slate-50'"
-        (click)="setViewMode('list')"
-      >
-        <tas-icon iconName="feather:list" class="w-3.5 h-3.5"></tas-icon>
-        Liste
-      </button>
-      <button
-        class="px-3 py-1.5 text-xs transition-colors flex items-center gap-1"
-        [class]="viewMode() === 'kanban'
-          ? 'bg-primary text-white'
-          : 'bg-white text-slate-500 hover:bg-slate-50'"
-        (click)="setViewMode('kanban')"
-      >
-        <tas-icon iconName="feather:columns" class="w-3.5 h-3.5"></tas-icon>
-        Pipeline
-      </button>
+
+  <div class="flex flex-wrap items-center gap-2">
+    <div class="relative">
+      <tas-icon iconName="feather:search" class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" style="font-size:14px"></tas-icon>
+      <input
+        type="search"
+        class="w-56 h-10 pl-9 pr-3 rounded-lg border border-slate-200 bg-white text-sm placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-primary"
+        placeholder="Rechercher un lead"
+        [ngModel]="searchQuery()"
+        (ngModelChange)="onSearchChange($event)"
+      />
     </div>
-    @if (canCreate()) {
-      <button tas-outlined-button type="button" (click)="openSystemCaptureDrawer()" class="text-xs">
-        <tas-icon iconName="feather:terminal"></tas-icon>
-        Capture sys.
-      </button>
-    }
-    @if (canExport()) {
-      <button tas-outlined-button type="button" (click)="exportLeads()" [disabled]="isExporting()">
-        @if (isExporting()) { <span class="animate-spin w-3 h-3 border border-primary border-t-transparent rounded-full inline-block"></span> }
-        @else { <tas-icon iconName="feather:download"></tas-icon> }
-        Exporter
-      </button>
-    }
-    @if (canImport()) {
-      <button tas-outlined-button [color]="'primary'" (click)="openImportDrawer()">
-        <tas-icon iconName="feather:upload"></tas-icon>
-        Importer
-      </button>
-    }
+    <button tas-outlined-button type="button" (click)="showFilters.set(!showFilters())">
+      Filtrer
+      @if (hasActiveSecondaryFilters()) { <span class="w-1.5 h-1.5 rounded-full bg-primary"></span> }
+    </button>
+    <button tas-outlined-button type="button" TasMenuTrigger [panel]="moreMenu" title="Autres actions">
+      <tas-icon iconName="feather:more-horizontal" style="font-size:14px"></tas-icon>
+    </button>
+    <ng-template #moreMenu>
+      <tas-menu>
+        <tas-menu-item>
+          <button type="button" class="w-full flex items-center gap-2" (click)="setViewMode(viewMode() === 'kanban' ? 'list' : 'kanban')">
+            <tas-icon [iconName]="viewMode() === 'kanban' ? 'feather:list' : 'feather:columns'" class="text-slate-400" style="font-size:13px"></tas-icon>
+            {{ viewMode() === 'kanban' ? 'Vue liste' : 'Vue pipeline' }}
+          </button>
+        </tas-menu-item>
+        @if (canImport()) {
+          <tas-menu-item>
+            <button type="button" class="w-full flex items-center gap-2" (click)="openImportDrawer()">
+              <tas-icon iconName="feather:upload" class="text-slate-400" style="font-size:13px"></tas-icon> Importer
+            </button>
+          </tas-menu-item>
+        }
+        @if (canExport()) {
+          <tas-menu-item>
+            <button type="button" class="w-full flex items-center gap-2" [disabled]="isExporting()" (click)="exportLeads()">
+              <tas-icon iconName="feather:download" class="text-slate-400" style="font-size:13px"></tas-icon> Exporter
+            </button>
+          </tas-menu-item>
+        }
+        @if (canCreate()) {
+          <tas-menu-item>
+            <button type="button" class="w-full flex items-center gap-2" (click)="openSystemCaptureDrawer()">
+              <tas-icon iconName="feather:terminal" class="text-slate-400" style="font-size:13px"></tas-icon> Capture système
+            </button>
+          </tas-menu-item>
+        }
+        <tas-menu-item>
+          <button type="button" class="w-full flex items-center gap-2" (click)="reloadCurrentPage()">
+            <tas-icon iconName="feather:refresh-cw" class="text-slate-400" style="font-size:13px"></tas-icon> Rafraîchir
+          </button>
+        </tas-menu-item>
+      </tas-menu>
+    </ng-template>
     @if (canCreate()) {
       <button tas-filled-button [color]="'primary'" (click)="openCreateDrawer()">
         <tas-icon iconName="feather:plus"></tas-icon>
@@ -62,6 +76,112 @@
   </div>
 </div>
 
+<!-- Puces de filtre -->
+<div class="flex flex-wrap items-center gap-2 mb-4">
+  <button type="button" class="px-3 py-1 rounded-full border border-slate-200 bg-white text-xs text-slate-700 hover:bg-slate-50"
+    TasMenuTrigger [panel]="productMenu">
+    Produit : {{ filterProduct() || 'tous' }}
+  </button>
+  <ng-template #productMenu>
+    <tas-menu>
+      <tas-menu-item><button type="button" class="w-full text-left" (click)="setProductFilter('')">Tous</button></tas-menu-item>
+      @for (product of productOptions(); track product) {
+        <tas-menu-item><button type="button" class="w-full text-left" (click)="setProductFilter(product)">{{ product }}</button></tas-menu-item>
+      }
+    </tas-menu>
+  </ng-template>
+
+  <button type="button" class="px-3 py-1 rounded-full border border-slate-200 bg-white text-xs text-slate-700 hover:bg-slate-50"
+    TasMenuTrigger [panel]="agentMenu">
+    Agent : {{ filterAgentLabel() }}
+  </button>
+  <ng-template #agentMenu>
+    <tas-menu>
+      <tas-menu-item><button type="button" class="w-full text-left" (click)="setOwnerFilter('')">Tous</button></tas-menu-item>
+      @for (agent of agentOptions(); track agent.value) {
+        <tas-menu-item><button type="button" class="w-full text-left" (click)="setOwnerFilter(agent.value)">{{ agent.label }}</button></tas-menu-item>
+      }
+    </tas-menu>
+  </ng-template>
+
+  @if (viewMode() === 'kanban') {
+    <button type="button" class="px-3 py-1 rounded-full text-xs font-medium transition-colors"
+      [class]="filterSlaRisk() ? 'bg-red-600 text-white' : 'bg-red-50 text-red-700 hover:bg-red-100'"
+      (click)="toggleSlaRisk()">
+      SLA en risque (<span class="tabular-nums">{{ slaRiskCount() }}</span>)
+    </button>
+  }
+</div>
+
+<!-- Filtres détaillés (bouton « Filtrer ») -->
+@if (showFilters()) {
+<tas-card class="mb-4 block">
+  <div class="p-4">
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+      <tas-form-field>
+        <tas-label>Source</tas-label>
+        <tas-select
+          clearable
+          [options]="sourceFilterOptions()"
+          optionLabel="label"
+          optionValue="value"
+          placeholder="Toutes les sources"
+          [ngModel]="filterLeadSourceId()"
+          (ngModelChange)="onFilterChange('leadSource', $event)"
+        ></tas-select>
+      </tas-form-field>
+      <tas-form-field>
+        <tas-label>Agence</tas-label>
+        <tas-select
+          clearable
+          [options]="agencyOptions()"
+          optionLabel="label"
+          optionValue="value"
+          placeholder="Toutes les agences"
+          [ngModel]="filterAgencyId()"
+          (ngModelChange)="onFilterChange('agency', $event)"
+        ></tas-select>
+      </tas-form-field>
+      <tas-form-field>
+        <tas-label>Température</tas-label>
+        <tas-select
+          clearable
+          [options]="intentFilterOptions"
+          optionLabel="label"
+          optionValue="value"
+          placeholder="Toutes les températures"
+          [ngModel]="filterIntent()"
+          (ngModelChange)="onFilterChange('intent', $event)"
+        ></tas-select>
+      </tas-form-field>
+    </div>
+
+    <div class="flex items-center justify-end gap-3 mt-3">
+      @if (hasActiveSecondaryFilters()) {
+        <button
+          type="button"
+          class="text-xs text-slate-400 hover:text-slate-600 whitespace-nowrap transition-colors"
+          (click)="clearSecondaryFilters()"
+        >
+          Réinitialiser les filtres
+        </button>
+      }
+      <!-- Le rafraîchissement vivait dans le caption de la table, désormais masqué. -->
+      <button
+        tas-button
+        iconButton
+        type="button"
+        title="Rafraîchir"
+        (click)="reloadCurrentPage()"
+      >
+        <tas-icon iconName="feather:refresh-cw" style="font-size:14px" class="text-slate-500"></tas-icon>
+      </button>
+    </div>
+  </div>
+</tas-card>
+}
+
+@if (viewMode() === 'list') {
 <!-- KPI stats -->
 <div class="grid grid-cols-4 gap-3 mb-5">
   <tas-card>
@@ -130,81 +250,7 @@
   }
 </div>
 
-<!-- Filters -->
-<tas-card class="mb-4 block">
-  <div class="p-4">
-    <div class="grid grid-cols-4 gap-3">
-      <tas-form-field>
-        <tas-label>Rechercher</tas-label>
-        <input
-          tasInput
-          type="text"
-          placeholder="Nom, téléphone ou email..."
-          [ngModel]="searchQuery()"
-          (ngModelChange)="onSearchChange($event)"
-        />
-      </tas-form-field>
-      <tas-form-field>
-        <tas-label>Source</tas-label>
-        <tas-select
-          clearable
-          [options]="sourceFilterOptions()"
-          optionLabel="label"
-          optionValue="value"
-          placeholder="Toutes les sources"
-          [ngModel]="filterLeadSourceId()"
-          (ngModelChange)="onFilterChange('leadSource', $event)"
-        ></tas-select>
-      </tas-form-field>
-      <tas-form-field>
-        <tas-label>Agence</tas-label>
-        <tas-select
-          clearable
-          [options]="agencyOptions()"
-          optionLabel="label"
-          optionValue="value"
-          placeholder="Toutes les agences"
-          [ngModel]="filterAgencyId()"
-          (ngModelChange)="onFilterChange('agency', $event)"
-        ></tas-select>
-      </tas-form-field>
-      <tas-form-field>
-        <tas-label>Température</tas-label>
-        <tas-select
-          clearable
-          [options]="intentFilterOptions"
-          optionLabel="label"
-          optionValue="value"
-          placeholder="Toutes les températures"
-          [ngModel]="filterIntent()"
-          (ngModelChange)="onFilterChange('intent', $event)"
-        ></tas-select>
-      </tas-form-field>
-    </div>
-
-    <div class="flex items-center justify-end gap-3 mt-3">
-      @if (hasActiveSecondaryFilters()) {
-        <button
-          type="button"
-          class="text-xs text-slate-400 hover:text-slate-600 whitespace-nowrap transition-colors"
-          (click)="clearSecondaryFilters()"
-        >
-          Réinitialiser les filtres
-        </button>
-      }
-      <!-- Le rafraîchissement vivait dans le caption de la table, désormais masqué. -->
-      <button
-        tas-button
-        iconButton
-        type="button"
-        title="Rafraîchir"
-        (click)="reloadCurrentPage()"
-      >
-        <tas-icon iconName="feather:refresh-cw" style="font-size:14px" class="text-slate-500"></tas-icon>
-      </button>
-    </div>
-  </div>
-</tas-card>
+}
 
 <!-- Bulk action bar -->
 @if (selectedCount() > 0) {
@@ -306,138 +352,76 @@
   </tas-table>
 }
 
-<!-- Kanban / Pipeline view -->
+<!-- Vue Pipeline -->
 @if (viewMode() === 'kanban') {
   @if (isLoading()) {
     <div class="flex justify-center py-24">
       <div class="animate-spin w-6 h-6 border-2 border-primary border-t-transparent rounded-full"></div>
     </div>
   } @else {
-    <div
-      class="flex gap-3 overflow-x-auto pb-4"
-      style="min-height: 60vh"
-      cdkDropListGroup
-    >
-      @for (col of pipelineColumns; track col.stage) {
-        <div class="flex-shrink-0 w-[240px] flex flex-col">
-          <!-- Column header -->
-          <div
-            class="mb-2 px-3 py-2 rounded-lg"
-            [style.background-color]="col.color"
-          >
-            <div class="flex items-center gap-2 ">
-              <span class="text-xs font-medium text-white truncate">{{ col.label }}</span>
-              <span class="ml-auto px-1.5 py-0.5 rounded bg-white/20 text-[10px] font-semibold text-white tabular-nums shrink-0">
-                {{ pipelineLeads(col.stage).length }}
-              </span>
-            </div>
-            <!-- Column stats: amount + SLA -->
-            <div class="flex items-center justify-between mt-1.5">
-              @if (stageTotalAmount(col.stage) > 0) {
-                <span class="text-[10px] text-white/80 tabular-nums">
-                  {{ formatAmount(stageTotalAmount(col.stage)) }} XOF
-                </span>
-              } @else {
-                <span></span>
-              }
-              @if (stageSlaBreachCount(col.stage) > 0) {
-                <span
-                  class="inline-flex items-center gap-0.5 text-[10px] font-semibold text-white bg-white/25 rounded px-1 py-0.5"
-                  title="Leads en dépassement SLA"
-                >
-                  <tas-icon iconName="feather:alert-triangle" style="font-size:8px"></tas-icon>
-                  {{ stageSlaBreachCount(col.stage) }} SLA
-                </span>
-              }
-            </div>
+    <div class="flex gap-4 overflow-x-auto pb-4 items-start" cdkDropListGroup>
+      @for (phase of pipelinePhases; track phase.key) {
+        <div class="flex-shrink-0 w-[248px] flex flex-col rounded-xl border border-slate-200/70 bg-white/50 p-3">
+          <div class="flex items-center gap-2">
+            <span class="text-sm font-semibold text-slate-800 truncate">{{ phase.label }}</span>
+            <span class="ml-auto px-2.5 py-0.5 rounded-full bg-slate-200/70 text-xs font-semibold text-slate-700 tabular-nums">
+              {{ leadsOfPhase(phase.key).length }}
+            </span>
           </div>
+          <p class="text-xs text-slate-500 mt-1 pb-2 border-b border-slate-200">Sortie : {{ phase.exit }}</p>
 
-          <!-- Drop list -->
           <div
             cdkDropList
-            [cdkDropListData]="col.stage"
-            [cdkDropListConnectedTo]="pipelineColumnIds()"
-            [id]="'pipeline-' + col.stage"
+            [cdkDropListData]="phase"
+            [cdkDropListConnectedTo]="phaseIds()"
+            [id]="'phase-' + phase.key"
             (cdkDropListDropped)="onDrop($any($event))"
-            class="flex-1 flex flex-col gap-2 min-h-[100px] rounded-lg p-1 transition-colors bg-slate-400 p-2"
-            [class]="pipelineLeads(col.stage).length === 0 ? 'border-2 border-dashed border-slate-100' : ''"
+            class="flex flex-col gap-3 pt-3 min-h-[80px]"
           >
-            @for (lead of pipelineLeads(col.stage); track lead.id) {
+            @for (lead of leadsOfPhase(phase.key); track lead.id) {
+              @let sla = cardSla(lead);
               <div
                 cdkDrag
                 [cdkDragData]="lead"
-                class="bg-white rounded-lg p-3 cursor-grab active:cursor-grabbing hover:shadow-sm transition-shadow border-l-[3px]"
-                [style.border-left-color]="col.color"
-                [style.border-top]="'1px solid #e2e8f0'"
-                [style.border-right]="'1px solid #e2e8f0'"
-                [style.border-bottom]="'1px solid #e2e8f0'"
+                class="bg-white rounded-lg border border-slate-200 shadow-sm p-3 cursor-grab active:cursor-grabbing hover:shadow transition-shadow focus:outline-none focus:ring-2 focus:ring-primary/40"
                 [attr.tabindex]="0"
-                [attr.role]="'button'"
-                [attr.aria-label]="displayName(lead) + ' — ' + col.label + '. Flèches gauche/droite pour déplacer.'"
-                [attr.aria-roledescription]="'carte de lead déplaçable'"
-                (keydown)="onCardKeydown($event, lead, col.stage)"
+                role="button"
+                [attr.aria-label]="displayName(lead) + ' — ' + phase.label + '. Flèches gauche/droite pour déplacer.'"
+                aria-roledescription="carte de lead déplaçable"
+                (keydown)="onCardKeydown($event, lead)"
                 (click)="navigateToLead(lead)"
-                (focus)="focusedCardId.set(lead.id ?? null)"
-                (blur)="focusedCardId.set(null)"
               >
-                <!-- Drag placeholder -->
-                <div cdkDragPlaceholder class="bg-slate-50 border-2 border-dashed border-slate-300 rounded-lg h-20"></div>
+                <div cdkDragPlaceholder class="bg-slate-50 border-2 border-dashed border-slate-300 rounded-lg h-24"></div>
 
-                <div class="flex items-center gap-2 mb-1.5">
-                  <div class="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-semibold bg-teal-50 text-teal-800 flex-shrink-0">
-                    {{ initials(lead) }}
-                  </div>
-                  <p class="text-sm font-medium text-slate-800 truncate">{{ displayName(lead) }}</p>
+                <div class="flex items-center gap-2">
+                  <span class="w-7 h-7 rounded-full bg-slate-100 text-[10px] font-semibold text-slate-700 flex items-center justify-center shrink-0">{{ initials(lead) }}</span>
+                  <p class="text-sm font-semibold text-slate-800 truncate">{{ displayName(lead) }}</p>
                 </div>
-                @if (lead.phoneNumber) {
-                  <p class="text-xs text-slate-400 tabular-nums truncate">{{ lead.phoneNumber }}</p>
+
+                @if (lead.interestedProduct) {
+                  <span class="inline-flex mt-2 px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 text-xs font-medium">{{ lead.interestedProduct }}</span>
                 }
-                <div class="flex items-center justify-between mt-2">
-                  @if (lead.desiredAmount?.amount) {
-                    <span class="text-[10px] text-slate-500 font-medium tabular-nums">
-                      {{ formatAmount(lead.desiredAmount.amount || 0) }} {{ lead.desiredAmount?.currency ?? '' }}
-                    </span>
-                  } @else if (lead.leadSourceLabel || lead.leadSourceCode || lead.source) {
-                    <span class="text-[10px] text-slate-400">{{ leadSourceLabel(lead) }}</span>
+
+                <p class="text-xs text-slate-600 mt-2 truncate">
+                  @if (phase.key === 'new') {
+                    {{ leadSourceLabel(lead) }} · {{ lead.capturedAt | dateTimeAgo }}
                   } @else {
-                    <span></span>
+                    {{ agentShortName(lead) || 'Agent inconnu' }}@if (agencyName(lead.agencyId)) { · {{ agencyName(lead.agencyId) }}}
                   }
-                  @if (lead.intentLevel !== null) {
-                    <span
-                      class="inline-flex items-center gap-1 text-[10px] font-medium"
-                      [class]="intentDotClass(lead.intentLevel)"
-                    >
-                      <span class="w-1.5 h-1.5 rounded-full" [class]="intentDotBg(lead.intentLevel)"></span>
-                      {{ intentMeta(lead.intentLevel).label }}
-                    </span>
-                  }
-                </div>
-                <!-- Score + SLA warning -->
-                <div class="flex items-center justify-between mt-1.5">
-                  @if (lead.score !== null) {
-                    <span class="text-[10px] text-slate-400 tabular-nums">Score {{ lead.score }}</span>
-                  } @else {
-                    <span></span>
-                  }
-                  @if (lead.expiresAt && isSlaBreach(lead)) {
-                    <span class="text-[10px] text-red-500 font-medium flex items-center gap-0.5">
-                      <tas-icon iconName="feather:alert-circle" style="font-size:8px"></tas-icon>
-                      SLA
-                    </span>
-                  }
-                </div>
-                <!-- Keyboard hint when focused -->
-                @if (focusedCardId() === lead.id) {
-                  <div class="mt-2 pt-1.5 border-t border-slate-100 flex items-center gap-1">
-                    <span class="text-[9px] text-slate-300">← → déplacer · Entrée ouvrir</span>
-                  </div>
+                </p>
+
+                @if (phase.key === 'new') {
+                  <span class="inline-flex mt-2 px-2 py-0.5 rounded-md bg-green-50 text-green-700 text-xs font-medium">À dispatcher</span>
+                } @else if (phase.key !== 'converted' && sla) {
+                  <span class="inline-flex mt-2 px-2 py-0.5 rounded-md text-xs font-medium"
+                    [class]="sla.tone === 'breach' ? 'bg-red-50 text-red-700' : sla.tone === 'warning' ? 'bg-amber-100 text-amber-800' : 'bg-green-50 text-green-700'">
+                    {{ sla.label }}
+                  </span>
                 }
               </div>
             }
-            @if (pipelineLeads(col.stage).length === 0) {
-              <div class="flex-1 flex items-center justify-center min-h-[80px]">
-                <p class="text-xs text-slate-300">Aucun lead</p>
-              </div>
+            @if (leadsOfPhase(phase.key).length === 0) {
+              <p class="text-xs text-slate-400 text-center py-4">Aucun lead</p>
             }
           </div>
         </div>

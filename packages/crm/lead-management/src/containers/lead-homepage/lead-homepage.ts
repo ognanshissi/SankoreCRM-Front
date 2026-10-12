@@ -17,7 +17,6 @@ import { TasIcon } from '@talisoft/ui/icon';
 import { TasCard } from '@talisoft/ui/card';
 import { TableConfig, TasTable } from '@talisoft/ui/table';
 import { TasFormField, TasLabel } from '@talisoft/ui/form-field';
-import { TasInput } from '@talisoft/ui/input';
 import { TasSelect } from '@talisoft/ui/select';
 import { PageEvent } from '@angular/material/paginator';
 import {
@@ -27,16 +26,19 @@ import {
   LeadSourcesApiService,
   LeadStatsDto,
   UpdatePipelineStageRequestStageEnum,
+  UserDto,
+  UsersApiService,
 } from '@sankore/crm-api';
 import { SideDrawerService } from '@talisoft/ui/side-drawer';
 import { TimeagoPipe } from '@talisoft/ui/timeago';
 import { SnackbarService } from '@talisoft/ui/snackbar';
+import { Menu, MenuItem, TasMenuTrigger } from '@talisoft/ui/menu';
 import { CreateLeadComponent } from '../create-lead/create-lead';
 import { ImportLeadsComponent } from '../import-leads/import-leads';
 import { SystemCaptureDrawer } from './system-capture-drawer';
 import { CreateTaskDrawer } from '@sankore/crm/tasks';
 import { Severity, TasTag } from '@talisoft/ui/tag';
-import { PermissionsService } from '@sankore/crm/common';
+import { AuthenticationService, PermissionsService } from '@sankore/crm/common';
 
 function leadStatusMeta(status: string | null | undefined): { label: string; severity: Severity } {
   switch (status) {
@@ -143,6 +145,56 @@ function transitionBlockedMessage(from: string, to: string): string {
   return `Transition non autorisée : « ${fromCol?.label ?? from} » → « ${toCol?.label ?? to} ». Vous pouvez avancer de 2 étapes maximum, reculer de 1, ou passer en Perdu.`;
 }
 
+// ——— Phases du pipeline (colonnes de la vue Pipeline) ———
+
+/**
+ * Les douze étapes du pipeline regroupées en six phases, celles que l'agence pilote. Chaque colonne
+ * dit sa condition de sortie : c'est elle qui fait avancer un lead, pas le glisser-déposer.
+ *
+ * `dropStage` est l'étape posée quand on dépose une carte dans la colonne — la première de la
+ * phase. « Dispatché » n'en a pas depuis « Nouveau » : un lead y entre par l'affectation à un agent,
+ * pas par un changement d'étape (voir `onDrop`).
+ */
+export interface PipelinePhase {
+  key: 'new' | 'dispatched' | 'qualified' | 'enrichment' | 'kyc' | 'converted';
+  label: string;
+  exit: string;
+  stages: string[];
+  dropStage: UpdatePipelineStageRequestStageEnum;
+}
+
+const S = UpdatePipelineStageRequestStageEnum;
+
+const PIPELINE_PHASES: PipelinePhase[] = [
+  { key: 'new',        label: 'Nouveau',        exit: 'doublon écarté',              stages: [S.New],                                                   dropStage: S.New },
+  { key: 'dispatched', label: 'Dispatché',      exit: 'premier contact',             stages: [S.ContactAttempted],                                      dropStage: S.ContactAttempted },
+  { key: 'qualified',  label: 'Qualifié (SQL)', exit: 'besoin et produit validés',   stages: [S.ContactEstablished, S.NeedIdentified],                  dropStage: S.ContactEstablished },
+  { key: 'enrichment', label: 'Enrichissement', exit: 'bénéficiaires et PPE saisis', stages: [S.Qualified, S.ProductProposed, S.ApplicationStarted],    dropStage: S.Qualified },
+  { key: 'kyc',        label: 'KYC',            exit: 'dossier KYC validé',          stages: [S.DocumentCollection, S.ApplicationCompleted, S.ApprovalPending], dropStage: S.DocumentCollection },
+  { key: 'converted',  label: 'Converti',       exit: 'client créé',                 stages: [S.Converted],                                             dropStage: S.Converted },
+];
+
+/** En deçà, une échéance SLA est signalée « en risque ». */
+const SLA_WARNING_MS = 24 * 3_600_000;
+
+function assigneeId(lead: LeadDto): string | null {
+  return lead.currentAssignedId ?? lead.ownerId ?? null;
+}
+
+/** Phase d'un lead, ou `null` pour un lead perdu (hors pipeline actif). */
+function phaseOf(lead: LeadDto): PipelinePhase['key'] | null {
+  const stage = lead.pipelineStage ?? S.New;
+  // Une étape `New` couvre deux réalités : le lead attend un agent, ou il en a un et attend son
+  // premier contact. Seule l'affectation les distingue.
+  if (stage === S.New) return assigneeId(lead) ? 'dispatched' : 'new';
+  return PIPELINE_PHASES.find((p) => p.stages.includes(stage))?.key ?? null;
+}
+
+export interface CardSla {
+  label: string;
+  tone: 'ok' | 'warning' | 'breach';
+}
+
 // ——— Old status-based columns (kept for status-view backward compat) ———
 
 const KANBAN_COLUMNS = [
@@ -173,9 +225,11 @@ interface StatusTab {
     TimeagoPipe,
     TasFormField,
     TasLabel,
-    TasInput,
     TasSelect,
     DragDropModule,
+    Menu,
+    MenuItem,
+    TasMenuTrigger,
   ],
 })
 export class LeadHomepage implements OnInit {
@@ -188,6 +242,8 @@ export class LeadHomepage implements OnInit {
   private readonly _leadsApiService = inject(LeadsApiService);
   private readonly _agenciesApiService = inject(AgenciesApiService);
   private readonly _leadSourcesApiService = inject(LeadSourcesApiService);
+  private readonly _usersApiService = inject(UsersApiService);
+  private readonly _auth = inject(AuthenticationService);
   private readonly _sideDrawerService = inject(SideDrawerService);
   private readonly _snackbar = inject(SnackbarService);
   private readonly _destroyRef = inject(DestroyRef);
@@ -201,7 +257,8 @@ export class LeadHomepage implements OnInit {
   public isExporting = signal(false);
   public leads = signal<LeadDto[]>([]);
   public searchQuery = signal('');
-  public viewMode = signal<'list' | 'kanban'>('list');
+  public viewMode = signal<'list' | 'kanban'>('kanban');
+  public showFilters = signal(false);
 
   // Multi-select
   public selectedLeadIds = signal<Set<string>>(new Set());
@@ -236,7 +293,60 @@ export class LeadHomepage implements OnInit {
   public sourceFilterOptions = signal<{ label: string; value: string }[]>([ALL_SOURCES_OPTION]);
   public readonly intentFilterOptions = INTENT_FILTER_OPTIONS;
   public readonly kanbanColumns = KANBAN_COLUMNS;
-  public readonly pipelineColumns = PIPELINE_COLUMNS;
+  public readonly pipelinePhases = PIPELINE_PHASES;
+
+  // Filtres de la vue Pipeline
+  /** Produit d'intérêt : filtré côté client, le contrat de `listLeads` n'a pas de paramètre produit. */
+  public filterProduct = signal('');
+  public filterOwnerId = signal('');
+  public filterSlaRisk = signal(false);
+  public agents = signal<Map<string, UserDto>>(new Map());
+
+  public readonly agentOptions = computed(() =>
+    [...this.agents().values()]
+      .map((u) => ({ label: u.fullName || u.email || '', value: u.id ?? '' }))
+      .filter((o) => o.label && o.value)
+      .sort((a, b) => a.label.localeCompare(b.label)),
+  );
+
+  public readonly productOptions = computed(() =>
+    [...new Set(this.leads().map((l) => l.interestedProduct?.trim()).filter((p): p is string => !!p))].sort(),
+  );
+
+  public readonly filterAgentLabel = computed(() => {
+    const id = this.filterOwnerId();
+    return id ? this.agents().get(id)?.fullName ?? 'sélection' : 'tous';
+  });
+
+  /** Leads du pipeline actif : ni perdus, ni filtrés par les puces. */
+  private readonly _pipelineLeads = computed(() => {
+    const product = this.filterProduct();
+    return this.leads().filter((l) => phaseOf(l) !== null && (!product || l.interestedProduct?.trim() === product));
+  });
+
+  public readonly activeLeadCount = computed(
+    () => this._pipelineLeads().filter((l) => phaseOf(l) !== 'converted').length,
+  );
+
+  public readonly slaRiskCount = computed(
+    () => this._pipelineLeads().filter((l) => this._isSlaAtRisk(l)).length,
+  );
+
+  public readonly phaseLeads = computed(() => {
+    const riskOnly = this.filterSlaRisk();
+    const byPhase = new Map<string, LeadDto[]>(PIPELINE_PHASES.map((p) => [p.key, []]));
+    for (const lead of this._pipelineLeads()) {
+      if (riskOnly && !this._isSlaAtRisk(lead)) continue;
+      byPhase.get(phaseOf(lead)!)?.push(lead);
+    }
+    return byPhase;
+  });
+
+  public readonly agencyLabel = computed(() => {
+    const agencyId = this.filterAgencyId() || this._auth.connectedUser()?.agencyId;
+    if (!agencyId) return '';
+    return this.agencyOptions().find((o) => o.value === agencyId)?.label ?? '';
+  });
 
   public readonly leadStatusMeta = leadStatusMeta;
   public readonly intentMeta = intentMeta;
@@ -285,82 +395,86 @@ export class LeadHomepage implements OnInit {
     if (params['leadSource']) this.filterLeadSourceId.set(params['leadSource']);
     if (params['agency']) this.filterAgencyId.set(params['agency']);
     if (params['intent']) this.filterIntent.set(params['intent']);
+    if (params['owner']) this.filterOwnerId.set(params['owner']);
+    if (params['view'] === 'list') this.viewMode.set('list');
 
-    this.loadLeads(0, this.tableConfig().pagination.pageSize);
+    this.reloadCurrentPage();
     this._loadAgencies();
+    this._loadAgents();
     this._loadLeadSources();
     this._loadStats();
   }
 
   // ——— Pipeline helpers ———
 
-  public pipelineLeads(stage: string): LeadDto[] {
-    return this.leads().filter((l) => (l.pipelineStage ?? l.status) === stage);
+  public leadsOfPhase(phase: PipelinePhase['key']): LeadDto[] {
+    return this.phaseLeads().get(phase) ?? [];
   }
 
-  public stageCount(stage: string): number {
-    return this.stats().byPipelineStage?.find((s) => s.stage === stage)?.count ?? 0;
+  public phaseIds(): string[] {
+    return PIPELINE_PHASES.map((p) => 'phase-' + p.key);
   }
 
-  public stageTotalAmount(stage: string): number {
-    return this.pipelineLeads(stage).reduce((sum, l) => sum + (l.desiredAmount?.amount ?? 0), 0);
+  /** Initiale du prénom et nom : « A. Sow », assez pour reconnaître un collègue sur une carte étroite. */
+  public agentShortName(lead: LeadDto): string {
+    const id = assigneeId(lead);
+    const name = id ? this.agents().get(id)?.fullName?.trim() : '';
+    if (!name) return '';
+    const parts = name.split(/\s+/);
+    return parts.length > 1 ? `${parts[0][0]}. ${parts.slice(1).join(' ')}` : name;
   }
 
-  public stageSlaBreachCount(stage: string): number {
-    const leads = this.pipelineLeads(stage);
-    const now = Date.now();
-    return leads.filter((l) => {
-      if (!l.expiresAt) return false;
-      return new Date(l.expiresAt).getTime() < now;
-    }).length;
+  public agencyName(agencyId: string | null | undefined): string {
+    return agencyId ? this.agencyOptions().find((o) => o.value === agencyId)?.label ?? '' : '';
   }
 
-  public isSlaBreach(lead: LeadDto): boolean {
-    if (!lead.expiresAt) return false;
-    return new Date(lead.expiresAt).getTime() < Date.now();
+  public cardSla(lead: LeadDto): CardSla | null {
+    if (!lead.expiresAt) return null;
+    const remaining = new Date(lead.expiresAt).getTime() - Date.now();
+    if (remaining < 0) return { label: 'SLA dépassé', tone: 'breach' };
+    if (remaining < SLA_WARNING_MS) {
+      const h = Math.max(1, Math.round(remaining / 3_600_000));
+      return { label: `SLA : ${h} h restante${h > 1 ? 's' : ''}`, tone: 'warning' };
+    }
+    return { label: 'Dans les délais', tone: 'ok' };
   }
 
-  public formatAmount(amount: number): string {
-    if (amount >= 1_000_000) return (amount / 1_000_000).toFixed(1) + 'M';
-    if (amount >= 1_000) return (amount / 1_000).toFixed(0) + 'K';
-    return amount.toString();
+  private _isSlaAtRisk(lead: LeadDto): boolean {
+    if (phaseOf(lead) === 'converted') return false;
+    const sla = this.cardSla(lead);
+    return !!sla && sla.tone !== 'ok';
   }
 
-  public pipelineColumnIds(): string[] {
-    return this.pipelineColumns.map((c) => 'pipeline-' + c.stage);
+  public setProductFilter(product: string): void {
+    this.filterProduct.set(product);
+  }
+
+  public setOwnerFilter(ownerId: string): void {
+    this.filterOwnerId.set(ownerId);
+    this._applyFilters();
+  }
+
+  public toggleSlaRisk(): void {
+    this.filterSlaRisk.update((v) => !v);
   }
 
   // ——— Drag & Drop ———
 
-  public onDrop(event: CdkDragDrop<UpdatePipelineStageRequestStageEnum>): void {
+  public onDrop(event: CdkDragDrop<PipelinePhase>): void {
     if (event.previousContainer === event.container) return;
-
-    const lead: LeadDto = event.item.data;
-    const fromStage = event.previousContainer.data;
-    const toStage = event.container.data;
-
-    if (!isTransitionAllowed(fromStage, toStage)) {
-      this._snackbar.error('Transition refusée', transitionBlockedMessage(fromStage, toStage));
-      return;
-    }
-
-    this._moveLeadOptimistic(lead, fromStage, toStage);
+    this._moveToPhase(event.item.data, event.container.data);
   }
 
   // ——— Keyboard navigation ———
 
-  public onCardKeydown(event: KeyboardEvent, lead: LeadDto, currentStage: string): void {
-    const currentIdx = STAGE_INDEX.get(currentStage as any);
-    if (currentIdx == null) return;
-
-    let targetStage: string | null = null;
+  public onCardKeydown(event: KeyboardEvent, lead: LeadDto): void {
+    const idx = PIPELINE_PHASES.findIndex((p) => p.key === phaseOf(lead));
+    let target: PipelinePhase | undefined;
 
     if (event.key === 'ArrowRight') {
-      const nextCol = PIPELINE_COLUMNS[currentIdx + 1];
-      if (nextCol) targetStage = nextCol.stage;
+      target = PIPELINE_PHASES[idx + 1];
     } else if (event.key === 'ArrowLeft') {
-      const prevCol = PIPELINE_COLUMNS[currentIdx - 1];
-      if (prevCol) targetStage = prevCol.stage;
+      target = PIPELINE_PHASES[idx - 1];
     } else if (event.key === 'Enter' || event.key === ' ') {
       event.preventDefault();
       this.navigateToLead(lead);
@@ -370,15 +484,29 @@ export class LeadHomepage implements OnInit {
     }
 
     event.preventDefault();
+    if (target) this._moveToPhase(lead, target);
+  }
 
-    if (!targetStage) return;
-
-    if (!isTransitionAllowed(currentStage, targetStage)) {
-      this._snackbar.error('Transition refusée', transitionBlockedMessage(currentStage, targetStage));
+  private _moveToPhase(lead: LeadDto, phase: PipelinePhase): void {
+    const fromStage = lead.pipelineStage ?? S.New;
+    if (phaseOf(lead) === phase.key) return;
+    if (fromStage === phase.dropStage) {
+      // Seul cas : un lead affecté ramené dans « Nouveau ». Sans désaffectation, il y reviendrait.
+      this._snackbar.error('Transition refusée', 'Ce lead a déjà un agent : il reste dans « Dispatché ».');
       return;
     }
 
-    this._moveLeadOptimistic(lead, currentStage, targetStage);
+    if (phase.key === 'dispatched' && !assigneeId(lead)) {
+      this._snackbar.error('Transition refusée', "Un lead entre dans « Dispatché » par son affectation à un agent : dispatchez-le depuis sa fiche.");
+      return;
+    }
+
+    if (!isTransitionAllowed(fromStage, phase.dropStage)) {
+      this._snackbar.error('Transition refusée', transitionBlockedMessage(fromStage, phase.dropStage));
+      return;
+    }
+
+    this._moveLeadOptimistic(lead, fromStage, phase.dropStage);
   }
 
   private _moveLeadOptimistic(lead: LeadDto, fromStage: string, toStage: string): void {
@@ -404,7 +532,7 @@ export class LeadHomepage implements OnInit {
         }),
       )
       .subscribe(() => {
-        const toLabel = PIPELINE_COLUMNS.find((c) => c.stage === toStage)?.label ?? toStage;
+        const toLabel = PIPELINE_PHASES.find((p) => p.stages.includes(toStage))?.label ?? toStage;
         this._snackbar.success('Lead déplacé', `Déplacé vers « ${toLabel} »`);
         this._loadStats();
       });
@@ -454,6 +582,12 @@ export class LeadHomepage implements OnInit {
 
   public setViewMode(mode: 'list' | 'kanban'): void {
     this.viewMode.set(mode);
+    this._router.navigate([], {
+      relativeTo: this._route,
+      queryParams: { view: mode === 'list' ? 'list' : null },
+      queryParamsHandling: 'merge',
+      replaceUrl: true,
+    });
     if (mode === 'kanban') {
       this.loadLeads(0, 200);
     } else {
@@ -549,6 +683,7 @@ export class LeadHomepage implements OnInit {
         leadSource: this.filterLeadSourceId() || null,
         agency: this.filterAgencyId() || null,
         intent: this.filterIntent() || null,
+        owner: this.filterOwnerId() || null,
       },
       queryParamsHandling: 'merge',
       replaceUrl: true,
@@ -576,6 +711,7 @@ export class LeadHomepage implements OnInit {
     const intent = this.filterIntent() ? Number(this.filterIntent()) as any : undefined;
     const search = this.searchQuery() || undefined;
     const leadSourceConfigId = this.filterLeadSourceId() || undefined;
+    const ownerId = this.filterOwnerId() || undefined;
 
     // `source` (5e paramètre) reste `undefined` : le filtrage passe désormais par
     // `leadSourceConfigId` (11e), qui désigne la source configurée et non le canal d'entrée.
@@ -586,7 +722,7 @@ export class LeadHomepage implements OnInit {
         status,
         undefined,
         undefined,
-        undefined,
+        ownerId,
         agencyId,
         search,
         undefined,
@@ -785,6 +921,16 @@ export class LeadHomepage implements OnInit {
         }),
       )
       .subscribe((options) => this.sourceFilterOptions.set(options));
+  }
+
+  /** Agents actifs, pour nommer le titulaire d'une carte et alimenter la puce « Agent ». */
+  private _loadAgents(): void {
+    this._usersApiService
+      .listUsers('Active', undefined, undefined, 1, 500)
+      .pipe(catchError(() => EMPTY))
+      .subscribe((res) => {
+        this.agents.set(new Map((res.items ?? []).filter((u) => !!u.id).map((u) => [u.id!, u])));
+      });
   }
 
   private _loadStats(): void {
