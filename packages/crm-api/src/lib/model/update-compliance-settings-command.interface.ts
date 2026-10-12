@@ -17,10 +17,6 @@ export interface UpdateComplianceSettingsCommand {
     fatcaGiin?: string | null;
     fatcaRequiredAt?: string | null;
     fatcaForCoHolders?: boolean;
-    /**
-     * Turn politically-exposed-person screening on or off for this tenant.
-     */
-    pepEnabled?: boolean;
     pepPostMandateMonths?: number;
     readonly resourceType?: string | null;
     readonly resourceId?: string | null;

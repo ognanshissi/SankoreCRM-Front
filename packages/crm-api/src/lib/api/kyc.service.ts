@@ -1429,18 +1429,19 @@ export class KYCApiService {
     }
 
     /**
-     * Upload an identity document or selfie image
-     * Stores the image encrypted and returns an opaque reference to hand to POST kyc-files/{id}/verify. Accepts image/jpeg, image/png and application/pdf, up to the tenant\&#39;s configured size limit. Requires permission: kyc:manage.
+     * Upload an identity document, a selfie, or a proof of address
+     * Stores the image encrypted and returns an opaque reference to hand to POST kyc-files/{id}/verify. Accepts image/jpeg, image/png and application/pdf, up to the tenant\&#39;s configured size limit. &#x60;kind&#x3D;ProofOfAddress&#x60; records the quittance CIMA LBC/FT article 13.6 requires of a REMOTE sale; pass &#x60;documentIssuedOn&#x60; with it, because the final KYC approval refuses a proof whose issue date is absent or older than the tenant\&#39;s proof-of-address-max-age-days. A proof of address never enters the OCR or face-match chain. Requires permission: kyc:manage.
      * @param kycFileId 
-     * @param kind One of: IdentityDocumentFront, IdentityDocumentBack, Selfie
+     * @param kind One of: IdentityDocumentFront, IdentityDocumentBack, Selfie, ProofOfAddress
      * @param file 
+     * @param documentIssuedOn 
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      */
-    public uploadKycDocument(kycFileId: string, kind: 'IdentityDocumentFront' | 'IdentityDocumentBack' | 'Selfie', file: Blob, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<UploadKycDocumentResponse>;
-    public uploadKycDocument(kycFileId: string, kind: 'IdentityDocumentFront' | 'IdentityDocumentBack' | 'Selfie', file: Blob, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<UploadKycDocumentResponse>>;
-    public uploadKycDocument(kycFileId: string, kind: 'IdentityDocumentFront' | 'IdentityDocumentBack' | 'Selfie', file: Blob, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<UploadKycDocumentResponse>>;
-    public uploadKycDocument(kycFileId: string, kind: 'IdentityDocumentFront' | 'IdentityDocumentBack' | 'Selfie', file: Blob, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
+    public uploadKycDocument(kycFileId: string, kind: 'IdentityDocumentFront' | 'IdentityDocumentBack' | 'Selfie' | 'ProofOfAddress', file: Blob, documentIssuedOn?: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<UploadKycDocumentResponse>;
+    public uploadKycDocument(kycFileId: string, kind: 'IdentityDocumentFront' | 'IdentityDocumentBack' | 'Selfie' | 'ProofOfAddress', file: Blob, documentIssuedOn?: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<UploadKycDocumentResponse>>;
+    public uploadKycDocument(kycFileId: string, kind: 'IdentityDocumentFront' | 'IdentityDocumentBack' | 'Selfie' | 'ProofOfAddress', file: Blob, documentIssuedOn?: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<UploadKycDocumentResponse>>;
+    public uploadKycDocument(kycFileId: string, kind: 'IdentityDocumentFront' | 'IdentityDocumentBack' | 'Selfie' | 'ProofOfAddress', file: Blob, documentIssuedOn?: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
         if (kycFileId === null || kycFileId === undefined) {
             throw new Error('Required parameter kycFileId was null or undefined when calling uploadKycDocument.');
         }
@@ -1455,6 +1456,10 @@ export class KYCApiService {
         if (kind !== undefined && kind !== null) {
           localVarQueryParameters = this.addToHttpParams(localVarQueryParameters,
             <any>kind, 'kind');
+        }
+        if (documentIssuedOn !== undefined && documentIssuedOn !== null) {
+          localVarQueryParameters = this.addToHttpParams(localVarQueryParameters,
+            <any>documentIssuedOn, 'documentIssuedOn');
         }
 
         let localVarHeaders = this.defaultHeaders;

@@ -23,11 +23,21 @@ import { AnonymizeClientRequest } from '../model/anonymize-client-request.interf
 // @ts-ignore
 import { ClientExportStatusDto } from '../model/client-export-status-dto.interface';
 // @ts-ignore
+import { DismissProfileNoticeRequest } from '../model/dismiss-profile-notice-request.interface';
+// @ts-ignore
+import { PagedResultOfOverdueProfileNoticeDto } from '../model/paged-result-of-overdue-profile-notice-dto.interface';
+// @ts-ignore
 import { PagedResultOfRetentionCandidateDto } from '../model/paged-result-of-retention-candidate-dto.interface';
+// @ts-ignore
+import { RecordProfileNoticeRequest } from '../model/record-profile-notice-request.interface';
+// @ts-ignore
+import { RecordProfileNoticeResponse } from '../model/record-profile-notice-response.interface';
 // @ts-ignore
 import { RequestClientExportRequest } from '../model/request-client-export-request.interface';
 // @ts-ignore
 import { RequestClientExportResult } from '../model/request-client-export-result.interface';
+// @ts-ignore
+import { UpdateAmlProfileRequest } from '../model/update-aml-profile-request.interface';
 
 // @ts-ignore
 import { BASE_PATH, COLLECTION_FORMATS }                     from '../variables';
@@ -179,6 +189,85 @@ export class CustomerComplianceApiService {
     }
 
     /**
+     * Close a notice that turned out to need no update
+     * For a client who was mistaken, or a change that was about somebody else. The reason is REQUIRED: a notice that simply disappears is indistinguishable from one somebody forgot. A dismissed notice is never overdue. Requires permission: customers:update.
+     * @param noticeId 
+     * @param dismissProfileNoticeRequest 
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     */
+    public dismissProfileChangeNotice(noticeId: string, dismissProfileNoticeRequest: DismissProfileNoticeRequest, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<any>;
+    public dismissProfileChangeNotice(noticeId: string, dismissProfileNoticeRequest: DismissProfileNoticeRequest, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<HttpResponse<any>>;
+    public dismissProfileChangeNotice(noticeId: string, dismissProfileNoticeRequest: DismissProfileNoticeRequest, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<HttpEvent<any>>;
+    public dismissProfileChangeNotice(noticeId: string, dismissProfileNoticeRequest: DismissProfileNoticeRequest, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<any> {
+        if (noticeId === null || noticeId === undefined) {
+            throw new Error('Required parameter noticeId was null or undefined when calling dismissProfileChangeNotice.');
+        }
+        if (dismissProfileNoticeRequest === null || dismissProfileNoticeRequest === undefined) {
+            throw new Error('Required parameter dismissProfileNoticeRequest was null or undefined when calling dismissProfileChangeNotice.');
+        }
+
+        let localVarHeaders = this.defaultHeaders;
+
+        let localVarCredential: string | undefined;
+        // authentication (BearerToken) required
+        localVarCredential = this.configuration.lookupCredential('BearerToken');
+        if (localVarCredential) {
+            localVarHeaders = localVarHeaders.set('Authorization', 'Bearer ' + localVarCredential);
+        }
+
+        let localVarHttpHeaderAcceptSelected: string | undefined = options && options.httpHeaderAccept;
+        if (localVarHttpHeaderAcceptSelected === undefined) {
+            // to determine the Accept header
+            const httpHeaderAccepts: string[] = [
+            ];
+            localVarHttpHeaderAcceptSelected = this.configuration.selectHeaderAccept(httpHeaderAccepts);
+        }
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+
+        let localVarHttpContext: HttpContext | undefined = options && options.context;
+        if (localVarHttpContext === undefined) {
+            localVarHttpContext = new HttpContext();
+        }
+
+
+        // to determine the Content-Type header
+        const consumes: string[] = [
+            'application/json'
+        ];
+        const httpContentTypeSelected: string | undefined = this.configuration.selectHeaderContentType(consumes);
+        if (httpContentTypeSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Content-Type', httpContentTypeSelected);
+        }
+
+        let responseType_: 'text' | 'json' | 'blob' = 'json';
+        if (localVarHttpHeaderAcceptSelected) {
+            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+                responseType_ = 'text';
+            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+                responseType_ = 'json';
+            } else {
+                responseType_ = 'blob';
+            }
+        }
+
+        let localVarPath = `/api/v1/clients/profile-change-notices/${this.configuration.encodeParam({name: "noticeId", value: noticeId, in: "path", style: "simple", explode: false, dataType: "string", dataFormat: "uuid"})}/dismissal`;
+        return this.httpClient.request<any>('post', `${this.configuration.basePath}${localVarPath}`,
+            {
+                context: localVarHttpContext,
+                body: dismissProfileNoticeRequest,
+                responseType: <any>responseType_,
+                withCredentials: this.configuration.withCredentials,
+                headers: localVarHeaders,
+                observe: observe,
+                reportProgress: reportProgress
+            }
+        );
+    }
+
+    /**
      * Download a generated client export
      * Serves the CSV against the token issued with the export. The token is compared in constant time; a wrong token answers 404 EXPORT_NOT_FOUND (never a distinct error, which would confirm the export id), and a link past its TTL answers 409 EXPORT_LINK_EXPIRED. The response is Cache-Control: no-store — the body is personal data. Requires permission: customers:export.
      * @param exportId 
@@ -319,6 +408,71 @@ export class CustomerComplianceApiService {
     }
 
     /**
+     * Close a notice: the change has been carried into the record
+     * Stops the clock. Refuses an already-closed notice, and refuses an integration dated before the change was noticed — which would show as a negative delay in the compliance report. Requires permission: customers:update.
+     * @param noticeId 
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     */
+    public integrateProfileChangeNotice(noticeId: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<any>;
+    public integrateProfileChangeNotice(noticeId: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<HttpResponse<any>>;
+    public integrateProfileChangeNotice(noticeId: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<HttpEvent<any>>;
+    public integrateProfileChangeNotice(noticeId: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<any> {
+        if (noticeId === null || noticeId === undefined) {
+            throw new Error('Required parameter noticeId was null or undefined when calling integrateProfileChangeNotice.');
+        }
+
+        let localVarHeaders = this.defaultHeaders;
+
+        let localVarCredential: string | undefined;
+        // authentication (BearerToken) required
+        localVarCredential = this.configuration.lookupCredential('BearerToken');
+        if (localVarCredential) {
+            localVarHeaders = localVarHeaders.set('Authorization', 'Bearer ' + localVarCredential);
+        }
+
+        let localVarHttpHeaderAcceptSelected: string | undefined = options && options.httpHeaderAccept;
+        if (localVarHttpHeaderAcceptSelected === undefined) {
+            // to determine the Accept header
+            const httpHeaderAccepts: string[] = [
+            ];
+            localVarHttpHeaderAcceptSelected = this.configuration.selectHeaderAccept(httpHeaderAccepts);
+        }
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+
+        let localVarHttpContext: HttpContext | undefined = options && options.context;
+        if (localVarHttpContext === undefined) {
+            localVarHttpContext = new HttpContext();
+        }
+
+
+        let responseType_: 'text' | 'json' | 'blob' = 'json';
+        if (localVarHttpHeaderAcceptSelected) {
+            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+                responseType_ = 'text';
+            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+                responseType_ = 'json';
+            } else {
+                responseType_ = 'blob';
+            }
+        }
+
+        let localVarPath = `/api/v1/clients/profile-change-notices/${this.configuration.encodeParam({name: "noticeId", value: noticeId, in: "path", style: "simple", explode: false, dataType: "string", dataFormat: "uuid"})}/integration`;
+        return this.httpClient.request<any>('post', `${this.configuration.basePath}${localVarPath}`,
+            {
+                context: localVarHttpContext,
+                responseType: <any>responseType_,
+                withCredentials: this.configuration.withCredentials,
+                headers: localVarHeaders,
+                observe: observe,
+                reportProgress: reportProgress
+            }
+        );
+    }
+
+    /**
      * List the archived clients that may now be anonymized
      * Paginated list of the anonymization proposals produced by the monthly retention scan: clients archived longer ago than the tenant\&#39;s \&#39;retention-years\&#39; setting (floor 10 years) and whose KYC file the KYC module reports as cleared. A client the KYC module has not cleared is never proposed. Restricted to the caller\&#39;s agency perimeter. No identity field is returned. Requires permission: customers:archive.
      * @param page 
@@ -384,6 +538,161 @@ export class CustomerComplianceApiService {
             {
                 context: localVarHttpContext,
                 params: localVarQueryParameters,
+                responseType: <any>responseType_,
+                withCredentials: this.configuration.withCredentials,
+                headers: localVarHeaders,
+                observe: observe,
+                reportProgress: reportProgress
+            }
+        );
+    }
+
+    /**
+     * Known profile changes the institution is late integrating
+     * Open notices older than the tenant\&#39;s profile-change-integration-days (15 by default, the CIMA LBC/FT figure), oldest first. A REPORT and not a gate: by the time a notice is overdue the breach has happened, and refusing the very update that would close it would be perverse. Each row carries the elapsed days and the allowance, so a screen does not hard-code fifteen. Requires permission: customers:read.
+     * @param page 
+     * @param pageSize 
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     */
+    public listOverdueProfileNotices(page?: number, pageSize?: number, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<PagedResultOfOverdueProfileNoticeDto>;
+    public listOverdueProfileNotices(page?: number, pageSize?: number, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<PagedResultOfOverdueProfileNoticeDto>>;
+    public listOverdueProfileNotices(page?: number, pageSize?: number, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<PagedResultOfOverdueProfileNoticeDto>>;
+    public listOverdueProfileNotices(page?: number, pageSize?: number, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
+
+        let localVarQueryParameters = new HttpParams({encoder: this.encoder});
+        if (page !== undefined && page !== null) {
+          localVarQueryParameters = this.addToHttpParams(localVarQueryParameters,
+            <any>page, 'page');
+        }
+        if (pageSize !== undefined && pageSize !== null) {
+          localVarQueryParameters = this.addToHttpParams(localVarQueryParameters,
+            <any>pageSize, 'pageSize');
+        }
+
+        let localVarHeaders = this.defaultHeaders;
+
+        let localVarCredential: string | undefined;
+        // authentication (BearerToken) required
+        localVarCredential = this.configuration.lookupCredential('BearerToken');
+        if (localVarCredential) {
+            localVarHeaders = localVarHeaders.set('Authorization', 'Bearer ' + localVarCredential);
+        }
+
+        let localVarHttpHeaderAcceptSelected: string | undefined = options && options.httpHeaderAccept;
+        if (localVarHttpHeaderAcceptSelected === undefined) {
+            // to determine the Accept header
+            const httpHeaderAccepts: string[] = [
+                'application/json'
+            ];
+            localVarHttpHeaderAcceptSelected = this.configuration.selectHeaderAccept(httpHeaderAccepts);
+        }
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+
+        let localVarHttpContext: HttpContext | undefined = options && options.context;
+        if (localVarHttpContext === undefined) {
+            localVarHttpContext = new HttpContext();
+        }
+
+
+        let responseType_: 'text' | 'json' | 'blob' = 'json';
+        if (localVarHttpHeaderAcceptSelected) {
+            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+                responseType_ = 'text';
+            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+                responseType_ = 'json';
+            } else {
+                responseType_ = 'blob';
+            }
+        }
+
+        let localVarPath = `/api/v1/clients/profile-change-notices/overdue`;
+        return this.httpClient.request<PagedResultOfOverdueProfileNoticeDto>('get', `${this.configuration.basePath}${localVarPath}`,
+            {
+                context: localVarHttpContext,
+                params: localVarQueryParameters,
+                responseType: <any>responseType_,
+                withCredentials: this.configuration.withCredentials,
+                headers: localVarHeaders,
+                observe: observe,
+                reportProgress: reportProgress
+            }
+        );
+    }
+
+    /**
+     * Record that a change to a client\&#39;s profile has become known
+     * Starts the fifteen-day clock. &#x60;noticedOn&#x60; is when the INSTITUTION learned of the change — an agent records on Monday what a client said on Friday — and a future date is refused. The recorder is taken from the token, never from the body. &#x60;kind&#x60; is a closed list so the delays are reportable; &#x60;note&#x60; is for an operational remark and MUST NOT carry the new value, which belongs in the client record where it is encrypted. Requires permission: customers:update.
+     * @param clientId 
+     * @param recordProfileNoticeRequest 
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     */
+    public recordProfileChangeNotice(clientId: string, recordProfileNoticeRequest: RecordProfileNoticeRequest, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<RecordProfileNoticeResponse>;
+    public recordProfileChangeNotice(clientId: string, recordProfileNoticeRequest: RecordProfileNoticeRequest, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<RecordProfileNoticeResponse>>;
+    public recordProfileChangeNotice(clientId: string, recordProfileNoticeRequest: RecordProfileNoticeRequest, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<RecordProfileNoticeResponse>>;
+    public recordProfileChangeNotice(clientId: string, recordProfileNoticeRequest: RecordProfileNoticeRequest, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
+        if (clientId === null || clientId === undefined) {
+            throw new Error('Required parameter clientId was null or undefined when calling recordProfileChangeNotice.');
+        }
+        if (recordProfileNoticeRequest === null || recordProfileNoticeRequest === undefined) {
+            throw new Error('Required parameter recordProfileNoticeRequest was null or undefined when calling recordProfileChangeNotice.');
+        }
+
+        let localVarHeaders = this.defaultHeaders;
+
+        let localVarCredential: string | undefined;
+        // authentication (BearerToken) required
+        localVarCredential = this.configuration.lookupCredential('BearerToken');
+        if (localVarCredential) {
+            localVarHeaders = localVarHeaders.set('Authorization', 'Bearer ' + localVarCredential);
+        }
+
+        let localVarHttpHeaderAcceptSelected: string | undefined = options && options.httpHeaderAccept;
+        if (localVarHttpHeaderAcceptSelected === undefined) {
+            // to determine the Accept header
+            const httpHeaderAccepts: string[] = [
+                'application/json'
+            ];
+            localVarHttpHeaderAcceptSelected = this.configuration.selectHeaderAccept(httpHeaderAccepts);
+        }
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+
+        let localVarHttpContext: HttpContext | undefined = options && options.context;
+        if (localVarHttpContext === undefined) {
+            localVarHttpContext = new HttpContext();
+        }
+
+
+        // to determine the Content-Type header
+        const consumes: string[] = [
+            'application/json'
+        ];
+        const httpContentTypeSelected: string | undefined = this.configuration.selectHeaderContentType(consumes);
+        if (httpContentTypeSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Content-Type', httpContentTypeSelected);
+        }
+
+        let responseType_: 'text' | 'json' | 'blob' = 'json';
+        if (localVarHttpHeaderAcceptSelected) {
+            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+                responseType_ = 'text';
+            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+                responseType_ = 'json';
+            } else {
+                responseType_ = 'blob';
+            }
+        }
+
+        let localVarPath = `/api/v1/clients/${this.configuration.encodeParam({name: "clientId", value: clientId, in: "path", style: "simple", explode: false, dataType: "string", dataFormat: "uuid"})}/profile-change-notices`;
+        return this.httpClient.request<RecordProfileNoticeResponse>('post', `${this.configuration.basePath}${localVarPath}`,
+            {
+                context: localVarHttpContext,
+                body: recordProfileNoticeRequest,
                 responseType: <any>responseType_,
                 withCredentials: this.configuration.withCredentials,
                 headers: localVarHeaders,
@@ -460,6 +769,85 @@ export class CustomerComplianceApiService {
             {
                 context: localVarHttpContext,
                 body: requestClientExportRequest,
+                responseType: <any>responseType_,
+                withCredentials: this.configuration.withCredentials,
+                headers: localVarHeaders,
+                observe: observe,
+                reportProgress: reportProgress
+            }
+        );
+    }
+
+    /**
+     * Record a client\&#39;s LBC/FT profile
+     * The sector of activity (code from the same referential the core-banking mapping uses, plus what the institution established in words), the origin of the funds (a code from a closed list plus an ENCRYPTED narrative), and for a legal person the stated object and the issue date of the registry extract on file. A null field is left unchanged and a blank one clears it. The CIMA LBC/FT text is explicit that a profession alone is not enough — « commerçant » does not describe a sector. Audited; the funds-origin narrative is recorded by field name only, and no endpoint returns it. Requires permission: customers:update.
+     * @param clientId 
+     * @param updateAmlProfileRequest 
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     */
+    public updateClientAmlProfile(clientId: string, updateAmlProfileRequest: UpdateAmlProfileRequest, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<any>;
+    public updateClientAmlProfile(clientId: string, updateAmlProfileRequest: UpdateAmlProfileRequest, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<HttpResponse<any>>;
+    public updateClientAmlProfile(clientId: string, updateAmlProfileRequest: UpdateAmlProfileRequest, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<HttpEvent<any>>;
+    public updateClientAmlProfile(clientId: string, updateAmlProfileRequest: UpdateAmlProfileRequest, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<any> {
+        if (clientId === null || clientId === undefined) {
+            throw new Error('Required parameter clientId was null or undefined when calling updateClientAmlProfile.');
+        }
+        if (updateAmlProfileRequest === null || updateAmlProfileRequest === undefined) {
+            throw new Error('Required parameter updateAmlProfileRequest was null or undefined when calling updateClientAmlProfile.');
+        }
+
+        let localVarHeaders = this.defaultHeaders;
+
+        let localVarCredential: string | undefined;
+        // authentication (BearerToken) required
+        localVarCredential = this.configuration.lookupCredential('BearerToken');
+        if (localVarCredential) {
+            localVarHeaders = localVarHeaders.set('Authorization', 'Bearer ' + localVarCredential);
+        }
+
+        let localVarHttpHeaderAcceptSelected: string | undefined = options && options.httpHeaderAccept;
+        if (localVarHttpHeaderAcceptSelected === undefined) {
+            // to determine the Accept header
+            const httpHeaderAccepts: string[] = [
+            ];
+            localVarHttpHeaderAcceptSelected = this.configuration.selectHeaderAccept(httpHeaderAccepts);
+        }
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+
+        let localVarHttpContext: HttpContext | undefined = options && options.context;
+        if (localVarHttpContext === undefined) {
+            localVarHttpContext = new HttpContext();
+        }
+
+
+        // to determine the Content-Type header
+        const consumes: string[] = [
+            'application/json'
+        ];
+        const httpContentTypeSelected: string | undefined = this.configuration.selectHeaderContentType(consumes);
+        if (httpContentTypeSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Content-Type', httpContentTypeSelected);
+        }
+
+        let responseType_: 'text' | 'json' | 'blob' = 'json';
+        if (localVarHttpHeaderAcceptSelected) {
+            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+                responseType_ = 'text';
+            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+                responseType_ = 'json';
+            } else {
+                responseType_ = 'blob';
+            }
+        }
+
+        let localVarPath = `/api/v1/clients/${this.configuration.encodeParam({name: "clientId", value: clientId, in: "path", style: "simple", explode: false, dataType: "string", dataFormat: "uuid"})}/aml-profile`;
+        return this.httpClient.request<any>('put', `${this.configuration.basePath}${localVarPath}`,
+            {
+                context: localVarHttpContext,
+                body: updateAmlProfileRequest,
                 responseType: <any>responseType_,
                 withCredentials: this.configuration.withCredentials,
                 headers: localVarHeaders,

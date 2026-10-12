@@ -27,6 +27,16 @@ import { CancelIntegrationCommandRequest } from '../model/cancel-integration-com
 // @ts-ignore
 import { CancelIntegrationCommandResult } from '../model/cancel-integration-command-result.interface';
 // @ts-ignore
+import { ClaimDocumentDto } from '../model/claim-document-dto.interface';
+// @ts-ignore
+import { ClaimDto } from '../model/claim-dto.interface';
+// @ts-ignore
+import { CloseComplaintRequest } from '../model/close-complaint-request.interface';
+// @ts-ignore
+import { ComplaintDto } from '../model/complaint-dto.interface';
+// @ts-ignore
+import { ComplaintReportDto } from '../model/complaint-report-dto.interface';
+// @ts-ignore
 import { ConnectionDetailDto } from '../model/connection-detail-dto.interface';
 // @ts-ignore
 import { ConnectionHealthDto } from '../model/connection-health-dto.interface';
@@ -39,6 +49,12 @@ import { CreateConnectionResponse } from '../model/create-connection-response.in
 // @ts-ignore
 import { CreateInsuranceProductRequest } from '../model/create-insurance-product-request.interface';
 // @ts-ignore
+import { DeclareClaimRequest } from '../model/declare-claim-request.interface';
+// @ts-ignore
+import { DeclareClaimResult } from '../model/declare-claim-result.interface';
+// @ts-ignore
+import { EscalateComplaintRequest } from '../model/escalate-complaint-request.interface';
+// @ts-ignore
 import { ExchangeEnrolmentTokenRequest } from '../model/exchange-enrolment-token-request.interface';
 // @ts-ignore
 import { InsuranceProductDto } from '../model/insurance-product-dto.interface';
@@ -46,6 +62,8 @@ import { InsuranceProductDto } from '../model/insurance-product-dto.interface';
 import { InsuranceProductWriteRequest } from '../model/insurance-product-write-request.interface';
 // @ts-ignore
 import { InsuranceQuoteDto } from '../model/insurance-quote-dto.interface';
+// @ts-ignore
+import { InsuranceSubscriptionDto } from '../model/insurance-subscription-dto.interface';
 // @ts-ignore
 import { IntegrationCommandDto } from '../model/integration-command-dto.interface';
 // @ts-ignore
@@ -65,9 +83,15 @@ import { PagedResultOfInsuranceProductDto } from '../model/paged-result-of-insur
 // @ts-ignore
 import { ProblemDetails } from '../model/problem-details.interface';
 // @ts-ignore
+import { ProductRoutingDto } from '../model/product-routing-dto.interface';
+// @ts-ignore
 import { QuoteInsuranceProductRequest } from '../model/quote-insurance-product-request.interface';
 // @ts-ignore
 import { ReconciliationGapPage } from '../model/reconciliation-gap-page.interface';
+// @ts-ignore
+import { RecordClaimIndemnityRequest } from '../model/record-claim-indemnity-request.interface';
+// @ts-ignore
+import { RecordComplaintRequest } from '../model/record-complaint-request.interface';
 // @ts-ignore
 import { RecordRelayHeartbeatRequest } from '../model/record-relay-heartbeat-request.interface';
 // @ts-ignore
@@ -81,15 +105,27 @@ import { RelayAgentEnrolmentDto } from '../model/relay-agent-enrolment-dto.inter
 // @ts-ignore
 import { ReplayIntegrationCommandResult } from '../model/replay-integration-command-result.interface';
 // @ts-ignore
+import { ResolveComplaintRequest } from '../model/resolve-complaint-request.interface';
+// @ts-ignore
 import { ResolveReconciliationGapRequest } from '../model/resolve-reconciliation-gap-request.interface';
 // @ts-ignore
 import { ResolveReconciliationGapResult } from '../model/resolve-reconciliation-gap-result.interface';
 // @ts-ignore
 import { SetConnectionSecretRequest } from '../model/set-connection-secret-request.interface';
 // @ts-ignore
+import { StatementDetailDto } from '../model/statement-detail-dto.interface';
+// @ts-ignore
+import { StatementDto } from '../model/statement-dto.interface';
+// @ts-ignore
+import { SubscribeInsurancePolicyRequest } from '../model/subscribe-insurance-policy-request.interface';
+// @ts-ignore
+import { SubscribeInsurancePolicyResult } from '../model/subscribe-insurance-policy-result.interface';
+// @ts-ignore
 import { UnmappedCodesResponse } from '../model/unmapped-codes-response.interface';
 // @ts-ignore
 import { UpdateConnectionRequest } from '../model/update-connection-request.interface';
+// @ts-ignore
+import { UploadClaimDocumentResponse } from '../model/upload-claim-document-response.interface';
 // @ts-ignore
 import { UpsertMappingRequest } from '../model/upsert-mapping-request.interface';
 // @ts-ignore
@@ -176,6 +212,72 @@ export class IntegrationApiService {
             throw Error("key may not be null if value is not object or array");
         }
         return httpParams;
+    }
+
+    /**
+     * Tell the customer the complaint is in hand
+     * The first of the two deadlines the mechanism is judged on. Idempotent, and it keeps the FIRST instant: re-stamping it would let a late acknowledgement be made to look punctual by sending a second one. Requires permission: Ins.Complaint.Handle.
+     * @param complaintId 
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     */
+    public acknowledgeInsuranceComplaint(complaintId: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<ComplaintDto>;
+    public acknowledgeInsuranceComplaint(complaintId: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<ComplaintDto>>;
+    public acknowledgeInsuranceComplaint(complaintId: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<ComplaintDto>>;
+    public acknowledgeInsuranceComplaint(complaintId: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
+        if (complaintId === null || complaintId === undefined) {
+            throw new Error('Required parameter complaintId was null or undefined when calling acknowledgeInsuranceComplaint.');
+        }
+
+        let localVarHeaders = this.defaultHeaders;
+
+        let localVarCredential: string | undefined;
+        // authentication (BearerToken) required
+        localVarCredential = this.configuration.lookupCredential('BearerToken');
+        if (localVarCredential) {
+            localVarHeaders = localVarHeaders.set('Authorization', 'Bearer ' + localVarCredential);
+        }
+
+        let localVarHttpHeaderAcceptSelected: string | undefined = options && options.httpHeaderAccept;
+        if (localVarHttpHeaderAcceptSelected === undefined) {
+            // to determine the Accept header
+            const httpHeaderAccepts: string[] = [
+                'application/json'
+            ];
+            localVarHttpHeaderAcceptSelected = this.configuration.selectHeaderAccept(httpHeaderAccepts);
+        }
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+
+        let localVarHttpContext: HttpContext | undefined = options && options.context;
+        if (localVarHttpContext === undefined) {
+            localVarHttpContext = new HttpContext();
+        }
+
+
+        let responseType_: 'text' | 'json' | 'blob' = 'json';
+        if (localVarHttpHeaderAcceptSelected) {
+            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+                responseType_ = 'text';
+            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+                responseType_ = 'json';
+            } else {
+                responseType_ = 'blob';
+            }
+        }
+
+        let localVarPath = `/api/v1/integration/insurance/complaints/${this.configuration.encodeParam({name: "complaintId", value: complaintId, in: "path", style: "simple", explode: false, dataType: "string", dataFormat: "uuid"})}/acknowledgement`;
+        return this.httpClient.request<ComplaintDto>('post', `${this.configuration.basePath}${localVarPath}`,
+            {
+                context: localVarHttpContext,
+                responseType: <any>responseType_,
+                withCredentials: this.configuration.withCredentials,
+                headers: localVarHeaders,
+                observe: observe,
+                reportProgress: reportProgress
+            }
+        );
     }
 
     /**
@@ -443,6 +545,86 @@ export class IntegrationApiService {
         return this.httpClient.request<ConnectionHealthDto>('post', `${this.configuration.basePath}${localVarPath}`,
             {
                 context: localVarHttpContext,
+                responseType: <any>responseType_,
+                withCredentials: this.configuration.withCredentials,
+                headers: localVarHeaders,
+                observe: observe,
+                reportProgress: reportProgress
+            }
+        );
+    }
+
+    /**
+     * Close a complaint without answering it
+     * For one withdrawn by the customer or outside the mechanism\&#39;s scope. Deliberately NOT the same status as an answer: a report counting a withdrawal as treated would overstate how many complaints the institution handled, so &#x60;wasUpheld&#x60; stays null. There is no DELETE — a register one can delete from is not a register. Requires permission: Ins.Complaint.Handle.
+     * @param complaintId 
+     * @param closeComplaintRequest 
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     */
+    public closeInsuranceComplaint(complaintId: string, closeComplaintRequest: CloseComplaintRequest, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<ComplaintDto>;
+    public closeInsuranceComplaint(complaintId: string, closeComplaintRequest: CloseComplaintRequest, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<ComplaintDto>>;
+    public closeInsuranceComplaint(complaintId: string, closeComplaintRequest: CloseComplaintRequest, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<ComplaintDto>>;
+    public closeInsuranceComplaint(complaintId: string, closeComplaintRequest: CloseComplaintRequest, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
+        if (complaintId === null || complaintId === undefined) {
+            throw new Error('Required parameter complaintId was null or undefined when calling closeInsuranceComplaint.');
+        }
+        if (closeComplaintRequest === null || closeComplaintRequest === undefined) {
+            throw new Error('Required parameter closeComplaintRequest was null or undefined when calling closeInsuranceComplaint.');
+        }
+
+        let localVarHeaders = this.defaultHeaders;
+
+        let localVarCredential: string | undefined;
+        // authentication (BearerToken) required
+        localVarCredential = this.configuration.lookupCredential('BearerToken');
+        if (localVarCredential) {
+            localVarHeaders = localVarHeaders.set('Authorization', 'Bearer ' + localVarCredential);
+        }
+
+        let localVarHttpHeaderAcceptSelected: string | undefined = options && options.httpHeaderAccept;
+        if (localVarHttpHeaderAcceptSelected === undefined) {
+            // to determine the Accept header
+            const httpHeaderAccepts: string[] = [
+                'application/json'
+            ];
+            localVarHttpHeaderAcceptSelected = this.configuration.selectHeaderAccept(httpHeaderAccepts);
+        }
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+
+        let localVarHttpContext: HttpContext | undefined = options && options.context;
+        if (localVarHttpContext === undefined) {
+            localVarHttpContext = new HttpContext();
+        }
+
+
+        // to determine the Content-Type header
+        const consumes: string[] = [
+            'application/json'
+        ];
+        const httpContentTypeSelected: string | undefined = this.configuration.selectHeaderContentType(consumes);
+        if (httpContentTypeSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Content-Type', httpContentTypeSelected);
+        }
+
+        let responseType_: 'text' | 'json' | 'blob' = 'json';
+        if (localVarHttpHeaderAcceptSelected) {
+            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+                responseType_ = 'text';
+            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+                responseType_ = 'json';
+            } else {
+                responseType_ = 'blob';
+            }
+        }
+
+        let localVarPath = `/api/v1/integration/insurance/complaints/${this.configuration.encodeParam({name: "complaintId", value: complaintId, in: "path", style: "simple", explode: false, dataType: "string", dataFormat: "uuid"})}/closure`;
+        return this.httpClient.request<ComplaintDto>('post', `${this.configuration.basePath}${localVarPath}`,
+            {
+                context: localVarHttpContext,
+                body: closeComplaintRequest,
                 responseType: <any>responseType_,
                 withCredentials: this.configuration.withCredentials,
                 headers: localVarHeaders,
@@ -736,6 +918,82 @@ export class IntegrationApiService {
     }
 
     /**
+     * Declare a loss on a policy
+     * Opens the dossier and queues the declaration to the insurer in ONE transaction: a dossier with no queued command is a claim the insurer never hears about while the customer has been told it is in. Cover is judged on the DATE of the loss, never on the policy\&#39;s current status — a contract cancelled last month covered the fire that happened while it was in force. A loss already declared on the same policy, the same day, with the same nature answers 200 with &#x60;alreadyExisted: true&#x60; rather than opening a second dossier. Documents do not travel with the declaration: a pièce de sinistre may not leave the platform before the antivirus pass has run on it. Requires permission: Ins.Claim.Declare.
+     * @param declareClaimRequest 
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     */
+    public declareInsuranceClaim(declareClaimRequest: DeclareClaimRequest, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<DeclareClaimResult>;
+    public declareInsuranceClaim(declareClaimRequest: DeclareClaimRequest, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<DeclareClaimResult>>;
+    public declareInsuranceClaim(declareClaimRequest: DeclareClaimRequest, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<DeclareClaimResult>>;
+    public declareInsuranceClaim(declareClaimRequest: DeclareClaimRequest, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
+        if (declareClaimRequest === null || declareClaimRequest === undefined) {
+            throw new Error('Required parameter declareClaimRequest was null or undefined when calling declareInsuranceClaim.');
+        }
+
+        let localVarHeaders = this.defaultHeaders;
+
+        let localVarCredential: string | undefined;
+        // authentication (BearerToken) required
+        localVarCredential = this.configuration.lookupCredential('BearerToken');
+        if (localVarCredential) {
+            localVarHeaders = localVarHeaders.set('Authorization', 'Bearer ' + localVarCredential);
+        }
+
+        let localVarHttpHeaderAcceptSelected: string | undefined = options && options.httpHeaderAccept;
+        if (localVarHttpHeaderAcceptSelected === undefined) {
+            // to determine the Accept header
+            const httpHeaderAccepts: string[] = [
+                'application/json'
+            ];
+            localVarHttpHeaderAcceptSelected = this.configuration.selectHeaderAccept(httpHeaderAccepts);
+        }
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+
+        let localVarHttpContext: HttpContext | undefined = options && options.context;
+        if (localVarHttpContext === undefined) {
+            localVarHttpContext = new HttpContext();
+        }
+
+
+        // to determine the Content-Type header
+        const consumes: string[] = [
+            'application/json'
+        ];
+        const httpContentTypeSelected: string | undefined = this.configuration.selectHeaderContentType(consumes);
+        if (httpContentTypeSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Content-Type', httpContentTypeSelected);
+        }
+
+        let responseType_: 'text' | 'json' | 'blob' = 'json';
+        if (localVarHttpHeaderAcceptSelected) {
+            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+                responseType_ = 'text';
+            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+                responseType_ = 'json';
+            } else {
+                responseType_ = 'blob';
+            }
+        }
+
+        let localVarPath = `/api/v1/integration/insurance/claims`;
+        return this.httpClient.request<DeclareClaimResult>('post', `${this.configuration.basePath}${localVarPath}`,
+            {
+                context: localVarHttpContext,
+                body: declareClaimRequest,
+                responseType: <any>responseType_,
+                withCredentials: this.configuration.withCredentials,
+                headers: localVarHeaders,
+                observe: observe,
+                reportProgress: reportProgress
+            }
+        );
+    }
+
+    /**
      * Remove one code mapping
      * &#x60;domain&#x60; is one of: IdDocType, Product, Agency, Country, Gender, MaritalStatus, Profession, Sector. &#x60;crmCode&#x60; is URL-encoded. Removing a mapping does NOT make the CRM code pass through to the external system: the next command carrying it fails with INTEGRATION_MAPPING_MISSING, naming the domain and the code. An unknown connection or mapping — including one belonging to another tenant — answers 404, never 403. Requires permission: Integration.Mapping.Manage.
      * @param connectionId 
@@ -799,6 +1057,156 @@ export class IntegrationApiService {
         return this.httpClient.request<any>('delete', `${this.configuration.basePath}${localVarPath}`,
             {
                 context: localVarHttpContext,
+                responseType: <any>responseType_,
+                withCredentials: this.configuration.withCredentials,
+                headers: localVarHeaders,
+                observe: observe,
+                reportProgress: reportProgress
+            }
+        );
+    }
+
+    /**
+     * Read a piece back
+     * Only a piece the antivirus has passed: handing an agent a file the scanner flagged — or has not yet looked at — is the one thing the lock exists to prevent, so a Pending or Infected piece is a 409 rather than a download. Requires permission: Ins.Claim.View.
+     * @param claimId 
+     * @param documentId 
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     */
+    public downloadClaimDocument(claimId: string, documentId: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/octet-stream', context?: HttpContext}): Observable<object>;
+    public downloadClaimDocument(claimId: string, documentId: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/octet-stream', context?: HttpContext}): Observable<HttpResponse<object>>;
+    public downloadClaimDocument(claimId: string, documentId: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/octet-stream', context?: HttpContext}): Observable<HttpEvent<object>>;
+    public downloadClaimDocument(claimId: string, documentId: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/octet-stream', context?: HttpContext}): Observable<any> {
+        if (claimId === null || claimId === undefined) {
+            throw new Error('Required parameter claimId was null or undefined when calling downloadClaimDocument.');
+        }
+        if (documentId === null || documentId === undefined) {
+            throw new Error('Required parameter documentId was null or undefined when calling downloadClaimDocument.');
+        }
+
+        let localVarHeaders = this.defaultHeaders;
+
+        let localVarCredential: string | undefined;
+        // authentication (BearerToken) required
+        localVarCredential = this.configuration.lookupCredential('BearerToken');
+        if (localVarCredential) {
+            localVarHeaders = localVarHeaders.set('Authorization', 'Bearer ' + localVarCredential);
+        }
+
+        let localVarHttpHeaderAcceptSelected: string | undefined = options && options.httpHeaderAccept;
+        if (localVarHttpHeaderAcceptSelected === undefined) {
+            // to determine the Accept header
+            const httpHeaderAccepts: string[] = [
+                'application/octet-stream'
+            ];
+            localVarHttpHeaderAcceptSelected = this.configuration.selectHeaderAccept(httpHeaderAccepts);
+        }
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+
+        let localVarHttpContext: HttpContext | undefined = options && options.context;
+        if (localVarHttpContext === undefined) {
+            localVarHttpContext = new HttpContext();
+        }
+
+
+        let responseType_: 'text' | 'json' | 'blob' = 'json';
+        if (localVarHttpHeaderAcceptSelected) {
+            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+                responseType_ = 'text';
+            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+                responseType_ = 'json';
+            } else {
+                responseType_ = 'blob';
+            }
+        }
+
+        let localVarPath = `/api/v1/integration/insurance/claims/${this.configuration.encodeParam({name: "claimId", value: claimId, in: "path", style: "simple", explode: false, dataType: "string", dataFormat: "uuid"})}/documents/${this.configuration.encodeParam({name: "documentId", value: documentId, in: "path", style: "simple", explode: false, dataType: "string", dataFormat: "uuid"})}/content`;
+        return this.httpClient.request<object>('get', `${this.configuration.basePath}${localVarPath}`,
+            {
+                context: localVarHttpContext,
+                responseType: <any>responseType_,
+                withCredentials: this.configuration.withCredentials,
+                headers: localVarHeaders,
+                observe: observe,
+                reportProgress: reportProgress
+            }
+        );
+    }
+
+    /**
+     * Hand the complaint to the insurer or to the supervisor
+     * NOT terminal: the institution still owes the customer an answer and the resolution deadline keeps running, which is why escalation is a status and not a closure. Requires permission: Ins.Complaint.Handle.
+     * @param complaintId 
+     * @param escalateComplaintRequest 
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     */
+    public escalateInsuranceComplaint(complaintId: string, escalateComplaintRequest: EscalateComplaintRequest, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<ComplaintDto>;
+    public escalateInsuranceComplaint(complaintId: string, escalateComplaintRequest: EscalateComplaintRequest, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<ComplaintDto>>;
+    public escalateInsuranceComplaint(complaintId: string, escalateComplaintRequest: EscalateComplaintRequest, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<ComplaintDto>>;
+    public escalateInsuranceComplaint(complaintId: string, escalateComplaintRequest: EscalateComplaintRequest, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
+        if (complaintId === null || complaintId === undefined) {
+            throw new Error('Required parameter complaintId was null or undefined when calling escalateInsuranceComplaint.');
+        }
+        if (escalateComplaintRequest === null || escalateComplaintRequest === undefined) {
+            throw new Error('Required parameter escalateComplaintRequest was null or undefined when calling escalateInsuranceComplaint.');
+        }
+
+        let localVarHeaders = this.defaultHeaders;
+
+        let localVarCredential: string | undefined;
+        // authentication (BearerToken) required
+        localVarCredential = this.configuration.lookupCredential('BearerToken');
+        if (localVarCredential) {
+            localVarHeaders = localVarHeaders.set('Authorization', 'Bearer ' + localVarCredential);
+        }
+
+        let localVarHttpHeaderAcceptSelected: string | undefined = options && options.httpHeaderAccept;
+        if (localVarHttpHeaderAcceptSelected === undefined) {
+            // to determine the Accept header
+            const httpHeaderAccepts: string[] = [
+                'application/json'
+            ];
+            localVarHttpHeaderAcceptSelected = this.configuration.selectHeaderAccept(httpHeaderAccepts);
+        }
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+
+        let localVarHttpContext: HttpContext | undefined = options && options.context;
+        if (localVarHttpContext === undefined) {
+            localVarHttpContext = new HttpContext();
+        }
+
+
+        // to determine the Content-Type header
+        const consumes: string[] = [
+            'application/json'
+        ];
+        const httpContentTypeSelected: string | undefined = this.configuration.selectHeaderContentType(consumes);
+        if (httpContentTypeSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Content-Type', httpContentTypeSelected);
+        }
+
+        let responseType_: 'text' | 'json' | 'blob' = 'json';
+        if (localVarHttpHeaderAcceptSelected) {
+            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+                responseType_ = 'text';
+            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+                responseType_ = 'json';
+            } else {
+                responseType_ = 'blob';
+            }
+        }
+
+        let localVarPath = `/api/v1/integration/insurance/complaints/${this.configuration.encodeParam({name: "complaintId", value: complaintId, in: "path", style: "simple", explode: false, dataType: "string", dataFormat: "uuid"})}/escalation`;
+        return this.httpClient.request<ComplaintDto>('post', `${this.configuration.basePath}${localVarPath}`,
+            {
+                context: localVarHttpContext,
+                body: escalateComplaintRequest,
                 responseType: <any>responseType_,
                 withCredentials: this.configuration.withCredentials,
                 headers: localVarHeaders,
@@ -961,6 +1369,72 @@ export class IntegrationApiService {
     }
 
     /**
+     * The bordereau as a CSV
+     * Semicolon-separated and UTF-8 with a BOM, which is what Excel on a French locale needs to read accented product names correctly. Carries the detail and a TOTAL line, because the first thing an insurer\&#39;s back office checks is that the two agree. No customer identity travels — only the opaque CRM id the two systems reconcile on. Requires permission: Ins.Statement.View.
+     * @param statementId 
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     */
+    public exportInsurerStatementCsv(statementId: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'text/csv; charset&#x3D;utf-8', context?: HttpContext}): Observable<object>;
+    public exportInsurerStatementCsv(statementId: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'text/csv; charset&#x3D;utf-8', context?: HttpContext}): Observable<HttpResponse<object>>;
+    public exportInsurerStatementCsv(statementId: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'text/csv; charset&#x3D;utf-8', context?: HttpContext}): Observable<HttpEvent<object>>;
+    public exportInsurerStatementCsv(statementId: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'text/csv; charset&#x3D;utf-8', context?: HttpContext}): Observable<any> {
+        if (statementId === null || statementId === undefined) {
+            throw new Error('Required parameter statementId was null or undefined when calling exportInsurerStatementCsv.');
+        }
+
+        let localVarHeaders = this.defaultHeaders;
+
+        let localVarCredential: string | undefined;
+        // authentication (BearerToken) required
+        localVarCredential = this.configuration.lookupCredential('BearerToken');
+        if (localVarCredential) {
+            localVarHeaders = localVarHeaders.set('Authorization', 'Bearer ' + localVarCredential);
+        }
+
+        let localVarHttpHeaderAcceptSelected: string | undefined = options && options.httpHeaderAccept;
+        if (localVarHttpHeaderAcceptSelected === undefined) {
+            // to determine the Accept header
+            const httpHeaderAccepts: string[] = [
+                'text/csv; charset=utf-8'
+            ];
+            localVarHttpHeaderAcceptSelected = this.configuration.selectHeaderAccept(httpHeaderAccepts);
+        }
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+
+        let localVarHttpContext: HttpContext | undefined = options && options.context;
+        if (localVarHttpContext === undefined) {
+            localVarHttpContext = new HttpContext();
+        }
+
+
+        let responseType_: 'text' | 'json' | 'blob' = 'json';
+        if (localVarHttpHeaderAcceptSelected) {
+            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+                responseType_ = 'text';
+            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+                responseType_ = 'json';
+            } else {
+                responseType_ = 'blob';
+            }
+        }
+
+        let localVarPath = `/api/v1/integration/insurance/statements/${this.configuration.encodeParam({name: "statementId", value: statementId, in: "path", style: "simple", explode: false, dataType: "string", dataFormat: "uuid"})}/export.csv`;
+        return this.httpClient.request<object>('get', `${this.configuration.basePath}${localVarPath}`,
+            {
+                context: localVarHttpContext,
+                responseType: <any>responseType_,
+                withCredentials: this.configuration.withCredentials,
+                headers: localVarHeaders,
+                observe: observe,
+                reportProgress: reportProgress
+            }
+        );
+    }
+
+    /**
      * Export a domain\&#39;s code mappings as CSV
      * &#x60;domain&#x60; is one of: IdDocType, Product, Agency, Country, Gender, MaritalStatus, Profession, Sector. Columns: crm_code, external_code, label — the same three the import reads, so the file can be corrected in a spreadsheet and uploaded back. UTF-8 with a BOM, because Excel otherwise mangles accented labels. A domain with no mapping yet exports the header alone: that is the template. An unknown connection, or one belonging to another tenant, answers 404 — never 403. Requires permission: Integration.Mapping.Manage.
      * @param connectionId 
@@ -1031,6 +1505,285 @@ export class IntegrationApiService {
     }
 
     /**
+     * Close the month\&#39;s bordereau
+     * From here the figures are the ones the institution stands behind: the nightly generation can no longer rebuild this month, which is what stops a regeneration from silently restating a month already justified to the insurer. A statement already closed is a 409. Requires permission: Ins.Statement.Finalise — deliberately NOT the read permission: anybody who may look at a bordereau must not be able to close one.
+     * @param statementId 
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     */
+    public finaliseInsurerStatement(statementId: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<StatementDto>;
+    public finaliseInsurerStatement(statementId: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<StatementDto>>;
+    public finaliseInsurerStatement(statementId: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<StatementDto>>;
+    public finaliseInsurerStatement(statementId: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
+        if (statementId === null || statementId === undefined) {
+            throw new Error('Required parameter statementId was null or undefined when calling finaliseInsurerStatement.');
+        }
+
+        let localVarHeaders = this.defaultHeaders;
+
+        let localVarCredential: string | undefined;
+        // authentication (BearerToken) required
+        localVarCredential = this.configuration.lookupCredential('BearerToken');
+        if (localVarCredential) {
+            localVarHeaders = localVarHeaders.set('Authorization', 'Bearer ' + localVarCredential);
+        }
+
+        let localVarHttpHeaderAcceptSelected: string | undefined = options && options.httpHeaderAccept;
+        if (localVarHttpHeaderAcceptSelected === undefined) {
+            // to determine the Accept header
+            const httpHeaderAccepts: string[] = [
+                'application/json'
+            ];
+            localVarHttpHeaderAcceptSelected = this.configuration.selectHeaderAccept(httpHeaderAccepts);
+        }
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+
+        let localVarHttpContext: HttpContext | undefined = options && options.context;
+        if (localVarHttpContext === undefined) {
+            localVarHttpContext = new HttpContext();
+        }
+
+
+        let responseType_: 'text' | 'json' | 'blob' = 'json';
+        if (localVarHttpHeaderAcceptSelected) {
+            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+                responseType_ = 'text';
+            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+                responseType_ = 'json';
+            } else {
+                responseType_ = 'blob';
+            }
+        }
+
+        let localVarPath = `/api/v1/integration/insurance/statements/${this.configuration.encodeParam({name: "statementId", value: statementId, in: "path", style: "simple", explode: false, dataType: "string", dataFormat: "uuid"})}/finalisation`;
+        return this.httpClient.request<StatementDto>('post', `${this.configuration.basePath}${localVarPath}`,
+            {
+                context: localVarHttpContext,
+                responseType: <any>responseType_,
+                withCredentials: this.configuration.withCredentials,
+                headers: localVarHeaders,
+                observe: observe,
+                reportProgress: reportProgress
+            }
+        );
+    }
+
+    /**
+     * One dossier
+     * &#x60;missingDocuments&#x60; is the insurer\&#39;s own list of pièces, in its own words, and is cleared as soon as it stops asking. Requires permission: Ins.Claim.View.
+     * @param claimId 
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     */
+    public getInsuranceClaim(claimId: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<ClaimDto>;
+    public getInsuranceClaim(claimId: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<ClaimDto>>;
+    public getInsuranceClaim(claimId: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<ClaimDto>>;
+    public getInsuranceClaim(claimId: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
+        if (claimId === null || claimId === undefined) {
+            throw new Error('Required parameter claimId was null or undefined when calling getInsuranceClaim.');
+        }
+
+        let localVarHeaders = this.defaultHeaders;
+
+        let localVarCredential: string | undefined;
+        // authentication (BearerToken) required
+        localVarCredential = this.configuration.lookupCredential('BearerToken');
+        if (localVarCredential) {
+            localVarHeaders = localVarHeaders.set('Authorization', 'Bearer ' + localVarCredential);
+        }
+
+        let localVarHttpHeaderAcceptSelected: string | undefined = options && options.httpHeaderAccept;
+        if (localVarHttpHeaderAcceptSelected === undefined) {
+            // to determine the Accept header
+            const httpHeaderAccepts: string[] = [
+                'application/json'
+            ];
+            localVarHttpHeaderAcceptSelected = this.configuration.selectHeaderAccept(httpHeaderAccepts);
+        }
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+
+        let localVarHttpContext: HttpContext | undefined = options && options.context;
+        if (localVarHttpContext === undefined) {
+            localVarHttpContext = new HttpContext();
+        }
+
+
+        let responseType_: 'text' | 'json' | 'blob' = 'json';
+        if (localVarHttpHeaderAcceptSelected) {
+            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+                responseType_ = 'text';
+            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+                responseType_ = 'json';
+            } else {
+                responseType_ = 'blob';
+            }
+        }
+
+        let localVarPath = `/api/v1/integration/insurance/claims/${this.configuration.encodeParam({name: "claimId", value: claimId, in: "path", style: "simple", explode: false, dataType: "string", dataFormat: "uuid"})}`;
+        return this.httpClient.request<ClaimDto>('get', `${this.configuration.basePath}${localVarPath}`,
+            {
+                context: localVarHttpContext,
+                responseType: <any>responseType_,
+                withCredentials: this.configuration.withCredentials,
+                headers: localVarHeaders,
+                observe: observe,
+                reportProgress: reportProgress
+            }
+        );
+    }
+
+    /**
+     * One complaint
+     * Requires permission: Ins.Complaint.View.
+     * @param complaintId 
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     */
+    public getInsuranceComplaint(complaintId: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<ComplaintDto>;
+    public getInsuranceComplaint(complaintId: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<ComplaintDto>>;
+    public getInsuranceComplaint(complaintId: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<ComplaintDto>>;
+    public getInsuranceComplaint(complaintId: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
+        if (complaintId === null || complaintId === undefined) {
+            throw new Error('Required parameter complaintId was null or undefined when calling getInsuranceComplaint.');
+        }
+
+        let localVarHeaders = this.defaultHeaders;
+
+        let localVarCredential: string | undefined;
+        // authentication (BearerToken) required
+        localVarCredential = this.configuration.lookupCredential('BearerToken');
+        if (localVarCredential) {
+            localVarHeaders = localVarHeaders.set('Authorization', 'Bearer ' + localVarCredential);
+        }
+
+        let localVarHttpHeaderAcceptSelected: string | undefined = options && options.httpHeaderAccept;
+        if (localVarHttpHeaderAcceptSelected === undefined) {
+            // to determine the Accept header
+            const httpHeaderAccepts: string[] = [
+                'application/json'
+            ];
+            localVarHttpHeaderAcceptSelected = this.configuration.selectHeaderAccept(httpHeaderAccepts);
+        }
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+
+        let localVarHttpContext: HttpContext | undefined = options && options.context;
+        if (localVarHttpContext === undefined) {
+            localVarHttpContext = new HttpContext();
+        }
+
+
+        let responseType_: 'text' | 'json' | 'blob' = 'json';
+        if (localVarHttpHeaderAcceptSelected) {
+            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+                responseType_ = 'text';
+            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+                responseType_ = 'json';
+            } else {
+                responseType_ = 'blob';
+            }
+        }
+
+        let localVarPath = `/api/v1/integration/insurance/complaints/${this.configuration.encodeParam({name: "complaintId", value: complaintId, in: "path", style: "simple", explode: false, dataType: "string", dataFormat: "uuid"})}`;
+        return this.httpClient.request<ComplaintDto>('get', `${this.configuration.basePath}${localVarPath}`,
+            {
+                context: localVarHttpContext,
+                responseType: <any>responseType_,
+                withCredentials: this.configuration.withCredentials,
+                headers: localVarHeaders,
+                observe: observe,
+                reportProgress: reportProgress
+            }
+        );
+    }
+
+    /**
+     * The mechanism\&#39;s figures over a window
+     * What a supervisor asks for: how many arrived, through which channel, about what, how many were upheld, and how many deadlines were missed. A breach counts whether the step was done late OR is still not done past its date — otherwise a mechanism would improve its figures by never acknowledging. The duration is a MEDIAN: one complaint that took two years would drag a mean past every honest figure. Requires permission: Ins.Complaint.View.
+     * @param from 
+     * @param to 
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     */
+    public getInsuranceComplaintReport(from: string, to: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<ComplaintReportDto>;
+    public getInsuranceComplaintReport(from: string, to: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<ComplaintReportDto>>;
+    public getInsuranceComplaintReport(from: string, to: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<ComplaintReportDto>>;
+    public getInsuranceComplaintReport(from: string, to: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
+        if (from === null || from === undefined) {
+            throw new Error('Required parameter from was null or undefined when calling getInsuranceComplaintReport.');
+        }
+        if (to === null || to === undefined) {
+            throw new Error('Required parameter to was null or undefined when calling getInsuranceComplaintReport.');
+        }
+
+        let localVarQueryParameters = new HttpParams({encoder: this.encoder});
+        if (from !== undefined && from !== null) {
+          localVarQueryParameters = this.addToHttpParams(localVarQueryParameters,
+            <any>from, 'from');
+        }
+        if (to !== undefined && to !== null) {
+          localVarQueryParameters = this.addToHttpParams(localVarQueryParameters,
+            <any>to, 'to');
+        }
+
+        let localVarHeaders = this.defaultHeaders;
+
+        let localVarCredential: string | undefined;
+        // authentication (BearerToken) required
+        localVarCredential = this.configuration.lookupCredential('BearerToken');
+        if (localVarCredential) {
+            localVarHeaders = localVarHeaders.set('Authorization', 'Bearer ' + localVarCredential);
+        }
+
+        let localVarHttpHeaderAcceptSelected: string | undefined = options && options.httpHeaderAccept;
+        if (localVarHttpHeaderAcceptSelected === undefined) {
+            // to determine the Accept header
+            const httpHeaderAccepts: string[] = [
+                'application/json'
+            ];
+            localVarHttpHeaderAcceptSelected = this.configuration.selectHeaderAccept(httpHeaderAccepts);
+        }
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+
+        let localVarHttpContext: HttpContext | undefined = options && options.context;
+        if (localVarHttpContext === undefined) {
+            localVarHttpContext = new HttpContext();
+        }
+
+
+        let responseType_: 'text' | 'json' | 'blob' = 'json';
+        if (localVarHttpHeaderAcceptSelected) {
+            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+                responseType_ = 'text';
+            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+                responseType_ = 'json';
+            } else {
+                responseType_ = 'blob';
+            }
+        }
+
+        let localVarPath = `/api/v1/integration/insurance/complaints/report`;
+        return this.httpClient.request<ComplaintReportDto>('get', `${this.configuration.basePath}${localVarPath}`,
+            {
+                context: localVarHttpContext,
+                params: localVarQueryParameters,
+                responseType: <any>responseType_,
+                withCredentials: this.configuration.withCredentials,
+                headers: localVarHeaders,
+                observe: observe,
+                reportProgress: reportProgress
+            }
+        );
+    }
+
+    /**
      * Read one insurance product
      * The full catalogue entry: guarantees, pricing, eligibility rules, the linked credit product, the commission rate and the premium retry policy. An unknown product, or one belonging to another tenant, answers 404 INSURANCE_PRODUCT_NOT_FOUND — never 403. Requires permission: Ins.Product.Manage.
      * @param productId 
@@ -1085,6 +1838,200 @@ export class IntegrationApiService {
 
         let localVarPath = `/api/v1/integration/insurance/products/${this.configuration.encodeParam({name: "productId", value: productId, in: "path", style: "simple", explode: false, dataType: "string", dataFormat: "uuid"})}`;
         return this.httpClient.request<InsuranceProductDto>('get', `${this.configuration.basePath}${localVarPath}`,
+            {
+                context: localVarHttpContext,
+                responseType: <any>responseType_,
+                withCredentials: this.configuration.withCredentials,
+                headers: localVarHeaders,
+                observe: observe,
+                reportProgress: reportProgress
+            }
+        );
+    }
+
+    /**
+     * Which insurer each insurance product line would be subscribed with
+     * The preflight of BNF-B-16. For every ACTIVE insurance line of the tenant\&#39;s catalogue: the insurer that would receive its subscription, and how that was decided — Mapped, SingleConnectionFallback, Unroutable or NoInsuranceConnection. &#x60;unroutableCount&#x60; above zero means those lines\&#39; subscriptions are refused with MappingMissing today, and the holding stays in PendingSync with only a log line to say so. &#x60;crmCode&#x60; is the value a mapping row must carry: the product\&#39;s id, not its code. Requires permission: Ins.Product.View.
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     */
+    public getInsuranceProductRouting(observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<ProductRoutingDto>;
+    public getInsuranceProductRouting(observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<ProductRoutingDto>>;
+    public getInsuranceProductRouting(observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<ProductRoutingDto>>;
+    public getInsuranceProductRouting(observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
+
+        let localVarHeaders = this.defaultHeaders;
+
+        let localVarCredential: string | undefined;
+        // authentication (BearerToken) required
+        localVarCredential = this.configuration.lookupCredential('BearerToken');
+        if (localVarCredential) {
+            localVarHeaders = localVarHeaders.set('Authorization', 'Bearer ' + localVarCredential);
+        }
+
+        let localVarHttpHeaderAcceptSelected: string | undefined = options && options.httpHeaderAccept;
+        if (localVarHttpHeaderAcceptSelected === undefined) {
+            // to determine the Accept header
+            const httpHeaderAccepts: string[] = [
+                'application/json'
+            ];
+            localVarHttpHeaderAcceptSelected = this.configuration.selectHeaderAccept(httpHeaderAccepts);
+        }
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+
+        let localVarHttpContext: HttpContext | undefined = options && options.context;
+        if (localVarHttpContext === undefined) {
+            localVarHttpContext = new HttpContext();
+        }
+
+
+        let responseType_: 'text' | 'json' | 'blob' = 'json';
+        if (localVarHttpHeaderAcceptSelected) {
+            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+                responseType_ = 'text';
+            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+                responseType_ = 'json';
+            } else {
+                responseType_ = 'blob';
+            }
+        }
+
+        let localVarPath = `/api/v1/integration/insurance/products/product-routing`;
+        return this.httpClient.request<ProductRoutingDto>('get', `${this.configuration.basePath}${localVarPath}`,
+            {
+                context: localVarHttpContext,
+                responseType: <any>responseType_,
+                withCredentials: this.configuration.withCredentials,
+                headers: localVarHeaders,
+                observe: observe,
+                reportProgress: reportProgress
+            }
+        );
+    }
+
+    /**
+     * The state of one subscription attempt
+     * ASS-05\&#39;s « état global de la souscription », which no single command row can answer. &#x60;owesRefund&#x60; is the state a human must act on: the premium was collected, the insurer refused and the reversal has not gone through. &#x60;reversalAttempts&#x60; is exposed because a refused reversal is NOT retried automatically — an operator needs to know the core banking system has already said no. The consent and medical evidence appear as BOOLEANS: a compliance screen needs to know they are on file, not to read them. Requires permission: Ins.Policy.View.
+     * @param subscriptionId 
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     */
+    public getInsuranceSubscription(subscriptionId: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<InsuranceSubscriptionDto>;
+    public getInsuranceSubscription(subscriptionId: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<InsuranceSubscriptionDto>>;
+    public getInsuranceSubscription(subscriptionId: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<InsuranceSubscriptionDto>>;
+    public getInsuranceSubscription(subscriptionId: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
+        if (subscriptionId === null || subscriptionId === undefined) {
+            throw new Error('Required parameter subscriptionId was null or undefined when calling getInsuranceSubscription.');
+        }
+
+        let localVarHeaders = this.defaultHeaders;
+
+        let localVarCredential: string | undefined;
+        // authentication (BearerToken) required
+        localVarCredential = this.configuration.lookupCredential('BearerToken');
+        if (localVarCredential) {
+            localVarHeaders = localVarHeaders.set('Authorization', 'Bearer ' + localVarCredential);
+        }
+
+        let localVarHttpHeaderAcceptSelected: string | undefined = options && options.httpHeaderAccept;
+        if (localVarHttpHeaderAcceptSelected === undefined) {
+            // to determine the Accept header
+            const httpHeaderAccepts: string[] = [
+                'application/json'
+            ];
+            localVarHttpHeaderAcceptSelected = this.configuration.selectHeaderAccept(httpHeaderAccepts);
+        }
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+
+        let localVarHttpContext: HttpContext | undefined = options && options.context;
+        if (localVarHttpContext === undefined) {
+            localVarHttpContext = new HttpContext();
+        }
+
+
+        let responseType_: 'text' | 'json' | 'blob' = 'json';
+        if (localVarHttpHeaderAcceptSelected) {
+            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+                responseType_ = 'text';
+            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+                responseType_ = 'json';
+            } else {
+                responseType_ = 'blob';
+            }
+        }
+
+        let localVarPath = `/api/v1/integration/insurance/subscriptions/${this.configuration.encodeParam({name: "subscriptionId", value: subscriptionId, in: "path", style: "simple", explode: false, dataType: "string", dataFormat: "uuid"})}`;
+        return this.httpClient.request<InsuranceSubscriptionDto>('get', `${this.configuration.basePath}${localVarPath}`,
+            {
+                context: localVarHttpContext,
+                responseType: <any>responseType_,
+                withCredentials: this.configuration.withCredentials,
+                headers: localVarHeaders,
+                observe: observe,
+                reportProgress: reportProgress
+            }
+        );
+    }
+
+    /**
+     * One bordereau with its printed detail
+     * Each line carries the policy number, the insurer\&#39;s product code, the CBS reference and the commission RATE as they stood when the line was written — a bordereau is a justification document, and one that re-rendered from today\&#39;s catalogue would change a figure somebody has already signed. Requires permission: Ins.Statement.View.
+     * @param statementId 
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     */
+    public getInsurerStatement(statementId: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<StatementDetailDto>;
+    public getInsurerStatement(statementId: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<StatementDetailDto>>;
+    public getInsurerStatement(statementId: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<StatementDetailDto>>;
+    public getInsurerStatement(statementId: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
+        if (statementId === null || statementId === undefined) {
+            throw new Error('Required parameter statementId was null or undefined when calling getInsurerStatement.');
+        }
+
+        let localVarHeaders = this.defaultHeaders;
+
+        let localVarCredential: string | undefined;
+        // authentication (BearerToken) required
+        localVarCredential = this.configuration.lookupCredential('BearerToken');
+        if (localVarCredential) {
+            localVarHeaders = localVarHeaders.set('Authorization', 'Bearer ' + localVarCredential);
+        }
+
+        let localVarHttpHeaderAcceptSelected: string | undefined = options && options.httpHeaderAccept;
+        if (localVarHttpHeaderAcceptSelected === undefined) {
+            // to determine the Accept header
+            const httpHeaderAccepts: string[] = [
+                'application/json'
+            ];
+            localVarHttpHeaderAcceptSelected = this.configuration.selectHeaderAccept(httpHeaderAccepts);
+        }
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+
+        let localVarHttpContext: HttpContext | undefined = options && options.context;
+        if (localVarHttpContext === undefined) {
+            localVarHttpContext = new HttpContext();
+        }
+
+
+        let responseType_: 'text' | 'json' | 'blob' = 'json';
+        if (localVarHttpHeaderAcceptSelected) {
+            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+                responseType_ = 'text';
+            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+                responseType_ = 'json';
+            } else {
+                responseType_ = 'blob';
+            }
+        }
+
+        let localVarPath = `/api/v1/integration/insurance/statements/${this.configuration.encodeParam({name: "statementId", value: statementId, in: "path", style: "simple", explode: false, dataType: "string", dataFormat: "uuid"})}`;
+        return this.httpClient.request<StatementDetailDto>('get', `${this.configuration.basePath}${localVarPath}`,
             {
                 context: localVarHttpContext,
                 responseType: <any>responseType_,
@@ -1709,6 +2656,227 @@ export class IntegrationApiService {
     }
 
     /**
+     * The pieces of one dossier
+     * Metadata only — the kind, the size, the digest, the scan verdict and whether the piece has reached the insurer. &#x60;isTransmittable&#x60; is the aggregate\&#39;s own answer, so a screen does not re-derive the antivirus gate from a status name. Requires permission: Ins.Claim.View.
+     * @param claimId 
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     */
+    public listClaimDocuments(claimId: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<Array<ClaimDocumentDto>>;
+    public listClaimDocuments(claimId: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<Array<ClaimDocumentDto>>>;
+    public listClaimDocuments(claimId: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<Array<ClaimDocumentDto>>>;
+    public listClaimDocuments(claimId: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
+        if (claimId === null || claimId === undefined) {
+            throw new Error('Required parameter claimId was null or undefined when calling listClaimDocuments.');
+        }
+
+        let localVarHeaders = this.defaultHeaders;
+
+        let localVarCredential: string | undefined;
+        // authentication (BearerToken) required
+        localVarCredential = this.configuration.lookupCredential('BearerToken');
+        if (localVarCredential) {
+            localVarHeaders = localVarHeaders.set('Authorization', 'Bearer ' + localVarCredential);
+        }
+
+        let localVarHttpHeaderAcceptSelected: string | undefined = options && options.httpHeaderAccept;
+        if (localVarHttpHeaderAcceptSelected === undefined) {
+            // to determine the Accept header
+            const httpHeaderAccepts: string[] = [
+                'application/json'
+            ];
+            localVarHttpHeaderAcceptSelected = this.configuration.selectHeaderAccept(httpHeaderAccepts);
+        }
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+
+        let localVarHttpContext: HttpContext | undefined = options && options.context;
+        if (localVarHttpContext === undefined) {
+            localVarHttpContext = new HttpContext();
+        }
+
+
+        let responseType_: 'text' | 'json' | 'blob' = 'json';
+        if (localVarHttpHeaderAcceptSelected) {
+            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+                responseType_ = 'text';
+            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+                responseType_ = 'json';
+            } else {
+                responseType_ = 'blob';
+            }
+        }
+
+        let localVarPath = `/api/v1/integration/insurance/claims/${this.configuration.encodeParam({name: "claimId", value: claimId, in: "path", style: "simple", explode: false, dataType: "string", dataFormat: "uuid"})}/documents`;
+        return this.httpClient.request<Array<ClaimDocumentDto>>('get', `${this.configuration.basePath}${localVarPath}`,
+            {
+                context: localVarHttpContext,
+                responseType: <any>responseType_,
+                withCredentials: this.configuration.withCredentials,
+                headers: localVarHeaders,
+                observe: observe,
+                reportProgress: reportProgress
+            }
+        );
+    }
+
+    /**
+     * A customer\&#39;s dossiers, or the tenant\&#39;s open ones
+     * &#x60;crmCustomerId&#x60; narrows to one customer; &#x60;openOnly&#x60; keeps the dossiers the insurer may still act on. The agent\&#39;s account of the loss is NOT returned — &#x60;hasDescription&#x60; says it is on file. Requires permission: Ins.Claim.View.
+     * @param crmCustomerId 
+     * @param openOnly 
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     */
+    public listInsuranceClaims(crmCustomerId?: string, openOnly?: boolean, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<Array<ClaimDto>>;
+    public listInsuranceClaims(crmCustomerId?: string, openOnly?: boolean, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<Array<ClaimDto>>>;
+    public listInsuranceClaims(crmCustomerId?: string, openOnly?: boolean, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<Array<ClaimDto>>>;
+    public listInsuranceClaims(crmCustomerId?: string, openOnly?: boolean, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
+
+        let localVarQueryParameters = new HttpParams({encoder: this.encoder});
+        if (crmCustomerId !== undefined && crmCustomerId !== null) {
+          localVarQueryParameters = this.addToHttpParams(localVarQueryParameters,
+            <any>crmCustomerId, 'crmCustomerId');
+        }
+        if (openOnly !== undefined && openOnly !== null) {
+          localVarQueryParameters = this.addToHttpParams(localVarQueryParameters,
+            <any>openOnly, 'openOnly');
+        }
+
+        let localVarHeaders = this.defaultHeaders;
+
+        let localVarCredential: string | undefined;
+        // authentication (BearerToken) required
+        localVarCredential = this.configuration.lookupCredential('BearerToken');
+        if (localVarCredential) {
+            localVarHeaders = localVarHeaders.set('Authorization', 'Bearer ' + localVarCredential);
+        }
+
+        let localVarHttpHeaderAcceptSelected: string | undefined = options && options.httpHeaderAccept;
+        if (localVarHttpHeaderAcceptSelected === undefined) {
+            // to determine the Accept header
+            const httpHeaderAccepts: string[] = [
+                'application/json'
+            ];
+            localVarHttpHeaderAcceptSelected = this.configuration.selectHeaderAccept(httpHeaderAccepts);
+        }
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+
+        let localVarHttpContext: HttpContext | undefined = options && options.context;
+        if (localVarHttpContext === undefined) {
+            localVarHttpContext = new HttpContext();
+        }
+
+
+        let responseType_: 'text' | 'json' | 'blob' = 'json';
+        if (localVarHttpHeaderAcceptSelected) {
+            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+                responseType_ = 'text';
+            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+                responseType_ = 'json';
+            } else {
+                responseType_ = 'blob';
+            }
+        }
+
+        let localVarPath = `/api/v1/integration/insurance/claims`;
+        return this.httpClient.request<Array<ClaimDto>>('get', `${this.configuration.basePath}${localVarPath}`,
+            {
+                context: localVarHttpContext,
+                params: localVarQueryParameters,
+                responseType: <any>responseType_,
+                withCredentials: this.configuration.withCredentials,
+                headers: localVarHeaders,
+                observe: observe,
+                reportProgress: reportProgress
+            }
+        );
+    }
+
+    /**
+     * The complaints register
+     * &#x60;crmCustomerId&#x60; narrows to one customer, &#x60;openOnly&#x60; to what the institution still owes an answer on, &#x60;overdueOnly&#x60; to the breached deadlines. What the customer said is NOT returned — &#x60;hasBody&#x60; says it is on file; the ANSWER is, in clear, because it is the institution\&#39;s own position. Requires permission: Ins.Complaint.View.
+     * @param crmCustomerId 
+     * @param openOnly 
+     * @param overdueOnly 
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     */
+    public listInsuranceComplaints(crmCustomerId?: string, openOnly?: boolean, overdueOnly?: boolean, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<Array<ComplaintDto>>;
+    public listInsuranceComplaints(crmCustomerId?: string, openOnly?: boolean, overdueOnly?: boolean, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<Array<ComplaintDto>>>;
+    public listInsuranceComplaints(crmCustomerId?: string, openOnly?: boolean, overdueOnly?: boolean, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<Array<ComplaintDto>>>;
+    public listInsuranceComplaints(crmCustomerId?: string, openOnly?: boolean, overdueOnly?: boolean, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
+
+        let localVarQueryParameters = new HttpParams({encoder: this.encoder});
+        if (crmCustomerId !== undefined && crmCustomerId !== null) {
+          localVarQueryParameters = this.addToHttpParams(localVarQueryParameters,
+            <any>crmCustomerId, 'crmCustomerId');
+        }
+        if (openOnly !== undefined && openOnly !== null) {
+          localVarQueryParameters = this.addToHttpParams(localVarQueryParameters,
+            <any>openOnly, 'openOnly');
+        }
+        if (overdueOnly !== undefined && overdueOnly !== null) {
+          localVarQueryParameters = this.addToHttpParams(localVarQueryParameters,
+            <any>overdueOnly, 'overdueOnly');
+        }
+
+        let localVarHeaders = this.defaultHeaders;
+
+        let localVarCredential: string | undefined;
+        // authentication (BearerToken) required
+        localVarCredential = this.configuration.lookupCredential('BearerToken');
+        if (localVarCredential) {
+            localVarHeaders = localVarHeaders.set('Authorization', 'Bearer ' + localVarCredential);
+        }
+
+        let localVarHttpHeaderAcceptSelected: string | undefined = options && options.httpHeaderAccept;
+        if (localVarHttpHeaderAcceptSelected === undefined) {
+            // to determine the Accept header
+            const httpHeaderAccepts: string[] = [
+                'application/json'
+            ];
+            localVarHttpHeaderAcceptSelected = this.configuration.selectHeaderAccept(httpHeaderAccepts);
+        }
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+
+        let localVarHttpContext: HttpContext | undefined = options && options.context;
+        if (localVarHttpContext === undefined) {
+            localVarHttpContext = new HttpContext();
+        }
+
+
+        let responseType_: 'text' | 'json' | 'blob' = 'json';
+        if (localVarHttpHeaderAcceptSelected) {
+            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+                responseType_ = 'text';
+            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+                responseType_ = 'json';
+            } else {
+                responseType_ = 'blob';
+            }
+        }
+
+        let localVarPath = `/api/v1/integration/insurance/complaints`;
+        return this.httpClient.request<Array<ComplaintDto>>('get', `${this.configuration.basePath}${localVarPath}`,
+            {
+                context: localVarHttpContext,
+                params: localVarQueryParameters,
+                responseType: <any>responseType_,
+                withCredentials: this.configuration.withCredentials,
+                headers: localVarHeaders,
+                observe: observe,
+                reportProgress: reportProgress
+            }
+        );
+    }
+
+    /**
      * List the insurance products this tenant distributes
      * The tenant\&#39;s catalogue, grouped by insurer. Every row carries &#x60;isOfferable&#x60; and, when false, &#x60;notOfferableReasons&#x60; — one of PRODUCT_INACTIVE, CONNECTION_INACTIVE, CONNECTION_WRONG_FAMILY, NOT_YET_EFFECTIVE, NO_LONGER_EFFECTIVE, INSURER_PRICING_UNAVAILABLE. Offerability is DERIVED, never stored: deactivating an insurer\&#39;s connection stops its products being offerable in the same instant (ASS-03). &#x60;offerableOnly&#x3D;true&#x60; pre-filters on what the database can decide, so a returned row may still be not-offerable for the pricing reason — branch on &#x60;isOfferable&#x60;, not on the filter. Requires permission: Ins.Product.Manage.
      * @param connectionId 
@@ -1786,6 +2954,81 @@ export class IntegrationApiService {
 
         let localVarPath = `/api/v1/integration/insurance/products`;
         return this.httpClient.request<PagedResultOfInsuranceProductDto>('get', `${this.configuration.basePath}${localVarPath}`,
+            {
+                context: localVarHttpContext,
+                params: localVarQueryParameters,
+                responseType: <any>responseType_,
+                withCredentials: this.configuration.withCredentials,
+                headers: localVarHeaders,
+                observe: observe,
+                reportProgress: reportProgress
+            }
+        );
+    }
+
+    /**
+     * The tenant\&#39;s monthly bordereaux
+     * Newest period first. &#x60;period&#x60; is a month written &#x60;YYYY-MM&#x60;; &#x60;connectionId&#x60; narrows to one insurer. The counts and the totals are the statement\&#39;s own stored figures, never a sum recomputed over today\&#39;s policies — a finalised document renders the same numbers in a year. Requires permission: Ins.Statement.View.
+     * @param connectionId 
+     * @param period 
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     */
+    public listInsurerStatements(connectionId?: string, period?: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<Array<StatementDto>>;
+    public listInsurerStatements(connectionId?: string, period?: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<Array<StatementDto>>>;
+    public listInsurerStatements(connectionId?: string, period?: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<Array<StatementDto>>>;
+    public listInsurerStatements(connectionId?: string, period?: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
+
+        let localVarQueryParameters = new HttpParams({encoder: this.encoder});
+        if (connectionId !== undefined && connectionId !== null) {
+          localVarQueryParameters = this.addToHttpParams(localVarQueryParameters,
+            <any>connectionId, 'connectionId');
+        }
+        if (period !== undefined && period !== null) {
+          localVarQueryParameters = this.addToHttpParams(localVarQueryParameters,
+            <any>period, 'period');
+        }
+
+        let localVarHeaders = this.defaultHeaders;
+
+        let localVarCredential: string | undefined;
+        // authentication (BearerToken) required
+        localVarCredential = this.configuration.lookupCredential('BearerToken');
+        if (localVarCredential) {
+            localVarHeaders = localVarHeaders.set('Authorization', 'Bearer ' + localVarCredential);
+        }
+
+        let localVarHttpHeaderAcceptSelected: string | undefined = options && options.httpHeaderAccept;
+        if (localVarHttpHeaderAcceptSelected === undefined) {
+            // to determine the Accept header
+            const httpHeaderAccepts: string[] = [
+                'application/json'
+            ];
+            localVarHttpHeaderAcceptSelected = this.configuration.selectHeaderAccept(httpHeaderAccepts);
+        }
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+
+        let localVarHttpContext: HttpContext | undefined = options && options.context;
+        if (localVarHttpContext === undefined) {
+            localVarHttpContext = new HttpContext();
+        }
+
+
+        let responseType_: 'text' | 'json' | 'blob' = 'json';
+        if (localVarHttpHeaderAcceptSelected) {
+            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+                responseType_ = 'text';
+            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+                responseType_ = 'json';
+            } else {
+                responseType_ = 'blob';
+            }
+        }
+
+        let localVarPath = `/api/v1/integration/insurance/statements`;
+        return this.httpClient.request<Array<StatementDto>>('get', `${this.configuration.basePath}${localVarPath}`,
             {
                 context: localVarHttpContext,
                 params: localVarQueryParameters,
@@ -2483,6 +3726,162 @@ export class IntegrationApiService {
     }
 
     /**
+     * Record the indemnity credited to the customer
+     * The insurer pays the indemnity by transfer into an account this platform only observes, so the credit\&#39;s reference arrives through whoever reconciled it — an operator action with an audit row, not an event. Submitting the SAME reference twice changes nothing; a DIFFERENT one on a dossier already paid is a 409, because two credit references for one indemnity means one belongs to another dossier. A dossier the insurer refused is a 409 too. Requires permission: Ins.Claim.Declare.
+     * @param claimId 
+     * @param recordClaimIndemnityRequest 
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     */
+    public recordInsuranceClaimIndemnity(claimId: string, recordClaimIndemnityRequest: RecordClaimIndemnityRequest, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<ClaimDto>;
+    public recordInsuranceClaimIndemnity(claimId: string, recordClaimIndemnityRequest: RecordClaimIndemnityRequest, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<ClaimDto>>;
+    public recordInsuranceClaimIndemnity(claimId: string, recordClaimIndemnityRequest: RecordClaimIndemnityRequest, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<ClaimDto>>;
+    public recordInsuranceClaimIndemnity(claimId: string, recordClaimIndemnityRequest: RecordClaimIndemnityRequest, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
+        if (claimId === null || claimId === undefined) {
+            throw new Error('Required parameter claimId was null or undefined when calling recordInsuranceClaimIndemnity.');
+        }
+        if (recordClaimIndemnityRequest === null || recordClaimIndemnityRequest === undefined) {
+            throw new Error('Required parameter recordClaimIndemnityRequest was null or undefined when calling recordInsuranceClaimIndemnity.');
+        }
+
+        let localVarHeaders = this.defaultHeaders;
+
+        let localVarCredential: string | undefined;
+        // authentication (BearerToken) required
+        localVarCredential = this.configuration.lookupCredential('BearerToken');
+        if (localVarCredential) {
+            localVarHeaders = localVarHeaders.set('Authorization', 'Bearer ' + localVarCredential);
+        }
+
+        let localVarHttpHeaderAcceptSelected: string | undefined = options && options.httpHeaderAccept;
+        if (localVarHttpHeaderAcceptSelected === undefined) {
+            // to determine the Accept header
+            const httpHeaderAccepts: string[] = [
+                'application/json'
+            ];
+            localVarHttpHeaderAcceptSelected = this.configuration.selectHeaderAccept(httpHeaderAccepts);
+        }
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+
+        let localVarHttpContext: HttpContext | undefined = options && options.context;
+        if (localVarHttpContext === undefined) {
+            localVarHttpContext = new HttpContext();
+        }
+
+
+        // to determine the Content-Type header
+        const consumes: string[] = [
+            'application/json'
+        ];
+        const httpContentTypeSelected: string | undefined = this.configuration.selectHeaderContentType(consumes);
+        if (httpContentTypeSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Content-Type', httpContentTypeSelected);
+        }
+
+        let responseType_: 'text' | 'json' | 'blob' = 'json';
+        if (localVarHttpHeaderAcceptSelected) {
+            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+                responseType_ = 'text';
+            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+                responseType_ = 'json';
+            } else {
+                responseType_ = 'blob';
+            }
+        }
+
+        let localVarPath = `/api/v1/integration/insurance/claims/${this.configuration.encodeParam({name: "claimId", value: claimId, in: "path", style: "simple", explode: false, dataType: "string", dataFormat: "uuid"})}/indemnity`;
+        return this.httpClient.request<ClaimDto>('post', `${this.configuration.basePath}${localVarPath}`,
+            {
+                context: localVarHttpContext,
+                body: recordClaimIndemnityRequest,
+                responseType: <any>responseType_,
+                withCredentials: this.configuration.withCredentials,
+                headers: localVarHeaders,
+                observe: observe,
+                reportProgress: reportProgress
+            }
+        );
+    }
+
+    /**
+     * Record a customer complaint
+     * The entry point of the complaints mechanism the 2024 CIMA regulation on distribution by electronic means requires. Returns the reference the customer quotes back (&#x60;REC-2026-000042&#x60;) and the two deadlines, both computed from when the CUSTOMER complained — &#x60;receivedAt&#x60;, which may be days before an agent typed it in — and STORED, so neither moves when an administrator changes the configured period. What the customer said is encrypted; the subject is in clear because it appears in lists and in a supervisor\&#39;s report. Requires permission: Ins.Complaint.Handle.
+     * @param recordComplaintRequest 
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     */
+    public recordInsuranceComplaint(recordComplaintRequest: RecordComplaintRequest, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<ComplaintDto>;
+    public recordInsuranceComplaint(recordComplaintRequest: RecordComplaintRequest, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<ComplaintDto>>;
+    public recordInsuranceComplaint(recordComplaintRequest: RecordComplaintRequest, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<ComplaintDto>>;
+    public recordInsuranceComplaint(recordComplaintRequest: RecordComplaintRequest, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
+        if (recordComplaintRequest === null || recordComplaintRequest === undefined) {
+            throw new Error('Required parameter recordComplaintRequest was null or undefined when calling recordInsuranceComplaint.');
+        }
+
+        let localVarHeaders = this.defaultHeaders;
+
+        let localVarCredential: string | undefined;
+        // authentication (BearerToken) required
+        localVarCredential = this.configuration.lookupCredential('BearerToken');
+        if (localVarCredential) {
+            localVarHeaders = localVarHeaders.set('Authorization', 'Bearer ' + localVarCredential);
+        }
+
+        let localVarHttpHeaderAcceptSelected: string | undefined = options && options.httpHeaderAccept;
+        if (localVarHttpHeaderAcceptSelected === undefined) {
+            // to determine the Accept header
+            const httpHeaderAccepts: string[] = [
+                'application/json'
+            ];
+            localVarHttpHeaderAcceptSelected = this.configuration.selectHeaderAccept(httpHeaderAccepts);
+        }
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+
+        let localVarHttpContext: HttpContext | undefined = options && options.context;
+        if (localVarHttpContext === undefined) {
+            localVarHttpContext = new HttpContext();
+        }
+
+
+        // to determine the Content-Type header
+        const consumes: string[] = [
+            'application/json'
+        ];
+        const httpContentTypeSelected: string | undefined = this.configuration.selectHeaderContentType(consumes);
+        if (httpContentTypeSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Content-Type', httpContentTypeSelected);
+        }
+
+        let responseType_: 'text' | 'json' | 'blob' = 'json';
+        if (localVarHttpHeaderAcceptSelected) {
+            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+                responseType_ = 'text';
+            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+                responseType_ = 'json';
+            } else {
+                responseType_ = 'blob';
+            }
+        }
+
+        let localVarPath = `/api/v1/integration/insurance/complaints`;
+        return this.httpClient.request<ComplaintDto>('post', `${this.configuration.basePath}${localVarPath}`,
+            {
+                context: localVarHttpContext,
+                body: recordComplaintRequest,
+                responseType: <any>responseType_,
+                withCredentials: this.configuration.withCredentials,
+                headers: localVarHeaders,
+                observe: observe,
+                reportProgress: reportProgress
+            }
+        );
+    }
+
+    /**
      * Record a relay agent\&#39;s heartbeat
      * Called by the on-premise relay agent to report that it is alive, which version it runs and what latency it measures towards the systems it relays. Authenticated by the CLIENT CERTIFICATE presented in the TLS handshake: the platform computes its SHA-256 thumbprint itself and matches it against the certificate the agent was admitted with. The body carries no identity at all — a thumbprint is a hash of a public certificate, so trusting one from a payload would let anyone make a dead relay look alive. A call with no client certificate, with one that is not admitted, or from a revoked agent all answer the same 401 with no detail. What was reported is readable by an operator through GET api/v1/integration/relay-agents. Audited.
      * @param recordRelayHeartbeatRequest 
@@ -2775,6 +4174,86 @@ export class IntegrationApiService {
     }
 
     /**
+     * Answer the complaint
+     * The answer text is REQUIRED including for a complaint found unjustified: \&quot;we considered your complaint and rejected it\&quot; with no reason is exactly the answer this mechanism exists to prevent, and it is the one a supervisor asks to see. &#x60;wasUpheld&#x60; is separate from the status because \&quot;how many did we uphold\&quot; is the question a mechanism is judged on. Requires permission: Ins.Complaint.Handle.
+     * @param complaintId 
+     * @param resolveComplaintRequest 
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     */
+    public resolveInsuranceComplaint(complaintId: string, resolveComplaintRequest: ResolveComplaintRequest, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<ComplaintDto>;
+    public resolveInsuranceComplaint(complaintId: string, resolveComplaintRequest: ResolveComplaintRequest, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<ComplaintDto>>;
+    public resolveInsuranceComplaint(complaintId: string, resolveComplaintRequest: ResolveComplaintRequest, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<ComplaintDto>>;
+    public resolveInsuranceComplaint(complaintId: string, resolveComplaintRequest: ResolveComplaintRequest, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
+        if (complaintId === null || complaintId === undefined) {
+            throw new Error('Required parameter complaintId was null or undefined when calling resolveInsuranceComplaint.');
+        }
+        if (resolveComplaintRequest === null || resolveComplaintRequest === undefined) {
+            throw new Error('Required parameter resolveComplaintRequest was null or undefined when calling resolveInsuranceComplaint.');
+        }
+
+        let localVarHeaders = this.defaultHeaders;
+
+        let localVarCredential: string | undefined;
+        // authentication (BearerToken) required
+        localVarCredential = this.configuration.lookupCredential('BearerToken');
+        if (localVarCredential) {
+            localVarHeaders = localVarHeaders.set('Authorization', 'Bearer ' + localVarCredential);
+        }
+
+        let localVarHttpHeaderAcceptSelected: string | undefined = options && options.httpHeaderAccept;
+        if (localVarHttpHeaderAcceptSelected === undefined) {
+            // to determine the Accept header
+            const httpHeaderAccepts: string[] = [
+                'application/json'
+            ];
+            localVarHttpHeaderAcceptSelected = this.configuration.selectHeaderAccept(httpHeaderAccepts);
+        }
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+
+        let localVarHttpContext: HttpContext | undefined = options && options.context;
+        if (localVarHttpContext === undefined) {
+            localVarHttpContext = new HttpContext();
+        }
+
+
+        // to determine the Content-Type header
+        const consumes: string[] = [
+            'application/json'
+        ];
+        const httpContentTypeSelected: string | undefined = this.configuration.selectHeaderContentType(consumes);
+        if (httpContentTypeSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Content-Type', httpContentTypeSelected);
+        }
+
+        let responseType_: 'text' | 'json' | 'blob' = 'json';
+        if (localVarHttpHeaderAcceptSelected) {
+            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+                responseType_ = 'text';
+            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+                responseType_ = 'json';
+            } else {
+                responseType_ = 'blob';
+            }
+        }
+
+        let localVarPath = `/api/v1/integration/insurance/complaints/${this.configuration.encodeParam({name: "complaintId", value: complaintId, in: "path", style: "simple", explode: false, dataType: "string", dataFormat: "uuid"})}/resolution`;
+        return this.httpClient.request<ComplaintDto>('post', `${this.configuration.basePath}${localVarPath}`,
+            {
+                context: localVarHttpContext,
+                body: resolveComplaintRequest,
+                responseType: <any>responseType_,
+                withCredentials: this.configuration.withCredentials,
+                headers: localVarHeaders,
+                observe: observe,
+                reportProgress: reportProgress
+            }
+        );
+    }
+
+    /**
      * Mark a reconciliation gap as resolved
      * Closes one gap of the daily CRM / external-system comparison, recording who closed it and why. The note is mandatory: a compliance finding closed without a reason is untraceable. Resolving records a decision and changes nothing on either side — if the divergence is still true, the next night\&#39;s comparison re-opens it as a new gap with a new detection date. A gap belonging to another tenant reads as absent (404, never 403). Audited with its author. Requires Integration.Reconciliation.Resolve.
      * @param gapId 
@@ -3004,6 +4483,82 @@ export class IntegrationApiService {
     }
 
     /**
+     * Subscribe a customer to an insurance product
+     * Starts the three-step chain of ASS-05: the premium is debited FIRST, then the insurer is asked, and the debit is reversed if the insurer refuses. That order is deliberate — a premium collected against a refused policy can be put right, a policy issued against a premium never collected cannot. The consent proof required by the 2024 CIMA regulation on distribution by electronic means is written in the SAME transaction as the subscription: &#x60;consentTextVersion&#x60; plus either &#x60;consentEvidence&#x60; (encrypted inline) or &#x60;consentEvidenceStorageRef&#x60;. A request for a customer, product and effective date already in flight answers 200 with &#x60;alreadyExisted: true&#x60; rather than debiting twice. Requires permission: Ins.Policy.Subscribe.
+     * @param subscribeInsurancePolicyRequest 
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     */
+    public subscribeInsurancePolicy(subscribeInsurancePolicyRequest: SubscribeInsurancePolicyRequest, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<SubscribeInsurancePolicyResult>;
+    public subscribeInsurancePolicy(subscribeInsurancePolicyRequest: SubscribeInsurancePolicyRequest, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<SubscribeInsurancePolicyResult>>;
+    public subscribeInsurancePolicy(subscribeInsurancePolicyRequest: SubscribeInsurancePolicyRequest, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<SubscribeInsurancePolicyResult>>;
+    public subscribeInsurancePolicy(subscribeInsurancePolicyRequest: SubscribeInsurancePolicyRequest, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
+        if (subscribeInsurancePolicyRequest === null || subscribeInsurancePolicyRequest === undefined) {
+            throw new Error('Required parameter subscribeInsurancePolicyRequest was null or undefined when calling subscribeInsurancePolicy.');
+        }
+
+        let localVarHeaders = this.defaultHeaders;
+
+        let localVarCredential: string | undefined;
+        // authentication (BearerToken) required
+        localVarCredential = this.configuration.lookupCredential('BearerToken');
+        if (localVarCredential) {
+            localVarHeaders = localVarHeaders.set('Authorization', 'Bearer ' + localVarCredential);
+        }
+
+        let localVarHttpHeaderAcceptSelected: string | undefined = options && options.httpHeaderAccept;
+        if (localVarHttpHeaderAcceptSelected === undefined) {
+            // to determine the Accept header
+            const httpHeaderAccepts: string[] = [
+                'application/json'
+            ];
+            localVarHttpHeaderAcceptSelected = this.configuration.selectHeaderAccept(httpHeaderAccepts);
+        }
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+
+        let localVarHttpContext: HttpContext | undefined = options && options.context;
+        if (localVarHttpContext === undefined) {
+            localVarHttpContext = new HttpContext();
+        }
+
+
+        // to determine the Content-Type header
+        const consumes: string[] = [
+            'application/json'
+        ];
+        const httpContentTypeSelected: string | undefined = this.configuration.selectHeaderContentType(consumes);
+        if (httpContentTypeSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Content-Type', httpContentTypeSelected);
+        }
+
+        let responseType_: 'text' | 'json' | 'blob' = 'json';
+        if (localVarHttpHeaderAcceptSelected) {
+            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+                responseType_ = 'text';
+            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+                responseType_ = 'json';
+            } else {
+                responseType_ = 'blob';
+            }
+        }
+
+        let localVarPath = `/api/v1/integration/insurance/subscriptions`;
+        return this.httpClient.request<SubscribeInsurancePolicyResult>('post', `${this.configuration.basePath}${localVarPath}`,
+            {
+                context: localVarHttpContext,
+                body: subscribeInsurancePolicyRequest,
+                responseType: <any>responseType_,
+                withCredentials: this.configuration.withCredentials,
+                headers: localVarHeaders,
+                observe: observe,
+                reportProgress: reportProgress
+            }
+        );
+    }
+
+    /**
      * Edit one insurance product
      * Everything an administrator may change: label, guarantees, pricing, eligibility rules, linked credit product, commission rate, premium retry policy and validity window. The insurer and its product code are the product\&#39;s identity and are NOT editable — re-pointing is a new product. Activation is its own route. 404 INSURANCE_PRODUCT_NOT_FOUND for an unknown or foreign product — never 403; 409 INTEGRATION_CONCURRENCY_CONFLICT when somebody else saved first. Requires permission: Ins.Product.Manage.
      * @param productId 
@@ -3153,6 +4708,118 @@ export class IntegrationApiService {
             {
                 context: localVarHttpContext,
                 body: updateConnectionRequest,
+                responseType: <any>responseType_,
+                withCredentials: this.configuration.withCredentials,
+                headers: localVarHeaders,
+                observe: observe,
+                reportProgress: reportProgress
+            }
+        );
+    }
+
+    /**
+     * Deposit a piece on a claim dossier
+     * Stores the file encrypted and registers it PENDING the antivirus pass — a piece is never born clean, and nothing reaches the insurer before the scan has run on it. Accepts image/jpeg, image/png, image/heic and application/pdf; an archive is deliberately refused, because its contents are what a scan would have to walk and this platform does not. &#x60;requestedByInsurer&#x3D;true&#x60; marks the piece as a complement the insurer asked for, which is what makes it transmitted automatically once it is clean. The same file twice on one dossier is a 409 on its digest: two rows would be two attachments on the insurer\&#39;s side. Requires permission: Ins.Claim.Declare.
+     * @param claimId 
+     * @param documentKind 
+     * @param requestedByInsurer 
+     * @param file 
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     */
+    public uploadClaimDocument(claimId: string, documentKind: string, requestedByInsurer: boolean, file: Blob, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<UploadClaimDocumentResponse>;
+    public uploadClaimDocument(claimId: string, documentKind: string, requestedByInsurer: boolean, file: Blob, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<UploadClaimDocumentResponse>>;
+    public uploadClaimDocument(claimId: string, documentKind: string, requestedByInsurer: boolean, file: Blob, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<UploadClaimDocumentResponse>>;
+    public uploadClaimDocument(claimId: string, documentKind: string, requestedByInsurer: boolean, file: Blob, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
+        if (claimId === null || claimId === undefined) {
+            throw new Error('Required parameter claimId was null or undefined when calling uploadClaimDocument.');
+        }
+        if (documentKind === null || documentKind === undefined) {
+            throw new Error('Required parameter documentKind was null or undefined when calling uploadClaimDocument.');
+        }
+        if (requestedByInsurer === null || requestedByInsurer === undefined) {
+            throw new Error('Required parameter requestedByInsurer was null or undefined when calling uploadClaimDocument.');
+        }
+        if (file === null || file === undefined) {
+            throw new Error('Required parameter file was null or undefined when calling uploadClaimDocument.');
+        }
+
+        let localVarQueryParameters = new HttpParams({encoder: this.encoder});
+        if (documentKind !== undefined && documentKind !== null) {
+          localVarQueryParameters = this.addToHttpParams(localVarQueryParameters,
+            <any>documentKind, 'documentKind');
+        }
+        if (requestedByInsurer !== undefined && requestedByInsurer !== null) {
+          localVarQueryParameters = this.addToHttpParams(localVarQueryParameters,
+            <any>requestedByInsurer, 'requestedByInsurer');
+        }
+
+        let localVarHeaders = this.defaultHeaders;
+
+        let localVarCredential: string | undefined;
+        // authentication (BearerToken) required
+        localVarCredential = this.configuration.lookupCredential('BearerToken');
+        if (localVarCredential) {
+            localVarHeaders = localVarHeaders.set('Authorization', 'Bearer ' + localVarCredential);
+        }
+
+        let localVarHttpHeaderAcceptSelected: string | undefined = options && options.httpHeaderAccept;
+        if (localVarHttpHeaderAcceptSelected === undefined) {
+            // to determine the Accept header
+            const httpHeaderAccepts: string[] = [
+                'application/json'
+            ];
+            localVarHttpHeaderAcceptSelected = this.configuration.selectHeaderAccept(httpHeaderAccepts);
+        }
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+
+        let localVarHttpContext: HttpContext | undefined = options && options.context;
+        if (localVarHttpContext === undefined) {
+            localVarHttpContext = new HttpContext();
+        }
+
+        // to determine the Content-Type header
+        const consumes: string[] = [
+            'multipart/form-data'
+        ];
+
+        const canConsumeForm = this.canConsumeForm(consumes);
+
+        let localVarFormParams: { append(param: string, value: any): any; };
+        let localVarUseForm = false;
+        let localVarConvertFormParamsToString = false;
+        // use FormData to transmit files using content-type "multipart/form-data"
+        // see https://stackoverflow.com/questions/4007969/application-x-www-form-urlencoded-or-multipart-form-data
+        localVarUseForm = canConsumeForm;
+        if (localVarUseForm) {
+            localVarFormParams = new FormData();
+        } else {
+            localVarFormParams = new HttpParams({encoder: this.encoder});
+        }
+
+        if (file !== undefined) {
+            localVarFormParams = localVarFormParams.append('file', <any>file) as any || localVarFormParams;
+        }
+
+        let responseType_: 'text' | 'json' | 'blob' = 'json';
+        if (localVarHttpHeaderAcceptSelected) {
+            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+                responseType_ = 'text';
+            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+                responseType_ = 'json';
+            } else {
+                responseType_ = 'blob';
+            }
+        }
+
+        let localVarPath = `/api/v1/integration/insurance/claims/${this.configuration.encodeParam({name: "claimId", value: claimId, in: "path", style: "simple", explode: false, dataType: "string", dataFormat: "uuid"})}/documents`;
+        return this.httpClient.request<UploadClaimDocumentResponse>('post', `${this.configuration.basePath}${localVarPath}`,
+            {
+                context: localVarHttpContext,
+                body: localVarConvertFormParamsToString ? localVarFormParams.toString() : localVarFormParams,
+                params: localVarQueryParameters,
                 responseType: <any>responseType_,
                 withCredentials: this.configuration.withCredentials,
                 headers: localVarHeaders,

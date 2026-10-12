@@ -206,17 +206,33 @@ export const PERMISSIONS = {
 
   INS_PRODUCT_MANAGE: 'Ins.Product.Manage',
 
-  // Exigés par les US front ASS-15 à ASS-18, mais aucun endpoint du swagger ne les
-  // déclare encore : les lots back correspondants (ASS-04 à ASS-10 — souscription,
-  // contrats, sinistres, bordereaux) ne sont pas livrés. À confirmer à l'arrivée de
-  // ces endpoints ; si le serveur ne les accorde jamais, les actions concernées
-  // restent masquées, ce qui est le comportement voulu en attendant.
+  // Lire le catalogue et demander un tarif. Séparé de PRODUCT_MANAGE côté back parce
+  // que lire le catalogue fait partie de la DISTRIBUTION et non de l'administration :
+  // un agent qui ne détient que Ins.Policy.Subscribe doit pouvoir voir quels produits
+  // existent et ce qu'ils coûtent.
+  INS_PRODUCT_VIEW: 'Ins.Product.View',
+
+  // ASS-04 à ASS-10 sont désormais LIVRÉS côté back, et ces codes sont vérifiés
+  // contre Permissions.All : le commentaire précédent disait « à confirmer à l'arrivée
+  // de ces endpoints », c'est fait. Un seul code a disparu dans l'opération, voir plus bas.
   INS_POLICY_VIEW: 'Ins.Policy.View',
   INS_POLICY_SUBSCRIBE: 'Ins.Policy.Subscribe',
   INS_CLAIM_VIEW: 'Ins.Claim.View',
   INS_CLAIM_DECLARE: 'Ins.Claim.Declare',
-  INS_CLAIM_DOCUMENT_REVEAL: 'Ins.Claim.Document.Reveal',
   INS_STATEMENT_VIEW: 'Ins.Statement.View',
+
+  // Clôturer un bordereau du mois. Volontairement PAS la permission de lecture côté
+  // back : figer les chiffres sort le mois définitivement de portée de la génération
+  // nocturne, donc quiconque peut REGARDER un bordereau ne doit pas pouvoir en clôturer
+  // un — la même ligne que Policy.View / Policy.Subscribe.
+  INS_STATEMENT_FINALISE: 'Ins.Statement.Finalise',
+
+  // Le mécanisme de traitement des réclamations du règlement 01/CIMA/2024. Sa propre
+  // paire lecture/écriture : les gens qui le tiennent dans une IMF ne sont pas ceux qui
+  // vendent, et un lecteur du registre ne doit pas répondre au nom de l'institution.
+  INS_COMPLAINT_VIEW: 'Ins.Complaint.View',
+  INS_COMPLAINT_HANDLE: 'Ins.Complaint.Handle',
+
   INS_RECONCILIATION_RESOLVE: 'Ins.Reconciliation.Resolve',
 } as const;
 

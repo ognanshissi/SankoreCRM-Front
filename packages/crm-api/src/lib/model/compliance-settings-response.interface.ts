@@ -17,10 +17,6 @@ export interface ComplianceSettingsResponse {
     fatcaGiin?: string | null;
     fatcaRequiredAt?: string | null;
     fatcaForCoHolders?: boolean;
-    /**
-     * Whether politically-exposed-person screening is active for this tenant. When false, the PEP block is not offered on leads or client files and no PEP exposure is requested.
-     */
-    pepEnabled?: boolean;
     pepPostMandateMonths?: number;
     updatedAt?: string;
     allowedRegimes?: Array<string> | null;

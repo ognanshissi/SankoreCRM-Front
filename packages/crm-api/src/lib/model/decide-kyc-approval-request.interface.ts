@@ -13,7 +13,7 @@
 
 export interface DecideKycApprovalRequest { 
     /**
-     * One of: Agent, BranchManager, ComplianceOfficer
+     * One of: Agent, BranchManager, ComplianceOfficer, GeneralManagement
      */
     level?: DecideKycApprovalRequestLevelEnum;
     /**
@@ -25,7 +25,8 @@ export interface DecideKycApprovalRequest {
 export enum DecideKycApprovalRequestLevelEnum {
     Agent = 'Agent',
     BranchManager = 'BranchManager',
-    ComplianceOfficer = 'ComplianceOfficer'
+    ComplianceOfficer = 'ComplianceOfficer',
+    GeneralManagement = 'GeneralManagement'
 };
 export enum DecideKycApprovalRequestDecisionEnum {
     Pending = 'Pending',
