@@ -17,6 +17,7 @@ export interface ComplianceSettingsResponse {
     fatcaGiin?: string | null;
     fatcaRequiredAt?: string | null;
     fatcaForCoHolders?: boolean;
+    pepEnabled?: boolean;
     pepPostMandateMonths?: number;
     updatedAt?: string;
     allowedRegimes?: Array<string> | null;

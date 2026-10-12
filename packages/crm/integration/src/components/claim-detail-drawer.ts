@@ -15,7 +15,7 @@ import { TasSpinner } from '@talisoft/ui/spinner';
 import { TableConfig, TasTable } from '@talisoft/ui/table';
 import { Severity, TasTag } from '@talisoft/ui/tag';
 import { TimeagoPipe } from '@talisoft/ui/timeago';
-import { PermissionsService } from '@sankore/crm/common';
+import { PERMISSIONS, PermissionsService } from '@sankore/crm/common';
 import {
   CLAIM_DOCUMENT_ACCEPT,
   CLAIM_DOCUMENT_MAX_SIZE_MB,
@@ -275,7 +275,17 @@ export class ClaimDetailDrawer {
 
   public readonly data = inject<ClaimDetailDrawerData>(DIALOG_DATA);
 
-  public readonly canRevealSensitive = this._permissions.can('Ins.Claim.Document.Reveal');
+  /**
+   * Le serveur garde la relecture d'une pièce derrière `Ins.Claim.View`, pas derrière un
+   * droit « pièces sensibles » : celui-ci avait été anticipé ici et n'existe pas dans
+   * `Permissions.All`, donc le compilateur le refuse depuis la régénération du client.
+   *
+   * Le vrai verrou du serveur n'est pas la sensibilité de la pièce mais le VERDICT
+   * ANTIVIRUS — `GET .../content` répond 409 sur tout ce qui n'est pas `Clean`. C'est
+   * une meilleure information pour l'agent, et le bloc « Pièces du dossier » la portera
+   * quand il sera câblé sur les vrais endpoints.
+   */
+  public readonly canRevealSensitive = this._permissions.can(PERMISSIONS.INS_CLAIM_VIEW);
 
   public readonly accept = CLAIM_DOCUMENT_ACCEPT;
   public readonly maxSizeMb = CLAIM_DOCUMENT_MAX_SIZE_MB;
