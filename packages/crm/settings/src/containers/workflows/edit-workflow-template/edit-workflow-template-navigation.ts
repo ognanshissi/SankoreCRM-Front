@@ -128,7 +128,7 @@ export class EditWorkflowTemplateNavigation {
 
   public menuItems = signal<MenuItem[]>([
     {
-      label: 'Builder',
+      label: 'Parcours',
       icon: 'feather:git-branch',
       route: 'builder',
       active: true,

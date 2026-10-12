@@ -129,16 +129,24 @@ const settingsRoutes: Routes = [
       import('./containers/workflows/workflow-analytics/workflow-analytics'),
   },
   {
+    // Constructeur de parcours en pleine page, hors de la navigation du modèle : il porte son propre
+    // en-tête (version, publication) et a besoin de toute la largeur pour ses trois colonnes.
+    path: 'workflows/:id/parcours',
+    canActivate: [hasPermissionGuard('workflow:read')],
+    loadComponent: () =>
+      import('./containers/workflows/journey-builder/journey-builder'),
+  },
+  // Redirections déclarées ici et non dans les enfants de `workflows/:id` : une redirection enfant ne
+  // voit pas le `:id` de la route parente (« Cannot redirect … Cannot find ':id' »).
+  { path: 'workflows/:id', redirectTo: 'workflows/:id/parcours', pathMatch: 'full' },
+  // Ancienne adresse du canevas libre : les liens existants mènent au nouveau constructeur.
+  { path: 'workflows/:id/builder', redirectTo: 'workflows/:id/parcours', pathMatch: 'full' },
+  {
     path: 'workflows/:id',
     canActivate: [hasPermissionGuard('workflow:read')],
     loadComponent: () => EditWorkflowTemplateNavigation,
     children: [
-      { path: '', redirectTo: 'builder', pathMatch: 'full' },
-      {
-        path: 'builder',
-        loadComponent: () =>
-          import('./containers/workflows/edit-workflow-template/builder'),
-      },
+      { path: '', redirectTo: 'informations', pathMatch: 'full' },
       {
         path: 'informations',
         loadComponent: () =>

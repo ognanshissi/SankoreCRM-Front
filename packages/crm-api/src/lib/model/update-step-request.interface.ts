@@ -16,5 +16,24 @@ export interface UpdateStepRequest {
     description?: string | null;
     approverRoleCode?: string | null;
     timeoutHours?: number | null;
+    /**
+     * One of: Form, QualificationForm, KycCheck, Validation, ManualTask, Condition, Wait, Notification, IntegrationAction
+     */
+    kind?: UpdateStepRequestKindEnum | null;
+    configJson?: string | null;
+    isBlocking?: boolean | null;
 }
+export enum UpdateStepRequestKindEnum {
+    Form = 'Form',
+    QualificationForm = 'QualificationForm',
+    KycCheck = 'KycCheck',
+    Validation = 'Validation',
+    ManualTask = 'ManualTask',
+    Condition = 'Condition',
+    Wait = 'Wait',
+    Notification = 'Notification',
+    IntegrationAction = 'IntegrationAction'
+};
+
+
 

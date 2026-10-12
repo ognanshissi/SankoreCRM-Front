@@ -21531,6 +21531,34 @@
             "type": "integer",
             "format": "int32",
             "nullable": true
+          },
+          "kind": {
+            "enum": [
+              "Form",
+              "QualificationForm",
+              "KycCheck",
+              "Validation",
+              "ManualTask",
+              "Condition",
+              "Wait",
+              "Notification",
+              "IntegrationAction"
+            ],
+            "type": "string",
+            "description": "One of: Form, QualificationForm, KycCheck, Validation, ManualTask, Condition, Wait, Notification, IntegrationAction",
+            "nullable": true
+          },
+          "configJson": {
+            "type": "string",
+            "nullable": true
+          },
+          "isBlocking": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "insertAt": {
+            "type": "boolean",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -26249,10 +26277,6 @@
       "CreateTaskRequest": {
         "type": "object",
         "properties": {
-          "tenantId": {
-            "type": "string",
-            "format": "uuid"
-          },
           "type": {
             "enum": [
               "FirstContact",
@@ -40088,6 +40112,30 @@
             "type": "integer",
             "format": "int32",
             "nullable": true
+          },
+          "kind": {
+            "enum": [
+              "Form",
+              "QualificationForm",
+              "KycCheck",
+              "Validation",
+              "ManualTask",
+              "Condition",
+              "Wait",
+              "Notification",
+              "IntegrationAction"
+            ],
+            "type": "string",
+            "description": "One of: Form, QualificationForm, KycCheck, Validation, ManualTask, Condition, Wait, Notification, IntegrationAction",
+            "nullable": true
+          },
+          "configJson": {
+            "type": "string",
+            "nullable": true
+          },
+          "isBlocking": {
+            "type": "boolean",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -40936,6 +40984,17 @@
             "type": "integer",
             "format": "int32",
             "nullable": true
+          },
+          "kind": {
+            "type": "string",
+            "nullable": true
+          },
+          "configJson": {
+            "type": "string",
+            "nullable": true
+          },
+          "isBlocking": {
+            "type": "boolean"
           }
         },
         "additionalProperties": false

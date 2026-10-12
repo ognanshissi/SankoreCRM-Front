@@ -1,0 +1,112 @@
+<div class="flex flex-col gap-5 p-5">
+  <div class="flex items-start justify-between gap-2">
+    <div class="min-w-0">
+      <p class="text-xs text-slate-500">{{ meta().label }}</p>
+      <p class="text-xl font-bold text-primary truncate">{{ model().name || 'Sans nom' }}</p>
+    </div>
+    @if (isSaving()) {
+      <tas-spinner size="4" class="text-primary shrink-0 mt-1"></tas-spinner>
+    }
+  </div>
+
+  @if (readOnly()) {
+    <p class="text-xs text-slate-500 p-3 rounded-lg bg-slate-50 border border-slate-200">
+      Version publiée : créez un brouillon pour modifier ce parcours.
+    </p>
+  }
+
+  <form [formRoot]="formSchema" class="flex flex-col gap-4">
+    <tas-form-field>
+      <tas-label>Nom <span class="text-functional-error">*</span></tas-label>
+      <input tasInput type="text" [formField]="formSchema.name" />
+      @if (formSchema.name().touched() && formSchema.name().invalid()) {
+        <tas-error>{{ formSchema.name().errors()[0].message }}</tas-error>
+      }
+    </tas-form-field>
+
+    @if (kind() === StepKind.KycCheck) {
+      <tas-form-field>
+        <tas-label>Niveau requis</tas-label>
+        <tas-select [options]="kycLevelOptions" [formField]="formSchema.kycLevel"></tas-select>
+      </tas-form-field>
+    }
+
+    @if (kind() === StepKind.Condition) {
+      <tas-form-field>
+        <tas-label>Question</tas-label>
+        <textarea tasInput rows="2" placeholder="Principal, conjoint ou enfant" [formField]="formSchema.description"></textarea>
+      </tas-form-field>
+    } @else {
+      <tas-form-field>
+        <tas-label>Description</tas-label>
+        <textarea tasInput rows="2" [formField]="formSchema.description"></textarea>
+      </tas-form-field>
+    }
+
+    @if (withAssignee()) {
+      <tas-form-field>
+        <tas-label>Responsable</tas-label>
+        <tas-select [options]="roleOptions()" placeholder="Choisissez un rôle" [formField]="formSchema.approverRoleCode"></tas-select>
+      </tas-form-field>
+    }
+
+    @if (withAssignee() || kind() === StepKind.Wait) {
+      <tas-form-field>
+        <tas-label>{{ kind() === StepKind.Wait ? 'Délai' : 'SLA' }}</tas-label>
+        <tas-select [options]="slaOptions" placeholder="Sans délai" [formField]="formSchema.timeoutHours"></tas-select>
+      </tas-form-field>
+    }
+
+    @if (withAssignee()) {
+      <tas-form-field>
+        <tas-label>Escalade</tas-label>
+        <tas-select [options]="escalationOptions" [formField]="formSchema.escalation"></tas-select>
+      </tas-form-field>
+    }
+
+    @if (kind() === StepKind.Notification) {
+      <tas-form-field>
+        <tas-label>Canal</tas-label>
+        <tas-select [options]="channelOptions" [formField]="formSchema.channel"></tas-select>
+      </tas-form-field>
+    }
+
+    @if (kind() === StepKind.IntegrationAction) {
+      <tas-form-field>
+        <tas-label>Système cible</tas-label>
+        <tas-select [options]="targetOptions" [formField]="formSchema.target"></tas-select>
+      </tas-form-field>
+    }
+  </form>
+
+  @if (kind() === StepKind.KycCheck) {
+    <div class="p-4 rounded-lg bg-slate-50 border border-slate-200">
+      <p class="text-sm font-semibold text-slate-800 mb-2">Contrôles</p>
+      <ul class="flex flex-col gap-1.5">
+        @for (control of controls(); track control) {
+          <li class="flex items-start gap-2 text-xs text-slate-700">
+            <tas-icon iconName="feather:check" class="text-green-600 shrink-0 mt-0.5" style="font-size:12px"></tas-icon>
+            {{ control }}
+          </li>
+        }
+      </ul>
+    </div>
+  }
+
+  @if (kind() !== StepKind.Condition) {
+    <div class="flex items-start justify-between gap-3">
+      <div>
+        <p class="text-sm font-semibold text-slate-800">Étape bloquante</p>
+        <p class="text-xs text-slate-500 mt-0.5">Le lead ne peut pas avancer sans elle.</p>
+      </div>
+      <tas-switch [checked]="model().isBlocking" [disabled]="readOnly()" ariaLabel="Étape bloquante" (toggle)="setBlocking($event)"></tas-switch>
+    </div>
+  }
+
+  @if (!readOnly()) {
+    <button type="button" class="flex items-center gap-2 text-sm font-medium text-red-600 hover:text-red-700 w-fit" (click)="deleteRequested.emit(step())">
+      <tas-icon iconName="feather:trash-2" style="font-size:14px"></tas-icon>
+      Supprimer l'étape
+    </button>
+  }
+</div>

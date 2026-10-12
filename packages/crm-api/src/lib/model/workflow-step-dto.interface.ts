@@ -18,5 +18,8 @@ export interface WorkflowStepDto {
     description?: string | null;
     approverRoleCode?: string | null;
     timeoutHours?: number | null;
+    kind?: string | null;
+    configJson?: string | null;
+    isBlocking?: boolean;
 }
 

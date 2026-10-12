@@ -12,7 +12,6 @@
 
 
 export interface CreateTaskRequest { 
-    tenantId?: string;
     /**
      * One of: FirstContact, Qualification, SlaFollowUp, ScoreReview, OwnerHandover, ManualDispatch, Generic
      */

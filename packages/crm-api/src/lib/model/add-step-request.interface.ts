@@ -17,5 +17,25 @@ export interface AddStepRequest {
     description?: string | null;
     approverRoleCode?: string | null;
     timeoutHours?: number | null;
+    /**
+     * One of: Form, QualificationForm, KycCheck, Validation, ManualTask, Condition, Wait, Notification, IntegrationAction
+     */
+    kind?: AddStepRequestKindEnum | null;
+    configJson?: string | null;
+    isBlocking?: boolean | null;
+    insertAt?: boolean | null;
 }
+export enum AddStepRequestKindEnum {
+    Form = 'Form',
+    QualificationForm = 'QualificationForm',
+    KycCheck = 'KycCheck',
+    Validation = 'Validation',
+    ManualTask = 'ManualTask',
+    Condition = 'Condition',
+    Wait = 'Wait',
+    Notification = 'Notification',
+    IntegrationAction = 'IntegrationAction'
+};
+
+
 
