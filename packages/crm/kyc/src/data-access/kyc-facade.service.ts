@@ -160,13 +160,24 @@ export class KycFacadeService {
    * **l'agent qui a soumis ne peut jamais approuver son propre dossier** : le serveur tranche, l'écran
    * ne fait que masquer ce qui est manifestement indisponible. Un 409 signale une course.
    */
+  /**
+   * @param requestedDocuments Sur une demande de complément d'un dossier à distance, les pièces
+   * que le client doit reprendre (KRM-B-10) : elles deviennent la portée du nouveau lien de
+   * dépôt. `null` ailleurs — sur un dossier de guichet c'est l'agent qui recollecte.
+   */
   public decide(
     kycFileId: string,
     level: DecideKycApprovalRequestLevelEnum,
     decision: DecideKycApprovalRequestDecisionEnum,
     comment: string | null,
+    requestedDocuments: string[] | null = null,
   ): Observable<DecideKycApprovalResponse> {
-    return this._kycApi.decideKycApproval(kycFileId, { level, decision, comment });
+    return this._kycApi.decideKycApproval(kycFileId, {
+      level,
+      decision,
+      comment,
+      requestedDocuments: (requestedDocuments ?? undefined) as never,
+    });
   }
 
   /** `POST /kyc-files/{id}/reviews` — le motif est montré à l'agent qui reprend la revue. */

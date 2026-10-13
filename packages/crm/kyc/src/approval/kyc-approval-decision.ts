@@ -23,11 +23,13 @@ import { AuthenticationService, PermissionsService } from '@sankore/crm/common';
 import { KycFacadeService } from '../data-access/kyc-facade.service';
 import {
   KYC_COMPLEMENT_REASONS,
+  KYC_RETAKABLE_DOCUMENTS,
   kycApprovalDecisionMeta,
   kycApprovalLevelLabel,
   kycVigilanceMeta,
 } from '../data-access/kyc-referential';
 import { KycStatusBadge } from '../ui/kyc-status-badge';
+import { KycRemoteDecisionBanner } from './kyc-remote-decision-banner';
 
 type PendingAction = 'approve' | 'complement' | 'reject' | null;
 
@@ -35,10 +37,18 @@ class DecisionFormModel {
   public reason!: string;
   public comment!: string;
 
+  /**
+   * Les pièces que le client doit reprendre (KRM-F-08). Elles ne partent que sur une demande de
+   * complément, et seulement pour un dossier à distance : sur un dossier de guichet c'est l'agent
+   * qui va rechercher la photo, et une liste envoyée au serveur n'aurait nulle part où aller.
+   */
+  public retakeDocuments!: string[];
+
   public static instantiate(): DecisionFormModel {
     const m = new DecisionFormModel();
     m.reason = '';
     m.comment = '';
+    m.retakeDocuments = [];
     return m;
   }
 }
@@ -81,6 +91,7 @@ class DecisionFormModel {
     TasSelect,
     TimeagoPipe,
     KycStatusBadge,
+    KycRemoteDecisionBanner,
     FormRoot,
     FormField,
   ],
@@ -98,6 +109,7 @@ export class KycApprovalDecision implements OnInit {
   public readonly decided = output<void>();
 
   public readonly complementReasons = KYC_COMPLEMENT_REASONS;
+  public readonly retakableDocuments = KYC_RETAKABLE_DOCUMENTS;
   public readonly levelLabel = kycApprovalLevelLabel;
   public readonly decisionMeta = kycApprovalDecisionMeta;
 
@@ -186,6 +198,23 @@ export class KycApprovalDecision implements OnInit {
     return next ? kycApprovalLevelLabel(next) : null;
   });
 
+  /**
+   * Dossier déposé par le client depuis son téléphone (KRM-F-08). Pilote le bandeau de tête et le
+   * choix des pièces à reprendre : les deux n'ont de sens que là.
+   */
+  public readonly isRemote = computed(() => this.file()?.channel === 'RemoteSelfService');
+
+  /** Coché/décoché par la liste des pièces à reprendre. */
+  public toggleRetake(kind: string, checked: boolean): void {
+    const current = this.model().retakeDocuments ?? [];
+    const next = checked ? [...new Set([...current, kind])] : current.filter((k) => k !== kind);
+    this.model.update((m) => ({ ...m, retakeDocuments: next }) as DecisionFormModel);
+  }
+
+  public isRetakeSelected(kind: string): boolean {
+    return (this.model().retakeDocuments ?? []).includes(kind);
+  }
+
   ngOnInit(): void {
     this._load();
   }
@@ -253,9 +282,16 @@ export class KycApprovalDecision implements OnInit {
           ? `${reasonLabel} — ${value.comment.trim()}`
           : value.comment.trim() || null;
 
+      // Seulement sur un complément, et seulement pour un dossier à distance : c'est la portée du
+      // nouveau lien envoyé au client. Le serveur refuse une pièce que la politique du produit ne
+      // collecte pas, donc une liste vide veut dire « tout le parcours à refaire » — ce qui est la
+      // lecture qui ne peut pas bloquer le client.
+      const retake =
+        action === 'complement' && this.isRemote() ? (value.retakeDocuments ?? []) : null;
+
       this.isDeciding.set(true);
       const result = await firstValueFrom(
-        this._facade.decide(this.kycFileId(), level, decision, comment).pipe(
+        this._facade.decide(this.kycFileId(), level, decision, comment, retake).pipe(
           catchError((error: HttpErrorResponse) => {
             this._snackbar.error('Décision refusée', this._decisionError(error));
             this.isDeciding.set(false);

@@ -85,6 +85,15 @@ function urlIncludeNotSecuredPaths(url: string): boolean {
     'auth/refresh-token',
     'webforms-generated',
     'assets/',
+    // KRM-F-02 : le parcours KYC à distance du client.
+    //
+    // Exclu pour deux raisons, et la seconde est la vraie. D'abord le jeton du back-office n'y a
+    // rien à faire : le serveur le refuse (clé et audience dédiées), et l'envoyer ferait porter un
+    // jeton d'employé par un appareil qui n'est pas le sien. Ensuite le 401 : un client dont la
+    // session de 20 minutes expire déclencherait ici la bascule `handle401`, donc un
+    // `refreshAccessToken()` puis un `logout()` — c'est-à-dire la déconnexion de l'agent qui
+    // travaille dans un autre onglet du même navigateur, à cause de la session d'un client.
+    'public/kyc/',
   ];
   return publicPaths.some((path) => url.includes(path));
 }

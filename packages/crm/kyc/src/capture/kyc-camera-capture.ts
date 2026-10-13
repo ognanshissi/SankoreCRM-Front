@@ -25,11 +25,28 @@ export type KycCameraState = 'idle' | 'starting' | 'live' | 'captured' | 'error'
 
 export interface KycCameraFailure {
   title: string;
-  /** Formulé pour un agent : ce qu'il doit faire, pas le nom de l'exception. */
+  /** Formulé pour celui qui lit : ce qu'il doit faire, pas le nom de l'exception. */
   message: string;
   /** Vrai quand réessayer la caméra a une chance d'aboutir. */
   retryable: boolean;
 }
+
+/**
+ * Qui tient l'appareil (KRM-F-06).
+ *
+ * Ce n'est pas un drapeau de style : les consignes de déblocage de la caméra ne sont pas
+ * les mêmes selon le poste. Un agent est devant un navigateur de bureau, il a un cadenas
+ * à gauche de la barre d'adresse et peut brancher une webcam ; un client est sur un
+ * téléphone, où ces deux phrases ne veulent rien dire et où la permission se redonne dans
+ * les réglages du système. Le message « branchez une webcam » servi à un client est un
+ * appel au support.
+ *
+ * Tout le reste — caméra avant ou arrière, repère de cadrage, libellé du déclencheur,
+ * consigne — reste porté par les entrées dédiées : l'appelant les connaît mieux que ce
+ * composant, et les dériver de l'audience aurait ajouté une indirection pour choisir
+ * entre des valeurs que l'appelant passe déjà.
+ */
+export type KycCameraAudience = 'agent' | 'client';
 
 /**
  * Les noms d'erreur de `getUserMedia` sont normalisés mais pas tous implémentés de la même façon :
@@ -81,6 +98,37 @@ const CAMERA_FAILURES: Record<string, KycCameraFailure> = {
   },
 };
 
+/**
+ * Les messages qui changent pour un client sur téléphone. Les autres
+ * (`OverconstrainedError`, `SecurityError`, `unsupported`, `unknown`) disent déjà la même
+ * chose sur les deux postes et ne sont pas redéfinis — un dictionnaire complet
+ * obligerait à maintenir deux fois des phrases identiques.
+ */
+const CLIENT_CAMERA_FAILURES: Record<string, KycCameraFailure> = {
+  NotAllowedError: {
+    title: 'Accès à la caméra refusé',
+    message:
+      "Votre téléphone n'autorise pas la caméra pour cette page. Autorisez-la dans les "
+      + 'réglages de votre navigateur, puis réessayez. Vous pouvez aussi choisir une photo '
+      + 'déjà prise dans votre galerie.',
+    retryable: true,
+  },
+  NotFoundError: {
+    title: 'Aucune caméra disponible',
+    message:
+      "Cet appareil n'expose aucune caméra. Choisissez une photo déjà prise dans votre "
+      + 'galerie.',
+    retryable: false,
+  },
+  NotReadableError: {
+    title: 'Caméra occupée',
+    message:
+      'Une autre application utilise la caméra. Fermez-la, puis réessayez — ou choisissez '
+      + 'une photo déjà prise.',
+    retryable: true,
+  },
+};
+
 const LEGACY_ERROR_NAMES: Record<string, string> = {
   PermissionDeniedError: 'NotAllowedError',
   PermissionDismissedError: 'NotAllowedError',
@@ -105,6 +153,16 @@ const LEGACY_ERROR_NAMES: Record<string, string> = {
 export class KycCameraCapture implements OnDestroy {
   public readonly facingMode = input<KycCameraFacing>('environment');
   public readonly guide = input<KycCameraGuide>('id-card');
+
+  /**
+   * Qui tient l'appareil (KRM-F-06). Pilote les consignes de déblocage de la caméra, et
+   * rien d'autre — voir <see cref="KycCameraAudience"/> pour ce qui reste aux entrées
+   * dédiées.
+   *
+   * `agent` par défaut : c'est l'usage existant, et un défaut qui change le comportement
+   * des écrans déjà en place n'est pas un défaut.
+   */
+  public readonly audience = input<KycCameraAudience>('agent');
 
   /**
    * Largeur maximale de l'image produite. 1600 px est un plancher, pas un confort d'affichage :
@@ -259,7 +317,14 @@ export class KycCameraCapture implements OnDestroy {
 
   private _fail(key: string): void {
     this._releaseStream();
-    this.failure.set(CAMERA_FAILURES[key] ?? CAMERA_FAILURES['unknown']);
+    // Le dictionnaire client ne redéfinit que ce qui diffère : on retombe sur le
+    // dictionnaire de référence pour tout le reste.
+    const clientVariant =
+      this.audience() === 'client' ? CLIENT_CAMERA_FAILURES[key] : undefined;
+
+    this.failure.set(
+      clientVariant ?? CAMERA_FAILURES[key] ?? CAMERA_FAILURES['unknown'],
+    );
     this.state.set('error');
   }
 

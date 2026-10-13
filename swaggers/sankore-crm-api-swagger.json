@@ -9835,6 +9835,533 @@
         }
       }
     },
+    "/api/v1/kyc-files/auto-approval-controls": {
+      "get": {
+        "tags": [
+          "KYC"
+        ],
+        "summary": "The sampled automatic KYC approvals awaiting a compliance control",
+        "description": "Server-side paging, oldest first — a compliance queue is a backlog and the row that has waited longest is the most overdue. Filterable on status (Pending, Compliant, NonCompliant); pendingCount counts the whole queue rather than the page. Carries no score, no flag and no field read on a document: the officer opens the file for those. NOT narrowed by the agency perimeter, unlike the other KYC lists — the control is about the institution's whole exposure, and the permission is what bounds it. Requires kyc:auto-approval:control.",
+        "operationId": "ListKycAutoApprovalControls",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KycAutoApprovalControlPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        }
+      }
+    },
+    "/api/v1/kyc-files/auto-approval-controls/{controlId}/finding": {
+      "post": {
+        "tags": [
+          "KYC"
+        ],
+        "summary": "Record the compliance finding on a sampled automatic approval",
+        "description": "Once per control: a recorded finding is evidence that a control was performed, and re-recording it would rewrite who found what. A non-compliant verdict requires a finding and opens an event-driven review on the file — the response carries its id, or null when the verdict stands but the review could not be scheduled. The file's responsible agent cannot control its own automatic approval. Requires kyc:auto-approval:control.",
+        "operationId": "RecordKycAutoApprovalControl",
+        "parameters": [
+          {
+            "name": "controlId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecordKycAutoApprovalControlRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecordKycAutoApprovalControlResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "409": {
+            "description": "Conflict"
+          }
+        }
+      }
+    },
+    "/api/v1/public/kyc/link/status": {
+      "post": {
+        "tags": [
+          "KYC public"
+        ],
+        "summary": "Whether a remote-collection link can still be used",
+        "description": "Anonymous, rate-limited. POST and not GET so the token never reaches a query string, which would put it in access logs and Referer headers. Answers Usable, Expired, Consumed, Revoked, Locked, FileClosed or Unknown — and nothing about the customer. Marks the link as opened the first time it is called. A token presented on another tenant's domain answers 403.",
+        "operationId": "GetKycRemoteLinkStatus",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/KycLinkStatusRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KycLinkStatusResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          }
+        }
+      }
+    },
+    "/api/v1/public/kyc/link/identify": {
+      "post": {
+        "tags": [
+          "KYC public"
+        ],
+        "summary": "Exchange a link, a client number and a date of birth for a session",
+        "description": "Anonymous, rate-limited. Every failure answers 401 with the single code KYC_REMOTE_IDENTIFICATION_FAILED and no indication of which field was wrong. The link locks for good after the tenant's remote-max-identify-attempts, and a successful identification resets the counter. The session is a JWT with its own key and audience, accepted nowhere but under /api/v1/public/kyc/session.",
+        "operationId": "IdentifyKycRemoteCustomer",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/KycIdentifyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KycIdentifyResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "423": {
+            "description": "Locked"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          }
+        }
+      }
+    },
+    "/api/v1/public/kyc/link/otp": {
+      "post": {
+        "tags": [
+          "KYC public"
+        ],
+        "summary": "Exchange a link and an SMS code for a session",
+        "description": "Anonymous, rate-limited. Only reachable on a tenant that requires the second factor (remote-otp) and only after a successful identification. Every failure answers 401 with the single code KYC_REMOTE_OTP_INVALID — wrong, stale and out of tries are not told apart, because that would say whether a code is currently live. Three wrong tries exhaust the code; asking for a new one resets that count and never resets the per-link identification counter.",
+        "operationId": "VerifyKycRemoteOtp",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/KycOtpRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KycIdentifyResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "423": {
+            "description": "Locked"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          }
+        }
+      }
+    },
+    "/api/v1/public/kyc/link/otp/resend": {
+      "post": {
+        "tags": [
+          "KYC public"
+        ],
+        "summary": "Send the SMS code again",
+        "description": "Anonymous, rate-limited. Refused with KYC_REMOTE_OTP_TOO_SOON while the previous code is recent, so a retry loop cannot bill a tenant for a message a second. A new code resets the three-try count on the code and never resets the per-link identification counter.",
+        "operationId": "ResendKycRemoteOtp",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/KycOtpResendRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          },
+          "503": {
+            "description": "Service Unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/public/kyc/session": {
+      "get": {
+        "tags": [
+          "KYC public",
+          "KYC public"
+        ],
+        "summary": "What the customer still has to do",
+        "description": "The identity documents this product accepts, the documents it requires, what has already been uploaded, and how many retakes are left per document. Carries the consent text and its version. No identity data of any kind.",
+        "operationId": "GetKycRemoteSession",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KycSessionResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "409": {
+            "description": "Conflict"
+          }
+        }
+      }
+    },
+    "/api/v1/public/kyc/session/consent": {
+      "post": {
+        "tags": [
+          "KYC public",
+          "KYC public"
+        ],
+        "summary": "Record the customer's consent to biometric processing",
+        "description": "Mandatory before any upload. The version of the text shown must be the current one — a page loaded before a deployment is sent a reload rather than having its agreement recorded against wording it never displayed. Recording it twice does not move the timestamp.",
+        "operationId": "GiveKycRemoteConsent",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/KycConsentRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "409": {
+            "description": "Conflict"
+          }
+        }
+      }
+    },
+    "/api/v1/public/kyc/session/documents": {
+      "post": {
+        "tags": [
+          "KYC public",
+          "KYC public"
+        ],
+        "summary": "Send one photograph and get an immediate quality verdict",
+        "description": "multipart/form-data. `kind` is the document being sent and `documentType` the identity document the customer chose, required for the front and the back. A photograph the service cannot read is REFUSED with the causes — blurred, under-exposed, glare — and does not count as uploaded, so the customer retakes it rather than discovering at the end that their file is unreadable. Past the tenant's retake budget the upload is accepted anyway and flagged for the validator: a customer whose camera the service simply dislikes must not be stranded. Nothing the OCR read is ever returned.",
+        "operationId": "UploadKycRemoteDocument",
+        "parameters": [
+          {
+            "name": "kind",
+            "in": "query",
+            "description": "One of: IdentityDocumentFront, IdentityDocumentBack, Selfie, ProofOfAddress",
+            "required": true,
+            "schema": {
+              "enum": [
+                "IdentityDocumentFront",
+                "IdentityDocumentBack",
+                "Selfie",
+                "ProofOfAddress"
+              ],
+              "type": "string",
+              "description": "One of: IdentityDocumentFront, IdentityDocumentBack, Selfie, ProofOfAddress"
+            }
+          },
+          {
+            "name": "documentType",
+            "in": "query",
+            "description": "One of: Cni, Passport, Cedeao, Consulaire",
+            "schema": {
+              "enum": [
+                "Cni",
+                "Passport",
+                "Cedeao",
+                "Consulaire"
+              ],
+              "type": "string",
+              "description": "One of: Cni, Passport, Cedeao, Consulaire"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "required": [
+                  "file"
+                ],
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                }
+              },
+              "encoding": {
+                "file": {
+                  "style": "form"
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KycUploadResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KycUploadResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "409": {
+            "description": "Conflict"
+          }
+        }
+      }
+    },
+    "/api/v1/public/kyc/session/documents/{kind}": {
+      "delete": {
+        "tags": [
+          "KYC public",
+          "KYC public"
+        ],
+        "summary": "Drop a photograph so it can be retaken",
+        "description": "Before submission only. Removes the encrypted object and its registry row so the recap screen shows the document as missing again.",
+        "operationId": "DeleteKycRemoteDocument",
+        "parameters": [
+          {
+            "name": "kind",
+            "in": "path",
+            "description": "One of: IdentityDocumentFront, IdentityDocumentBack, Selfie, ProofOfAddress",
+            "required": true,
+            "schema": {
+              "enum": [
+                "IdentityDocumentFront",
+                "IdentityDocumentBack",
+                "Selfie",
+                "ProofOfAddress"
+              ],
+              "type": "string",
+              "description": "One of: IdentityDocumentFront, IdentityDocumentBack, Selfie, ProofOfAddress"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "409": {
+            "description": "Conflict"
+          }
+        }
+      }
+    },
+    "/api/v1/public/kyc/session/submit": {
+      "post": {
+        "tags": [
+          "KYC public",
+          "KYC public"
+        ],
+        "summary": "Send the file for verification",
+        "description": "Refused with the list of what is missing when a required document is absent. Consumes the link, ends the session, marks the file as remotely self-collected and runs the verification under the SYSTEM account — so no agent is recorded as having produced this evidence, which is what leaves every agent free to decide on it. The response is the same whatever the product's validation mode: the customer is told their file was sent, never how it will be judged.",
+        "operationId": "SubmitKycRemoteSession",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KycSubmitResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KycSubmitRefusal"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "409": {
+            "description": "Conflict"
+          }
+        }
+      }
+    },
     "/api/v1/kyc-settings": {
       "get": {
         "tags": [
@@ -26743,10 +27270,11 @@
               "MobileAgent",
               "Web",
               "Import",
-              "LeadConversion"
+              "LeadConversion",
+              "RemoteSelfService"
             ],
             "type": "string",
-            "description": "One of: Agency, MobileAgent, Web, Import, LeadConversion",
+            "description": "One of: Agency, MobileAgent, Web, Import, LeadConversion, RemoteSelfService",
             "nullable": true
           },
           "vigilanceLevel": {
@@ -28158,10 +28686,11 @@
               "Agent",
               "BranchManager",
               "ComplianceOfficer",
-              "GeneralManagement"
+              "GeneralManagement",
+              "Automatic"
             ],
             "type": "string",
-            "description": "One of: Agent, BranchManager, ComplianceOfficer, GeneralManagement"
+            "description": "One of: Agent, BranchManager, ComplianceOfficer, GeneralManagement, Automatic"
           },
           "decision": {
             "enum": [
@@ -28175,6 +28704,20 @@
           },
           "comment": {
             "type": "string",
+            "nullable": true
+          },
+          "requestedDocuments": {
+            "type": "array",
+            "items": {
+              "enum": [
+                "IdentityDocumentFront",
+                "IdentityDocumentBack",
+                "Selfie",
+                "ProofOfAddress"
+              ],
+              "type": "string",
+              "description": "One of: IdentityDocumentFront, IdentityDocumentBack, Selfie, ProofOfAddress"
+            },
             "nullable": true
           }
         },
@@ -31157,6 +31700,105 @@
         },
         "additionalProperties": false
       },
+      "KycAutoApprovalControlItem": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kycFileId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "customerId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "customerName": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "nullable": true
+          },
+          "grantedTier": {
+            "type": "string",
+            "nullable": true
+          },
+          "policyVersion": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "sampledAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "reviewedBy": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "reviewedByName": {
+            "type": "string",
+            "nullable": true
+          },
+          "reviewedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "finding": {
+            "type": "string",
+            "nullable": true
+          },
+          "raisedReviewId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "routingReason": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "KycAutoApprovalControlPage": {
+        "type": "object",
+        "properties": {
+          "rows": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/KycAutoApprovalControlItem"
+            },
+            "nullable": true
+          },
+          "totalCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "page": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pendingCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalPages": {
+            "type": "integer",
+            "format": "int32",
+            "readOnly": true
+          }
+        },
+        "additionalProperties": false
+      },
       "KycCapsDto": {
         "type": "object",
         "properties": {
@@ -31224,6 +31866,16 @@
             "nullable": true
           },
           "unavailableReason": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "KycConsentRequest": {
+        "type": "object",
+        "properties": {
+          "textVersion": {
             "type": "string",
             "nullable": true
           }
@@ -31426,6 +32078,45 @@
           "workflowStatus": {
             "type": "string",
             "nullable": true
+          },
+          "productLineId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "responsibleAgentId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "validationRoute": {
+            "type": "string",
+            "nullable": true
+          },
+          "routingReason": {
+            "type": "string",
+            "nullable": true
+          },
+          "routedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "consentGivenAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "consentTextVersion": {
+            "type": "string",
+            "nullable": true
+          },
+          "excessiveQualityRetries": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -31521,6 +32212,42 @@
         },
         "additionalProperties": false
       },
+      "KycIdentifyRequest": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string",
+            "nullable": true
+          },
+          "clientNumber": {
+            "type": "string",
+            "nullable": true
+          },
+          "birthDate": {
+            "type": "string",
+            "format": "date",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "KycIdentifyResponse": {
+        "type": "object",
+        "properties": {
+          "sessionToken": {
+            "type": "string",
+            "nullable": true
+          },
+          "expiresInSeconds": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "otpRequired": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
       "KycIdentityDocumentDto": {
         "type": "object",
         "properties": {
@@ -31581,6 +32308,31 @@
         },
         "additionalProperties": false
       },
+      "KycLinkStatusRequest": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "KycLinkStatusResponse": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "nullable": true
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "KycMrzDto": {
         "type": "object",
         "properties": {
@@ -31596,6 +32348,30 @@
             "additionalProperties": {
               "type": "string"
             },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "KycOtpRequest": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string",
+            "nullable": true
+          },
+          "code": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "KycOtpResendRequest": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string",
             "nullable": true
           }
         },
@@ -31759,6 +32535,67 @@
         },
         "additionalProperties": false
       },
+      "KycSessionResponse": {
+        "type": "object",
+        "properties": {
+          "allowedDocumentTypes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "requiredDocuments": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "uploadedDocuments": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "missingDocuments": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "chosenDocumentType": {
+            "type": "string",
+            "nullable": true
+          },
+          "consentGiven": {
+            "type": "boolean"
+          },
+          "consentTextVersion": {
+            "type": "string",
+            "nullable": true
+          },
+          "consentText": {
+            "type": "string",
+            "nullable": true
+          },
+          "retriesRemaining": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "nullable": true
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false
+      },
       "KycSettingDto": {
         "type": "object",
         "properties": {
@@ -31794,6 +32631,60 @@
             "type": "string",
             "format": "uuid",
             "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "KycSubmitRefusal": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "string",
+            "nullable": true
+          },
+          "missingDocuments": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "KycSubmitResponse": {
+        "type": "object",
+        "properties": {
+          "submitted": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "KycUploadResponse": {
+        "type": "object",
+        "properties": {
+          "accepted": {
+            "type": "boolean"
+          },
+          "kind": {
+            "type": "string",
+            "nullable": true
+          },
+          "qualityCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "qualityCauses": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "retriesRemaining": {
+            "type": "integer",
+            "format": "int32"
           }
         },
         "additionalProperties": false
@@ -36673,6 +37564,42 @@
           "consentId": {
             "type": "string",
             "format": "uuid"
+          }
+        },
+        "additionalProperties": false
+      },
+      "RecordKycAutoApprovalControlRequest": {
+        "type": "object",
+        "properties": {
+          "compliant": {
+            "type": "boolean"
+          },
+          "finding": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "RecordKycAutoApprovalControlResult": {
+        "type": "object",
+        "properties": {
+          "controlId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kycFileId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "type": "string",
+            "nullable": true
+          },
+          "raisedReviewId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
           }
         },
         "additionalProperties": false

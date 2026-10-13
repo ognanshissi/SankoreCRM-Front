@@ -9,6 +9,14 @@
 } @else {
   <div class="flex flex-col gap-4">
 
+    <!--
+      KRM-F-08 : en TÊTE, avant même le statut. Un validateur qui ouvre un dossier à distance lit
+      autre chose qu'un dossier de guichet — aucun employé n'a vu la pièce — et le motif pour
+      lequel la machine n'a pas tranché oriente toute sa lecture. Placé plus bas, il se lirait
+      après le score, c'est-à-dire trop tard. Le composant ne rend rien pour un dossier de guichet.
+    -->
+    <kyc-remote-decision-banner [file]="file()"></kyc-remote-decision-banner>
+
     <!-- Où en est le dossier, et qui est attendu -->
     <tas-card class="block">
       <div class="p-4 flex flex-wrap items-center justify-between gap-3">
@@ -123,6 +131,34 @@
             </div>
           } @else {
             <form [formRoot]="formSchema" class="flex flex-col gap-3 max-w-xl">
+              @if (pendingAction() === 'complement' && isRemote()) {
+                <!--
+                  Les pièces à reprendre deviennent la portée du nouveau lien envoyé au client
+                  (KRM-B-10) : il ne lui sera demandé que celles-ci, et les photos déjà envoyées
+                  pour ces natures cessent de compter. Rien de coché veut dire « tout le parcours à
+                  refaire », ce qui est la lecture qui ne peut pas bloquer le client.
+                -->
+                <fieldset class="flex flex-col gap-2">
+                  <legend class="text-sm font-medium text-slate-700 mb-1">
+                    Pièces à reprendre par le client
+                  </legend>
+                  @for (doc of retakableDocuments; track doc.value) {
+                    <label class="flex items-center gap-2 text-sm text-slate-700">
+                      <input
+                        type="checkbox"
+                        class="rounded border-slate-300"
+                        [checked]="isRetakeSelected(doc.value)"
+                        (change)="toggleRetake(doc.value, $any($event.target).checked)"
+                      />
+                      {{ doc.label }}
+                    </label>
+                  }
+                  <p class="text-xs text-slate-400">
+                    Aucune case cochée : le client refait tout le parcours.
+                  </p>
+                </fieldset>
+              }
+
               @if (pendingAction() === 'complement') {
                 <tas-form-field>
                   <tas-label>Point à compléter <span class="text-functional-error">*</span></tas-label>
@@ -148,7 +184,14 @@
                 </tas-label>
                 <input tasInput type="text" [formField]="formSchema.comment"
                   [placeholder]="pendingAction() === 'approve' ? 'Facultatif' : 'Expliquez votre décision à l’agent'" />
-                <tas-hint>Ce commentaire est lu par l'agent qui reprend le dossier.</tas-hint>
+                <tas-hint>
+                  @if (isRemote()) {
+                    Ce commentaire est lu par vos collègues. Le client reçoit un email qui liste les
+                    pièces à reprendre, sans votre commentaire ni aucun détail du contrôle.
+                  } @else {
+                    Ce commentaire est lu par l'agent qui reprend le dossier.
+                  }
+                </tas-hint>
                 @if (formSchema.comment().touched() && formSchema.comment().invalid()) {
                   <tas-error>{{ formSchema.comment().errors()[0].message }}</tas-error>
                 }

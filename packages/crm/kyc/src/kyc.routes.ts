@@ -31,6 +31,17 @@ export const kycRoutes: Route[] = [
     loadComponent: () => import('./enrolment/kyc-enrolment'),
   },
   {
+    // Avant `:id`, comme « enrolment » : le joker capturerait sinon ce segment comme un
+    // identifiant de dossier et l'écran de détail répondrait 404 sur une route valide.
+    //
+    // Sa propre permission, et pas `kyc:approve` : relire ce qu'une machine a validé est le
+    // contrôle auquel l'établissement répond devant le régulateur, pas une étape du circuit —
+    // voir KYC_AUTO_APPROVAL_CONTROL au catalogue.
+    path: 'auto-approval-controls',
+    canActivate: [hasPermissionGuard('kyc:auto-approval:control')],
+    loadComponent: () => import('./controls/kyc-auto-approval-controls'),
+  },
+  {
     path: ':id',
     canActivate: [hasPermissionGuard('kyc:read')],
     loadComponent: () => import('./detail/kyc-file-detail'),

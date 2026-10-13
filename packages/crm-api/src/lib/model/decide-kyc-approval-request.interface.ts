@@ -13,7 +13,7 @@
 
 export interface DecideKycApprovalRequest { 
     /**
-     * One of: Agent, BranchManager, ComplianceOfficer, GeneralManagement
+     * One of: Agent, BranchManager, ComplianceOfficer, GeneralManagement, Automatic
      */
     level?: DecideKycApprovalRequestLevelEnum;
     /**
@@ -21,18 +21,26 @@ export interface DecideKycApprovalRequest {
      */
     decision?: DecideKycApprovalRequestDecisionEnum;
     comment?: string | null;
+    requestedDocuments?: Array<DecideKycApprovalRequestRequestedDocumentsEnum> | null;
 }
 export enum DecideKycApprovalRequestLevelEnum {
     Agent = 'Agent',
     BranchManager = 'BranchManager',
     ComplianceOfficer = 'ComplianceOfficer',
-    GeneralManagement = 'GeneralManagement'
+    GeneralManagement = 'GeneralManagement',
+    Automatic = 'Automatic'
 };
 export enum DecideKycApprovalRequestDecisionEnum {
     Pending = 'Pending',
     Approved = 'Approved',
     Rejected = 'Rejected',
     ComplementRequired = 'ComplementRequired'
+};
+export enum DecideKycApprovalRequestRequestedDocumentsEnum {
+    IdentityDocumentFront = 'IdentityDocumentFront',
+    IdentityDocumentBack = 'IdentityDocumentBack',
+    Selfie = 'Selfie',
+    ProofOfAddress = 'ProofOfAddress'
 };
 
 

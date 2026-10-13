@@ -234,6 +234,11 @@ const APPROVAL_LEVEL_LABELS: Record<string, string> = {
   Agent: 'Agent',
   BranchManager: "Chef d'agence",
   ComplianceOfficer: 'Responsable conformité',
+  GeneralManagement: 'Direction générale',
+  // KRM-B-08 : le niveau « Automatic » n'est pas un échelon du circuit, c'est l'absence
+  // d'échelon — le libellé doit donc dire « automatiquement » et non nommer un validateur, sinon
+  // l'historique laisse croire qu'une personne a signé.
+  Automatic: 'Validé automatiquement',
 };
 
 export function kycApprovalLevelLabel(level: string | null | undefined): string {
@@ -308,6 +313,10 @@ const DOCUMENT_KIND_LABELS: Record<string, string> = {
   IdentityDocumentFront: "Pièce d'identité — recto",
   IdentityDocumentBack: "Pièce d'identité — verso",
   Selfie: 'Photo du visage (selfie)',
+  // Ajouté avec KRM-B-08 : c'est une pièce que le produit peut exiger, que l'article 13.6 de la
+  // CIMA exige sur une vente à distance, et qu'un validateur peut demander de reprendre. Sans
+  // libellé, l'écran de décision affichait « ProofOfAddress ».
+  ProofOfAddress: 'Justificatif de domicile',
 };
 
 export function kycDocumentKindLabel(kind: string | null | undefined): string {
@@ -469,3 +478,63 @@ export function kycRemoteUnavailableLabel(code: string | null | undefined): stri
     ?? "Aucun lien ne peut être envoyé pour ce dossier pour le moment."
   );
 }
+
+// ——————————————————————————————————————————————————————————————————————
+// Routage des dossiers à distance (KRM-B-08, affiché par KRM-F-08)
+// ——————————————————————————————————————————————————————————————————————
+
+/**
+ * Pourquoi un dossier collecté à distance arrive devant un humain.
+ *
+ * Le serveur renvoie un **code** (`KycRoutingReasons`) et jamais une phrase : il est compté dans
+ * le reporting conformité et il voyage dans l'email envoyé à l'agent. La phrase est ici, une seule
+ * fois, et c'est aussi ce qui permet de la changer sans toucher au backend.
+ *
+ * **Un code inconnu ne s'affiche jamais tel quel.** Le repli dit la seule chose qui soit vraie
+ * dans tous les cas — un humain doit regarder le dossier — au lieu de montrer
+ * « QUALITY_RETRIES_EXCEEDED » à un chef d'agence. Même règle que `kycQualityCauseLabel` côté
+ * client.
+ */
+const ROUTING_REASON_LABELS: Record<string, string> = {
+  PRODUCT_POLICY: 'Le produit souscrit demande une validation humaine.',
+  AUTO_APPROVAL_DISABLED:
+    "L'établissement n'autorise pas l'approbation sans intervention humaine.",
+  TIER_ABOVE_AUTO_LIMIT:
+    "Le niveau exigé par le produit dépasse le plafond accordé sans validation humaine.",
+  SCORE_BELOW_THRESHOLD: 'Score de confiance inférieur au seuil du produit.',
+  BLOCKING_FLAG: 'Un contrôle automatique a signalé une anomalie sur la pièce.',
+  IDENTITY_MISMATCH:
+    "Le nom, les prénoms ou la date de naissance lus sur la pièce ne correspondent pas à la fiche client.",
+  PEP: "Personne politiquement exposée : l'autorisation relève de la direction générale.",
+  HIGH_VIGILANCE: 'Vigilance renforcée ou revue en cours sur ce dossier.',
+  FACE_RETRY: "La comparaison faciale n'a pas abouti dès la première tentative.",
+  MISSING_DOCUMENT: 'Une pièce exigée par le produit manque au dossier.',
+  QUALITY_RETRIES_EXCEEDED:
+    'Le client a reprises ses photos plus de fois que le paramétrage ne le prévoit.',
+  PROOF_OF_ADDRESS_REQUIRED:
+    "Aucun justificatif de domicile accepté et récent au dossier (CIMA LBC/FT article 13.6).",
+};
+
+const ROUTING_REASON_FALLBACK =
+  'Ce dossier demande une décision humaine. Vérifiez la pièce, le selfie et le score ci-dessous.';
+
+export function kycRoutingReasonLabel(reason: string | null | undefined): string {
+  if (!reason) return ROUTING_REASON_FALLBACK;
+  return ROUTING_REASON_LABELS[reason.trim().toUpperCase()] ?? ROUTING_REASON_FALLBACK;
+}
+
+/**
+ * Les pièces qu'un validateur peut demander au client de reprendre (KRM-B-10).
+ *
+ * Les valeurs sont les noms de `KycDocumentKind` côté serveur, parce qu'elles partent telles
+ * quelles dans `DecideKycApprovalRequest.requestedDocuments` et deviennent la portée du nouveau
+ * lien. Le serveur refuse une pièce que la politique du produit ne collecte pas — l'écran propose
+ * donc la liste complète et laisse le serveur trancher, plutôt que de recopier ici une règle qui
+ * dépend du produit.
+ */
+export const KYC_RETAKABLE_DOCUMENTS = [
+  'IdentityDocumentFront',
+  'IdentityDocumentBack',
+  'Selfie',
+  'ProofOfAddress',
+].map((value) => ({ value, label: kycDocumentKindLabel(value) }));

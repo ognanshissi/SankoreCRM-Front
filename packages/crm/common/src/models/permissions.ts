@@ -187,6 +187,14 @@ export const PERMISSIONS = {
   KYC_DOCUMENT_VALIDATE: 'kyc:document:validate',
   KYC_SETTINGS_MANAGE: 'kyc:settings:manage',
   KYC_REMOTE_INVITE: 'kyc:remote-invite',
+  /**
+   * Relire l'échantillon des dossiers validés sans intervention humaine, et consigner le constat
+   * (KRM-B-11). Distinct de `kyc:approve` : un approbateur décide d'entrer en relation, celui-ci
+   * répond au régulateur du fait que l'établissement ait laissé une machine décider — donner le
+   * second à tous les porteurs du premier ferait auditer le dispositif par les personnes dont il
+   * a remplacé la signature.
+   */
+  KYC_AUTO_APPROVAL_CONTROL: 'kyc:auto-approval:control',
 
   // ——— Intégrations (core banking, assurance) ———
   //

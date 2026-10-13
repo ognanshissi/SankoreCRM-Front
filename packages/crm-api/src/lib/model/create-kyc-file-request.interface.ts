@@ -14,7 +14,7 @@
 export interface CreateKycFileRequest { 
     customerId?: string;
     /**
-     * One of: Agency, MobileAgent, Web, Import, LeadConversion
+     * One of: Agency, MobileAgent, Web, Import, LeadConversion, RemoteSelfService
      */
     channel?: CreateKycFileRequestChannelEnum | null;
     /**
@@ -27,7 +27,8 @@ export enum CreateKycFileRequestChannelEnum {
     MobileAgent = 'MobileAgent',
     Web = 'Web',
     Import = 'Import',
-    LeadConversion = 'LeadConversion'
+    LeadConversion = 'LeadConversion',
+    RemoteSelfService = 'RemoteSelfService'
 };
 export enum CreateKycFileRequestVigilanceLevelEnum {
     Low = 'Low',

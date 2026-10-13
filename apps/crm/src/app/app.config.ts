@@ -22,6 +22,7 @@ import {
   provideTenantInitializer,
   tenantInterceptor,
 } from '@sankore/crm/common';
+import { kycRemoteSessionInterceptor } from '@sankore/crm/kyc';
 import { BASE_PATH } from '@sankore/crm-api';
 import { environment } from '../environments/environment';
 import { provideHttpClient, withFetch, withInterceptors } from '@angular/common/http';
@@ -37,7 +38,19 @@ export const appConfig: ApplicationConfig = {
     provideClientHydration(withEventReplay()),
     provideBrowserGlobalErrorListeners(),
     provideRouter(appRoutes, withComponentInputBinding()),
-    provideHttpClient(withFetch(), withInterceptors([loadingInterceptor, accessTokenInterceptor, errorInterceptor, tenantInterceptor])),
+    // `kycRemoteSessionInterceptor` APRÈS `accessTokenInterceptor` : celui-ci laisse
+    // passer `public/kyc/` sans y toucher, celui-là y pose le jeton de session du client.
+    // L'ordre inverse marcherait aussi, mais le lire dans cet ordre dit ce qui se passe.
+    provideHttpClient(
+      withFetch(),
+      withInterceptors([
+        loadingInterceptor,
+        accessTokenInterceptor,
+        kycRemoteSessionInterceptor,
+        errorInterceptor,
+        tenantInterceptor,
+      ]),
+    ),
     provideTenantInitializer(),
     importProvidersFrom(TasIconRegistry),
     {

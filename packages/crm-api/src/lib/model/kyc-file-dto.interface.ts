@@ -28,5 +28,13 @@ export interface KycFileDto {
     updatedAt?: string;
     workflowInstanceId?: string | null;
     workflowStatus?: string | null;
+    productLineId?: string | null;
+    responsibleAgentId?: string | null;
+    validationRoute?: string | null;
+    routingReason?: string | null;
+    routedAt?: string | null;
+    consentGivenAt?: string | null;
+    consentTextVersion?: string | null;
+    excessiveQualityRetries?: Array<string> | null;
 }
 

@@ -37,6 +37,8 @@ import { IssueKycRemoteInvitationResponse } from '../model/issue-kyc-remote-invi
 // @ts-ignore
 import { KycApprovalCircuitDto } from '../model/kyc-approval-circuit-dto.interface';
 // @ts-ignore
+import { KycAutoApprovalControlPage } from '../model/kyc-auto-approval-control-page.interface';
+// @ts-ignore
 import { KycCapsDto } from '../model/kyc-caps-dto.interface';
 // @ts-ignore
 import { KycDocumentListDto } from '../model/kyc-document-list-dto.interface';
@@ -62,6 +64,10 @@ import { ProblemDetails } from '../model/problem-details.interface';
 import { RaiseKycReviewRequest } from '../model/raise-kyc-review-request.interface';
 // @ts-ignore
 import { RaiseKycReviewResult } from '../model/raise-kyc-review-result.interface';
+// @ts-ignore
+import { RecordKycAutoApprovalControlRequest } from '../model/record-kyc-auto-approval-control-request.interface';
+// @ts-ignore
+import { RecordKycAutoApprovalControlResult } from '../model/record-kyc-auto-approval-control-result.interface';
 // @ts-ignore
 import { ReviewKycDocumentRequest } from '../model/review-kyc-document-request.interface';
 // @ts-ignore
@@ -1003,6 +1009,87 @@ export class KYCApiService {
     }
 
     /**
+     * The sampled automatic KYC approvals awaiting a compliance control
+     * Server-side paging, oldest first — a compliance queue is a backlog and the row that has waited longest is the most overdue. Filterable on status (Pending, Compliant, NonCompliant); pendingCount counts the whole queue rather than the page. Carries no score, no flag and no field read on a document: the officer opens the file for those. NOT narrowed by the agency perimeter, unlike the other KYC lists — the control is about the institution\&#39;s whole exposure, and the permission is what bounds it. Requires kyc:auto-approval:control.
+     * @param status 
+     * @param page 
+     * @param pageSize 
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     */
+    public listKycAutoApprovalControls(status?: string, page?: number, pageSize?: number, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json' | 'application/problem+json', context?: HttpContext}): Observable<KycAutoApprovalControlPage>;
+    public listKycAutoApprovalControls(status?: string, page?: number, pageSize?: number, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json' | 'application/problem+json', context?: HttpContext}): Observable<HttpResponse<KycAutoApprovalControlPage>>;
+    public listKycAutoApprovalControls(status?: string, page?: number, pageSize?: number, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json' | 'application/problem+json', context?: HttpContext}): Observable<HttpEvent<KycAutoApprovalControlPage>>;
+    public listKycAutoApprovalControls(status?: string, page?: number, pageSize?: number, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json' | 'application/problem+json', context?: HttpContext}): Observable<any> {
+
+        let localVarQueryParameters = new HttpParams({encoder: this.encoder});
+        if (status !== undefined && status !== null) {
+          localVarQueryParameters = this.addToHttpParams(localVarQueryParameters,
+            <any>status, 'status');
+        }
+        if (page !== undefined && page !== null) {
+          localVarQueryParameters = this.addToHttpParams(localVarQueryParameters,
+            <any>page, 'page');
+        }
+        if (pageSize !== undefined && pageSize !== null) {
+          localVarQueryParameters = this.addToHttpParams(localVarQueryParameters,
+            <any>pageSize, 'pageSize');
+        }
+
+        let localVarHeaders = this.defaultHeaders;
+
+        let localVarCredential: string | undefined;
+        // authentication (BearerToken) required
+        localVarCredential = this.configuration.lookupCredential('BearerToken');
+        if (localVarCredential) {
+            localVarHeaders = localVarHeaders.set('Authorization', 'Bearer ' + localVarCredential);
+        }
+
+        let localVarHttpHeaderAcceptSelected: string | undefined = options && options.httpHeaderAccept;
+        if (localVarHttpHeaderAcceptSelected === undefined) {
+            // to determine the Accept header
+            const httpHeaderAccepts: string[] = [
+                'application/json',
+                'application/problem+json'
+            ];
+            localVarHttpHeaderAcceptSelected = this.configuration.selectHeaderAccept(httpHeaderAccepts);
+        }
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+
+        let localVarHttpContext: HttpContext | undefined = options && options.context;
+        if (localVarHttpContext === undefined) {
+            localVarHttpContext = new HttpContext();
+        }
+
+
+        let responseType_: 'text' | 'json' | 'blob' = 'json';
+        if (localVarHttpHeaderAcceptSelected) {
+            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+                responseType_ = 'text';
+            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+                responseType_ = 'json';
+            } else {
+                responseType_ = 'blob';
+            }
+        }
+
+        let localVarPath = `/api/v1/kyc-files/auto-approval-controls`;
+        return this.httpClient.request<KycAutoApprovalControlPage>('get', `${this.configuration.basePath}${localVarPath}`,
+            {
+                context: localVarHttpContext,
+                params: localVarQueryParameters,
+                responseType: <any>responseType_,
+                withCredentials: this.configuration.withCredentials,
+                headers: localVarHeaders,
+                observe: observe,
+                reportProgress: reportProgress
+            }
+        );
+    }
+
+    /**
      * List the images attached to a KYC file and their review decisions
      * Metadata only, never bytes: fetching an image is GET kyc-files/{id}/documents/{storageRef} under kyc:document:reveal, which is audited per access. Images collected before per-document review come back with a null id and decision NotReviewed — such a file was decided as a whole by the approval circuit, and no per-document verdict exists to show. Requires permission: kyc:read.
      * @param kycFileId 
@@ -1464,6 +1551,86 @@ export class KYCApiService {
             {
                 context: localVarHttpContext,
                 params: localVarQueryParameters,
+                responseType: <any>responseType_,
+                withCredentials: this.configuration.withCredentials,
+                headers: localVarHeaders,
+                observe: observe,
+                reportProgress: reportProgress
+            }
+        );
+    }
+
+    /**
+     * Record the compliance finding on a sampled automatic approval
+     * Once per control: a recorded finding is evidence that a control was performed, and re-recording it would rewrite who found what. A non-compliant verdict requires a finding and opens an event-driven review on the file — the response carries its id, or null when the verdict stands but the review could not be scheduled. The file\&#39;s responsible agent cannot control its own automatic approval. Requires kyc:auto-approval:control.
+     * @param controlId 
+     * @param recordKycAutoApprovalControlRequest 
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     */
+    public recordKycAutoApprovalControl(controlId: string, recordKycAutoApprovalControlRequest: RecordKycAutoApprovalControlRequest, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<RecordKycAutoApprovalControlResult>;
+    public recordKycAutoApprovalControl(controlId: string, recordKycAutoApprovalControlRequest: RecordKycAutoApprovalControlRequest, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<RecordKycAutoApprovalControlResult>>;
+    public recordKycAutoApprovalControl(controlId: string, recordKycAutoApprovalControlRequest: RecordKycAutoApprovalControlRequest, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<RecordKycAutoApprovalControlResult>>;
+    public recordKycAutoApprovalControl(controlId: string, recordKycAutoApprovalControlRequest: RecordKycAutoApprovalControlRequest, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
+        if (controlId === null || controlId === undefined) {
+            throw new Error('Required parameter controlId was null or undefined when calling recordKycAutoApprovalControl.');
+        }
+        if (recordKycAutoApprovalControlRequest === null || recordKycAutoApprovalControlRequest === undefined) {
+            throw new Error('Required parameter recordKycAutoApprovalControlRequest was null or undefined when calling recordKycAutoApprovalControl.');
+        }
+
+        let localVarHeaders = this.defaultHeaders;
+
+        let localVarCredential: string | undefined;
+        // authentication (BearerToken) required
+        localVarCredential = this.configuration.lookupCredential('BearerToken');
+        if (localVarCredential) {
+            localVarHeaders = localVarHeaders.set('Authorization', 'Bearer ' + localVarCredential);
+        }
+
+        let localVarHttpHeaderAcceptSelected: string | undefined = options && options.httpHeaderAccept;
+        if (localVarHttpHeaderAcceptSelected === undefined) {
+            // to determine the Accept header
+            const httpHeaderAccepts: string[] = [
+                'application/json'
+            ];
+            localVarHttpHeaderAcceptSelected = this.configuration.selectHeaderAccept(httpHeaderAccepts);
+        }
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+
+        let localVarHttpContext: HttpContext | undefined = options && options.context;
+        if (localVarHttpContext === undefined) {
+            localVarHttpContext = new HttpContext();
+        }
+
+
+        // to determine the Content-Type header
+        const consumes: string[] = [
+            'application/json'
+        ];
+        const httpContentTypeSelected: string | undefined = this.configuration.selectHeaderContentType(consumes);
+        if (httpContentTypeSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Content-Type', httpContentTypeSelected);
+        }
+
+        let responseType_: 'text' | 'json' | 'blob' = 'json';
+        if (localVarHttpHeaderAcceptSelected) {
+            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+                responseType_ = 'text';
+            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+                responseType_ = 'json';
+            } else {
+                responseType_ = 'blob';
+            }
+        }
+
+        let localVarPath = `/api/v1/kyc-files/auto-approval-controls/${this.configuration.encodeParam({name: "controlId", value: controlId, in: "path", style: "simple", explode: false, dataType: "string", dataFormat: "uuid"})}/finding`;
+        return this.httpClient.request<RecordKycAutoApprovalControlResult>('post', `${this.configuration.basePath}${localVarPath}`,
+            {
+                context: localVarHttpContext,
+                body: recordKycAutoApprovalControlRequest,
                 responseType: <any>responseType_,
                 withCredentials: this.configuration.withCredentials,
                 headers: localVarHeaders,
