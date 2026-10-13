@@ -186,6 +186,7 @@ export const PERMISSIONS = {
   KYC_DOCUMENT_REVEAL: 'kyc:document:reveal',
   KYC_DOCUMENT_VALIDATE: 'kyc:document:validate',
   KYC_SETTINGS_MANAGE: 'kyc:settings:manage',
+  KYC_REMOTE_INVITE: 'kyc:remote-invite',
 
   // ——— Intégrations (core banking, assurance) ———
   //

@@ -27,6 +27,8 @@ import { ProductDto } from '../model/product-dto.interface';
 // @ts-ignore
 import { SetBeneficiaryPolicyRequest } from '../model/set-beneficiary-policy-request.interface';
 // @ts-ignore
+import { SetKycRemotePolicyRequest } from '../model/set-kyc-remote-policy-request.interface';
+// @ts-ignore
 import { UpdateProductRequest } from '../model/update-product-request.interface';
 
 // @ts-ignore
@@ -525,6 +527,85 @@ export class ProductsApiService {
             {
                 context: localVarHttpContext,
                 body: setBeneficiaryPolicyRequest,
+                responseType: <any>responseType_,
+                withCredentials: this.configuration.withCredentials,
+                headers: localVarHeaders,
+                observe: observe,
+                reportProgress: reportProgress
+            }
+        );
+    }
+
+    /**
+     * Configure remote KYC collection and validation for a product line
+     * Decides whether converting a lead on this line sends the new customer a single-use collection link, and whether the resulting file is validated by an agent or by the machine. Automatic validation is refused unless the tenant has enabled it (KYC_AUTO_APPROVAL_ENABLED) and the required tier stays within KYC_AUTO_APPROVAL_MAX_TIER — see the compliance settings endpoint. Requires permission: product:update.
+     * @param productId 
+     * @param setKycRemotePolicyRequest 
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     */
+    public setProductKycRemotePolicy(productId: string, setKycRemotePolicyRequest: SetKycRemotePolicyRequest, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<any>;
+    public setProductKycRemotePolicy(productId: string, setKycRemotePolicyRequest: SetKycRemotePolicyRequest, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<HttpResponse<any>>;
+    public setProductKycRemotePolicy(productId: string, setKycRemotePolicyRequest: SetKycRemotePolicyRequest, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<HttpEvent<any>>;
+    public setProductKycRemotePolicy(productId: string, setKycRemotePolicyRequest: SetKycRemotePolicyRequest, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<any> {
+        if (productId === null || productId === undefined) {
+            throw new Error('Required parameter productId was null or undefined when calling setProductKycRemotePolicy.');
+        }
+        if (setKycRemotePolicyRequest === null || setKycRemotePolicyRequest === undefined) {
+            throw new Error('Required parameter setKycRemotePolicyRequest was null or undefined when calling setProductKycRemotePolicy.');
+        }
+
+        let localVarHeaders = this.defaultHeaders;
+
+        let localVarCredential: string | undefined;
+        // authentication (BearerToken) required
+        localVarCredential = this.configuration.lookupCredential('BearerToken');
+        if (localVarCredential) {
+            localVarHeaders = localVarHeaders.set('Authorization', 'Bearer ' + localVarCredential);
+        }
+
+        let localVarHttpHeaderAcceptSelected: string | undefined = options && options.httpHeaderAccept;
+        if (localVarHttpHeaderAcceptSelected === undefined) {
+            // to determine the Accept header
+            const httpHeaderAccepts: string[] = [
+            ];
+            localVarHttpHeaderAcceptSelected = this.configuration.selectHeaderAccept(httpHeaderAccepts);
+        }
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+
+        let localVarHttpContext: HttpContext | undefined = options && options.context;
+        if (localVarHttpContext === undefined) {
+            localVarHttpContext = new HttpContext();
+        }
+
+
+        // to determine the Content-Type header
+        const consumes: string[] = [
+            'application/json'
+        ];
+        const httpContentTypeSelected: string | undefined = this.configuration.selectHeaderContentType(consumes);
+        if (httpContentTypeSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Content-Type', httpContentTypeSelected);
+        }
+
+        let responseType_: 'text' | 'json' | 'blob' = 'json';
+        if (localVarHttpHeaderAcceptSelected) {
+            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+                responseType_ = 'text';
+            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+                responseType_ = 'json';
+            } else {
+                responseType_ = 'blob';
+            }
+        }
+
+        let localVarPath = `/api/v1/products/${this.configuration.encodeParam({name: "productId", value: productId, in: "path", style: "simple", explode: false, dataType: "string", dataFormat: "uuid"})}/kyc-remote-policy`;
+        return this.httpClient.request<any>('put', `${this.configuration.basePath}${localVarPath}`,
+            {
+                context: localVarHttpContext,
+                body: setKycRemotePolicyRequest,
                 responseType: <any>responseType_,
                 withCredentials: this.configuration.withCredentials,
                 headers: localVarHeaders,

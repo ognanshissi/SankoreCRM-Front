@@ -8,6 +8,7 @@ import {
   DecideKycApprovalRequestDecisionEnum,
   DecideKycApprovalRequestLevelEnum,
   DecideKycApprovalResponse,
+  IssueKycRemoteInvitationResponse,
   KYCApiService,
   KycFileListPage,
   ManuallyValidateKycFileResult,
@@ -15,6 +16,7 @@ import {
   ReviewKycDocumentResult,
   KycApprovalCircuitDto,
   KycFileDto,
+  KycRemoteInvitationListDto,
   RaiseKycReviewResult,
   RunKycVerificationRequestDocumentTypeEnum,
   RunKycVerificationResponse,
@@ -170,6 +172,50 @@ export class KycFacadeService {
   /** `POST /kyc-files/{id}/reviews` — le motif est montré à l'agent qui reprend la revue. */
   public raiseReview(kycFileId: string, reason: string): Observable<RaiseKycReviewResult> {
     return this._kycApi.raiseKycReview(kycFileId, { reason });
+  }
+
+  // ——————————————————————————————————————————————————————————————————
+  // Liens de collecte à distance (KRM-F-07)
+  // ——————————————————————————————————————————————————————————————————
+
+  /**
+   * `GET /kyc-files/{id}/remote-invitations` — les liens envoyés au client et leur avancement.
+   *
+   * La réponse ne porte **ni jeton ni empreinte** : il n'y a volontairement aucun moyen de
+   * retrouver ce qu'un lien était. L'écran dit jusqu'où le client est allé ; un agent qui veut
+   * qu'il reprenne envoie un nouveau lien.
+   *
+   * `unavailableReason` est réévalué à chaque lecture côté serveur — il disparaît dès que la cause
+   * est corrigée, ce qui est précisément pourquoi on ne le met pas en cache ici.
+   */
+  public listRemoteInvitations(kycFileId: string): Observable<KycRemoteInvitationListDto> {
+    return this._kycApi.listKycRemoteInvitations(kycFileId);
+  }
+
+  /**
+   * `POST /kyc-files/{id}/remote-invitations` — envoie ou renvoie le lien.
+   *
+   * Le serveur **révoque le lien en cours** avant d'en créer un nouveau : au plus un lien vivant
+   * par dossier, pour qu'un lien intercepté plus tôt ne vaille plus rien. L'email part tout de
+   * suite, contrairement à celui de la conversion qui attend l'email de bienvenue.
+   */
+  public issueRemoteInvitation(kycFileId: string): Observable<IssueKycRemoteInvitationResponse> {
+    return this._kycApi.issueKycRemoteInvitation(kycFileId);
+  }
+
+  /**
+   * `POST /kyc-files/{id}/remote-invitations/{invId}/revoke` — retire un lien.
+   *
+   * Le motif est obligatoire et reste sur le lien : le chemin d'accès d'un client à son propre
+   * dossier qui disparaît sans motif enregistré, c'est un appel au support que personne ne peut
+   * clore.
+   */
+  public revokeRemoteInvitation(
+    kycFileId: string,
+    invitationId: string,
+    reason: string,
+  ): Observable<unknown> {
+    return this._kycApi.revokeKycRemoteInvitation(kycFileId, invitationId, { reason });
   }
 
   /**
@@ -475,6 +521,7 @@ export class KycFacadeService {
             updatedAt: r.updatedAt ?? '',
             requiredAction: REQUIRED_ACTION_LABELS[r.requiredActionCode ?? 'NONE'] ?? null,
             awaitingMe: r.awaitingMe ?? false,
+            isRemoteCollection: r.isRemoteCollection ?? false,
           })),
           totalCount: page.totalCount ?? 0,
           awaitingMeCount: page.awaitingMeCount ?? 0,

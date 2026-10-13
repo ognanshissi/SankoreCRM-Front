@@ -317,6 +317,7 @@ model/integration-reference-dto.interface.ts
 model/internal-settings.interface.ts
 model/invitation-sent-dto.interface.ts
 model/issue-credential-request.interface.ts
+model/issue-kyc-remote-invitation-response.interface.ts
 model/kyc-approval-circuit-dto.interface.ts
 model/kyc-approval-step-dto.interface.ts
 model/kyc-caps-dto.interface.ts
@@ -329,6 +330,9 @@ model/kyc-file-list-item.interface.ts
 model/kyc-file-list-page.interface.ts
 model/kyc-identity-document-dto.interface.ts
 model/kyc-mrz-dto.interface.ts
+model/kyc-remote-invitation-dto.interface.ts
+model/kyc-remote-invitation-list-dto.interface.ts
+model/kyc-remote-policy.interface.ts
 model/kyc-setting-dto.interface.ts
 model/kyc-verification-dto.interface.ts
 model/language-factor.interface.ts
@@ -498,6 +502,7 @@ model/reveal-sensitive-field-request.interface.ts
 model/reveal-sensitive-field-result.interface.ts
 model/review-kyc-document-request.interface.ts
 model/review-kyc-document-result.interface.ts
+model/revoke-kyc-remote-invitation-request.interface.ts
 model/revoke-role-request.interface.ts
 model/role-detail-dto.interface.ts
 model/role-dto.interface.ts
@@ -533,6 +538,7 @@ model/set-beneficiary-policy-request.interface.ts
 model/set-biometry-token-request.interface.ts
 model/set-connection-secret-request.interface.ts
 model/set-intent-level-request.interface.ts
+model/set-kyc-remote-policy-request.interface.ts
 model/set-monthly-quota-command.interface.ts
 model/set-pep-status-request.interface.ts
 model/set-qualification-completeness-request.interface.ts

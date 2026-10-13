@@ -273,7 +273,23 @@
               ></tas-icon>
             }
             <div class="min-w-0">
-              <p class="font-medium text-slate-800 truncate">{{ item.customerName }}</p>
+              <div class="flex items-center gap-1.5 min-w-0">
+                <p class="font-medium text-slate-800 truncate">{{ item.customerName }}</p>
+                <!--
+                  KRM-F-07 : les pièces de ce dossier ont été envoyées par le client depuis son
+                  téléphone, pas capturées au guichet. Ce n'est pas décoratif — cela change ce que
+                  le validateur regarde et à qui il peut en parler.
+                -->
+                @if (item.isRemoteCollection) {
+                  <span
+                    class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium bg-indigo-50 text-indigo-700 shrink-0"
+                    title="Pièces déposées par le client depuis son téléphone"
+                  >
+                    <tas-icon iconName="feather:smartphone" style="font-size:10px"></tas-icon>
+                    À distance
+                  </span>
+                }
+              </div>
               @if (item.awaitingMe) {
                 <p class="text-xs text-primary mt-0.5">En attente de ma décision</p>
               }

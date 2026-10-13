@@ -19,8 +19,12 @@ export interface ComplianceSettingsResponse {
     fatcaForCoHolders?: boolean;
     pepEnabled?: boolean;
     pepPostMandateMonths?: number;
+    kycAutoApprovalEnabled?: boolean;
+    kycAutoApprovalMaxTier?: string | null;
+    kycAutoApprovalSamplePct?: number;
     updatedAt?: string;
     allowedRegimes?: Array<string> | null;
     allowedRequiredAt?: Array<string> | null;
+    allowedKycTiers?: Array<string> | null;
 }
 

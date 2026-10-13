@@ -8,6 +8,8 @@ import kycRoutes from './kyc.routes';
  * client et au guichet, et de quoi afficher un statut KYC hors du module.
  */
 export { KycCapsPanel } from './caps/kyc-caps-panel';
+/** Suivi du lien de collecte à distance (KRM-F-07), posé aussi sur la fiche client de M01. */
+export { KycRemoteInvitationsPanel } from './remote/kyc-remote-invitations-panel';
 export { KycFilePreviewDrawer } from './preview/kyc-file-preview-drawer';
 export type { KycFilePreviewDrawerData } from './preview/kyc-file-preview-drawer';
 export { isKycWorkflowEntity } from './data-access/kyc-referential';

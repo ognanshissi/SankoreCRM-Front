@@ -1,0 +1,264 @@
+<!-- ——— KYC à distance (KRM-F-01) ——— -->
+<tas-card class="block">
+  <div class="p-4 border-b border-slate-100">
+    <h2 class="text-sm font-semibold text-slate-700 flex items-center gap-2">
+      <tas-icon
+        iconName="feather:smartphone"
+        class="text-slate-400"
+        style="font-size: 14px"
+      ></tas-icon>
+      KYC à distance
+    </h2>
+    <p class="text-xs text-slate-400 mt-0.5">
+      À la conversion d'un lead sur ce produit, le nouveau client reçoit un lien à
+      usage unique pour déposer ses pièces depuis son téléphone.
+    </p>
+  </div>
+
+  <form [formRoot]="formSchema" class="p-4 flex flex-col gap-5">
+    <!-- Activation -->
+    <label class="flex items-start gap-2 cursor-pointer text-sm">
+      <input
+        type="checkbox"
+        class="mt-0.5 accent-primary"
+        [formField]="formSchema.enabled"
+      />
+      <span>
+        Autoriser le dépôt des pièces à distance
+        <span class="block text-xs text-slate-400">
+          Désactivé, aucun lien n'est envoyé : les pièces sont collectées en agence.
+        </span>
+      </span>
+    </label>
+
+    @if (enabled()) {
+      <!-- Mode de validation -->
+      <fieldset class="border-t border-slate-100 pt-4">
+        <legend
+          class="text-xs font-semibold text-slate-600 uppercase tracking-wide"
+        >
+          Validation du dossier
+        </legend>
+
+        @if (complianceLoading()) {
+          <div class="flex items-center gap-2 mt-3 text-xs text-slate-500">
+            <tas-spinner size="3" class="text-primary"></tas-spinner>
+            Lecture des paramètres de conformité…
+          </div>
+        }
+
+        <div class="flex flex-col gap-2 mt-3">
+          @for (mode of validationModes; track mode.value) {
+            @let blocked = mode.value === 'Automatic' && !automaticAvailable();
+            <label
+              class="flex items-start gap-2 text-sm"
+              [class.cursor-pointer]="!blocked"
+              [class.opacity-60]="blocked"
+            >
+              <input
+                type="radio"
+                class="mt-0.5 accent-primary"
+                name="kyc-remote-validation-mode"
+                [value]="mode.value"
+                [disabled]="blocked"
+                [checked]="selectedMode() === mode.value"
+                (change)="formSchema.validationMode().value.set(mode.value)"
+              />
+              <span>
+                {{ mode.label }}
+                @if (blocked) {
+                  <span class="block text-xs text-functional-error mt-0.5">
+                    {{ automaticBlockedReason() }}
+                  </span>
+                }
+              </span>
+            </label>
+          }
+        </div>
+
+        @if (complianceFailed()) {
+          <button
+            tas-outlined-button
+            type="button"
+            class="mt-3 text-xs"
+            (click)="reloadCompliance()"
+          >
+            <tas-icon iconName="feather:refresh-cw" style="font-size: 12px"></tas-icon>
+            Relire les paramètres de conformité
+          </button>
+        }
+
+        @if (isAutomatic()) {
+          <div
+            class="flex items-start gap-3 mt-4 p-3 rounded-lg border border-amber-200 bg-amber-50"
+          >
+            <tas-icon
+              iconName="feather:alert-triangle"
+              class="text-amber-500 mt-0.5"
+              style="font-size: 16px"
+            ></tas-icon>
+            <p class="text-xs text-amber-900">
+              En mode automatique, un dossier sans anomalie est validé par le
+              système, sans passage par un agent ni par le chef d'agence. Le
+              système ne rejette jamais : au moindre doute, le dossier repart en
+              validation manuelle avec le motif.
+            </p>
+          </div>
+        }
+      </fieldset>
+
+      <!-- Niveau et score -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <tas-form-field>
+          <tas-label>Niveau KYC exigé</tas-label>
+          <tas-select
+            [options]="tiers"
+            optionLabel="label"
+            optionValue="value"
+            [formField]="formSchema.requiredTier"
+          ></tas-select>
+          <tas-hint>
+            Niveau que la collecte doit permettre d'accorder. Un crédit exige
+            généralement le niveau complet.
+          </tas-hint>
+        </tas-form-field>
+
+        <tas-form-field>
+          <tas-label>Score minimal pour une validation automatique</tas-label>
+          <!--
+            Pas de `min`/`max` natifs : Angular les refuse sur un nœud portant `[formField]`
+            (NG8022), parce que la validation appartient au schéma du formulaire — une contrainte
+            HTML à côté serait une seconde source de vérité silencieuse. Les bornes sont dans le
+            validateur et annoncées dans l'aide.
+          -->
+          <input
+            tasInput
+            type="number"
+            [formField]="formSchema.minAutoScore"
+          />
+          @if (
+            formSchema.minAutoScore().touched() &&
+            formSchema.minAutoScore().invalid()
+          ) {
+            <tas-error>
+              {{ formSchema.minAutoScore().errors()[0].message }}
+            </tas-error>
+          } @else {
+            <tas-hint>
+              Entre 50 et 100. En dessous, le dossier part en validation manuelle.
+            </tas-hint>
+          }
+        </tas-form-field>
+      </div>
+
+      <!-- Pièces acceptées -->
+      <fieldset class="border-t border-slate-100 pt-4">
+        <legend
+          class="text-xs font-semibold text-slate-600 uppercase tracking-wide"
+        >
+          Pièces d'identité acceptées
+        </legend>
+
+        <tas-form-field class="mt-3">
+          <tas-label>
+            Pièces acceptées <span class="text-functional-error">*</span>
+          </tas-label>
+          <tas-multi-select
+            [options]="documentTypes"
+            placeholder="Sélectionnez les pièces acceptées"
+            [ngModel]="selectedDocumentTypes()"
+            [ngModelOptions]="{ standalone: true }"
+            (ngModelChange)="setAllowedDocumentTypes($event)"
+          ></tas-multi-select>
+          @if (missingDocumentTypes()) {
+            <tas-error>
+              Choisissez au moins une pièce : sans elle, le client arrive sur la
+              page sans rien à sélectionner.
+            </tas-error>
+          } @else {
+            <tas-hint>
+              Seules ces pièces seront proposées au client sur la page publique.
+            </tas-hint>
+          }
+        </tas-form-field>
+
+        <!--
+          Le multi-select n'affiche ses puces qu'à partir de son modèle de
+          sélection interne, que writeValue ne remplit pas : sans ce rappel, une
+          sélection venue du serveur serait invisible.
+        -->
+        <div class="flex flex-wrap gap-1.5 mt-2" aria-live="polite">
+          @for (code of selectedDocumentTypes(); track code) {
+            <tas-tag severity="info">{{ documentTypeLabel(code) }}</tas-tag>
+          }
+        </div>
+      </fieldset>
+
+      <!-- Documents exigés en plus -->
+      <fieldset class="border-t border-slate-100 pt-4">
+        <legend
+          class="text-xs font-semibold text-slate-600 uppercase tracking-wide"
+        >
+          Documents exigés en plus
+        </legend>
+        <p class="text-xs text-slate-400 mt-1">
+          Le recto de la pièce et le selfie sont toujours demandés. Le verso dépend
+          du type de pièce choisi par le client.
+        </p>
+
+        <div class="flex flex-col gap-1.5 mt-3">
+          @for (doc of requiredDocumentOptions; track doc.value) {
+            <label class="flex items-start gap-2 cursor-pointer text-sm">
+              <input
+                type="checkbox"
+                class="mt-0.5 accent-primary"
+                [checked]="isRequiredDocument(doc.value)"
+                (change)="toggleRequiredDocument(doc.value)"
+              />
+              <span>
+                {{ doc.label }}
+                <span class="block text-xs text-slate-400">{{ doc.hint }}</span>
+              </span>
+            </label>
+          }
+        </div>
+      </fieldset>
+
+      <!-- Durée du lien -->
+      <tas-form-field class="block max-w-xs border-t border-slate-100 pt-4">
+        <tas-label>Durée de validité du lien (heures)</tas-label>
+        <input
+          tasInput
+          type="number"
+          [formField]="formSchema.linkValidityHours"
+        />
+        @if (
+          formSchema.linkValidityHours().touched() &&
+          formSchema.linkValidityHours().invalid()
+        ) {
+          <tas-error>
+            {{ formSchema.linkValidityHours().errors()[0].message }}
+          </tas-error>
+        } @else {
+          <tas-hint>72 heures par défaut, 336 au maximum.</tas-hint>
+        }
+      </tas-form-field>
+    }
+
+    @if (canUpdate()) {
+      <div class="flex justify-end border-t border-slate-100 pt-4">
+        <button
+          tas-raised-button
+          color="primary"
+          type="button"
+          [disabled]="!canSave()"
+          [isLoading]="formSchema().submitting()"
+          (click)="handleSubmit()"
+        >
+          <tas-icon iconName="feather:save" iconSize="sm"></tas-icon>
+          Enregistrer la politique
+        </button>
+      </div>
+    }
+  </form>
+</tas-card>

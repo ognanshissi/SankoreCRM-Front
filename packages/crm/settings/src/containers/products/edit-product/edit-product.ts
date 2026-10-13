@@ -27,6 +27,7 @@ import {
 } from '@sankore/crm/common';
 import { ProductParametersEditor } from '../product-parameters-editor';
 import { BeneficiaryPolicyEditor } from '../beneficiary-policy-editor';
+import { KycRemotePolicyEditor } from '../kyc-remote-policy-editor';
 
 @Component({
   selector: 'edit-product',
@@ -44,6 +45,7 @@ import { BeneficiaryPolicyEditor } from '../beneficiary-policy-editor';
     Anchor,
     ProductParametersEditor,
     BeneficiaryPolicyEditor,
+    KycRemotePolicyEditor,
   ],
   template: `
     @if (isLoading()) {
@@ -263,6 +265,13 @@ import { BeneficiaryPolicyEditor } from '../beneficiary-policy-editor';
           [canUpdate]="canUpdate()"
           (saved)="reloadProduct()"
         ></beneficiary-policy-editor>
+
+        <!-- KYC à distance (KRM-F-01) -->
+        <kyc-remote-policy-editor
+          [product]="product()"
+          [canUpdate]="canUpdate()"
+          (saved)="reloadProduct()"
+        ></kyc-remote-policy-editor>
 
         <!-- Danger zone -->
         <h2 class="text-lg font-semibold text-slate-800">Zone de danger</h2>

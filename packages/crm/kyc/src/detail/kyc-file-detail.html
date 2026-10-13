@@ -254,7 +254,21 @@
 
       <!-- ═══════════════ Pièce et selfie ═══════════════ -->
       @case ('piece') {
-        <div role="tabpanel" id="kyc-panel-piece" aria-labelledby="kyc-tab-piece">
+        <div
+          role="tabpanel"
+          id="kyc-panel-piece"
+          aria-labelledby="kyc-tab-piece"
+          class="flex flex-col gap-4"
+        >
+          <!--
+            Le suivi du lien est posé AVANT la liste des pièces (KRM-F-07) : quand un dossier
+            n'a rien reçu, la question est « le client a-t-il eu son lien ? » avant d'être
+            « quelles pièces manquent ? ».
+          -->
+          <kyc-remote-invitations-panel
+            [kycFileId]="id()"
+          ></kyc-remote-invitations-panel>
+
           <kyc-documents-panel
             [kycFileId]="id()"
             (fileChanged)="refresh()"

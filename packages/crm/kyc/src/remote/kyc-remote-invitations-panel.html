@@ -1,0 +1,208 @@
+<!-- ——— KYC à distance (KRM-F-07) ——— -->
+@if (kycFileId()) {
+  <tas-card class="block">
+    <div class="p-4 border-b border-slate-100 flex items-start justify-between gap-4">
+      <div>
+        <h2 class="text-sm font-semibold text-slate-900 flex items-center gap-2">
+          <tas-icon
+            iconName="feather:smartphone"
+            class="text-slate-400"
+            style="font-size: 14px"
+          ></tas-icon>
+          KYC à distance
+        </h2>
+        <p class="text-xs text-slate-500 mt-0.5">
+          Le lien à usage unique envoyé au client pour déposer ses pièces depuis
+          son téléphone.
+        </p>
+      </div>
+
+      <div class="flex items-center gap-2 shrink-0">
+        @if (isLoading()) {
+          <tas-spinner size="4" class="text-primary"></tas-spinner>
+        }
+        @if (canInvite() && canIssue()) {
+          <button
+            tas-outlined-button
+            color="primary"
+            type="button"
+            [disabled]="isIssuing()"
+            [isLoading]="isIssuing()"
+            (click)="issue()"
+          >
+            <tas-icon iconName="feather:send" style="font-size: 14px"></tas-icon>
+            {{ issueLabel() }}
+          </button>
+        }
+      </div>
+    </div>
+
+    <div class="p-4">
+      @if (loadFailed()) {
+        <div class="py-6 text-center">
+          <p class="text-sm text-slate-600">
+            Le suivi du lien n'a pas pu être chargé.
+          </p>
+          <button
+            tas-outlined-button
+            type="button"
+            class="mt-3"
+            (click)="reload()"
+          >
+            <tas-icon iconName="feather:refresh-cw" style="font-size: 14px"></tas-icon>
+            Réessayer
+          </button>
+        </div>
+      } @else if (isLoading() && rows().length === 0) {
+        <div class="flex justify-center py-8">
+          <tas-spinner size="8" class="text-primary"></tas-spinner>
+        </div>
+      } @else {
+        <!--
+          Le motif d'indisponibilité est affiché même quand des liens existent : un dossier qui a
+          reçu un lien hier et dont le client a perdu son email a besoin des deux informations.
+        -->
+        @if (!canIssue() && unavailableMessage()) {
+          <div
+            class="flex items-start gap-3 p-3 rounded-lg border border-amber-200 bg-amber-50"
+            [class.mb-4]="rows().length > 0"
+          >
+            <tas-icon
+              iconName="feather:info"
+              class="text-amber-500 mt-0.5"
+              style="font-size: 16px"
+            ></tas-icon>
+            <div class="text-xs">
+              <p class="font-medium text-amber-900">Aucun lien ne peut être envoyé</p>
+              <p class="text-amber-800 mt-0.5">{{ unavailableMessage() }}</p>
+            </div>
+          </div>
+        }
+
+        @if (rows().length === 0) {
+          @if (canIssue()) {
+            <div class="py-6 text-center">
+              <tas-icon
+                iconName="feather:mail"
+                class="text-slate-300 mb-2"
+                style="font-size: 24px"
+              ></tas-icon>
+              <p class="text-sm text-slate-500">
+                Aucun lien n'a encore été envoyé pour ce dossier.
+              </p>
+              @if (recipient()) {
+                <p class="text-xs text-slate-400 mt-1">
+                  Destinataire : <span class="font-mono">{{ recipient() }}</span>
+                </p>
+              }
+            </div>
+          }
+        } @else {
+          <!-- Le lien en cours -->
+          @if (current(); as link) {
+            <div class="rounded-lg border border-slate-200 p-3">
+              <div class="flex items-start justify-between gap-3 flex-wrap">
+                <div class="flex items-center gap-2 flex-wrap">
+                  <tas-tag [severity]="link.statusSeverity">{{ link.statusLabel }}</tas-tag>
+                  <span class="text-xs text-slate-500">{{ link.purposeLabel }}</span>
+                  @if (link.isSystemIssued) {
+                    <span class="text-xs text-slate-400">· envoyé à la conversion</span>
+                  } @else {
+                    <span class="text-xs text-slate-400">· envoyé par un agent</span>
+                  }
+                </div>
+
+                @if (canInvite()) {
+                  <button
+                    tas-text-button
+                    color="warn"
+                    type="button"
+                    class="text-xs"
+                    (click)="revoke(link)"
+                  >
+                    <tas-icon iconName="feather:slash" style="font-size: 12px"></tas-icon>
+                    Révoquer
+                  </button>
+                }
+              </div>
+
+              @if (link.statusHint) {
+                <p class="text-xs text-slate-500 mt-2">{{ link.statusHint }}</p>
+              }
+
+              <!-- L'avancement, étape par étape : où le client s'est arrêté -->
+              <dl
+                class="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-2 mt-3 pt-3 border-t border-slate-100"
+              >
+                <div>
+                  <dt class="text-xs text-slate-400">Envoyé</dt>
+                  <dd class="text-xs text-slate-800 tabular-nums">
+                    {{ link.sentAt ? (link.sentAt | date: 'dd/MM/yyyy à HH:mm') : '—' }}
+                  </dd>
+                </div>
+                <div>
+                  <dt class="text-xs text-slate-400">Ouvert</dt>
+                  <dd class="text-xs text-slate-800 tabular-nums">
+                    {{ link.openedAt ? (link.openedAt | date: 'dd/MM/yyyy à HH:mm') : '—' }}
+                  </dd>
+                </div>
+                <div>
+                  <dt class="text-xs text-slate-400">Identifié</dt>
+                  <dd class="text-xs text-slate-800 tabular-nums">
+                    {{ link.identifiedAt ? (link.identifiedAt | date: 'dd/MM/yyyy à HH:mm') : '—' }}
+                  </dd>
+                </div>
+                <div>
+                  <dt class="text-xs text-slate-400">Transmis</dt>
+                  <dd class="text-xs text-slate-800 tabular-nums">
+                    {{ link.submittedAt ? (link.submittedAt | date: 'dd/MM/yyyy à HH:mm') : '—' }}
+                  </dd>
+                </div>
+                <div>
+                  <dt class="text-xs text-slate-400">Expire</dt>
+                  <dd class="text-xs text-slate-800 tabular-nums">
+                    {{ link.expiresAt ? (link.expiresAt | date: 'dd/MM/yyyy à HH:mm') : '—' }}
+                  </dd>
+                </div>
+                @if (link.failedAttempts > 0) {
+                  <div>
+                    <dt class="text-xs text-slate-400">Échecs d'identification</dt>
+                    <dd class="text-xs text-functional-error tabular-nums">
+                      {{ link.failedAttempts }}
+                    </dd>
+                  </div>
+                }
+              </dl>
+            </div>
+          }
+
+          <!-- Les liens précédents -->
+          @if (past().length > 0) {
+            <p
+              class="text-xs font-medium text-slate-500 mt-4 mb-1"
+              [class.mt-4]="current() !== null"
+            >
+              Liens précédents
+            </p>
+            <ul class="divide-y divide-slate-100">
+              @for (link of past(); track link.id) {
+                <li class="py-2.5 flex flex-col gap-1">
+                  <div class="flex items-center gap-2 flex-wrap">
+                    <tas-tag [severity]="link.statusSeverity">{{ link.statusLabel }}</tas-tag>
+                    <span class="text-xs text-slate-500">{{ link.purposeLabel }}</span>
+                    <span class="text-xs text-slate-400 tabular-nums">
+                      {{ link.createdAt ? (link.createdAt | date: 'dd/MM/yyyy') : '' }}
+                    </span>
+                  </div>
+                  @if (link.revokeReason) {
+                    <p class="text-xs text-slate-600">{{ link.revokeReason }}</p>
+                  }
+                </li>
+              }
+            </ul>
+          }
+        }
+      }
+    </div>
+  </tas-card>
+}

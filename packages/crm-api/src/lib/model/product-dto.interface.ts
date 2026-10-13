@@ -9,6 +9,7 @@
  * https://openapi-generator.tech
  * Do not edit the class manually.
  */
+import { KycRemotePolicy } from './kyc-remote-policy.interface';
 import { BeneficiaryPolicy } from './beneficiary-policy.interface';
 
 
@@ -29,6 +30,7 @@ export interface ProductDto {
     businessPlatformName?: string | null;
     beneficiaryPolicy?: BeneficiaryPolicy;
     allowMultipleHoldings?: boolean;
+    kycRemotePolicy?: KycRemotePolicy;
 }
 export enum ProductDtoCategoryEnum {
     Loan = 'Loan',

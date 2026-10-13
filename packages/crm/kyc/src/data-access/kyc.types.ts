@@ -200,6 +200,16 @@ export interface KycDashboardRow {
   requiredAction: string | null;
   /** Le dossier attend une décision de l'utilisateur connecté : il remonte en tête. */
   awaitingMe: boolean;
+  /**
+   * Un lien de collecte à distance a été envoyé pour ce dossier (KRM-F-07).
+   *
+   * « A été », et non « est actif » : un lien envoyé, utilisé puis consommé est le cas le plus
+   * « à distance » qui existe, et un badge calé sur un lien actif disparaîtrait précisément au
+   * moment où le dossier arrive chez le validateur. Ce n'est pas lu sur le canal non plus — le
+   * canal ne devient « à distance » qu'à la soumission, donc un dossier qui attend encore le
+   * client ne porterait aucun badge.
+   */
+  isRemoteCollection: boolean;
 }
 
 export interface KycDashboardFilters {

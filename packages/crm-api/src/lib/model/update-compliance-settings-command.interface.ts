@@ -19,6 +19,9 @@ export interface UpdateComplianceSettingsCommand {
     fatcaForCoHolders?: boolean;
     pepEnabled?: boolean;
     pepPostMandateMonths?: number;
+    kycAutoApprovalEnabled?: boolean;
+    kycAutoApprovalMaxTier?: string | null;
+    kycAutoApprovalSamplePct?: number;
     readonly resourceType?: string | null;
     readonly resourceId?: string | null;
 }

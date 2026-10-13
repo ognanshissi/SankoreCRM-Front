@@ -359,3 +359,113 @@ export function kycDocumentDecisionMeta(decision: string | null | undefined) {
 export function isKycWorkflowEntity(entityType: string | null | undefined): boolean {
   return (entityType ?? '').toLowerCase().includes('kyc');
 }
+
+// ——————————————————————————————————————————————————————————————————————
+// Liens de collecte à distance (KRM-F-07)
+// ——————————————————————————————————————————————————————————————————————
+
+export interface KycRemoteInvitationStatusMeta {
+  label: string;
+  severity: Severity;
+  /** Ce que l'agent peut faire, en une phrase. Vide quand il n'y a rien à faire. */
+  hint: string;
+}
+
+/**
+ * Les huit états d'un lien.
+ *
+ * Huit et pas deux, parce qu'un agent qui regarde un client qui n'a pas fini a besoin de savoir
+ * **où** il s'est arrêté : un lien que personne n'a ouvert est un problème de délivrabilité, un
+ * lien ouvert mais jamais identifié est un client qui n'a pas son email de bienvenue sous les yeux,
+ * et un lien verrouillé après cinq essais est quelqu'un d'autre qui le détient. Trois situations,
+ * trois actions différentes — c'est tout l'intérêt de ne pas afficher « en cours ».
+ */
+const REMOTE_INVITATION_STATUS_META: Record<string, KycRemoteInvitationStatusMeta> = {
+  Scheduled: {
+    label: 'Programmé',
+    severity: 'neutral',
+    hint: "L'email part dans quelques minutes, après celui de bienvenue qui porte le numéro client.",
+  },
+  Sent: {
+    label: 'Envoyé',
+    severity: 'info',
+    hint: "Remis au service d'envoi. Rien ici ne prouve la réception.",
+  },
+  Opened: {
+    label: 'Ouvert',
+    severity: 'info',
+    hint: 'Le lien a été ouvert, sans identification pour le moment.',
+  },
+  Identified: {
+    label: 'Identifié',
+    severity: 'info',
+    hint: 'Le client est entré dans son dossier et dépose ses pièces.',
+  },
+  Submitted: {
+    label: 'Dossier transmis',
+    severity: 'success',
+    hint: 'Les pièces sont arrivées : le lien est consommé.',
+  },
+  Expired: {
+    label: 'Expiré',
+    severity: 'warning',
+    hint: 'La durée de validité est écoulée. Renvoyez un lien ou proposez un passage en agence.',
+  },
+  Revoked: {
+    label: 'Révoqué',
+    severity: 'neutral',
+    hint: 'Ce lien a été retiré ; le motif est indiqué.',
+  },
+  Locked: {
+    label: 'Verrouillé',
+    severity: 'warning',
+    hint: "Trop d'échecs d'identification. Seul un nouveau lien remet le client en route.",
+  },
+};
+
+export function kycRemoteInvitationStatusMeta(
+  status: string | null | undefined,
+): KycRemoteInvitationStatusMeta {
+  return (
+    REMOTE_INVITATION_STATUS_META[status ?? ''] ?? {
+      label: status ?? '—',
+      severity: 'neutral' as Severity,
+      hint: '',
+    }
+  );
+}
+
+const REMOTE_INVITATION_PURPOSE_LABELS: Record<string, string> = {
+  Initial: 'Collecte initiale',
+  Complement: 'Complément demandé',
+};
+
+export function kycRemoteInvitationPurposeLabel(purpose: string | null | undefined): string {
+  return REMOTE_INVITATION_PURPOSE_LABELS[purpose ?? ''] ?? purpose ?? '—';
+}
+
+/**
+ * Pourquoi aucun lien ne peut être envoyé.
+ *
+ * Le serveur réévalue ces trois causes à chaque lecture plutôt que de les stocker : elles changent
+ * toutes seules — un agent ajoute l'email manquant, un administrateur active le KYC à distance sur
+ * le produit, le dossier avance. Un motif figé continuerait d'annoncer « pas d'email » des minutes
+ * après qu'on en a saisi un.
+ */
+const REMOTE_INVITATION_UNAVAILABLE_LABELS: Record<string, string> = {
+  KYC_REMOTE_INVITATION_NO_EMAIL:
+    "Ce client n'a pas d'adresse email : ajoutez-en une sur sa fiche pour pouvoir lui envoyer un lien.",
+  KYC_REMOTE_INVITATION_PRODUCT_NOT_ELIGIBLE:
+    "Le produit souscrit n'autorise pas le dépôt des pièces à distance. Un administrateur peut l'activer sur la fiche du produit.",
+  KYC_REMOTE_INVITATION_FILE_NOT_COLLECTING:
+    "Ce dossier n'est plus en collecte : la vérification ou la validation est en cours.",
+  KYC_FILE_NOT_FOUND: "Ce dossier n'est pas accessible.",
+};
+
+export function kycRemoteUnavailableLabel(code: string | null | undefined): string {
+  if (!code) return '';
+  return (
+    REMOTE_INVITATION_UNAVAILABLE_LABELS[code]
+    ?? "Aucun lien ne peut être envoyé pour ce dossier pour le moment."
+  );
+}

@@ -14,7 +14,11 @@ import {
 import { Router } from '@angular/router';
 import { PermissionsService } from '@sankore/crm/common';
 // Le module KYC ne dépend pas de la lib clients : l'import ne crée donc pas de cycle.
-import { KycCapsPanel, KycFacadeService } from '@sankore/crm/kyc';
+import {
+  KycCapsPanel,
+  KycFacadeService,
+  KycRemoteInvitationsPanel,
+} from '@sankore/crm/kyc';
 import { ClientDetailStore } from '../../models/client-detail.store';
 import {
   clientStatusLabel,
@@ -49,7 +53,16 @@ interface HistoryRow {
 @Component({
   selector: 'client-kyc',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [DatePipe, TasCard, TasIcon, TasSpinner, TasTag, Button, KycCapsPanel],
+  imports: [
+    DatePipe,
+    TasCard,
+    TasIcon,
+    TasSpinner,
+    TasTag,
+    Button,
+    KycCapsPanel,
+    KycRemoteInvitationsPanel,
+  ],
   template: `
     @if (client()) {
       <div class="flex flex-col gap-4">
@@ -131,6 +144,15 @@ interface HistoryRow {
             }
           </div>
         </tas-card>
+
+        <!--
+          Suivi du lien de collecte à distance (KRM-F-07). Le panneau ne s'affiche que lorsqu'un
+          dossier existe : avant cela il n'y a rien à suivre, et un encart vide se lirait comme
+          « aucun lien envoyé » alors que la question ne se pose pas encore.
+        -->
+        <kyc-remote-invitations-panel
+          [kycFileId]="kycFileId()"
+        ></kyc-remote-invitations-panel>
 
         <!--
           Plafonds du KYC simplifié (KYC-F-09). L'encart se masque de lui-même quand le dossier n'est

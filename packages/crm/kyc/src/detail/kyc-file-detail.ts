@@ -32,6 +32,7 @@ import {
 import { KycDocumentRow, KycHistoryEntry, KycHistoryKind } from '../data-access/kyc.types';
 import { KycStatusBadge } from '../ui/kyc-status-badge';
 import { KycDocumentsPanel } from '../documents/kyc-documents-panel';
+import { KycRemoteInvitationsPanel } from '../remote/kyc-remote-invitations-panel';
 import { KycScorePanel } from '../verification/kyc-score-panel';
 import {
   KycApprovalDecisionDrawer,
@@ -98,6 +99,7 @@ const HISTORY_ICONS: Record<KycHistoryKind, string> = {
     TasTable,
     TasTag,
     KycDocumentsPanel,
+    KycRemoteInvitationsPanel,
     KycScorePanel,
     KycStatusBadge,
     CbsBatchNoticeComponent,

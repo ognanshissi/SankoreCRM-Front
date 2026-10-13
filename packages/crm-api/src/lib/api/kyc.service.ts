@@ -33,6 +33,8 @@ import { DecideKycApprovalRequest } from '../model/decide-kyc-approval-request.i
 // @ts-ignore
 import { DecideKycApprovalResponse } from '../model/decide-kyc-approval-response.interface';
 // @ts-ignore
+import { IssueKycRemoteInvitationResponse } from '../model/issue-kyc-remote-invitation-response.interface';
+// @ts-ignore
 import { KycApprovalCircuitDto } from '../model/kyc-approval-circuit-dto.interface';
 // @ts-ignore
 import { KycCapsDto } from '../model/kyc-caps-dto.interface';
@@ -44,6 +46,8 @@ import { KycFileDto } from '../model/kyc-file-dto.interface';
 import { KycFileListPage } from '../model/kyc-file-list-page.interface';
 // @ts-ignore
 import { KycIdentityDocumentDto } from '../model/kyc-identity-document-dto.interface';
+// @ts-ignore
+import { KycRemoteInvitationListDto } from '../model/kyc-remote-invitation-list-dto.interface';
 // @ts-ignore
 import { KycVerificationDto } from '../model/kyc-verification-dto.interface';
 // @ts-ignore
@@ -62,6 +66,8 @@ import { RaiseKycReviewResult } from '../model/raise-kyc-review-result.interface
 import { ReviewKycDocumentRequest } from '../model/review-kyc-document-request.interface';
 // @ts-ignore
 import { ReviewKycDocumentResult } from '../model/review-kyc-document-result.interface';
+// @ts-ignore
+import { RevokeKycRemoteInvitationRequest } from '../model/revoke-kyc-remote-invitation-request.interface';
 // @ts-ignore
 import { RunKycVerificationRequest } from '../model/run-kyc-verification-request.interface';
 // @ts-ignore
@@ -931,6 +937,72 @@ export class KYCApiService {
     }
 
     /**
+     * Send or re-send the remote-collection link of a KYC file
+     * Revokes the link currently in force, if any, and issues a new one — at most one link into a file is ever live. The email goes out immediately (unlike the one the conversion schedules, which waits for the welcome message to land first). Refused with KYC_REMOTE_INVITATION_NO_EMAIL, KYC_REMOTE_INVITATION_PRODUCT_NOT_ELIGIBLE or KYC_REMOTE_INVITATION_FILE_NOT_COLLECTING, and with KYC_FILE_NOT_FOUND for a file outside the caller\&#39;s agency perimeter — never 403, which would confirm the file exists. Requires permission: kyc:remote-invite.
+     * @param kycFileId 
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     */
+    public issueKycRemoteInvitation(kycFileId: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<IssueKycRemoteInvitationResponse>;
+    public issueKycRemoteInvitation(kycFileId: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<IssueKycRemoteInvitationResponse>>;
+    public issueKycRemoteInvitation(kycFileId: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<IssueKycRemoteInvitationResponse>>;
+    public issueKycRemoteInvitation(kycFileId: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
+        if (kycFileId === null || kycFileId === undefined) {
+            throw new Error('Required parameter kycFileId was null or undefined when calling issueKycRemoteInvitation.');
+        }
+
+        let localVarHeaders = this.defaultHeaders;
+
+        let localVarCredential: string | undefined;
+        // authentication (BearerToken) required
+        localVarCredential = this.configuration.lookupCredential('BearerToken');
+        if (localVarCredential) {
+            localVarHeaders = localVarHeaders.set('Authorization', 'Bearer ' + localVarCredential);
+        }
+
+        let localVarHttpHeaderAcceptSelected: string | undefined = options && options.httpHeaderAccept;
+        if (localVarHttpHeaderAcceptSelected === undefined) {
+            // to determine the Accept header
+            const httpHeaderAccepts: string[] = [
+                'application/json'
+            ];
+            localVarHttpHeaderAcceptSelected = this.configuration.selectHeaderAccept(httpHeaderAccepts);
+        }
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+
+        let localVarHttpContext: HttpContext | undefined = options && options.context;
+        if (localVarHttpContext === undefined) {
+            localVarHttpContext = new HttpContext();
+        }
+
+
+        let responseType_: 'text' | 'json' | 'blob' = 'json';
+        if (localVarHttpHeaderAcceptSelected) {
+            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+                responseType_ = 'text';
+            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+                responseType_ = 'json';
+            } else {
+                responseType_ = 'blob';
+            }
+        }
+
+        let localVarPath = `/api/v1/kyc-files/${this.configuration.encodeParam({name: "kycFileId", value: kycFileId, in: "path", style: "simple", explode: false, dataType: "string", dataFormat: "uuid"})}/remote-invitations`;
+        return this.httpClient.request<IssueKycRemoteInvitationResponse>('post', `${this.configuration.basePath}${localVarPath}`,
+            {
+                context: localVarHttpContext,
+                responseType: <any>responseType_,
+                withCredentials: this.configuration.withCredentials,
+                headers: localVarHeaders,
+                observe: observe,
+                reportProgress: reportProgress
+            }
+        );
+    }
+
+    /**
      * List the images attached to a KYC file and their review decisions
      * Metadata only, never bytes: fetching an image is GET kyc-files/{id}/documents/{storageRef} under kyc:document:reveal, which is audited per access. Images collected before per-document review come back with a null id and decision NotReviewed — such a file was decided as a whole by the approval circuit, and no per-document verdict exists to show. Requires permission: kyc:read.
      * @param kycFileId 
@@ -1088,6 +1160,72 @@ export class KYCApiService {
             {
                 context: localVarHttpContext,
                 params: localVarQueryParameters,
+                responseType: <any>responseType_,
+                withCredentials: this.configuration.withCredentials,
+                headers: localVarHeaders,
+                observe: observe,
+                reportProgress: reportProgress
+            }
+        );
+    }
+
+    /**
+     * The remote-collection links issued for a KYC file, and their progress
+     * Carries no token and no hash: there is deliberately no way to learn what a link was. &#x60;unavailableReason&#x60; says why no new link can be issued — KYC_REMOTE_INVITATION_NO_EMAIL, KYC_REMOTE_INVITATION_PRODUCT_NOT_ELIGIBLE or KYC_REMOTE_INVITATION_FILE_NOT_COLLECTING — and is re-evaluated on every read, so it disappears as soon as the cause is fixed. Requires permission: kyc:read.
+     * @param kycFileId 
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     */
+    public listKycRemoteInvitations(kycFileId: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<KycRemoteInvitationListDto>;
+    public listKycRemoteInvitations(kycFileId: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<KycRemoteInvitationListDto>>;
+    public listKycRemoteInvitations(kycFileId: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<KycRemoteInvitationListDto>>;
+    public listKycRemoteInvitations(kycFileId: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
+        if (kycFileId === null || kycFileId === undefined) {
+            throw new Error('Required parameter kycFileId was null or undefined when calling listKycRemoteInvitations.');
+        }
+
+        let localVarHeaders = this.defaultHeaders;
+
+        let localVarCredential: string | undefined;
+        // authentication (BearerToken) required
+        localVarCredential = this.configuration.lookupCredential('BearerToken');
+        if (localVarCredential) {
+            localVarHeaders = localVarHeaders.set('Authorization', 'Bearer ' + localVarCredential);
+        }
+
+        let localVarHttpHeaderAcceptSelected: string | undefined = options && options.httpHeaderAccept;
+        if (localVarHttpHeaderAcceptSelected === undefined) {
+            // to determine the Accept header
+            const httpHeaderAccepts: string[] = [
+                'application/json'
+            ];
+            localVarHttpHeaderAcceptSelected = this.configuration.selectHeaderAccept(httpHeaderAccepts);
+        }
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+
+        let localVarHttpContext: HttpContext | undefined = options && options.context;
+        if (localVarHttpContext === undefined) {
+            localVarHttpContext = new HttpContext();
+        }
+
+
+        let responseType_: 'text' | 'json' | 'blob' = 'json';
+        if (localVarHttpHeaderAcceptSelected) {
+            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+                responseType_ = 'text';
+            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+                responseType_ = 'json';
+            } else {
+                responseType_ = 'blob';
+            }
+        }
+
+        let localVarPath = `/api/v1/kyc-files/${this.configuration.encodeParam({name: "kycFileId", value: kycFileId, in: "path", style: "simple", explode: false, dataType: "string", dataFormat: "uuid"})}/remote-invitations`;
+        return this.httpClient.request<KycRemoteInvitationListDto>('get', `${this.configuration.basePath}${localVarPath}`,
+            {
+                context: localVarHttpContext,
                 responseType: <any>responseType_,
                 withCredentials: this.configuration.withCredentials,
                 headers: localVarHeaders,
@@ -1410,6 +1548,89 @@ export class KYCApiService {
             {
                 context: localVarHttpContext,
                 body: reviewKycDocumentRequest,
+                responseType: <any>responseType_,
+                withCredentials: this.configuration.withCredentials,
+                headers: localVarHeaders,
+                observe: observe,
+                reportProgress: reportProgress
+            }
+        );
+    }
+
+    /**
+     * Withdraw a remote-collection link
+     * The reason is mandatory and is kept on the link: a customer\&#39;s way into their own file disappearing with no recorded motive is something a support call cannot close. Revoking an already spent link succeeds and changes nothing. Requires permission: kyc:remote-invite.
+     * @param kycFileId 
+     * @param invitationId 
+     * @param revokeKycRemoteInvitationRequest 
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     */
+    public revokeKycRemoteInvitation(kycFileId: string, invitationId: string, revokeKycRemoteInvitationRequest: RevokeKycRemoteInvitationRequest, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<any>;
+    public revokeKycRemoteInvitation(kycFileId: string, invitationId: string, revokeKycRemoteInvitationRequest: RevokeKycRemoteInvitationRequest, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<HttpResponse<any>>;
+    public revokeKycRemoteInvitation(kycFileId: string, invitationId: string, revokeKycRemoteInvitationRequest: RevokeKycRemoteInvitationRequest, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<HttpEvent<any>>;
+    public revokeKycRemoteInvitation(kycFileId: string, invitationId: string, revokeKycRemoteInvitationRequest: RevokeKycRemoteInvitationRequest, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<any> {
+        if (kycFileId === null || kycFileId === undefined) {
+            throw new Error('Required parameter kycFileId was null or undefined when calling revokeKycRemoteInvitation.');
+        }
+        if (invitationId === null || invitationId === undefined) {
+            throw new Error('Required parameter invitationId was null or undefined when calling revokeKycRemoteInvitation.');
+        }
+        if (revokeKycRemoteInvitationRequest === null || revokeKycRemoteInvitationRequest === undefined) {
+            throw new Error('Required parameter revokeKycRemoteInvitationRequest was null or undefined when calling revokeKycRemoteInvitation.');
+        }
+
+        let localVarHeaders = this.defaultHeaders;
+
+        let localVarCredential: string | undefined;
+        // authentication (BearerToken) required
+        localVarCredential = this.configuration.lookupCredential('BearerToken');
+        if (localVarCredential) {
+            localVarHeaders = localVarHeaders.set('Authorization', 'Bearer ' + localVarCredential);
+        }
+
+        let localVarHttpHeaderAcceptSelected: string | undefined = options && options.httpHeaderAccept;
+        if (localVarHttpHeaderAcceptSelected === undefined) {
+            // to determine the Accept header
+            const httpHeaderAccepts: string[] = [
+            ];
+            localVarHttpHeaderAcceptSelected = this.configuration.selectHeaderAccept(httpHeaderAccepts);
+        }
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+
+        let localVarHttpContext: HttpContext | undefined = options && options.context;
+        if (localVarHttpContext === undefined) {
+            localVarHttpContext = new HttpContext();
+        }
+
+
+        // to determine the Content-Type header
+        const consumes: string[] = [
+            'application/json'
+        ];
+        const httpContentTypeSelected: string | undefined = this.configuration.selectHeaderContentType(consumes);
+        if (httpContentTypeSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Content-Type', httpContentTypeSelected);
+        }
+
+        let responseType_: 'text' | 'json' | 'blob' = 'json';
+        if (localVarHttpHeaderAcceptSelected) {
+            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+                responseType_ = 'text';
+            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+                responseType_ = 'json';
+            } else {
+                responseType_ = 'blob';
+            }
+        }
+
+        let localVarPath = `/api/v1/kyc-files/${this.configuration.encodeParam({name: "kycFileId", value: kycFileId, in: "path", style: "simple", explode: false, dataType: "string", dataFormat: "uuid"})}/remote-invitations/${this.configuration.encodeParam({name: "invitationId", value: invitationId, in: "path", style: "simple", explode: false, dataType: "string", dataFormat: "uuid"})}/revoke`;
+        return this.httpClient.request<any>('post', `${this.configuration.basePath}${localVarPath}`,
+            {
+                context: localVarHttpContext,
+                body: revokeKycRemoteInvitationRequest,
                 responseType: <any>responseType_,
                 withCredentials: this.configuration.withCredentials,
                 headers: localVarHeaders,

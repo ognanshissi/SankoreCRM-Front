@@ -24,5 +24,6 @@ export interface KycFileListItem {
     requiredActionCode?: string | null;
     awaitingMe?: boolean;
     updatedAt?: string;
+    isRemoteCollection?: boolean;
 }
 
