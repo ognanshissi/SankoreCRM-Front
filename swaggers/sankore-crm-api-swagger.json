@@ -19667,6 +19667,109 @@
         }
       }
     },
+    "/api/v1/users/{userId}/invitation": {
+      "post": {
+        "tags": [
+          "Users"
+        ],
+        "summary": "Renvoie le lien d'activation d'un compte en attente ; les liens précédents cessent de fonctionner. Requires permission: user:update.",
+        "operationId": "ResendUserInvitation",
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvitationSentDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/api/v1/users/{userId}/impersonate": {
+      "post": {
+        "tags": [
+          "Users"
+        ],
+        "summary": "Ouvre une session de 30 minutes sous l'identité d'un utilisateur actif. Motif obligatoire ; chaque action est auditée au nom de l'administrateur et de l'utilisateur. Requires permission: user:impersonate.",
+        "operationId": "ImpersonateUser",
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImpersonateUserRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImpersonationStartedDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/api/v1/users/me/impersonation/end": {
+      "post": {
+        "tags": [
+          "Users"
+        ],
+        "summary": "Met fin à l'usurpation d'identité en cours ; la session et son jeton cessent de valoir.",
+        "operationId": "EndImpersonation",
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "description": "Bad Request"
+          }
+        }
+      }
+    },
     "/api/v1/webhooks/email/{tenantId}": {
       "post": {
         "tags": [
@@ -23044,6 +23147,11 @@
           },
           "correlationId": {
             "type": "string",
+            "nullable": true
+          },
+          "impersonatorUserId": {
+            "type": "string",
+            "format": "uuid",
             "nullable": true
           }
         },
@@ -27483,6 +27591,15 @@
           "defaultLanguage": {
             "type": "string",
             "nullable": true
+          },
+          "impersonatorId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "impersonatorName": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -29847,6 +29964,38 @@
         },
         "additionalProperties": false
       },
+      "ImpersonateUserRequest": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ImpersonationStartedDto": {
+        "type": "object",
+        "properties": {
+          "accessToken": {
+            "type": "string",
+            "nullable": true
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "userId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "userFullName": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "ImportJobCreatedResult": {
         "type": "object",
         "properties": {
@@ -30610,6 +30759,20 @@
             ],
             "type": "string",
             "description": "Discriminator. Must be \"Internal\" for these settings."
+          }
+        },
+        "additionalProperties": false
+      },
+      "InvitationSentDto": {
+        "type": "object",
+        "properties": {
+          "sentAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
           }
         },
         "additionalProperties": false
@@ -41490,6 +41653,22 @@
           "employeeNumber": {
             "type": "string",
             "nullable": true
+          },
+          "firstName": {
+            "type": "string",
+            "nullable": true
+          },
+          "lastName": {
+            "type": "string",
+            "nullable": true
+          },
+          "email": {
+            "type": "string",
+            "nullable": true
+          },
+          "workPhone": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -41669,6 +41848,64 @@
             "nullable": true
           },
           "employeeNumber": {
+            "type": "string",
+            "nullable": true
+          },
+          "firstName": {
+            "type": "string",
+            "nullable": true
+          },
+          "lastName": {
+            "type": "string",
+            "nullable": true
+          },
+          "workPhone": {
+            "type": "string",
+            "nullable": true
+          },
+          "avatarDataUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "createdByName": {
+            "type": "string",
+            "nullable": true
+          },
+          "invitationSentAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "invitationExpiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "roleLabels": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "activeAttributionsCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "directReportsCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "reportsToRoleLabel": {
+            "type": "string",
+            "nullable": true
+          },
+          "reportsToAgencyName": {
             "type": "string",
             "nullable": true
           }

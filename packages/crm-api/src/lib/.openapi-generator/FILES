@@ -299,6 +299,8 @@ model/holding-dto.interface.ts
 model/holding-specifics-dto.interface.ts
 model/hosted-form-config.interface.ts
 model/hosted-form-field.interface.ts
+model/impersonate-user-request.interface.ts
+model/impersonation-started-dto.interface.ts
 model/import-job-created-result.interface.ts
 model/import-leads-accepted.interface.ts
 model/ingestion-dto.interface.ts
@@ -313,6 +315,7 @@ model/integration-command-list-item.interface.ts
 model/integration-command-list-page.interface.ts
 model/integration-reference-dto.interface.ts
 model/internal-settings.interface.ts
+model/invitation-sent-dto.interface.ts
 model/issue-credential-request.interface.ts
 model/kyc-approval-circuit-dto.interface.ts
 model/kyc-approval-step-dto.interface.ts

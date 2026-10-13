@@ -18,5 +18,9 @@ export interface UpdateUserRequest {
     specialties?: Array<string> | null;
     enableNotifications?: boolean | null;
     employeeNumber?: string | null;
+    firstName?: string | null;
+    lastName?: string | null;
+    email?: string | null;
+    workPhone?: string | null;
 }
 

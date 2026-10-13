@@ -12,9 +12,7 @@ import {
 } from '@angular/core';
 import { form, FormField, FormRoot, required, submit } from '@angular/forms/signals';
 import { catchError, EMPTY, firstValueFrom, of } from 'rxjs';
-import { TasCard, TasCardHeader } from '@talisoft/ui/card';
 import { Button } from '@talisoft/ui/button';
-import { TasIcon } from '@talisoft/ui/icon';
 import { TasSpinner } from '@talisoft/ui/spinner';
 import { TasError, TasFormField, TasHint, TasLabel } from '@talisoft/ui/form-field';
 import { TasSelect } from '@talisoft/ui/select';
@@ -55,10 +53,7 @@ class AssignUserManagerFormModel {
   templateUrl: './user-manager-card.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
-    TasCard,
-    TasCardHeader,
     Button,
-    TasIcon,
     TasSpinner,
     TasFormField,
     TasLabel,
@@ -81,6 +76,18 @@ export class UserManagerCard {
   public readonly userFullName = input<string | null | undefined>(null);
   public readonly reportsToUserId = input<string | null | undefined>(null);
   public readonly reportsToFullName = input<string | null | undefined>(null);
+  /** « Agent commercial · Agence 2 » sous chaque nom de l'arbre. */
+  public readonly userSubtitle = input<string | null>(null);
+  public readonly managerSubtitle = input<string | null>(null);
+  public readonly directReportsCount = input(0);
+
+  /** Le sélecteur ne s'ouvre qu'à la demande : l'arbre est ce qu'on vient voir. */
+  public showPicker = signal(false);
+
+  public initials(name: string | null | undefined): string {
+    const parts = (name ?? '').trim().split(/\s+/);
+    return ((parts[0]?.[0] ?? '') + (parts[1]?.[0] ?? '')).toUpperCase() || '?';
+  }
 
   public readonly managerChanged = output<UserManagerChange>();
 
@@ -170,6 +177,7 @@ export class UserManagerCard {
         );
       }
 
+      this.showPicker.set(false);
       this.managerChanged.emit({
         userId: result.managerUserId ?? managerUserId,
         fullName: result.managerFullName ?? fullName,

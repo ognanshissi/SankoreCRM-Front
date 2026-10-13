@@ -12,6 +12,7 @@ import {
 } from '@talisoft/ui/layouts';
 import { Menu, MenuItem, TasMenuTrigger } from '@talisoft/ui/menu';
 import { BreadcrumbComponent } from '../../breadcrumb/breadcrumb.component';
+import { ImpersonationBanner } from '../../impersonation-banner/impersonation-banner';
 import { TenantProvider, AuthenticationService, PermissionsService } from '../../../services';
 import { TenantContextResponse } from '@sankore/crm-api';
 
@@ -30,6 +31,7 @@ import { TenantContextResponse } from '@sankore/crm-api';
     TasNavigationMenu,
     TasNavigationMenuItem,
     BreadcrumbComponent,
+    ImpersonationBanner,
     Menu,
     MenuItem,
     TasMenuTrigger,

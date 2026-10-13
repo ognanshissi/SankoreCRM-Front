@@ -13,6 +13,7 @@ import {
 import {
   AuthApiService,
   CurrentUserDto,
+  ImpersonationStartedDto,
   LoginRequest,
   LoginResult,
   UserDto,
@@ -21,6 +22,21 @@ import {
 } from '@sankore/crm-api';
 
 export const TOKEN_STORAGE_KEY = 'SANKORE_ACCESS_TOKEN';
+const IMPERSONATION_STORAGE_KEY = 'SANKORE_IMPERSONATION';
+const SESSION_KEYS = [TOKEN_STORAGE_KEY, 'expiresIn', 'refreshToken', 'refreshTokenExpiresAt'] as const;
+
+/**
+ * Usurpation en cours. Le compte de l'administrateur est mis de côté tel quel (jeton d'accès et
+ * de rafraîchissement) et restauré à la sortie : il n'a pas à se reconnecter.
+ */
+export interface ImpersonationState {
+  targetUserId: string;
+  targetName: string;
+  expiresAt: string;
+  /** Écran où revenir à la sortie — la fiche de l'utilisateur usurpé. */
+  returnUrl: string;
+  original: Record<string, string | null>;
+}
 
 @Injectable({
   providedIn: 'root',
@@ -54,10 +70,61 @@ export class AuthenticationService {
 
   private tokenExpiresIn = signal<number>(0);
 
+  private readonly _impersonation = signal<ImpersonationState | null>(null);
+  /** Non nul pendant une usurpation d'identité. */
+  public readonly impersonation = this._impersonation.asReadonly();
+
   public constructor() {
     if (isPlatformBrowser(this._platformId)) {
       this.storage = window.localStorage;
+      try {
+        const raw = localStorage.getItem(IMPERSONATION_STORAGE_KEY);
+        if (raw) this._impersonation.set(JSON.parse(raw) as ImpersonationState);
+      } catch {
+        localStorage.removeItem(IMPERSONATION_STORAGE_KEY);
+      }
     }
+  }
+
+  /**
+   * Bascule sur le jeton d'usurpation et recharge l'application : permissions, menus et données
+   * en cache doivent être ceux de l'utilisateur usurpé, et un rechargement est la seule façon de
+   * n'en oublier aucun. Pas de jeton de rafraîchissement : à l'expiration, on revient à soi.
+   */
+  public startImpersonation(started: ImpersonationStartedDto, returnUrl: string): void {
+    if (this._impersonation()) return;
+    const original: Record<string, string | null> = {};
+    for (const key of SESSION_KEYS) original[key] = localStorage.getItem(key);
+
+    const state: ImpersonationState = {
+      targetUserId: started.userId ?? '',
+      targetName: started.userFullName ?? '',
+      expiresAt: started.expiresAt ?? '',
+      returnUrl,
+      original,
+    };
+    localStorage.setItem(IMPERSONATION_STORAGE_KEY, JSON.stringify(state));
+    this.setAccessToken(started.accessToken, started.expiresAt, '', null);
+    window.location.assign('/');
+  }
+
+  /** Ferme la session d'usurpation côté serveur, puis restaure le compte de l'administrateur. */
+  public endImpersonation(): void {
+    const state = this._impersonation();
+    if (!state) return;
+    // Que le serveur réponde ou non, on revient à soi : un jeton d'usurpation expiré ne doit pas
+    // retenir l'administrateur dans l'identité d'un autre.
+    this._usersApiService.endImpersonation().pipe(catchError(() => of(null))).subscribe(() => this._restoreOriginal(state));
+  }
+
+  private _restoreOriginal(state: ImpersonationState): void {
+    for (const key of SESSION_KEYS) {
+      const value = state.original[key];
+      if (value === null || value === undefined) localStorage.removeItem(key);
+      else localStorage.setItem(key, value);
+    }
+    localStorage.removeItem(IMPERSONATION_STORAGE_KEY);
+    window.location.assign(state.returnUrl || '/');
   }
 
   public login(loginRequest: LoginRequest): Observable<LoginResult> {
@@ -150,6 +217,13 @@ export class AuthenticationService {
   }
 
   public logout(): void {
+    // Pendant une usurpation, « se déconnecter » — ou un jeton d'usurpation expiré, que
+    // l'intercepteur traite comme une déconnexion — ramène au compte de l'administrateur.
+    const impersonation = this._impersonation();
+    if (impersonation) {
+      this._restoreOriginal(impersonation);
+      return;
+    }
     localStorage.removeItem(TOKEN_STORAGE_KEY);
     this._connectedUser.set(null);
     this._accessToken.set(null);

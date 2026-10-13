@@ -31,5 +31,18 @@ export interface UserDto {
     reportsToUserId?: string | null;
     reportsToFullName?: string | null;
     employeeNumber?: string | null;
+    firstName?: string | null;
+    lastName?: string | null;
+    workPhone?: string | null;
+    avatarDataUrl?: string | null;
+    createdAt?: string | null;
+    createdByName?: string | null;
+    invitationSentAt?: string | null;
+    invitationExpiresAt?: string | null;
+    roleLabels?: Array<string> | null;
+    activeAttributionsCount?: number;
+    directReportsCount?: number;
+    reportsToRoleLabel?: string | null;
+    reportsToAgencyName?: string | null;
 }
 

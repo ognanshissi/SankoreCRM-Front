@@ -22,6 +22,7 @@ export const PERMISSIONS = {
   USER_READ: 'user:read',
   USER_CREATE: 'user:create',
   USER_UPDATE: 'user:update',
+  USER_IMPERSONATE: 'user:impersonate',
   USER_DEACTIVATE: 'user:deactivate',
   USER_REACTIVATE: 'user:reactivate',
   USER_RESET_PASSWORD: 'user:reset-password',

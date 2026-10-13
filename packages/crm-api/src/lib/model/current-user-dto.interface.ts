@@ -24,5 +24,7 @@ export interface CurrentUserDto {
     roles?: Array<string> | null;
     permissions?: Array<string> | null;
     defaultLanguage?: string | null;
+    impersonatorId?: string | null;
+    impersonatorName?: string | null;
 }
 

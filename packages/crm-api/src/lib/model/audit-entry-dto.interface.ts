@@ -24,5 +24,6 @@ export interface AuditEntryDto {
     resourceId?: string | null;
     ipAddress?: string | null;
     correlationId?: string | null;
+    impersonatorUserId?: string | null;
 }
 

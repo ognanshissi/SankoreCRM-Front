@@ -83,6 +83,11 @@ const settingsRoutes: Routes = [
         loadComponent: () => import('./containers/users/edit-user/connexions'),
       },
       {
+        path: 'journal',
+        canActivate: [hasPermissionGuard('audit:read')],
+        loadComponent: () => import('./containers/users/edit-user/journal'),
+      },
+      {
         path: 'danger',
         canActivate: [hasPermissionGuard('user:deactivate', 'user:reactivate', 'user:reset-password')],
         loadComponent: () => import('./containers/users/edit-user/danger'),
