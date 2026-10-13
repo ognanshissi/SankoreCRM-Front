@@ -71,7 +71,9 @@ const settingsRoutes: Routes = [
       },
       {
         path: 'parametrage',
-        canActivate: [hasPermissionGuard('user:assign-permission', 'user:revoke-permission')],
+        // Lecture pour toute personne qui voit la fiche ; les deux réglages exigent user:update,
+        // vérifié par l'écran et par le serveur.
+        canActivate: [hasPermissionGuard('user:read')],
         loadComponent: () => import('./containers/users/edit-user/parametrage'),
       },
       {

@@ -207,7 +207,7 @@ export class EditUserNavigation {
         hint: attributions ? `${role} · ${attributions} attribution${attributions > 1 ? 's' : ''}` : role,
         danger: false,
       },
-      { route: 'parametrage', label: 'Paramétrage agent', hint: 'Langues, spécialités, notifications', danger: false },
+      { route: 'parametrage', label: 'Paramétrage agent', hint: 'Produits, plafond de leads', danger: false },
       {
         route: 'connexions',
         label: 'Connexions et sécurité',

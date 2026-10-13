@@ -19394,6 +19394,41 @@
         }
       }
     },
+    "/api/v1/users/{userId}/agent-settings": {
+      "get": {
+        "tags": [
+          "Users"
+        ],
+        "summary": "Paramétrage agent d'un utilisateur, pour sa fiche d'administration : plafond, produits, et ce que l'agent a déclaré (disponibilité, horaires, langues). Requires permission: user:read.",
+        "operationId": "GetUserAgentSettings",
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentSettingsDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
     "/api/v1/users/{userId}/agent-settings/ceiling": {
       "put": {
         "tags": [
