@@ -1,13 +1,13 @@
 <div class="pb-6 flex flex-col gap-4">
   <!-- En-tête -->
-  <div>
-    <h1 class="text-xl font-semibold text-slate-900">
-      Clients <span class="text-slate-500 font-normal">· {{ counts()?.all ?? totalCount() }}</span>
-    </h1>
-    <p class="text-sm text-slate-600 mt-0.5">Retrouvez un client par son nom, son téléphone, son numéro ou sa pièce d'identité.</p>
-  </div>
-
-  <div class="flex flex-wrap items-center gap-2">
+   <div class="flex justify-between items-center gap-4">
+    <div>
+        <h1 class="text-xl font-semibold text-slate-900">
+          Clients <span class="text-slate-500 font-normal">· {{ counts()?.all ?? totalCount() }}</span>
+        </h1>
+        <p class="text-sm text-slate-600 mt-0.5">Retrouvez un client par son nom, son téléphone, son numéro ou sa pièce d'identité.</p>
+      </div>
+      <div class="flex flex-wrap items-center gap-2">
     @if (canMerge()) {
       <button tas-outlined-button type="button" class="!rounded-full" (click)="goToDuplicates()">
         <tas-icon iconName="feather:copy" style="font-size:14px"></tas-icon>
@@ -34,7 +34,7 @@
       </button>
     }
   </div>
-
+  </div>
   <!-- Raccourcis -->
   <div class="flex flex-wrap gap-2" role="radiogroup" aria-label="Vue">
     @for (q of quickFilters; track q.value) {
