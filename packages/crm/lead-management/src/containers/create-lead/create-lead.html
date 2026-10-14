@@ -43,9 +43,15 @@
         (openCustomer)="viewCustomer($event)"
       ></customer-match-banner>
 
-      <!-- Doublon de lead sur téléphone ou e-mail (BNF-F-01) -->
+      <!--
+        Doublon de lead sur téléphone ou e-mail (BNF-F-01), et le refus du serveur quand il y
+        en a eu un : c'est le même bandeau, parce que c'est la même correspondance — en ambre
+        tant qu'elle n'est qu'un avertissement, en rouge une fois qu'elle a bloqué la création.
+      -->
       <duplicate-warning-banner
+        #duplicateBanner
         [duplicates]="duplicates()"
+        [refusal]="refusal()"
         (viewDuplicate)="viewDuplicate($event)"
       ></duplicate-warning-banner>
 

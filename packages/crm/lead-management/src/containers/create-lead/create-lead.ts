@@ -3,10 +3,13 @@ import {
   Component,
   computed,
   DestroyRef,
+  ElementRef,
   inject,
   signal,
+  viewChild,
 } from '@angular/core';
 import { DialogRef } from '@angular/cdk/dialog';
+import { HttpErrorResponse } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { email, form, FormField, FormRoot, required, submit } from '@angular/forms/signals';
 import {
@@ -42,9 +45,11 @@ import {
   CaptureLeadRequestChannelEnum,
   CaptureLeadRequestProspectTypeEnum,
   CaptureLeadRequestSourceEnum,
+  CaptureLeadResult,
   ClientSearchItemDto,
   ClientsApiService,
   DuplicateMatchResult,
+  DuplicateMatchResultStatusEnum,
   HoldingDto,
   LeadSourceListDtoStatusEnum,
   LeadSourcesApiService,
@@ -55,7 +60,12 @@ import {
   ProductsApiService,
 } from '@sankore/crm-api';
 import { SnackbarService } from '@talisoft/ui/snackbar';
-import { DuplicateWarningBanner, PERMISSIONS, PermissionsService } from '@sankore/crm/common';
+import {
+  DuplicateRefusal,
+  DuplicateWarningBanner,
+  PERMISSIONS,
+  PermissionsService,
+} from '@sankore/crm/common';
 import {
   CustomerMatchBanner,
   CustomerMatchView,
@@ -143,6 +153,83 @@ const MIN_PHONE_LENGTH = 8;
 /** Au-delà, l'encart cesse d'aider : la saisie est trop imprécise pour trancher. */
 const MAX_CANDIDATES = 5;
 
+/**
+ * Le corps d'un refus pour doublon, ou `null` si l'erreur est autre chose.
+ *
+ * `POST leads/capture` refuse en **409** avec un `CaptureLeadResult` en guise de corps : ce
+ * n'est pas une panne, c'est la réponse du portail. Le test porte sur `duplicateDetected` et
+ * pas seulement sur le statut — un 409 d'une autre nature (un proxy, une future règle) ne doit
+ * pas être présenté comme un doublon.
+ */
+function duplicateRefusalBody(error: HttpErrorResponse): CaptureLeadResult | null {
+  if (error.status !== 409) return null;
+
+  const body = error.error as CaptureLeadResult | string | null;
+
+  // `error.error` est une chaîne quand le corps n'a pas pu être lu comme du JSON.
+  if (!body || typeof body !== 'object') return null;
+
+  return body.duplicateDetected === true ? body : null;
+}
+
+/**
+ * Le titre et le message du refus, construits à partir de ce que le serveur a renvoyé.
+ *
+ * Il renvoie le nom, le statut et un résumé de correspondance déjà rédigé
+ * (« 80% — Téléphone identique (normalisé) + Nom très similaire (100%) ») : une phrase générique
+ * à la place obligeait l'agent à deviner lequel de ses champs avait déclenché le refus.
+ *
+ * Le cas « déjà client » est distingué des autres parce que la suite n'est pas la même : sur un
+ * lead encore ouvert on reprend celui-là, sur un lead converti c'est une demande à ajouter au
+ * client — ce que « un lead existant correspond déjà à ce contact » ne disait pas.
+ */
+function duplicateRefusalText(duplicates: DuplicateMatchResult[]): [string, string] {
+  const first = duplicates[0];
+
+  if (!first) {
+    // Le serveur a refusé sans nommer de correspondance : rare, mais le refus reste vrai et
+    // l'annoncer vaut mieux que de laisser l'écran muet.
+    return [
+      'Doublon détecté',
+      "Le lead n'a pas été créé : un contact existant correspond déjà à cette saisie.",
+    ];
+  }
+
+  const who = first.fullName?.trim() || 'Un contact existant';
+  const converted = first.status === DuplicateMatchResultStatusEnum.Converted;
+
+  const title = converted ? 'Contact déjà client' : 'Doublon détecté';
+
+  const head = converted
+    ? `${who} est déjà client : le lead n'a pas été créé.`
+    : `${who} a déjà un lead en cours : le lead n'a pas été créé.`;
+
+  const why = first.confidenceSummary?.trim();
+
+  const others =
+    duplicates.length > 1
+      ? ` ${duplicates.length - 1} autre correspondance${duplicates.length > 2 ? 's' : ''} dans le bandeau.`
+      : '';
+
+  return [title, why ? `${head} ${why}.${others}` : `${head}${others}`];
+}
+
+/**
+ * Le message d'une erreur de capture qui n'est pas un doublon.
+ *
+ * Un 422 porte sa raison dans `detail` — le serveur y met l'erreur métier telle quelle — et la
+ * masquer derrière « réessayez plus tard » est exactement ce qui coûte une heure, puisque
+ * réessayer ne change rien à une validation refusée.
+ */
+function captureErrorMessage(error: HttpErrorResponse): string {
+  const detail = error.error?.detail ?? error.error?.title;
+  if (typeof detail === 'string' && detail.trim().length > 0) return detail;
+
+  return error.status === 403
+    ? "Vous n'avez pas le droit de créer un lead."
+    : 'Impossible de créer le lead, réessayez plus tard.';
+}
+
 /** Une correspondance client, avec ses produits et demandes, avant mise en forme. */
 interface CustomerMatchRaw {
   client: ClientSearchItemDto;
@@ -192,6 +279,22 @@ export class CreateLeadComponent {
   public readonly canReadCustomers = this._permissions.can(PERMISSIONS.CUSTOMERS_READ);
 
   public duplicates = signal<DuplicateMatchResult[]>([]);
+
+  /**
+   * Le refus prononcé par le serveur, affiché dans le bandeau du drawer.
+   *
+   * Dans le drawer et non dans un toast : le toast disparaît au bout de cinq secondes alors que
+   * le formulaire, lui, reste à l'écran dans l'état exact qui a été refusé — l'agent relisait un
+   * message qui n'était plus là pour comprendre pourquoi « Créer » ne faisait rien.
+   */
+  public refusal = signal<DuplicateRefusal | null>(null);
+
+  /**
+   * Le bandeau, pour le ramener dans le champ de vision. Il est en haut du formulaire et le
+   * bouton est en pied de drawer : sans recentrage, le refus s'afficherait hors écran — ce qui
+   * était précisément l'argument du toast.
+   */
+  private readonly _duplicateBanner = viewChild<ElementRef<HTMLElement>>('duplicateBanner');
   public isCheckingDuplicates = signal(false);
 
   public readonly prospectTypeOptions = PROSPECT_TYPE_OPTIONS;
@@ -311,6 +414,11 @@ export class CreateLeadComponent {
       const value = field()?.value();
       const customer = this.retainedCustomer();
 
+      // Le refus de la tentative précédente, s'il y en a eu une : le bandeau doit parler de
+      // CET envoi, pas du précédent, et un refus qui reste affiché pendant que la requête
+      // repart se lit comme une réponse déjà rendue.
+      this.refusal.set(null);
+
       // Quand un client existant est retenu, aucune identité n'est renvoyée : seuls le
       // produit demandé, le canal et le commentaire partent, et l'agence est celle du
       // client. `fullName` est repris de la fiche client — ce n'est pas une saisie, et
@@ -345,29 +453,39 @@ export class CreateLeadComponent {
             comment: value.comment || null,
           };
 
+      // `POST leads/capture` répond **409** quand il refuse la création pour cause de doublon
+      // (`GateMode: Block`, le défaut du serveur) — et le corps de ce 409 est un
+      // `CaptureLeadResult` complet, pas un problème HTTP. Il arrive donc par le canal
+      // d'erreur : le refus était annoncé « réessayez plus tard », et la branche qui sait
+      // l'afficher ne pouvait jamais s'exécuter puisqu'un corps sans `leadId` n'arrive
+      // jamais par le canal nominal.
       const result = await firstValueFrom(
         this._leadsApiService.captureLead(request).pipe(
-          catchError(() => {
-            this._snackbarService.error(
-              'Erreur',
-              'Impossible de créer le lead, réessayez plus tard.',
-            );
-            return EMPTY;
+          catchError((error: HttpErrorResponse) => {
+            const refusal = duplicateRefusalBody(error);
+            if (refusal) return of(refusal);
+
+            this._snackbarService.error('Erreur', captureErrorMessage(error));
+
+            // `of(null)` et non `EMPTY` : `firstValueFrom` d'un flux vide ne vaut pas
+            // `undefined`, il **rejette** avec `EmptyError` — et cette promesse-là est celle
+            // que `submit()` attend, donc l'erreur réseau ressortait en rejet non géré.
+            return of(null);
           }),
         ),
       );
 
       if (!result) return;
 
-      // Le serveur peut refuser la création en renvoyant les doublons au lieu d'un
-      // identifiant (mode « Block »). On les montre dans le bandeau plutôt que de
-      // naviguer vers un lead qui n'existe pas.
+      // Le serveur a refusé la création en renvoyant les doublons au lieu d'un identifiant.
+      // On les montre dans le bandeau plutôt que de naviguer vers un lead qui n'existe pas.
       if (!result.leadId) {
-        this.duplicates.set(result.potentialDuplicates ?? []);
-        this._snackbarService.error(
-          'Doublon détecté',
-          'Le lead n\'a pas été créé : un lead existant correspond déjà à ce contact.',
-        );
+        const duplicates = result.potentialDuplicates ?? [];
+        this.duplicates.set(duplicates);
+
+        const [title, message] = duplicateRefusalText(duplicates);
+        this.refusal.set({ title, message });
+        this._revealDuplicateBanner();
         return;
       }
 
@@ -379,6 +497,22 @@ export class CreateLeadComponent {
       this._dialogRef.close(result.leadId);
       this._router.navigate(['/leads', result.leadId]);
     });
+  }
+
+  /**
+   * Ramène le bandeau à l'écran après un refus.
+   *
+   * `setTimeout` et non un appel direct : le bandeau ne prend sa hauteur définitive qu'après le
+   * cycle de détection déclenché par `refusal.set(...)`, et recentrer avant donne une position
+   * calculée sur l'ancienne taille — soit un bandeau à moitié visible.
+   */
+  private _revealDuplicateBanner(): void {
+    setTimeout(() =>
+      this._duplicateBanner()?.nativeElement.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center',
+      }),
+    );
   }
 
   /** « C'est ce client ». */
@@ -456,7 +590,12 @@ export class CreateLeadComponent {
         filter(({ phone, email: mail }) => phone.length >= MIN_PHONE_LENGTH || mail.includes('@')),
         debounceTime(300),
         distinctUntilChanged((a, b) => a.phone === b.phone && a.email === b.email),
-        tap(() => this.isCheckingDuplicates.set(true)),
+        // La saisie a changé : le refus prononcé sur l'ancienne ne vaut plus, et le laisser
+        // afficher ferait lire « le lead n'a pas été créé » à propos d'un numéro corrigé.
+        tap(() => {
+          this.refusal.set(null);
+          this.isCheckingDuplicates.set(true);
+        }),
         switchMap(({ phone, email: mail }) =>
           this._leadsApiService
             .findLeadDuplicates(
