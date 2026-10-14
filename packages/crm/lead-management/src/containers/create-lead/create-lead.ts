@@ -35,6 +35,7 @@ import {
   TasSideDrawer,
 } from '@talisoft/ui/side-drawer';
 import { Button } from '@talisoft/ui/button';
+import { TasIcon } from '@talisoft/ui/icon';
 import { TasFormField, TasError, TasHint, TasLabel } from '@talisoft/ui/form-field';
 import { TasInput } from '@talisoft/ui/input';
 import { TasSelect } from '@talisoft/ui/select';
@@ -252,6 +253,7 @@ interface CustomerMatchRaw {
     TasLabel,
     TasError,
     TasHint,
+    TasIcon,
     TasInput,
     TasSelect,
     TasInputPhone,
@@ -278,6 +280,15 @@ export class CreateLeadComponent {
   /** Le lien vers la fiche client n'est proposé qu'à qui peut la lire. */
   public readonly canReadCustomers = this._permissions.can(PERMISSIONS.CUSTOMERS_READ);
 
+  /**
+   * La demande d'un client existant est une opportunité, et son endpoint exige sa propre
+   * habilitation. Vérifiée ici plutôt que laissée au 403 : l'agent apprend qu'il ne peut pas
+   * servir ce client avant d'avoir saisi le produit, pas après.
+   */
+  public readonly canManageOpportunities = this._permissions.can(
+    PERMISSIONS.LEAD_OPPORTUNITY_MANAGE,
+  );
+
   public duplicates = signal<DuplicateMatchResult[]>([]);
 
   /**
@@ -295,6 +306,28 @@ export class CreateLeadComponent {
    * était précisément l'argument du toast.
    */
   private readonly _duplicateBanner = viewChild<ElementRef<HTMLElement>>('duplicateBanner');
+
+  /**
+   * Nombre de demandes déjà ouvertes sur le même client et le même produit, quand le serveur a
+   * refusé pour cette raison. `null` = aucun refus en cours.
+   */
+  public demandDuplicateCount = signal<number | null>(null);
+
+  /** L'agent a vu les demandes existantes et insiste : le prochain envoi part en `force`. */
+  private readonly _demandDuplicateAcknowledged = signal(false);
+
+  /** Idem côté lead : « ce n'est pas la même personne ». */
+  private readonly _leadDuplicateAcknowledged = signal(false);
+
+  /** Une résolution « c'est ce client » est en cours — deux clics ne doivent pas la relancer. */
+  public isResolvingDuplicate = signal(false);
+
+  /**
+   * Le client retenu depuis un doublon converti, qui n'est PAS dans les correspondances : la
+   * recherche client se fait sur le téléphone, et ce chemin sert justement les cas où elle n'a
+   * rien trouvé.
+   */
+  private readonly _retainedFromDuplicate = signal<CustomerMatchView | null>(null);
   public isCheckingDuplicates = signal(false);
 
   public readonly prospectTypeOptions = PROSPECT_TYPE_OPTIONS;
@@ -354,6 +387,14 @@ export class CreateLeadComponent {
       message: 'Le nom est obligatoire',
       when: () => this.selectedCustomerId() === null,
     });
+    // Obligatoire pour une demande seulement : `POST opportunities/for-customer` refuse un
+    // `product` vide (422), et sur un lead le produit d'intérêt reste une information qu'un
+    // agent complète à la qualification.
+    required(schema.interestedProduct, {
+      message: 'Le produit demandé est obligatoire pour un client existant',
+      when: () => this.selectedCustomerId() !== null,
+    });
+
     required(schema.phoneNumber, {
       message: 'Le numéro de téléphone est obligatoire',
     });
@@ -396,9 +437,15 @@ export class CreateLeadComponent {
   });
 
   /** Le client existant retenu : c'est lui qui réduit le parcours de création. */
-  public readonly retainedCustomer = computed(
-    () => this.customerMatches().find((m) => m.customerId === this.selectedCustomerId()) ?? null,
-  );
+  public readonly retainedCustomer = computed(() => {
+    const selected = this.selectedCustomerId();
+    if (!selected) return null;
+
+    const fromDuplicate = this._retainedFromDuplicate();
+    if (fromDuplicate?.customerId === selected) return fromDuplicate;
+
+    return this.customerMatches().find((m) => m.customerId === selected) ?? null;
+  });
 
   public readonly isExistingCustomer = computed(() => this.retainedCustomer() !== null);
 
@@ -409,94 +456,232 @@ export class CreateLeadComponent {
     this._watchCustomerMatches();
   }
 
+  /**
+   * Deux écritures, et c'est le client retenu qui tranche entre elles.
+   *
+   * <b>Un client existant qui demande un nouveau produit n'est pas un lead, c'est une demande
+   * sur sa fiche.</b> Le bouton le disait déjà — « Créer la demande » — mais l'écran capturait un
+   * lead, que l'onglet « Demandes » du client ne montre jamais : il liste des opportunités
+   * (`GET leads/opportunities?customerId=`). La demande atterrissait donc hors de l'endroit où
+   * l'agent allait la chercher, et le serveur la refusait par-dessus le marché, sa garde de
+   * doublon reconnaissant le lead dont ce client est justement issu.
+   *
+   * Les deux se corrigent du même geste. Au passage, la règle de doublon qui s'applique devient
+   * la bonne : même client + même produit + demande encore ouverte, au lieu de « quelqu'un qui
+   * ressemble à cette personne existe déjà ».
+   */
   public handleSubmit(): void {
     submit(this.formSchema, async (field) => {
       const value = field()?.value();
+      if (!value) return;
+
+      // Les refus de la tentative précédente : le bandeau et l'encart doivent parler de CET
+      // envoi, et une réponse qui reste affichée pendant que la requête repart se lit comme une
+      // réponse déjà rendue. L'accusé de doublon, lui, survit — c'est lui qui porte le
+      // « créer quand même » jusqu'au serveur.
+      this.refusal.set(null);
+      this.demandDuplicateCount.set(null);
+
       const customer = this.retainedCustomer();
 
-      // Le refus de la tentative précédente, s'il y en a eu une : le bandeau doit parler de
-      // CET envoi, pas du précédent, et un refus qui reste affiché pendant que la requête
-      // repart se lit comme une réponse déjà rendue.
-      this.refusal.set(null);
+      await (customer
+        ? this._createDemandForCustomer(value, customer)
+        : this._captureLead(value));
+    });
+  }
 
-      // Quand un client existant est retenu, aucune identité n'est renvoyée : seuls le
-      // produit demandé, le canal et le commentaire partent, et l'agence est celle du
-      // client. `fullName` est repris de la fiche client — ce n'est pas une saisie, et
-      // sans lui le lead arriverait sans nom dans la liste.
-      const request: CaptureLeadRequest = customer
-        ? {
-            fullName: customer.displayName,
-            phoneNumber: value.phoneNumber || null,
-            prospectType: value.prospectType,
-            source: value.source,
-            channel: (value.channel || null) as CaptureLeadRequestChannelEnum | null,
-            interestedProduct: value.interestedProduct || null,
-            agencyId: customer.agencyId ?? null,
-            customerReference: customer.clientNumber,
-            comment: value.comment || null,
-          }
-        : {
-            firstName: value.firstName || null,
-            lastName: value.lastName || null,
-            phoneNumber: value.phoneNumber || null,
-            email: value.email || null,
-            nationalId: value.nationalId || null,
-            prospectType: value.prospectType,
-            companyName: this.isCompany() ? value.companyName || null : null,
-            source: value.source,
-            channel: (value.channel || null) as CaptureLeadRequestChannelEnum | null,
-            leadSourceConfigId: value.leadSourceConfigId || null,
-            interestedProduct: value.interestedProduct || null,
-            desiredAmount: value.desiredAmount ? Number(value.desiredAmount) : null,
-            desiredCurrency: value.desiredCurrency || null,
-            agencyId: value.agencyId || null,
-            comment: value.comment || null,
-          };
+  /** « Créer quand même » sur une demande en double : l'agent a vu les demandes existantes. */
+  public createDemandAnyway(): void {
+    this._demandDuplicateAcknowledged.set(true);
+    this.handleSubmit();
+  }
 
-      // `POST leads/capture` répond **409** quand il refuse la création pour cause de doublon
-      // (`GateMode: Block`, le défaut du serveur) — et le corps de ce 409 est un
-      // `CaptureLeadResult` complet, pas un problème HTTP. Il arrive donc par le canal
-      // d'erreur : le refus était annoncé « réessayez plus tard », et la branche qui sait
-      // l'afficher ne pouvait jamais s'exécuter puisqu'un corps sans `leadId` n'arrive
-      // jamais par le canal nominal.
-      const result = await firstValueFrom(
-        this._leadsApiService.captureLead(request).pipe(
+  /** « Ce n'est pas la même personne » : repose la capture en passant outre la détection. */
+  public createLeadAnyway(): void {
+    this._leadDuplicateAcknowledged.set(true);
+    this.handleSubmit();
+  }
+
+  /**
+   * « C'est ce client » depuis le refus : le doublon est un lead converti, donc il y a une fiche
+   * client derrière. On la résout puis on la retient, ce qui bascule la soumission sur la branche
+   * demande — c'est la sortie du cas où la recherche client par téléphone ne retrouve pas la
+   * fiche alors que la dédup de lead, elle, a reconnu la personne.
+   */
+  public async retainCustomerOfDuplicate(duplicate: DuplicateMatchResult): Promise<void> {
+    const leadId = duplicate.leadId;
+    if (!leadId || this.isResolvingDuplicate()) return;
+
+    this.isResolvingDuplicate.set(true);
+
+    const converted = await firstValueFrom(
+      this._leadsApiService.getLead(leadId).pipe(catchError(() => of(null))),
+    );
+
+    this.isResolvingDuplicate.set(false);
+
+    const customerId = converted?.convertedToCustomerId;
+
+    if (!customerId) {
+      this._snackbarService.error(
+        'Fiche client introuvable',
+        "Ce lead n'est relié à aucune fiche client : créez la demande depuis la fiche, ou "
+          + 'indiquez qu\'il ne s\'agit pas de la même personne.',
+      );
+      return;
+    }
+
+    // La fiche n'est pas forcément dans les correspondances déjà chargées : la recherche client
+    // se fait sur le téléphone, et ce chemin existe précisément pour les cas où elle n'a rien
+    // trouvé. On la charge donc pour en faire une correspondance retenue à part entière.
+    const client = await firstValueFrom(
+      this._clientsApiService.getClient(customerId).pipe(catchError(() => of(null))),
+    );
+
+    if (!client) {
+      this._snackbarService.error(
+        'Fiche client illisible',
+        "La fiche de ce client n'a pas pu être chargée.",
+      );
+      return;
+    }
+
+    this._retainedFromDuplicate.set(
+      customerMatchViewFromClient(client, {
+        isExact: true,
+        matchedOn: ['Phone'],
+        requestedProductCode: this.formSchema.interestedProduct().value(),
+      }),
+    );
+
+    this._customerRejected.set(false);
+    this.selectedCustomerId.set(customerId);
+    this.refusal.set(null);
+  }
+
+  // ── Les deux écritures ───────────────────────────────────────────────────
+
+  /**
+   * La demande d'un client connu : une opportunité rattachée à sa fiche, créée en UN appel.
+   *
+   * Avant, c'était une capture suivie d'un `PUT leads/{id}/customer` — deux écritures dont la
+   * seconde pouvait échouer seule, laissant un lead qui se présente comme un prospect neuf
+   * pendant qu'un toast disait le contraire. Il n'y a plus de demi-état possible.
+   */
+  private async _createDemandForCustomer(
+    value: CreateLeadFormModel,
+    customer: CustomerMatchView,
+  ): Promise<void> {
+    const product = value.interestedProduct.trim();
+    const amount = Number(value.desiredAmount.replace(',', '.'));
+    const hasAmount = value.desiredAmount.trim().length > 0 && !Number.isNaN(amount);
+
+    const result = await firstValueFrom(
+      this._opportunitiesApiService
+        .createOpportunityForCustomer({
+          customerEntityId: customer.customerId,
+          title: `Demande — ${product}`,
+          product,
+          description: value.comment.trim() || null,
+          // Le conseiller de la fiche, comme le fait l'onglet « Demandes » : sans titulaire, la
+          // demande arrive sans agent assigné, qui est l'une des colonnes de cette liste.
+          ownerId: customer.advisorUserId,
+          estimatedAmount: hasAmount ? amount : null,
+          estimatedCurrency: hasAmount ? value.desiredCurrency.trim() || null : null,
+          customerPhone: value.phoneNumber || null,
+          force: this._demandDuplicateAcknowledged(),
+        })
+        .pipe(
           catchError((error: HttpErrorResponse) => {
-            const refusal = duplicateRefusalBody(error);
-            if (refusal) return of(refusal);
-
             this._snackbarService.error('Erreur', captureErrorMessage(error));
-
-            // `of(null)` et non `EMPTY` : `firstValueFrom` d'un flux vide ne vaut pas
-            // `undefined`, il **rejette** avec `EmptyError` — et cette promesse-là est celle
-            // que `submit()` attend, donc l'erreur réseau ressortait en rejet non géré.
             return of(null);
           }),
         ),
-      );
+    );
 
-      if (!result) return;
+    if (!result) return;
 
-      // Le serveur a refusé la création en renvoyant les doublons au lieu d'un identifiant.
-      // On les montre dans le bandeau plutôt que de naviguer vers un lead qui n'existe pas.
-      if (!result.leadId) {
-        const duplicates = result.potentialDuplicates ?? [];
-        this.duplicates.set(duplicates);
+    // Ce refus-ci arrive en **200**, pas en 409 comme celui de la capture : deux endpoints
+    // voisins, deux conventions opposées. D'où le test sur le corps et non sur une erreur.
+    if (result.duplicateDetected && !result.opportunityId) {
+      this.demandDuplicateCount.set(result.existingOpportunityIds?.length ?? 0);
+      this._revealDuplicateBanner();
+      return;
+    }
 
-        const [title, message] = duplicateRefusalText(duplicates);
-        this.refusal.set({ title, message });
-        this._revealDuplicateBanner();
-        return;
-      }
+    this._snackbarService.success(
+      'Demande créée',
+      'La demande est rattachée au client et apparaît dans sa fiche.',
+    );
 
-      if (customer) {
-        await this._attachToCustomer(result.leadId, customer);
-      }
+    this._demandDuplicateAcknowledged.set(false);
 
-      this._snackbarService.success('Succès', 'Lead créé avec succès');
-      this._dialogRef.close(result.leadId);
-      this._router.navigate(['/leads', result.leadId]);
-    });
+    // Fermé sans identifiant : aucun lead n'a été créé, la liste des leads n'a rien à recharger.
+    this._dialogRef.close(null);
+    this._router.navigate(['/customers', customer.customerId, 'demandes']);
+  }
+
+  /** La capture d'un prospect neuf — le chemin d'origine, inchangé dans son principe. */
+  private async _captureLead(value: CreateLeadFormModel): Promise<void> {
+    const request: CaptureLeadRequest = {
+      firstName: value.firstName || null,
+      lastName: value.lastName || null,
+      phoneNumber: value.phoneNumber || null,
+      email: value.email || null,
+      nationalId: value.nationalId || null,
+      prospectType: value.prospectType,
+      companyName: this.isCompany() ? value.companyName || null : null,
+      source: value.source,
+      channel: (value.channel || null) as CaptureLeadRequestChannelEnum | null,
+      leadSourceConfigId: value.leadSourceConfigId || null,
+      interestedProduct: value.interestedProduct || null,
+      desiredAmount: value.desiredAmount ? Number(value.desiredAmount) : null,
+      desiredCurrency: value.desiredCurrency || null,
+      agencyId: value.agencyId || null,
+      comment: value.comment || null,
+      force: this._leadDuplicateAcknowledged(),
+    };
+
+    // `POST leads/capture` répond **409** quand il refuse la création pour cause de doublon
+    // (`GateMode: Block`, le défaut du serveur) — et le corps de ce 409 est un
+    // `CaptureLeadResult` complet, pas un problème HTTP. Il arrive donc par le canal
+    // d'erreur : le refus était annoncé « réessayez plus tard », et la branche qui sait
+    // l'afficher ne pouvait jamais s'exécuter puisqu'un corps sans `leadId` n'arrive
+    // jamais par le canal nominal.
+    const result = await firstValueFrom(
+      this._leadsApiService.captureLead(request).pipe(
+        catchError((error: HttpErrorResponse) => {
+          const refusal = duplicateRefusalBody(error);
+          if (refusal) return of(refusal);
+
+          this._snackbarService.error('Erreur', captureErrorMessage(error));
+
+          // `of(null)` et non `EMPTY` : `firstValueFrom` d'un flux vide ne vaut pas
+          // `undefined`, il **rejette** avec `EmptyError` — et cette promesse-là est celle
+          // que `submit()` attend, donc l'erreur réseau ressortait en rejet non géré.
+          return of(null);
+        }),
+      ),
+    );
+
+    if (!result) return;
+
+    // Le serveur a refusé la création en renvoyant les doublons au lieu d'un identifiant.
+    // On les montre dans le bandeau plutôt que de naviguer vers un lead qui n'existe pas.
+    if (!result.leadId) {
+      const duplicates = result.potentialDuplicates ?? [];
+      this.duplicates.set(duplicates);
+
+      const [title, message] = duplicateRefusalText(duplicates);
+      this.refusal.set({ title, message });
+      this._revealDuplicateBanner();
+      return;
+    }
+
+    this._snackbarService.success('Succès', 'Lead créé avec succès');
+    this._leadDuplicateAcknowledged.set(false);
+    this._dialogRef.close(result.leadId);
+    this._router.navigate(['/leads', result.leadId]);
   }
 
   /**
@@ -519,12 +704,25 @@ export class CreateLeadComponent {
   public retainCustomer(match: CustomerMatchView): void {
     this._customerRejected.set(false);
     this.selectedCustomerId.set(match.customerId);
+
+    // On change de destinataire : le refus affiché et l'accord de passer outre portaient sur
+    // l'autre, et les garder ferait créer en `force` une demande que personne n'a vue refusée.
+    this._resetDuplicateAnswers();
   }
 
   /** « Nouveau prospect » : le choix est mémorisé pour la suite de la saisie. */
   public rejectCustomers(): void {
     this._customerRejected.set(true);
     this.selectedCustomerId.set(null);
+    this._retainedFromDuplicate.set(null);
+    this._resetDuplicateAnswers();
+  }
+
+  private _resetDuplicateAnswers(): void {
+    this.refusal.set(null);
+    this.demandDuplicateCount.set(null);
+    this._demandDuplicateAcknowledged.set(false);
+    this._leadDuplicateAcknowledged.set(false);
   }
 
   public viewCustomer(customerId: string): void {
@@ -539,40 +737,6 @@ export class CreateLeadComponent {
 
   public close(): void {
     this._dialogRef.close();
-  }
-
-  /**
-   * Rattachement explicite après création : `captureLead` ne prend pas d'identifiant
-   * client au contrat (seulement `customerReference`), et `PUT /leads/{id}/customer`
-   * (BNF-B-22) est le seul geste qui lie réellement le lead au client. Son échec ne
-   * doit pas perdre le lead déjà créé — on le dit et on laisse l'agent finir depuis la
-   * fiche.
-   */
-  private async _attachToCustomer(leadId: string, customer: CustomerMatchView): Promise<void> {
-    let failed = false;
-    await firstValueFrom(
-      this._leadsApiService
-        .attachLeadToCustomer(leadId, {
-          customerId: customer.customerId,
-          reason: customer.isExact
-            ? 'Client existant retenu à la création (correspondance exacte sur le téléphone)'
-            : 'Client existant retenu à la création (correspondance partielle confirmée par l\'agent)',
-          expectedUpdatedAt: null,
-        })
-        .pipe(
-          catchError(() => {
-            failed = true;
-            return of(null);
-          }),
-        ),
-    );
-
-    if (failed) {
-      this._snackbarService.error(
-        'Rattachement échoué',
-        'Le lead a été créé mais n\'a pas pu être rattaché au client. Rattachez-le depuis la fiche lead.',
-      );
-    }
   }
 
   /** Doublons de **lead** sur téléphone ou e-mail (BNF-F-01). */
@@ -593,7 +757,11 @@ export class CreateLeadComponent {
         // La saisie a changé : le refus prononcé sur l'ancienne ne vaut plus, et le laisser
         // afficher ferait lire « le lead n'a pas été créé » à propos d'un numéro corrigé.
         tap(() => {
+          // La saisie a changé : ni le refus ni l'accord pour passer outre ne valent plus. Un
+          // `force` qui survivrait à un changement de téléphone ferait créer sans contrôle un
+          // lead que personne n'a regardé.
           this.refusal.set(null);
+          this._leadDuplicateAcknowledged.set(false);
           this.isCheckingDuplicates.set(true);
         }),
         switchMap(({ phone, email: mail }) =>
@@ -631,6 +799,7 @@ export class CreateLeadComponent {
           if (phone.length < MIN_PHONE_LENGTH) {
             this._matchRaw.set([]);
             this.selectedCustomerId.set(null);
+            this._retainedFromDuplicate.set(null);
             this.customerLookupFailed.set(false);
           }
         }),
@@ -671,8 +840,16 @@ export class CreateLeadComponent {
 
         // Correspondance exacte et unique : le rattachement est proposé par défaut,
         // sauf si l'agent a déjà répondu « Nouveau prospect ».
+        // Le client retenu depuis un doublon n'est pas dans `raws` — il vient d'un lead converti,
+        // pas de la recherche par téléphone. Il tombe quand même ici, et c'est voulu : ce bloc ne
+        // s'exécute que sur un NOUVEAU numéro, donc sur une autre personne que celle qu'il
+        // désignait.
         const stillValid = raws.some((r) => r.client.id === this.selectedCustomerId());
-        if (!stillValid) this.selectedCustomerId.set(null);
+
+        if (!stillValid) {
+          this.selectedCustomerId.set(null);
+          this._retainedFromDuplicate.set(null);
+        }
         if (raws.length === 1 && !this._customerRejected() && !stillValid) {
           this.selectedCustomerId.set(raws[0].client.id ?? null);
         }

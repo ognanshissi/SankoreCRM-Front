@@ -44,6 +44,12 @@ export interface CustomerMatchView {
   clientNumber: string | null;
   /** Agence de rattachement du client : le lead créé en hérite (BNF-F-18). */
   agencyId: string | null;
+  /**
+   * Le conseiller de la fiche client. Recopié jusqu'ici pour que la demande créée depuis la
+   * création de lead arrive avec un agent assigné — sans lui, elle apparaît sans titulaire dans
+   * l'onglet « Demandes », qui en fait une colonne.
+   */
+  advisorUserId: string | null;
   agencyLabel: string | null;
   statusLabel: string | null;
   kycStatus: string | null;
@@ -154,6 +160,7 @@ export function customerMatchViewFromDto(
     displayName: dto.displayName?.trim() || dto.clientNumber?.trim() || 'Client sans nom',
     clientNumber: dto.clientNumber ?? null,
     agencyId: dto.agencyId ?? null,
+    advisorUserId: dto.advisorUserId ?? null,
     agencyLabel: extra.agencyLabel ?? null,
     statusLabel: dto.status ? clientStatusLabel(dto.status) : null,
     kycStatus: dto.kycStatus ?? null,
@@ -192,6 +199,7 @@ export function customerMatchViewFromClient(
     displayName: client.displayName?.trim() || client.clientNumber?.trim() || 'Client sans nom',
     clientNumber: client.clientNumber ?? null,
     agencyId: client.agencyId ?? null,
+    advisorUserId: client.advisorUserId ?? null,
     agencyLabel: extra.agencyLabel ?? null,
     statusLabel: client.status ? clientStatusLabel(client.status) : null,
     kycStatus: client.kycStatus ?? null,

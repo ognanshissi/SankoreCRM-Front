@@ -1,11 +1,16 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  computed,
   input,
   output,
 } from '@angular/core';
+import { Button } from '@talisoft/ui/button';
 import { TasIcon } from '@talisoft/ui/icon';
-import { DuplicateMatchResult } from '@sankore/crm-api';
+import {
+  DuplicateMatchResult,
+  DuplicateMatchResultStatusEnum,
+} from '@sankore/crm-api';
 
 /**
  * Le refus de création prononcé par le serveur, tel qu'il doit être lu par l'agent.
@@ -31,7 +36,7 @@ export interface DuplicateRefusal {
 @Component({
   selector: 'duplicate-warning-banner',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [TasIcon],
+  imports: [Button, TasIcon],
   template: `
     @if (duplicates().length > 0) {
       @if (refusal(); as refused) {
@@ -49,18 +54,49 @@ export interface DuplicateRefusal {
             <p class="text-red-700 mt-1">
               {{ duplicates()[0].fullName }} — {{ duplicates()[0].phoneNumber }}
             </p>
-            <button
-              type="button"
-              class="text-red-800 underline font-medium mt-1 cursor-pointer"
-              (click)="viewDuplicate.emit(duplicates()[0].leadId!)"
-            >
-              Voir le lead existant
-            </button>
             @if (duplicates().length > 1) {
               <p class="text-red-600 mt-1">
                 + {{ duplicates().length - 1 }} autre(s) correspondance(s)
               </p>
             }
+
+            <!--
+              Les deux issues du refus. Sans elles le bandeau constate sans rien proposer, et la
+              seule sortie est d'abandonner la saisie : c'est le motif déjà en place sur
+              l'assistant de conversion, dont le libellé « créer quand même » est repris tel quel.
+            -->
+            <div class="flex flex-wrap items-center gap-3 mt-3">
+              @if (isConverted()) {
+                <button
+                  tas-raised-button
+                  color="primary"
+                  type="button"
+                  class="text-xs"
+                  [disabled]="busy()"
+                  [isLoading]="busy()"
+                  (click)="retainCustomerOf.emit(duplicates()[0])"
+                >
+                  C'est ce client
+                </button>
+              }
+              <button
+                tas-outlined-button
+                color="primary"
+                type="button"
+                class="text-xs"
+                [disabled]="busy()"
+                (click)="createAnyway.emit()"
+              >
+                Ce n'est pas la même personne, créer quand même
+              </button>
+              <button
+                type="button"
+                class="text-red-800 underline font-medium cursor-pointer text-xs"
+                (click)="viewDuplicate.emit(duplicates()[0].leadId!)"
+              >
+                Voir le lead existant
+              </button>
+            </div>
           </div>
         </div>
       } @else {
@@ -98,5 +134,22 @@ export class DuplicateWarningBanner {
    */
   public refusal = input<DuplicateRefusal | null>(null);
 
+  /** Une écriture est en cours : les deux issues du refus ne doivent pas être relancées. */
+  public busy = input(false);
+
   public viewDuplicate = output<string>();
+
+  /**
+   * « C'est ce client » — proposé uniquement quand le lead en doublon est converti, donc qu'il
+   * existe une fiche client derrière. Sur un lead encore ouvert il n'y a rien à retenir, et le
+   * bouton enverrait l'agent vers une fiche qui n'existe pas.
+   */
+  public retainCustomerOf = output<DuplicateMatchResult>();
+
+  /** « Ce n'est pas la même personne » : à l'hôte de reposter en passant outre la détection. */
+  public createAnyway = output<void>();
+
+  protected readonly isConverted = computed(
+    () => this.duplicates()[0]?.status === DuplicateMatchResultStatusEnum.Converted,
+  );
 }

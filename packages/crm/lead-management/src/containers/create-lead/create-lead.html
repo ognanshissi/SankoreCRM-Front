@@ -1,6 +1,8 @@
 <tas-side-drawer>
   <tas-drawer-title>
-    <TasTitle class="text-lg">Nouveau lead</TasTitle>
+    <TasTitle class="text-lg">
+      {{ isExistingCustomer() ? 'Nouvelle demande' : 'Nouveau lead' }}
+    </TasTitle>
   </tas-drawer-title>
 
   <tas-drawer-content>
@@ -43,17 +45,75 @@
         (openCustomer)="viewCustomer($event)"
       ></customer-match-banner>
 
-      <!--
-        Doublon de lead sur téléphone ou e-mail (BNF-F-01), et le refus du serveur quand il y
-        en a eu un : c'est le même bandeau, parce que c'est la même correspondance — en ambre
-        tant qu'elle n'est qu'un avertissement, en rouge une fois qu'elle a bloqué la création.
-      -->
+    
       <duplicate-warning-banner
         #duplicateBanner
         [duplicates]="duplicates()"
         [refusal]="refusal()"
+        [busy]="isResolvingDuplicate() || formSchema().submitting()"
         (viewDuplicate)="viewDuplicate($event)"
+        (retainCustomerOf)="retainCustomerOfDuplicate($event)"
+        (createAnyway)="createLeadAnyway()"
       ></duplicate-warning-banner>
+
+      <!--
+        Le refus de l'autre écriture : une demande déjà ouverte sur le même client et le même
+        produit. Ambre et non rouge — rien n'est cassé, c'est une question posée à l'agent, qui
+        tranche en consultant la fiche ou en insistant. Même forme que l'onglet « Demandes »,
+        d'où ce refus vient aussi.
+      -->
+      @if (demandDuplicateCount(); as existing) {
+        <div class="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm" role="alert">
+          <p class="font-medium text-amber-800">
+            Une demande semblable existe déjà
+            @if (existing > 0) {
+              ({{ existing }} demande{{ existing > 1 ? 's' : '' }})
+            }
+          </p>
+          <p class="text-amber-700 mt-1">
+            Rien n'a été créé. Vérifiez les demandes en cours du client avant d'insister.
+          </p>
+          <div class="flex flex-wrap items-center gap-3 mt-3">
+            <button
+              tas-outlined-button
+              color="primary"
+              type="button"
+              class="text-xs"
+              [disabled]="formSchema().submitting()"
+              (click)="createDemandAnyway()"
+            >
+              Créer quand même
+            </button>
+            @if (canReadCustomers() && retainedCustomer(); as client) {
+              <button
+                type="button"
+                class="text-amber-800 underline font-medium cursor-pointer text-xs"
+                (click)="viewCustomer(client.customerId)"
+              >
+                Voir la fiche du client
+              </button>
+            }
+          </div>
+        </div>
+      }
+
+      <!--
+        L'habilitation de l'endpoint des demandes, dite avant la saisie : sans elle l'agent
+        remplirait le formulaire pour récolter un 403 à l'envoi.
+      -->
+      @if (isExistingCustomer() && !canManageOpportunities()) {
+        <div class="flex items-start gap-2 rounded-lg border border-slate-200 bg-slate-50 p-3">
+          <tas-icon
+            iconName="feather:lock"
+            class="mt-0.5 shrink-0 text-slate-500"
+            style="font-size:14px"
+          ></tas-icon>
+          <p class="text-xs text-slate-600">
+            Enregistrer une demande pour un client existant demande une habilitation dédiée.
+            Choisissez « Nouveau prospect » ou faites-la créer depuis la fiche du client.
+          </p>
+        </div>
+      }
 
       @if (!isExistingCustomer()) {
         <!-- Identity -->
@@ -142,7 +202,12 @@
           }
 
           <tas-form-field>
-            <tas-label>Produit souhaité</tas-label>
+            <tas-label>
+              Produit souhaité
+              @if (isExistingCustomer()) {
+                <span class="text-functional-error">*</span>
+              }
+            </tas-label>
             <tas-select
               [options]="productOptions()"
               optionLabel="name"
@@ -150,6 +215,12 @@
               placeholder="Produit souhaité"
               [formField]="formSchema.interestedProduct"
             ></tas-select>
+            @if (
+              formSchema.interestedProduct().touched()
+              && formSchema.interestedProduct().invalid()
+            ) {
+              <tas-error>{{ formSchema.interestedProduct().errors()[0].message }}</tas-error>
+            }
           </tas-form-field>
 
           <tas-form-field>
@@ -161,27 +232,31 @@
             ></tas-select>
           </tas-form-field>
 
-          @if (!isExistingCustomer()) {
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <tas-form-field>
-                <tas-label>Montant souhaité</tas-label>
-                <input
-                  tasInput
-                  type="number"
-                  placeholder="0"
-                  [formField]="formSchema.desiredAmount"
-                />
-              </tas-form-field>
+          <!--
+            Le montant vaut pour les deux parcours. Il était masqué pour un client existant parce
+            que la capture d'un lead rattaché ne le portait pas ; la demande créée sur la fiche,
+            elle, a un montant estimé et une devise — les cacher reviendrait à perdre à la saisie
+            ce que l'écran des demandes affiche ensuite en colonne.
+          -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <tas-form-field>
+              <tas-label>Montant souhaité</tas-label>
+              <input
+                tasInput
+                type="number"
+                placeholder="0"
+                [formField]="formSchema.desiredAmount"
+              />
+            </tas-form-field>
 
-              <tas-form-field>
-                <tas-label>Devise</tas-label>
-                <tas-select
-                  [options]="currencyOptions"
-                  [formField]="formSchema.desiredCurrency"
-                ></tas-select>
-              </tas-form-field>
-            </div>
-          }
+            <tas-form-field>
+              <tas-label>Devise</tas-label>
+              <tas-select
+                [options]="currencyOptions"
+                [formField]="formSchema.desiredCurrency"
+              ></tas-select>
+            </tas-form-field>
+          </div>
         </div>
       </div>
 
@@ -200,7 +275,7 @@
         </div>
       } @else if (retainedCustomer()!.agencyLabel) {
         <p class="text-xs text-slate-500">
-          Le lead sera affecté à l'agence du client : {{ retainedCustomer()!.agencyLabel }}.
+          La demande suivra la fiche du client, rattachée à {{ retainedCustomer()!.agencyLabel }}.
         </p>
       }
 
@@ -224,7 +299,11 @@
       color="primary"
       type="button"
       (click)="handleSubmit()"
-      [disabled]="formSchema().invalid() || formSchema().submitting()"
+      [disabled]="
+        formSchema().invalid()
+        || formSchema().submitting()
+        || (isExistingCustomer() && !canManageOpportunities())
+      "
       [isLoading]="formSchema().submitting()"
     >
       {{ isExistingCustomer() ? 'Créer la demande' : 'Créer le lead' }}
