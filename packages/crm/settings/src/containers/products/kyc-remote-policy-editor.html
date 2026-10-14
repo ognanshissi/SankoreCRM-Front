@@ -1,21 +1,18 @@
 <!-- ——— KYC à distance (KRM-F-01) ——— -->
-<tas-card class="block">
-  <div class="p-4 border-b border-slate-100">
-    <h2 class="text-sm font-semibold text-slate-700 flex items-center gap-2">
-      <tas-icon
-        iconName="feather:smartphone"
-        class="text-slate-400"
-        style="font-size: 14px"
-      ></tas-icon>
-      KYC à distance
-    </h2>
-    <p class="text-xs text-slate-400 mt-0.5">
-      À la conversion d'un lead sur ce produit, le nouveau client reçoit un lien à
-      usage unique pour déposer ses pièces depuis son téléphone.
-    </p>
-  </div>
+<!--
+  Pas de carte ici : le volet d'onglet qui accueille ce composant porte la carte et son
+  espacement. Avant les onglets, chaque éditeur portait la sienne — ce qui donnait une carte dans
+  une carte dès qu'on les groupait. Le titre reste ici, parce qu'il nomme ce que le bouton de
+  cette section enregistre et non le volet.
+-->
+<div>
+  <h2 class="text-xl font-bold text-primary">KYC à distance</h2>
+  <p class="text-sm text-slate-600 mt-1">
+    À la conversion d'un lead sur ce produit, le nouveau client reçoit un lien à usage unique
+    pour déposer ses pièces depuis son téléphone.
+  </p>
 
-  <form [formRoot]="formSchema" class="p-4 flex flex-col gap-5">
+  <form [formRoot]="formSchema" class="flex flex-col gap-5 mt-5">
     <!-- Activation -->
     <label class="flex items-start gap-2 cursor-pointer text-sm">
       <input
@@ -261,4 +258,4 @@
       </div>
     }
   </form>
-</tas-card>
+</div>

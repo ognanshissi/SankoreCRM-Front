@@ -9,7 +9,6 @@ import {
   signal,
   viewChild,
 } from '@angular/core';
-import { RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import {
   form,
@@ -20,7 +19,6 @@ import {
 } from '@angular/forms/signals';
 import { catchError, EMPTY, firstValueFrom } from 'rxjs';
 import { HttpErrorResponse } from '@angular/common/http';
-import { TasCard } from '@talisoft/ui/card';
 import { Button } from '@talisoft/ui/button';
 import { TasIcon } from '@talisoft/ui/icon';
 import { TasTag } from '@talisoft/ui/tag';
@@ -28,23 +26,14 @@ import { TasError, TasFormField, TasHint, TasLabel } from '@talisoft/ui/form-fie
 import { TasInput } from '@talisoft/ui/input';
 import { TasMultiSelect } from '@talisoft/ui/multi-select';
 import { TasSelect } from '@talisoft/ui/select';
-import { TableConfig, TasTable } from '@talisoft/ui/table';
 import { SnackbarService } from '@talisoft/ui/snackbar';
 import {
   DesignationRoleInput,
-  LeadsApiService,
   ProductDto,
-  ProductDtoCategoryEnum,
   ProductsApiService,
-  QualificationTemplateDto,
   SetBeneficiaryPolicyRequest,
 } from '@sankore/crm-api';
 import { designationRoleLabel, productCategoryLabel } from '@sankore/crm/common';
-import {
-  isInsuranceCategory,
-  statusLabel,
-  statusSeverity,
-} from '../qualification-templates/qualification-template.models';
 
 /**
  * Rôles de désignation proposés. `DesignationRoleInput.code` est une chaîne
@@ -174,11 +163,9 @@ function positiveIntegerValidator(max: number, message: string) {
   selector: 'beneficiary-policy-editor',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
-    RouterLink,
     FormsModule,
     FormRoot,
     FormField,
-    TasCard,
     Button,
     TasIcon,
     TasTag,
@@ -189,27 +176,23 @@ function positiveIntegerValidator(max: number, message: string) {
     TasInput,
     TasMultiSelect,
     TasSelect,
-    TasTable,
   ],
   template: `
     <!-- ——— Politique bénéficiaires et foyer (BNF-F-14) ——— -->
-    <tas-card class="block">
-      <div class="p-4 border-b border-slate-100">
-        <h2 class="text-sm font-semibold text-slate-700 flex items-center gap-2">
-          <tas-icon
-            iconName="feather:users"
-            class="text-slate-400"
-            style="font-size:14px"
-          ></tas-icon>
-          Politique bénéficiaires et foyer
-        </h2>
-        <p class="text-xs text-slate-400 mt-0.5">
-          Foyer, rôles de bénéficiaires et champs exigés avant conversion pour
-          cette ligne de produit.
-        </p>
-      </div>
+    <!--
+      Pas de carte ici : le volet d'onglet qui accueille ce composant porte la carte et son
+      espacement. Avant les onglets, chaque éditeur portait la sienne — ce qui donnait une carte
+      dans une carte dès qu'on les groupait. Le titre reste ici, parce qu'il nomme ce que le
+      bouton de cette section enregistre et non le volet.
+    -->
+    <div>
+      <h2 class="text-xl font-bold text-primary">Politique bénéficiaires et foyer</h2>
+      <p class="text-sm text-slate-600 mt-1">
+        Foyer, rôles de bénéficiaires et champs exigés avant conversion pour cette ligne de
+        produit.
+      </p>
 
-      <form [formRoot]="formSchema" class="p-4 flex flex-col gap-5">
+      <form [formRoot]="formSchema" class="flex flex-col gap-5 mt-5">
         <!-- Identification de la ligne de produit -->
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
@@ -415,146 +398,12 @@ function positiveIntegerValidator(max: number, message: string) {
           </div>
         }
       </form>
-    </tas-card>
+    </div>
 
-    <!-- ——— Questionnaires de qualification ——— -->
-    <tas-card class="block mt-4">
-      <div class="p-4 border-b border-slate-100">
-        <h2 class="text-sm font-semibold text-slate-700 flex items-center gap-2">
-          <tas-icon
-            iconName="feather:clipboard"
-            class="text-slate-400"
-            style="font-size:14px"
-          ></tas-icon>
-          Questionnaires de qualification
-        </h2>
-        <p class="text-xs text-slate-400 mt-0.5">
-          Questionnaires de la catégorie « {{ categoryLabel() }} ». Le
-          rattachement se règle sur le questionnaire lui-même, via sa catégorie
-          et son produit.
-        </p>
-      </div>
-
-      @if (templatesFailed()) {
-        <div class="p-4 flex items-start gap-3">
-          <tas-icon
-            iconName="feather:alert-triangle"
-            class="text-functional-error"
-            style="font-size:16px"
-          ></tas-icon>
-          <div>
-            <p class="text-sm text-slate-700">
-              Impossible de charger les questionnaires.
-            </p>
-            <button
-              tas-text-button
-              color="primary"
-              type="button"
-              class="text-xs"
-              (click)="reloadTemplates()"
-            >
-              Réessayer
-            </button>
-          </div>
-        </div>
-      } @else {
-        <div class="p-4">
-          <tas-table
-            [data]="templates()"
-            [config]="tableConfig"
-            [isLoading]="templatesLoading()"
-            [hasCaption]="false"
-          >
-            <ng-template #header>
-              <tr>
-                <th scope="col">Questionnaire</th>
-                <th scope="col">Portée</th>
-                <th scope="col">Statut</th>
-                <th scope="col"></th>
-              </tr>
-            </ng-template>
-
-            <ng-template #body let-item>
-              <tr class="hover:bg-slate-50">
-                <td class="py-3">
-                  <div class="text-sm font-medium text-slate-800">
-                    {{ item.name ?? 'Questionnaire' }}
-                  </div>
-                  <div class="text-xs text-slate-400">
-                    version {{ item.version ?? 1 }}
-                  </div>
-                </td>
-                <td>
-                  <tas-tag
-                    [severity]="item.productCode === code() ? 'success' : 'neutral'"
-                  >
-                    {{ scopeLabel(item) }}
-                  </tas-tag>
-                </td>
-                <td>
-                  <tas-tag [severity]="templateStatusSeverity(item.status)">
-                    {{ templateStatusLabel(item.status) }}
-                  </tas-tag>
-                </td>
-                <td class="text-right">
-                  <a
-                    [routerLink]="[
-                      '/settings/qualification-templates',
-                      item.id,
-                      'edit'
-                    ]"
-                    class="text-xs text-primary hover:underline"
-                    [attr.aria-label]="
-                      'Ouvrir le questionnaire ' + (item.name ?? '')
-                    "
-                  >
-                    Ouvrir
-                  </a>
-                </td>
-              </tr>
-            </ng-template>
-          </tas-table>
-        </div>
-      }
-
-      <div class="px-4 pb-4">
-        @if (isInsurance()) {
-          <div
-            class="rounded-lg border border-slate-200 bg-slate-50 p-3 flex gap-2.5"
-          >
-            <tas-icon
-              iconName="feather:heart"
-              class="text-slate-400 shrink-0 mt-0.5"
-              style="font-size:14px"
-            ></tas-icon>
-            <p class="text-xs text-slate-500">
-              Catégorie d'assurance : un questionnaire santé peut être rattaché à
-              cette ligne de produit. Le marquage « questionnaire santé » se
-              fait sur le questionnaire, à l'écran « Formulaires ».
-            </p>
-          </div>
-        } @else {
-          <div
-            class="rounded-lg border border-slate-200 bg-slate-50 p-3 flex gap-2.5"
-          >
-            <tas-icon
-              iconName="feather:info"
-              class="text-slate-400 shrink-0 mt-0.5"
-              style="font-size:14px"
-            ></tas-icon>
-            <p class="text-xs text-slate-500">
-              Les questionnaires santé ne sont proposés que pour les catégories
-              d'assurance.
-            </p>
-          </div>
-        }
-      </div>
-    </tas-card>
   `,
 })
 export class BeneficiaryPolicyEditor {
   private readonly _productsApi = inject(ProductsApiService);
-  private readonly _leadsApi = inject(LeadsApiService);
   private readonly _snackbar = inject(SnackbarService);
 
   public readonly product = input<ProductDto | null>(null);
@@ -565,19 +414,7 @@ export class BeneficiaryPolicyEditor {
   public readonly requiredFieldGroups = REQUIRED_FIELD_GROUPS;
   public readonly integrationSystemOptions = INTEGRATION_SYSTEM_OPTIONS;
   public readonly roleLabel = designationRoleLabel;
-  public readonly templateStatusLabel = statusLabel;
-  public readonly templateStatusSeverity = statusSeverity;
 
-  public readonly tableConfig: TableConfig = {
-    property: 'id',
-    pagination: {
-      serverSide: false,
-      pageIndex: 0,
-      pageSize: 10,
-      pageSizeOptions: [10, 20, 50],
-      totalElements: 0,
-    },
-  };
 
   public readonly model = signal(BeneficiaryPolicyFormModel.fromProduct(null));
 
@@ -598,18 +435,11 @@ export class BeneficiaryPolicyEditor {
   });
 
   public readonly roleOptions = signal<{ label: string; value: string }[]>([]);
-  public readonly templates = signal<QualificationTemplateDto[]>([]);
-  public readonly templatesLoading = signal(false);
-  public readonly templatesFailed = signal(false);
 
   public readonly code = computed(() => this.product()?.code ?? null);
 
   public readonly categoryLabel = computed(() =>
     productCategoryLabel(this.product()?.category),
-  );
-
-  public readonly isInsurance = computed(() =>
-    isInsuranceCategory(this.product()?.category),
   );
 
   public readonly selectedRoles = computed(() =>
@@ -647,7 +477,6 @@ export class BeneficiaryPolicyEditor {
           label: designationRoleLabel(code),
         })),
       );
-      this._loadTemplates(product.category ?? null);
     });
 
     // Le multi-select du design system ne synchronise pas son `selectionModel`
@@ -686,17 +515,6 @@ export class BeneficiaryPolicyEditor {
         ? current.filter((c) => c !== code)
         : [...current, code],
     );
-  }
-
-  public scopeLabel(template: QualificationTemplateDto): string {
-    if (!template.productCode) return 'Toute la catégorie';
-    return template.productCode === this.code()
-      ? 'Ce produit'
-      : 'Autre produit';
-  }
-
-  public reloadTemplates(): void {
-    this._loadTemplates(this.product()?.category ?? null);
   }
 
   public handleSubmit(): void {
@@ -759,29 +577,6 @@ export class BeneficiaryPolicyEditor {
     });
   }
 
-  private _loadTemplates(category: string | null): void {
-    if (!category) {
-      this.templates.set([]);
-      return;
-    }
-    this.templatesLoading.set(true);
-    this.templatesFailed.set(false);
-    this._leadsApi
-      // Le filtre `productCategory` de cet endpoint est une chaîne au
-      // contrat, pas un entier : l'enum de lecture s'y applique directement.
-      .listQualificationTemplates(undefined, category as ProductDtoCategoryEnum)
-      .pipe(
-        catchError(() => {
-          this.templatesFailed.set(true);
-          this.templatesLoading.set(false);
-          return EMPTY;
-        }),
-      )
-      .subscribe((templates) => {
-        this.templates.set(templates ?? []);
-        this.templatesLoading.set(false);
-      });
-  }
 }
 
 function toNullableInteger(raw: string): number | null {

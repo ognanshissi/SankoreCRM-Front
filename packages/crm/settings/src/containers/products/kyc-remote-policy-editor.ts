@@ -13,7 +13,6 @@ import { FormsModule } from '@angular/forms';
 import { form, FormField, FormRoot, submit, validate } from '@angular/forms/signals';
 import { HttpErrorResponse } from '@angular/common/http';
 import { catchError, EMPTY, firstValueFrom } from 'rxjs';
-import { TasCard } from '@talisoft/ui/card';
 import { Button } from '@talisoft/ui/button';
 import { TasIcon } from '@talisoft/ui/icon';
 import { TasTag } from '@talisoft/ui/tag';
@@ -124,7 +123,6 @@ function integerBetween(min: number, max: number, message: string) {
     FormsModule,
     FormRoot,
     FormField,
-    TasCard,
     Button,
     TasIcon,
     TasTag,

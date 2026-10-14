@@ -5,501 +5,592 @@ import {
   inject,
   input,
   linkedSignal,
+  LOCALE_ID,
   signal,
 } from '@angular/core';
-import { SlicePipe } from '@angular/common';
-import { Router, RouterLink } from '@angular/router';
-import { catchError, EMPTY } from 'rxjs';
-import { TasCard } from '@talisoft/ui/card';
-import { Anchor, Button } from '@talisoft/ui/button';
+import { HttpErrorResponse } from '@angular/common/http';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import {
+  form,
+  FormField,
+  FormRoot,
+  maxLength,
+  required,
+  submit,
+} from '@angular/forms/signals';
+import { catchError, firstValueFrom, map, of } from 'rxjs';
+import { Button } from '@talisoft/ui/button';
 import { TasIcon } from '@talisoft/ui/icon';
 import { Severity, TasTag } from '@talisoft/ui/tag';
-import { TasFormField, TasLabel } from '@talisoft/ui/form-field';
+import { TasError, TasFormField, TasHint, TasLabel } from '@talisoft/ui/form-field';
 import { TasInput } from '@talisoft/ui/input';
 import { TasSpinner } from '@talisoft/ui/spinner';
-import { ProductsApiService, ProductDto } from '@sankore/crm-api';
 import { SnackbarService } from '@talisoft/ui/snackbar';
 import { ConfirmDialogService } from '@talisoft/ui/confirm-dialog';
+import { ProductDto, ProductsApiService } from '@sankore/crm-api';
 import {
   BreadcrumbService,
   PermissionsService,
   productCategoryLabel,
 } from '@sankore/crm/common';
 import { ProductParametersEditor } from '../product-parameters-editor';
+import { QualificationTemplatesPanel } from '../qualification-templates-panel';
 import { BeneficiaryPolicyEditor } from '../beneficiary-policy-editor';
 import { KycRemotePolicyEditor } from '../kyc-remote-policy-editor';
 
+const NAME_MAX_LENGTH = 200;
+const DESCRIPTION_MAX_LENGTH = 1000;
+
+/**
+ * L'icône qui représente la catégorie dans le médaillon d'identité.
+ *
+ * Indexée sur les neuf valeurs du contrat : en ajouter une au serveur sans l'ajouter ici donne un
+ * médaillon vide, ce que le repli couvre — mais le `Record` partiel est délibéré, parce qu'un
+ * `Record<ProductDtoCategoryEnum, string>` obligerait à inventer une icône le jour où une
+ * catégorie arrive, et une icône mal choisie est pire qu'une icône générique.
+ */
+const CATEGORY_ICONS: Record<string, string> = {
+  Loan: 'feather:trending-up',
+  Savings: 'feather:pie-chart',
+  Insurance: 'feather:shield',
+  HealthInsurance: 'feather:heart',
+  ForecastInsurance: 'feather:umbrella',
+  Tontine: 'feather:users',
+  GroupCredit: 'feather:user-plus',
+  Agriculture: 'feather:sun',
+  CurrentAccount: 'feather:credit-card',
+};
+
+/**
+ * Les six volets de l'écran, dans l'ordre d'affichage.
+ *
+ * Un tableau plutôt qu'une union écrite à la main, pour que la barre d'onglets, la lecture du
+ * query param et le repli partent de la même liste : un septième volet s'ajoute en un endroit.
+ */
+const PRODUCT_TABS = [
+  'identite',
+  'parametres',
+  'beneficiaires',
+  'questionnaires',
+  'kyc',
+  'danger',
+] as const;
+
+export type ProductTab = (typeof PRODUCT_TABS)[number];
+
+/**
+ * Le nom du volet tel qu'il est écrit dans l'onglet. Sert à l'alerte inter-onglets, qui doit
+ * nommer le volet à corriger avec les mots que le lecteur voit dans la barre — « identite » dans
+ * un message renverrait à un identifiant d'URL plutôt qu'à un onglet.
+ */
+/** L'icône de l'onglet. Même rôle que dans `compliance-settings` : repérer un volet sans lire. */
+const PRODUCT_TAB_ICONS: Record<ProductTab, string> = {
+  identite: 'feather:tag',
+  parametres: 'feather:sliders',
+  beneficiaires: 'feather:users',
+  questionnaires: 'feather:clipboard',
+  kyc: 'feather:smartphone',
+  danger: 'feather:alert-triangle',
+};
+
+const PRODUCT_TAB_LABELS: Record<ProductTab, string> = {
+  identite: 'Identité',
+  parametres: 'Paramètres',
+  beneficiaires: 'Politique bénéficiaires et foyer',
+  questionnaires: 'Questionnaires de qualification',
+  kyc: 'KYC à distance',
+  danger: 'Zone de danger',
+};
+
+/**
+ * Le formulaire du produit lui-même : nom et description.
+ *
+ * **Les champs CBS n'y sont PAS**, bien que `UpdateProductRequest` les accepte. Le lien vers le
+ * Core Banking a son propre endpoint (`POST products/{id}/link-cbs`) et son propre geste dans
+ * l'écran ; porter les deux écritures dans le même formulaire ferait qu'un enregistrement du nom
+ * réécrirait un lien que quelqu'un vient de poser depuis l'autre section, et inversement.
+ */
+class ProductFormModel {
+  public name!: string;
+  public description!: string;
+
+  public static fromDto(dto: ProductDto | null): ProductFormModel {
+    const m = new ProductFormModel();
+    m.name = dto?.name ?? '';
+    m.description = dto?.description ?? '';
+    return m;
+  }
+}
+
+/** Le lien CBS, dans son propre formulaire pour la raison ci-dessus. */
+class CbsFormModel {
+  public platform!: string;
+  public productId!: string;
+
+  public static fromDto(dto: ProductDto | null): CbsFormModel {
+    const m = new CbsFormModel();
+    m.platform = dto?.businessPlatformName ?? '';
+    m.productId = dto?.businessProductId ?? '';
+    return m;
+  }
+}
+
+/**
+ * Détail d'une ligne de produit du catalogue.
+ *
+ * **Reprend la structure de l'écran de profil utilisateur** (`account-profile`) : même chrome de
+ * section (`rounded-2xl`, ombre légère, filet `slate-100`), mêmes titres `text-xl font-bold
+ * text-primary`, mêmes faits en lecture seule rendus par `<dl>`, mêmes champs verrouillés rendus
+ * comme des champs avec un cadenas, et même barre d'enregistrement en pied de page. La page avait
+ * accumulé quatre chromes différentes — carte à `p-4`, titre libre, cartes des sous-éditeurs — et
+ * trois boutons d'enregistrement sans qu'aucun ne dise ce qu'il enregistrait.
+ *
+ * **Six volets, et pas six routes enfants.** Les deux premiers partagent un seul formulaire et un
+ * seul `PUT`, donc une route par volet perdrait la saisie en cours à chaque changement d'onglet.
+ * Les volets sont rendus `[hidden]` et non détruits, pour la même raison : un nom saisi dans
+ * « Identité » doit survivre à un aller-retour par « KYC à distance ». C'est le motif de
+ * `compliance-settings`, repris tel quel — rôles ARIA, lien profond `?onglet=`, et une pastille
+ * par onglet pour que la saisie en attente reste visible depuis n'importe quel volet.
+ *
+ * **La contrepartie du volet masqué est qu'une erreur de validation peut être hors champ**, et
+ * c'est ce que `blockingOtherTab` couvre : sans elle, « Enregistrer » depuis « Paramètres » ne
+ * ferait rien et rien à l'écran n'en donnerait la raison.
+ *
+ * **Trois enregistrements distincts, et c'est voulu.** Le produit (la barre de pied de page), le
+ * lien CBS et les deux politiques écrivent chacun par leur endpoint, avec leur permission et leur
+ * validation. Un bouton unique lancerait quatre PUT dont l'un peut échouer, sans moyen de dire
+ * lequel a été retenu. Ce que l'écran corrige, c'est qu'on ne savait pas quel bouton couvrait
+ * quoi : la barre nomme ce qu'elle enregistre, et chaque politique garde le sien dans son volet.
+ */
 @Component({
   selector: 'edit-product',
   imports: [
     RouterLink,
-    TasCard,
     Button,
     TasIcon,
+    TasTag,
     TasFormField,
     TasLabel,
+    TasError,
+    TasHint,
     TasInput,
     TasSpinner,
-    TasTag,
-    SlicePipe,
-    Anchor,
+    FormRoot,
+    FormField,
     ProductParametersEditor,
+    QualificationTemplatesPanel,
     BeneficiaryPolicyEditor,
     KycRemotePolicyEditor,
   ],
-  template: `
-    @if (isLoading()) {
-      <div class="flex justify-center py-24">
-        <tas-spinner size="10" class="text-primary"></tas-spinner>
-      </div>
-    } @else if (loadFailed()) {
-      <div class="max-w-2xl">
-        <tas-card>
-          <div class="p-6 flex flex-col items-center text-center gap-2">
-            <tas-icon
-              iconName="feather:alert-triangle"
-              class="text-functional-error"
-              style="font-size:22px"
-            ></tas-icon>
-            <p class="text-sm font-medium text-slate-700">
-              Impossible de charger ce produit.
-            </p>
-            <p class="text-xs text-slate-400">
-              Vérifiez votre connexion, puis réessayez.
-            </p>
-            <div class="flex gap-2 mt-2">
-              <button
-                tas-raised-button
-                color="primary"
-                type="button"
-                (click)="reloadProduct()"
-              >
-                Réessayer
-              </button>
-              <a [routerLink]="['/settings/products']" tas-outlined-button>
-                Retour aux produits
-              </a>
-            </div>
-          </div>
-        </tas-card>
-      </div>
-    } @else if (product()) {
-      <div class="max-w-2xl pb-6 flex flex-col gap-4">
-        <!-- Page header -->
-        <div class="flex items-center gap-3">
-          <a [routerLink]="['/settings/products']" tas-button iconButton>
-            <tas-icon iconName="feather:chevron-left"></tas-icon>
-          </a>
-          <div class="flex items-center gap-2.5 min-w-0">
-            <div
-              class="w-8 h-8 rounded-full bg-indigo-50 flex items-center justify-center shrink-0"
-            >
-              <span class="text-xs font-bold text-indigo-600">{{
-                codeBadge()
-              }}</span>
-            </div>
-            <div class="min-w-0">
-              <h1 class="text-lg font-semibold text-slate-800 truncate">
-                {{ product()!.name ?? product()!.code }}
-              </h1>
-              @if (product()!.code) {
-                <span class="text-xs font-mono text-slate-400">{{
-                  product()!.code
-                }}</span>
-              }
-            </div>
-          </div>
-        </div>
-
-        <!-- Readonly metadata -->
-        <tas-card>
-          <div class="p-4 grid grid-cols-2 gap-x-6 gap-y-4">
-            <div>
-              <p class="text-xs text-slate-400 mb-1">Code technique</p>
-              <p class="font-mono text-sm font-medium text-slate-800">
-                {{ product()!.code ?? '—' }}
-              </p>
-            </div>
-            <div>
-              <p class="text-xs text-slate-400 mb-1">Catégorie</p>
-              @if (product()!.category) {
-                <tas-tag [severity]="categoryMeta(product()!.category).severity">
-                  {{ categoryMeta(product()!.category).label }}
-                </tas-tag>
-              } @else {
-                <p class="text-sm text-slate-500">—</p>
-              }
-            </div>
-            <div>
-              <p class="text-xs text-slate-400 mb-1">Statut</p>
-              <tas-tag [severity]="product()!.isActive ? 'success' : 'warning'">
-                {{ product()!.isActive ? 'Actif' : 'Inactif' }}
-              </tas-tag>
-            </div>
-            <div>
-              <p class="text-xs text-slate-400 mb-1">Date d'effet</p>
-              <p class="text-sm text-slate-800">
-                {{ product()!.effectiveFrom ? (product()!.effectiveFrom | slice:0:10) : '—' }}
-                @if (product()!.effectiveTo) {
-                  → {{ product()!.effectiveTo | slice:0:10 }}
-                }
-              </p>
-            </div>
-            <div>
-              <p class="text-xs text-slate-400 mb-1">Identifiant</p>
-              <p class="font-mono text-xs text-slate-500 truncate">
-                {{ product()!.id }}
-              </p>
-            </div>
-          </div>
-        </tas-card>
-
-        <!-- Edit form -->
-        <tas-card>
-          <div class="p-4 flex flex-col gap-4">
-            <p class="text-sm font-semibold text-slate-700">
-              Modifier le produit
-            </p>
-
-            <tas-form-field>
-              <tas-label>Nom</tas-label>
-              <input
-                tasInput
-                type="text"
-                placeholder="ex: Assurance Vie"
-                [value]="editedName()"
-                (input)="editedName.set($any($event.target).value)"
-              />
-            </tas-form-field>
-
-            <tas-form-field>
-              <tas-label>Description</tas-label>
-              <input
-                tasInput
-                type="text"
-                placeholder="ex: Produits d'assurance vie et épargne"
-                [value]="editedDescription()"
-                (input)="editedDescription.set($any($event.target).value)"
-              />
-            </tas-form-field>
-
-            <!-- Parameters editor -->
-            <div class="mt-2">
-              <p class="text-sm font-semibold text-slate-700 mb-2">Paramètres du produit</p>
-              <product-parameters-editor
-                [category]="product()!.category ?? ''"
-                [initialJson]="product()!.parametersJson ?? ''"
-                (parametersJsonChange)="editedParametersJson.set($event)"
-              ></product-parameters-editor>
-            </div>
-
-            <div class="flex justify-end">
-              @if (canUpdate()) {
-                <button
-                  tas-raised-button
-                  color="primary"
-                  type="button"
-                  [disabled]="isSaving()"
-                  [isLoading]="isSaving()"
-                  (click)="save()"
-                >
-                  <tas-icon iconName="feather:save" iconSize="sm"></tas-icon>
-                  Enregistrer
-                </button>
-              }
-            </div>
-          </div>
-        </tas-card>
-
-        <!-- CBS Integration -->
-        <tas-card>
-          <div class="p-4 border-b border-slate-100">
-            <p class="text-sm font-semibold text-slate-700 flex items-center gap-2">
-              <tas-icon iconName="feather:link" class="text-slate-400" style="font-size:14px"></tas-icon>
-              Intégration Core Banking (CBS)
-            </p>
-            <p class="text-xs text-slate-400 mt-0.5">Associez ce produit à son équivalent dans le système bancaire central.</p>
-          </div>
-          <div class="p-4">
-            @if (cbsLinked()) {
-              <div class="flex items-center gap-3 p-3 rounded-lg bg-green-50 border border-green-200 mb-3">
-                <tas-icon iconName="feather:check-circle" class="text-green-500" style="font-size:16px"></tas-icon>
-                <div>
-                  <p class="text-xs font-medium text-green-800">Produit lié au CBS</p>
-                  <p class="text-[10px] text-green-700 mt-0.5">
-                    Plateforme : <span class="font-semibold">{{ cbsPlatform() }}</span>
-                    · ID : <span class="font-mono font-semibold">{{ cbsProductId() }}</span>
-                  </p>
-                </div>
-              </div>
-            }
-            <div class="grid grid-cols-2 gap-3">
-              <tas-form-field>
-                <tas-label>Plateforme CBS</tas-label>
-                <input tasInput type="text" placeholder="Ex : T24, Flexcube, Temenos"
-                  [value]="cbsPlatform()" (input)="cbsPlatform.set($any($event.target).value)" />
-              </tas-form-field>
-              <tas-form-field>
-                <tas-label>ID produit CBS</tas-label>
-                <input tasInput type="text" placeholder="Ex : PROD-001"
-                  [value]="cbsProductId()" (input)="cbsProductId.set($any($event.target).value)" />
-              </tas-form-field>
-            </div>
-            <div class="flex justify-end mt-3">
-              @if (canUpdate()) {
-                <button tas-outlined-button color="primary" type="button" class="text-xs"
-                  [disabled]="isLinkingCbs() || !cbsPlatform().trim() || !cbsProductId().trim()"
-                  (click)="linkToCbs()">
-                  @if (isLinkingCbs()) { <tas-spinner size="3" class="text-primary"></tas-spinner> }
-                  <tas-icon iconName="feather:link" style="font-size:12px"></tas-icon>
-                  {{ cbsLinked() ? 'Mettre à jour le lien' : 'Lier au CBS' }}
-                </button>
-              }
-            </div>
-          </div>
-        </tas-card>
-
-        <!-- Politique bénéficiaires, foyer et questionnaires (BNF-F-14) -->
-        <beneficiary-policy-editor
-          [product]="product()"
-          [canUpdate]="canUpdate()"
-          (saved)="reloadProduct()"
-        ></beneficiary-policy-editor>
-
-        <!-- KYC à distance (KRM-F-01) -->
-        <kyc-remote-policy-editor
-          [product]="product()"
-          [canUpdate]="canUpdate()"
-          (saved)="reloadProduct()"
-        ></kyc-remote-policy-editor>
-
-        <!-- Danger zone -->
-        <h2 class="text-lg font-semibold text-slate-800">Zone de danger</h2>
-
-        <tas-card>
-          <div class="p-4 flex items-start justify-between gap-4">
-            <div class="flex items-start gap-3">
-              <div
-                class="w-8 h-8 rounded-full bg-red-50 flex items-center justify-center shrink-0 mt-0.5"
-              >
-                <tas-icon
-                  iconName="feather:trash-2"
-                  class="text-red-400"
-                  style="font-size:14px"
-                ></tas-icon>
-              </div>
-              <div>
-                <p class="text-sm font-semibold text-red-600">
-                  Supprimer ce produit
-                </p>
-                <p class="text-sm text-slate-500 mt-0.5">
-                  Suppression définitive et irréversible. Les spécialités
-                  associées à ce produit seront retirées des utilisateurs et
-                  territoires.
-                </p>
-              </div>
-            </div>
-            @if (canDelete()) {
-              <button
-                tas-outlined-button
-                color="warn"
-                type="button"
-                [disabled]="isDeleting()"
-                [isLoading]="isDeleting()"
-                (click)="confirmDelete()"
-                class="shrink-0"
-              >
-                <tas-icon iconName="feather:trash-2" iconSize="sm"></tas-icon>
-                Supprimer
-              </button>
-            }
-          </div>
-        </tas-card>
-      </div>
-    }
-  `,
+  templateUrl: './edit-product.html',
 })
 export class EditProductPage {
+  private readonly _productsApi = inject(ProductsApiService);
   private readonly _permissions = inject(PermissionsService);
+  private readonly _snackbar = inject(SnackbarService);
+  private readonly _confirmDialog = inject(ConfirmDialogService);
+  private readonly _router = inject(Router);
+  private readonly _route = inject(ActivatedRoute);
+  private readonly _breadcrumb = inject(BreadcrumbService);
+
+  /**
+   * La locale de l'application, et non « fr-FR » en dur : la période d'effet est construite dans
+   * un `computed` plutôt que par le pipe `date`, et c'est le seul endroit de l'écran qui formate
+   * une date sans passer par Angular — autant qu'il lise la même locale que lui.
+   */
+  private readonly _locale = inject(LOCALE_ID);
+
   public readonly canUpdate = this._permissions.can('product:update');
   public readonly canDelete = this._permissions.can('product:delete');
-
-  private readonly _productsApiService = inject(ProductsApiService);
-  private readonly _snackbarService = inject(SnackbarService);
-  private readonly _confirmDialogService = inject(ConfirmDialogService);
-  private readonly _router = inject(Router);
-  private readonly _breadcrumbService = inject(BreadcrumbService);
 
   public readonly id = input.required<string>();
 
   /**
-   * Le libellé vient du référentiel partagé : la version précédente ne
-   * connaissait que trois catégories et affichait le code brut
-   * (« HealthInsurance ») pour toutes les autres.
+   * Volet courant, adressable par `?onglet=`. `withComponentInputBinding()` est actif dans
+   * `app.config.ts`, les query params se lient donc aux entrées. Un `linkedSignal` plutôt qu'un
+   * `signal` : il suit l'URL quand elle change (lien profond, retour arrière) tout en restant
+   * inscriptible au clic sur un onglet.
+   *
+   * Le repli couvre deux cas, pas un : un nom de volet inconnu, et « danger » demandé par
+   * quelqu'un qui n'a pas le droit de supprimer — son volet n'est pas rendu, et l'honorer
+   * ouvrirait l'écran sur une page blanche.
    */
-  public categoryMeta(
-    cat: string | null | undefined,
-  ): { label: string; severity: Severity } {
-    const label = productCategoryLabel(cat);
-    switch (cat) {
-      case 'Loan': return { label, severity: 'info' };
-      case 'Savings': return { label, severity: 'success' };
-      case 'Tontine': return { label, severity: 'warning' };
-      default: return { label, severity: 'neutral' };
-    }
-  }
+  public readonly onglet = input<string | undefined>(undefined);
+
+  public readonly activeTab = linkedSignal<ProductTab>(() => {
+    const asked = this.onglet() as ProductTab | undefined;
+
+    if (!asked || !PRODUCT_TABS.includes(asked)) return 'identite';
+    if (asked === 'danger' && !this.canDelete()) return 'identite';
+
+    return asked;
+  });
+
+  public readonly tabs = PRODUCT_TABS;
+
+  public readonly descriptionMaxLength = DESCRIPTION_MAX_LENGTH;
 
   public isLoading = signal(true);
   public loadFailed = signal(false);
-  public isSaving = signal(false);
   public isDeleting = signal(false);
   public product = signal<ProductDto | null>(null);
-  public editedName = signal('');
-  public editedDescription = signal('');
+
+  /**
+   * Les paramètres sont édités par un composant tiers qui émet son JSON : ils restent en signal
+   * plutôt que dans le modèle de formulaire, et c'est pour cela que `hasUnsavedChanges` les
+   * compare séparément.
+   */
   public editedParametersJson = signal('');
 
-  // CBS integration
-  public cbsPlatform = signal('');
-  public cbsProductId = signal('');
-  public cbsLinked = linkedSignal(() => {
-    return !!(this.cbsProductId() && this.cbsPlatform());
-  });
-  public isLinkingCbs = signal(false);
+  // ── Le produit ───────────────────────────────────────────────────────────
 
-  public codeBadge = computed(() => {
-    const code = this.product()?.code;
-    if (!code) return '??';
-    return code
-      .replace(/[^A-Za-z0-9]/g, '')
-      .slice(0, 2)
-      .toUpperCase();
+  public model = signal(ProductFormModel.fromDto(null));
+
+  public formSchema = form(this.model, (schema) => {
+    // Un produit sans nom s'affiche par son code dans toutes les listes, ce qui est lisible par
+    // un administrateur et opaque pour un agent. Obligatoire, donc — le contrat l'accepte nul,
+    // mais c'est une tolérance pour les lignes créées avant cet écran.
+    required(schema.name, { message: 'Le nom commercial est obligatoire' });
+    maxLength(schema.name, NAME_MAX_LENGTH, {
+      message: `${NAME_MAX_LENGTH} caractères au maximum`,
+    });
+    maxLength(schema.description, DESCRIPTION_MAX_LENGTH, {
+      message: `${DESCRIPTION_MAX_LENGTH} caractères au maximum`,
+    });
   });
+
+  // ── Le lien Core Banking ─────────────────────────────────────────────────
+
+  public cbsModel = signal(CbsFormModel.fromDto(null));
+
+  public cbsForm = form(this.cbsModel, (schema) => {
+    // Les deux ou aucun : un lien à moitié posé est refusé par le serveur, et le dire ici évite
+    // un 400 sur un formulaire de deux champs.
+    required(schema.platform, { message: 'La plateforme est obligatoire' });
+    required(schema.productId, { message: "L'identifiant produit est obligatoire" });
+  });
+
+  /** Ce que le SERVEUR a enregistré, et non ce qui est dans le formulaire. */
+  public readonly linkedPlatform = computed(() => this.product()?.businessPlatformName ?? '');
+  public readonly linkedProductId = computed(() => this.product()?.businessProductId ?? '');
+
+  public readonly cbsLinked = computed(
+    () => !!this.linkedPlatform() && !!this.linkedProductId(),
+  );
+
+  // ── Ce que l'écran déduit ────────────────────────────────────────────────
+
+  public readonly categoryIcon = computed(
+    () => CATEGORY_ICONS[this.product()?.category ?? ''] ?? 'feather:box',
+  );
+
+  /**
+   * Le sous-titre des paramètres. Une phrase complète plutôt qu'un libellé interpolé : avec une
+   * catégorie absente, `productCategoryLabel` renvoie « — » et « propres à la catégorie — »
+   * n'est pas une phrase.
+   */
+  public readonly parametersSubtitle = computed(() => {
+    const category = this.product()?.category;
+
+    return category
+      ? `Les barèmes et plafonds propres à la catégorie ${productCategoryLabel(category).toLocaleLowerCase(this._locale)}.`
+      : 'Les barèmes et plafonds de ce produit.';
+  });
+
+  /**
+   * La période d'effet en une phrase.
+   *
+   * L'écran précédent découpait la chaîne ISO (`| slice:0:10`) et joignait les deux bornes par une
+   * flèche. Le découpage casse dès que le serveur renvoie un offset, et la flèche demande au
+   * lecteur de deviner le sens ; « du … au … » le dit.
+   */
+  public readonly effectivePeriod = computed(() => {
+    const from = this._asDate(this.product()?.effectiveFrom);
+    const to = this._asDate(this.product()?.effectiveTo);
+
+    if (!from && !to) return 'Sans limite de date';
+    if (from && !to) return `Depuis le ${this._format(from)}`;
+    if (!from && to) return `Jusqu'au ${this._format(to!)}`;
+    return `Du ${this._format(from!)} au ${this._format(to!)}`;
+  });
+
+  // ── L'état par volet ─────────────────────────────────────────────────────
+  //
+  // Deux volets seulement portent la saisie du produit : « Identité » (nom, description) et
+  // « Paramètres » (le JSON). Les quatre autres écrivent par leur propre bouton ou n'écrivent
+  // rien, et n'ont donc ni pastille ni part dans la barre de pied de page.
+
+  public readonly identiteTabInvalid = computed(
+    () => this.formSchema.name().invalid() || this.formSchema.description().invalid(),
+  );
+
+  public readonly identiteTabChanged = computed(() => {
+    const dto = this.product();
+    if (!dto) return false;
+
+    const value = this.model();
+
+    return value.name.trim() !== (dto.name ?? '').trim()
+      || value.description.trim() !== (dto.description ?? '').trim();
+  });
+
+  public readonly parametresTabChanged = computed(() => {
+    const dto = this.product();
+    if (!dto) return false;
+
+    return this.editedParametersJson().trim() !== (dto.parametersJson ?? '').trim();
+  });
+
+  /**
+   * Y a-t-il quelque chose à enregistrer. Lu par la barre de pied de page pour désactiver
+   * « Annuler » et pour dire franchement qu'une saisie est en attente — un bouton toujours actif
+   * ne dit rien, et c'est ce qui faisait oublier d'enregistrer.
+   *
+   * Composé des deux pastilles plutôt que recalculé : une seconde arithmétique finirait par dire
+   * « rien à enregistrer » alors qu'un onglet affiche « Modifié ».
+   */
+  public readonly hasUnsavedChanges = computed(
+    () => this.identiteTabChanged() || this.parametresTabChanged(),
+  );
+
+  /**
+   * Le volet qui bloque l'enregistrement sans être celui qu'on regarde.
+   *
+   * Les volets masqués le sont par `[hidden]` et non détruits, donc leur validation continue de
+   * courir : un nom effacé rend « Enregistrer » inopérant depuis « Paramètres », et sans ce
+   * message l'administrateur voit un bouton actif qui ne fait rien. Un seul volet peut être
+   * invalide aujourd'hui — « Paramètres » n'a pas de validation propre — mais la forme est celle
+   * de `compliance-settings`, qui en a deux.
+   */
+  public readonly blockingOtherTab = computed<ProductTab | null>(() =>
+    this.activeTab() !== 'identite' && this.identiteTabInvalid() ? 'identite' : null,
+  );
+
+  public tabLabel(tab: ProductTab): string {
+    return PRODUCT_TAB_LABELS[tab];
+  }
+
+  public tabIcon(tab: ProductTab): string {
+    return PRODUCT_TAB_ICONS[tab];
+  }
+
+  public categoryMeta(cat: string | null | undefined): { label: string; severity: Severity } {
+    const label = productCategoryLabel(cat);
+
+    // Le libellé vient du référentiel partagé : une version antérieure ne connaissait que trois
+    // catégories et affichait le code brut (« HealthInsurance ») pour les autres.
+    switch (cat) {
+      case 'Loan':
+        return { label, severity: 'info' };
+      case 'Savings':
+      case 'CurrentAccount':
+        return { label, severity: 'success' };
+      case 'Tontine':
+      case 'GroupCredit':
+        return { label, severity: 'warning' };
+      default:
+        return { label, severity: 'neutral' };
+    }
+  }
 
   constructor() {
-    effect(() => {
-      const productId = this.id();
-      this._load(productId);
+    effect(() => this._load(this.id()));
+  }
+
+  // ── Actions ──────────────────────────────────────────────────────────────
+
+  public handleSubmit(): void {
+    submit(this.formSchema, async (field) => {
+      const value = field()?.value();
+      if (!value) return;
+
+      const ok = await firstValueFrom(
+        this._productsApi
+          .updateProduct(this.id(), {
+            name: value.name.trim() || null,
+            description: value.description.trim() || null,
+            parametersJson: this.editedParametersJson().trim() || null,
+            // businessPlatformName / businessProductId volontairement absents : ils ont leur
+            // propre geste, et les envoyer ici écraserait un lien posé depuis l'autre section.
+          })
+          .pipe(
+            map(() => true),
+            catchError((error: HttpErrorResponse) => {
+              this._snackbar.error('Enregistrement impossible', this._errorMessage(error));
+              return of(false);
+            }),
+          ),
+      );
+
+      if (!ok) return;
+
+      this._snackbar.success('Produit enregistré', 'Les modifications sont en ligne.');
+
+      // Relu plutôt que supposé : le serveur normalise le nom et peut refuser une partie des
+      // paramètres, et un 204 ne dit pas ce qu'il a retenu.
+      this._load(this.id());
     });
   }
 
-  /**
-   * Rechargement après une écriture composée (politique bénéficiaires et
-   * foyer) : le 204 ne dit pas ce que le serveur a réellement retenu.
-   */
+  public cancel(): void {
+    const dto = this.product();
+
+    this.model.set(ProductFormModel.fromDto(dto));
+    this.editedParametersJson.set(dto?.parametersJson ?? '');
+    this.formSchema().reset();
+  }
+
+  public linkToCbs(): void {
+    submit(this.cbsForm, async (field) => {
+      const value = field()?.value();
+      if (!value) return;
+
+      const ok = await firstValueFrom(
+        this._productsApi
+          .linkProductToCbs(this.id(), {
+            businessPlatformName: value.platform.trim(),
+            businessProductId: value.productId.trim(),
+          })
+          .pipe(
+            map(() => true),
+            catchError((error: HttpErrorResponse) => {
+              this._snackbar.error('Liaison impossible', this._errorMessage(error));
+              return of(false);
+            }),
+          ),
+      );
+
+      if (!ok) return;
+
+      this._snackbar.success(
+        'Produit lié',
+        `${value.platform.trim()} — ${value.productId.trim()}`,
+      );
+
+      // Relu : la section affiche ce que le serveur a enregistré, pas ce qui a été tapé.
+      this._load(this.id());
+    });
+  }
+
   public reloadProduct(): void {
     this._load(this.id());
   }
 
-  private _load(productId: string): void {
-    this.isLoading.set(true);
-    this.loadFailed.set(false);
-    this._productsApiService.getProduct(productId).subscribe({
-      next: (product) => {
-        this.product.set(product);
-        this.editedName.set(product.name ?? '');
-        this.cbsPlatform.set(product.businessPlatformName ?? '');
-        this.cbsProductId.set(product.businessProductId ?? '');
-        this.editedDescription.set(product.description ?? '');
-        this.editedParametersJson.set(product.parametersJson ?? '');
-        this.isLoading.set(false);
-        this._breadcrumbService.set([
-          { label: 'Paramétrage', link: ['/settings'] },
-          { label: 'Produits', link: ['/settings/products'] },
-          { label: product.name ?? product.code ?? 'Produit' },
-        ]);
-      },
-      error: () => {
-        this._snackbarService.error(
-          'Erreur',
-          'Impossible de charger le produit.',
-        );
-        this.loadFailed.set(true);
-        this.isLoading.set(false);
-      },
-    });
-  }
+  /**
+   * Le volet est reflété dans l'URL : un lien depuis un dossier KYC ou depuis la liste des
+   * questionnaires doit pouvoir ouvrir directement le bon volet. `replaceUrl` pour qu'un
+   * va-et-vient entre onglets n'empile pas d'entrées dans l'historique du navigateur, et
+   * `queryParamsHandling: 'merge'` pour ne pas effacer les paramètres d'un autre écran.
+   */
+  public selectTab(tab: ProductTab): void {
+    if (this.activeTab() === tab) return;
 
-  public save(): void {
-    this.isSaving.set(true);
-    this._productsApiService
-      .updateProduct(this.id(), {
-        name: this.editedName().trim() || null,
-        description: this.editedDescription().trim() || null,
-        parametersJson: this.editedParametersJson().trim() || null,
-      })
-      .pipe(
-        catchError(() => {
-          this._snackbarService.error(
-            'Erreur',
-            'Impossible de mettre à jour le produit.',
-          );
-          this.isSaving.set(false);
-          return EMPTY;
-        }),
-      )
-      .subscribe(() => {
-        this._snackbarService.success('Succès', 'Produit mis à jour.');
-        this.product.update((p) =>
-          p
-            ? {
-                ...p,
-                name: this.editedName().trim() || null,
-                description: this.editedDescription().trim() || null,
-                parametersJson: this.editedParametersJson().trim() || null,
-              }
-            : p,
-        );
-        this.isSaving.set(false);
-      });
-  }
+    this.activeTab.set(tab);
 
-  public linkToCbs(): void {
-    if (!this.cbsPlatform().trim() || !this.cbsProductId().trim()) return;
-    this.isLinkingCbs.set(true);
-    this._productsApiService.linkProductToCbs(this.id(), {
-      businessPlatformName: this.cbsPlatform().trim(),
-      businessProductId: this.cbsProductId().trim(),
-    }).pipe(
-      catchError(() => {
-        this._snackbarService.error('Erreur', 'Impossible de lier le produit au CBS.');
-        this.isLinkingCbs.set(false);
-        return EMPTY;
-      }),
-    ).subscribe(() => {
-      this.cbsLinked.set(true);
-      this._snackbarService.success('Produit lié', `Lié à ${this.cbsPlatform()} — ${this.cbsProductId()}.`);
-      this.isLinkingCbs.set(false);
+    this._router.navigate([], {
+      relativeTo: this._route,
+      queryParams: { onglet: tab },
+      queryParamsHandling: 'merge',
+      replaceUrl: true,
     });
   }
 
   public confirmDelete(): void {
-    this._confirmDialogService.confirm({
+    const label = this.product()?.name ?? this.product()?.code ?? 'ce produit';
+
+    this._confirmDialog.confirm({
       title: 'Supprimer le produit',
-      message: `Supprimer "${this.product()?.name ?? this.product()?.code}" ? Cette action est irréversible.`,
+      message: `Supprimer « ${label} » ? Cette action est irréversible.`,
       closable: true,
       showCancelButton: true,
       acceptButtonProps: { label: 'Supprimer', theme: 'warn' },
       rejectButtonProps: { label: 'Annuler' },
       accept: () => {
         this.isDeleting.set(true);
-        this._productsApiService
+
+        this._productsApi
           .deleteProduct(this.id())
           .pipe(
-            catchError(() => {
-              this._snackbarService.error(
-                'Erreur',
-                'Impossible de supprimer le produit.',
-              );
+            catchError((error: HttpErrorResponse) => {
+              this._snackbar.error('Suppression impossible', this._errorMessage(error));
               this.isDeleting.set(false);
-              return EMPTY;
+              return of(null);
             }),
           )
-          .subscribe(() => {
-            this._snackbarService.success('Succès', 'Produit supprimé.');
+          .subscribe((result) => {
+            if (result === null) return;
+
+            this._snackbar.success('Produit supprimé', `« ${label} » n'est plus au catalogue.`);
             this._router.navigate(['/settings/products']);
           });
       },
     });
+  }
+
+  // ── Chargement ───────────────────────────────────────────────────────────
+
+  private _load(productId: string): void {
+    this.isLoading.set(true);
+    this.loadFailed.set(false);
+
+    this._productsApi.getProduct(productId).subscribe({
+      next: (dto) => {
+        this.product.set(dto);
+        this.model.set(ProductFormModel.fromDto(dto));
+        this.cbsModel.set(CbsFormModel.fromDto(dto));
+        this.editedParametersJson.set(dto.parametersJson ?? '');
+
+        // Les deux formulaires repartent propres : sans cela, un champ touché avant un
+        // rechargement resterait marqué en erreur sur une valeur qui vient du serveur.
+        this.formSchema().reset();
+        this.cbsForm().reset();
+
+        this.isLoading.set(false);
+
+        this._breadcrumb.set([
+          { label: 'Paramétrage', link: ['/settings'] },
+          { label: 'Produits', link: ['/settings/products'] },
+          { label: dto.name ?? dto.code ?? 'Produit' },
+        ]);
+      },
+      error: () => {
+        this.loadFailed.set(true);
+        this.isLoading.set(false);
+      },
+    });
+  }
+
+  private _asDate(value: string | null | undefined): Date | null {
+    if (!value) return null;
+
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+
+  /** `d MMM yyyy`, construit ici plutôt que par `| date` : la valeur sort d'un `computed`. */
+  private _format(date: Date): string {
+    return date.toLocaleDateString(this._locale, {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+    });
+  }
+
+  private _errorMessage(error: HttpErrorResponse): string {
+    // Les messages de validation du serveur nomment le champ en cause : les remonter tels quels
+    // vaut mieux qu'un message générique, qui cache exactement ce qui fait gagner une heure.
+    const detail = error.error?.detail ?? error.error?.title ?? error.error?.error;
+    if (typeof detail === 'string' && detail.length > 0) return detail;
+
+    const errors = error.error?.errors;
+    if (errors && typeof errors === 'object') {
+      const first = Object.values(errors).flat()[0];
+      if (typeof first === 'string') return first;
+    }
+
+    return error.status === 403
+      ? "Vous n'avez pas le droit de modifier ce produit."
+      : "L'opération n'a pas pu être effectuée.";
   }
 }
 
