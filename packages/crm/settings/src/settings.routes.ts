@@ -328,6 +328,13 @@ const settingsRoutes: Routes = [
         loadComponent: () =>
           import('./containers/notifications/notification-journal'),
       },
+      {
+        // Son propre écran et non une section de « parametrage » : les deux canaux ne partagent
+        // ni fournisseur, ni secret, ni plafond, et un tenant fait tourner l'un sans l'autre.
+        path: 'sms',
+        canActivate: [hasPermissionGuard('notification:settings:read')],
+        loadComponent: () => import('./containers/notifications/sms-parametrage'),
+      },
     ],
   },
   {

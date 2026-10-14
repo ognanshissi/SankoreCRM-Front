@@ -5,7 +5,12 @@ import { catchError, EMPTY } from 'rxjs';
 import { Navigation } from '../../components/navigation/navigation';
 import { TasIcon } from '@talisoft/ui/icon';
 import { Anchor } from '@talisoft/ui/button';
-import { NotificationSettingsApiService, NotificationSettingsDto } from '@sankore/crm-api';
+import {
+  NotificationSettingsApiService,
+  NotificationSettingsDto,
+  SMSSettingsApiService,
+  SmsSettingsDto,
+} from '@sankore/crm-api';
 import { BreadcrumbService, MenuItem } from '@sankore/crm/common';
 
 @Component({
@@ -86,6 +91,32 @@ import { BreadcrumbService, MenuItem } from '@sankore/crm/common';
             </p>
           </div>
         }
+
+        <!--
+          Le canal SMS, séparément : son plafond est un autre compteur et sa dépense est au
+          message. Affiché seulement quand un canal est configuré — la quasi-totalité des tenants
+          n'en a pas, et une ligne « 0 SMS » sur leur écran serait du bruit.
+        -->
+        @if (smsProvider(); as provider) {
+          <div class="p-4 border-b border-gray-100">
+            <p class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-2">
+              Canal SMS
+            </p>
+            <div class="flex items-center gap-2">
+              <span class="text-sm font-medium text-slate-800">{{ provider }}</span>
+              @if (!smsCanSend()) {
+                <span class="text-[10px] text-amber-600">incomplet</span>
+              }
+            </div>
+            <p class="text-[10px] text-slate-400 tabular-nums mt-1">
+              {{ smsUsage() | number: '1.0-0' }}
+              @if (smsQuotaLimit(); as limit) {
+                / {{ limit | number: '1.0-0' }}
+              }
+              message(s) ce mois
+            </p>
+          </div>
+        }
       </div>
     </crm-navigation>
   `,
@@ -93,6 +124,7 @@ import { BreadcrumbService, MenuItem } from '@sankore/crm/common';
 export class NotificationNavigation implements OnInit {
   private readonly _breadcrumbService = inject(BreadcrumbService);
   private readonly _settingsApi = inject(NotificationSettingsApiService);
+  private readonly _smsApi = inject(SMSSettingsApiService);
 
   public readonly menuItems: MenuItem[] = [
     {
@@ -107,7 +139,19 @@ export class NotificationNavigation implements OnInit {
       route: 'parametrage',
       active: true,
     },
+    {
+      label: 'SMS',
+      icon: 'feather:message-square',
+      route: 'sms',
+      active: true,
+    },
   ];
+
+  /** Null tant qu'aucun canal SMS n'est configuré : la vignette ne s'affiche pas. */
+  public smsProvider = signal<string | null>(null);
+  public smsCanSend = signal(false);
+  public smsUsage = signal(0);
+  public smsQuotaLimit = signal<number | null>(null);
 
   public quotaLimit = signal<number | null>(null);
   public currentUsage = signal(0);
@@ -128,6 +172,21 @@ export class NotificationNavigation implements OnInit {
       .subscribe((s: NotificationSettingsDto) => {
         this.quotaLimit.set(s.monthlyQuotaLimit ?? null);
         this.currentUsage.set(s.currentMonthUsageCount ?? 0);
+      });
+
+    // Deux appels et non un : les deux canaux ont leur propre endpoint, leur propre permission et
+    // leur propre plafond. Un échec de l'un ne doit pas effacer la vignette de l'autre, d'où un
+    // `catchError` par appel.
+    this._smsApi
+      .getSmsSettings()
+      .pipe(catchError(() => EMPTY))
+      .subscribe((s: SmsSettingsDto) => {
+        this.smsProvider.set(
+          s.providerType && s.providerType !== 'Disabled' ? s.providerType : null,
+        );
+        this.smsCanSend.set(s.canSend ?? false);
+        this.smsUsage.set(s.currentMonthUsageCount ?? 0);
+        this.smsQuotaLimit.set(s.monthlyQuotaLimit ?? null);
       });
   }
 }

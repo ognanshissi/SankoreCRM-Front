@@ -1,0 +1,281 @@
+@if (isLoading()) {
+  <div class="flex justify-center py-24"><tas-spinner size="10" class="text-primary"></tas-spinner></div>
+} @else if (loadError()) {
+  <div class="flex flex-col items-center py-24 text-center">
+    <tas-icon iconName="feather:alert-triangle" class="text-functional-error mb-2" style="font-size:24px"></tas-icon>
+    <p class="text-sm text-slate-600">La configuration SMS n'a pas pu être lue.</p>
+    <button tas-outlined-button type="button" class="mt-3" (click)="reload()">Réessayer</button>
+  </div>
+} @else {
+  <div class="flex flex-col gap-4 p-4 max-w-3xl">
+
+    <!--
+      L'état réel du canal, en tête. `canSend` vient du serveur et c'est la seule chose qui
+      distingue « configuré » de « à moitié configuré » : un fournisseur sans expéditeur, ou sans
+      indicatif, a toutes les apparences d'un canal qui marche et n'envoie rien.
+    -->
+    <tas-card class="block">
+      <div class="p-4 flex flex-wrap items-center justify-between gap-3">
+        <div class="flex items-center gap-3">
+          <tas-icon iconName="feather:message-square" class="text-primary" style="font-size:18px"></tas-icon>
+          <div>
+            <p class="text-sm font-semibold text-slate-800">Canal SMS</p>
+            <p class="text-xs text-slate-500 mt-0.5">
+              Codes de vérification et messages transactionnels. Facturé au message.
+            </p>
+          </div>
+        </div>
+
+        @if (settings()?.canSend) {
+          <tas-tag severity="success">Opérationnel</tas-tag>
+        } @else if (settings()?.providerType === 'Disabled') {
+          <tas-tag severity="neutral">Désactivé</tas-tag>
+        } @else {
+          <tas-tag severity="warning">Configuration incomplète</tas-tag>
+        }
+      </div>
+
+      @if (!settings()?.canSend && settings()?.providerType !== 'Disabled') {
+        <div class="px-4 pb-4">
+          <div class="flex gap-3 p-3 rounded-lg bg-orange-50 border border-orange-200">
+            <tas-icon iconName="feather:alert-circle" class="text-orange-700 shrink-0 mt-0.5" style="font-size:14px"></tas-icon>
+            <p class="text-sm text-slate-700">
+              Un fournisseur est choisi mais il manque quelque chose — expéditeur, clé, indicatif
+              ou SID. Aucun message ne partira, et le second facteur SMS du parcours KYC reste
+              refusé tant que ce bandeau est là.
+            </p>
+          </div>
+        </div>
+      }
+    </tas-card>
+
+    <!-- Fournisseur -->
+    <tas-card class="block">
+      <div class="p-4 border-b border-slate-100">
+        <p class="text-sm font-semibold text-slate-700">Fournisseur</p>
+      </div>
+
+      <form [formRoot]="formSchema" class="p-4 flex flex-col gap-5">
+        <tas-form-field>
+          <tas-label>Fournisseur <span class="text-functional-error">*</span></tas-label>
+          <tas-select
+            [options]="providerOptions()"
+            optionLabel="label"
+            optionValue="value"
+            [formField]="formSchema.providerType"
+          ></tas-select>
+          <tas-hint>
+            Désactiver conserve l'expéditeur et la clé enregistrée : le canal se rallume sans
+            ressaisie.
+          </tas-hint>
+          @if (formSchema.providerType().touched() && formSchema.providerType().invalid()) {
+            <tas-error>{{ formSchema.providerType().errors()[0].message }}</tas-error>
+          }
+        </tas-form-field>
+
+        @if (!isDisabled()) {
+          <tas-form-field>
+            <tas-label>Identifiant d'expéditeur <span class="text-functional-error">*</span></tas-label>
+            <input tasInput type="text" [formField]="formSchema.senderId"
+              [placeholder]="isBrevo() ? 'SANKORE' : '+22520123456'" />
+            <tas-hint>
+              @if (senderIdHint(); as hint) {
+                {{ hint }}
+              } @else if (isBrevo()) {
+                Nom alphanumérique de 11 caractères maximum, déclaré et approuvé dans votre compte.
+              } @else {
+                Un numéro attribué par Twilio au format international, ou le SID d'un Messaging
+                Service.
+              }
+            </tas-hint>
+            @if (formSchema.senderId().touched() && formSchema.senderId().invalid()) {
+              <tas-error>{{ formSchema.senderId().errors()[0].message }}</tas-error>
+            }
+          </tas-form-field>
+
+          @if (isTwilio()) {
+            <tas-form-field>
+              <tas-label>SID de compte <span class="text-functional-error">*</span></tas-label>
+              <input tasInput type="text" [formField]="formSchema.accountSid"
+                placeholder="AC…" />
+              <tas-hint>
+                Identifie le compte, n'autorise rien : il est stocké en clair, contrairement au
+                jeton d'authentification.
+              </tas-hint>
+              @if (formSchema.accountSid().touched() && formSchema.accountSid().invalid()) {
+                <tas-error>{{ formSchema.accountSid().errors()[0].message }}</tas-error>
+              }
+            </tas-form-field>
+          }
+
+          <tas-form-field>
+            <tas-label>Indicatif pays <span class="text-functional-error">*</span></tas-label>
+            <input tasInput type="text" [formField]="formSchema.defaultCallingCode"
+              placeholder="225" />
+            <tas-hint>
+              Celui de vos clients. Les numéros enregistrés au format local (07 08 09 18 01) sont
+              composés avec lui ; ceux enregistrés en international gardent le leur.
+            </tas-hint>
+            @if (formSchema.defaultCallingCode().touched() && formSchema.defaultCallingCode().invalid()) {
+              <tas-error>{{ formSchema.defaultCallingCode().errors()[0].message }}</tas-error>
+            }
+          </tas-form-field>
+
+          <tas-form-field>
+            <tas-label>
+              {{ isTwilio() ? 'Jeton d’authentification' : 'Clé API' }}
+              @if (!hasUsableCredential()) {
+                <span class="text-functional-error">*</span>
+              }
+            </tas-label>
+            <input tasInput type="password" autocomplete="new-password"
+              [formField]="formSchema.credential"
+              [placeholder]="hasUsableCredential() ? 'Inchangée' : 'Collez la clé'" />
+            <tas-hint>
+              @if (providerChanges() && settings()?.hasCredential) {
+                Vous changez de fournisseur : la clé enregistrée appartenait au précédent et ne
+                sera pas réutilisée.
+              } @else if (hasUsableCredential()) {
+                Une clé est enregistrée. Laissez vide pour la conserver — elle n'est jamais
+                relue, donc jamais réaffichée.
+              } @else {
+                Stockée chiffrée dans le coffre, jamais dans une colonne ni dans un journal.
+              }
+            </tas-hint>
+            @if (formSchema.credential().touched() && formSchema.credential().invalid()) {
+              <tas-error>{{ formSchema.credential().errors()[0].message }}</tas-error>
+            }
+          </tas-form-field>
+        }
+
+        @if (canManageSettings()) {
+          <div>
+            <button tas-raised-button color="primary" type="button"
+              [disabled]="formSchema().invalid() || isSaving()"
+              [isLoading]="isSaving()"
+              (click)="handleSubmit()">
+              Enregistrer
+            </button>
+          </div>
+        } @else {
+          <p class="text-sm text-slate-500">
+            Lecture seule : configurer un canal demande le droit
+            <span class="font-mono text-xs">notification:settings:manage</span>.
+          </p>
+        }
+      </form>
+    </tas-card>
+
+    <!-- Plafond mensuel -->
+    <tas-card class="block">
+      <div class="p-4 border-b border-slate-100">
+        <p class="text-sm font-semibold text-slate-700">Plafond mensuel</p>
+        <p class="text-xs text-slate-400 mt-0.5">
+          Compté séparément des e-mails : une vague d'e-mails ne doit pas épuiser ce qui sert aux
+          codes de vérification.
+        </p>
+      </div>
+
+      <div class="p-4 flex flex-col gap-5">
+        @if (settings()?.monthlyQuotaLimit) {
+          <div>
+            <div class="flex items-center gap-2 mb-1.5">
+              <span class="text-lg font-bold tabular-nums"
+                [class]="quotaPercent() >= 90 ? 'text-red-600' : quotaPercent() >= 70 ? 'text-amber-600' : 'text-slate-800'">
+                {{ quotaPercent().toFixed(0) }}%
+              </span>
+              <span class="text-xs text-slate-400">utilisé ce mois</span>
+            </div>
+            <div class="h-1.5 bg-slate-100 rounded-full overflow-hidden mb-1.5">
+              <div class="h-full rounded-full transition-all"
+                [class]="quotaPercent() >= 90 ? 'bg-red-500' : quotaPercent() >= 70 ? 'bg-amber-500' : 'bg-green-500'"
+                [style.width.%]="quotaPercent()"></div>
+            </div>
+            <p class="text-xs text-slate-400 tabular-nums">
+              {{ settings()?.currentMonthUsageCount | number: '1.0-0' }} /
+              {{ settings()?.monthlyQuotaLimit | number: '1.0-0' }} messages
+            </p>
+          </div>
+        } @else {
+          <p class="text-sm text-slate-600">
+            Aucun plafond.
+            <span class="tabular-nums">{{ settings()?.currentMonthUsageCount | number: '1.0-0' }}</span>
+            message(s) envoyé(s) ce mois — comptés même sans plafond, pour que la dépense reste
+            visible.
+          </p>
+        }
+
+        @if (canSetQuota()) {
+          <form [formRoot]="quotaForm" class="flex flex-col gap-3">
+            <tas-form-field>
+              <tas-label>Messages par mois</tas-label>
+              <input tasInput type="text" inputmode="numeric"
+                [formField]="quotaForm.monthlyQuotaLimit" placeholder="Aucun plafond" />
+              <tas-hint>
+                Vide : pas de plafond. Zéro est refusé — il couperait aussi les codes de
+                vérification, et pour cela on désactive le canal.
+              </tas-hint>
+              @if (quotaForm.monthlyQuotaLimit().touched() && quotaForm.monthlyQuotaLimit().invalid()) {
+                <tas-error>{{ quotaForm.monthlyQuotaLimit().errors()[0].message }}</tas-error>
+              }
+            </tas-form-field>
+
+            <div>
+              <button tas-outlined-button color="primary" type="button"
+                [disabled]="quotaForm().invalid() || isSavingQuota()"
+                [isLoading]="isSavingQuota()"
+                (click)="handleQuotaSubmit()">
+                Enregistrer le plafond
+              </button>
+            </div>
+          </form>
+        }
+      </div>
+    </tas-card>
+
+    <!--
+      Les rappels de livraison. Twilio signe les siens avec le jeton du compte, donc son URL n'a
+      rien de secret ; Brevo ne signe pas ses évènements SMS, et son URL porte un jeton dérivé —
+      c'est pour cela que l'une se montre et l'autre pas.
+    -->
+    @if (!isDisabled()) {
+      <tas-card class="block">
+        <div class="p-4 border-b border-slate-100">
+          <p class="text-sm font-semibold text-slate-700">Rappels de livraison</p>
+          <p class="text-xs text-slate-400 mt-0.5">
+            Sans eux, « envoyé » veut dire « le fournisseur l'a accepté » et jamais « le client
+            l'a reçu ».
+          </p>
+        </div>
+
+        <div class="p-4 text-sm text-slate-700 flex flex-col gap-3">
+          @if (isTwilio()) {
+            <p>
+              Dans la console Twilio, sur le numéro ou le Messaging Service, renseignez l'URL de
+              rappel de statut :
+            </p>
+            <code class="block p-2 rounded bg-slate-50 border border-slate-200 text-xs break-all">
+              https://&lt;votre-domaine&gt;/api/v1/public/sms-webhooks/twilio
+            </code>
+            <p class="text-xs text-slate-500">
+              Chaque appel est vérifié avec le jeton de votre compte : l'URL seule ne permet rien.
+            </p>
+          } @else {
+            <p>
+              Brevo ne signe pas ses évènements SMS. L'URL de rappel porte donc un jeton propre à
+              votre établissement, à récupérer auprès de votre administrateur plateforme puis à
+              coller dans Brevo :
+            </p>
+            <code class="block p-2 rounded bg-slate-50 border border-slate-200 text-xs break-all">
+              https://&lt;votre-domaine&gt;/api/v1/public/sms-webhooks/brevo?tenant=…&amp;token=…
+            </code>
+            <p class="text-xs text-slate-500">
+              Le jeton n'autorise qu'une chose : déposer un statut de livraison pour votre
+              établissement.
+            </p>
+          }
+        </div>
+      </tas-card>
+    }
+  </div>
+}

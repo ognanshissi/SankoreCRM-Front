@@ -53,6 +53,9 @@ api/roles.service.ts
 api/scoring-configs.service.ts
 api/sdk.service.ts
 api/sla-configs.service.ts
+api/sms-settings.service.ts
+api/sms-templates.service.ts
+api/sms-webhooks.service.ts
 api/task-generation-rules.service.ts
 api/task-types.service.ts
 api/tasks.service.ts
@@ -120,6 +123,7 @@ model/beneficial-owner-dto.interface.ts
 model/beneficial-owner-input.interface.ts
 model/beneficiary-policy.interface.ts
 model/biometry-token-status-dto.interface.ts
+model/brevo-sms-event-payload.interface.ts
 model/bulk-assign-agency-request.interface.ts
 model/bulk-assign-owner-request.interface.ts
 model/bulk-assign-result.interface.ts
@@ -559,6 +563,7 @@ model/set-monthly-quota-command.interface.ts
 model/set-pep-status-request.interface.ts
 model/set-qualification-completeness-request.interface.ts
 model/set-secret-request.interface.ts
+model/set-sms-monthly-quota-command.interface.ts
 model/sign-holding-request.interface.ts
 model/simulate-dispatch-request.interface.ts
 model/simulate-dispatch-result.interface.ts
@@ -567,6 +572,8 @@ model/sla-breach-dto.interface.ts
 model/sla-config-dto.interface.ts
 model/sla-dashboard-dto.interface.ts
 model/sla-template-breach-dto.interface.ts
+model/sms-settings-dto.interface.ts
+model/sms-template-dto.interface.ts
 model/snippet-result.interface.ts
 model/social-tracking-settings.interface.ts
 model/source-count.interface.ts
@@ -648,6 +655,8 @@ model/update-scoring-config-request.interface.ts
 model/update-segment-rules-request.interface.ts
 model/update-segment-rules-result.interface.ts
 model/update-sla-config-request.interface.ts
+model/update-sms-settings-command.interface.ts
+model/update-sms-template-request.interface.ts
 model/update-step-request.interface.ts
 model/update-task-generation-rule-request.interface.ts
 model/update-task-type-request.interface.ts
