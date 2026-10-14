@@ -1,0 +1,409 @@
+@if (isLoading() && !product()) {
+  <div class="flex justify-center py-24"><tas-spinner size="10" class="text-primary"></tas-spinner></div>
+} @else if (loadFailed() && !product()) {
+  <!--
+    Un échec de chargement n'a pas besoin d'une carte : il n'y a rien à encadrer, et la
+    chrome de section est réservée aux sections. Même traitement que l'écran de profil.
+  -->
+  <div class="flex flex-col items-center py-24 text-center gap-3">
+    <p class="text-sm text-slate-600">Ce produit n'a pas pu être chargé.</p>
+    <div class="flex items-center gap-3">
+      <button tas-raised-button color="primary" type="button" (click)="reloadProduct()">Réessayer</button>
+      <a [routerLink]="['/settings/products']" tas-outlined-button>Retour aux produits</a>
+    </div>
+  </div>
+} @else if (product(); as dto) {
+  <div class="flex flex-col gap-5">
+
+    <!--
+      ═══════ Le produit, au-dessus des onglets ═══════
+
+      Le médaillon et le nom sont hors des volets : ils disent QUEL produit est en cours
+      d'édition, ce qui vaut sur les six onglets. Dans le volet « Identité », ils auraient
+      disparu dès qu'on passe à « KYC à distance » — où une politique s'enregistre pour de bon.
+    -->
+    <div class="flex flex-wrap items-center gap-4">
+      <!--
+        L'icône de catégorie, pas deux lettres du code : le code est affiché en entier juste à
+        côté, et le tronquer à « AS » jetait la seule partie qui identifie le produit. La
+        catégorie, elle, n'est lisible nulle part ailleurs d'un coup d'œil.
+      -->
+      <div class="w-18 h-18 rounded-full bg-slate-100 flex items-center justify-center shrink-0">
+        <tas-icon [iconName]="categoryIcon()" class="text-primary" style="font-size:26px"
+          aria-hidden="true"></tas-icon>
+      </div>
+      <div class="min-w-0">
+        <h1 class="text-lg font-semibold text-slate-900 truncate">
+          {{ dto.name || dto.code || 'Produit sans nom' }}
+        </h1>
+        <p class="text-sm font-mono text-slate-500 mt-0.5">{{ dto.code || '—' }}</p>
+      </div>
+    </div>
+
+    <!--
+      ═══════ La barre d'onglets ═══════
+
+      Onglets locaux, pas des routes enfants : les volets « Identité » et « Paramètres »
+      partagent un seul formulaire et un seul `PUT`, donc les séparer en routes ferait perdre la
+      saisie en cours au changement d'onglet. Tous les onglets restent atteignables au clavier
+      par Tab (pas de `tabindex=-1`), ce qui rend le motif accessible sans gestion des flèches.
+    -->
+    <div class="border-b border-slate-200">
+      <nav class="flex gap-1 overflow-x-auto" role="tablist" aria-label="Volets du produit">
+        @for (tab of tabs; track tab) {
+          <!--
+            « Zone de danger » ne s'affiche pas sans le droit de supprimer : un onglet dont le
+            volet est vide se lit comme une panne, et `activeTab` replie le même cas côté URL.
+          -->
+          @if (tab !== 'danger' || canDelete()) {
+            <button
+              type="button"
+              role="tab"
+              [id]="'tab-' + tab"
+              [attr.aria-controls]="'panel-' + tab"
+              [attr.aria-selected]="activeTab() === tab"
+              class="flex items-center gap-2 whitespace-nowrap border-b-2 px-3 py-2.5 text-sm font-medium"
+              [class.border-transparent]="activeTab() !== tab"
+              [class.text-slate-500]="activeTab() !== tab"
+              [class.border-primary]="activeTab() === tab"
+              [class.text-primary]="activeTab() === tab"
+              (click)="selectTab(tab)"
+            >
+              <tas-icon [iconName]="tabIcon(tab)" style="font-size:14px" aria-hidden="true"></tas-icon>
+              {{ tabLabel(tab) }}
+
+              <!--
+                Les pastilles ne concernent que les deux volets que la barre de pied de page
+                enregistre. Sans elles, un nom modifié dans « Identité » puis laissé derrière en
+                passant sur un autre onglet n'est plus visible de nulle part.
+              -->
+              @if (tab === 'identite') {
+                @if (identiteTabInvalid()) {
+                  <tas-tag severity="error">À corriger</tas-tag>
+                } @else if (identiteTabChanged()) {
+                  <tas-tag severity="warning">Modifié</tas-tag>
+                }
+              } @else if (tab === 'parametres' && parametresTabChanged()) {
+                <tas-tag severity="warning">Modifié</tas-tag>
+              }
+            </button>
+          }
+        }
+      </nav>
+    </div>
+
+    <!--
+      Le volet invalide qu'on ne regarde pas. Le `[hidden]` garde sa validation active, donc
+      « Enregistrer » reste inopérant depuis un autre onglet — et c'est exactement le cas où
+      rien à l'écran n'en donnait la raison.
+    -->
+    @if (blockingOtherTab(); as blocking) {
+      <div class="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 p-3" role="alert">
+        <tas-icon iconName="feather:alert-circle" class="mt-0.5 shrink-0 text-red-600"
+          style="font-size:14px" aria-hidden="true"></tas-icon>
+        <p class="text-xs text-slate-700">
+          L'onglet « {{ tabLabel(blocking) }} » contient une saisie à corriger : l'enregistrement
+          restera refusé tant qu'elle n'est pas reprise.
+          <button type="button" class="font-medium text-primary underline"
+            (click)="selectTab(blocking)">Y aller</button>
+        </p>
+      </div>
+    }
+
+    <!-- ═══════ Volet : Identité ═══════ -->
+    <div
+      id="panel-identite"
+      role="tabpanel"
+      aria-labelledby="tab-identite"
+      tabindex="0"
+      [hidden]="activeTab() !== 'identite'"
+    >
+      <!--
+        La colonne décide du sens : à gauche ce qui se modifie, à droite ce que le produit EST.
+        C'est la grille de l'écran de profil, conservée à l'intérieur du volet.
+      -->
+      <div class="grid grid-cols-1 xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] gap-5 items-start">
+        <section class="rounded-2xl bg-white shadow-sm border border-slate-100 p-6">
+          <h2 class="text-xl font-bold text-primary">Identité</h2>
+
+          <div class="mt-5">
+            <p class="text-sm font-medium text-slate-700 mb-1.5">Code</p>
+            <div class="flex items-center justify-between gap-2 h-11 px-3 rounded-lg border border-slate-200 bg-slate-50 text-sm font-mono text-slate-600">
+              <span class="truncate">{{ dto.code || '—' }}</span>
+              <tas-icon iconName="feather:lock" class="text-slate-400 shrink-0" style="font-size:13px"
+                aria-hidden="true"></tas-icon>
+            </div>
+            <p class="text-xs text-slate-500 mt-1.5">
+              Fixé à la création : les autres modules référencent ce produit par ce code.
+            </p>
+          </div>
+
+          <form [formRoot]="formSchema" class="grid grid-cols-1 gap-4 mt-4">
+            <tas-form-field>
+              <tas-label>Nom commercial</tas-label>
+              <input tasInput type="text" placeholder="Assurance vie Sérénité"
+                [formField]="formSchema.name" />
+              <tas-hint>Ce que l'agent voit dans la liste des produits et sur une fiche lead.</tas-hint>
+              @if (formSchema.name().touched() && formSchema.name().invalid()) {
+                <tas-error>{{ formSchema.name().errors()[0].message }}</tas-error>
+              }
+            </tas-form-field>
+
+            <tas-form-field>
+              <tas-label>Description</tas-label>
+              <textarea tasInput rows="3"
+                placeholder="À qui ce produit s'adresse et ce qu'il couvre."
+                [formField]="formSchema.description"></textarea>
+              @if (formSchema.description().invalid()) {
+                <tas-error>{{ formSchema.description().errors()[0].message }}</tas-error>
+              } @else {
+                <tas-hint>{{ model().description.length }} / {{ descriptionMaxLength }}</tas-hint>
+              }
+            </tas-form-field>
+          </form>
+        </section>
+
+        <!--
+          « Référence » reste avec l'identité : la catégorie, le statut et la période d'effet sont
+          ce que le produit EST, et aucun des cinq autres volets n'est leur place.
+        -->
+        <section class="rounded-2xl bg-white shadow-sm border border-slate-100 p-6">
+          <h2 class="text-xl font-bold text-primary">Référence</h2>
+
+          <dl class="grid grid-cols-2 gap-x-4 gap-y-4 mt-4">
+            <div>
+              <dt class="text-xs text-slate-500">Catégorie</dt>
+              <dd class="mt-1">
+                <tas-tag [severity]="categoryMeta(dto.category).severity">
+                  {{ categoryMeta(dto.category).label }}
+                </tas-tag>
+              </dd>
+            </div>
+            <div>
+              <dt class="text-xs text-slate-500">Statut</dt>
+              <dd class="mt-1">
+                <tas-tag [severity]="dto.isActive ? 'success' : 'warning'">
+                  {{ dto.isActive ? 'Au catalogue' : 'Retiré' }}
+                </tas-tag>
+              </dd>
+            </div>
+            <div class="col-span-2">
+              <dt class="text-xs text-slate-500">Période d'effet</dt>
+              <dd class="text-sm font-semibold text-slate-900 mt-0.5">{{ effectivePeriod() }}</dd>
+            </div>
+          </dl>
+
+          <!--
+            L'identifiant machine, rendu comme un champ verrouillé : le cadenas dit « non
+            modifiable » au lieu de le laisser deviner. C'est ce qu'une référence croisée porte,
+            et il se recopie dans un ticket — d'où la police à chasse fixe.
+          -->
+          <div class="mt-5">
+            <p class="text-sm font-medium text-slate-700 mb-1.5">Identifiant</p>
+            <div class="flex items-center h-11 px-3 rounded-lg border border-slate-200 bg-slate-50 text-xs font-mono text-slate-500">
+              <span class="truncate">{{ dto.id }}</span>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+
+    <!-- ═══════ Volet : Paramètres ═══════ -->
+    <div
+      id="panel-parametres"
+      role="tabpanel"
+      aria-labelledby="tab-parametres"
+      tabindex="0"
+      [hidden]="activeTab() !== 'parametres'"
+    >
+      <div class="grid grid-cols-1 xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] gap-5 items-start">
+        <section class="rounded-2xl bg-white shadow-sm border border-slate-100 p-6">
+          <h2 class="text-xl font-bold text-primary">Paramètres</h2>
+          <p class="text-sm text-slate-600 mt-1">{{ parametersSubtitle() }}</p>
+          <div class="mt-4">
+            <product-parameters-editor
+              [category]="dto.category ?? ''"
+              [initialJson]="dto.parametersJson ?? ''"
+              (parametersJsonChange)="editedParametersJson.set($event)"
+            ></product-parameters-editor>
+          </div>
+        </section>
+
+        <!--
+          Le lien Core Banking est un paramètre technique du produit, et c'est ici qu'il tombe :
+          il n'appartient ni à l'identité commerciale ni à une politique. Il garde son propre
+          bouton — son endpoint, sa validation — et n'a donc pas de pastille d'onglet.
+        -->
+        <section class="rounded-2xl bg-white shadow-sm border border-slate-100 p-6">
+          <h2 class="text-xl font-bold text-primary">Intégration back-office</h2>
+          <p class="text-sm text-slate-600 mt-1">
+            L'équivalent de ce produit dans le système bancaire central, pour que les
+            souscriptions puissent y être transmises.
+          </p>
+
+          @if (cbsLinked()) {
+            <dl class="grid grid-cols-2 gap-x-4 gap-y-3 mt-4">
+              <div>
+                <dt class="text-xs text-slate-500">Plateforme</dt>
+                <dd class="text-sm font-semibold text-slate-900 mt-0.5 truncate">{{ linkedPlatform() }}</dd>
+              </div>
+              <div>
+                <dt class="text-xs text-slate-500">Identifiant produit</dt>
+                <dd class="text-sm font-semibold text-slate-900 font-mono mt-0.5 truncate">{{ linkedProductId() }}</dd>
+              </div>
+            </dl>
+          } @else {
+            <p class="text-sm text-slate-500 mt-4">
+              Pas encore lié. Les souscriptions sur ce produit resteront en attente côté
+              intégration.
+            </p>
+          }
+
+          @if (canUpdate()) {
+            <form [formRoot]="cbsForm" class="flex flex-col gap-4 mt-5">
+              <tas-form-field>
+                <tas-label>Plateforme</tas-label>
+                <input tasInput type="text" placeholder="T24, Flexcube, Temenos…"
+                  [formField]="cbsForm.platform" />
+                @if (cbsForm.platform().touched() && cbsForm.platform().invalid()) {
+                  <tas-error>{{ cbsForm.platform().errors()[0].message }}</tas-error>
+                }
+              </tas-form-field>
+              <tas-form-field>
+                <tas-label>Identifiant produit</tas-label>
+                <input tasInput type="text" placeholder="PROD-001"
+                  [formField]="cbsForm.productId" />
+                @if (cbsForm.productId().touched() && cbsForm.productId().invalid()) {
+                  <tas-error>{{ cbsForm.productId().errors()[0].message }}</tas-error>
+                }
+              </tas-form-field>
+              <div>
+                <button tas-outlined-button color="primary" type="button"
+                  [disabled]="cbsForm().invalid() || cbsForm().submitting()"
+                  [isLoading]="cbsForm().submitting()"
+                  (click)="linkToCbs()">
+                  {{ cbsLinked() ? 'Mettre à jour le lien' : 'Lier au Core Banking' }}
+                </button>
+              </div>
+            </form>
+          }
+        </section>
+      </div>
+    </div>
+
+    <!--
+      ═══════ Volets : les politiques et les questionnaires ═══════
+
+      Chaque volet porte la carte, et les trois composants qu'il accueille sont rendus sans
+      chrome : avant les onglets ils portaient la leur, ce qui donnait une carte dans une carte
+      dès qu'on les groupait. Les deux politiques gardent en revanche leur propre bouton
+      d'enregistrement — chacune écrit par son endpoint, avec sa permission et sa validation.
+    -->
+    <div
+      id="panel-beneficiaires"
+      role="tabpanel"
+      aria-labelledby="tab-beneficiaires"
+      tabindex="0"
+      [hidden]="activeTab() !== 'beneficiaires'"
+    >
+      <section class="rounded-2xl bg-white shadow-sm border border-slate-100 p-6">
+        <beneficiary-policy-editor
+          [product]="product()"
+          [canUpdate]="canUpdate()"
+          (saved)="reloadProduct()"
+        ></beneficiary-policy-editor>
+      </section>
+    </div>
+
+    <div
+      id="panel-questionnaires"
+      role="tabpanel"
+      aria-labelledby="tab-questionnaires"
+      tabindex="0"
+      [hidden]="activeTab() !== 'questionnaires'"
+    >
+      <section class="rounded-2xl bg-white shadow-sm border border-slate-100 p-6">
+        <qualification-templates-panel [product]="product()"></qualification-templates-panel>
+      </section>
+    </div>
+
+    <div
+      id="panel-kyc"
+      role="tabpanel"
+      aria-labelledby="tab-kyc"
+      tabindex="0"
+      [hidden]="activeTab() !== 'kyc'"
+    >
+      <section class="rounded-2xl bg-white shadow-sm border border-slate-100 p-6">
+        <kyc-remote-policy-editor
+          [product]="product()"
+          [canUpdate]="canUpdate()"
+          (saved)="reloadProduct()"
+        ></kyc-remote-policy-editor>
+      </section>
+    </div>
+
+    <!-- ═══════ Volet : Zone de danger ═══════ -->
+    @if (canDelete()) {
+      <div
+        id="panel-danger"
+        role="tabpanel"
+        aria-labelledby="tab-danger"
+        tabindex="0"
+        [hidden]="activeTab() !== 'danger'"
+      >
+        <!--
+          Un onglet à part, et non la dernière carte d'une colonne : la suppression n'a pas à être
+          à portée de molette de la saisie courante. Le titre reprend le nom de l'onglet, parce
+          que c'est le seul volet dont le geste est irréversible.
+        -->
+        <section class="rounded-2xl bg-white shadow-sm border border-red-100 p-6 max-w-2xl">
+          <h2 class="text-xl font-bold text-functional-error">Zone de danger</h2>
+          <p class="text-sm text-slate-600 mt-1">
+            Définitif. Ce produit est retiré des spécialités des utilisateurs et des
+            territoires ; les dossiers déjà ouverts dessus gardent leur référence.
+          </p>
+          <button tas-outlined-button color="warn" type="button" class="mt-4"
+            [disabled]="isDeleting()" [isLoading]="isDeleting()" (click)="confirmDelete()">
+            Supprimer ce produit
+          </button>
+        </section>
+      </div>
+    }
+
+    <!--
+      La barre d'enregistrement du produit lui-même — nom, description, paramètres. Pleine
+      largeur et en bas, comme sur l'écran de profil : c'est le geste principal de la page, et
+      le chercher dans une carte au milieu est ce qui faisait oublier de l'utiliser.
+
+      Elle suit les deux volets qu'elle enregistre, et reparaît sur les autres dès qu'il y a
+      quelque chose en attente : sinon une saisie laissée dans « Identité » ne serait plus
+      enregistrable sans revenir d'abord sur son onglet.
+    -->
+    @if (canUpdate() && (activeTab() === 'identite' || activeTab() === 'parametres' || hasUnsavedChanges())) {
+      <div class="flex flex-wrap items-center justify-between gap-3 px-6 py-4 rounded-2xl bg-white shadow-sm border border-slate-100">
+        <p class="text-xs text-slate-500">
+          @if (hasUnsavedChanges()) {
+            Modifications non enregistrées.
+          } @else {
+            Nom, description et paramètres. Les politiques s'enregistrent depuis leur propre
+            onglet.
+          }
+        </p>
+        <div class="flex items-center gap-3">
+          <button tas-outlined-button type="button"
+            [disabled]="formSchema().submitting() || !hasUnsavedChanges()"
+            (click)="cancel()">
+            Annuler
+          </button>
+          <button tas-raised-button color="primary" type="button"
+            [disabled]="formSchema().invalid() || formSchema().submitting()"
+            [isLoading]="formSchema().submitting()"
+            (click)="handleSubmit()">
+            Enregistrer
+          </button>
+        </div>
+      </div>
+    }
+  </div>
+}
