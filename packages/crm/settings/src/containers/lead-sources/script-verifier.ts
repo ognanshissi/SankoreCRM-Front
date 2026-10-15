@@ -1,6 +1,9 @@
 import { Component, computed, inject, input, output, signal, OnInit, OnDestroy } from '@angular/core';
+import { DatePipe } from '@angular/common';
 import { catchError, EMPTY } from 'rxjs';
 import { TasCard } from '@talisoft/ui/card';
+import { TableConfig, TasTable } from '@talisoft/ui/table';
+import { SideDrawerService } from '@talisoft/ui/side-drawer';
 import { TimeagoPipe } from '@talisoft/ui/timeago';
 import { TasSpinner } from '@talisoft/ui/spinner';
 import { TasIcon } from '@talisoft/ui/icon';
@@ -10,6 +13,8 @@ import { SnackbarService } from '@talisoft/ui/snackbar';
 import { ConfirmDialogService } from '@talisoft/ui/confirm-dialog';
 import { IngestionDto, IngestionsApiService } from '@sankore/crm-api';
 import { LeadSourcesService } from './lead-sources.service';
+import { openIngestionDetail } from './ingestion-detail-drawer';
+import { INGESTION_AUTO_REFRESH_MS, ingestionStatusLabel, ingestionStatusSeverity } from './ingestion.types';
 
 /**
  * FE-12 — Vérifier l'installation et envoyer un lead de test
@@ -20,7 +25,7 @@ type DetectionStatus = 'waiting' | 'detected' | 'error' | 'idle';
 @Component({
   selector: 'script-verifier',
   standalone: true,
-  imports: [TasCard, TasSpinner, TasIcon, TasTag, Button, TimeagoPipe],
+  imports: [DatePipe, TasCard, TasTable, TasSpinner, TasIcon, TasTag, Button, TimeagoPipe],
   template: `
     <div class="max-w-3xl flex flex-col gap-4">
       <!-- Detection status -->
@@ -132,55 +137,75 @@ type DetectionStatus = 'waiting' | 'detected' | 'error' | 'idle';
                 tant que la source reste en mode Test.
               </p>
             </div>
-            <button tas-outlined-button type="button" class="text-xs" (click)="refreshTestLeads()">
-              <tas-icon iconName="feather:refresh-cw" style="font-size:10px"></tas-icon>
-              Rafraîchir
-            </button>
+            <div class="flex items-center gap-3 shrink-0">
+              @if (leadsRefreshedAt()) {
+                <span class="text-[10px] text-slate-400 tabular-nums">
+                  Mis à jour à {{ leadsRefreshedAt() | date:'HH:mm:ss' }}
+                </span>
+              }
+              <button tas-outlined-button type="button" class="text-xs" (click)="refreshTestLeads()">
+                <tas-icon iconName="feather:refresh-cw" style="font-size:10px"></tas-icon>
+                Rafraîchir
+              </button>
+            </div>
           </div>
-          <div class="p-4">
-            @if (isLoadingLeads()) {
-              <div class="flex justify-center py-6">
-                <tas-spinner size="5"></tas-spinner>
-              </div>
-            } @else if (leadsError()) {
-              <div class="flex flex-col items-center py-8 text-center">
-                <tas-icon iconName="feather:alert-triangle" class="text-red-400 mb-2" style="font-size:24px"></tas-icon>
-                <p class="text-sm text-red-600">Chargement impossible</p>
-                <p class="text-xs text-slate-400 mt-1">
-                  Nous n'avons pas pu lire les réceptions de cette source. Réessayez avec « Rafraîchir ».
-                </p>
-              </div>
-            } @else if (testLeads().length === 0) {
-              <div class="flex flex-col items-center py-8 text-center">
-                <tas-icon iconName="feather:inbox" class="text-slate-300 mb-2" style="font-size:24px"></tas-icon>
-                <p class="text-sm text-slate-500">Aucun lead de test reçu</p>
-                <p class="text-xs text-slate-400 mt-1">Soumettez le formulaire de votre site pour tester la chaîne complète.</p>
-              </div>
-            } @else {
-              <div class="space-y-2">
-                @for (ing of testLeads(); track ing.id) {
-                  <div class="flex items-center gap-3 p-2 bg-slate-50 rounded-lg">
-                    <tas-icon iconName="feather:user" class="text-slate-400" style="font-size:14px"></tas-icon>
-                    <div class="flex-1 min-w-0">
-                      <p class="text-xs font-medium text-slate-700 truncate">
-                        {{ ing.externalId || 'Soumission ' + (ing.id ?? '').slice(0, 8) }}
-                      </p>
-                      <p class="text-[10px] text-slate-400">{{ ing.ingestedAt | dateTimeAgo }}</p>
-                      @if (ing.rejectionReason) {
-                        <p class="text-[10px] text-red-500">{{ ing.rejectionReason }}</p>
-                      }
-                    </div>
-                    @if (sourceStatus() === 'Testing') {
-                      <tas-tag severity="info">Test</tas-tag>
+          @if (leadsError()) {
+            <div class="flex flex-col items-center py-8 text-center">
+              <tas-icon iconName="feather:alert-triangle" class="text-red-400 mb-2" style="font-size:24px"></tas-icon>
+              <p class="text-sm text-red-600">Chargement impossible</p>
+              <p class="text-xs text-slate-400 mt-1">
+                Nous n'avons pas pu lire les réceptions de cette source. Réessayez avec « Rafraîchir ».
+              </p>
+            </div>
+          } @else if (!isLoadingLeads() && testLeads().length === 0) {
+            <div class="flex flex-col items-center py-8 text-center">
+              <tas-icon iconName="feather:inbox" class="text-slate-300 mb-2" style="font-size:24px"></tas-icon>
+              <p class="text-sm text-slate-500">Aucun lead de test reçu</p>
+              <p class="text-xs text-slate-400 mt-1">
+                Soumettez le formulaire de votre site pour tester la chaîne complète : la liste se met à jour toute seule.
+              </p>
+            </div>
+          } @else {
+            <tas-table [data]="testLeads()" identifierField="id" [config]="testLeadsTableConfig"
+                       [isLoading]="isLoadingLeads()">
+              <ng-template #header>
+                <tr class="text-left text-xs font-medium text-slate-500 border-b border-slate-200">
+                  <th class="py-2 px-4 font-medium">Reçu</th>
+                  <th class="py-2 px-3 font-medium">Statut</th>
+                  <th class="py-2 px-3 font-medium">Motif</th>
+                  <th class="py-2 px-4 font-medium text-right"></th>
+                </tr>
+              </ng-template>
+              <ng-template #body let-ing>
+                <tr class="cursor-pointer align-middle transition-colors hover:bg-slate-50"
+                    [class.bg-blue-50]="isNewLead(ing)"
+                    (click)="openDetail(ing)">
+                  <td class="py-2.5 px-4 text-xs text-slate-600 tabular-nums whitespace-nowrap">
+                    {{ ing.ingestedAt | date:'dd/MM HH:mm:ss' }}
+                    <span class="text-slate-400">· {{ ing.ingestedAt | dateTimeAgo }}</span>
+                    @if (isNewLead(ing)) {
+                      <span class="ml-1 text-[10px] font-medium text-blue-600">Nouveau</span>
                     }
-                    @if (ing.status !== 'Accepted') {
-                      <tas-tag severity="error">{{ ing.status }}</tas-tag>
+                  </td>
+                  <td class="py-2.5 px-3">
+                    <tas-tag [severity]="statusSeverity(ing.status)">{{ statusLabel(ing.status) }}</tas-tag>
+                  </td>
+                  <td class="py-2.5 px-3 max-w-[14rem]">
+                    @if (ing.rejectionReason) {
+                      <p class="text-xs text-red-500 truncate" [title]="ing.rejectionReason">{{ ing.rejectionReason }}</p>
+                    } @else {
+                      <span class="text-xs text-slate-400">—</span>
                     }
-                  </div>
-                }
-              </div>
-            }
-          </div>
+                  </td>
+                  <td class="py-2.5 px-4 text-right">
+                    <button tas-icon-button type="button" title="Voir le détail" (click)="$event.stopPropagation(); openDetail(ing)">
+                      <tas-icon iconName="feather:eye" style="font-size:12px" class="text-slate-400"></tas-icon>
+                    </button>
+                  </td>
+                </tr>
+              </ng-template>
+            </tas-table>
+          }
         </tas-card>
 
         <!-- Activate button -->
@@ -210,6 +235,7 @@ export class ScriptVerifier implements OnInit, OnDestroy {
   private readonly _ingestionsApi = inject(IngestionsApiService);
   private readonly _snackbar = inject(SnackbarService);
   private readonly _confirm = inject(ConfirmDialogService);
+  private readonly _sideDrawer = inject(SideDrawerService);
 
   public readonly sourceId = input.required<string>();
   public readonly sourceStatus = input<string | null>(null);
@@ -244,6 +270,20 @@ export class ScriptVerifier implements OnInit, OnDestroy {
   public isLoadingLeads = signal(false);
   public leadsError = signal(false);
   public isActivating = signal(false);
+  public leadsRefreshedAt = signal<Date | null>(null);
+  /** Soumissions arrivées par l'actualisation automatique, mises en évidence. */
+  public newLeadIds = signal<ReadonlySet<string>>(new Set<string>());
+  private _knownLeadIds = new Set<string>();
+  private _leadsTimer: ReturnType<typeof setInterval> | null = null;
+  private _silentLeadsInFlight = false;
+
+  public readonly testLeadsTableConfig: TableConfig = {
+    property: 'id',
+    pagination: { serverSide: false, pageIndex: 0, pageSize: 10, pageSizeOptions: [10, 20] },
+  };
+
+  public readonly statusLabel = ingestionStatusLabel;
+  public readonly statusSeverity = ingestionStatusSeverity;
 
   ngOnInit(): void {
     const status = this.sourceStatus();
@@ -261,6 +301,25 @@ export class ScriptVerifier implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this._stopPolling();
+    this._stopLeadsPolling();
+  }
+
+  public isNewLead(ing: IngestionDto): boolean {
+    return !!ing.id && this.newLeadIds().has(ing.id);
+  }
+
+  public openDetail(ing: IngestionDto): void {
+    if (ing.id && this.newLeadIds().has(ing.id)) {
+      const next = new Set(this.newLeadIds());
+      next.delete(ing.id);
+      this.newLeadIds.set(next);
+    }
+    openIngestionDetail(this._sideDrawer, {
+      ingestion: ing,
+      // Le rejeu se pilote depuis l'onglet « Réceptions », qui suit son état.
+      canReplay: false,
+      isScript: true,
+    });
   }
 
   public startPolling(): void {
@@ -303,6 +362,11 @@ export class ScriptVerifier implements OnInit, OnDestroy {
         this.detectionStatus.set('detected');
         this._stopPolling();
         this.refreshTestLeads();
+        // Le sondage de détection s'arrête dès le passage en Test : sans ce
+        // second sondage, une soumission faite ensuite sur le site n'apparaissait
+        // qu'après un clic sur « Rafraîchir ».
+        if (detail.status === 'Testing') this._startLeadsPolling();
+        else this._stopLeadsPolling();
       }
 
       // Le parent recharge la source, ce qui rafraichit l'entree `sourceStatus`.
@@ -310,13 +374,20 @@ export class ScriptVerifier implements OnInit, OnDestroy {
     });
   }
 
-  public refreshTestLeads(): void {
-    this.isLoadingLeads.set(true);
-    this.leadsError.set(false);
+  public refreshTestLeads(silent = false): void {
+    if (silent) {
+      this._silentLeadsInFlight = true;
+    } else {
+      this.isLoadingLeads.set(true);
+      this.leadsError.set(false);
+    }
     // Cet appel passe en direct par l'API generee, donc sans la gestion d'erreur
     // de `LeadSourcesService` : un 500 s'affichait comme « Aucun lead de test recu ».
     this._ingestionsApi.listIngestions(this.sourceId(), undefined, 1, 20).pipe(
       catchError(() => {
+        this._silentLeadsInFlight = false;
+        // Une actualisation automatique ratée garde la liste affichée, sans toast.
+        if (silent) return EMPTY;
         this.leadsError.set(true);
         this.isLoadingLeads.set(false);
         this._snackbar.error(
@@ -326,9 +397,18 @@ export class ScriptVerifier implements OnInit, OnDestroy {
         return EMPTY;
       }),
     ).subscribe((result) => {
-      this.testLeads.set(result.items ?? []);
+      const items = result.items ?? [];
+      if (silent) {
+        const fresh = items.filter((i) => i.id && !this._knownLeadIds.has(i.id)).map((i) => i.id!);
+        if (fresh.length) this.newLeadIds.set(new Set([...this.newLeadIds(), ...fresh]));
+      }
+      for (const item of items) if (item.id) this._knownLeadIds.add(item.id);
+
+      this.testLeads.set(items);
       this.leadsError.set(false);
       this.isLoadingLeads.set(false);
+      this._silentLeadsInFlight = false;
+      this.leadsRefreshedAt.set(new Date());
     });
   }
 
@@ -350,6 +430,7 @@ export class ScriptVerifier implements OnInit, OnDestroy {
         ).subscribe(() => {
           this._snackbar.success('Source activée', 'Les leads réels seront désormais créés.');
           this.isActivating.set(false);
+          this._stopLeadsPolling();
           this.activated.emit();
         });
       },
@@ -361,6 +442,21 @@ export class ScriptVerifier implements OnInit, OnDestroy {
     if (this._pollTimer) {
       clearInterval(this._pollTimer);
       this._pollTimer = null;
+    }
+  }
+
+  private _startLeadsPolling(): void {
+    if (this._leadsTimer) return;
+    this._leadsTimer = setInterval(() => {
+      if (document.hidden || this.isLoadingLeads() || this._silentLeadsInFlight) return;
+      this.refreshTestLeads(true);
+    }, INGESTION_AUTO_REFRESH_MS);
+  }
+
+  private _stopLeadsPolling(): void {
+    if (this._leadsTimer) {
+      clearInterval(this._leadsTimer);
+      this._leadsTimer = null;
     }
   }
 }

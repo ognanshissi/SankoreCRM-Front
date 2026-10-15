@@ -162,7 +162,6 @@ export class EditLeadSource implements OnInit {
       this._permissions.has('lead:source:credentials') &&
       !this._sourcesService.forbidden(),
   );
-  public readonly canViewPayload = this._permissions.can('lead:ingestion:payload:read');
   public readonly canReplayIngestion = this._permissions.can('lead:ingestion:replay');
 
   // ——— FE-09: Activation prerequisites ———

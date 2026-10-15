@@ -495,9 +495,10 @@
       @case ('ingestions') {
         <ingestion-list
           [sourceId]="source()!.id!"
-          [canViewPayload]="canViewPayload()"
           [canReplay]="canReplayIngestion()"
           [initialStatus]="requestedIngestionStatus()"
+          [isScript]="source()!.mode === 'EmbeddedScript'"
+          [autoRefresh]="source()!.mode === 'EmbeddedScript'"
         ></ingestion-list>
       }
     }

@@ -1,25 +1,33 @@
-import { Component, inject, input, signal, computed, OnInit } from '@angular/core';
+import { Component, DestroyRef, inject, input, signal, computed, OnInit } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { PageEvent } from '@angular/material/paginator';
 import { catchError, EMPTY, finalize } from 'rxjs';
-import { TasCard } from '@talisoft/ui/card';
 import { TasSpinner } from '@talisoft/ui/spinner';
 import { TasIcon } from '@talisoft/ui/icon';
 import { LeadSourcesService } from './lead-sources.service';
-import { TasTag, Severity } from '@talisoft/ui/tag';
+import { TasTag } from '@talisoft/ui/tag';
 import { Button } from '@talisoft/ui/button';
 import { TasFormField, TasLabel } from '@talisoft/ui/form-field';
 import { TasSelect } from '@talisoft/ui/select';
+import { TableConfig, TasTable } from '@talisoft/ui/table';
 import { SnackbarService } from '@talisoft/ui/snackbar';
+import { SideDrawerService } from '@talisoft/ui/side-drawer';
 import { ConfirmDialogService } from '@talisoft/ui/confirm-dialog';
 import {
   IngestionDto,
-  IngestionPayloadDto,
   PagedResultOfIngestionDto,
   IngestionsApiService,
 } from '@sankore/crm-api';
+import { openIngestionDetail } from './ingestion-detail-drawer';
+import {
+  INGESTION_AUTO_REFRESH_MS,
+  ingestionHasLead,
+  ingestionStatusLabel,
+  ingestionStatusSeverity,
+  isReplayableIngestion,
+} from './ingestion.types';
 
 /**
  * FE-30 — Consulter et rejouer les ingestions d'une source
@@ -27,46 +35,55 @@ import {
 
 const STATUS_OPTIONS = [
   { label: 'Tous', value: '' },
-  { label: 'Accepté', value: '0' },
-  { label: 'Rejeté', value: '1' },
-  { label: 'Doublon', value: '2' },
-  { label: 'Échoué', value: '3' },
+  { label: 'Accepté', value: 'Accepted' },
+  { label: 'Rejeté', value: 'Rejected' },
+  { label: 'Doublon', value: 'Duplicate' },
+  { label: 'Échoué', value: 'Failed' },
 ];
 
 /**
- * `IngestionDto.leadId` est un `uuid` non nullable au contrat : une ingestion
- * sans lead renvoie le GUID nul, qui est *truthy*. Sans ce garde-fou, le lien
- * « Voir le lead » menait vers un lead inexistant.
+ * Le tableau qualité (FE-23) et les anciens liens passent encore le statut sous
+ * sa forme numérique historique (`?status=2`) : on le traduit vers le nom du contrat.
  */
-const EMPTY_GUID = '00000000-0000-0000-0000-000000000000';
+const LEGACY_STATUS: Record<string, string> = { '0': 'Accepted', '1': 'Rejected', '2': 'Duplicate', '3': 'Failed' };
 
 @Component({
   selector: 'ingestion-list',
   standalone: true,
   imports: [
-    FormsModule, DatePipe, RouterLink,
-    TasCard, TasSpinner, TasIcon, TasTag, Button,
+    FormsModule, DatePipe,
+    TasSpinner, TasIcon, TasTag, Button, TasTable,
     TasFormField, TasLabel, TasSelect,
   ],
   template: `
-    <div class="max-w-4xl flex flex-col gap-4">
+    <div class="max-w-5xl flex flex-col gap-4">
       <!-- Header -->
       <div class="flex items-center justify-between">
         <div>
           <h2 class="text-sm font-semibold text-slate-700">Réceptions</h2>
           <p class="text-xs text-slate-400 mt-0.5">
-            Historique de chaque lead reçu par cette source.
+            Historique de chaque lead reçu par cette source. Cliquez sur une ligne pour en voir le détail.
           </p>
         </div>
-        <button tas-outlined-button type="button" (click)="refresh()">
-          <tas-icon iconName="feather:refresh-cw" style="font-size:12px"></tas-icon>
-          Rafraîchir
-        </button>
+        <div class="flex items-center gap-2">
+          @if (autoRefresh()) {
+            <button tas-text-button type="button" color="primary" class="text-xs"
+                    [title]="autoRefreshPaused() ? 'Reprendre l’actualisation automatique' : 'Suspendre l’actualisation automatique'"
+                    (click)="autoRefreshPaused.set(!autoRefreshPaused())">
+              <tas-icon [iconName]="autoRefreshPaused() ? 'feather:play' : 'feather:pause'" style="font-size:12px"></tas-icon>
+              {{ autoRefreshPaused() ? 'Actualisation suspendue' : 'Actualisation auto' }}
+            </button>
+          }
+          <button tas-outlined-button type="button" color="primary" (click)="refresh()">
+            <tas-icon iconName="feather:refresh-cw" style="font-size:12px"></tas-icon>
+            Rafraîchir
+          </button>
+        </div>
       </div>
 
       <!-- Filter -->
-      <div class="flex gap-3">
-        <tas-form-field class="w-48">
+      <div class="grid grid-cols-2 items-end gap-3">
+        <tas-form-field>
           <tas-label>Statut</tas-label>
           <tas-select
             clearable
@@ -75,9 +92,17 @@ const EMPTY_GUID = '00000000-0000-0000-0000-000000000000';
             [ngModel]="filterStatus()" (ngModelChange)="onFilterChange($event)"
           ></tas-select>
         </tas-form-field>
-        <div class="flex items-end justify-between gap-2">
+        <div class="flex justify-end gap-3">
           @if (!loadError()) {
-            <span class="text-xs text-slate-400">{{ totalCount() }} réception(s)</span>
+            <span class="text-xs text-slate-400 tabular-nums">{{ totalCount() }} réception(s)</span>
+          }
+          @if (autoRefresh() && lastRefreshedAt()) {
+            <span class="text-xs text-slate-400 tabular-nums">
+              Mis à jour à {{ lastRefreshedAt() | date:'HH:mm:ss' }}
+              @if (autoRefreshFailed()) {
+                <span class="text-functional-error">· échec de la dernière actualisation</span>
+              }
+            </span>
           }
           <!-- FE-23 AC2 — la liste des doublons est exportable pour contestation -->
           @if (filterStatus() === DUPLICATE_STATUS) {
@@ -92,12 +117,6 @@ const EMPTY_GUID = '00000000-0000-0000-0000-000000000000';
         </div>
       </div>
 
-      <!--
-        FE-30 AC3 — le rejeu répond 202 sans corps : le serveur retraite en
-        arrière-plan. On l'annonce à l'écran plutôt que d'affirmer un résultat
-        que le serveur n'a pas confirmé, et on garde la ligne repérable même
-        lorsque le filtre courant la fait sortir de la liste.
-      -->
       @if (replayRequestedCount() > 0) {
         <div class="flex items-start gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2">
           <tas-icon iconName="feather:clock" class="text-blue-500 mt-0.5" style="font-size:12px"></tas-icon>
@@ -120,141 +139,93 @@ const EMPTY_GUID = '00000000-0000-0000-0000-000000000000';
         </div>
       }
 
-      @if (isLoading()) {
-        <div class="flex justify-center py-12">
-          <tas-spinner size="8" class="text-primary"></tas-spinner>
+      @if (loadError()) {
+        <!-- Une panne ne doit pas se lire « Aucune réception enregistrée. » -->
+        <div class="flex flex-col items-center py-12 text-center rounded-lg border border-slate-200 bg-white">
+          <tas-icon iconName="feather:alert-triangle" class="text-functional-error mb-2" style="font-size:24px"></tas-icon>
+          <p class="text-sm text-slate-600">Le chargement des réceptions a échoué.</p>
+          <p class="text-xs text-slate-400 mt-0.5">
+            La liste n'a pas pu être lue : elle n'est pas forcément vide.
+          </p>
+          <button tas-outlined-button type="button" class="mt-3" (click)="refresh()">
+            Réessayer
+          </button>
         </div>
       } @else {
-        <tas-card class="block">
-          <!-- Table header -->
-          <div class="flex items-center px-4 py-2 bg-slate-50 text-xs font-medium text-slate-500 border-b border-slate-100">
-            <div class="w-[18%]">Date</div>
-            <div class="w-[18%]">ID externe</div>
-            <div class="w-[12%] text-center">Statut</div>
-            <div class="w-[30%]">Motif</div>
-            <div class="w-[12%]">Lead</div>
-            <div class="w-[10%] text-right">Actions</div>
-          </div>
-
-          @if (loadError()) {
-            <!-- Une panne ne doit pas se lire « Aucune réception enregistrée. » -->
-            <div class="flex flex-col items-center py-12 text-center">
-              <tas-icon iconName="feather:alert-triangle" class="text-functional-error mb-2" style="font-size:24px"></tas-icon>
-              <p class="text-sm text-slate-600">Le chargement des réceptions a échoué.</p>
-              <p class="text-xs text-slate-400 mt-0.5">
-                La liste n'a pas pu être lue : elle n'est pas forcément vide.
-              </p>
-              <button tas-outlined-button type="button" class="mt-3" (click)="refresh()">
-                Réessayer
-              </button>
-            </div>
-          } @else if (ingestions().length === 0) {
-            <div class="flex flex-col items-center py-12 text-center">
-              <tas-icon iconName="feather:inbox" class="text-slate-300 mb-2" style="font-size:24px"></tas-icon>
-              <p class="text-sm text-slate-400">Aucune réception enregistrée.</p>
-            </div>
-          } @else {
-            <div class="divide-y divide-slate-100">
-              @for (ing of ingestions(); track ing.id) {
-                <div>
-                  <!-- Main row -->
-                  <div class="flex items-center px-4 py-3 hover:bg-slate-50 transition-colors">
-                    <!-- Date -->
-                    <div class="w-[18%] text-xs text-slate-600">
-                      {{ ing.ingestedAt | date:'dd/MM/yy HH:mm:ss' }}
-                    </div>
-
-                    <!-- External ID -->
-                    <div class="w-[18%]">
-                      @if (ing.externalId) {
-                        <span class="text-xs text-slate-700 font-mono truncate block">{{ ing.externalId }}</span>
+        <tas-table [data]="ingestions()" identifierField="id" [config]="tableConfig()"
+                   [isLoading]="isLoading()" (pageEventChange)="onPageChange($event)">
+          <ng-template #header>
+            <tr class="text-left text-xs font-medium text-slate-500 border-b border-slate-200">
+              <th class="py-2 px-4 font-medium">Date</th>
+              @if (!isScript()) {
+                <th class="py-2 px-3 font-medium">ID externe</th>
+              }
+              <th class="py-2 px-3 font-medium">Statut</th>
+              <th class="py-2 px-3 font-medium">Motif</th>
+              <th class="py-2 px-3 font-medium">Lead</th>
+              <th class="py-2 px-4 font-medium text-right">Actions</th>
+            </tr>
+          </ng-template>
+          <ng-template #body let-ing>
+            <tr class="cursor-pointer align-middle transition-colors hover:bg-slate-50"
+                [class.bg-blue-50]="isNew(ing)"
+                (click)="openDetail(ing)">
+              <td class="py-3 px-4 text-xs text-slate-600 tabular-nums whitespace-nowrap">
+                {{ ing.ingestedAt | date:'dd/MM/yy HH:mm:ss' }}
+                @if (isNew(ing)) {
+                  <span class="ml-1 text-[10px] font-medium text-blue-600">Nouveau</span>
+                }
+              </td>
+              @if (!isScript()) {
+                <td class="py-3 px-3 max-w-[10rem]">
+                  @if (ing.externalId) {
+                    <span class="text-xs text-slate-700 font-mono truncate block" [title]="ing.externalId">{{ ing.externalId }}</span>
+                  } @else {
+                    <span class="text-xs text-slate-400">—</span>
+                  }
+                </td>
+              }
+              <td class="py-3 px-3">
+                <tas-tag [severity]="statusSeverity(ing.status)">{{ statusLabel(ing.status) }}</tas-tag>
+                @if (isReplayRequested(ing)) {
+                  <p class="text-[10px] text-blue-500 mt-0.5">Rejeu en cours</p>
+                }
+              </td>
+              <td class="py-3 px-3 max-w-[16rem]">
+                @if (ing.rejectionReason) {
+                  <p class="text-xs text-slate-600 truncate" [title]="ing.rejectionReason">{{ ing.rejectionReason }}</p>
+                } @else {
+                  <span class="text-xs text-slate-400">—</span>
+                }
+              </td>
+              <td class="py-3 px-3 text-xs">
+                @if (hasLead(ing)) {
+                  <span class="text-primary">Lead créé</span>
+                } @else {
+                  <span class="text-slate-400">—</span>
+                }
+              </td>
+              <td class="py-3 px-4">
+                <div class="flex justify-end gap-1">
+                  <button tas-icon-button type="button" title="Voir le détail" (click)="$event.stopPropagation(); openDetail(ing)">
+                    <tas-icon iconName="feather:eye" style="font-size:12px" class="text-slate-400"></tas-icon>
+                  </button>
+                  @if (canReplay() && isReplayable(ing)) {
+                    <button tas-icon-button type="button" title="Rejouer"
+                            [disabled]="replayingId() === ing.id"
+                            (click)="$event.stopPropagation(); replay(ing)">
+                      @if (replayingId() === ing.id) {
+                        <tas-spinner size="3"></tas-spinner>
                       } @else {
-                        <span class="text-xs text-slate-400">—</span>
+                        <tas-icon iconName="feather:rotate-cw" style="font-size:12px" class="text-blue-500"></tas-icon>
                       }
-                    </div>
-
-                    <!-- Status -->
-                    <div class="w-[12%] text-center">
-                      <tas-tag [severity]="ingestionStatusSeverity(ing.status)">
-                        {{ ingestionStatusLabel(ing.status) }}
-                      </tas-tag>
-                      @if (isReplayRequested(ing)) {
-                        <p class="text-[10px] text-blue-500 mt-0.5">Rejeu en cours</p>
-                      }
-                    </div>
-
-                    <!-- Reason -->
-                    <div class="w-[30%]">
-                      @if (ing.rejectionReason) {
-                        <p class="text-xs text-slate-600 truncate" [title]="ing.rejectionReason">
-                          {{ ing.rejectionReason }}
-                        </p>
-                      } @else {
-                        <span class="text-xs text-slate-400">—</span>
-                      }
-                    </div>
-
-                    <!-- Lead link -->
-                    <div class="w-[12%]">
-                      @if (hasLead(ing)) {
-                        <a [routerLink]="['/leads', ing.leadId]"
-                           class="text-xs text-primary hover:underline truncate block">
-                          Voir le lead
-                        </a>
-                      } @else {
-                        <span class="text-xs text-slate-400">—</span>
-                      }
-                    </div>
-
-                    <!-- Actions -->
-                    <div class="w-[10%] flex justify-end gap-1">
-                      @if (canViewPayload()) {
-                        <button tas-icon-button type="button"
-                                [disabled]="loadingPayloadId() === ing.id"
-                                (click)="togglePayload(ing.id!)">
-                          @if (loadingPayloadId() === ing.id) {
-                            <tas-spinner size="3"></tas-spinner>
-                          } @else {
-                            <tas-icon [iconName]="expandedId() === ing.id ? 'feather:chevron-up' : 'feather:eye'"
-                                      style="font-size:12px" class="text-slate-400"></tas-icon>
-                          }
-                        </button>
-                      }
-                      @if (canReplay() && (ing.status === 'Rejected' || ing.status === 'Failed')) {
-                        <button tas-icon-button type="button"
-                                [disabled]="replayingId() === ing.id"
-                                (click)="replay(ing)">
-                          @if (replayingId() === ing.id) {
-                            <tas-spinner size="3"></tas-spinner>
-                          } @else {
-                            <tas-icon iconName="feather:rotate-cw" style="font-size:12px" class="text-blue-500"></tas-icon>
-                          }
-                        </button>
-                      }
-                    </div>
-                  </div>
-
-                  <!-- Expanded payload -->
-                  @if (expandedId() === ing.id && expandedPayload()) {
-                    <div class="px-4 py-3 bg-slate-50 border-t border-slate-100">
-                      <p class="text-[10px] text-slate-400 mb-1">Payload déchiffré</p>
-                      <pre class="bg-slate-900 text-green-400 text-[10px] p-3 rounded-lg overflow-auto max-h-60 font-mono whitespace-pre-wrap">{{ expandedPayload() }}</pre>
-                    </div>
+                    </button>
                   }
                 </div>
-              }
-            </div>
-          }
-
-          <!-- Pagination -->
-          @if (hasMore() && !loadError()) {
-            <div class="p-4 border-t border-slate-100 flex justify-center">
-              <button tas-outlined-button type="button" (click)="loadMore()">
-                Charger plus
-              </button>
-            </div>
-          }
-        </tas-card>
+              </td>
+            </tr>
+          </ng-template>
+        </tas-table>
       }
     </div>
   `,
@@ -264,24 +235,73 @@ export class IngestionList implements OnInit {
   private readonly _sourcesService = inject(LeadSourcesService);
   private readonly _snackbar = inject(SnackbarService);
   private readonly _confirm = inject(ConfirmDialogService);
+  private readonly _sideDrawer = inject(SideDrawerService);
+  private readonly _destroyRef = inject(DestroyRef);
 
   public readonly sourceId = input.required<string>();
-  public readonly canViewPayload = input(false);
   /** FE-23 AC2 — statut pre-selectionne lorsqu'on arrive depuis le tableau qualite. */
   public readonly initialStatus = input<string | null>(null);
   public readonly canReplay = input(false);
+  /** Source « script embarqué » : l'ID externe y est un GUID tiré au sort, la colonne n'apprend rien. */
+  public readonly isScript = input(false);
+  /** Recharge la page courante à intervalle régulier, pour voir arriver les soumissions. */
+  public readonly autoRefresh = input(false);
 
   public isLoading = signal(true);
   public ingestions = signal<IngestionDto[]>([]);
   public totalCount = signal(0);
-  public hasMore = signal(false);
+  public page = signal(1);
+  public pageSize = signal(25);
   public filterStatus = signal('');
   public isExporting = signal(false);
   /** Distingue « la liste est vide » de « la liste n'a pas pu être lue ». */
   public loadError = signal(false);
 
-  /** Valeur du statut « Doublon » dans le filtre (enum numerique de l'API). */
-  public readonly DUPLICATE_STATUS = '2';
+  public autoRefreshPaused = signal(false);
+  public autoRefreshFailed = signal(false);
+  public lastRefreshedAt = signal<Date | null>(null);
+  /** Réceptions apparues lors d'une actualisation automatique, mises en évidence. */
+  public newIds = signal<ReadonlySet<string>>(new Set<string>());
+  private _knownIds = new Set<string>();
+  private _silentLoadInFlight = false;
+
+  public readonly tableConfig = computed<TableConfig>(() => ({
+    property: 'id',
+    pagination: {
+      serverSide: true,
+      pageIndex: this.page() - 1,
+      pageSize: this.pageSize(),
+      totalElements: this.totalCount(),
+      pageSizeOptions: [10, 25, 50],
+    },
+  }));
+
+  /** Valeur du statut « Doublon » dans le filtre. */
+  public readonly DUPLICATE_STATUS = 'Duplicate';
+
+  // Replay
+  public replayingId = signal<string | null>(null);
+  /** Ingestions dont le rejeu a été accepté (202) mais pas encore observé. */
+  public replayRequestedIds = signal<ReadonlySet<string>>(new Set<string>());
+  public readonly replayRequestedCount = computed(() => this.replayRequestedIds().size);
+
+  public readonly statusOptions = STATUS_OPTIONS;
+
+  public readonly statusLabel = ingestionStatusLabel;
+  public readonly statusSeverity = ingestionStatusSeverity;
+  public readonly hasLead = ingestionHasLead;
+  public readonly isReplayable = isReplayableIngestion;
+
+  ngOnInit(): void {
+    const initial = this.initialStatus();
+    if (initial) this.filterStatus.set(LEGACY_STATUS[initial] ?? initial);
+    this._load();
+
+    if (this.autoRefresh()) {
+      const timer = setInterval(() => this._autoRefreshTick(), INGESTION_AUTO_REFRESH_MS);
+      this._destroyRef.onDestroy(() => clearInterval(timer));
+    }
+  }
 
   public exportDuplicates(): void {
     this.isExporting.set(true);
@@ -306,68 +326,38 @@ export class IngestionList implements OnInit {
     });
   }
 
-  // Expand payload
-  public expandedId = signal<string | null>(null);
-  public expandedPayload = signal<string | null>(null);
-  public loadingPayloadId = signal<string | null>(null);
-
-  // Replay
-  public replayingId = signal<string | null>(null);
-  /** Ingestions dont le rejeu a été accepté (202) mais pas encore observé. */
-  public replayRequestedIds = signal<ReadonlySet<string>>(new Set<string>());
-  public readonly replayRequestedCount = computed(() => this.replayRequestedIds().size);
-
-  public readonly statusOptions = STATUS_OPTIONS;
-
-  private _page = 1;
-
-  ngOnInit(): void {
-    const initial = this.initialStatus();
-    if (initial) this.filterStatus.set(initial);
-    this._load(true);
-  }
-
   public onFilterChange(status: string | null): void {
     // `?? ''` : la croix du `tas-select` notifie `null`, le signal reste en chaîne.
     this.filterStatus.set(status ?? '');
-    this._page = 1;
-    this._load(true);
+    this.page.set(1);
+    this._load();
+  }
+
+  public onPageChange(event: PageEvent): void {
+    const sizeChanged = event.pageSize !== this.pageSize();
+    this.pageSize.set(event.pageSize);
+    this.page.set(sizeChanged ? 1 : event.pageIndex + 1);
+    this._load();
   }
 
   public refresh(): void {
-    this._page = 1;
-    this._load(true);
+    this.page.set(1);
+    this._load();
   }
 
-  public loadMore(): void {
-    this._page++;
-    this._load(false);
-  }
-
-  public togglePayload(id: string): void {
-    if (this.expandedId() === id) {
-      this.expandedId.set(null);
-      this.expandedPayload.set(null);
-      return;
-    }
-
-    this.loadingPayloadId.set(id);
-    this._ingestionsApi.getIngestionPayload(id).pipe(
-      catchError(() => {
-        this._snackbar.error('Erreur', 'Impossible de charger le payload.');
-        this.loadingPayloadId.set(null);
-        return EMPTY;
-      }),
-    ).subscribe((payload: IngestionPayloadDto) => {
-      this.expandedId.set(id);
-      try {
-        this.expandedPayload.set(
-          JSON.stringify(JSON.parse(payload.rawPayloadJson ?? '{}'), null, 2),
-        );
-      } catch {
-        this.expandedPayload.set(payload.rawPayloadJson ?? '');
-      }
-      this.loadingPayloadId.set(null);
+  public openDetail(ing: IngestionDto): void {
+    this.newIds.update((ids) => {
+      if (!ing.id || !ids.has(ing.id)) return ids;
+      const next = new Set(ids);
+      next.delete(ing.id);
+      return next;
+    });
+    openIngestionDetail(this._sideDrawer, {
+      ingestion: ing,
+      canReplay: this.canReplay(),
+      isScript: this.isScript(),
+    }).closed.subscribe((result) => {
+      if (result === 'replay') this.replay(ing);
     });
   }
 
@@ -413,33 +403,12 @@ export class IngestionList implements OnInit {
 
   // ——— Helpers ———
 
-  /** Une ingestion sans lead renvoie le GUID nul, non nul au contrat. */
-  public hasLead(ing: IngestionDto): boolean {
-    return !!ing.leadId && ing.leadId !== EMPTY_GUID;
+  public isNew(ing: IngestionDto): boolean {
+    return !!ing.id && this.newIds().has(ing.id);
   }
 
   public isReplayRequested(ing: IngestionDto): boolean {
     return !!ing.id && this.replayRequestedIds().has(ing.id);
-  }
-
-  public ingestionStatusLabel(status: string | undefined): string {
-    switch (status) {
-      case 'Accepted': return 'Accepté';
-      case 'Rejected': return 'Rejeté';
-      case 'Duplicate': return 'Doublon';
-      case 'Failed': return 'Échoué';
-      default: return status ?? '—';
-    }
-  }
-
-  public ingestionStatusSeverity(status: string | undefined): Severity {
-    switch (status) {
-      case 'Accepted': return 'success';
-      case 'Rejected': return 'error';
-      case 'Duplicate': return 'warning';
-      case 'Failed': return 'error';
-      default: return 'neutral';
-    }
   }
 
   /**
@@ -460,13 +429,24 @@ export class IngestionList implements OnInit {
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 
-  private _load(reset: boolean): void {
-    if (reset) {
+  /**
+   * Onglet masqué, chargement déjà en cours ou liste en erreur : on saute le
+   * tour plutôt que d'empiler les requêtes. La page courante est rechargée telle
+   * quelle, pour ne pas déplacer l'utilisateur qui lit la page 3.
+   */
+  private _autoRefreshTick(): void {
+    if (this.autoRefreshPaused() || document.hidden) return;
+    if (this.isLoading() || this._silentLoadInFlight || this.loadError()) return;
+    this._load(true);
+  }
+
+  private _load(silent = false): void {
+    if (silent) {
+      this._silentLoadInFlight = true;
+    } else {
       this.isLoading.set(true);
       this.loadError.set(false);
     }
-    // Le contrat nomme ce statut ; il portait un entier 0..3 tant que l'énumération
-    // optionnelle sortait en integer du swagger, d'où le `Number(...)` qui traînait ici.
     const status = (this.filterStatus() || undefined) as
       | 'Accepted'
       | 'Rejected'
@@ -474,48 +454,51 @@ export class IngestionList implements OnInit {
       | 'Failed'
       | undefined;
 
-    this._ingestionsApi.listIngestions(this.sourceId(), status, this._page, 25).pipe(
+    this._ingestionsApi.listIngestions(this.sourceId(), status, this.page(), this.pageSize()).pipe(
       // L'appel ne passe pas par `LeadSourcesService` : sans ce message, un 403
       // ou un 500 se lisait « Aucune réception enregistrée. »
       catchError((err: HttpErrorResponse) => {
+        if (silent) {
+          // Une actualisation automatique ratée ne doit ni effacer la liste
+          // affichée ni ouvrir un toast toutes les 15 secondes.
+          this.autoRefreshFailed.set(true);
+          return EMPTY;
+        }
         this._snackbar.error(
           'Erreur',
           err.error?.detail ?? 'Le chargement des réceptions a échoué.',
         );
-        if (reset) {
-          this.loadError.set(true);
-          this.ingestions.set([]);
-          this.totalCount.set(0);
-          this.hasMore.set(false);
-        } else {
-          // Sans ce retour en arrière, le clic suivant sur « Charger plus »
-          // sauterait silencieusement la page qui vient d'échouer.
-          this._page = Math.max(1, this._page - 1);
-        }
+        this.loadError.set(true);
+        this.ingestions.set([]);
+        this.totalCount.set(0);
         return EMPTY;
       }),
-      finalize(() => this.isLoading.set(false)),
+      finalize(() => {
+        if (silent) this._silentLoadInFlight = false;
+        else this.isLoading.set(false);
+      }),
     ).subscribe((result: PagedResultOfIngestionDto) => {
       const items = result.items ?? [];
-      if (reset) {
-        this.ingestions.set(items);
-        // Un rejeu abouti sort l'ingestion des statuts rejouables : l'avis
-        // « traitement en cours » n'a plus lieu d'être pour cette ligne.
-        this.replayRequestedIds.update((ids) => {
-          if (ids.size === 0) return ids;
-          const next = new Set(ids);
-          for (const item of items) {
-            if (item.id && item.status !== 'Rejected' && item.status !== 'Failed') {
-              next.delete(item.id);
-            }
-          }
-          return next;
-        });
-      } else {
-        this.ingestions.update((prev) => [...prev, ...items]);
+      if (silent) {
+        const fresh = items.filter((i) => i.id && !this._knownIds.has(i.id)).map((i) => i.id!);
+        if (fresh.length) this.newIds.update((ids) => new Set([...ids, ...fresh]));
       }
+      for (const item of items) if (item.id) this._knownIds.add(item.id);
+
+      this.ingestions.set(items);
+      // Un rejeu abouti sort l'ingestion des statuts rejouables : l'avis
+      // « traitement en cours » n'a plus lieu d'être pour cette ligne.
+      this.replayRequestedIds.update((ids) => {
+        if (ids.size === 0) return ids;
+        const next = new Set(ids);
+        for (const item of items) {
+          if (item.id && !isReplayableIngestion(item)) next.delete(item.id);
+        }
+        return next;
+      });
       this.totalCount.set(result.totalCount ?? 0);
-      this.hasMore.set(result.hasNextPage ?? false);
+      this.autoRefreshFailed.set(false);
+      this.lastRefreshedAt.set(new Date());
     });
   }
 }
