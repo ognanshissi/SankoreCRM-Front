@@ -8,8 +8,9 @@ import {
 } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
+import { FormsModule } from '@angular/forms';
 import { form, FormField, FormRoot, required, submit } from '@angular/forms/signals';
-import { catchError, EMPTY, firstValueFrom, forkJoin, of } from 'rxjs';
+import { catchError, EMPTY, finalize, firstValueFrom, forkJoin, of } from 'rxjs';
 import { Anchor, Button } from '@talisoft/ui/button';
 import { TasCard } from '@talisoft/ui/card';
 import { TasError, TasFormField, TasHint, TasLabel } from '@talisoft/ui/form-field';
@@ -26,6 +27,8 @@ import {
   LeadDto,
   LeadsApiService,
   OpportunitiesApiService,
+  AdvanceOpportunityStageRequestStageEnum,
+  CloseOpportunityRequestOutcomeEnum,
   OpportunityDto,
   ProductDto,
   ProductHoldingsApiService,
@@ -78,6 +81,8 @@ type DemandeRow = {
   opportunityId: string;
   title: string;
   productLabel: string;
+  /** L'étape telle que le contrat la nomme — ce que le sélecteur renvoie et compare. */
+  stageValue: string;
   stageLabel: string;
   stageSeverity: Severity;
   isClosed: boolean;
@@ -139,6 +144,10 @@ class NewDemandeFormModel {
     RouterLink,
     FormRoot,
     FormField,
+    // Les contrôles d'action de ligne (étape, motif de clôture) ne sont pas un formulaire : ils
+    // n'ont ni validation ni soumission, et chaque changement EST l'action. `form()` n'aurait
+    // rien à y apporter — même exception que les barres de filtres.
+    FormsModule,
     TasCard,
     TasIcon,
     TasSpinner,
@@ -183,6 +192,14 @@ export class ClientDemandes {
   private readonly _leadsById = signal<Map<string, LeadDto>>(new Map());
   private readonly _ownerNames = signal<Map<string, string>>(new Map());
   private readonly _holdingIdByLeadId = signal<Map<string, string>>(new Map());
+  private readonly _holdingIdByOpportunityId = signal<Map<string, string>>(new Map());
+
+  /** La demande dont une étape ou une clôture est en cours d'envoi. */
+  protected readonly busyOpportunityId = signal<string | null>(null);
+
+  /** La demande dont le formulaire de clôture est ouvert, et le motif saisi. */
+  protected readonly closingOpportunityId = signal<string | null>(null);
+  protected readonly closeReason = signal('');
   private readonly _products = signal<ProductDto[]>([]);
   private _productsRequested = false;
 
@@ -215,7 +232,8 @@ export class ClientDemandes {
   protected readonly rows = computed<DemandeRow[]>(() => {
     const leads = this._leadsById();
     const owners = this._ownerNames();
-    const holdings = this._holdingIdByLeadId();
+    const holdingsByLead = this._holdingIdByLeadId();
+    const holdingsByOpportunity = this._holdingIdByOpportunityId();
 
     return this._opportunities().map((o) => {
       const stage = o.stage ?? '';
@@ -229,6 +247,7 @@ export class ClientDemandes {
         opportunityId: o.id ?? '',
         title: o.title?.trim() || 'Demande sans intitulé',
         productLabel: o.product?.trim() || 'Produit non précisé',
+        stageValue: stage,
         stageLabel: stageMeta.label,
         stageSeverity: stageMeta.severity,
         isClosed: CLOSED_STAGES.has(stage),
@@ -245,7 +264,11 @@ export class ClientDemandes {
           amount !== undefined && amount !== null
             ? `${amount} ${o.estimatedAmount?.currency ?? ''}`.trim()
             : null,
-        holdingId: leadId ? (holdings.get(leadId) ?? null) : null,
+        // Le lien direct d'abord : il désigne CETTE demande, là où `sourceLeadId` ne désigne
+        // que le lead dont elle descend — et plusieurs demandes peuvent descendre du même.
+        holdingId:
+          holdingsByOpportunity.get(o.id ?? '')
+          ?? (leadId ? (holdingsByLead.get(leadId) ?? null) : null),
       };
     });
   });
@@ -314,6 +337,103 @@ export class ClientDemandes {
   protected reload(): void {
     const clientId = this.clientId();
     if (clientId) this._load(clientId);
+  }
+
+  /**
+   * Les étapes qu'une demande ouverte peut prendre, dans l'ordre du pipeline.
+   *
+   * Les deux étapes closes en sont absentes : clore porte un motif et ouvre un contrat, ce que le
+   * serveur refuse de faire passer par ce chemin — c'est `close()`.
+   */
+  protected readonly openStages: { value: string; label: string }[] = [
+    { value: AdvanceOpportunityStageRequestStageEnum.Prospecting, label: STAGE_META['Prospecting'].label },
+    { value: AdvanceOpportunityStageRequestStageEnum.Qualification, label: STAGE_META['Qualification'].label },
+    { value: AdvanceOpportunityStageRequestStageEnum.NeedsAnalysis, label: STAGE_META['NeedsAnalysis'].label },
+    { value: AdvanceOpportunityStageRequestStageEnum.Proposal, label: STAGE_META['Proposal'].label },
+    { value: AdvanceOpportunityStageRequestStageEnum.Negotiation, label: STAGE_META['Negotiation'].label },
+  ];
+
+  /** Les deux issues, pour que le gabarit ne manipule pas des chaînes nues. */
+  protected readonly wonOutcome = CloseOpportunityRequestOutcomeEnum.ClosedWon;
+  protected readonly lostOutcome = CloseOpportunityRequestOutcomeEnum.ClosedLost;
+
+  protected advanceStage(row: DemandeRow, stage: string): void {
+    if (!stage || stage === row.stageValue || this.busyOpportunityId()) return;
+
+    this.busyOpportunityId.set(row.opportunityId);
+
+    this._opportunitiesApi
+      .advanceOpportunityStage(row.opportunityId, {
+        stage: stage as AdvanceOpportunityStageRequestStageEnum,
+        // Null : la liste n'affiche pas l'horodatage de la demande, donc elle n'a rien d'honnête
+        // à présenter au contrôle de concurrence. Le serveur le saute quand il est absent.
+        expectedUpdatedAt: null,
+      })
+      .pipe(
+        catchError((error: HttpErrorResponse) => {
+          this._snackbar.error('Étape non enregistrée', this._errorMessage(error));
+          return EMPTY;
+        }),
+        finalize(() => this.busyOpportunityId.set(null)),
+      )
+      .subscribe(() => this.reload());
+  }
+
+  protected openCloseForm(row: DemandeRow): void {
+    this.closingOpportunityId.set(row.opportunityId);
+    this.closeReason.set('');
+  }
+
+  protected cancelClose(): void {
+    this.closingOpportunityId.set(null);
+    this.closeReason.set('');
+  }
+
+  /**
+   * Clôt la demande. Une demande GAGNÉE ouvre une souscription en brouillon sur la fiche, et la
+   * réponse en porte l'identifiant — ou `null` quand le produit ne correspond à aucune ligne du
+   * catalogue, auquel cas la ligne propose la souscription à la main.
+   */
+  protected close(row: DemandeRow, outcome: CloseOpportunityRequestOutcomeEnum): void {
+    if (this.busyOpportunityId()) return;
+
+    this.busyOpportunityId.set(row.opportunityId);
+
+    this._opportunitiesApi
+      .closeOpportunity(row.opportunityId, {
+        outcome,
+        reason: this.closeReason().trim() || null,
+        expectedUpdatedAt: null,
+      })
+      .pipe(
+        catchError((error: HttpErrorResponse) => {
+          this._snackbar.error('Clôture impossible', this._errorMessage(error));
+          return EMPTY;
+        }),
+        finalize(() => this.busyOpportunityId.set(null)),
+      )
+      .subscribe((result) => {
+        this.cancelClose();
+
+        if (outcome !== CloseOpportunityRequestOutcomeEnum.ClosedWon) {
+          this._snackbar.success('Demande close', 'La demande est marquée perdue.');
+        } else if (result?.holdingId) {
+          this._snackbar.success(
+            'Demande gagnée',
+            'Une souscription en brouillon a été ouverte sur la fiche du client.',
+          );
+        } else {
+          // Pas une erreur : le produit est du texte libre et ne correspond à aucune ligne
+          // active. La ligne affiche alors « Souscrire », qui ouvre le parcours à la main.
+          this._snackbar.info(
+            'Demande gagnée',
+            "Aucune souscription n'a pu être ouverte automatiquement : souscrivez le produit "
+              + 'depuis la ligne.',
+          );
+        }
+
+        this.reload();
+      });
   }
 
   /** Repost avec `force` après un doublon signalé : l'agent a confirmé. */
@@ -434,20 +554,29 @@ export class ClientDemandes {
       });
     }
 
-    // Lien vers la souscription : le seul rattachement du contrat est
-    // `HoldingDto.sourceLeadId`, l'identifiant du lead d'où vient la souscription.
-    // Une demande sans lead n'a donc pas de lien possible.
+    // Lien vers la souscription. Deux rattachements, indexés dans la même table :
+    // `sourceOpportunityId` est le lien DIRECT, posé par la clôture d'une demande gagnée, et
+    // `sourceLeadId` reste le lien indirect des souscriptions nées d'une conversion de lead.
+    // Le premier a la priorité — il désigne cette demande-ci, pas le lead dont elle descend.
     this._holdingsApi
       .listClientHoldings(clientId, undefined, undefined, 1, 100)
       .pipe(catchError(() => of(null)))
       .subscribe((page) => {
-        const map = new Map<string, string>();
+        const byLead = new Map<string, string>();
+        const byOpportunity = new Map<string, string>();
+
         for (const holding of page?.items ?? []) {
-          if (holding.sourceLeadId && holding.holdingId) {
-            map.set(holding.sourceLeadId, holding.holdingId);
+          if (!holding.holdingId) continue;
+          if (holding.sourceOpportunityId) {
+            byOpportunity.set(holding.sourceOpportunityId, holding.holdingId);
+          }
+          if (holding.sourceLeadId) {
+            byLead.set(holding.sourceLeadId, holding.holdingId);
           }
         }
-        this._holdingIdByLeadId.set(map);
+
+        this._holdingIdByLeadId.set(byLead);
+        this._holdingIdByOpportunityId.set(byOpportunity);
       });
   }
 

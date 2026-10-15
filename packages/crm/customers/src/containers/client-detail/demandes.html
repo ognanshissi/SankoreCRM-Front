@@ -247,13 +247,15 @@
             <th class="hidden md:table-cell">Agent assigné</th>
             <th class="hidden md:table-cell">Date</th>
             <th class="hidden md:table-cell">Souscription</th>
+            <!-- Actions : en-tête vide, comme l'onglet Produits -->
+            <th class="hidden md:table-cell"></th>
           </tr>
         </ng-template>
 
         <ng-template #body let-item>
           <tr>
             <!-- Carte, sous 768 px : la fiche client se consulte sur le terrain -->
-            <td class="md:hidden" [attr.colspan]="5">
+            <td class="md:hidden" [attr.colspan]="6">
               <div class="p-3 flex flex-col gap-2">
                 <div class="flex items-start justify-between gap-2">
                   <div class="min-w-0">
@@ -350,7 +352,18 @@
                   Voir la souscription
                 </a>
               } @else if (item.isWon) {
-                <span class="text-xs text-slate-400">Souscription non rapprochée</span>
+                <!--
+                  Gagnée sans contrat : le produit de la demande est du texte libre et ne
+                  correspond à aucune ligne active du catalogue, donc le serveur n'a rien pu
+                  ouvrir. C'est ici que le rattrapage à la main se propose, plutôt que de laisser
+                  l'agent deviner qu'il doit aller dans un autre onglet.
+                -->
+                <a
+                  class="text-sm text-primary hover:underline"
+                  [routerLink]="['/customers', clientId(), 'produits']"
+                >
+                  Souscrire le produit
+                </a>
               } @else if (item.leadId && canReadLead()) {
                 <a
                   class="text-sm text-primary hover:underline"
@@ -360,6 +373,83 @@
                 </a>
               } @else {
                 <span class="text-sm text-slate-400">—</span>
+              }
+            </td>
+
+            <!--
+              Les actions d'une demande OUVERTE. Une demande close n'en a aucune : la rouvrir
+              n'est pas une transition mais une décision, et une demande gagnée a pu produire un
+              contrat qu'on ne défait pas d'un clic.
+            -->
+            <td class="hidden text-right md:table-cell">
+              @if (canManage() && !item.isClosed) {
+                @if (closingOpportunityId() === item.opportunityId) {
+                  <div class="flex flex-col items-end gap-2">
+                    <input
+                      tasInput
+                      type="text"
+                      class="w-56"
+                      placeholder="Motif (facultatif)"
+                      [ngModel]="closeReason()"
+                      (ngModelChange)="closeReason.set($event)"
+                    />
+                    <div class="flex items-center gap-2">
+                      <button
+                        tas-raised-button
+                        color="primary"
+                        type="button"
+                        class="text-xs"
+                        [disabled]="busyOpportunityId() === item.opportunityId"
+                        (click)="close(item, wonOutcome)"
+                      >
+                        Gagnée
+                      </button>
+                      <button
+                        tas-outlined-button
+                        color="warn"
+                        type="button"
+                        class="text-xs"
+                        [disabled]="busyOpportunityId() === item.opportunityId"
+                        (click)="close(item, lostOutcome)"
+                      >
+                        Perdue
+                      </button>
+                      <button
+                        type="button"
+                        class="text-xs text-slate-500 underline cursor-pointer"
+                        (click)="cancelClose()"
+                      >
+                        Annuler
+                      </button>
+                    </div>
+                  </div>
+                } @else {
+                  <div class="flex items-center justify-end gap-2">
+                    <!--
+                      `readonly` et non `disabled` : `tas-select` n'a pas d'entrée `disabled` —
+                      la sienne est un signal protégé que seul `setDisabledState` écrit, donc
+                      `[disabled]` sur ce composant est une liaison inerte qui compile sans rien
+                      faire. `readonly` est ce qui ferme réellement la liste.
+                    -->
+                    <tas-select
+                      class="w-44"
+                      [options]="openStages"
+                      [ngModel]="item.stageValue"
+                      (ngModelChange)="advanceStage(item, $event)"
+                      [readonly]="busyOpportunityId() === item.opportunityId"
+                    ></tas-select>
+                    <button
+                      tas-outlined-button
+                      color="primary"
+                      type="button"
+                      class="text-xs"
+                      [disabled]="busyOpportunityId() === item.opportunityId"
+                      (click)="openCloseForm(item)"
+                    >
+                      Clore
+                    </button>
+                  </div>
+                }
               }
             </td>
           </tr>

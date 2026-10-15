@@ -1,6 +1,7 @@
 @reference "../../tailwind-ref.css";
 
 @mixin filledVariant($color) {
+  border-width: 1.5px;
   border-color: rgb($color) !important;
   color: white;
   background-color: rgb($color);

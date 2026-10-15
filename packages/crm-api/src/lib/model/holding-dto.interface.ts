@@ -32,6 +32,7 @@ export interface HoldingDto {
     isReadOnly?: boolean;
     availableActions?: Array<string> | null;
     sourceLeadId?: string | null;
+    sourceOpportunityId?: string | null;
     createdAt?: string;
     updatedAt?: string;
     designations?: Array<DesignationDto> | null;

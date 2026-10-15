@@ -16353,6 +16353,44 @@
             "description": "Not Found"
           }
         }
+      },
+      "put": {
+        "tags": [
+          "Opportunities"
+        ],
+        "operationId": "UpdateOpportunity",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateOpportunityRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "409": {
+            "description": "Conflict"
+          }
+        }
       }
     },
     "/api/v1/leads/opportunities/for-customer": {
@@ -16381,6 +16419,99 @@
                 }
               }
             }
+          },
+          "422": {
+            "description": "Unprocessable Entity"
+          }
+        }
+      }
+    },
+    "/api/v1/leads/opportunities/{id}/stage": {
+      "put": {
+        "tags": [
+          "Opportunities"
+        ],
+        "operationId": "AdvanceOpportunityStage",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdvanceOpportunityStageRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "409": {
+            "description": "Conflict"
+          },
+          "422": {
+            "description": "Unprocessable Entity"
+          }
+        }
+      }
+    },
+    "/api/v1/leads/opportunities/{id}/close": {
+      "post": {
+        "tags": [
+          "Opportunities"
+        ],
+        "operationId": "CloseOpportunity",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CloseOpportunityRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CloseOpportunityResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "409": {
+            "description": "Conflict"
           },
           "422": {
             "description": "Unprocessable Entity"
@@ -23403,6 +23534,30 @@
         },
         "additionalProperties": false
       },
+      "AdvanceOpportunityStageRequest": {
+        "type": "object",
+        "properties": {
+          "stage": {
+            "enum": [
+              "Prospecting",
+              "Qualification",
+              "NeedsAnalysis",
+              "Proposal",
+              "Negotiation",
+              "ClosedWon",
+              "ClosedLost"
+            ],
+            "type": "string",
+            "description": "One of: Prospecting, Qualification, NeedsAnalysis, Proposal, Negotiation, ClosedWon, ClosedLost"
+          },
+          "expectedUpdatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "AgencyDto": {
         "type": "object",
         "properties": {
@@ -26256,6 +26411,45 @@
           "expectedUpdatedAt": {
             "type": "string",
             "format": "date-time",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "CloseOpportunityRequest": {
+        "type": "object",
+        "properties": {
+          "outcome": {
+            "enum": [
+              "Prospecting",
+              "Qualification",
+              "NeedsAnalysis",
+              "Proposal",
+              "Negotiation",
+              "ClosedWon",
+              "ClosedLost"
+            ],
+            "type": "string",
+            "description": "One of: Prospecting, Qualification, NeedsAnalysis, Proposal, Negotiation, ClosedWon, ClosedLost"
+          },
+          "reason": {
+            "type": "string",
+            "nullable": true
+          },
+          "expectedUpdatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "CloseOpportunityResponse": {
+        "type": "object",
+        "properties": {
+          "holdingId": {
+            "type": "string",
+            "format": "uuid",
             "nullable": true
           }
         },
@@ -30919,6 +31113,11 @@
             "nullable": true
           },
           "sourceLeadId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "sourceOpportunityId": {
             "type": "string",
             "format": "uuid",
             "nullable": true
@@ -43058,6 +43257,44 @@
           },
           "description": {
             "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "UpdateOpportunityRequest": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "nullable": true
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "estimatedAmount": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "estimatedCurrency": {
+            "type": "string",
+            "nullable": true
+          },
+          "expectedCloseDate": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "ownerId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "expectedUpdatedAt": {
+            "type": "string",
+            "format": "date-time",
             "nullable": true
           }
         },
