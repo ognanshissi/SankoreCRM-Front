@@ -1,365 +1,252 @@
-<!-- En-tête -->
-<div class="flex flex-wrap items-start justify-between gap-3 mb-5">
-  <div class="min-w-0">
-    <h1 class="text-lg font-semibold text-slate-800">Dossiers KYC</h1>
-    <p class="text-sm text-slate-400 mt-0.5">
-      Suivi des dossiers d'identification et des décisions en attente.
-    </p>
-  </div>
-  <div class="flex items-center gap-2">
-    <button tas-outlined-button type="button" (click)="reload()">
-      <tas-icon iconName="feather:refresh-cw" style="font-size:14px"></tas-icon>
-      Actualiser
-    </button>
-    @if (canOpenFile()) {
-      <button tas-raised-button color="primary" type="button" (click)="openFileForCustomer()">
-        <tas-icon iconName="feather:folder-plus" style="font-size:14px"></tas-icon>
-        Ouvrir un dossier
-      </button>
-    }
-  </div>
-</div>
-
-<!--
-  Compteur « en attente de moi ». Le cahier le veut aussi dans le menu latéral, qui n'est pas dans
-  ce module : il est exposé par le signal public `awaitingMeCount` et la sortie
-  `awaitingMeCountChange`.
--->
-<div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
-  <tas-card>
-    <div class="flex items-center gap-3 p-3">
-      <div class="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-        <tas-icon iconName="feather:user-check" class="text-primary" style="font-size:14px"></tas-icon>
-      </div>
-      <div>
-        <p class="text-xl font-semibold text-slate-800 tabular-nums leading-none">
-          {{ awaitingMeCount() }}
-        </p>
-        <p class="text-xs text-slate-400 mt-0.5">En attente de ma décision</p>
-      </div>
-    </div>
-  </tas-card>
-  <tas-card>
-    <div class="flex items-center gap-3 p-3">
-      <div class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center shrink-0">
-        <tas-icon iconName="feather:folder" class="text-slate-500" style="font-size:14px"></tas-icon>
-      </div>
-      <div>
-        <p class="text-xl font-semibold text-slate-800 tabular-nums leading-none">{{ totalCount() }}</p>
-        <p class="text-xs text-slate-400 mt-0.5">Dossiers correspondant aux filtres</p>
-      </div>
-    </div>
-  </tas-card>
-  <tas-card>
-    <div class="flex items-center gap-3 p-3">
-      <div class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center shrink-0">
-        <tas-icon iconName="feather:list" class="text-slate-500" style="font-size:14px"></tas-icon>
-      </div>
-      <div>
-        <p class="text-xl font-semibold text-slate-800 tabular-nums leading-none">{{ displayedCount() }}</p>
-        <!--
-          Le libellé dit « sur cette page », parce que c'est la vérité : la recherche par nom porte
-          sur la page affichée et non sur tout le portefeuille — les noms sont résolus par l'écran,
-          le serveur ne les connaît pas. Sans cette précision, « 0 affiché » se lit comme « aucun
-          dossier de ce nom », ce qui est faux.
-        -->
-        <p class="text-xs text-slate-400 mt-0.5">
-          @if (filterQuery()) {
-            Trouvés sur cette page ({{ loadedCount() }} chargés)
-          } @else {
-            Affichés sur cette page
-          }
-        </p>
-      </div>
-    </div>
-  </tas-card>
-</div>
-
-<!-- Filtres : une colonne à 360 px, cinq au-delà -->
-<tas-card class="block mb-4">
-  <div class="p-4 flex flex-col gap-3">
-    <div class="flex items-center justify-between gap-2">
-      <p class="text-sm font-medium text-slate-700">Filtres</p>
-      @if (hasActiveFilters()) {
-        <button
-          tas-button
-          type="button"
-          class="text-xs text-slate-400 hover:text-slate-600"
-          (click)="resetFilters()"
-        >
-          Tout effacer
-        </button>
-      }
-    </div>
-
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
-      <tas-form-field>
-        <tas-label>Rechercher un client</tas-label>
-        <input
-          tasInput
-          type="text"
-          placeholder="Nom du client..."
-          aria-label="Rechercher un dossier par nom de client"
-          [ngModel]="filterQuery()"
-          (ngModelChange)="onSearchChange($event)"
-        />
-      </tas-form-field>
-
-      <tas-form-field>
-        <tas-label>Statut</tas-label>
-        <tas-select
-          clearable
-          [options]="statusOptions"
-          optionLabel="label"
-          optionValue="value"
-          placeholder="Tous les statuts"
-          aria-label="Filtrer par statut de dossier"
-          [ngModel]="filterStatus()"
-          (ngModelChange)="onStatusChange($event)"
-        ></tas-select>
-      </tas-form-field>
-
-      <tas-form-field>
-        <tas-label>Agence</tas-label>
-        <tas-select
-          clearable
-          [options]="agencyOptions()"
-          optionLabel="label"
-          optionValue="value"
-          placeholder="Toutes les agences"
-          aria-label="Filtrer par agence"
-          [ngModel]="filterAgency()"
-          (ngModelChange)="onAgencyChange($event)"
-        ></tas-select>
-      </tas-form-field>
-
-      <tas-form-field>
-        <tas-label>Vigilance</tas-label>
-        <tas-select
-          clearable
-          [options]="vigilanceOptions"
-          optionLabel="label"
-          optionValue="value"
-          placeholder="Tous les niveaux"
-          aria-label="Filtrer par niveau de vigilance"
-          [ngModel]="filterVigilance()"
-          (ngModelChange)="onVigilanceChange($event)"
-        ></tas-select>
-      </tas-form-field>
-
-      <tas-form-field>
-        <tas-label>Mis à jour du</tas-label>
-        <input
-          tasInput
-          type="date"
-          aria-label="Début de la période de mise à jour"
-          [value]="filterFrom()"
-          (change)="onFromChange($any($event.target).value)"
-        />
-      </tas-form-field>
-
-      <tas-form-field>
-        <tas-label>au</tas-label>
-        <input
-          tasInput
-          type="date"
-          aria-label="Fin de la période de mise à jour"
-          [value]="filterTo()"
-          (change)="onToChange($any($event.target).value)"
-        />
-      </tas-form-field>
-    </div>
-  </div>
-</tas-card>
-
-<!--
-  Trois états strictement distincts. L'erreur ne doit jamais se lire comme une absence de dossier :
-  un agent qui voit « Aucun dossier en attente » pendant une panne conclut qu'il n'a rien à traiter.
--->
-@if (loadError()) {
-  <tas-card class="block">
-    <div class="p-10 flex flex-col items-center text-center gap-3" role="alert">
-      <div class="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center">
-        <tas-icon iconName="feather:wifi-off" class="text-red-600" style="font-size:18px"></tas-icon>
-      </div>
-      <div>
-        <p class="text-sm font-medium text-slate-800">Chargement impossible</p>
-        <p class="text-xs text-slate-500 mt-1">{{ loadError() }}</p>
-      </div>
-      <button tas-raised-button color="primary" type="button" (click)="reload()">
-        <tas-icon iconName="feather:refresh-cw" style="font-size:14px"></tas-icon>
-        Réessayer
-      </button>
-    </div>
-  </tas-card>
-} @else if (isEmpty()) {
-  <tas-card class="block">
-    <div class="p-10 flex flex-col items-center text-center gap-3">
-      <div class="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center">
-        <tas-icon iconName="feather:inbox" class="text-slate-400" style="font-size:18px"></tas-icon>
-      </div>
-      <div>
-        <p class="text-sm font-medium text-slate-800">Aucun dossier en attente</p>
-        @if (hasActiveFilters()) {
-          <p class="text-xs text-slate-500 mt-1">
-            Aucun dossier ne correspond aux filtres appliqués.
-          </p>
-        } @else {
-          <p class="text-xs text-slate-500 mt-1">
-            Tous les dossiers d'identification sont traités.
-          </p>
+<div class="pb-6 flex flex-col gap-5 min-h-[calc(100vh-8rem)]">
+  <!-- ═══ En-tête : périmètre, recherche, ouverture ═══ -->
+  <div class="flex flex-wrap items-center justify-between gap-4">
+    <div class="flex flex-wrap items-center gap-4">
+      <h1 class="text-2xl font-semibold text-slate-900">Dossiers KYC</h1>
+      <div class="h-11 p-1 rounded-full bg-white border border-slate-100 shadow-sm flex items-center gap-1" role="group" aria-label="Périmètre">
+        @for (s of [
+          { key: 'mine', label: 'Mes dossiers' },
+          { key: 'agency', label: 'Mon agence' },
+          { key: 'all', label: 'Toutes les agences' }
+        ]; track s.key) {
+          <button
+            type="button"
+            class="h-9 px-3.5 rounded-full text-sm whitespace-nowrap transition-colors disabled:opacity-40 disabled:cursor-not-allowed focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+            [class]="scope() === s.key ? 'bg-primary text-white font-semibold' : 'text-slate-600 hover:bg-slate-50'"
+            [attr.aria-pressed]="scope() === s.key"
+            [disabled]="s.key === 'agency' && !myAgencyId()"
+            [title]="s.key === 'agency' && !myAgencyId() ? 'Votre compte n’est rattaché à aucune agence' : ''"
+            (click)="setScope($any(s.key))"
+          >
+            {{ s.label }}
+          </button>
         }
       </div>
-      @if (hasActiveFilters()) {
-        <button tas-outlined-button type="button" (click)="resetFilters()">
-          Effacer les filtres
-        </button>
-      } @else if (canOpenFile()) {
-        <button tas-raised-button color="primary" type="button" (click)="openFileForCustomer()">
-          <tas-icon iconName="feather:folder-plus" style="font-size:14px"></tas-icon>
+    </div>
+
+    <div class="flex items-center gap-3">
+      <label class="h-11 w-64 px-4 rounded-full bg-white border border-slate-100 shadow-sm flex items-center gap-2 focus-within:border-primary">
+        <tas-icon iconName="feather:search" class="text-slate-400" style="font-size:15px"></tas-icon>
+        <span class="sr-only">Rechercher un dossier</span>
+        <input
+          type="search"
+          class="flex-1 min-w-0 bg-transparent text-sm outline-none placeholder:text-slate-400"
+          placeholder="Client, agence…"
+          [ngModel]="query()"
+          (ngModelChange)="onSearchChange($event)"
+        />
+      </label>
+      @if (canOpenFile()) {
+        <button
+          type="button"
+          class="h-11 px-5 rounded-full bg-primary text-white text-sm font-semibold hover:opacity-90 transition-opacity focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+          (click)="openFileForCustomer()"
+        >
           Ouvrir un dossier
         </button>
       }
     </div>
-  </tas-card>
-} @else {
-  <!--
-    `[data]` reçoit TOUTES les lignes connues, et `serverSide: true` ne sert qu'à recevoir
-    `pageEventChange` (cf. le commentaire de `tableConfig`).
-  -->
-  <tas-table
-    [data]="displayedRows()"
-    [config]="tableConfig()"
-    [hasCaption]="false"
-    [isLoading]="isLoading()"
-    identifierField="kycFileId"
-    (pageEventChange)="onPageChange($event)"
-  >
-    <ng-template #header>
-      <tr>
-        <th class="text-left whitespace-nowrap">Client</th>
-        <th class="text-left whitespace-nowrap">Statut</th>
-        <th class="text-left whitespace-nowrap">Score</th>
-        <th class="text-left whitespace-nowrap">Vigilance</th>
-        <th class="text-left whitespace-nowrap">Mise à jour</th>
-        <th class="text-left whitespace-nowrap">Action requise</th>
-      </tr>
-    </ng-template>
+  </div>
 
-    <ng-template #body let-item>
-      <!--
-        Ligne activable au clavier : `tabindex`, `role="link"` et Entrée/Espace. Un `<tr>` cliquable
-        sans ces trois éléments est inatteignable sans souris (WCAG 2.1 AA, 2.1.1).
-      -->
-      <tr
-        class="cursor-pointer hover:bg-slate-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-inset"
-        tabindex="0"
-        role="link"
-        [attr.aria-label]="rowAriaLabel(item)"
-        [class]="item.awaitingMe ? 'bg-primary/5' : ''"
-        (click)="openFile(item)"
-        (keydown.enter)="openFile(item)"
-        (keydown.space)="openFile(item); $event.preventDefault()"
-      >
-        <!-- Client -->
-        <td class="py-3">
-          <div class="flex items-start gap-2 min-w-0">
-            @if (item.awaitingMe) {
-              <tas-icon
-                iconName="feather:corner-down-right"
-                class="text-primary shrink-0 mt-0.5"
-                style="font-size:13px"
-                title="En attente de ma décision"
-              ></tas-icon>
-            }
+  <div class="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.6fr)] gap-4 flex-1 items-start">
+    <!-- ═══ File de travail ═══ -->
+    <section class="rounded-2xl bg-white border border-slate-100 shadow-sm p-4 lg:sticky lg:top-4 lg:max-h-[calc(100vh-10rem)] lg:overflow-y-auto">
+      @if (isLoading()) {
+        <div class="flex justify-center py-16"><tas-spinner size="8" class="text-primary"></tas-spinner></div>
+      } @else if (loadError()) {
+        <div class="py-12 text-center">
+          <p class="text-sm text-slate-600">{{ loadError() }}</p>
+          <button type="button" class="mt-3 text-sm font-semibold text-primary underline underline-offset-2" (click)="reload()">Réessayer</button>
+        </div>
+      } @else if (visibleCount() === 0) {
+        <div class="py-12 text-center">
+          <tas-icon iconName="feather:inbox" class="text-slate-300" style="font-size:28px"></tas-icon>
+          <p class="text-sm text-slate-600 mt-2">
+            {{ query() ? 'Aucun dossier ne correspond à cette recherche.' : 'Aucun dossier dans ce périmètre.' }}
+          </p>
+        </div>
+      } @else {
+        <div class="flex flex-col gap-4">
+          @for (group of groups(); track group.key) {
+            <div>
+              <button
+                type="button"
+                class="w-full px-2 py-1 flex items-center justify-between text-left"
+                [disabled]="group.key !== 'closed'"
+                (click)="collapsedClosed.set(!collapsedClosed())"
+              >
+                <span class="flex items-center gap-2 text-xs font-semibold" [class]="group.labelClass">
+                  <span class="w-1.5 h-1.5 rounded-full" [class]="group.dot" aria-hidden="true"></span>
+                  {{ group.label }}
+                  @if (group.key === 'closed') {
+                    <tas-icon [iconName]="collapsedClosed() ? 'feather:chevron-down' : 'feather:chevron-up'" style="font-size:12px"></tas-icon>
+                  }
+                </span>
+                <span class="text-xs font-semibold text-slate-500 tabular-nums">{{ group.items.length }}</span>
+              </button>
+
+              @if (group.key !== 'closed' || !collapsedClosed()) {
+                <ul class="mt-1 flex flex-col">
+                  @for (item of group.items; track item.id) {
+                    <li>
+                      <button
+                        type="button"
+                        class="w-full rounded-xl px-2 py-2.5 flex items-start gap-3 text-left transition-colors border-l-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                        [class]="selectedId() === item.id ? 'bg-slate-50 border-primary' : 'border-transparent hover:bg-slate-50'"
+                        [attr.aria-current]="selectedId() === item.id ? 'true' : null"
+                        (click)="select(item)"
+                      >
+                        <span
+                          class="w-9 h-9 rounded-xl text-xs font-semibold flex items-center justify-center shrink-0"
+                          [class]="selectedId() === item.id ? 'bg-primary text-white' : 'bg-slate-100 text-primary'"
+                          aria-hidden="true"
+                        >
+                          {{ item.initials }}
+                        </span>
+                        <span class="min-w-0 flex-1">
+                          <span class="block text-sm font-semibold text-slate-900 truncate">{{ item.name }}</span>
+                          <span class="block text-xs text-slate-500 truncate">{{ item.subtitle }}</span>
+                        </span>
+                        <span class="text-xs text-slate-500 tabular-nums shrink-0" [title]="'Dernière activité il y a ' + item.age">{{ item.age }}</span>
+                      </button>
+                    </li>
+                  }
+                </ul>
+              }
+            </div>
+          }
+        </div>
+
+        @if (isTruncated()) {
+          <!-- L'endpoint n'a pas de recherche texte : on dit sur quoi porte celle-ci. -->
+          <p class="mt-4 px-2 text-xs text-slate-500">
+            {{ visibleCount() }} dossiers affichés, parmi les {{ totalCount() }} du périmètre : la liste et la recherche
+            portent sur les 100 dossiers les plus anciennement actifs.
+          </p>
+        }
+      }
+    </section>
+
+    <!-- ═══ Aperçu du dossier ═══ -->
+    <section class="rounded-2xl bg-white border border-slate-100 shadow-sm p-6 min-h-96">
+      @if (!selectedItem()) {
+        @if (!isLoading()) {
+          <div class="py-24 text-center text-sm text-slate-500">Sélectionnez un dossier pour en voir l'aperçu.</div>
+        }
+      } @else if (previewLoading()) {
+        <div class="flex justify-center py-24"><tas-spinner size="8" class="text-primary"></tas-spinner></div>
+      } @else if (previewError()) {
+        <div class="py-24 text-center">
+          <p class="text-sm text-slate-600">L'aperçu de ce dossier n'a pas pu être chargé.</p>
+          <button type="button" class="mt-3 text-sm font-semibold text-primary underline underline-offset-2" (click)="openFull()">Ouvrir le dossier complet</button>
+        </div>
+      } @else if (selectedItem(); as item) {
+        <!-- En-tête -->
+        <div class="flex flex-wrap items-start justify-between gap-4">
+          <div class="flex items-center gap-4 min-w-0">
+            <span class="w-14 h-14 rounded-2xl bg-slate-100 text-primary text-lg font-semibold flex items-center justify-center shrink-0" aria-hidden="true">
+              {{ item.initials }}
+            </span>
             <div class="min-w-0">
-              <div class="flex items-center gap-1.5 min-w-0">
-                <p class="font-medium text-slate-800 truncate">{{ item.customerName }}</p>
-                <!--
-                  KRM-F-07 : les pièces de ce dossier ont été envoyées par le client depuis son
-                  téléphone, pas capturées au guichet. Ce n'est pas décoratif — cela change ce que
-                  le validateur regarde et à qui il peut en parler.
-                -->
-                @if (item.isRemoteCollection) {
-                  <span
-                    class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium bg-indigo-50 text-indigo-700 shrink-0"
-                    title="Pièces déposées par le client depuis son téléphone"
-                  >
-                    <tas-icon iconName="feather:smartphone" style="font-size:10px"></tas-icon>
-                    À distance
-                  </span>
-                }
-              </div>
-              @if (item.awaitingMe) {
-                <p class="text-xs text-primary mt-0.5">En attente de ma décision</p>
+              <h2 class="text-2xl font-semibold text-slate-900 truncate">{{ item.name }}</h2>
+              @if (headerLine()) {
+                <p class="text-sm text-slate-500 mt-0.5">{{ headerLine() }}</p>
               }
             </div>
           </div>
-        </td>
+          <button
+            type="button"
+            class="h-10 px-4 rounded-full bg-slate-50 text-sm font-semibold text-primary inline-flex items-center gap-1.5 hover:bg-slate-100 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+            (click)="openFull()"
+          >
+            Ouvrir le dossier complet
+            <tas-icon iconName="feather:chevron-right" style="font-size:14px"></tas-icon>
+          </button>
+        </div>
 
-        <!-- Statut + alerte d'ancienneté, libellée et non portée par la seule couleur -->
-        <td class="py-3 whitespace-nowrap">
-          <div class="flex flex-col items-start gap-1">
-            <kyc-status-badge [status]="item.status"></kyc-status-badge>
-            @if (item.alert) {
-              <span
-                class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium"
-                [class]="item.alert.classes"
+        <!-- Avancement -->
+        <ol class="mt-6 grid grid-cols-5 gap-2">
+          @for (step of progress(); track step.label) {
+            <li [attr.aria-current]="step.state === 'current' ? 'step' : null">
+              <div
+                class="h-1 rounded-full"
+                [class]="step.state === 'done' ? 'bg-primary' : step.state === 'current' ? 'bg-primary/40' : 'bg-slate-200'"
+              ></div>
+              <p class="mt-2 text-xs" [class]="step.state === 'todo' ? 'text-slate-400' : step.state === 'current' ? 'text-slate-900 font-semibold' : 'text-slate-700'">
+                {{ step.label }}
+              </p>
+            </li>
+          }
+        </ol>
+
+        <!-- Où en est le dossier -->
+        @if (callout(); as c) {
+          <div
+            class="mt-6 rounded-2xl px-5 py-4 flex flex-wrap items-center justify-between gap-4"
+            [class.bg-green-50]="c.tone === 'success'"
+            [class.bg-slate-50]="c.tone === 'neutral' || c.tone === 'primary'"
+            [class.bg-orange-50]="c.tone === 'warning'"
+            [class.bg-red-50]="c.tone === 'error'"
+          >
+            <div class="min-w-0 flex-1">
+              <p
+                class="text-xs font-semibold uppercase tracking-wide"
+                [class.text-green-700]="c.tone === 'success'"
+                [class.text-primary]="c.tone === 'primary'"
+                [class.text-slate-500]="c.tone === 'neutral'"
+                [class.text-orange-700]="c.tone === 'warning'"
+                [class.text-red-700]="c.tone === 'error'"
               >
-                <tas-icon [iconName]="item.alert.icon" style="font-size:11px"></tas-icon>
-                {{ item.alert.label }}
-              </span>
+                {{ c.eyebrow }}
+              </p>
+              <p class="mt-1 text-base font-semibold text-slate-900">{{ c.text }}</p>
+            </div>
+            @if (c.action; as action) {
+              <button
+                type="button"
+                class="h-11 px-5 rounded-full bg-white border border-slate-200 text-sm font-semibold text-primary hover:border-slate-300 transition-colors shrink-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                (click)="runCalloutAction(action.kind)"
+              >
+                {{ action.label }}
+              </button>
             }
           </div>
-        </td>
+        }
 
-        <!-- Score : le chiffre porte l'information, la barre ne fait que la situer -->
-        <td class="py-3">
-          @if (item.confidenceScore !== null) {
-            <div class="flex items-center gap-2 min-w-28">
-              <span class="text-sm tabular-nums text-slate-700 w-8">{{ item.confidenceScore }}</span>
-              <div
-                class="h-1.5 w-16 rounded-full bg-slate-100 overflow-hidden"
-                role="progressbar"
-                [attr.aria-valuenow]="item.confidenceScore"
-                aria-valuemin="0"
-                aria-valuemax="100"
-                [attr.aria-label]="'Score de confiance : ' + item.confidenceScore + ' sur 100'"
+        <!-- Indicateurs -->
+        <div class="mt-5 grid grid-cols-1 sm:grid-cols-3 gap-3">
+          @for (tile of tiles(); track tile.label) {
+            <div class="rounded-xl bg-slate-50 px-4 py-3 flex items-center gap-3">
+              <span
+                class="w-7 h-7 rounded-full flex items-center justify-center shrink-0"
+                [class]="tile.ok === true ? 'bg-green-100 text-green-700' : tile.ok === false ? 'bg-amber-100 text-amber-700' : 'bg-slate-200 text-slate-500'"
+                aria-hidden="true"
               >
-                <div
-                  class="h-full rounded-full"
-                  [class]="item.scoreBarClasses"
-                  [style.width.%]="item.confidenceScore"
-                ></div>
+                <tas-icon [iconName]="tile.ok === true ? 'feather:check' : tile.ok === false ? 'feather:alert-circle' : 'feather:calendar'" style="font-size:12px"></tas-icon>
+              </span>
+              <div class="min-w-0">
+                <p class="text-xs text-slate-500">{{ tile.label }}</p>
+                <p class="text-sm font-semibold text-slate-900">{{ tile.value }}</p>
               </div>
             </div>
-          } @else {
-            <span class="text-sm text-slate-400">Non noté</span>
           }
-        </td>
+        </div>
 
-        <!-- Vigilance -->
-        <td class="py-3 whitespace-nowrap">
-          <tas-tag [severity]="item.vigilanceSeverity">{{ item.vigilanceLabel }}</tas-tag>
-        </td>
-
-        <!-- Date + ancienneté en clair -->
-        <td class="py-3 whitespace-nowrap">
-          <p class="text-sm text-slate-600">{{ item.updatedAt | dateTimeAgo }}</p>
-          <p class="text-xs text-slate-400 mt-0.5">
-            {{ item.ageDays }} jour(s) sans mouvement
-          </p>
-        </td>
-
-        <!-- Action requise -->
-        <td class="py-3">
-          @if (item.requiredAction) {
-            <span class="text-sm text-slate-700">{{ item.requiredAction }}</span>
-          } @else {
-            <span class="text-sm text-slate-400">—</span>
-          }
-        </td>
-      </tr>
-    </ng-template>
-  </tas-table>
-}
+        <!-- Derniers mouvements -->
+        <h3 class="mt-6 text-sm font-semibold text-slate-900">Derniers mouvements</h3>
+        @if (recentEvents().length === 0) {
+          <p class="mt-3 text-sm text-slate-500">Aucun mouvement enregistré.</p>
+        } @else {
+          <ul class="mt-3 divide-y divide-slate-100 border-t border-slate-100">
+            @for (event of recentEvents(); track $index) {
+              <li class="py-3 grid grid-cols-[8rem_minmax(0,1fr)] gap-4">
+                <span class="text-xs text-slate-500 tabular-nums">{{ event.at }}</span>
+                <span class="text-sm text-slate-800">{{ event.text }}</span>
+              </li>
+            }
+          </ul>
+        }
+      }
+    </section>
+  </div>
+</div>

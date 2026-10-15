@@ -11,7 +11,7 @@ import {
 } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
-import { Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { catchError, EMPTY, of } from 'rxjs';
 import { Button } from '@talisoft/ui/button';
 import { TasCard } from '@talisoft/ui/card';
@@ -35,6 +35,7 @@ import {
   kycVigilanceShortLabel,
 } from '../data-access/kyc-referential';
 import { KycDocumentRow, KycHistoryEntry, KycHistoryKind } from '../data-access/kyc.types';
+import { KYC_VALIDATED_STATUSES, KycStepState, kycProgressStates } from '../data-access/kyc-progress';
 import { KycDocumentsPanel } from '../documents/kyc-documents-panel';
 import { KycRemoteInvitationsPanel } from '../remote/kyc-remote-invitations-panel';
 import { KycScorePanel } from '../verification/kyc-score-panel';
@@ -63,7 +64,7 @@ const TABS: { id: KycDetailTab; label: string }[] = [
   { id: 'historique', label: 'Historique' },
 ];
 
-type ProgressStepState = 'done' | 'current' | 'todo';
+type ProgressStepState = KycStepState;
 
 interface ProgressStep {
   label: string;
@@ -79,8 +80,7 @@ interface FileProgress {
   action: { label: string; tab: KycDetailTab } | null;
 }
 
-/** Statuts où le palier est accordé : le dossier a passé le circuit. */
-const VALIDATED_STATUSES = ['Simplified', 'Full', 'UnderReview'];
+const VALIDATED_STATUSES = KYC_VALIDATED_STATUSES;
 
 const SHORT_DATE = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'short' });
 
@@ -137,6 +137,7 @@ export class KycFileDetailPage implements OnInit {
   private readonly _snackbarService = inject(SnackbarService);
   private readonly _sideDrawerService = inject(SideDrawerService);
   private readonly _router = inject(Router);
+  private readonly _route = inject(ActivatedRoute);
 
   /** Identifiant du dossier, lié par `withComponentInputBinding()`. */
   public readonly id = input.required<string>();
@@ -292,13 +293,14 @@ export class KycFileDetailPage implements OnInit {
     const count = this.documentCount();
     const validated = VALIDATED_STATUSES.includes(status) || !!file?.validatedAt;
     const hasScore = this.hasScore();
-    // Pièces pas encore relues : on s'en tient au statut plutôt que d'afficher « aucune pièce ».
-    const hasDocs = count === null ? status !== 'Collecting' : count > 0;
-
-    const done = [true, hasDocs || hasScore || validated, hasScore || validated, validated, validated];
-    const current = done.indexOf(false);
-    const state = (i: number): ProgressStepState =>
-      done[i] ? 'done' : i === current ? 'current' : 'todo';
+    const states = kycProgressStates({
+      status,
+      confidenceScore: file?.confidenceScore,
+      validatedAt: file?.validatedAt,
+      documentCount: count,
+    });
+    const current = states.indexOf('current');
+    const state = (i: number): ProgressStepState => states[i];
 
     const createdAt = file?.createdAt ? SHORT_DATE.format(new Date(file.createdAt)) : '—';
     const steps: ProgressStep[] = [
@@ -503,6 +505,10 @@ export class KycFileDetailPage implements OnInit {
   }
 
   public ngOnInit(): void {
+    // `?tab=validation` : l'aperçu de la liste mène directement à l'onglet où agir.
+    const tab = this._route.snapshot.queryParamMap.get('tab') as KycDetailTab | null;
+    if (tab && TABS.some((t) => t.id === tab)) this.selectTab(tab);
+
     this._breadcrumbService.set([
       { label: 'Dossiers KYC', link: ['/kyc'] },
       { label: 'Fiche du dossier' },

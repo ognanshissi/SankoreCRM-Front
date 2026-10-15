@@ -10,74 +10,151 @@ import {
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
-import { PageEvent } from '@angular/material/paginator';
-import { catchError, debounceTime, EMPTY, Subject } from 'rxjs';
-import { TasCard } from '@talisoft/ui/card';
+import { catchError, debounceTime, EMPTY, forkJoin, of, Subject, Subscription } from 'rxjs';
 import { TasIcon } from '@talisoft/ui/icon';
-import { Button } from '@talisoft/ui/button';
-import { TasTag, Severity } from '@talisoft/ui/tag';
-import { TasFormField, TasLabel } from '@talisoft/ui/form-field';
-import { TasInput } from '@talisoft/ui/input';
-import { TasSelect } from '@talisoft/ui/select';
-import { TasTable, TableConfig } from '@talisoft/ui/table';
-import { TimeagoPipe } from '@talisoft/ui/timeago';
+import { TasSpinner } from '@talisoft/ui/spinner';
 import { SideDrawerService } from '@talisoft/ui/side-drawer';
-import { AgenciesApiService } from '@sankore/crm-api';
-import { BreadcrumbService, PermissionsService } from '@sankore/crm/common';
+import { AgenciesApiService, KycFileDto, UsersApiService } from '@sankore/crm-api';
+import { AuthenticationService, BreadcrumbService, PermissionsService } from '@sankore/crm/common';
 import { KycFacadeService } from '../data-access/kyc-facade.service';
-import { KycDashboardRow } from '../data-access/kyc.types';
-import {
-  KYC_STATUS_FILTER_OPTIONS,
-  kycScoreBarClasses,
-  kycVigilanceMeta,
-} from '../data-access/kyc-referential';
-import { KycStatusBadge } from '../ui/kyc-status-badge';
+import { KycCaps, KycDashboardFilters, KycDashboardPage as KycFilesPage, KycDashboardRow, KycDocumentRow, KycHistoryEntry } from '../data-access/kyc.types';
+import { KYC_VALIDATED_STATUSES, KycStepState, kycProgressStates } from '../data-access/kyc-progress';
+import { kycTierLabel } from '../data-access/kyc-referential';
 import { KycOpenFileDrawer } from '../enrolment/open-kyc-file-drawer';
 
-/** Alerte d'ancienneté affichée sur une ligne (KYC-F-06). */
-interface KycRowAlert {
-  /** Libellé explicite : l'information ne doit jamais reposer sur la seule couleur. */
-  label: string;
-  icon: string;
-  classes: string;
-}
-
 /**
- * Ligne enrichie pour l'affichage. Les champs dérivés sont calculés une fois au chargement plutôt
- * qu'appelés depuis le template : `tas-table` rend le corps via un `ng-template` réévalué à chaque
- * détection de changement, et une fonction par cellule y serait rejouée en boucle.
+ * Dossiers KYC en vue maître-détail : à gauche la file de travail groupée par ce qu'elle attend, à
+ * droite l'aperçu du dossier sélectionné, avec l'action qui le fait avancer.
+ *
+ * La liste est chargée d'un bloc (une page de 100, le maximum du serveur) puis groupée ici : les
+ * groupes sont une lecture du statut, pas des filtres serveur. La recherche filtre ce bloc côté
+ * client — l'endpoint n'a pas de paramètre texte — et l'écran le dit quand le périmètre dépasse ce
+ * qui est chargé.
  */
-interface KycDashboardViewRow extends KycDashboardRow {
-  ageDays: number;
-  alert: KycRowAlert | null;
-  scoreBarClasses: string;
-  vigilanceLabel: string;
-  vigilanceSeverity: Severity;
+
+type Scope = 'mine' | 'agency' | 'all';
+
+type GroupKey = 'decide' | 'blocked' | 'client' | 'validation' | 'validated' | 'closed';
+
+interface ListItem {
+  id: string;
+  customerId: string;
+  name: string;
+  initials: string;
+  subtitle: string;
+  age: string;
+  agencyName: string | null;
+  row: KycDashboardRow;
 }
 
-const AGENCY_ALL = '';
+interface Group {
+  key: GroupKey;
+  label: string;
+  dot: string;
+  labelClass: string;
+  items: ListItem[];
+}
+
+const PAGE_SIZE = 100;
+const RECENT_DAYS = 30;
+const DAY_MS = 86_400_000;
+
+const GROUPS: Omit<Group, 'items'>[] = [
+  { key: 'decide',     label: 'À vous de décider',     dot: 'bg-primary',   labelClass: 'text-primary' },
+  { key: 'blocked',    label: 'Bloqués',               dot: 'bg-orange-700', labelClass: 'text-orange-800' },
+  { key: 'client',     label: 'En attente du client',  dot: 'bg-slate-400', labelClass: 'text-slate-700' },
+  { key: 'validation', label: 'En validation',         dot: 'bg-blue-500',  labelClass: 'text-slate-700' },
+  { key: 'validated',  label: 'Validés récemment',     dot: 'bg-green-600', labelClass: 'text-green-800' },
+  { key: 'closed',     label: 'Clos ou plus anciens',  dot: 'bg-slate-300', labelClass: 'text-slate-500' },
+];
+
+const SHORT_DATE = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' });
+const MONTH_YEAR = new Intl.DateTimeFormat('fr-FR', { month: 'short', year: 'numeric' });
+const EVENT_DATE = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+
+function initialsOf(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return '?';
+  return ((parts[0][0] ?? '') + (parts.length > 1 ? parts[parts.length - 1][0] : parts[0][1] ?? '')).toUpperCase();
+}
+
+function ageInDays(iso: string): number {
+  const t = Date.parse(iso);
+  return Number.isNaN(t) ? 0 : Math.max(0, Math.floor((Date.now() - t) / DAY_MS));
+}
+
+/** À quel groupe appartient une ligne : l'ordre des tests est la règle. */
+function groupOf(row: KycDashboardRow): GroupKey {
+  if (row.awaitingMe) return 'decide';
+  switch (row.status) {
+    case 'Verifying':
+    case 'Suspended':
+    case 'Expired':
+      return 'blocked';
+    case 'Collecting':
+    case 'ComplementRequired':
+      return 'client';
+    case 'Validating':
+      return 'validation';
+    case 'Simplified':
+    case 'Full':
+    case 'UnderReview':
+      return ageInDays(row.updatedAt) <= RECENT_DAYS ? 'validated' : 'closed';
+    default:
+      return 'closed';
+  }
+}
+
+/** Ce que la ligne dit du dossier, en une phrase courte. */
+function subtitleOf(row: KycDashboardRow): string {
+  const parts: string[] = [];
+  switch (row.status) {
+    case 'Validating':
+      parts.push(row.awaitingMe ? 'À valider' : 'En validation · autre niveau');
+      break;
+    case 'Verifying':
+      parts.push('Vérification', row.confidenceScore === null ? 'score à calculer' : 'en cours');
+      break;
+    case 'Collecting':
+      parts.push('Collecte', row.isRemoteCollection ? 'lien envoyé' : 'pièces à collecter');
+      break;
+    case 'ComplementRequired':
+      parts.push('Complément', row.isRemoteCollection ? 'lien envoyé' : 'pièces à reprendre');
+      break;
+    case 'Simplified':
+    case 'Full':
+      parts.push(`${kycTierLabel(row.tier) ?? 'KYC'} validé`);
+      break;
+    case 'UnderReview':
+      parts.push('Revue en cours');
+      break;
+    case 'Expired':
+      parts.push('Expiré', 'à renouveler');
+      break;
+    case 'Suspended':
+      parts.push('Suspendu');
+      break;
+    case 'Rejected':
+      parts.push('Rejeté');
+      break;
+    default:
+      parts.push(row.status || '—');
+  }
+  if (row.vigilanceLevel === 'Enhanced') parts.push('vigilance renforcée');
+  if (row.duplicateSuspected) parts.push('doublon suspecté');
+  return parts.join(' · ');
+}
 
 @Component({
   selector: 'kyc-dashboard',
   templateUrl: './kyc-dashboard.html',
-  imports: [
-    FormsModule,
-    TasCard,
-    TasIcon,
-    Button,
-    TasTag,
-    TasFormField,
-    TasLabel,
-    TasInput,
-    TasSelect,
-    TasTable,
-    TimeagoPipe,
-    KycStatusBadge,
-  ],
+  imports: [FormsModule, TasIcon, TasSpinner],
 })
 export class KycDashboardPage implements OnInit {
   private readonly _facade = inject(KycFacadeService);
   private readonly _agenciesApi = inject(AgenciesApiService);
+  private readonly _usersApi = inject(UsersApiService);
+  private readonly _auth = inject(AuthenticationService);
   private readonly _breadcrumbService = inject(BreadcrumbService);
   private readonly _sideDrawerService = inject(SideDrawerService);
   private readonly _permissions = inject(PermissionsService);
@@ -85,378 +162,388 @@ export class KycDashboardPage implements OnInit {
   private readonly _router = inject(Router);
   private readonly _destroyRef = inject(DestroyRef);
 
-  /**
-   * Droit d'ouvrir un dossier sur un client existant : `kyc:manage`, le droit d'écriture du module
-   * KYC — celui que le swagger exige pour déposer une pièce (`POST /kyc-files/{id}/documents`), et
-   * donc pour tout ce que l'enrôlement fait. C'est **le même code que le garde de la route
-   * d'enrôlement** (`kyc.routes.ts`) : sur un autre code, l'écran proposerait une action que le
-   * routeur refuserait ensuite.
-   */
   public readonly canOpenFile = this._permissions.can('kyc:manage');
 
-  // ── État de chargement ────────────────────────────────────────────────
-  public isLoading = signal(true);
-  /**
-   * Message d'erreur du dernier chargement. Séparé de l'état vide à dessein : une panne qui
-   * s'afficherait « Aucun dossier en attente » ferait croire à un agent de conformité qu'il n'a
-   * rien à traiter.
-   */
-  public loadError = signal<string | null>(null);
-
-  /** Toutes les lignes connues du serveur, avant recherche texte locale. */
-  private readonly _rows = signal<KycDashboardViewRow[]>([]);
-  public totalCount = signal(0);
-
-  /**
-   * Nombre de dossiers attendant une décision de l'utilisateur connecté.
-   *
-   * Le cahier demande ce compteur dans le menu latéral, qui n'appartient pas à ce module. Il est
-   * donc exposé de deux façons, les deux publiques et stables :
-   *  - `awaitingMeCount` : signal lisible par un parent qui garde une référence au composant ;
-   *  - `awaitingMeCountChange` : sortie émise à chaque chargement réussi, pour un parent routé.
-   *
-   * Le jour où le menu doit l'afficher sans ouvrir l'écran, la bonne réponse n'est ni l'un ni
-   * l'autre mais un compteur porté par un service applicatif alimenté par l'endpoint de liste
-   * (absent, cf. `KycFacadeService.searchFiles`).
-   */
-  public readonly awaitingMeCount = signal(0);
+  /** Remonté au shell pour le badge du menu : dossiers qui attendent l'utilisateur. */
   public readonly awaitingMeCountChange = output<number>();
 
-  // ── Filtres ───────────────────────────────────────────────────────────
-  /** Ce que l'utilisateur est en train de taper. */
-  public filterQuery = signal('');
-  /** Ce que la liste applique réellement : la valeur de `filterQuery` après le debounce. */
+  // ——— Liste ———
+  public readonly scope = signal<Scope>('all');
+  public readonly query = signal('');
   private readonly _appliedQuery = signal('');
-  public filterStatus = signal<string>('');
-  public filterAgency = signal<string>(AGENCY_ALL);
-  public filterVigilance = signal<string>('');
-  public filterFrom = signal<string>('');
-  public filterTo = signal<string>('');
-
-  public readonly statusOptions = [
-    { label: 'Tous les statuts', value: '' },
-    ...KYC_STATUS_FILTER_OPTIONS,
-  ];
-
-  /**
-   * Les libellés de vigilance viennent du référentiel : seules les clés d'API sont écrites ici,
-   * jamais le texte affiché.
-   */
-  public readonly vigilanceOptions = [
-    { label: 'Tous les niveaux', value: '' },
-    ...['Simplified', 'Standard', 'Enhanced'].map((value) => ({
-      value,
-      label: kycVigilanceMeta(value).label,
-    })),
-  ];
-
-  public agencyOptions = signal<{ label: string; value: string }[]>([
-    { label: 'Toutes les agences', value: AGENCY_ALL },
-  ]);
-
-  /** Frappes de recherche, regroupées avant le recalcul de la liste. */
   private readonly _search$ = new Subject<void>();
 
-  private readonly _pageIndex = signal(0);
-  private readonly _pageSize = signal(20);
+  public readonly isLoading = signal(true);
+  public readonly loadError = signal<string | null>(null);
+  private readonly _rows = signal<KycDashboardRow[]>([]);
+  public readonly totalCount = signal(0);
+  private readonly _agencyNames = signal<Map<string, string>>(new Map());
+  public readonly collapsedClosed = signal(true);
 
-  /**
-   * Lignes affichées : la page du serveur, avec le SEUL filtre resté local.
-   *
-   * La recherche texte porte sur le **nom du client**, et ce nom n'existe pas côté KYC : les noms
-   * vivent en clair dans M01 pour que sa recherche reste un parcours d'index, et c'est l'écran qui
-   * les résout, une requête par client de la page. Le serveur ne peut donc pas filtrer dessus, et la
-   * recherche est volontairement **dégradée à la page courante** — arbitrage du propriétaire. Le
-   * libellé du compteur le dit, sans quoi l'utilisateur lirait « aucun résultat » en pensant avoir
-   * cherché dans tout le portefeuille.
-   *
-   * Statut, agence, vigilance et période sont partis au serveur. Le tri aussi : les dossiers
-   * attendant l'utilisateur d'abord, puis du plus anciennement mis à jour au plus récent — un
-   * dossier qui dort est celui qui coûte. Le rejouer ici ne ferait que réordonner vingt lignes déjà
-   * ordonnées, et le ferait diverger du jour où le serveur change d'avis.
-   */
-  public readonly displayedRows = computed<KycDashboardViewRow[]>(() => {
-    const query = this._appliedQuery().trim().toLowerCase();
-    if (!query) return this._rows();
+  public readonly myAgencyId = computed(() => this._auth.connectedUser()?.agencyId ?? null);
 
-    return this._rows().filter((row) => row.customerName.toLowerCase().includes(query));
+  public readonly groups = computed<Group[]>(() => {
+    const q = this._appliedQuery().trim().toLowerCase();
+    const agencies = this._agencyNames();
+    const buckets = new Map<GroupKey, ListItem[]>();
+
+    for (const row of this._rows()) {
+      const agencyName = row.agencyId ? agencies.get(row.agencyId) ?? null : null;
+      if (q && !row.customerName.toLowerCase().includes(q) && !(agencyName ?? '').toLowerCase().includes(q)) continue;
+      const key = groupOf(row);
+      const days = ageInDays(row.updatedAt);
+      const item: ListItem = {
+        id: row.kycFileId,
+        customerId: row.customerId,
+        name: row.customerName,
+        initials: initialsOf(row.customerName),
+        subtitle: subtitleOf(row),
+        age: `${days} j`,
+        agencyName,
+        row,
+      };
+      buckets.set(key, [...(buckets.get(key) ?? []), item]);
+    }
+
+    return GROUPS.map((g) => ({ ...g, items: buckets.get(g.key) ?? [] })).filter((g) => g.items.length > 0);
   });
 
-  /** Lignes de la page, avant le filtre texte local : ce que le serveur a renvoyé. */
-  public readonly loadedCount = computed(() => this._rows().length);
+  public readonly visibleCount = computed(() => this.groups().reduce((n, g) => n + g.items.length, 0));
+  public readonly isTruncated = computed(() => this.totalCount() > PAGE_SIZE);
 
-  public readonly displayedCount = computed(() => this.displayedRows().length);
+  // ——— Aperçu ———
+  public readonly selectedId = signal<string | null>(null);
+  public readonly selectedItem = computed(() => {
+    const id = this.selectedId();
+    for (const g of this.groups()) {
+      const found = g.items.find((i) => i.id === id);
+      if (found) return found;
+    }
+    return null;
+  });
 
-  /**
-   * `serverSide: true` : `tas-table` émet `pageEventChange` et prend sa longueur de
-   * `totalElements`. Depuis la correction de `TableDataSource`, il ne redécoupe plus les lignes
-   * reçues — on lui passe donc la page du serveur, et rien de plus.
-   */
-  public readonly tableConfig = computed<TableConfig>(() => ({
-    property: 'kycFileId',
-    pagination: {
-      serverSide: true,
-      pageIndex: this._pageIndex(),
-      pageSize: this._pageSize(),
-      pageSizeOptions: [10, 20, 50],
-      // Le total du SERVEUR, pas ce qui est à l'écran : le paginateur doit proposer les pages
-      // suivantes même quand le filtre texte local masque des lignes de la page courante.
-      totalElements: this.totalCount(),
-    },
-  }));
-  public readonly isEmpty = computed(
-    () => !this.isLoading() && !this.loadError() && this.displayedCount() === 0,
-  );
-  public readonly hasActiveFilters = computed(
-    () =>
-      !!this.filterQuery() ||
-      !!this.filterStatus() ||
-      !!this.filterAgency() ||
-      !!this.filterVigilance() ||
-      !!this.filterFrom() ||
-      !!this.filterTo(),
-  );
+  public readonly previewLoading = signal(false);
+  public readonly previewError = signal(false);
+  public readonly previewFile = signal<KycFileDto | null>(null);
+  public readonly previewDocuments = signal<KycDocumentRow[] | null>(null);
+  public readonly previewHistory = signal<KycHistoryEntry[]>([]);
+  public readonly previewCaps = signal<KycCaps | null>(null);
+  private readonly _authorNames = signal<Record<string, string>>({});
+  private _previewSub: Subscription | null = null;
 
-  public ngOnInit(): void {
+  public readonly progress = computed(() => {
+    const file = this.previewFile();
+    if (!file) return [];
+    const states = kycProgressStates({
+      status: file.status,
+      confidenceScore: file.confidenceScore,
+      validatedAt: file.validatedAt,
+      documentCount: this.previewDocuments()?.length ?? null,
+    });
+    const labels = ['Ouvert', 'Pièces', 'Vérification', 'Validation', 'Validé'];
+    return labels.map((label, i) => ({ label, state: states[i] as KycStepState }));
+  });
+
+  public readonly headerLine = computed(() => {
+    const file = this.previewFile();
+    const item = this.selectedItem();
+    const parts: string[] = [];
+    if (item?.agencyName) parts.push(item.agencyName);
+    if (file?.createdAt) parts.push(`dossier ouvert le ${SHORT_DATE.format(new Date(file.createdAt))}`);
+    return parts.join(' · ');
+  });
+
+  /** L'encart d'état : ce que le dossier attend, et l'action qui le fait avancer. */
+  public readonly callout = computed(() => {
+    const file = this.previewFile();
+    const item = this.selectedItem();
+    if (!file || !item) return null;
+    const status = file.status ?? '';
+
+    if (KYC_VALIDATED_STATUSES.includes(status)) {
+      const caps = this.previewCaps();
+      const tier = kycTierLabel(file.tier) ?? 'KYC validé';
+      const money = (v: number | null) =>
+        v === null || !caps ? null : new Intl.NumberFormat('fr-FR', { style: 'currency', currency: caps.currency, maximumFractionDigits: 0 }).format(v);
+      const balance = caps?.isCapped ? money(caps.balanceCap) : null;
+      const flow = caps?.isCapped ? money(caps.flowCap) : null;
+      const text =
+        balance && flow
+          ? `${tier} : plafonds de ${balance} de solde et ${flow} de flux sur ${caps?.flowWindowDays ?? 30} jours.`
+          : caps && !caps.isCapped
+            ? `${tier} : aucun plafond ne s'applique.`
+            : `${tier}.`;
+      return {
+        tone: 'success' as const,
+        eyebrow: status === 'UnderReview' ? 'Validé · revue en cours' : 'Validé',
+        text,
+        action: file.tier === 'Simplified' ? { label: 'Passer en KYC complet', kind: 'upgrade' as const } : null,
+      };
+    }
+    if (item.row.awaitingMe) {
+      return { tone: 'primary' as const, eyebrow: 'À vous de décider', text: 'Le dossier attend votre décision dans le circuit de validation.',
+        action: { label: 'Décider', kind: 'validation' as const } };
+    }
+    switch (status) {
+      case 'Verifying':
+        return { tone: 'warning' as const, eyebrow: 'Bloqué', text: file.confidenceScore == null
+            ? 'Le score de confiance n\'est pas calculé : le dossier ne peut pas entrer en validation.'
+            : 'La vérification biométrique n\'a pas conclu.',
+          action: { label: 'Voir le score', kind: 'score' as const } };
+      case 'Collecting':
+      case 'ComplementRequired':
+        return { tone: 'neutral' as const, eyebrow: 'En attente du client',
+          text: item.row.requiredAction ? `${item.row.requiredAction}.` : 'Des pièces sont attendues.',
+          action: { label: 'Voir les pièces', kind: 'piece' as const } };
+      case 'Validating':
+        return { tone: 'neutral' as const, eyebrow: 'En validation', text: 'Le dossier attend la décision d\'un autre niveau du circuit.',
+          action: { label: 'Voir le circuit', kind: 'validation' as const } };
+      case 'Expired':
+        return { tone: 'warning' as const, eyebrow: 'Expiré', text: 'La validité du KYC est échue : une revue est nécessaire.', action: null };
+      case 'Suspended':
+        return { tone: 'warning' as const, eyebrow: 'Suspendu', text: 'Aucune décision ne peut être prise tant que le dossier est suspendu.', action: null };
+      case 'Rejected':
+        return { tone: 'error' as const, eyebrow: 'Rejeté', text: 'Le circuit a refusé ce dossier.', action: null };
+      default:
+        return null;
+    }
+  });
+
+  public readonly tiles = computed(() => {
+    const file = this.previewFile();
+    if (!file) return [];
+    const docs = (this.previewDocuments() ?? []).filter((d) => d.isCurrentForKind);
+    const accepted = docs.filter((d) => d.decision === 'Accepted').length;
+    const tier = kycTierLabel(file.tier);
+    return [
+      {
+        label: 'Pièces',
+        value: this.previewDocuments() === null ? '—' : docs.length ? `${accepted}/${docs.length} acceptées` : 'Aucune',
+        ok: docs.length > 0 && accepted === docs.length,
+      },
+      { label: 'Niveau', value: tier ?? 'Pas encore attribué', ok: !!tier },
+      { label: 'Doublon', value: file.duplicateSuspected ? 'Suspecté' : 'Aucun', ok: !file.duplicateSuspected },
+      {
+        label: 'Prochaine revue',
+        value: file.nextReviewDate ? MONTH_YEAR.format(new Date(file.nextReviewDate)) : 'Fixée à la validation',
+        ok: null,
+      },
+    ];
+  });
+
+  public readonly recentEvents = computed(() => {
+    const names = this._authorNames();
+    return [...this.previewHistory()]
+      .sort((a, b) => Date.parse(b.at) - Date.parse(a.at))
+      .slice(0, 5)
+      .map((e) => ({
+        at: e.at ? EVENT_DATE.format(new Date(e.at)) : '—',
+        text: e.authorId && names[e.authorId] ? `${e.label} par ${names[e.authorId]}` : e.label,
+      }));
+  });
+
+  ngOnInit(): void {
     this._breadcrumbService.set([{ label: 'Conformité' }, { label: 'Dossiers KYC' }]);
 
-    // Sans debounce, chaque frappe relançait le recalcul (et relancera l'appel réseau quand
-    // l'endpoint existera). Les listes déroulantes, elles, restent immédiates : un clic est déjà
-    // une intention ferme.
-    this._search$
-      .pipe(debounceTime(300), takeUntilDestroyed(this._destroyRef))
-      .subscribe(() => {
-        // Pas de rechargement : la recherche porte sur la page déjà chargée. Et pas de retour à la
-        // première page non plus — cela rechargerait une page que l'utilisateur n'a pas demandée.
-        this._appliedQuery.set(this.filterQuery());
-        this._pushFiltersToUrl();
-      });
+    const params = this._route.snapshot.queryParamMap;
+    const scope = params.get('scope') as Scope | null;
+    if (scope === 'mine' || scope === 'agency' || scope === 'all') this.scope.set(scope);
+    const q = params.get('q') ?? '';
+    this.query.set(q);
+    this._appliedQuery.set(q);
+    this.selectedId.set(params.get('file'));
 
-    this._restoreFiltersFromUrl();
+    this._search$.pipe(debounceTime(300), takeUntilDestroyed(this._destroyRef)).subscribe(() => {
+      this._appliedQuery.set(this.query());
+      this._syncUrl();
+    });
+
     this._loadAgencies();
     this._load();
   }
 
-  // ── Filtres ───────────────────────────────────────────────────────────
+  public setScope(scope: Scope): void {
+    if (scope === this.scope()) return;
+    this.scope.set(scope);
+    this._syncUrl();
+    this._load();
+  }
 
-  public onSearchChange(value: string | null): void {
-    this.filterQuery.set(value ?? '');
+  public onSearchChange(value: string): void {
+    this.query.set(value ?? '');
     this._search$.next();
   }
 
-  public onStatusChange(value: string | null): void {
-    this.filterStatus.set(value ?? '');
-    this._applyServerFilters();
-  }
-
-  public onAgencyChange(value: string | null): void {
-    this.filterAgency.set(value ?? AGENCY_ALL);
-    this._applyServerFilters();
-  }
-
-  public onVigilanceChange(value: string | null): void {
-    this.filterVigilance.set(value ?? '');
-    this._applyServerFilters();
-  }
-
-  public onFromChange(value: string): void {
-    this.filterFrom.set(value ?? '');
-    this._applyServerFilters();
-  }
-
-  public onToChange(value: string): void {
-    this.filterTo.set(value ?? '');
-    this._applyServerFilters();
-  }
-
-  public resetFilters(): void {
-    this.filterQuery.set('');
-    this._appliedQuery.set('');
-    this.filterStatus.set('');
-    this.filterAgency.set(AGENCY_ALL);
-    this.filterVigilance.set('');
-    this.filterFrom.set('');
-    this.filterTo.set('');
-    this._applyServerFilters();
+  public select(item: ListItem): void {
+    if (item.id === this.selectedId() && this.previewFile()) return;
+    this.selectedId.set(item.id);
+    this._syncUrl();
+    this._loadPreview(item);
   }
 
   public reload(): void {
     this._load();
   }
 
-  /** Chaque page est un appel : le serveur pagine, trie et compte. */
-  public onPageChange(event: PageEvent): void {
-    this._pageIndex.set(event.pageIndex);
-    this._pageSize.set(event.pageSize);
-    this._load();
+  public openFull(tab?: string): void {
+    const id = this.selectedId();
+    if (!id) return;
+    this._router.navigate(['/kyc', id], tab ? { queryParams: { tab } } : undefined);
   }
 
-  public openFile(row: KycDashboardViewRow): void {
-    this._router.navigate(['/kyc', row.kycFileId]);
+  public runCalloutAction(kind: 'upgrade' | 'validation' | 'score' | 'piece'): void {
+    if (kind === 'upgrade') {
+      // Même parcours que la fiche client : le passage au KYC complet se fait par l'enrôlement.
+      const customerId = this.selectedItem()?.customerId;
+      if (customerId) this._router.navigate(['/kyc', 'enrolment', customerId]);
+      return;
+    }
+    this.openFull(kind);
   }
 
-  /**
-   * Ouvre un dossier sur un client existant. Le drawer ne fait que choisir le client ; c'est
-   * l'écran d'enrôlement qui appelle `POST /kyc-files`, idempotent, et reprend le dossier
-   * existant le cas échéant.
-   */
   public openFileForCustomer(): void {
     const ref = this._sideDrawerService.open<string, unknown, KycOpenFileDrawer>(KycOpenFileDrawer, {
       width: '100%',
       height: '100%',
       panelClass: 'side-drawer-panel',
     });
-
     ref.closed.subscribe((customerId) => {
       if (customerId) this._router.navigate(['/kyc', 'enrolment', customerId]);
     });
   }
 
-  /** Libellé lu par un lecteur d'écran sur une ligne activable. */
-  public rowAriaLabel(row: KycDashboardViewRow): string {
-    const parts = [`Dossier de ${row.customerName}`, row.alert?.label, row.requiredAction];
-    return parts.filter(Boolean).join(', ');
-  }
-
-  // ── Chargement ────────────────────────────────────────────────────────
-
-  private _applyServerFilters(): void {
-    this._resetToFirstPage();
-    this._pushFiltersToUrl();
-    this._load();
-  }
-
-  private _resetToFirstPage(): void {
-    this._pageIndex.set(0);
-  }
-
-  /** Une vue filtrée doit être partageable par simple copie de l'URL. */
-  private _pushFiltersToUrl(): void {
-    this._router.navigate([], {
-      relativeTo: this._route,
-      queryParams: {
-        q: this.filterQuery() || null,
-        status: this.filterStatus() || null,
-        agencyId: this.filterAgency() || null,
-        vigilance: this.filterVigilance() || null,
-        from: this.filterFrom() || null,
-        to: this.filterTo() || null,
-      },
-      queryParamsHandling: 'merge',
-      replaceUrl: true,
-    });
-  }
-
-  private _restoreFiltersFromUrl(): void {
-    const params = this._route.snapshot.queryParams;
-    if (params['q']) {
-      this.filterQuery.set(params['q']);
-      this._appliedQuery.set(params['q']);
-    }
-    if (params['status']) this.filterStatus.set(params['status']);
-    if (params['agencyId']) this.filterAgency.set(params['agencyId']);
-    if (params['vigilance']) this.filterVigilance.set(params['vigilance']);
-    if (params['from']) this.filterFrom.set(params['from']);
-    if (params['to']) this.filterTo.set(params['to']);
-  }
+  // ——— Chargements ———
 
   private _load(): void {
     this.isLoading.set(true);
     this.loadError.set(null);
+    const scope = this.scope();
 
-    this._facade
-      .searchFiles({
-        status: this.filterStatus(),
-        agencyId: this.filterAgency(),
-        vigilanceLevel: this.filterVigilance(),
-        from: this.filterFrom(),
-        to: this.filterTo(),
-        page: this._pageIndex(),
-        pageSize: this._pageSize(),
-      })
+    const base: KycDashboardFilters = {
+      status: '',
+      agencyId: scope === 'agency' ? this.myAgencyId() ?? '' : '',
+      vigilanceLevel: '',
+      from: '',
+      to: '',
+      page: 0,
+      pageSize: PAGE_SIZE,
+      mine: scope === 'mine',
+    };
+    // Le serveur trie par activité la PLUS ANCIENNE d'abord (c'est une file de travail) : au-delà
+    // d'une page, les dossiers validés récemment tomberaient hors de la liste. Deux lectures
+    // ciblées les ramènent, fusionnées ensuite par identifiant.
+    const since = new Date(Date.now() - RECENT_DAYS * DAY_MS).toISOString();
+    const recent = (status: string) =>
+      this._facade
+        .searchFiles({ ...base, status, from: since })
+        .pipe(catchError(() => of<KycFilesPage>({ rows: [], totalCount: 0, awaitingMeCount: 0 })));
+
+    forkJoin({
+      main: this._facade.searchFiles(base),
+      simplified: recent('Simplified'),
+      full: recent('Full'),
+    })
       .pipe(
+        takeUntilDestroyed(this._destroyRef),
         catchError(() => {
           this._rows.set([]);
           this.totalCount.set(0);
-          this.loadError.set(
-            "La liste des dossiers n'a pas pu être chargée. Réessayez dans un instant.",
-          );
+          this.loadError.set("La liste des dossiers n'a pas pu être chargée.");
           this.isLoading.set(false);
           return EMPTY;
         }),
-        takeUntilDestroyed(this._destroyRef),
       )
-      .subscribe((page) => {
-        this._rows.set(page.rows.map((row) => this._toViewRow(row)));
-        this.totalCount.set(page.totalCount);
-        this.awaitingMeCount.set(page.awaitingMeCount);
-        this.awaitingMeCountChange.emit(page.awaitingMeCount);
+      .subscribe(({ main, simplified, full }) => {
+        const byId = new Map(main.rows.map((r) => [r.kycFileId, r]));
+        for (const r of [...simplified.rows, ...full.rows]) if (!byId.has(r.kycFileId)) byId.set(r.kycFileId, r);
+        this._rows.set([...byId.values()]);
+        this.totalCount.set(main.totalCount);
+        this.awaitingMeCountChange.emit(main.awaitingMeCount);
         this.isLoading.set(false);
+
+        // Garde la sélection si elle est encore dans la liste, sinon prend le premier dossier.
+        const all = this.groups().flatMap((g) => g.items);
+        const keep = all.find((i) => i.id === this.selectedId());
+        const next = keep ?? all[0] ?? null;
+        if (next) {
+          this.selectedId.set(next.id);
+          this._loadPreview(next);
+        } else {
+          this.selectedId.set(null);
+          this.previewFile.set(null);
+        }
       });
   }
 
-  private _toViewRow(row: KycDashboardRow): KycDashboardViewRow {
-    const vigilance = kycVigilanceMeta(row.vigilanceLevel);
-    const ageDays = this._ageInDays(row.updatedAt);
-    return {
-      ...row,
-      ageDays,
-      alert: this._alertFor(row.status, ageDays),
-      scoreBarClasses: kycScoreBarClasses(row.confidenceScore),
-      vigilanceLabel: vigilance.label,
-      vigilanceSeverity: vigilance.severity,
-    };
+  private _loadPreview(item: ListItem): void {
+    this._previewSub?.unsubscribe();
+    this.previewLoading.set(true);
+    this.previewError.set(false);
+    this.previewFile.set(null);
+    this.previewDocuments.set(null);
+    this.previewHistory.set([]);
+    this.previewCaps.set(null);
+
+    const validated = KYC_VALIDATED_STATUSES.includes(item.row.status);
+    this._previewSub = forkJoin({
+      file: this._facade.getFile(item.id),
+      documents: this._facade.listDocuments(item.id).pipe(catchError(() => of(null))),
+      history: this._facade.getHistory(item.id).pipe(catchError(() => of([] as KycHistoryEntry[]))),
+      // Les plafonds n'ont de sens qu'une fois un palier accordé.
+      caps: validated ? this._facade.getCaps(item.customerId).pipe(catchError(() => of(null))) : of(null),
+    })
+      .pipe(
+        takeUntilDestroyed(this._destroyRef),
+        catchError(() => {
+          this.previewError.set(true);
+          this.previewLoading.set(false);
+          return EMPTY;
+        }),
+      )
+      .subscribe(({ file, documents, history, caps }) => {
+        this.previewFile.set(file);
+        this.previewDocuments.set(documents?.documents ?? null);
+        this.previewHistory.set(history);
+        this.previewCaps.set(caps);
+        this.previewLoading.set(false);
+        this._resolveAuthors(history);
+      });
   }
 
-  private _ageInDays(updatedAt: string): number {
-    const parsed = Date.parse(updatedAt);
-    if (Number.isNaN(parsed)) return 0;
-    return Math.max(0, Math.floor((Date.now() - parsed) / 86_400_000));
-  }
-
-  /**
-   * Expiré en rouge, revue en cours en orange — mais toujours avec un libellé et une icône :
-   * un écran de conformité doit rester lisible sans distinguer les teintes (WCAG 2.1 AA, 1.4.1).
-   */
-  private _alertFor(status: string, ageDays: number): KycRowAlert | null {
-    const age = `depuis ${ageDays} jour${ageDays > 1 ? 's' : ''}`;
-    if (status === 'Expired') {
-      return {
-        label: `Expiré ${age}`,
-        icon: 'feather:alert-octagon',
-        classes: 'bg-red-50 text-red-700 border border-red-200',
-      };
+  private _resolveAuthors(entries: KycHistoryEntry[]): void {
+    const known = this._authorNames();
+    const ids = [...new Set(entries.map((e) => e.authorId).filter((id): id is string => !!id && !known[id]))];
+    for (const id of ids) {
+      this._usersApi
+        .getUser(id)
+        .pipe(catchError(() => of(null)))
+        .subscribe((user) => {
+          const name = user?.fullName || user?.email;
+          if (name) this._authorNames.update((current) => ({ ...current, [id]: name }));
+        });
     }
-    if (status === 'UnderReview') {
-      return {
-        label: `En revue ${age}`,
-        icon: 'feather:alert-triangle',
-        classes: 'bg-orange-50 text-orange-700 border border-orange-200',
-      };
-    }
-    return null;
   }
 
   private _loadAgencies(): void {
-    // `(false, 1, 0)` = toutes les agences non supprimées, comme ailleurs dans le repo.
     this._agenciesApi
       .listAgencies(false, 1, 0)
-      .pipe(
-        catchError(() => {
-          // Le filtre agence est un confort : son absence ne doit pas faire échouer l'écran.
-          return EMPTY;
-        }),
-        takeUntilDestroyed(this._destroyRef),
-      )
+      .pipe(catchError(() => EMPTY), takeUntilDestroyed(this._destroyRef))
       .subscribe((result) => {
-        this.agencyOptions.set([
-          { label: 'Toutes les agences', value: AGENCY_ALL },
-          ...(result.items ?? []).map((agency) => ({
-            label: agency.name ?? '—',
-            value: agency.id ?? '',
-          })),
-        ]);
+        this._agencyNames.set(new Map((result.items ?? []).map((a) => [a.id ?? '', a.name ?? '—'])));
       });
+  }
+
+  private _syncUrl(): void {
+    this._router.navigate([], {
+      relativeTo: this._route,
+      queryParams: {
+        scope: this.scope(),
+        q: this._appliedQuery() || null,
+        file: this.selectedId(),
+      },
+      queryParamsHandling: 'merge',
+      replaceUrl: true,
+    });
   }
 }
 

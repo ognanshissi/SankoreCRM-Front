@@ -1170,7 +1170,7 @@ export class KYCApiService {
 
     /**
      * List KYC files in the caller\&#39;s agency perimeter
-     * Server-side paging, filterable by status, agency, vigilance level and a period on last activity. Always bounded to the caller\&#39;s agency perimeter, and files whose agency could not be resolved are visible only to an unrestricted caller. Rows whose next approval rung the caller\&#39;s roles can sign come first, and awaitingMeCount counts those across the whole perimeter rather than the page. customerName is resolved from the clients module for the returned rows and is null when that module no longer knows the id. Requires kyc:read.
+     * Server-side paging, filterable by status, agency, vigilance level and a period on last activity. Always bounded to the caller\&#39;s agency perimeter, and files whose agency could not be resolved are visible only to an unrestricted caller. Rows whose next approval rung the caller\&#39;s roles can sign come first, and awaitingMeCount counts those across the whole perimeter rather than the page. customerName is resolved from the clients module for the returned rows and is null when that module no longer knows the id. mine&#x3D;true narrows to the files the caller is the responsible agent of, inside the same perimeter. Requires kyc:read.
      * @param status 
      * @param agencyId 
      * @param vigilanceLevel 
@@ -1178,13 +1178,14 @@ export class KYCApiService {
      * @param to 
      * @param page 
      * @param pageSize 
+     * @param mine 
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      */
-    public listKycFiles(status?: string, agencyId?: string, vigilanceLevel?: string, from?: string, to?: string, page?: number, pageSize?: number, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json' | 'application/problem+json', context?: HttpContext}): Observable<KycFileListPage>;
-    public listKycFiles(status?: string, agencyId?: string, vigilanceLevel?: string, from?: string, to?: string, page?: number, pageSize?: number, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json' | 'application/problem+json', context?: HttpContext}): Observable<HttpResponse<KycFileListPage>>;
-    public listKycFiles(status?: string, agencyId?: string, vigilanceLevel?: string, from?: string, to?: string, page?: number, pageSize?: number, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json' | 'application/problem+json', context?: HttpContext}): Observable<HttpEvent<KycFileListPage>>;
-    public listKycFiles(status?: string, agencyId?: string, vigilanceLevel?: string, from?: string, to?: string, page?: number, pageSize?: number, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json' | 'application/problem+json', context?: HttpContext}): Observable<any> {
+    public listKycFiles(status?: string, agencyId?: string, vigilanceLevel?: string, from?: string, to?: string, page?: number, pageSize?: number, mine?: boolean, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json' | 'application/problem+json', context?: HttpContext}): Observable<KycFileListPage>;
+    public listKycFiles(status?: string, agencyId?: string, vigilanceLevel?: string, from?: string, to?: string, page?: number, pageSize?: number, mine?: boolean, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json' | 'application/problem+json', context?: HttpContext}): Observable<HttpResponse<KycFileListPage>>;
+    public listKycFiles(status?: string, agencyId?: string, vigilanceLevel?: string, from?: string, to?: string, page?: number, pageSize?: number, mine?: boolean, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json' | 'application/problem+json', context?: HttpContext}): Observable<HttpEvent<KycFileListPage>>;
+    public listKycFiles(status?: string, agencyId?: string, vigilanceLevel?: string, from?: string, to?: string, page?: number, pageSize?: number, mine?: boolean, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json' | 'application/problem+json', context?: HttpContext}): Observable<any> {
 
         let localVarQueryParameters = new HttpParams({encoder: this.encoder});
         if (status !== undefined && status !== null) {
@@ -1214,6 +1215,10 @@ export class KYCApiService {
         if (pageSize !== undefined && pageSize !== null) {
           localVarQueryParameters = this.addToHttpParams(localVarQueryParameters,
             <any>pageSize, 'pageSize');
+        }
+        if (mine !== undefined && mine !== null) {
+          localVarQueryParameters = this.addToHttpParams(localVarQueryParameters,
+            <any>mine, 'mine');
         }
 
         let localVarHeaders = this.defaultHeaders;

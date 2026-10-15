@@ -514,6 +514,7 @@ export class KycFacadeService {
         // Le serveur compte les pages à partir de 1, l'écran à partir de 0.
         filters.page + 1,
         filters.pageSize,
+        filters.mine || undefined,
       )
       .pipe(
         map(this._formatResponse),
@@ -533,7 +534,10 @@ export class KycFacadeService {
             kycFileId: r.kycFileId ?? '',
             customerId: r.customerId ?? '',
             customerName: r.customerName ?? 'Client inconnu',
+            agencyId: r.agencyId ?? null,
             status: r.status ?? '',
+            tier: r.tier ?? 'None',
+            duplicateSuspected: r.duplicateSuspected ?? false,
             confidenceScore: r.confidenceScore ?? null,
             vigilanceLevel: r.vigilanceLevel ?? '',
             updatedAt: r.updatedAt ?? '',

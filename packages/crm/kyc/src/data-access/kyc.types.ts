@@ -192,7 +192,11 @@ export interface KycDashboardRow {
   kycFileId: string;
   customerId: string;
   customerName: string;
+  agencyId: string | null;
   status: string;
+  /** `None` tant que le dossier n'est pas validé. */
+  tier: string;
+  duplicateSuspected: boolean;
   confidenceScore: number | null;
   vigilanceLevel: string;
   updatedAt: string;
@@ -220,6 +224,8 @@ export interface KycDashboardFilters {
   to: string;
   page: number;
   pageSize: number;
+  /** « Mes dossiers » : ceux dont l'utilisateur connecté est l'agent responsable. */
+  mine?: boolean;
 }
 
 export interface KycDashboardPage {

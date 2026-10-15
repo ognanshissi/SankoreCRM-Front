@@ -8790,7 +8790,7 @@
           "KYC"
         ],
         "summary": "List KYC files in the caller's agency perimeter",
-        "description": "Server-side paging, filterable by status, agency, vigilance level and a period on last activity. Always bounded to the caller's agency perimeter, and files whose agency could not be resolved are visible only to an unrestricted caller. Rows whose next approval rung the caller's roles can sign come first, and awaitingMeCount counts those across the whole perimeter rather than the page. customerName is resolved from the clients module for the returned rows and is null when that module no longer knows the id. Requires kyc:read.",
+        "description": "Server-side paging, filterable by status, agency, vigilance level and a period on last activity. Always bounded to the caller's agency perimeter, and files whose agency could not be resolved are visible only to an unrestricted caller. Rows whose next approval rung the caller's roles can sign come first, and awaitingMeCount counts those across the whole perimeter rather than the page. customerName is resolved from the clients module for the returned rows and is null when that module no longer knows the id. mine=true narrows to the files the caller is the responsible agent of, inside the same perimeter. Requires kyc:read.",
         "operationId": "ListKycFiles",
         "parameters": [
           {
@@ -8847,6 +8847,14 @@
               "type": "integer",
               "format": "int32",
               "default": 20
+            }
+          },
+          {
+            "name": "mine",
+            "in": "query",
+            "schema": {
+              "type": "boolean",
+              "default": false
             }
           }
         ],
