@@ -1,27 +1,56 @@
 <div class="pb-6">
   <!-- ——— En-tête ——— -->
-  <div class="flex flex-wrap items-start justify-between gap-3 mb-6">
-    <div class="min-w-0">
-      <h1 class="text-lg font-semibold text-slate-800">Dossier KYC</h1>
-      <p class="text-sm text-slate-500 mt-0.5">
-        @if (customerName()) {
-          Client : <span class="font-medium text-slate-700">{{ customerName() }}</span>
-        } @else {
-          Consultation d'un dossier de connaissance client.
+  <div class="flex flex-wrap items-start justify-between gap-4 mb-6">
+    <div class="flex items-start gap-4 min-w-0">
+      <div
+        class="w-14 h-14 rounded-2xl bg-slate-100 text-primary text-lg font-semibold flex items-center justify-center shrink-0 select-none"
+        aria-hidden="true"
+      >
+        {{ initials() }}
+      </div>
+      <div class="min-w-0">
+        <a [routerLink]="['/kyc']" class="text-xs font-medium text-slate-500 hover:text-primary">Dossiers KYC</a>
+        <div class="flex flex-wrap items-center gap-2 mt-0.5">
+          <h1 class="text-2xl font-semibold text-slate-900 truncate">
+            {{ customerName() ?? 'Dossier KYC' }}
+          </h1>
+          @if (file()) {
+            <span
+              class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium"
+              [class]="statusMeta().classes"
+            >
+              <span class="w-1.5 h-1.5 rounded-full bg-current" aria-hidden="true"></span>
+              {{ statusMeta().label }}
+            </span>
+          }
+        </div>
+        @if (file() && openedAgo()) {
+          <p class="text-sm text-slate-500 mt-1">
+            Dossier ouvert {{ openedAgo() }}@if (channel().inline) {, {{ channel().inline }}}
+          </p>
         }
-      </p>
+      </div>
     </div>
     <div class="flex items-center gap-2 shrink-0">
+      <button
+        type="button"
+        class="w-11 h-11 rounded-full bg-white border border-slate-200 shadow-sm flex items-center justify-center text-slate-600 hover:text-primary hover:border-slate-300 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+        title="Rafraîchir"
+        aria-label="Rafraîchir le dossier"
+        (click)="refresh()"
+      >
+        <tas-icon iconName="feather:refresh-cw" style="font-size:16px"></tas-icon>
+      </button>
       @if (file()?.customerId) {
-        <button tas-outlined-button type="button" (click)="openCustomer()">
-          <tas-icon iconName="feather:user" style="font-size:14px"></tas-icon>
+        <button
+          type="button"
+          class="h-11 px-5 rounded-full bg-white border border-slate-200 shadow-sm inline-flex items-center gap-2 text-sm font-semibold text-primary hover:border-slate-300 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+          (click)="openCustomer()"
+        >
+          <tas-icon iconName="feather:user" style="font-size:15px"></tas-icon>
           Fiche client
         </button>
       }
-      <button tas-outlined-button type="button" (click)="refresh()">
-        <tas-icon iconName="feather:refresh-cw" style="font-size:14px"></tas-icon>
-        Rafraîchir
-      </button>
     </div>
   </div>
 
@@ -67,10 +96,10 @@
 
   <!-- ——— Contenu ——— -->
   @else if (file()) {
-    <!-- Onglets : la bande défile horizontalement sous 400 px plutôt que de se replier -->
-    <div class="border-b border-slate-200 mb-6 overflow-x-auto">
+    <!-- Onglets : la bande défile horizontalement sur un écran étroit plutôt que de se replier -->
+    <div class="mb-6 overflow-x-auto">
       <div
-        class="flex flex-nowrap min-w-max"
+        class="inline-flex flex-nowrap gap-1 p-1 rounded-2xl bg-white border border-slate-100 shadow-sm min-w-max"
         role="tablist"
         aria-label="Sections du dossier KYC"
         (keydown)="onTabKeydown($event)"
@@ -84,15 +113,24 @@
             [attr.aria-selected]="activeTab() === tab.id"
             [attr.aria-controls]="'kyc-panel-' + tab.id"
             [tabindex]="activeTab() === tab.id ? 0 : -1"
-            class="px-4 py-2.5 text-sm font-medium whitespace-nowrap border-b-2 -mb-px transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+            class="px-4 py-2 rounded-xl text-sm whitespace-nowrap inline-flex items-center gap-2 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
             [class]="
               activeTab() === tab.id
-                ? 'border-primary text-primary'
-                : 'border-transparent text-slate-500 hover:text-slate-700'
+                ? 'bg-slate-100 text-primary font-semibold'
+                : 'text-slate-600 font-medium hover:text-slate-900 hover:bg-slate-50'
             "
             (click)="selectTab(tab.id)"
           >
             {{ tab.label }}
+            @if (tab.id === 'piece' && documentBadge(); as badge) {
+              <span
+                class="min-w-5 px-1.5 py-0.5 rounded-full text-[11px] font-semibold tabular-nums"
+                [class]="badge.complete ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-600'"
+                [title]="badge.complete ? 'Toutes les pièces sont acceptées' : 'Pièces acceptées sur pièces à examiner'"
+              >
+                {{ badge.label }}
+              </span>
+            }
           </button>
         }
       </div>
@@ -101,154 +139,225 @@
     @switch (activeTab()) {
       <!-- ═══════════════ Identité ═══════════════ -->
       @case ('identite') {
-        <div role="tabpanel" id="kyc-panel-identite" aria-labelledby="kyc-tab-identite">
-          <tas-card class="block">
-            <div class="p-4">
-              <dl class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">
-                <div>
-                  <dt class="text-xs font-medium uppercase tracking-wide text-slate-400">Client</dt>
-                  <dd class="text-sm text-slate-800 mt-1">
-                    @if (file()!.customerId) {
-                      <a
-                        class="text-primary underline underline-offset-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-                        [routerLink]="['/customers', file()!.customerId]"
-                      >
-                        {{ customerName() ?? 'Voir la fiche client' }}
-                      </a>
-                    } @else {
-                      —
-                    }
-                  </dd>
-                </div>
-                <div>
-                  <dt class="text-xs font-medium uppercase tracking-wide text-slate-400">Statut</dt>
-                  <dd class="mt-1">
-                    <kyc-status-badge [status]="file()!.status"></kyc-status-badge>
-                  </dd>
-                </div>
-                <div>
-                  <dt class="text-xs font-medium uppercase tracking-wide text-slate-400">
-                    Niveau de vigilance
-                  </dt>
-                  <dd class="mt-1">
-                    <tas-tag [severity]="vigilance().severity">{{ vigilance().label }}</tas-tag>
-                    @if (vigilance().requiresCompliance) {
-                      <p class="text-xs text-slate-500 mt-1">
-                        Le circuit de validation comporte une étape responsable conformité.
-                      </p>
-                    }
-                  </dd>
-                </div>
-                <div>
-                  <dt class="text-xs font-medium uppercase tracking-wide text-slate-400">
-                    Palier (tier)
-                  </dt>
-                  <dd class="text-sm text-slate-800 mt-1">{{ file()!.tier || '—' }}</dd>
-                </div>
-                <div>
-                  <dt class="text-xs font-medium uppercase tracking-wide text-slate-400">Canal</dt>
-                  <dd class="text-sm text-slate-800 mt-1">{{ file()!.channel || '—' }}</dd>
-                </div>
-                <div>
-                  <dt class="text-xs font-medium uppercase tracking-wide text-slate-400">
-                    Score de confiance
-                  </dt>
-                  <dd class="text-sm text-slate-800 mt-1 tabular-nums">
-                    @if (file()!.confidenceScore !== null && file()!.confidenceScore !== undefined) {
-                      {{ file()!.confidenceScore }} / 100
-                    } @else {
-                      —
-                    }
-                  </dd>
-                </div>
-                <div>
-                  <dt class="text-xs font-medium uppercase tracking-wide text-slate-400">
-                    Tentatives de reconnaissance faciale
-                  </dt>
-                  <dd class="text-sm text-slate-800 mt-1 tabular-nums">
-                    {{ file()!.faceMatchAttempts ?? 0 }}
-                  </dd>
-                </div>
-                <div>
-                  <dt class="text-xs font-medium uppercase tracking-wide text-slate-400">
-                    Doublon suspecté
-                  </dt>
-                  <dd class="mt-1">
-                    @if (file()!.duplicateSuspected) {
-                      <tas-tag severity="error">
-                        <span class="inline-flex items-center gap-1.5">
-                          <tas-icon iconName="feather:copy" style="font-size:12px"></tas-icon>
-                          Oui
-                        </span>
-                      </tas-tag>
-                    } @else {
-                      <span class="text-sm text-slate-800">Non</span>
-                    }
-                  </dd>
-                </div>
-                <div>
-                  <dt class="text-xs font-medium uppercase tracking-wide text-slate-400">
-                    Ouvert le
-                  </dt>
-                  <dd class="text-sm text-slate-800 mt-1">
-                    {{ file()!.createdAt ? (file()!.createdAt | date: 'dd/MM/yyyy HH:mm') : '—' }}
-                  </dd>
-                </div>
-                <div>
-                  <dt class="text-xs font-medium uppercase tracking-wide text-slate-400">
-                    Dernière mise à jour
-                  </dt>
-                  <dd class="text-sm text-slate-800 mt-1">
-                    {{ file()!.updatedAt ? (file()!.updatedAt | date: 'dd/MM/yyyy HH:mm') : '—' }}
-                  </dd>
-                </div>
-                <div>
-                  <dt class="text-xs font-medium uppercase tracking-wide text-slate-400">
-                    Validé le
-                  </dt>
-                  <dd class="text-sm text-slate-800 mt-1">
-                    {{ file()!.validatedAt ? (file()!.validatedAt | date: 'dd/MM/yyyy HH:mm') : '—' }}
-                  </dd>
-                </div>
-                <div>
-                  <dt class="text-xs font-medium uppercase tracking-wide text-slate-400">
-                    Prochaine revue
-                  </dt>
-                  <dd class="text-sm text-slate-800 mt-1">
-                    {{ formatDay(file()!.nextReviewDate) }}
-                  </dd>
-                </div>
-              </dl>
-
-              <!--
-                Dire où vit l'état civil évite qu'on cherche ici une date de naissance que le dossier
-                KYC ne porte pas : le contrat KYC n'expose que l'état du dossier.
-              -->
-              <div class="mt-5 rounded-lg border border-slate-200 bg-slate-50 p-3">
-                <p class="text-sm text-slate-700 flex items-start gap-2">
-                  <tas-icon
-                    iconName="feather:info"
-                    class="text-slate-400 shrink-0 mt-0.5"
-                    style="font-size:14px"
-                  ></tas-icon>
-                  <span>
-                    L'état civil détaillé (noms, date et lieu de naissance, nationalité, adresse,
-                    pièce d'identité) vit sur la <strong>fiche client</strong>, dans le module
-                    Clients. Ce dossier ne porte que l'état de la vérification KYC.
-                  </span>
+        <div role="tabpanel" id="kyc-panel-identite" aria-labelledby="kyc-tab-identite" class="flex flex-col gap-4">
+          <!-- Où en est le dossier : l'étape courante et l'action qui la fait avancer -->
+          <section class="rounded-2xl bg-white border border-slate-100 shadow-sm p-6">
+            <div class="flex flex-wrap items-start justify-between gap-4">
+              <div class="min-w-0">
+                <h2 class="text-base font-semibold text-slate-900">Où en est le dossier</h2>
+                <p
+                  class="text-sm mt-1"
+                  [class.text-slate-600]="progress().tone === 'default'"
+                  [class.text-amber-700]="progress().tone === 'warning'"
+                  [class.text-functional-error]="progress().tone === 'error'"
+                  [class.text-green-700]="progress().tone === 'success'"
+                >
+                  {{ progress().message }}
                 </p>
-                @if (file()!.customerId) {
-                  <a
-                    class="inline-flex items-center gap-1.5 text-sm text-primary underline underline-offset-2 mt-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-                    [routerLink]="['/customers', file()!.customerId]"
+              </div>
+              @if (progress().action; as action) {
+                <button
+                  type="button"
+                  class="h-11 px-5 rounded-full bg-primary text-white text-sm font-semibold hover:opacity-90 transition-opacity focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                  (click)="selectTab(action.tab)"
+                >
+                  {{ action.label }}
+                </button>
+              }
+            </div>
+
+            <ol class="mt-6 grid grid-cols-2 sm:grid-cols-5 gap-x-3 gap-y-5">
+              @for (step of progress().steps; track step.label) {
+                <li [attr.aria-current]="step.state === 'current' ? 'step' : null">
+                  <div class="h-1 rounded-full" [class]="stepBarClass(step.state)"></div>
+                  <p
+                    class="mt-3 text-sm flex items-center gap-2"
+                    [class.text-slate-900]="step.state !== 'todo'"
+                    [class.font-semibold]="step.state === 'current'"
+                    [class.text-slate-500]="step.state === 'todo'"
                   >
-                    <tas-icon iconName="feather:external-link" style="font-size:12px"></tas-icon>
-                    Ouvrir la fiche client
-                  </a>
+                    @if (step.state === 'done') {
+                      <span class="w-4 h-4 rounded-full bg-green-100 text-green-700 flex items-center justify-center shrink-0">
+                        <tas-icon iconName="feather:check" style="font-size:10px"></tas-icon>
+                      </span>
+                      <span class="sr-only">Étape franchie :</span>
+                    }
+                    {{ step.label }}
+                  </p>
+                  <p class="mt-2 text-xs text-slate-500">{{ step.detail }}</p>
+                </li>
+              }
+            </ol>
+          </section>
+
+          <!-- Indicateurs du dossier -->
+          <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            <!-- Vigilance -->
+            <div class="rounded-2xl bg-white border border-slate-100 shadow-sm p-5 flex gap-4">
+              <span class="w-10 h-10 rounded-xl bg-slate-100 text-primary font-semibold flex items-center justify-center shrink-0" aria-hidden="true">V</span>
+              <div class="min-w-0">
+                <p class="text-xs text-slate-500">Niveau de vigilance</p>
+                <p class="text-base font-semibold text-slate-900 mt-1">{{ vigilanceShort() }}</p>
+                <p class="text-xs text-slate-500 mt-1">
+                  {{ vigilance().requiresCompliance
+                    ? 'Le circuit comporte une étape conformité'
+                    : 'Défini à l\'ouverture du dossier' }}
+                </p>
+              </div>
+            </div>
+
+            <!-- Palier -->
+            <div class="rounded-2xl bg-white border border-slate-100 shadow-sm p-5 flex gap-4">
+              <span class="w-10 h-10 rounded-xl bg-amber-50 text-amber-800 font-semibold flex items-center justify-center shrink-0" aria-hidden="true">P</span>
+              <div class="min-w-0">
+                <p class="text-xs text-slate-500">Palier</p>
+                @if (tierLabel(); as tier) {
+                  <p class="text-base font-semibold text-slate-900 mt-1">{{ tier }}</p>
+                  <p class="text-xs text-slate-500 mt-1">
+                    @if (file()!.validatedAt) {
+                      Accordé le {{ file()!.validatedAt | date: 'dd/MM/yyyy' }}
+                    } @else {
+                      Accordé à la validation
+                    }
+                  </p>
+                } @else {
+                  <p class="text-base font-semibold text-slate-900 mt-1">Pas encore attribué</p>
+                  <p class="text-xs text-slate-500 mt-1">Attribué au moment de la validation</p>
                 }
               </div>
             </div>
-          </tas-card>
+
+            <!-- Canal -->
+            <div class="rounded-2xl bg-white border border-slate-100 shadow-sm p-5 flex gap-4">
+              <span class="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-700 font-semibold flex items-center justify-center shrink-0" aria-hidden="true">C</span>
+              <div class="min-w-0">
+                <p class="text-xs text-slate-500">Canal d'ouverture</p>
+                <p class="text-base font-semibold text-slate-900 mt-1">{{ channel().label }}</p>
+                <p class="text-xs text-slate-500 mt-1">{{ channel().hint }}</p>
+              </div>
+            </div>
+
+            <!-- Score -->
+            <div class="rounded-2xl bg-white border border-slate-100 shadow-sm p-5 flex gap-4">
+              <span class="w-10 h-10 rounded-xl bg-amber-50 text-amber-800 font-semibold flex items-center justify-center shrink-0" aria-hidden="true">%</span>
+              <div class="min-w-0">
+                <p class="text-xs text-slate-500">Score de confiance</p>
+                @if (hasScore()) {
+                  <p class="text-base font-semibold text-slate-900 mt-1 tabular-nums">
+                    {{ file()!.confidenceScore }} / 100
+                  </p>
+                  <p class="text-xs mt-1" [class]="confidence().classes">{{ confidence().label }}</p>
+                  <button type="button" class="mt-2 text-sm font-medium text-primary underline underline-offset-2" (click)="selectTab('score')">
+                    Voir le détail
+                  </button>
+                } @else {
+                  <p class="text-base font-semibold text-slate-900 mt-1">Pas encore calculé</p>
+                  <p class="text-xs text-slate-500 mt-1">Nécessaire avant la validation</p>
+                  <button type="button" class="mt-2 text-sm font-medium text-primary underline underline-offset-2" (click)="selectTab('score')">
+                    Lancer le calcul
+                  </button>
+                }
+              </div>
+            </div>
+
+            <!-- Reconnaissance faciale -->
+            <div class="rounded-2xl bg-white border border-slate-100 shadow-sm p-5 flex gap-4">
+              <span class="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-700 font-semibold flex items-center justify-center shrink-0" aria-hidden="true">R</span>
+              <div class="min-w-0">
+                <p class="text-xs text-slate-500">Reconnaissance faciale</p>
+                @if ((file()!.faceMatchAttempts ?? 0) === 0) {
+                  <p class="text-base font-semibold text-slate-900 mt-1">Aucune tentative</p>
+                  <p class="text-xs text-slate-500 mt-1">Le selfie n'a pas encore été comparé</p>
+                } @else {
+                  <p class="text-base font-semibold text-slate-900 mt-1 tabular-nums">
+                    {{ file()!.faceMatchAttempts }} tentative{{ file()!.faceMatchAttempts! > 1 ? 's' : '' }}
+                  </p>
+                  <p class="text-xs text-slate-500 mt-1">Selfie comparé à la pièce d'identité</p>
+                }
+              </div>
+            </div>
+
+            <!-- Doublon -->
+            <div class="rounded-2xl bg-white border border-slate-100 shadow-sm p-5 flex gap-4">
+              @if (file()!.duplicateSuspected) {
+                <span class="w-10 h-10 rounded-xl bg-red-50 text-red-700 flex items-center justify-center shrink-0" aria-hidden="true">
+                  <tas-icon iconName="feather:copy" style="font-size:16px"></tas-icon>
+                </span>
+                <div class="min-w-0">
+                  <p class="text-xs text-slate-500">Doublon</p>
+                  <p class="text-base font-semibold text-functional-error mt-1">Doublon suspecté</p>
+                  <p class="text-xs text-slate-500 mt-1">À examiner avant la validation</p>
+                </div>
+              } @else {
+                <span class="w-10 h-10 rounded-xl bg-green-50 text-green-700 flex items-center justify-center shrink-0" aria-hidden="true">
+                  <tas-icon iconName="feather:check" style="font-size:16px"></tas-icon>
+                </span>
+                <div class="min-w-0">
+                  <p class="text-xs text-slate-500">Doublon</p>
+                  <p class="text-base font-semibold text-slate-900 mt-1">Aucun doublon détecté</p>
+                  <p class="text-xs text-slate-500 mt-1">Contrôle fait à l'ouverture</p>
+                </div>
+              }
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)] gap-4">
+            <!-- Dates clés -->
+            <section class="rounded-2xl bg-white border border-slate-100 shadow-sm p-6">
+              <h2 class="text-base font-semibold text-slate-900">Dates clés</h2>
+              <dl class="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div class="rounded-xl bg-slate-50 px-4 py-3">
+                  <dt class="text-xs text-slate-500">Ouvert le</dt>
+                  <dd class="text-sm font-semibold text-slate-900 mt-1">
+                    {{ file()!.createdAt ? (file()!.createdAt | date: 'd MMM yyyy, HH:mm') : '—' }}
+                  </dd>
+                </div>
+                <div class="rounded-xl bg-slate-50 px-4 py-3">
+                  <dt class="text-xs text-slate-500">Dernière mise à jour</dt>
+                  <dd class="text-sm font-semibold text-slate-900 mt-1">
+                    {{ file()!.updatedAt ? (file()!.updatedAt | date: 'd MMM yyyy, HH:mm') : '—' }}
+                  </dd>
+                </div>
+                <div class="rounded-xl bg-slate-50 px-4 py-3">
+                  <dt class="text-xs text-slate-500">Validé le</dt>
+                  @if (file()!.validatedAt) {
+                    <dd class="text-sm font-semibold text-slate-900 mt-1">{{ file()!.validatedAt | date: 'd MMM yyyy, HH:mm' }}</dd>
+                  } @else {
+                    <dd class="text-sm text-slate-600 mt-1">Pas encore validé</dd>
+                  }
+                </div>
+                <div class="rounded-xl bg-slate-50 px-4 py-3">
+                  <dt class="text-xs text-slate-500">Prochaine revue</dt>
+                  @if (file()!.nextReviewDate) {
+                    <dd class="text-sm font-semibold text-slate-900 mt-1">{{ formatDay(file()!.nextReviewDate) }}</dd>
+                  } @else {
+                    <dd class="text-sm text-slate-600 mt-1">Fixée à la validation</dd>
+                  }
+                </div>
+              </dl>
+            </section>
+
+            <!--
+              Dire où vit l'état civil évite qu'on cherche ici une date de naissance que le dossier
+              KYC ne porte pas : le contrat KYC n'expose que l'état du dossier.
+            -->
+            <aside class="rounded-2xl bg-slate-50 border border-slate-100 p-6">
+              <h2 class="text-sm font-semibold text-primary">Où trouver l'état civil ?</h2>
+              <p class="text-sm text-slate-700 mt-2 leading-relaxed">
+                Noms, date et lieu de naissance, nationalité, adresse et pièce d'identité sont sur la
+                fiche client. Ce dossier suit uniquement la vérification KYC.
+              </p>
+              @if (file()!.customerId) {
+                <a
+                  class="inline-flex items-center gap-1 text-sm font-semibold text-primary underline underline-offset-2 mt-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                  [routerLink]="['/customers', file()!.customerId]"
+                >
+                  Ouvrir la fiche client
+                  <tas-icon iconName="feather:chevron-right" style="font-size:14px"></tas-icon>
+                </a>
+              }
+            </aside>
+          </div>
         </div>
       }
 
@@ -258,21 +367,47 @@
           role="tabpanel"
           id="kyc-panel-piece"
           aria-labelledby="kyc-tab-piece"
-          class="flex flex-col gap-4"
+          class="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_22rem] gap-4 items-start"
         >
-          <!--
-            Le suivi du lien est posé AVANT la liste des pièces (KRM-F-07) : quand un dossier
-            n'a rien reçu, la question est « le client a-t-il eu son lien ? » avant d'être
-            « quelles pièces manquent ? ».
-          -->
-          <kyc-remote-invitations-panel
-            [kycFileId]="id()"
-          ></kyc-remote-invitations-panel>
-
           <kyc-documents-panel
             [kycFileId]="id()"
             (fileChanged)="refresh()"
+            (documentsChanged)="reloadDocuments()"
+            (goToValidation)="selectTab('validation')"
           ></kyc-documents-panel>
+
+          <div class="flex flex-col gap-4">
+            <!--
+              Le suivi du lien reste visible à côté des pièces (KRM-F-07) : quand un dossier n'a rien
+              reçu, la question est « le client a-t-il eu son lien ? » avant « quelles pièces manquent ? ».
+            -->
+            <kyc-remote-invitations-panel [kycFileId]="id()"></kyc-remote-invitations-panel>
+
+            <section class="rounded-2xl bg-slate-50 border border-slate-100 p-5">
+              <button
+                type="button"
+                class="w-full flex items-center justify-between gap-3 text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                [attr.aria-expanded]="showDocumentsHelp()"
+                aria-controls="kyc-documents-help"
+                (click)="showDocumentsHelp.set(!showDocumentsHelp())"
+              >
+                <h2 class="text-sm font-semibold text-primary">Comment fonctionne la revue des pièces ?</h2>
+                <tas-icon
+                  [iconName]="showDocumentsHelp() ? 'feather:minus' : 'feather:plus'"
+                  class="text-primary shrink-0"
+                  style="font-size:16px"
+                ></tas-icon>
+              </button>
+              @if (showDocumentsHelp()) {
+                <ul id="kyc-documents-help" class="mt-4 flex flex-col gap-3 text-sm text-slate-700 list-disc pl-4 marker:text-primary">
+                  <li>Chaque pièce est acceptée ou refusée séparément, et une seule fois : la décision fait preuve.</li>
+                  <li>Accepter une pièce ne valide pas le dossier : la décision se prend dans l'onglet Validation.</li>
+                  <li>Refuser une pièce demande un motif et renvoie le dossier en « complément requis ».</li>
+                  <li>Les images ne s'affichent qu'à votre demande, et chaque consultation est inscrite à l'historique.</li>
+                </ul>
+              }
+            </section>
+          </div>
         </div>
       }
 
@@ -288,110 +423,53 @@
 
       <!-- ═══════════════ Validation ═══════════════ -->
       @case ('validation') {
-        <div role="tabpanel" id="kyc-panel-validation" aria-labelledby="kyc-tab-validation">
+        <div role="tabpanel" id="kyc-panel-validation" aria-labelledby="kyc-tab-validation" class="flex flex-col gap-4">
           <!--
-            Annoncé AVANT la décision, et c'est tout l'intérêt : si le cœur bancaire du tenant ne
-            crée ses clients qu'en lot, l'agent doit le savoir avant de valider, pas en découvrant
-            après coup que le client ne peut pas encore opérer. Le composant ne rend rien quand le
-            CBS répond en direct — pas de `@if` à ajouter ici.
+            KRM-F-08 : en tête. Un dossier déposé à distance n'a été vu par aucun employé, et le motif
+            pour lequel la machine n'a pas tranché oriente toute la lecture. Ne rend rien au guichet.
           -->
-          <cbs-batch-notice class="mb-4 block"></cbs-batch-notice>
+          <kyc-remote-decision-banner [file]="file()"></kyc-remote-decision-banner>
 
           <!--
-            Délai dépassé côté workflow. Affiché AVANT tout le reste de l'onglet : c'est une alerte,
-            pas un changement d'état — le dossier reste gouverné par le module KYC, et le circuit
-            ci-dessous est toujours celui qui décide.
+            Délai dépassé côté workflow : une alerte, pas un changement d'état. Le dossier reste
+            gouverné par le module KYC et se décide toujours ci-dessous. Pas de « relancer le suivi » :
+            aucun endpoint ne rouvre une instance de workflow expirée.
           -->
           @if (workflowTimedOut()) {
-            <tas-card class="block mb-4">
-              <div class="p-4 flex gap-3">
-                <tas-icon
-                  iconName="feather:clock"
-                  class="text-functional-error shrink-0"
-                  style="font-size:16px"
-                ></tas-icon>
-                <div class="min-w-0">
-                  <p class="text-sm font-medium text-slate-800">
-                    Le délai de cette étape a été dépassé
-                  </p>
-                  <p class="text-xs text-slate-500 mt-1 max-w-prose">
-                    Le suivi workflow de ce tour de validation a été clos faute de décision dans les
-                    délais. <strong>Le dossier n'a pas changé d'état</strong> et reste à décider
-                    ci-dessous : seul le reflet de suivi s'arrête là, et les décisions qui suivent ne
-                    seront plus retracées pour ce tour.
-                  </p>
-                </div>
+            <section class="rounded-2xl border border-orange-200 bg-orange-50/60 p-5 flex items-start gap-4">
+              <span class="w-10 h-10 rounded-xl bg-orange-100 text-orange-700 flex items-center justify-center shrink-0" aria-hidden="true">
+                <tas-icon iconName="feather:clock" style="font-size:16px"></tas-icon>
+              </span>
+              <div class="min-w-0">
+                <h2 class="text-sm font-semibold text-slate-900">Le délai de décision est dépassé</h2>
+                <p class="text-sm text-slate-700 mt-1 max-w-prose">
+                  Le dossier n'a pas changé : vous pouvez toujours décider ci-dessous. Seul le suivi des
+                  délais de ce tour s'est arrêté, il ne comptera pas les décisions prises maintenant.
+                </p>
               </div>
-            </tas-card>
+            </section>
           }
 
           <!--
-            Validation manuelle : l'échappatoire pour un dossier que la machine ne peut pas
-            conclure. Proposée seulement dans les deux états où le serveur l'accepte, et annoncée
-            pour ce qu'elle est — une entrée dans le circuit, pas une approbation.
+            Validation manuelle : l'échappatoire pour un dossier que la machine ne peut pas conclure.
+            Proposée seulement dans les deux états où le serveur l'accepte, et annoncée pour ce qu'elle
+            est — une entrée dans le circuit, pas une approbation.
           -->
           @if (canValidateManually()) {
-            <tas-card class="block mb-4">
-              <div class="p-4 flex flex-wrap items-start justify-between gap-4">
-                <div class="min-w-0">
-                  <p class="text-sm font-medium text-slate-800">
-                    Le service biométrique n'a pas conclu
-                  </p>
-                  <p class="text-xs text-slate-500 mt-1 max-w-prose">
-                    Service injoignable, ou pièce usée refusée à répétition : vous pouvez valider
-                    les pièces à la main pour que le dossier entre dans le circuit. Ce n'est pas une
-                    approbation — le circuit décidera, et vous ne pourrez signer aucun de ses
-                    niveaux.
-                  </p>
-                </div>
-                <button tas-outlined-button type="button" (click)="validateManually()">
-                  <tas-icon iconName="feather:check-circle" style="font-size:14px"></tas-icon>
-                  Valider à la main
-                </button>
+            <section class="rounded-2xl bg-white border border-slate-100 shadow-sm p-5 flex flex-wrap items-start justify-between gap-4">
+              <div class="min-w-0">
+                <h2 class="text-sm font-semibold text-slate-900">Le service biométrique n'a pas conclu</h2>
+                <p class="text-sm text-slate-600 mt-1 max-w-prose">
+                  Service injoignable, ou pièce usée refusée à répétition : vous pouvez valider les pièces
+                  à la main pour que le dossier entre dans le circuit. Ce n'est pas une approbation — et
+                  vous ne pourrez signer aucun de ses niveaux.
+                </p>
               </div>
-            </tas-card>
-          }
-
-          <!--
-            Où en est la création du client dans le cœur bancaire. Le composant se sonde lui-même
-            tant que l'état peut encore bouger, et s'arrête seul : rien à piloter depuis cet écran.
-            Les détails techniques d'un rejet restent sur l'écran Commandes — ici l'agent lit une
-            phrase métier et sait qui contacter.
-          -->
-          @if (file()?.customerId; as customerId) {
-            <cbs-provisioning-status
-              class="mb-4 block"
-              [customerId]="customerId"
-              appearance="card"
-            ></cbs-provisioning-status>
-          }
-
-          <!--
-            Aucune pièce déposée par un agent : rien sur quoi fonder une approbation. L'alerte vient
-            avant le circuit, et le bouton « Approuver » reste désactivé ; demander un complément ou
-            rejeter restent possibles, c'est précisément la réponse à un dossier vide.
-          -->
-          @if (missingAgentDocument()) {
-            <tas-card class="block mb-4">
-              <div class="p-4 flex flex-wrap items-start justify-between gap-4 border-l-4 border-amber-400 rounded-lg">
-                <div class="flex gap-3 min-w-0">
-                  <tas-icon iconName="feather:alert-triangle" class="text-amber-500 shrink-0 mt-0.5" style="font-size:16px"></tas-icon>
-                  <div>
-                    <p class="text-sm font-medium text-slate-800">Aucune pièce déposée par un agent</p>
-                    <p class="text-xs text-slate-500 mt-1 max-w-prose">
-                      Ce dossier ne peut pas être approuvé tant qu'un agent n'a pas déposé au moins une
-                      pièce du client (pièce d'identité ou selfie).
-                    </p>
-                  </div>
-                </div>
-                @if (canUploadDocuments() && file()?.customerId) {
-                  <button tas-outlined-button color="primary" type="button" (click)="goToUpload()">
-                    <tas-icon iconName="feather:upload" style="font-size:14px"></tas-icon>
-                    Déposer une pièce
-                  </button>
-                }
-              </div>
-            </tas-card>
+              <button tas-outlined-button type="button" (click)="validateManually()">
+                <tas-icon iconName="feather:check-circle" style="font-size:14px"></tas-icon>
+                Valider à la main
+              </button>
+            </section>
           }
 
           @if (isLoadingCircuit()) {
@@ -399,129 +477,175 @@
               <tas-spinner size="10" class="text-primary"></tas-spinner>
             </div>
           } @else if (circuitFailed()) {
-            <tas-card class="block">
-              <div class="p-10 text-center">
-                <p class="text-sm font-medium text-slate-700">
-                  Le circuit de validation n'a pas pu être chargé
-                </p>
-                <p class="text-sm text-slate-500 mt-1">Réessayez dans un instant.</p>
-                <button tas-outlined-button type="button" class="mt-4" (click)="reloadCircuit()">
-                  Réessayer
-                </button>
-              </div>
-            </tas-card>
+            <section class="rounded-2xl bg-white border border-slate-100 shadow-sm p-10 text-center">
+              <p class="text-sm font-medium text-slate-700">Le circuit de validation n'a pas pu être chargé</p>
+              <p class="text-sm text-slate-500 mt-1">Réessayez dans un instant.</p>
+              <button tas-outlined-button type="button" class="mt-4" (click)="reloadCircuit()">Réessayer</button>
+            </section>
           } @else {
-            <!-- Résumé du circuit : trois valeurs, pas une liste -->
-            <tas-card class="block mb-4">
-              <div class="p-4 flex flex-wrap gap-x-8 gap-y-3">
-                <div>
-                  <p class="text-xs font-medium uppercase tracking-wide text-slate-400">
-                    Circuit ouvert
-                  </p>
-                  <p class="text-sm text-slate-800 mt-1">
-                    {{ circuit()?.isStarted ? 'Oui' : 'Pas encore' }}
-                  </p>
-                </div>
-                <div>
-                  <p class="text-xs font-medium uppercase tracking-wide text-slate-400">
-                    Prochain niveau attendu
-                  </p>
-                  <p class="text-sm text-slate-800 mt-1">
-                    {{
-                      circuit()?.nextLevel
-                        ? kycApprovalLevelLabel(circuit()?.nextLevel)
-                        : 'Aucun — circuit terminé'
-                    }}
-                  </p>
-                </div>
-                <div>
-                  <p class="text-xs font-medium uppercase tracking-wide text-slate-400">
-                    Statut du dossier
-                  </p>
-                  <p class="mt-1">
-                    <kyc-status-badge [status]="circuit()?.fileStatus"></kyc-status-badge>
-                  </p>
-                </div>
+            <!-- ═══ Circuit de validation ═══ -->
+            <section class="rounded-2xl bg-white border border-slate-100 shadow-sm p-6">
+              <div class="flex flex-wrap items-baseline justify-between gap-2">
+                <h2 class="text-base font-semibold text-slate-900">Circuit de validation</h2>
+                @if ((circuit()?.steps ?? []).length > 0) {
+                  <p class="text-xs text-slate-500 tabular-nums">{{ circuitProgressLabel() }}</p>
+                }
               </div>
-            </tas-card>
+              @if (!circuit()?.isStarted) {
+                <p class="text-xs text-slate-500 mt-1">
+                  Aperçu calculé d'après le niveau de vigilance : le circuit s'ouvrira à la soumission.
+                </p>
+              }
 
-            @if (circuitRows().length === 0) {
-              <tas-card class="block">
-                <div class="p-10 text-center">
-                  <tas-icon
-                    iconName="feather:git-commit"
-                    class="text-slate-300"
-                    style="font-size:28px"
-                  ></tas-icon>
-                  <p class="text-sm font-medium text-slate-700 mt-2">Aucune étape enregistrée</p>
-                  <p class="text-sm text-slate-500 mt-1">
-                    Le circuit s'ouvrira à la soumission du dossier.
-                  </p>
-                </div>
-              </tas-card>
-            } @else {
-              <tas-table [data]="circuitRows()" identifierField="id" [config]="circuitTableConfig()">
-                <ng-template #header>
-                  <tr>
-                    <th scope="col">Étape</th>
-                    <th scope="col">Niveau</th>
-                    <th scope="col">Décision</th>
-                    <th scope="col">Commentaire</th>
-                    <th scope="col">Date</th>
-                    @if (showCircuitActions()) {
-                      <th scope="col"><span class="sr-only">Actions</span></th>
-                    }
-                  </tr>
-                </ng-template>
-                <ng-template #body let-step>
-                  <tr>
-                    <td class="text-slate-400 tabular-nums">{{ step.position }}</td>
-                    <td class="text-slate-800">
-                      {{ step.levelLabel }}
-                      @if (step.isNext) {
-                        <span class="block text-xs text-primary">En attente de décision</span>
-                      }
-                    </td>
-                    <td>
-                      <tas-tag [severity]="step.decision.severity">
-                        <span class="inline-flex items-center gap-1.5">
-                          <tas-icon
-                            [iconName]="step.decision.icon"
-                            style="font-size:12px"
-                          ></tas-icon>
-                          {{ step.decision.label }}
-                        </span>
-                      </tas-tag>
-                    </td>
-                    <td class="text-slate-600 whitespace-normal">{{ step.comment || '—' }}</td>
-                    <td class="text-slate-600">
-                      {{ step.decidedAt ? (step.decidedAt | date: 'dd/MM/yyyy HH:mm') : '—' }}
-                    </td>
-                    @if (showCircuitActions()) {
-                      <td class="text-right">
-                        @if (step.isNext) {
-                          <div class="flex items-center justify-end gap-1.5">
-                            <button tas-raised-button color="primary" type="button" size="small"
-                              [disabled]="!hasAgentDocument()"
-                              [title]="hasAgentDocument() ? '' : 'Aucune pièce déposée par un agent'"
-                              (click)="decide('approve')">
-                              <tas-icon iconName="feather:check" style="font-size:12px"></tas-icon>
-                              Approuver
-                            </button>
-                            <button tas-outlined-button color="primary" type="button" size="small" (click)="decide('complement')">
-                              Complément
-                            </button>
-                            <button tas-outlined-button color="warn" type="button" size="small" (click)="decide('reject')">
-                              Rejeter
-                            </button>
-                          </div>
+              <ol class="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3">
+                @for (card of circuitCards(); track card.position) {
+                  <li
+                    class="rounded-xl border p-4"
+                    [class.border-primary]="card.state === 'next'"
+                    [class.ring-1]="card.state === 'next'"
+                    [class.ring-primary]="card.state === 'next'"
+                    [class.bg-slate-50]="card.state !== 'next'"
+                    [class.border-slate-100]="card.state !== 'next'"
+                    [attr.aria-current]="card.state === 'next' ? 'step' : null"
+                  >
+                    <div class="flex items-center gap-2">
+                      <span
+                        class="w-6 h-6 rounded-full text-xs font-semibold flex items-center justify-center shrink-0 tabular-nums"
+                        [class.bg-primary]="card.state === 'next'"
+                        [class.text-white]="card.state === 'next'"
+                        [class.bg-green-100]="card.state === 'done'"
+                        [class.text-green-700]="card.state === 'done'"
+                        [class.bg-slate-200]="card.state === 'todo'"
+                        [class.text-slate-600]="card.state === 'todo'"
+                      >
+                        @if (card.state === 'done') {
+                          <tas-icon iconName="feather:check" style="font-size:11px"></tas-icon>
+                        } @else {
+                          {{ card.position }}
                         }
-                      </td>
+                      </span>
+                      <h3 class="text-sm font-semibold text-slate-900">{{ card.label }}</h3>
+                    </div>
+                    <p
+                      class="mt-3 text-sm font-medium"
+                      [class.text-primary]="card.state === 'next'"
+                      [class.text-green-700]="card.severity === 'success'"
+                      [class.text-amber-700]="card.severity === 'warning'"
+                      [class.text-functional-error]="card.severity === 'error'"
+                      [class.text-slate-600]="card.state === 'todo'"
+                    >
+                      {{ card.title }}
+                    </p>
+                    <p class="mt-1 text-xs" [class.text-orange-700]="card.timedOut" [class.text-slate-500]="!card.timedOut">
+                      {{ card.detail }}
+                    </p>
+                    @if (card.comment) {
+                      <p class="mt-2 text-xs text-slate-600 italic">« {{ card.comment }} »</p>
                     }
-                  </tr>
-                </ng-template>
-              </tas-table>
-            }
+                  </li>
+                }
+              </ol>
+            </section>
+
+            <div class="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_22rem] gap-4 items-start">
+              <!-- ═══ Votre décision ═══ -->
+              <kyc-decision-card
+                [kycFileId]="id()"
+                [file]="file()"
+                [circuit]="circuit()"
+                [canApprove]="canApprove()"
+                [hasAgentDocument]="hasAgentDocument()"
+                (decided)="refresh()"
+              ></kyc-decision-card>
+
+              <div class="flex flex-col gap-4">
+                <!-- ═══ Avant de décider ═══ -->
+                <section class="rounded-2xl bg-white border border-slate-100 shadow-sm p-5">
+                  <h2 class="text-sm font-semibold text-slate-900">Avant de décider</h2>
+                  <ul class="mt-4 flex flex-col gap-3 text-sm">
+                    <li class="flex items-center gap-3">
+                      <span
+                        class="w-6 h-6 rounded-full flex items-center justify-center shrink-0"
+                        [class]="decisionChecklist().documents.ok ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'"
+                        aria-hidden="true"
+                      >
+                        <tas-icon [iconName]="decisionChecklist().documents.ok ? 'feather:check' : 'feather:alert-circle'" style="font-size:12px"></tas-icon>
+                      </span>
+                      <span class="flex-1 text-slate-700">{{ decisionChecklist().documents.label }}</span>
+                      @if (decisionChecklist().documents.value; as value) {
+                        <button type="button" class="font-semibold text-primary underline underline-offset-2 tabular-nums" (click)="selectTab('piece')">{{ value }}</button>
+                      } @else if (canUploadDocuments() && file()?.customerId) {
+                        <button type="button" class="font-semibold text-primary underline underline-offset-2" (click)="goToUpload()">Déposer</button>
+                      }
+                    </li>
+                    <li class="flex items-center gap-3">
+                      <span
+                        class="w-6 h-6 rounded-full flex items-center justify-center shrink-0"
+                        [class]="decisionChecklist().duplicate.ok ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'"
+                        aria-hidden="true"
+                      >
+                        <tas-icon [iconName]="decisionChecklist().duplicate.ok ? 'feather:check' : 'feather:copy'" style="font-size:12px"></tas-icon>
+                      </span>
+                      <span class="flex-1 text-slate-700">{{ decisionChecklist().duplicate.label }}</span>
+                    </li>
+                    <li class="flex items-center gap-3">
+                      <span
+                        class="w-6 h-6 rounded-full flex items-center justify-center shrink-0 text-xs font-bold"
+                        [class]="decisionChecklist().score.ok ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'"
+                        aria-hidden="true"
+                      >
+                        @if (decisionChecklist().score.ok) {
+                          <tas-icon iconName="feather:check" style="font-size:12px"></tas-icon>
+                        } @else {
+                          !
+                        }
+                      </span>
+                      <span class="flex-1 text-slate-700">{{ decisionChecklist().score.label }}</span>
+                      <button type="button" class="font-semibold text-primary underline underline-offset-2" (click)="selectTab('score')">
+                        {{ decisionChecklist().score.ok ? 'Voir' : 'Calculer' }}
+                      </button>
+                    </li>
+                    <li class="flex items-start gap-3">
+                      <span class="w-6 h-6 rounded-full bg-slate-100 text-slate-600 text-xs font-bold flex items-center justify-center shrink-0" aria-hidden="true">V</span>
+                      <span class="flex-1 text-slate-700">
+                        {{ decisionChecklist().vigilance.label }}
+                        @if (decisionChecklist().vigilance.hint; as hint) {
+                          <span class="block text-xs text-slate-500 mt-0.5">{{ hint }}</span>
+                        }
+                      </span>
+                    </li>
+                  </ul>
+                </section>
+
+                <!-- ═══ Système bancaire ═══ -->
+                <section class="rounded-2xl bg-white border border-slate-100 shadow-sm p-5">
+                  <div class="flex items-start gap-3">
+                    <span class="w-10 h-10 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center shrink-0" aria-hidden="true">
+                      <tas-icon iconName="feather:server" style="font-size:16px"></tas-icon>
+                    </span>
+                    <div class="min-w-0">
+                      <h2 class="text-sm font-semibold text-slate-900">Système bancaire</h2>
+                      <p class="text-xs text-slate-500 mt-0.5">Création du client après approbation</p>
+                    </div>
+                  </div>
+                  <!--
+                    Annoncé AVANT la décision : si le cœur bancaire ne crée ses clients qu'en lot,
+                    l'agent doit le savoir avant de valider. Ne rend rien quand le CBS répond en direct.
+                  -->
+                  <cbs-batch-notice class="mt-4 block"></cbs-batch-notice>
+                  <div class="mt-4 rounded-xl bg-slate-50 px-4 py-3">
+                    @if (file()?.customerId; as customerId) {
+                      <!-- Se sonde seul tant que l'état peut bouger ; les détails techniques restent sur l'écran Commandes. -->
+                      <cbs-provisioning-status [customerId]="customerId" appearance="inline"></cbs-provisioning-status>
+                    }
+                    <p class="text-xs text-slate-500 mt-2">
+                      Le client est créé automatiquement dans le système bancaire une fois le circuit
+                      entièrement approuvé.
+                    </p>
+                  </div>
+                </section>
+              </div>
+            </div>
           }
         </div>
       }

@@ -21,24 +21,25 @@ import { SideDrawerService } from '@talisoft/ui/side-drawer';
 import { TasSpinner } from '@talisoft/ui/spinner';
 import { TasTable, TableConfig } from '@talisoft/ui/table';
 import { TasTag } from '@talisoft/ui/tag';
-import { DecideKycApprovalRequestLevelEnum, KycApprovalCircuitDto, KycFileDto, UsersApiService } from '@sankore/crm-api';
+import { KycApprovalCircuitDto, KycFileDto, UsersApiService } from '@sankore/crm-api';
 import { BreadcrumbService, PermissionsService } from '@sankore/crm/common';
 import { KycFacadeService } from '../data-access/kyc-facade.service';
 import {
   kycApprovalDecisionMeta,
   kycApprovalLevelLabel,
+  kycChannelMeta,
+  kycConfidenceMeta,
+  kycStatusMeta,
+  kycTierLabel,
   kycVigilanceMeta,
+  kycVigilanceShortLabel,
 } from '../data-access/kyc-referential';
 import { KycDocumentRow, KycHistoryEntry, KycHistoryKind } from '../data-access/kyc.types';
-import { KycStatusBadge } from '../ui/kyc-status-badge';
 import { KycDocumentsPanel } from '../documents/kyc-documents-panel';
 import { KycRemoteInvitationsPanel } from '../remote/kyc-remote-invitations-panel';
 import { KycScorePanel } from '../verification/kyc-score-panel';
-import {
-  KycApprovalDecisionDrawer,
-  KycApprovalDecisionDrawerData,
-  KycDecisionAction,
-} from '../approval/kyc-approval-decision-drawer';
+import { KycDecisionCard } from '../approval/kyc-decision-card';
+import { KycRemoteDecisionBanner } from '../approval/kyc-remote-decision-banner';
 import {
   ManuallyValidateKycFileDrawer,
   ManuallyValidateKycFileDrawerData,
@@ -61,6 +62,27 @@ const TABS: { id: KycDetailTab; label: string }[] = [
   { id: 'validation', label: 'Validation' },
   { id: 'historique', label: 'Historique' },
 ];
+
+type ProgressStepState = 'done' | 'current' | 'todo';
+
+interface ProgressStep {
+  label: string;
+  detail: string;
+  state: ProgressStepState;
+}
+
+/** Ce que l'écran dit de l'avancement, et l'onglet où agir. */
+interface FileProgress {
+  steps: ProgressStep[];
+  message: string;
+  tone: 'default' | 'warning' | 'error' | 'success';
+  action: { label: string; tab: KycDetailTab } | null;
+}
+
+/** Statuts où le palier est accordé : le dossier a passé le circuit. */
+const VALIDATED_STATUSES = ['Simplified', 'Full', 'UnderReview'];
+
+const SHORT_DATE = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'short' });
 
 /** Icône par type d'évènement : la frise doit se lire sans dépendre de la couleur. */
 const HISTORY_ICONS: Record<KycHistoryKind, string> = {
@@ -101,7 +123,8 @@ const HISTORY_ICONS: Record<KycHistoryKind, string> = {
     KycDocumentsPanel,
     KycRemoteInvitationsPanel,
     KycScorePanel,
-    KycStatusBadge,
+    KycDecisionCard,
+    KycRemoteDecisionBanner,
     CbsBatchNoticeComponent,
     CbsProvisioningStatusComponent,
   ],
@@ -190,27 +213,7 @@ export class KycFileDetailPage implements OnInit {
 
   public readonly vigilance = computed(() => kycVigilanceMeta(this.file()?.vigilanceLevel));
 
-  /**
-   * Étapes du circuit, numérotées. `tas-table` identifie ses lignes par un champ : les étapes n'ont
-   * pas d'identifiant au contrat, l'index en tient lieu.
-   */
-  public readonly circuitRows = computed(() =>
-    (this.circuit()?.steps ?? []).map((step, index) => ({
-      id: index,
-      position: index + 1,
-      levelLabel: kycApprovalLevelLabel(step.level),
-      decision: kycApprovalDecisionMeta(step.decision),
-      comment: step.comment ?? null,
-      decidedAt: step.decidedAt ?? null,
-      level: step.level,
-      isNext: !!step.level && step.level === this.circuit()?.nextLevel,
-    })),
-  );
 
-  /** Colonne d'actions seulement quand quelqu'un peut agir : sinon elle resterait vide partout. */
-  public readonly showCircuitActions = computed(
-    () => this.canApprove() && this.circuitRows().some((row) => row.isNext),
-  );
 
   public readonly historyRows = computed(() =>
     this.history().map((entry, index) => ({
@@ -228,12 +231,242 @@ export class KycFileDetailPage implements OnInit {
     })),
   );
 
-  public readonly circuitTableConfig = computed<TableConfig>(() =>
-    this._tableConfig(this.circuitRows().length),
-  );
   public readonly historyTableConfig = computed<TableConfig>(() =>
     this._tableConfig(this.historyRows().length),
   );
+
+  // ——— Synthèse (onglet Identité) ———
+
+  public readonly statusMeta = computed(() => kycStatusMeta(this.file()?.status));
+  public readonly channel = computed(() => kycChannelMeta(this.file()?.channel));
+  public readonly tierLabel = computed(() => kycTierLabel(this.file()?.tier));
+  public readonly vigilanceShort = computed(() => kycVigilanceShortLabel(this.file()?.vigilanceLevel));
+  public readonly documentCount = computed(() => this.documents()?.length ?? null);
+
+  /**
+   * « 2/2 » sur l'onglet Pièces : acceptées sur pièces courantes. Les images remplacées ne comptent
+   * pas, elles ne se décident plus.
+   */
+  public readonly documentBadge = computed(() => {
+    const current = (this.documents() ?? []).filter((d) => d.isCurrentForKind);
+    if (current.length === 0) return null;
+    const accepted = current.filter((d) => d.decision === 'Accepted').length;
+    return { label: `${accepted}/${current.length}`, complete: accepted === current.length };
+  });
+
+  /** Aide « Comment fonctionne la revue des pièces ? », ouverte par défaut. */
+  public readonly showDocumentsHelp = signal(true);
+  public readonly hasScore = computed(() => {
+    const score = this.file()?.confidenceScore;
+    return score !== null && score !== undefined;
+  });
+  public readonly confidence = computed(() => kycConfidenceMeta(this.file()?.confidenceLevel));
+
+  public readonly initials = computed(() => {
+    const name = (this.customerName() ?? '').trim();
+    if (!name) return 'KYC';
+    const parts = name.split(/\s+/);
+    return ((parts[0]?.[0] ?? '') + (parts.length > 1 ? parts[parts.length - 1][0] : parts[0]?.[1] ?? ''))
+      .toUpperCase();
+  });
+
+  /** « il y a 8 jours » : le pipe `dateTimeAgo` rend une date relative (« mardi dernier »), pas une durée. */
+  public readonly openedAgo = computed(() => {
+    const createdAt = this.file()?.createdAt;
+    if (!createdAt) return null;
+    const days = Math.floor((Date.now() - new Date(createdAt).getTime()) / 86_400_000);
+    if (days <= 0) return 'aujourd\'hui';
+    if (days === 1) return 'hier';
+    if (days < 60) return `il y a ${days} jours`;
+    const months = Math.floor(days / 30);
+    return months < 24 ? `il y a ${months} mois` : `il y a ${Math.floor(months / 12)} ans`;
+  });
+
+  /**
+   * Où en est le dossier, en cinq étapes. Déduit du statut, du score et des pièces : aucun champ du
+   * contrat ne le dit à lui seul, et le statut seul confond « pas de pièce » et « pas de score ».
+   */
+  public readonly progress = computed<FileProgress>(() => {
+    const file = this.file();
+    const status = file?.status ?? '';
+    const count = this.documentCount();
+    const validated = VALIDATED_STATUSES.includes(status) || !!file?.validatedAt;
+    const hasScore = this.hasScore();
+    // Pièces pas encore relues : on s'en tient au statut plutôt que d'afficher « aucune pièce ».
+    const hasDocs = count === null ? status !== 'Collecting' : count > 0;
+
+    const done = [true, hasDocs || hasScore || validated, hasScore || validated, validated, validated];
+    const current = done.indexOf(false);
+    const state = (i: number): ProgressStepState =>
+      done[i] ? 'done' : i === current ? 'current' : 'todo';
+
+    const createdAt = file?.createdAt ? SHORT_DATE.format(new Date(file.createdAt)) : '—';
+    const steps: ProgressStep[] = [
+      { label: 'Ouvert', detail: createdAt, state: state(0) },
+      {
+        label: 'Pièces reçues',
+        detail: count === null ? '—' : count === 0 ? 'Aucune pièce' : `${count} document${count > 1 ? 's' : ''}`,
+        state: state(1),
+      },
+      {
+        label: 'Score de confiance',
+        detail: hasScore
+          ? `${file?.confidenceScore} / 100`
+          : status === 'Verifying' ? 'En cours' : 'À calculer',
+        state: state(2),
+      },
+      {
+        label: 'Validation',
+        detail: validated
+          ? 'Décidée'
+          : this.vigilance().requiresCompliance ? 'Avec la conformité' : 'Circuit d\'approbation',
+        state: state(3),
+      },
+      {
+        label: 'Validé',
+        detail: validated
+          ? this.tierLabel() ?? 'Validé'
+          : file?.nextReviewDate ? `Revue le ${this.formatDay(file.nextReviewDate)}` : 'Revue planifiée',
+        state: state(4),
+      },
+    ];
+
+    switch (status) {
+      case 'Rejected':
+        return { steps, tone: 'error', message: 'Le dossier a été rejeté par le circuit de validation.',
+          action: { label: 'Voir l\'historique', tab: 'historique' } };
+      case 'Suspended':
+        return { steps, tone: 'error', message: 'Le dossier est suspendu : aucune décision ne peut être prise.',
+          action: { label: 'Voir l\'historique', tab: 'historique' } };
+      case 'Expired':
+        return { steps, tone: 'warning', message: 'La validité du KYC est échue : une revue est nécessaire.',
+          action: { label: 'Voir l\'historique', tab: 'historique' } };
+      case 'ComplementRequired':
+        return { steps, tone: 'warning', message: 'Un complément a été demandé : le client doit fournir de nouvelles pièces.',
+          action: { label: 'Voir les pièces', tab: 'piece' } };
+      case 'Verifying':
+        return { steps, tone: 'default', message: 'Vérification biométrique en cours : le score arrive à son retour.',
+          action: { label: 'Voir le score', tab: 'score' } };
+    }
+
+    switch (current) {
+      case 1:
+        return { steps, tone: 'default', message: 'Aucune pièce n\'a encore été reçue pour ce dossier.',
+          action: { label: 'Voir les pièces', tab: 'piece' } };
+      case 2:
+        return { steps, tone: 'default', message: 'Il ne manque que le score de confiance avant la validation.',
+          action: { label: 'Calculer le score de confiance', tab: 'score' } };
+      case 3:
+        return { steps, tone: 'default', message: 'Le dossier attend la décision du circuit de validation.',
+          action: { label: 'Ouvrir la validation', tab: 'validation' } };
+      default:
+        return { steps, tone: 'success', message: `Le dossier est validé${this.tierLabel() ? ' : ' + this.tierLabel() : ''}.`,
+          action: null };
+    }
+  });
+
+  public stepBarClass(state: ProgressStepState): string {
+    switch (state) {
+      case 'done':    return 'bg-primary';
+      case 'current': return 'bg-primary/40';
+      default:        return 'bg-slate-200';
+    }
+  }
+
+  // ——— Onglet Validation ———
+
+  /**
+   * Une carte par niveau du circuit, puis la création du client dans le système bancaire, qui suit
+   * l'approbation du dernier niveau. Le contrat ne numérote pas les étapes : l'ordre du tableau fait
+   * foi, c'est celui dans lequel le serveur exige les signatures.
+   */
+  public readonly circuitCards = computed(() => {
+    const circuit = this.circuit();
+    const steps = circuit?.steps ?? [];
+    const status = this.file()?.status ?? circuit?.fileStatus ?? '';
+    const closed = ['Rejected', 'ComplementRequired', 'Suspended'].includes(status);
+    const validated = ['Simplified', 'Full', 'UnderReview'].includes(status);
+
+    const cards = steps.map((step, index) => {
+      const meta = kycApprovalDecisionMeta(step.decision);
+      const decided = !!step.decision && step.decision !== 'Pending';
+      const isNext = !!step.level && step.level === circuit?.nextLevel;
+      const previous = index > 0 ? kycApprovalLevelLabel(steps[index - 1].level) : null;
+
+      let title: string;
+      let detail: string;
+      if (decided) {
+        title = meta.label;
+        detail = step.decidedAt ? `Le ${SHORT_DATE.format(new Date(step.decidedAt))}` : 'Décision enregistrée';
+      } else if (isNext) {
+        title = this.canApprove() ? 'À vous de décider' : 'En attente de décision';
+        detail = this.workflowTimedOut() ? 'Délai dépassé' : 'Décision attendue';
+      } else if (closed) {
+        title = 'Non sollicité';
+        detail = 'Le circuit a été fermé avant';
+      } else {
+        title = 'En attente';
+        detail = previous ? `Après le niveau ${previous}` : 'À l\'ouverture du circuit';
+      }
+
+      return {
+        position: index + 1,
+        label: kycApprovalLevelLabel(step.level),
+        title,
+        detail,
+        state: (decided ? 'done' : isNext ? 'next' : 'todo') as 'done' | 'next' | 'todo',
+        severity: decided ? meta.severity : null,
+        comment: step.comment ?? null,
+        timedOut: isNext && this.workflowTimedOut(),
+      };
+    });
+
+    cards.push({
+      position: steps.length + 1,
+      label: 'Création du client',
+      title: validated ? 'Demandée' : closed ? 'Sans objet' : 'En attente du circuit',
+      detail: 'Système bancaire',
+      state: validated ? 'done' : 'todo',
+      severity: null,
+      comment: null,
+      timedOut: false,
+    });
+    return cards;
+  });
+
+  public readonly circuitProgressLabel = computed(() => {
+    const steps = this.circuit()?.steps ?? [];
+    const decided = steps.filter((s) => !!s.decision && s.decision !== 'Pending').length;
+    return `${decided} décision${decided > 1 ? 's' : ''} sur ${steps.length}`;
+  });
+
+  /** « Avant de décider » : ce qu'un valideur vérifie d'un coup d'œil, avec le lien pour agir. */
+  public readonly decisionChecklist = computed(() => {
+    const file = this.file();
+    const badge = this.documentBadge();
+    const vigilance = this.vigilance();
+    return {
+      documents: {
+        ok: !!badge?.complete,
+        warn: !badge || !badge.complete,
+        label: !badge
+          ? 'Aucune pièce déposée'
+          : badge.complete ? 'Pièces acceptées' : 'Pièces à examiner',
+        value: badge?.label ?? null,
+      },
+      duplicate: { ok: !file?.duplicateSuspected, label: file?.duplicateSuspected ? 'Doublon suspecté' : 'Aucun doublon' },
+      score: {
+        ok: this.hasScore(),
+        label: this.hasScore()
+          ? `Score de confiance : ${file?.confidenceScore} / 100`
+          : 'Score de confiance non calculé',
+      },
+      vigilance: {
+        label: vigilance.label,
+        hint: vigilance.requiresCompliance ? 'Le circuit comporte une étape conformité' : null,
+      },
+    };
+  });
 
   /** Jeton de rechargement : chaque rafraîchissement manuel le fait avancer. */
   private readonly _reloadToken = signal(0);
@@ -264,6 +497,7 @@ export class KycFileDetailPage implements OnInit {
           this.file.set(file);
           this.isLoading.set(false);
           this._loadCustomerName(file.customerId);
+          this._loadDocuments();
         });
     });
   }
@@ -323,35 +557,15 @@ export class KycFileDetailPage implements OnInit {
     this._ensureTabData(this.activeTab());
   }
 
-  /** Décision sur le niveau en attente, puis relecture : statut, circuit et historique ont bougé. */
-  public decide(action: KycDecisionAction): void {
-    const circuit = this.circuit();
-    const level = circuit?.nextLevel;
-    const steps = circuit?.steps ?? [];
-    if (!level || !this.canApprove()) return;
-    if (action === 'approve' && !this.hasAgentDocument()) return;
-
-    const ref = this._sideDrawerService.open(KycApprovalDecisionDrawer, {
-      data: {
-        kycFileId: this.id(),
-        // `nextLevel` est une chaîne libre au DTO de lecture, l'énumération au contrat d'écriture :
-        // mêmes valeurs (Agent, BranchManager, ComplianceOfficer).
-        level: level as DecideKycApprovalRequestLevelEnum,
-        action,
-        isFinalLevel: steps[steps.length - 1]?.level === level,
-      } satisfies KycApprovalDecisionDrawerData,
-      panelClass: 'side-drawer-panel',
-    });
-
-    ref.closed.subscribe((decided) => {
-      if (decided) this.refresh();
-    });
-  }
 
   /** Le dépôt de pièces se fait dans le parcours d'enrôlement du client. */
   public goToUpload(): void {
     const customerId = this.file()?.customerId;
     if (customerId) this._router.navigate(['/kyc/enrolment', customerId]);
+  }
+
+  public reloadDocuments(): void {
+    this._loadDocuments();
   }
 
   public reloadCircuit(): void {
@@ -439,14 +653,22 @@ export class KycFileDetailPage implements OnInit {
     }
   }
 
-  private _loadCircuit(): void {
-    this.isLoadingCircuit.set(true);
-    this.circuitFailed.set(false);
+  /**
+   * Lues dès l'ouverture : le compteur de l'onglet et l'étape « Pièces reçues » en dépendent, et la
+   * validation s'en sert pour griser « Approuver ».
+   */
+  private _loadDocuments(): void {
     this.documents.set(null);
     this._facade
       .listDocuments(this.id())
       .pipe(catchError(() => EMPTY))
       .subscribe((list) => this.documents.set(list.documents));
+  }
+
+  private _loadCircuit(): void {
+    this.isLoadingCircuit.set(true);
+    this.circuitFailed.set(false);
+    this._loadDocuments();
     this._facade
       .getApprovalCircuit(this.id())
       .pipe(

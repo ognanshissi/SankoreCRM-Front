@@ -10,7 +10,6 @@ import {
 import { DatePipe } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { catchError, EMPTY } from 'rxjs';
-import { TasCard } from '@talisoft/ui/card';
 import { Button } from '@talisoft/ui/button';
 import { TasIcon } from '@talisoft/ui/icon';
 import { Severity, TasTag } from '@talisoft/ui/tag';
@@ -80,7 +79,7 @@ interface InvitationRow {
   selector: 'kyc-remote-invitations-panel',
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './kyc-remote-invitations-panel.html',
-  imports: [DatePipe, TasCard, Button, TasIcon, TasTag, TasSpinner],
+  imports: [DatePipe, Button, TasIcon, TasTag, TasSpinner],
 })
 export class KycRemoteInvitationsPanel {
   private readonly _facade = inject(KycFacadeService);
@@ -129,11 +128,6 @@ export class KycRemoteInvitationsPanel {
   public readonly recipient = computed(() => this.data()?.recipientEmailMasked ?? null);
 
   public readonly validityHours = computed(() => this.data()?.linkValidityHours ?? null);
-
-  /** Le libellé du bouton : « Envoyer » la première fois, « Renvoyer » ensuite. */
-  public readonly issueLabel = computed(() =>
-    this.rows().length === 0 ? 'Envoyer le lien' : 'Renvoyer le lien',
-  );
 
   constructor() {
     effect(() => {

@@ -14,10 +14,8 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { catchError, EMPTY } from 'rxjs';
 import { Button } from '@talisoft/ui/button';
-import { TasCard } from '@talisoft/ui/card';
 import { TasIcon } from '@talisoft/ui/icon';
 import { TasSpinner } from '@talisoft/ui/spinner';
-import { TasTable, TableConfig } from '@talisoft/ui/table';
 import { TasTag } from '@talisoft/ui/tag';
 import { SideDrawerService } from '@talisoft/ui/side-drawer';
 import { ConfirmDialogService } from '@talisoft/ui/confirm-dialog';
@@ -43,6 +41,13 @@ import {
  */
 const DOCUMENT_REVEAL_REASON = 'Consultation de la pièce depuis la validation des pièces';
 
+export interface KycDocumentsSummary {
+  tone: 'success' | 'warning' | 'error' | 'neutral';
+  icon: string;
+  title: string;
+  message: string;
+}
+
 /** Les statuts où le serveur accepte un verdict sur une pièce. */
 const REVIEWABLE_STATUSES = new Set(['Verifying', 'Validating']);
 
@@ -66,12 +71,13 @@ const REVIEWABLE_STATUSES = new Set(['Verifying', 'Validating']);
  * déjà remplacée serait une impasse. Le serveur refuse de toute façon avec
  * `KYC_DOCUMENT_NOT_CURRENT` — l'écran évite d'y conduire.
  *
- * La liste passe par `tas-table`, comme toute collection d'entités venue du serveur.
+ * Les pièces sont rendues en grille de cartes, sans `tas-table` : choix explicite du propriétaire
+ * pour cet écran, où chaque pièce porte son aperçu d'image.
  */
 @Component({
   selector: 'kyc-documents-panel',
   templateUrl: './kyc-documents-panel.html',
-  imports: [DatePipe, Button, TasCard, TasIcon, TasSpinner, TasTable, TasTag],
+  imports: [DatePipe, Button, TasIcon, TasSpinner, TasTag],
 })
 export class KycDocumentsPanel {
   private readonly _facade = inject(KycFacadeService);
@@ -85,6 +91,12 @@ export class KycDocumentsPanel {
 
   /** Remonté au parent pour qu'il rafraîchisse le dossier : un refus change son statut. */
   public readonly fileChanged = output<void>();
+
+  /** Une pièce a été décidée : le parent relit la liste pour le compteur de l'onglet. */
+  public readonly documentsChanged = output<void>();
+
+  /** « Passer à la validation » : le parent change d'onglet. */
+  public readonly goToValidation = output<void>();
 
   /** Décider demande `kyc:document:validate`, ouvrir une image `kyc:document:reveal`. */
   public readonly canValidate = this._permissions.can('kyc:document:validate');
@@ -110,19 +122,6 @@ export class KycDocumentsPanel {
 
   public readonly rows = computed(() => this.list()?.documents ?? []);
 
-  public readonly tableConfig = computed<TableConfig>(() => ({
-    // Les pièces antérieures au registre n'ont pas d'identifiant : la référence de stockage est la
-    // seule clé que toutes les lignes partagent, et elle est unique par construction.
-    property: 'storageRef',
-    pagination: {
-      // La collection arrive entière.
-      serverSide: false,
-      pageIndex: 0,
-      pageSize: 10,
-      pageSizeOptions: [10, 25, 50],
-      totalElements: this.rows().length,
-    },
-  }));
 
   /**
    * Vrai quand le dossier est dans un statut où le serveur accepte un verdict. Hors de là, les
@@ -135,6 +134,35 @@ export class KycDocumentsPanel {
   /** Le constat que le panneau remonte : toutes les pièces courantes sont acceptées. */
   public readonly allAccepted = computed(() => this.list()?.allCurrentAccepted ?? false);
   public readonly anyNotReviewed = computed(() => this.list()?.anyNotReviewed ?? false);
+
+
+  /** Le constat en tête d'onglet : ce qui reste à faire sur les pièces, ou qu'il n'y a plus rien. */
+  public readonly summary = computed<KycDocumentsSummary>(() => {
+    const current = this.rows().filter((row) => row.isCurrentForKind);
+    const pending = current.filter((row) => row.decision === 'Pending').length;
+    const refused = current.filter((row) => row.decision === 'Refused').length;
+
+    if (current.length === 0) {
+      return { tone: 'neutral', icon: 'feather:image', title: 'Aucune pièce déposée',
+        message: 'Les pièces se déposent depuis l\'enrôlement, ou par le client via le lien à distance.' };
+    }
+    if (this.allAccepted()) {
+      return { tone: 'success', icon: 'feather:check', title: 'Toutes les pièces sont acceptées',
+        message: 'Le dossier peut maintenant être validé.' };
+    }
+    if (refused > 0) {
+      return { tone: 'error', icon: 'feather:x', title: `${refused} pièce${refused > 1 ? 's' : ''} refusée${refused > 1 ? 's' : ''}`,
+        message: 'Le dossier attend un complément du client avant de pouvoir être validé.' };
+    }
+    if (pending > 0) {
+      return { tone: 'warning', icon: 'feather:clock', title: `${pending} pièce${pending > 1 ? 's' : ''} à examiner`,
+        message: this.isReviewable()
+          ? 'Acceptez ou refusez chaque pièce avant la validation du dossier.'
+          : 'Les pièces ne se décident que sur un dossier en vérification ou en validation.' };
+    }
+    return { tone: 'neutral', icon: 'feather:help-circle', title: 'Pièces sans verdict',
+      message: 'Collectées avant la revue pièce à pièce : le dossier a été décidé dans son ensemble.' };
+  });
 
   constructor() {
     this._destroyRef.onDestroy(() => this._replaceImageUrl(null));
@@ -235,6 +263,7 @@ export class KycDocumentsPanel {
         this._snackbar.success('Pièce acceptée', 'Le dossier reste en attente de sa décision.');
         this.acceptingId.set(null);
         this.reload();
+        this.documentsChanged.emit();
       });
   }
 
@@ -253,6 +282,7 @@ export class KycDocumentsPanel {
     ref.closed.subscribe((refused) => {
       if (!refused) return;
       this.reload();
+      this.documentsChanged.emit();
       // Un refus a changé le statut du dossier : le parent doit le relire.
       this.fileChanged.emit();
     });

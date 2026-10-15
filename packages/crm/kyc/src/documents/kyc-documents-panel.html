@@ -3,195 +3,167 @@
     <tas-spinner size="10" class="text-primary"></tas-spinner>
   </div>
 } @else if (loadError()) {
-  <tas-card class="block">
-    <div class="p-10 text-center">
-      <tas-icon iconName="feather:alert-triangle" class="text-functional-error" style="font-size:28px"></tas-icon>
-      <p class="text-sm font-medium text-slate-700 mt-2">{{ loadError() }}</p>
-      <button tas-outlined-button type="button" class="mt-4" (click)="reload()">
-        <tas-icon iconName="feather:refresh-cw" style="font-size:14px"></tas-icon>
-        Réessayer
-      </button>
-    </div>
-  </tas-card>
+  <div class="rounded-2xl bg-white border border-slate-100 shadow-sm p-10 text-center">
+    <tas-icon iconName="feather:alert-triangle" class="text-functional-error" style="font-size:28px"></tas-icon>
+    <p class="text-sm font-medium text-slate-700 mt-2">{{ loadError() }}</p>
+    <button tas-outlined-button type="button" class="mt-4" (click)="reload()">
+      <tas-icon iconName="feather:refresh-cw" style="font-size:14px"></tas-icon>
+      Réessayer
+    </button>
+  </div>
 } @else {
-  <!-- ═══════════════ Ce que le panneau constate ═══════════════ -->
-  <tas-card class="block mb-4">
-    <div class="p-4">
-      <p class="text-sm text-slate-700">
-        Chaque pièce est acceptée ou refusée séparément.
-        <strong>Accepter ne fait pas avancer le dossier</strong> : la décision de dossier reste un
-        geste distinct. Refuser le renvoie en complément requis avec votre motif.
-      </p>
-
-      <p class="text-xs text-slate-500 mt-2">
-        L'image d'une pièce est lue à la demande, jamais à l'ouverture de l'onglet :
-        <strong>chaque consultation est inscrite au dossier</strong> avec le nom de son auteur.
-      </p>
-
+  <div class="flex flex-col gap-4">
+    <!-- ═══════════════ Ce que le panneau constate ═══════════════ -->
+    <section class="rounded-2xl bg-white border border-slate-100 shadow-sm p-5 flex flex-wrap items-center justify-between gap-4">
+      <div class="flex items-center gap-4 min-w-0">
+        <span
+          class="w-11 h-11 rounded-xl flex items-center justify-center shrink-0"
+          [class.bg-green-50]="summary().tone === 'success'"
+          [class.text-green-700]="summary().tone === 'success'"
+          [class.bg-amber-50]="summary().tone === 'warning'"
+          [class.text-amber-700]="summary().tone === 'warning'"
+          [class.bg-red-50]="summary().tone === 'error'"
+          [class.text-red-700]="summary().tone === 'error'"
+          [class.bg-slate-100]="summary().tone === 'neutral'"
+          [class.text-slate-500]="summary().tone === 'neutral'"
+          aria-hidden="true"
+        >
+          <tas-icon [iconName]="summary().icon" style="font-size:18px"></tas-icon>
+        </span>
+        <div class="min-w-0">
+          <h2 class="text-base font-semibold text-slate-900">{{ summary().title }}</h2>
+          <p class="text-sm text-slate-600 mt-0.5">{{ summary().message }}</p>
+        </div>
+      </div>
       @if (allAccepted()) {
-        <div class="mt-3 flex items-center gap-2 rounded-lg border border-functional-success/30 bg-functional-success/5 p-3">
-          <tas-icon iconName="feather:check-circle" class="text-functional-success shrink-0" style="font-size:14px"></tas-icon>
-          <p class="text-xs text-slate-700">
-            Toutes les pièces courantes sont acceptées. La décision de dossier peut être prise
-            depuis l'onglet « Validation ».
-          </p>
-        </div>
-      } @else if (anyNotReviewed()) {
-        <div class="mt-3 flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 p-3">
-          <tas-icon iconName="feather:help-circle" class="text-slate-400 shrink-0" style="font-size:14px"></tas-icon>
-          <p class="text-xs text-slate-600">
-            Une ou plusieurs pièces ont été collectées avant la validation pièce à pièce : elles
-            n'ont pas de verdict et ne peuvent pas en recevoir. Ce dossier a été décidé dans son
-            ensemble par le circuit de validation.
-          </p>
-        </div>
+        <!-- Accepter les pièces ne valide pas le dossier : on mène à la décision, on ne la prend pas. -->
+        <button
+          type="button"
+          class="h-11 px-5 rounded-full bg-primary text-white text-sm font-semibold inline-flex items-center gap-2 hover:opacity-90 transition-opacity focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+          (click)="goToValidation.emit()"
+        >
+          Passer à la validation
+          <tas-icon iconName="feather:chevron-right" style="font-size:14px"></tas-icon>
+        </button>
       }
+    </section>
 
-      @if (!isReviewable() && canValidate()) {
-        <div class="mt-3 flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 p-3">
-          <tas-icon iconName="feather:lock" class="text-slate-400 shrink-0" style="font-size:14px"></tas-icon>
-          <p class="text-xs text-slate-600">
-            Les pièces ne se décident que sur un dossier en vérification ou en validation.
-          </p>
-        </div>
-      }
-    </div>
-  </tas-card>
+    @if (revealError()) {
+      <p class="text-xs text-functional-error" role="alert">{{ revealError() }}</p>
+    }
 
-  <!-- ═══════════════ Aperçu de l'image ouverte ═══════════════ -->
-  @if (revealedImageUrl(); as url) {
-    <tas-card class="block mb-4">
-      <div class="p-4">
-        <div class="flex items-center justify-between mb-2">
-          <p class="text-xs font-medium uppercase tracking-wide text-slate-400">Image ouverte</p>
-          <button tas-text-button type="button" (click)="hide()">
-            <tas-icon iconName="feather:eye-off" style="font-size:14px"></tas-icon>
-            Masquer
-          </button>
-        </div>
-        <img
-          [src]="url"
-          alt="Image de la pièce ouverte depuis la liste des pièces du dossier"
-          class="w-full max-h-[32rem] rounded-lg border border-slate-200 object-contain"
-        />
-      </div>
-    </tas-card>
-  }
-
-  @if (revealError()) {
-    <p class="text-xs text-functional-error mb-4" role="alert">{{ revealError() }}</p>
-  }
-
-  <!-- ═══════════════ Les pièces ═══════════════ -->
-  @if (rows().length === 0) {
-    <tas-card class="block">
-      <div class="p-10 text-center">
-        <tas-icon iconName="feather:image" class="text-slate-300" style="font-size:28px"></tas-icon>
-        <p class="text-sm font-medium text-slate-700 mt-2">Aucune pièce déposée</p>
-        <p class="text-sm text-slate-500 mt-1">
-          Les pièces se déposent depuis l'écran d'enrôlement.
-        </p>
-      </div>
-    </tas-card>
-  } @else {
-    <tas-table [data]="rows()" identifierField="storageRef" [config]="tableConfig()">
-      <ng-template #header>
-        <tr>
-          <th scope="col">Pièce</th>
-          <th scope="col">Verdict</th>
-          <th scope="col">Déposée le</th>
-          <th scope="col">Taille</th>
-          <th scope="col">Actions</th>
-        </tr>
-      </ng-template>
-
-      <ng-template #body let-doc>
-        <tr [class.opacity-60]="!doc.isCurrentForKind">
-          <!-- ─── Nature, et ce qui disqualifie une image remplacée ─── -->
-          <td class="text-slate-800">
-            {{ kycDocumentKindLabel(doc.kind) }}
-
-            @if (!doc.isCurrentForKind) {
-              <span class="block text-xs text-slate-400">
-                Remplacée par un dépôt plus récent
-              </span>
-            }
-            @if (doc.hasOcrReading) {
-              <span class="block text-xs text-slate-400">Lue par le service biométrique</span>
-            }
-          </td>
-
-          <!-- ─── Verdict ─── -->
-          <td>
-            <tas-tag [severity]="kycDocumentDecisionMeta(doc.decision).severity">
-              {{ kycDocumentDecisionMeta(doc.decision).label }}
-            </tas-tag>
-
-            @if (doc.refusalReason) {
-              <span class="block text-xs text-slate-500 mt-1">{{ doc.refusalReason }}</span>
-            }
-            @if (doc.reviewedAt) {
-              <span class="block text-xs text-slate-400 mt-1">
-                {{ doc.reviewedAt | date: 'dd/MM/yyyy HH:mm' }}
-              </span>
-            }
-          </td>
-
-          <td class="text-slate-600 text-sm">
-            {{ doc.uploadedAt ? (doc.uploadedAt | date: 'dd/MM/yyyy HH:mm') : '—' }}
-          </td>
-
-          <td class="text-slate-600 text-sm tabular-nums">{{ formatSize(doc.sizeBytes) }}</td>
-
-          <!-- ─── Actions ─── -->
-          <td>
-            <div class="flex flex-wrap items-center gap-2">
-              @if (canReveal()) {
-                <button
-                  tas-text-button
-                  type="button"
-                  [disabled]="!!revealingStorageRef()"
-                  (click)="reveal(doc)"
+    <!-- ═══════════════ Les pièces ═══════════════ -->
+    @if (rows().length > 0) {
+      <!-- Une carte par pièce, en grille simple : décision du propriétaire, pas de tas-table ici. -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        @for (doc of rows(); track doc.storageRef) {
+              <article
+                class="h-full rounded-2xl bg-white border border-slate-100 shadow-sm p-3 flex flex-col"
+                [class.opacity-60]="!doc.isCurrentForKind"
+              >
+                <!-- ─── Aperçu : l'image n'est lue qu'à la demande, et la lecture est journalisée ─── -->
+                <div
+                  class="rounded-xl min-h-48 flex flex-col items-center justify-center text-center px-4 py-6 relative overflow-hidden"
+                  [class.bg-slate-100]="doc.kind !== 'Selfie'"
+                  [class.bg-amber-50]="doc.kind === 'Selfie'"
                 >
-                  @if (revealingStorageRef() === doc.storageRef) {
-                    <tas-spinner size="6" class="text-primary"></tas-spinner>
+                  @if (revealedStorageRef() === doc.storageRef && revealedImageUrl(); as url) {
+                    <img
+                      [src]="url"
+                      [alt]="'Image de la pièce : ' + kycDocumentKindLabel(doc.kind)"
+                      class="w-full max-h-96 object-contain rounded-lg"
+                    />
+                    <button
+                      type="button"
+                      class="absolute top-2 right-2 h-8 px-3 rounded-full bg-white/90 shadow-sm text-xs font-semibold text-primary inline-flex items-center gap-1.5"
+                      (click)="hide()"
+                    >
+                      <tas-icon iconName="feather:eye-off" style="font-size:12px"></tas-icon>
+                      Masquer
+                    </button>
+                  } @else if (canReveal()) {
+                    <span class="w-10 h-10 rounded-full bg-white text-primary flex items-center justify-center shadow-sm" aria-hidden="true">
+                      <tas-icon iconName="feather:eye" style="font-size:16px"></tas-icon>
+                    </span>
+                    <button
+                      type="button"
+                      class="mt-3 h-10 px-4 rounded-full bg-white shadow-sm text-sm font-semibold text-primary inline-flex items-center gap-2 disabled:opacity-60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                      [disabled]="!!revealingStorageRef()"
+                      (click)="reveal(doc)"
+                    >
+                      @if (revealingStorageRef() === doc.storageRef) {
+                        <tas-spinner size="4" class="text-primary"></tas-spinner>
+                      }
+                      Afficher l'image
+                    </button>
+                    <p class="mt-3 text-xs text-slate-600">La consultation sera inscrite au dossier à votre nom.</p>
                   } @else {
-                    <tas-icon
-                      [iconName]="revealedStorageRef() === doc.storageRef ? 'feather:eye-off' : 'feather:eye'"
-                      style="font-size:14px"
-                    ></tas-icon>
+                    <tas-icon iconName="feather:lock" class="text-slate-400" style="font-size:18px"></tas-icon>
+                    <p class="mt-2 text-xs text-slate-600">Vous n'avez pas le droit d'ouvrir les images de ce dossier.</p>
                   }
-                  {{ revealedStorageRef() === doc.storageRef ? 'Masquer' : 'Voir' }}
-                </button>
-              }
+                </div>
 
-              @if (canDecide(doc)) {
-                <button
-                  tas-outlined-button
-                  type="button"
-                  [disabled]="acceptingId() === doc.id"
-                  [isLoading]="acceptingId() === doc.id"
-                  (click)="accept(doc)"
-                >
-                  <tas-icon iconName="feather:check" style="font-size:14px"></tas-icon>
-                  Accepter
-                </button>
+                <!-- ─── Nature, verdict, dépôt ─── -->
+                <div class="px-2 pt-3 flex items-start justify-between gap-3">
+                  <h3 class="text-sm font-semibold text-slate-900">{{ kycDocumentKindLabel(doc.kind) }}</h3>
+                  <tas-tag [severity]="kycDocumentDecisionMeta(doc.decision).severity">
+                    {{ kycDocumentDecisionMeta(doc.decision).label }}
+                  </tas-tag>
+                </div>
+                <p class="px-2 mt-1 text-xs text-slate-600 tabular-nums">
+                  Déposée le {{ doc.uploadedAt ? (doc.uploadedAt | date: 'd MMM yyyy, HH:mm') : '—' }}
+                  · {{ formatSize(doc.sizeBytes) }}
+                </p>
+                @if (!doc.isCurrentForKind) {
+                  <p class="px-2 mt-1 text-xs text-slate-500">Remplacée par un dépôt plus récent</p>
+                }
+                @if (doc.hasOcrReading) {
+                  <p class="px-2 mt-1 text-xs text-slate-500">Lue par le service biométrique</p>
+                }
 
-                <button
-                  tas-outlined-button
-                  color="warn"
-                  type="button"
-                  [disabled]="!!acceptingId()"
-                  (click)="refuse(doc)"
-                >
-                  <tas-icon iconName="feather:x" style="font-size:14px"></tas-icon>
-                  Refuser
-                </button>
-              }
-            </div>
-          </td>
-        </tr>
-      </ng-template>
-    </tas-table>
-  }
+                <!-- ─── Décision ─── -->
+                <div class="mx-2 mt-3 pt-3 pb-1 border-t border-slate-100 mt-auto">
+                  @if (canDecide(doc)) {
+                    <div class="flex flex-wrap items-center gap-2">
+                      <button
+                        tas-outlined-button
+                        type="button"
+                        [disabled]="acceptingId() === doc.id"
+                        [isLoading]="acceptingId() === doc.id"
+                        (click)="accept(doc)"
+                      >
+                        <tas-icon iconName="feather:check" style="font-size:14px"></tas-icon>
+                        Accepter
+                      </button>
+                      <button
+                        tas-outlined-button
+                        color="warn"
+                        type="button"
+                        [disabled]="!!acceptingId()"
+                        (click)="refuse(doc)"
+                      >
+                        <tas-icon iconName="feather:x" style="font-size:14px"></tas-icon>
+                        Refuser
+                      </button>
+                    </div>
+                  } @else if (doc.decision === 'Accepted' && doc.reviewedAt) {
+                    <p class="text-xs text-slate-600">Acceptée le {{ doc.reviewedAt | date: 'd MMM yyyy, HH:mm' }}</p>
+                  } @else if (doc.decision === 'Refused') {
+                    <p class="text-xs text-slate-600">
+                      Refusée@if (doc.reviewedAt) { le {{ doc.reviewedAt | date: 'd MMM yyyy, HH:mm' }}}
+                    </p>
+                    @if (doc.refusalReason) {
+                      <p class="text-xs text-functional-error mt-1">{{ doc.refusalReason }}</p>
+                    }
+                  } @else if (doc.decision === 'Pending') {
+                    <p class="text-xs text-slate-500">En attente d'examen</p>
+                  } @else {
+                    <p class="text-xs text-slate-500">Collectée avant la revue pièce à pièce</p>
+                  }
+                </div>
+              </article>
+        }
+      </div>
+    }
+  </div>
 }

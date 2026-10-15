@@ -215,6 +215,59 @@ export function kycVigilanceMeta(level: string | null | undefined): KycVigilance
   );
 }
 
+/** Libellé court du niveau de vigilance, sans le mot « vigilance » : pour un titre de carte. */
+export function kycVigilanceShortLabel(level: string | null | undefined): string {
+  switch (level) {
+    case 'Simplified': return 'Allégée';
+    case 'Standard':   return 'Standard';
+    case 'Enhanced':   return 'Renforcée';
+    default:           return level ?? '—';
+  }
+}
+
+// ——————————————————————————————————————————————————————————————————————
+// Canal d'ouverture et palier
+// ——————————————————————————————————————————————————————————————————————
+
+export interface KycChannelMeta {
+  /** Titre de carte : « En agence ». */
+  label: string;
+  /** Dans une phrase : « Dossier ouvert il y a 3 jours, en agence ». */
+  inline: string;
+  /** Ce que le canal dit de la manière dont les données ont été saisies. */
+  hint: string;
+}
+
+/** Valeurs de `KycChannel` côté serveur, lues en chaîne. */
+const CHANNEL_META: Record<string, KycChannelMeta> = {
+  Agency:            { label: 'En agence',          inline: 'en agence',                  hint: 'Dossier saisi par un agent' },
+  MobileAgent:       { label: 'Agent mobile',       inline: 'par un agent mobile',        hint: 'Dossier saisi sur le terrain' },
+  Web:               { label: 'En ligne',           inline: 'en ligne',                   hint: 'Ouvert depuis le parcours web' },
+  Import:            { label: 'Import',             inline: 'par import',                 hint: 'Repris d\'un fichier ou d\'un autre système' },
+  LeadConversion:    { label: 'Conversion de lead', inline: 'à la conversion d\'un lead', hint: 'Ouvert quand le lead est devenu client' },
+  RemoteSelfService: { label: 'À distance',         inline: 'à distance',                 hint: 'Pièces déposées par le client lui-même' },
+};
+
+export function kycChannelMeta(channel: string | null | undefined): KycChannelMeta {
+  return (
+    CHANNEL_META[channel ?? ''] ?? {
+      label: channel || '—',
+      inline: channel ? `canal ${channel}` : '',
+      hint: 'Canal d\'ouverture du dossier',
+    }
+  );
+}
+
+/** Palier accordé à la validation ; `None` ou vide tant que le dossier n'est pas validé. */
+export function kycTierLabel(tier: string | null | undefined): string | null {
+  switch (tier) {
+    case 'Simplified': return 'KYC simplifié';
+    case 'Full':       return 'KYC complet';
+    case 'None': case '': case null: case undefined: return null;
+    default:           return tier;
+  }
+}
+
 /**
  * Entiers attendus par `CreateKycFileRequest.vigilanceLevel`. L'ordre est déduit de l'énumération
  * (`NUMBER_0..NUMBER_2`), le contrat ne le documente pas — **à confirmer côté backend** avant de
