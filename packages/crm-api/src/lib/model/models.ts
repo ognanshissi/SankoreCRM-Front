@@ -252,6 +252,7 @@ export * from './integration-reference-dto.interface';
 export * from './internal-settings.interface';
 export * from './invitation-sent-dto.interface';
 export * from './issue-credential-request.interface';
+export * from './issue-kyc-remote-invitation-request.interface';
 export * from './issue-kyc-remote-invitation-response.interface';
 export * from './kyc-approval-circuit-dto.interface';
 export * from './kyc-approval-step-dto.interface';

@@ -325,6 +325,7 @@ model/integration-reference-dto.interface.ts
 model/internal-settings.interface.ts
 model/invitation-sent-dto.interface.ts
 model/issue-credential-request.interface.ts
+model/issue-kyc-remote-invitation-request.interface.ts
 model/issue-kyc-remote-invitation-response.interface.ts
 model/kyc-approval-circuit-dto.interface.ts
 model/kyc-approval-step-dto.interface.ts

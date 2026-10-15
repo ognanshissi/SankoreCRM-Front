@@ -105,6 +105,7 @@
                 <div class="flex items-center gap-2 flex-wrap">
                   <tas-tag [severity]="link.statusSeverity">{{ link.statusLabel }}</tas-tag>
                   <span class="text-xs text-slate-500">{{ link.purposeLabel }}</span>
+                  <span class="text-xs text-slate-400">· par {{ link.channelLabel }}</span>
                   @if (link.isSystemIssued) {
                     <span class="text-xs text-slate-400">· envoyé à la conversion</span>
                   } @else {
@@ -190,10 +191,29 @@
                   <div class="flex items-center gap-2 flex-wrap">
                     <tas-tag [severity]="link.statusSeverity">{{ link.statusLabel }}</tas-tag>
                     <span class="text-xs text-slate-500">{{ link.purposeLabel }}</span>
+                    <span class="text-xs text-slate-400">· par {{ link.channelLabel }}</span>
                     <span class="text-xs text-slate-400 tabular-nums">
                       {{ link.createdAt ? (link.createdAt | date: 'dd/MM/yyyy') : '' }}
                     </span>
                   </div>
+
+                  <!--
+                    Quand il est parti, et quand il a cessé de valoir quelque chose. La liste ne
+                    portait que la date de création : un agent voyait « Révoqué » sans savoir si
+                    le client avait eu le temps de s'en servir, ce qui est précisément la question
+                    qu'on se pose en rappelant quelqu'un.
+                  -->
+                  <div class="flex items-center gap-3 flex-wrap text-xs text-slate-400 tabular-nums">
+                    @if (link.sentAt) {
+                      <span>Envoyé le {{ link.sentAt | date: 'dd/MM/yyyy à HH:mm' }}</span>
+                    }
+                    @if (link.revokedAt) {
+                      <span>Remplacé le {{ link.revokedAt | date: 'dd/MM/yyyy à HH:mm' }}</span>
+                    } @else if (link.expiresAt) {
+                      <span>Expiré le {{ link.expiresAt | date: 'dd/MM/yyyy à HH:mm' }}</span>
+                    }
+                  </div>
+
                   @if (link.revokeReason) {
                     <p class="text-xs text-slate-600">{{ link.revokeReason }}</p>
                   }

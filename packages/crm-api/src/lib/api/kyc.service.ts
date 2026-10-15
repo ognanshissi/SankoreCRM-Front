@@ -33,6 +33,8 @@ import { DecideKycApprovalRequest } from '../model/decide-kyc-approval-request.i
 // @ts-ignore
 import { DecideKycApprovalResponse } from '../model/decide-kyc-approval-response.interface';
 // @ts-ignore
+import { IssueKycRemoteInvitationRequest } from '../model/issue-kyc-remote-invitation-request.interface';
+// @ts-ignore
 import { IssueKycRemoteInvitationResponse } from '../model/issue-kyc-remote-invitation-response.interface';
 // @ts-ignore
 import { KycApprovalCircuitDto } from '../model/kyc-approval-circuit-dto.interface';
@@ -944,15 +946,16 @@ export class KYCApiService {
 
     /**
      * Send or re-send the remote-collection link of a KYC file
-     * Revokes the link currently in force, if any, and issues a new one — at most one link into a file is ever live. The email goes out immediately (unlike the one the conversion schedules, which waits for the welcome message to land first). Refused with KYC_REMOTE_INVITATION_NO_EMAIL, KYC_REMOTE_INVITATION_PRODUCT_NOT_ELIGIBLE or KYC_REMOTE_INVITATION_FILE_NOT_COLLECTING, and with KYC_FILE_NOT_FOUND for a file outside the caller\&#39;s agency perimeter — never 403, which would confirm the file exists. Requires permission: kyc:remote-invite.
+     * Revokes the link currently in force, if any, and issues a new one — at most one link into a file is ever live. The email goes out immediately (unlike the one the conversion schedules, which waits for the welcome message to land first). The optional body chooses the channel: &#x60;Email&#x60; (the default, and what the conversion always uses) or &#x60;Sms&#x60;. The refusal is the one that applies to the CHOSEN channel — KYC_REMOTE_INVITATION_NO_EMAIL or KYC_REMOTE_INVITATION_NO_PHONE / KYC_REMOTE_INVITATION_SMS_UNAVAILABLE — plus KYC_REMOTE_INVITATION_PRODUCT_NOT_ELIGIBLE and KYC_REMOTE_INVITATION_FILE_NOT_COLLECTING, which close both. KYC_FILE_NOT_FOUND for a file outside the caller\&#39;s agency perimeter — never 403, which would confirm the file exists. Requires permission: kyc:remote-invite.
      * @param kycFileId 
+     * @param issueKycRemoteInvitationRequest 
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      */
-    public issueKycRemoteInvitation(kycFileId: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<IssueKycRemoteInvitationResponse>;
-    public issueKycRemoteInvitation(kycFileId: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<IssueKycRemoteInvitationResponse>>;
-    public issueKycRemoteInvitation(kycFileId: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<IssueKycRemoteInvitationResponse>>;
-    public issueKycRemoteInvitation(kycFileId: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
+    public issueKycRemoteInvitation(kycFileId: string, issueKycRemoteInvitationRequest?: IssueKycRemoteInvitationRequest, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<IssueKycRemoteInvitationResponse>;
+    public issueKycRemoteInvitation(kycFileId: string, issueKycRemoteInvitationRequest?: IssueKycRemoteInvitationRequest, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<IssueKycRemoteInvitationResponse>>;
+    public issueKycRemoteInvitation(kycFileId: string, issueKycRemoteInvitationRequest?: IssueKycRemoteInvitationRequest, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<IssueKycRemoteInvitationResponse>>;
+    public issueKycRemoteInvitation(kycFileId: string, issueKycRemoteInvitationRequest?: IssueKycRemoteInvitationRequest, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
         if (kycFileId === null || kycFileId === undefined) {
             throw new Error('Required parameter kycFileId was null or undefined when calling issueKycRemoteInvitation.');
         }
@@ -984,6 +987,15 @@ export class KYCApiService {
         }
 
 
+        // to determine the Content-Type header
+        const consumes: string[] = [
+            'application/json'
+        ];
+        const httpContentTypeSelected: string | undefined = this.configuration.selectHeaderContentType(consumes);
+        if (httpContentTypeSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Content-Type', httpContentTypeSelected);
+        }
+
         let responseType_: 'text' | 'json' | 'blob' = 'json';
         if (localVarHttpHeaderAcceptSelected) {
             if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
@@ -999,6 +1011,7 @@ export class KYCApiService {
         return this.httpClient.request<IssueKycRemoteInvitationResponse>('post', `${this.configuration.basePath}${localVarPath}`,
             {
                 context: localVarHttpContext,
+                body: issueKycRemoteInvitationRequest,
                 responseType: <any>responseType_,
                 withCredentials: this.configuration.withCredentials,
                 headers: localVarHeaders,
@@ -1258,7 +1271,7 @@ export class KYCApiService {
 
     /**
      * The remote-collection links issued for a KYC file, and their progress
-     * Carries no token and no hash: there is deliberately no way to learn what a link was. &#x60;unavailableReason&#x60; says why no new link can be issued — KYC_REMOTE_INVITATION_NO_EMAIL, KYC_REMOTE_INVITATION_PRODUCT_NOT_ELIGIBLE or KYC_REMOTE_INVITATION_FILE_NOT_COLLECTING — and is re-evaluated on every read, so it disappears as soon as the cause is fixed. Requires permission: kyc:read.
+     * Carries no token and no hash: there is deliberately no way to learn what a link was. &#x60;canIssueByEmail&#x60; / &#x60;canIssueBySms&#x60; say which channels are open and &#x60;unavailableReason&#x60; / &#x60;unavailableReasonSms&#x60; say why each is not — KYC_REMOTE_INVITATION_NO_EMAIL, KYC_REMOTE_INVITATION_NO_PHONE, KYC_REMOTE_INVITATION_SMS_UNAVAILABLE, KYC_REMOTE_INVITATION_PRODUCT_NOT_ELIGIBLE or KYC_REMOTE_INVITATION_FILE_NOT_COLLECTING. All are re-evaluated on every read, so they disappear as soon as the cause is fixed. The masked recipient is returned only for a channel that is actually open. Requires permission: kyc:read.
      * @param kycFileId 
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.

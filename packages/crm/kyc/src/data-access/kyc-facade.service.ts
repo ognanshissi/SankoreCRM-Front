@@ -8,6 +8,7 @@ import {
   DecideKycApprovalRequestDecisionEnum,
   DecideKycApprovalRequestLevelEnum,
   DecideKycApprovalResponse,
+  IssueKycRemoteInvitationRequestChannelEnum,
   IssueKycRemoteInvitationResponse,
   KYCApiService,
   KycFileListPage,
@@ -210,8 +211,14 @@ export class KycFacadeService {
    * par dossier, pour qu'un lien intercepté plus tôt ne vaille plus rien. L'email part tout de
    * suite, contrairement à celui de la conversion qui attend l'email de bienvenue.
    */
-  public issueRemoteInvitation(kycFileId: string): Observable<IssueKycRemoteInvitationResponse> {
-    return this._kycApi.issueKycRemoteInvitation(kycFileId);
+  // Le canal est explicite jusqu'ici : le serveur retombe sur l'email quand le corps est absent,
+  // mais laisser ce défaut traverser l'écran ferait partir un email là où l'agent a choisi un SMS
+  // sans que rien ne le signale.
+  public issueRemoteInvitation(
+    kycFileId: string,
+    channel: IssueKycRemoteInvitationRequestChannelEnum,
+  ): Observable<IssueKycRemoteInvitationResponse> {
+    return this._kycApi.issueKycRemoteInvitation(kycFileId, { channel });
   }
 
   /**

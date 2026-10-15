@@ -22,10 +22,15 @@ import { KycRemoteInvitationDto, KycRemoteInvitationListDto } from '@sankore/crm
 import { PermissionsService } from '@sankore/crm/common';
 import { KycFacadeService } from '../data-access/kyc-facade.service';
 import {
+  kycRemoteChannelLabel,
   kycRemoteInvitationPurposeLabel,
   kycRemoteInvitationStatusMeta,
   kycRemoteUnavailableLabel,
 } from '../data-access/kyc-referential';
+import {
+  SendKycRemoteInvitationDrawer,
+  SendKycRemoteInvitationDrawerData,
+} from './send-kyc-remote-invitation-drawer';
 import {
   RevokeKycRemoteInvitationDrawer,
   RevokeKycRemoteInvitationDrawerData,
@@ -48,6 +53,8 @@ interface InvitationRow {
   revokeReason: string | null;
   lockedAt: string | null;
   failedAttempts: number;
+  /** Par quel canal ce lien est parti — « Email » ou « SMS ». */
+  channelLabel: string;
   isSystemIssued: boolean;
   isActive: boolean;
 }
@@ -149,49 +156,40 @@ export class KycRemoteInvitationsPanel {
    * client, et le serveur révoque au passage le lien que ce client détient peut-être déjà. Un
    * agent doit voir où cela part avant de cliquer.
    */
+  /**
+   * Ouvre le drawer d'envoi.
+   *
+   * <b>Un drawer et non une confirmation</b> depuis que le canal se choisit : la boîte de dialogue
+   * du kit ne prend qu'un message, et un choix ne tient pas dans une chaîne. Tout ce qu'elle disait
+   * — la destination masquée, la durée, et la révocation du lien précédent — est repris là-bas,
+   * avec en plus la raison du canal fermé quand il y en a un.
+   */
   public issue(): void {
     const fileId = this.kycFileId();
     if (!fileId || !this.canIssue() || this.isIssuing()) return;
 
-    const recipient = this.recipient();
-    const hours = this.validityHours();
+    const data = this.data();
 
-    this._confirm.confirm({
-      title: this.rows().length === 0 ? 'Envoyer le lien' : 'Renvoyer le lien',
-      message:
-        `Un lien à usage unique sera envoyé à ${recipient ?? "l'adresse enregistrée"}`
-        + (hours ? `, valable ${hours} heures.` : '.')
-        + (this.current() ? ' Le lien précédent sera immédiatement révoqué.' : ''),
-      closable: true,
-      icon: 'feather:send',
-      acceptButtonProps: { label: 'Envoyer', theme: 'primary' },
-      rejectButtonProps: { label: 'Annuler', theme: 'primary' },
-      accept: () => this._issue(fileId),
+    const ref = this._drawer.open(SendKycRemoteInvitationDrawer, {
+      data: {
+        kycFileId: fileId,
+        hasActiveLink: this.current() !== null,
+        canSendByEmail: data?.canIssueByEmail === true,
+        canSendBySms: data?.canIssueBySms === true,
+        emailUnavailableReason: data?.unavailableReason ?? null,
+        smsUnavailableReason: data?.unavailableReasonSms ?? null,
+        recipientEmailMasked: data?.recipientEmailMasked ?? null,
+        recipientPhoneMasked: data?.recipientPhoneMasked ?? null,
+        linkValidityHours: data?.linkValidityHours ?? null,
+      } satisfies SendKycRemoteInvitationDrawerData,
+      panelClass: 'side-drawer-panel',
     });
-  }
 
-  private _issue(fileId: string): void {
-    this.isIssuing.set(true);
-
-    this._facade
-      .issueRemoteInvitation(fileId)
-      .pipe(
-        catchError((error: HttpErrorResponse) => {
-          this.isIssuing.set(false);
-          this._snackbar.error('Erreur', issueErrorMessage(error));
-          return EMPTY;
-        }),
-      )
-      .subscribe(() => {
-        this.isIssuing.set(false);
-        this._snackbar.success(
-          'Lien envoyé',
-          "Le client recevra l'email dans les prochaines minutes.",
-        );
-        // Le statut, les dates et le motif viennent du serveur : on relit plutôt que de deviner
-        // ce qu'il a retenu.
-        this._load(fileId);
-      });
+    // Le statut, les dates et le canal viennent du serveur : on relit plutôt que de deviner ce
+    // qu'il a retenu.
+    ref.closed.subscribe((sent) => {
+      if (sent) this._load(fileId);
+    });
   }
 
   /** Révoque un lien. Le motif est saisi dans un drawer — il est obligatoire côté serveur. */
@@ -232,6 +230,7 @@ export class KycRemoteInvitationsPanel {
       revokeReason: invitation.revokeReason?.trim() || null,
       lockedAt: invitation.lockedAt ?? null,
       failedAttempts: invitation.failedAttempts ?? 0,
+      channelLabel: kycRemoteChannelLabel(invitation.channel),
       isSystemIssued: invitation.isSystemIssued === true,
       isActive: invitation.isActive === true,
     };

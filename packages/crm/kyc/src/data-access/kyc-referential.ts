@@ -462,14 +462,31 @@ export function kycRemoteInvitationPurposeLabel(purpose: string | null | undefin
  * après qu'on en a saisi un.
  */
 const REMOTE_INVITATION_UNAVAILABLE_LABELS: Record<string, string> = {
+  // Ne dit plus « ajoutez une adresse » comme si c'était la seule issue : depuis que le SMS
+  // existe, un client sans email reste joignable, et le message doit le laisser voir.
   KYC_REMOTE_INVITATION_NO_EMAIL:
-    "Ce client n'a pas d'adresse email : ajoutez-en une sur sa fiche pour pouvoir lui envoyer un lien.",
+    "Ce client n'a pas d'adresse email. Ajoutez-en une sur sa fiche, ou envoyez le lien par SMS.",
+  KYC_REMOTE_INVITATION_NO_PHONE:
+    "Ce client n'a pas de numéro de téléphone. Ajoutez-en un sur sa fiche, ou envoyez le lien par email.",
+  KYC_REMOTE_INVITATION_SMS_UNAVAILABLE:
+    "L'envoi par SMS n'est pas configuré pour votre établissement. Un administrateur peut l'activer dans les paramètres de notification.",
   KYC_REMOTE_INVITATION_PRODUCT_NOT_ELIGIBLE:
     "Le produit souscrit n'autorise pas le dépôt des pièces à distance. Un administrateur peut l'activer sur la fiche du produit.",
   KYC_REMOTE_INVITATION_FILE_NOT_COLLECTING:
     "Ce dossier n'est plus en collecte : la vérification ou la validation est en cours.",
   KYC_FILE_NOT_FOUND: "Ce dossier n'est pas accessible.",
 };
+
+/**
+ * Le nom du canal, pour l'historique et pour le choix d'envoi.
+ *
+ * Un canal inconnu est rendu tel quel plutôt que masqué : la valeur vient du serveur, et la
+ * cacher ferait lire « envoyé » sans dire par quoi.
+ */
+export function kycRemoteChannelLabel(channel: string | null | undefined): string {
+  if (!channel) return 'Email';
+  return channel === 'Sms' ? 'SMS' : channel === 'Email' ? 'Email' : channel;
+}
 
 export function kycRemoteUnavailableLabel(code: string | null | undefined): string {
   if (!code) return '';

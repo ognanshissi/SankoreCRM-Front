@@ -18,5 +18,9 @@ export interface KycRemoteInvitationListDto {
     unavailableReason?: string | null;
     recipientEmailMasked?: string | null;
     linkValidityHours?: number | null;
+    canIssueByEmail?: boolean;
+    canIssueBySms?: boolean;
+    unavailableReasonSms?: string | null;
+    recipientPhoneMasked?: string | null;
 }
 

@@ -27,5 +27,6 @@ export interface KycRemoteInvitationDto {
     lockedAt?: string | null;
     isSystemIssued?: boolean;
     isActive?: boolean;
+    channel?: string | null;
 }
 
