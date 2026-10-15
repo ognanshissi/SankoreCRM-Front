@@ -509,6 +509,8 @@ model/remove-group-member-result.interface.ts
 model/remove-household-member-result.interface.ts
 model/replay-integration-command-result.interface.ts
 model/report-suspicious-login-request.interface.ts
+model/reprocess-ingestion-request.interface.ts
+model/reprocess-ingestion-result.interface.ts
 model/request-client-export-request.interface.ts
 model/request-client-export-result.interface.ts
 model/request-client-merge-request.interface.ts

@@ -319,6 +319,8 @@ export class ScriptVerifier implements OnInit, OnDestroy {
       // Le rejeu se pilote depuis l'onglet « Réceptions », qui suit son état.
       canReplay: false,
       isScript: true,
+    }).closed.subscribe((result) => {
+      if (result === 'reprocessed') this.refreshTestLeads();
     });
   }
 

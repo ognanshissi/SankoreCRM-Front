@@ -5439,6 +5439,53 @@
         }
       }
     },
+    "/api/v1/leads/ingestions/{id}/reprocess": {
+      "post": {
+        "tags": [
+          "Ingestions"
+        ],
+        "operationId": "ReprocessIngestion",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReprocessIngestionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReprocessIngestionResult"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "422": {
+            "description": "Unprocessable Entity"
+          }
+        }
+      }
+    },
     "/integration/webhooks/{connectionId}": {
       "post": {
         "tags": [
@@ -38633,6 +38680,39 @@
           "comment": {
             "type": "string",
             "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ReprocessIngestionRequest": {
+        "type": "object",
+        "properties": {
+          "fieldLinks": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ReprocessIngestionResult": {
+        "type": "object",
+        "properties": {
+          "leadId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "enum": [
+              "Accepted",
+              "Rejected",
+              "Duplicate",
+              "Failed"
+            ],
+            "type": "string",
+            "description": "One of: Accepted, Rejected, Duplicate, Failed"
           }
         },
         "additionalProperties": false

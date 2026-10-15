@@ -435,6 +435,8 @@ export * from './remove-group-member-result.interface';
 export * from './remove-household-member-result.interface';
 export * from './replay-integration-command-result.interface';
 export * from './report-suspicious-login-request.interface';
+export * from './reprocess-ingestion-request.interface';
+export * from './reprocess-ingestion-result.interface';
 export * from './request-client-export-request.interface';
 export * from './request-client-export-result.interface';
 export * from './request-client-merge-request.interface';

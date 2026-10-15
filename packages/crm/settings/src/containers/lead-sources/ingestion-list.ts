@@ -358,6 +358,7 @@ export class IngestionList implements OnInit {
       isScript: this.isScript(),
     }).closed.subscribe((result) => {
       if (result === 'replay') this.replay(ing);
+      else if (result === 'reprocessed') this._load();
     });
   }
 
