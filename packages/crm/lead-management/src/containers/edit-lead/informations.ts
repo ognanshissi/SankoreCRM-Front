@@ -25,6 +25,7 @@ import {
 } from '@sankore/crm-api';
 import { LeadEditContext } from './lead-edit-context';
 import { LeadComplianceStore } from './lead-compliance-store';
+import { interestedProductLabel } from '../../components/interested-product';
 import { ConvertedLeadNotice } from './converted-lead-notice';
 import {
   AuthenticationService,
@@ -222,6 +223,19 @@ function intentLabel(level: string | null | undefined): string {
         <tas-card>
           <div class="p-4">
             <p class="text-xs font-semibold text-slate-400 mb-3">Informations commerciales</p>
+            <div class="mb-4 flex items-center gap-3 rounded-lg border border-blue-100 bg-blue-50 px-3 py-2.5">
+              <div class="w-9 h-9 rounded-full bg-white flex items-center justify-center shrink-0">
+                <tas-icon iconName="feather:package" class="text-blue-600" style="font-size:16px"></tas-icon>
+              </div>
+              <div class="min-w-0">
+                <p class="text-xs text-blue-700/80">Produit d'intérêt</p>
+                @if (productLabel(); as product) {
+                  <p class="text-base font-semibold text-blue-900 truncate">{{ product }}</p>
+                } @else {
+                  <p class="text-sm font-medium text-slate-500">Non précisé</p>
+                }
+              </div>
+            </div>
             <div class="grid grid-cols-2 gap-x-6 gap-y-4">
               <div>
                 <p class="text-xs text-slate-400 mb-1">Source</p>
@@ -231,12 +245,6 @@ function intentLabel(level: string | null | undefined): string {
                 <p class="text-xs text-slate-400 mb-1">Étape pipeline</p>
                 <p class="text-sm font-medium text-slate-800">{{ pipelineLabel(lead()!.pipelineStage) }}</p>
               </div>
-              @if (lead()!.interestedProduct) {
-                <div>
-                  <p class="text-xs text-slate-400 mb-1">Produit d'intérêt</p>
-                  <p class="text-sm font-medium text-slate-800">{{ lead()!.interestedProduct }}</p>
-                </div>
-              }
               @if (lead()!.desiredAmount) {
                 <div>
                   <p class="text-xs text-slate-400 mb-1">Montant souhaité</p>
@@ -445,6 +453,7 @@ export class LeadInformationsPage {
 
   public isLoading = signal(true);
   public lead = signal<LeadDto | null>(null);
+  public readonly productLabel = computed(() => interestedProductLabel(this.lead()?.interestedProduct));
   public tags = signal<TagDto[]>([]);
   public newTag = signal('');
   public showTagInput = signal(false);

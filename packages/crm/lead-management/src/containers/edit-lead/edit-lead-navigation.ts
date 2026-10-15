@@ -24,6 +24,7 @@ import { Menu, MenuItem, TasMenuTrigger } from '@talisoft/ui/menu';
 import { catchError, EMPTY, exhaustMap, finalize } from 'rxjs';
 import { LeadEditContext } from './lead-edit-context';
 import { LeadComplianceStore } from './lead-compliance-store';
+import { interestedProductLabel } from '../../components/interested-product';
 
 interface LeadMenuItem {
   label: string;
@@ -136,6 +137,26 @@ function parseFactors(factorsJson: string | null | undefined): ScoreFactor[] {
             <h1 class="text-lg font-semibold text-slate-900 truncate">
               {{ displayName() }}
             </h1>
+            <!-- Le produit demandé est ce qui oriente tout le traitement du lead : il doit se
+                 lire avec le nom, pas au milieu des informations commerciales. -->
+            @if (lead(); as l) {
+              <div class="mt-1 flex items-center gap-2">
+                @if (productLabel(); as product) {
+                  <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-blue-50 text-blue-700 text-sm font-semibold">
+                    <tas-icon iconName="feather:package" style="font-size:13px"></tas-icon>
+                    {{ product }}
+                  </span>
+                } @else {
+                  <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-100 text-slate-500 text-xs font-medium">
+                    <tas-icon iconName="feather:package" style="font-size:12px"></tas-icon>
+                    Produit d'intérêt non précisé
+                  </span>
+                  @if (canUpdate() && !isConverted()) {
+                    <button tas-text-button type="button" class="text-xs" (click)="openEditInfoDrawer()">Préciser</button>
+                  }
+                }
+              </div>
+            }
           }
         </div>
         @if (!isLoading() && lead()) {
@@ -483,6 +504,7 @@ export class EditLeadNavigation implements OnDestroy {
   public lead = signal<LeadDto | null>(null);
   /** Lu par le template : un lead converti n'offre plus d'action d'écriture. */
   public readonly isConverted = computed(() => this.lead()?.status === 'Converted');
+  public readonly productLabel = computed(() => interestedProductLabel(this.lead()?.interestedProduct));
 
   /**
    * BNF-F-08 : « Convertir » n'est actif que si l'API l'autorise. La complétude *indisponible*

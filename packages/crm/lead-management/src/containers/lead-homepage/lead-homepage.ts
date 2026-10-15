@@ -36,6 +36,7 @@ import { Menu, MenuItem, TasMenuTrigger } from '@talisoft/ui/menu';
 import { CreateLeadComponent } from '../create-lead/create-lead';
 import { ImportLeadsComponent } from '../import-leads/import-leads';
 import { SystemCaptureDrawer } from './system-capture-drawer';
+import { interestedProductLabel } from '../../components/interested-product';
 import { CreateTaskDrawer } from '@sankore/crm/tasks';
 import { Severity, TasTag } from '@talisoft/ui/tag';
 import { AuthenticationService, PermissionsService } from '@sankore/crm/common';
@@ -549,6 +550,15 @@ export class LeadHomepage implements OnInit {
    * sinon le canal d'entrée. Les deux coexistent sur `LeadDto`, et afficher le seul canal revenait
    * à montrer « Web » pour trois campagnes différentes.
    */
+  public productLabel(lead: LeadDto): string | null {
+    return interestedProductLabel(lead.interestedProduct);
+  }
+
+  /** Libellé d'une valeur du filtre ; « Unknown » s'y lit « Non précisé ». */
+  public productValueLabel(value: string): string {
+    return interestedProductLabel(value) ?? 'Non précisé';
+  }
+
   public leadSourceLabel(lead: LeadDto): string {
     const configured = lead.leadSourceLabel?.trim() || lead.leadSourceCode?.trim();
     if (configured) return configured;

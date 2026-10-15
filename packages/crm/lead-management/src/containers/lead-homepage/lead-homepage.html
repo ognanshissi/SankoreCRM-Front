@@ -80,13 +80,13 @@
 <div class="flex flex-wrap items-center gap-2 mb-4">
   <button type="button" class="px-3 py-1 rounded-full border border-slate-200 bg-white text-xs text-slate-700 hover:bg-slate-50"
     TasMenuTrigger [panel]="productMenu">
-    Produit : {{ filterProduct() || 'tous' }}
+    Produit : {{ filterProduct() ? productValueLabel(filterProduct()) : 'tous' }}
   </button>
   <ng-template #productMenu>
     <tas-menu>
       <tas-menu-item><button type="button" class="w-full text-left" (click)="setProductFilter('')">Tous</button></tas-menu-item>
       @for (product of productOptions(); track product) {
-        <tas-menu-item><button type="button" class="w-full text-left" (click)="setProductFilter(product)">{{ product }}</button></tas-menu-item>
+        <tas-menu-item><button type="button" class="w-full text-left" (click)="setProductFilter(product)">{{ productValueLabel(product) }}</button></tas-menu-item>
       }
     </tas-menu>
   </ng-template>
@@ -294,6 +294,7 @@
             [checked]="allSelected()" (change)="toggleSelectAll()" />
         </th>
         <th>Lead</th>
+        <th>Produit d'intérêt</th>
         <th>Téléphone</th>
         <th>Type</th>
         <th>Source</th>
@@ -324,6 +325,14 @@
               }
             </div>
           </div>
+        </td>
+        <td>
+          @if (productLabel(item); as product) {
+            <span class="inline-flex max-w-[12rem] px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 text-xs font-medium truncate"
+                  [title]="product">{{ product }}</span>
+          } @else {
+            <span class="text-sm text-slate-400">—</span>
+          }
         </td>
         <td class="text-sm text-slate-600 tabular-nums">{{ item.phoneNumber ?? '—' }}</td>
         <td class="text-sm text-slate-600">{{ prospectTypeLabel(item.prospectType) }}</td>
@@ -398,8 +407,8 @@
                   <p class="text-sm font-semibold text-slate-800 truncate">{{ displayName(lead) }}</p>
                 </div>
 
-                @if (lead.interestedProduct) {
-                  <span class="inline-flex mt-2 px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 text-xs font-medium">{{ lead.interestedProduct }}</span>
+                @if (productLabel(lead); as product) {
+                  <span class="inline-flex mt-2 px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 text-xs font-medium">{{ product }}</span>
                 }
 
                 <p class="text-xs text-slate-600 mt-2 truncate">
