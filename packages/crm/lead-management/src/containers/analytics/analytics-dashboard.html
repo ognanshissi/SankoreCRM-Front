@@ -1,0 +1,279 @@
+<div class="pb-6 flex flex-col gap-5">
+  <!-- ═══ En-tête et filtres ═══ -->
+  <div class="flex flex-wrap items-start justify-between gap-4">
+    <div class="min-w-0">
+      <h1 class="text-2xl font-semibold text-slate-900">Tableau de bord</h1>
+      @if (subtitle(); as text) {
+        <p class="text-sm text-slate-600 mt-1">{{ text }}</p>
+      } @else {
+        <p class="text-sm text-slate-500 mt-1">Acquisition, conversion et performance des agents.</p>
+      }
+    </div>
+
+    <div class="flex flex-wrap items-center gap-3">
+      <div class="h-11 pl-4 pr-1 rounded-full bg-white border border-slate-100 shadow-sm flex items-center gap-2">
+        <span class="text-xs text-slate-500 w-[6rem]">Agence</span>
+        <tas-select
+          class="w-[12rem]"
+          [options]="agencyOptions()"
+          optionLabel="label"
+          optionValue="value"
+          [ngModel]="agencyId()"
+          (ngModelChange)="onAgencyChange($event)"
+        ></tas-select>
+      </div>
+
+      <div class="h-11 p-1 rounded-full bg-white border border-slate-100 shadow-sm flex items-center gap-1" role="group" aria-label="Période">
+        @for (key of periodKeys; track key) {
+          <button
+            type="button"
+            class="h-9 px-3.5 rounded-full text-sm whitespace-nowrap transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+            [class]="periodKey() === key ? 'bg-primary text-white font-semibold' : 'text-slate-600 hover:bg-slate-50'"
+            [attr.aria-pressed]="periodKey() === key"
+            (click)="setPeriod(key)"
+          >
+            {{ periodLabels[key] }}
+          </button>
+        }
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ Indicateurs ═══ -->
+  <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+    @for (kpi of kpis(); track kpi.label) {
+      <section class="rounded-2xl bg-white border border-slate-100 shadow-sm p-5">
+        <p class="text-sm text-slate-600">{{ kpi.label }}</p>
+        <div class="mt-2 flex items-end justify-between gap-3">
+          @if (funnelLoading() && kpi.value === '—') {
+            <div class="h-9 w-24 rounded bg-slate-100 animate-pulse"></div>
+          } @else {
+            <p class="text-3xl font-semibold text-slate-900 tabular-nums">{{ kpi.value }}</p>
+          }
+          @if (sparkline(kpi.trend); as points) {
+            <svg viewBox="0 0 96 32" class="w-24 h-8 text-primary shrink-0" aria-hidden="true">
+              <polyline [attr.points]="points" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
+            </svg>
+          }
+        </div>
+        @if (kpi.delta; as d) {
+          <p class="mt-2 text-xs text-slate-600">
+            @if (d.flat) {
+              <span class="font-semibold text-slate-700">Stable</span>
+            } @else {
+              <span class="font-semibold" [class.text-green-700]="d.good" [class.text-red-700]="!d.good">
+                {{ d.up ? '▲' : '▼' }} {{ d.text }}
+              </span>
+            }
+            {{ d.suffix }}
+          </p>
+        } @else {
+          <p class="mt-2 text-xs text-slate-400">Pas de comparaison disponible</p>
+        }
+      </section>
+    }
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)] gap-4 items-stretch">
+    <!-- ═══ Entonnoir ═══ -->
+    <section class="rounded-2xl bg-white border border-slate-100 shadow-sm p-6">
+      <h2 class="text-base font-semibold text-slate-900">Entonnoir de conversion</h2>
+      <p class="text-xs text-slate-500 mt-0.5">Leads de la période ayant atteint chaque étape</p>
+
+      @if (funnelLoading()) {
+        <div class="flex justify-center py-16"><tas-spinner size="8" class="text-primary"></tas-spinner></div>
+      } @else if (funnelError()) {
+        <div class="py-12 text-center">
+          <p class="text-sm text-slate-600">L'entonnoir n'a pas pu être chargé.</p>
+        </div>
+      } @else {
+        <ul class="mt-5 flex flex-col gap-4">
+          @for (step of funnelSteps(); track step.label) {
+            <li class="grid grid-cols-[6.5rem_minmax(0,1fr)_3.5rem_3rem] items-center gap-3 group" [title]="step.hint">
+              <span class="text-sm text-slate-700">{{ step.label }}</span>
+              <span class="h-5 rounded-full bg-slate-100 overflow-hidden">
+                <span
+                  class="block h-full rounded-full bg-primary transition-[width] duration-500 group-hover:opacity-90"
+                  [style.width.%]="step.width"
+                ></span>
+              </span>
+              <span class="text-sm font-semibold text-slate-900 text-right tabular-nums">{{ step.count }}</span>
+              <span class="text-xs text-slate-500 tabular-nums">
+                @if (step.ofPrevious !== null) { {{ step.ofPrevious }} % }
+              </span>
+            </li>
+          }
+        </ul>
+        <p class="mt-5 text-xs text-slate-500">Survolez une étape pour le détail. Les pourcentages comparent chaque étape à la précédente.</p>
+        <div class="mt-4 pt-4 border-t border-slate-100 flex flex-wrap gap-2">
+          @for (outcome of funnelOutcomes(); track outcome.label) {
+            <span class="px-3 py-1.5 rounded-full bg-slate-50 text-xs text-slate-700">
+              {{ outcome.label }} <span class="font-semibold tabular-nums">{{ outcome.count }}</span>
+            </span>
+          }
+        </div>
+      }
+    </section>
+
+    <!-- ═══ À traiter maintenant + origine ═══ -->
+    <section class="rounded-2xl bg-white border border-slate-100 shadow-sm p-6 flex flex-col">
+      <div class="flex items-center justify-between gap-2">
+        <h2 class="text-base font-semibold text-slate-900">À traiter maintenant</h2>
+        @if (breaches().length > 0) {
+          <span class="px-2.5 py-1 rounded-full bg-red-50 text-red-700 text-xs font-semibold tabular-nums">
+            {{ breaches().length }} hors délai
+          </span>
+        }
+      </div>
+
+      @if (breachesLoading()) {
+        <div class="flex justify-center py-10"><tas-spinner size="6" class="text-primary"></tas-spinner></div>
+      } @else if (breachesError()) {
+        <p class="mt-4 text-sm text-slate-600">Les retards n'ont pas pu être chargés.</p>
+      } @else if (breaches().length === 0) {
+        <div class="mt-4 rounded-xl bg-green-50 px-4 py-3 flex items-center gap-2">
+          <tas-icon iconName="feather:check-circle" class="text-green-700" style="font-size:14px"></tas-icon>
+          <p class="text-sm text-green-800">Aucun lead hors délai : tous les premiers contacts sont dans les temps.</p>
+        </div>
+      } @else {
+        <ul class="mt-3 divide-y divide-slate-100 border-t border-slate-100">
+          @for (row of breachRows(); track row.leadId) {
+            <li class="py-3 flex items-center gap-3">
+              <span class="w-9 h-9 rounded-xl bg-slate-100 text-primary text-xs font-semibold flex items-center justify-center shrink-0" aria-hidden="true">
+                {{ row.initials }}
+              </span>
+              <div class="min-w-0 flex-1">
+                <a [routerLink]="['/leads', row.leadId]" class="text-sm font-semibold text-slate-900 hover:text-primary truncate block">{{ row.name }}</a>
+                <p class="text-xs text-slate-500 truncate">{{ row.context }}</p>
+              </div>
+              <span class="text-xs font-semibold text-red-700 whitespace-nowrap">{{ row.delay }}</span>
+              <button
+                type="button"
+                class="h-9 px-3.5 rounded-full border border-slate-200 text-sm font-semibold text-primary hover:border-slate-300 transition-colors disabled:opacity-60 inline-flex items-center gap-1.5"
+                [disabled]="reassigningLeadId() === row.leadId"
+                (click)="reassign(row.leadId)"
+              >
+                @if (reassigningLeadId() === row.leadId) {
+                  <tas-spinner size="4" class="text-primary"></tas-spinner>
+                }
+                Réassigner
+              </button>
+            </li>
+          }
+        </ul>
+        @if (breaches().length > 4) {
+          <button
+            type="button"
+            class="mt-3 self-start text-sm font-semibold text-primary underline underline-offset-2"
+            (click)="showAllBreaches.set(!showAllBreaches())"
+          >
+            {{ showAllBreaches() ? 'Réduire la liste' : 'Voir tous les dossiers hors délai (' + breaches().length + ')' }}
+          </button>
+        }
+      }
+
+      <div class="mt-5 pt-5 border-t border-slate-100">
+        <h3 class="text-xs font-semibold text-slate-900">Origine des leads</h3>
+        @if (sourcesError()) {
+          <p class="mt-3 text-xs text-slate-500">L'origine des leads n'a pas pu être chargée.</p>
+        } @else if (sourceRows().length === 0) {
+          <p class="mt-3 text-xs text-slate-500">Aucun lead sur la période.</p>
+        } @else {
+          <ul class="mt-3 flex flex-col gap-2.5">
+            @for (source of sourceRows(); track source.label) {
+              <li class="grid grid-cols-[7.5rem_minmax(0,1fr)_2.5rem] items-center gap-3">
+                <span class="text-xs text-slate-700">{{ source.label }}</span>
+                <span class="h-1.5 rounded-full bg-slate-100 overflow-hidden">
+                  <span class="block h-full rounded-full bg-primary/70" [style.width.%]="source.width"></span>
+                </span>
+                <span class="text-xs font-semibold text-slate-900 text-right tabular-nums">{{ source.count }}</span>
+              </li>
+            }
+          </ul>
+        }
+      </div>
+    </section>
+  </div>
+
+  <!-- ═══ Performance des agents ═══ -->
+  <section class="rounded-2xl bg-white border border-slate-100 shadow-sm overflow-hidden">
+    <div class="px-6 pt-6 pb-3 flex flex-wrap items-baseline justify-between gap-2">
+      <h2 class="text-base font-semibold text-slate-900">Performance des agents</h2>
+      <p class="text-xs text-slate-500">
+        Objectif de l'institution : {{ slaTarget() }} % des premiers contacts dans les délais
+      </p>
+    </div>
+
+    @if (agentsError()) {
+      <p class="px-6 pb-6 text-sm text-slate-600">La performance des agents n'a pas pu être chargée.</p>
+    } @else {
+      <tas-table
+        class="block [&_tas-card]:shadow-none [&_tas-card]:rounded-none [&_tas-card>br]:hidden [&_.pt-4]:pt-0"
+        [data]="agentRows()"
+        identifierField="id"
+        [config]="agentTableConfig()"
+        [isLoading]="agentsLoading()"
+      >
+        <ng-template #header>
+          <tr class="bg-slate-50">
+            <th scope="col" class="normal-case! tracking-normal! font-medium text-xs! text-slate-500 pl-6!">Agent</th>
+            <th scope="col" class="normal-case! tracking-normal! font-medium text-xs! text-slate-500 text-right!">Assignés</th>
+            <th scope="col" class="normal-case! tracking-normal! font-medium text-xs! text-slate-500">Contactés dans les délais</th>
+            <th scope="col" class="normal-case! tracking-normal! font-medium text-xs! text-slate-500 text-right!">Hors délai</th>
+            <th scope="col" class="normal-case! tracking-normal! font-medium text-xs! text-slate-500 text-right!">Convertis</th>
+            <th scope="col" class="normal-case! tracking-normal! font-medium text-xs! text-slate-500 text-right! pr-6!">Premier contact</th>
+          </tr>
+        </ng-template>
+        <ng-template #body let-agent>
+          <tr>
+            <td class="py-3! pl-6!">
+              <div class="flex items-center gap-3">
+                <span class="w-8 h-8 rounded-lg bg-slate-100 text-primary text-[11px] font-semibold flex items-center justify-center shrink-0" aria-hidden="true">
+                  {{ agent.initials }}
+                </span>
+                <div class="min-w-0">
+                  <p class="text-sm font-semibold text-slate-900">{{ agent.name }}</p>
+                  @if (agent.agency) {
+                    <p class="text-xs text-slate-500">{{ agent.agency }}</p>
+                  }
+                </div>
+              </div>
+            </td>
+            <td class="text-sm text-slate-800 text-right! tabular-nums">{{ agent.assigned }}</td>
+            <td>
+              @if (agent.slaRate !== null) {
+                <div class="flex items-center gap-3">
+                  <!-- Le trait vertical marque l'objectif : on lit d'un coup d'œil qui est en dessous. -->
+                  <span class="relative w-40 h-1.5 rounded-full bg-slate-100">
+                    <span
+                      class="absolute inset-y-0 left-0 rounded-full"
+                      [class.bg-primary]="agent.slaRate >= slaTarget()"
+                      [class.bg-orange-600]="agent.slaRate < slaTarget()"
+                      [style.width.%]="agent.slaRate"
+                    ></span>
+                    <span class="absolute -top-1 h-3.5 w-0.5 bg-slate-500" [style.left.%]="slaTarget()" aria-hidden="true"></span>
+                  </span>
+                  <span
+                    class="text-sm font-semibold tabular-nums"
+                    [class.text-slate-900]="agent.slaRate >= slaTarget()"
+                    [class.text-orange-700]="agent.slaRate < slaTarget()"
+                  >
+                    {{ agent.slaRate }} %
+                  </span>
+                  @if (agent.slaRate < slaTarget()) {
+                    <span class="sr-only">sous l'objectif</span>
+                  }
+                </div>
+              } @else {
+                <span class="text-sm text-slate-400">—</span>
+              }
+            </td>
+            <td class="text-sm text-slate-800 text-right! tabular-nums">{{ agent.late }}</td>
+            <td class="text-sm text-slate-800 text-right! tabular-nums">{{ agent.converted }}</td>
+            <td class="text-sm text-slate-800 text-right! tabular-nums pr-6!">{{ agent.firstContact }}</td>
+          </tr>
+        </ng-template>
+      </tas-table>
+    }
+  </section>
+</div>
