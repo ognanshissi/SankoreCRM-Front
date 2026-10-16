@@ -19,9 +19,29 @@ import { CustomHttpParameterCodec }                          from '../encoder';
 import { Observable }                                        from 'rxjs';
 
 // @ts-ignore
+import { CallOutcomeDto } from '../model/call-outcome-dto.interface';
+// @ts-ignore
+import { CreateCallOutcomeRequest } from '../model/create-call-outcome-request.interface';
+// @ts-ignore
+import { CreateLeadFromCallResponse } from '../model/create-lead-from-call-response.interface';
+// @ts-ignore
+import { LinkCallRequest } from '../model/link-call-request.interface';
+// @ts-ignore
 import { LinkTelephonyUserRequest } from '../model/link-telephony-user-request.interface';
 // @ts-ignore
 import { LinkTelephonyUserResponse } from '../model/link-telephony-user-response.interface';
+// @ts-ignore
+import { MissedCallDto } from '../model/missed-call-dto.interface';
+// @ts-ignore
+import { RecordingPolicyDto } from '../model/recording-policy-dto.interface';
+// @ts-ignore
+import { RequestClickToCallRequest } from '../model/request-click-to-call-request.interface';
+// @ts-ignore
+import { RequestClickToCallResponse } from '../model/request-click-to-call-response.interface';
+// @ts-ignore
+import { SetLegalHoldRequest } from '../model/set-legal-hold-request.interface';
+// @ts-ignore
+import { SetRecordingPolicyRequest } from '../model/set-recording-policy-request.interface';
 // @ts-ignore
 import { SetTelephonyCallerNumberRequest } from '../model/set-telephony-caller-number-request.interface';
 // @ts-ignore
@@ -29,11 +49,17 @@ import { SimulateTelephonyWebhookRequest } from '../model/simulate-telephony-web
 // @ts-ignore
 import { SimulateTelephonyWebhookResponse } from '../model/simulate-telephony-webhook-response.interface';
 // @ts-ignore
+import { TelephonyCallContext } from '../model/telephony-call-context.interface';
+// @ts-ignore
 import { TelephonyDirectoryDto } from '../model/telephony-directory-dto.interface';
 // @ts-ignore
 import { TelephonyUserLinkDto } from '../model/telephony-user-link-dto.interface';
 // @ts-ignore
 import { UnlinkTelephonyUserRequest } from '../model/unlink-telephony-user-request.interface';
+// @ts-ignore
+import { UpdateCallOutcomeRequest } from '../model/update-call-outcome-request.interface';
+// @ts-ignore
+import { WrapUpCallRequest } from '../model/wrap-up-call-request.interface';
 
 // @ts-ignore
 import { BASE_PATH, COLLECTION_FORMATS }                     from '../variables';
@@ -106,6 +132,287 @@ export class TelephonyApiService {
     }
 
     /**
+     * Turn a call from an unknown number into a lead
+     * On your initiative, never automatic: most unanswered calls to a branch are not prospects, and a tenant whose every missed call became a lead would have a pipeline nobody trusts within a week. The lead gets a SYNTHETIC name (\&#39;Appel manqué du ...\&#39;) because nobody spoke — replace it on your first real contact — and you become its owner. Idempotent on the NUMBER: a second call from the same caller answers the existing open lead instead of creating a duplicate. Answers 409 TELEPHONY_CALLER_IS_ALREADY_A_CLIENT when the number turns out to belong to a client (the call is attached to them instead), 409 TELEPHONY_CALL_ALREADY_ATTACHED when the journal already resolved the caller, and 422 TELEPHONY_NUMBER_UNAVAILABLE for a withheld caller id. Audited. Requires permission: Telephony.Call.Link.
+     * @param callId 
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     */
+    public createLeadFromTelephonyCall(callId: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<CreateLeadFromCallResponse>;
+    public createLeadFromTelephonyCall(callId: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<CreateLeadFromCallResponse>>;
+    public createLeadFromTelephonyCall(callId: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<CreateLeadFromCallResponse>>;
+    public createLeadFromTelephonyCall(callId: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
+        if (callId === null || callId === undefined) {
+            throw new Error('Required parameter callId was null or undefined when calling createLeadFromTelephonyCall.');
+        }
+
+        let localVarHeaders = this.defaultHeaders;
+
+        let localVarCredential: string | undefined;
+        // authentication (BearerToken) required
+        localVarCredential = this.configuration.lookupCredential('BearerToken');
+        if (localVarCredential) {
+            localVarHeaders = localVarHeaders.set('Authorization', 'Bearer ' + localVarCredential);
+        }
+
+        let localVarHttpHeaderAcceptSelected: string | undefined = options && options.httpHeaderAccept;
+        if (localVarHttpHeaderAcceptSelected === undefined) {
+            // to determine the Accept header
+            const httpHeaderAccepts: string[] = [
+                'application/json'
+            ];
+            localVarHttpHeaderAcceptSelected = this.configuration.selectHeaderAccept(httpHeaderAccepts);
+        }
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+
+        let localVarHttpContext: HttpContext | undefined = options && options.context;
+        if (localVarHttpContext === undefined) {
+            localVarHttpContext = new HttpContext();
+        }
+
+
+        let responseType_: 'text' | 'json' | 'blob' = 'json';
+        if (localVarHttpHeaderAcceptSelected) {
+            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+                responseType_ = 'text';
+            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+                responseType_ = 'json';
+            } else {
+                responseType_ = 'blob';
+            }
+        }
+
+        let localVarPath = `/api/v1/integration/telephony/calls/${this.configuration.encodeParam({name: "callId", value: callId, in: "path", style: "simple", explode: false, dataType: "string", dataFormat: "uuid"})}/create-lead`;
+        return this.httpClient.request<CreateLeadFromCallResponse>('post', `${this.configuration.basePath}${localVarPath}`,
+            {
+                context: localVarHttpContext,
+                responseType: <any>responseType_,
+                withCredentials: this.configuration.withCredentials,
+                headers: localVarHeaders,
+                observe: observe,
+                reportProgress: reportProgress
+            }
+        );
+    }
+
+    /**
+     * Add an outcome of your own
+     * The code is upper-cased and must be unique in your tenant — including against a DEACTIVATED one, which answers 409: re-adding a code somebody switched off is a reactivation (POST call-outcomes/{code}/activate), not a creation, and treating it as one would silently keep the old row\&#39;s behaviour flags. Audited. Requires permission: Telephony.Settings.Manage.
+     * @param createCallOutcomeRequest 
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     */
+    public createTelephonyCallOutcome(createCallOutcomeRequest: CreateCallOutcomeRequest, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<any>;
+    public createTelephonyCallOutcome(createCallOutcomeRequest: CreateCallOutcomeRequest, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<HttpResponse<any>>;
+    public createTelephonyCallOutcome(createCallOutcomeRequest: CreateCallOutcomeRequest, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<HttpEvent<any>>;
+    public createTelephonyCallOutcome(createCallOutcomeRequest: CreateCallOutcomeRequest, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<any> {
+        if (createCallOutcomeRequest === null || createCallOutcomeRequest === undefined) {
+            throw new Error('Required parameter createCallOutcomeRequest was null or undefined when calling createTelephonyCallOutcome.');
+        }
+
+        let localVarHeaders = this.defaultHeaders;
+
+        let localVarCredential: string | undefined;
+        // authentication (BearerToken) required
+        localVarCredential = this.configuration.lookupCredential('BearerToken');
+        if (localVarCredential) {
+            localVarHeaders = localVarHeaders.set('Authorization', 'Bearer ' + localVarCredential);
+        }
+
+        let localVarHttpHeaderAcceptSelected: string | undefined = options && options.httpHeaderAccept;
+        if (localVarHttpHeaderAcceptSelected === undefined) {
+            // to determine the Accept header
+            const httpHeaderAccepts: string[] = [
+            ];
+            localVarHttpHeaderAcceptSelected = this.configuration.selectHeaderAccept(httpHeaderAccepts);
+        }
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+
+        let localVarHttpContext: HttpContext | undefined = options && options.context;
+        if (localVarHttpContext === undefined) {
+            localVarHttpContext = new HttpContext();
+        }
+
+
+        // to determine the Content-Type header
+        const consumes: string[] = [
+            'application/json'
+        ];
+        const httpContentTypeSelected: string | undefined = this.configuration.selectHeaderContentType(consumes);
+        if (httpContentTypeSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Content-Type', httpContentTypeSelected);
+        }
+
+        let responseType_: 'text' | 'json' | 'blob' = 'json';
+        if (localVarHttpHeaderAcceptSelected) {
+            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+                responseType_ = 'text';
+            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+                responseType_ = 'json';
+            } else {
+                responseType_ = 'blob';
+            }
+        }
+
+        let localVarPath = `/api/v1/integration/telephony/call-outcomes`;
+        return this.httpClient.request<any>('post', `${this.configuration.basePath}${localVarPath}`,
+            {
+                context: localVarHttpContext,
+                body: createCallOutcomeRequest,
+                responseType: <any>responseType_,
+                withCredentials: this.configuration.withCredentials,
+                headers: localVarHeaders,
+                observe: observe,
+                reportProgress: reportProgress
+            }
+        );
+    }
+
+    /**
+     * Download a call\&#39;s recording out of the platform
+     * A different act from listening and a different permission: past this point no control of ours applies to the file. The reason is MANDATORY (422 TELEPHONY_RECORDING_EXPORT_REASON_REQUIRED) and is kept in tel_recording_access_log — it is the only thing that makes the export answerable afterwards. Served as an attachment. Requires permission: Telephony.Recording.Export.
+     * @param callId 
+     * @param reason 
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     */
+    public exportTelephonyRecording(callId: string, reason?: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/octet-stream', context?: HttpContext}): Observable<object>;
+    public exportTelephonyRecording(callId: string, reason?: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/octet-stream', context?: HttpContext}): Observable<HttpResponse<object>>;
+    public exportTelephonyRecording(callId: string, reason?: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/octet-stream', context?: HttpContext}): Observable<HttpEvent<object>>;
+    public exportTelephonyRecording(callId: string, reason?: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/octet-stream', context?: HttpContext}): Observable<any> {
+        if (callId === null || callId === undefined) {
+            throw new Error('Required parameter callId was null or undefined when calling exportTelephonyRecording.');
+        }
+
+        let localVarQueryParameters = new HttpParams({encoder: this.encoder});
+        if (reason !== undefined && reason !== null) {
+          localVarQueryParameters = this.addToHttpParams(localVarQueryParameters,
+            <any>reason, 'reason');
+        }
+
+        let localVarHeaders = this.defaultHeaders;
+
+        let localVarCredential: string | undefined;
+        // authentication (BearerToken) required
+        localVarCredential = this.configuration.lookupCredential('BearerToken');
+        if (localVarCredential) {
+            localVarHeaders = localVarHeaders.set('Authorization', 'Bearer ' + localVarCredential);
+        }
+
+        let localVarHttpHeaderAcceptSelected: string | undefined = options && options.httpHeaderAccept;
+        if (localVarHttpHeaderAcceptSelected === undefined) {
+            // to determine the Accept header
+            const httpHeaderAccepts: string[] = [
+                'application/octet-stream'
+            ];
+            localVarHttpHeaderAcceptSelected = this.configuration.selectHeaderAccept(httpHeaderAccepts);
+        }
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+
+        let localVarHttpContext: HttpContext | undefined = options && options.context;
+        if (localVarHttpContext === undefined) {
+            localVarHttpContext = new HttpContext();
+        }
+
+
+        let responseType_: 'text' | 'json' | 'blob' = 'json';
+        if (localVarHttpHeaderAcceptSelected) {
+            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+                responseType_ = 'text';
+            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+                responseType_ = 'json';
+            } else {
+                responseType_ = 'blob';
+            }
+        }
+
+        let localVarPath = `/api/v1/integration/telephony/calls/${this.configuration.encodeParam({name: "callId", value: callId, in: "path", style: "simple", explode: false, dataType: "string", dataFormat: "uuid"})}/recording/export`;
+        return this.httpClient.request<object>('get', `${this.configuration.basePath}${localVarPath}`,
+            {
+                context: localVarHttpContext,
+                params: localVarQueryParameters,
+                responseType: <any>responseType_,
+                withCredentials: this.configuration.withCredentials,
+                headers: localVarHeaders,
+                observe: observe,
+                reportProgress: reportProgress
+            }
+        );
+    }
+
+    /**
+     * Who is on this call, for the screen that opens while it rings
+     * The other half of the screen pop: the realtime push carries a call id and nothing else, and this turns it into a name — under your permission and inside your agency perimeter, neither of which a websocket frame can apply. matchStatus says what to render: Matched is one candidate, Ambiguous is several (a family handset, a shop line — the agent chooses, with POST calls/{callId}/link), Unknown is nobody on file. A candidate with outOfPerimeter&#x3D;true carries NO displayName: the caller is known to the institution elsewhere, which stops you searching for somebody you cannot see, and the record stays hidden. NO TELEPHONE NUMBER is ever returned. Requires permission: Telephony.Call.View.
+     * @param callId 
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     */
+    public getTelephonyCallContext(callId: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<TelephonyCallContext>;
+    public getTelephonyCallContext(callId: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<TelephonyCallContext>>;
+    public getTelephonyCallContext(callId: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<TelephonyCallContext>>;
+    public getTelephonyCallContext(callId: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
+        if (callId === null || callId === undefined) {
+            throw new Error('Required parameter callId was null or undefined when calling getTelephonyCallContext.');
+        }
+
+        let localVarHeaders = this.defaultHeaders;
+
+        let localVarCredential: string | undefined;
+        // authentication (BearerToken) required
+        localVarCredential = this.configuration.lookupCredential('BearerToken');
+        if (localVarCredential) {
+            localVarHeaders = localVarHeaders.set('Authorization', 'Bearer ' + localVarCredential);
+        }
+
+        let localVarHttpHeaderAcceptSelected: string | undefined = options && options.httpHeaderAccept;
+        if (localVarHttpHeaderAcceptSelected === undefined) {
+            // to determine the Accept header
+            const httpHeaderAccepts: string[] = [
+                'application/json'
+            ];
+            localVarHttpHeaderAcceptSelected = this.configuration.selectHeaderAccept(httpHeaderAccepts);
+        }
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+
+        let localVarHttpContext: HttpContext | undefined = options && options.context;
+        if (localVarHttpContext === undefined) {
+            localVarHttpContext = new HttpContext();
+        }
+
+
+        let responseType_: 'text' | 'json' | 'blob' = 'json';
+        if (localVarHttpHeaderAcceptSelected) {
+            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+                responseType_ = 'text';
+            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+                responseType_ = 'json';
+            } else {
+                responseType_ = 'blob';
+            }
+        }
+
+        let localVarPath = `/api/v1/integration/telephony/calls/${this.configuration.encodeParam({name: "callId", value: callId, in: "path", style: "simple", explode: false, dataType: "string", dataFormat: "uuid"})}/context`;
+        return this.httpClient.request<TelephonyCallContext>('get', `${this.configuration.basePath}${localVarPath}`,
+            {
+                context: localVarHttpContext,
+                responseType: <any>responseType_,
+                withCredentials: this.configuration.withCredentials,
+                headers: localVarHeaders,
+                observe: observe,
+                reportProgress: reportProgress
+            }
+        );
+    }
+
+    /**
      * The provider\&#39;s user accounts, with the CRM account each one looks like
      * Reads the telephony provider\&#39;s directory LIVE and proposes a pairing per account, matched on the e-mail address. A proposal is never applied: confirm it with POST telephony/user-links. An address several CRM accounts answer to yields no proposal and is listed in ambiguousEmails — picking one would be picking whose calls get attributed to whom. Already-linked accounts come back with linkedCrmUserId set. Answers 422 TELEPHONY_DISABLED when the tenant has no active telephony connection, 422 INTEGRATION_CAPABILITY_NOT_SUPPORTED when its provider publishes no directory, and 503 INTEGRATION_UNAVAILABLE when the provider could not be reached — the three are distinct repairs. Requires permission: Telephony.Settings.Manage.
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
@@ -158,6 +465,147 @@ export class TelephonyApiService {
         return this.httpClient.request<TelephonyDirectoryDto>('get', `${this.configuration.basePath}${localVarPath}`,
             {
                 context: localVarHttpContext,
+                responseType: <any>responseType_,
+                withCredentials: this.configuration.withCredentials,
+                headers: localVarHeaders,
+                observe: observe,
+                reportProgress: reportProgress
+            }
+        );
+    }
+
+    /**
+     * Whether this institution keeps call recordings, and under what basis
+     * Disabled for a tenant that has never configured one, which is every tenant until a compliance officer decides otherwise — the feature ships built and switched OFF, because a recording is a person\&#39;s voice and the lawful basis for keeping one differs by country and by what the customer was told before the tone. updatedBy is null when nobody has decided anything, which is a different thing from somebody having chosen Disabled. Requires permission: admin:compliance:manage.
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     */
+    public getTelephonyRecordingPolicy(observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<RecordingPolicyDto>;
+    public getTelephonyRecordingPolicy(observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<RecordingPolicyDto>>;
+    public getTelephonyRecordingPolicy(observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<RecordingPolicyDto>>;
+    public getTelephonyRecordingPolicy(observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
+
+        let localVarHeaders = this.defaultHeaders;
+
+        let localVarCredential: string | undefined;
+        // authentication (BearerToken) required
+        localVarCredential = this.configuration.lookupCredential('BearerToken');
+        if (localVarCredential) {
+            localVarHeaders = localVarHeaders.set('Authorization', 'Bearer ' + localVarCredential);
+        }
+
+        let localVarHttpHeaderAcceptSelected: string | undefined = options && options.httpHeaderAccept;
+        if (localVarHttpHeaderAcceptSelected === undefined) {
+            // to determine the Accept header
+            const httpHeaderAccepts: string[] = [
+                'application/json'
+            ];
+            localVarHttpHeaderAcceptSelected = this.configuration.selectHeaderAccept(httpHeaderAccepts);
+        }
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+
+        let localVarHttpContext: HttpContext | undefined = options && options.context;
+        if (localVarHttpContext === undefined) {
+            localVarHttpContext = new HttpContext();
+        }
+
+
+        let responseType_: 'text' | 'json' | 'blob' = 'json';
+        if (localVarHttpHeaderAcceptSelected) {
+            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+                responseType_ = 'text';
+            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+                responseType_ = 'json';
+            } else {
+                responseType_ = 'blob';
+            }
+        }
+
+        let localVarPath = `/api/v1/integration/telephony/recording-policy`;
+        return this.httpClient.request<RecordingPolicyDto>('get', `${this.configuration.basePath}${localVarPath}`,
+            {
+                context: localVarHttpContext,
+                responseType: <any>responseType_,
+                withCredentials: this.configuration.withCredentials,
+                headers: localVarHeaders,
+                observe: observe,
+                reportProgress: reportProgress
+            }
+        );
+    }
+
+    /**
+     * Say which record a call was about, or correct it
+     * What makes an Ambiguous call useful: the journal refuses to guess between two people who share a number, and this is how the human who just spoke to one of them settles it. A manual attachment OVERRIDES an automatic one and is never overwritten by a later sweep. The reason is mandatory and is kept in the audit trail — a conversation filed against the wrong person is something a later reader must be able to understand. BOTH SIDES are authorized: only your own call — or one nobody is attributed, which is the agency\&#39;s \&#39;to attribute\&#39; queue — may be moved, and the target record must be one you may work (M01\&#39;s agency perimeter for a client, M13\&#39;s assignee-or-supervisor rule for a lead). A call that is not yours answers 404, because a 403 would confirm a colleague spoke to somebody; a record that is not yours answers 403 TELEPHONY_ENTITY_NOT_YOURS, because you can already see the call and \&#39;not found\&#39; would send you looking for a record in front of you. Requires permission: Telephony.Call.Link.
+     * @param callId 
+     * @param linkCallRequest 
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     */
+    public linkTelephonyCall(callId: string, linkCallRequest: LinkCallRequest, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<any>;
+    public linkTelephonyCall(callId: string, linkCallRequest: LinkCallRequest, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<HttpResponse<any>>;
+    public linkTelephonyCall(callId: string, linkCallRequest: LinkCallRequest, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<HttpEvent<any>>;
+    public linkTelephonyCall(callId: string, linkCallRequest: LinkCallRequest, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<any> {
+        if (callId === null || callId === undefined) {
+            throw new Error('Required parameter callId was null or undefined when calling linkTelephonyCall.');
+        }
+        if (linkCallRequest === null || linkCallRequest === undefined) {
+            throw new Error('Required parameter linkCallRequest was null or undefined when calling linkTelephonyCall.');
+        }
+
+        let localVarHeaders = this.defaultHeaders;
+
+        let localVarCredential: string | undefined;
+        // authentication (BearerToken) required
+        localVarCredential = this.configuration.lookupCredential('BearerToken');
+        if (localVarCredential) {
+            localVarHeaders = localVarHeaders.set('Authorization', 'Bearer ' + localVarCredential);
+        }
+
+        let localVarHttpHeaderAcceptSelected: string | undefined = options && options.httpHeaderAccept;
+        if (localVarHttpHeaderAcceptSelected === undefined) {
+            // to determine the Accept header
+            const httpHeaderAccepts: string[] = [
+            ];
+            localVarHttpHeaderAcceptSelected = this.configuration.selectHeaderAccept(httpHeaderAccepts);
+        }
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+
+        let localVarHttpContext: HttpContext | undefined = options && options.context;
+        if (localVarHttpContext === undefined) {
+            localVarHttpContext = new HttpContext();
+        }
+
+
+        // to determine the Content-Type header
+        const consumes: string[] = [
+            'application/json'
+        ];
+        const httpContentTypeSelected: string | undefined = this.configuration.selectHeaderContentType(consumes);
+        if (httpContentTypeSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Content-Type', httpContentTypeSelected);
+        }
+
+        let responseType_: 'text' | 'json' | 'blob' = 'json';
+        if (localVarHttpHeaderAcceptSelected) {
+            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+                responseType_ = 'text';
+            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+                responseType_ = 'json';
+            } else {
+                responseType_ = 'blob';
+            }
+        }
+
+        let localVarPath = `/api/v1/integration/telephony/calls/${this.configuration.encodeParam({name: "callId", value: callId, in: "path", style: "simple", explode: false, dataType: "string", dataFormat: "uuid"})}/link`;
+        return this.httpClient.request<any>('post', `${this.configuration.basePath}${localVarPath}`,
+            {
+                context: localVarHttpContext,
+                body: linkCallRequest,
                 responseType: <any>responseType_,
                 withCredentials: this.configuration.withCredentials,
                 headers: localVarHeaders,
@@ -244,6 +692,146 @@ export class TelephonyApiService {
     }
 
     /**
+     * The tenant\&#39;s call outcomes, in display order
+     * What the wrap-up screen offers. Two of the fields carry BEHAVIOUR: countsAsContact decides whether the call stops a lead\&#39;s first-contact SLA, and requiresCallbackDate makes callbackAt mandatory on the wrap-up. isSystem marks the platform baseline — renameable and deactivatable, never deletable, because a call wrapped up last year points at the code. Inactive ones are excluded unless includeInactive&#x3D;true. Requires permission: Telephony.Call.View.
+     * @param includeInactive 
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     */
+    public listTelephonyCallOutcomes(includeInactive?: boolean, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<Array<CallOutcomeDto>>;
+    public listTelephonyCallOutcomes(includeInactive?: boolean, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<Array<CallOutcomeDto>>>;
+    public listTelephonyCallOutcomes(includeInactive?: boolean, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<Array<CallOutcomeDto>>>;
+    public listTelephonyCallOutcomes(includeInactive?: boolean, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
+
+        let localVarQueryParameters = new HttpParams({encoder: this.encoder});
+        if (includeInactive !== undefined && includeInactive !== null) {
+          localVarQueryParameters = this.addToHttpParams(localVarQueryParameters,
+            <any>includeInactive, 'includeInactive');
+        }
+
+        let localVarHeaders = this.defaultHeaders;
+
+        let localVarCredential: string | undefined;
+        // authentication (BearerToken) required
+        localVarCredential = this.configuration.lookupCredential('BearerToken');
+        if (localVarCredential) {
+            localVarHeaders = localVarHeaders.set('Authorization', 'Bearer ' + localVarCredential);
+        }
+
+        let localVarHttpHeaderAcceptSelected: string | undefined = options && options.httpHeaderAccept;
+        if (localVarHttpHeaderAcceptSelected === undefined) {
+            // to determine the Accept header
+            const httpHeaderAccepts: string[] = [
+                'application/json'
+            ];
+            localVarHttpHeaderAcceptSelected = this.configuration.selectHeaderAccept(httpHeaderAccepts);
+        }
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+
+        let localVarHttpContext: HttpContext | undefined = options && options.context;
+        if (localVarHttpContext === undefined) {
+            localVarHttpContext = new HttpContext();
+        }
+
+
+        let responseType_: 'text' | 'json' | 'blob' = 'json';
+        if (localVarHttpHeaderAcceptSelected) {
+            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+                responseType_ = 'text';
+            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+                responseType_ = 'json';
+            } else {
+                responseType_ = 'blob';
+            }
+        }
+
+        let localVarPath = `/api/v1/integration/telephony/call-outcomes`;
+        return this.httpClient.request<Array<CallOutcomeDto>>('get', `${this.configuration.basePath}${localVarPath}`,
+            {
+                context: localVarHttpContext,
+                params: localVarQueryParameters,
+                responseType: <any>responseType_,
+                withCredentials: this.configuration.withCredentials,
+                headers: localVarHeaders,
+                observe: observe,
+                reportProgress: reportProgress
+            }
+        );
+    }
+
+    /**
+     * The calls nobody answered, grouped per caller
+     * YOUR missed calls plus the ones attributed to nobody — the agency\&#39;s \&#39;to attribute\&#39; queue, which is the call most likely to be forgotten. A colleague\&#39;s is theirs: showing it here would have two agents calling one person back. Grouped on a 30-minute gap between consecutive attempts, so somebody who tried three times in ten minutes is one entry with attemptCount&#x3D;3 — and the callId is their LAST attempt, which carries the most recent reading of who they are. Calls already wrapped up are excluded. Voicemail counts as missed (somebody left a message); a FAILED call does not (an operator refusal has nobody waiting to be called back). No name and no number: read GET calls/{callId}/context for a name, which applies your perimeter. Defaults to the last 7 days. Requires permission: Telephony.Call.View.
+     * @param since 
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     */
+    public listTelephonyMissedCalls(since?: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<Array<MissedCallDto>>;
+    public listTelephonyMissedCalls(since?: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<Array<MissedCallDto>>>;
+    public listTelephonyMissedCalls(since?: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<Array<MissedCallDto>>>;
+    public listTelephonyMissedCalls(since?: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
+
+        let localVarQueryParameters = new HttpParams({encoder: this.encoder});
+        if (since !== undefined && since !== null) {
+          localVarQueryParameters = this.addToHttpParams(localVarQueryParameters,
+            <any>since, 'since');
+        }
+
+        let localVarHeaders = this.defaultHeaders;
+
+        let localVarCredential: string | undefined;
+        // authentication (BearerToken) required
+        localVarCredential = this.configuration.lookupCredential('BearerToken');
+        if (localVarCredential) {
+            localVarHeaders = localVarHeaders.set('Authorization', 'Bearer ' + localVarCredential);
+        }
+
+        let localVarHttpHeaderAcceptSelected: string | undefined = options && options.httpHeaderAccept;
+        if (localVarHttpHeaderAcceptSelected === undefined) {
+            // to determine the Accept header
+            const httpHeaderAccepts: string[] = [
+                'application/json'
+            ];
+            localVarHttpHeaderAcceptSelected = this.configuration.selectHeaderAccept(httpHeaderAccepts);
+        }
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+
+        let localVarHttpContext: HttpContext | undefined = options && options.context;
+        if (localVarHttpContext === undefined) {
+            localVarHttpContext = new HttpContext();
+        }
+
+
+        let responseType_: 'text' | 'json' | 'blob' = 'json';
+        if (localVarHttpHeaderAcceptSelected) {
+            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+                responseType_ = 'text';
+            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+                responseType_ = 'json';
+            } else {
+                responseType_ = 'blob';
+            }
+        }
+
+        let localVarPath = `/api/v1/integration/telephony/calls/missed`;
+        return this.httpClient.request<Array<MissedCallDto>>('get', `${this.configuration.basePath}${localVarPath}`,
+            {
+                context: localVarHttpContext,
+                params: localVarQueryParameters,
+                responseType: <any>responseType_,
+                withCredentials: this.configuration.withCredentials,
+                headers: localVarHeaders,
+                observe: observe,
+                reportProgress: reportProgress
+            }
+        );
+    }
+
+    /**
      * Which CRM users are linked to a provider account
      * Broken links first — those are the ones asking for action, and statusReason says what the nightly check found. Disabled links are excluded unless includeDisabled&#x3D;true: they are history, kept because they explain calls already in the journal. Reads this module\&#39;s own rows and never calls the provider, so it answers normally while the provider is down. Requires permission: Telephony.Settings.Manage.
      * @param includeDisabled 
@@ -304,6 +892,225 @@ export class TelephonyApiService {
             {
                 context: localVarHttpContext,
                 params: localVarQueryParameters,
+                responseType: <any>responseType_,
+                withCredentials: this.configuration.withCredentials,
+                headers: localVarHeaders,
+                observe: observe,
+                reportProgress: reportProgress
+            }
+        );
+    }
+
+    /**
+     * Play a call\&#39;s recording
+     * Streams the decrypted audio and records WHO listened in tel_recording_access_log, in the SAME transaction — so there is no window in which a voice was heard without a trace. An authenticated stream and not a signed link, because a link only ever proves that it was ISSUED. Pass ?reason&#x3D; when the caller stated one; it is optional here and mandatory on the export. 404 for a call with no recording, 422 TELEPHONY_RECORDING_NOT_AVAILABLE when the row exists but the bytes do not — pending retrieval, failed, or purged, which are different answers from \&#39;never existed\&#39;. Requires permission: Telephony.Recording.Listen.
+     * @param callId 
+     * @param reason 
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     */
+    public listenTelephonyRecording(callId: string, reason?: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/octet-stream', context?: HttpContext}): Observable<object>;
+    public listenTelephonyRecording(callId: string, reason?: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/octet-stream', context?: HttpContext}): Observable<HttpResponse<object>>;
+    public listenTelephonyRecording(callId: string, reason?: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/octet-stream', context?: HttpContext}): Observable<HttpEvent<object>>;
+    public listenTelephonyRecording(callId: string, reason?: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/octet-stream', context?: HttpContext}): Observable<any> {
+        if (callId === null || callId === undefined) {
+            throw new Error('Required parameter callId was null or undefined when calling listenTelephonyRecording.');
+        }
+
+        let localVarQueryParameters = new HttpParams({encoder: this.encoder});
+        if (reason !== undefined && reason !== null) {
+          localVarQueryParameters = this.addToHttpParams(localVarQueryParameters,
+            <any>reason, 'reason');
+        }
+
+        let localVarHeaders = this.defaultHeaders;
+
+        let localVarCredential: string | undefined;
+        // authentication (BearerToken) required
+        localVarCredential = this.configuration.lookupCredential('BearerToken');
+        if (localVarCredential) {
+            localVarHeaders = localVarHeaders.set('Authorization', 'Bearer ' + localVarCredential);
+        }
+
+        let localVarHttpHeaderAcceptSelected: string | undefined = options && options.httpHeaderAccept;
+        if (localVarHttpHeaderAcceptSelected === undefined) {
+            // to determine the Accept header
+            const httpHeaderAccepts: string[] = [
+                'application/octet-stream'
+            ];
+            localVarHttpHeaderAcceptSelected = this.configuration.selectHeaderAccept(httpHeaderAccepts);
+        }
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+
+        let localVarHttpContext: HttpContext | undefined = options && options.context;
+        if (localVarHttpContext === undefined) {
+            localVarHttpContext = new HttpContext();
+        }
+
+
+        let responseType_: 'text' | 'json' | 'blob' = 'json';
+        if (localVarHttpHeaderAcceptSelected) {
+            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+                responseType_ = 'text';
+            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+                responseType_ = 'json';
+            } else {
+                responseType_ = 'blob';
+            }
+        }
+
+        let localVarPath = `/api/v1/integration/telephony/calls/${this.configuration.encodeParam({name: "callId", value: callId, in: "path", style: "simple", explode: false, dataType: "string", dataFormat: "uuid"})}/recording`;
+        return this.httpClient.request<object>('get', `${this.configuration.basePath}${localVarPath}`,
+            {
+                context: localVarHttpContext,
+                params: localVarQueryParameters,
+                responseType: <any>responseType_,
+                withCredentials: this.configuration.withCredentials,
+                headers: localVarHeaders,
+                observe: observe,
+                reportProgress: reportProgress
+            }
+        );
+    }
+
+    /**
+     * Ring my handset, then dial one of this record\&#39;s numbers
+     * Takes a RECORD and a SLOT — entityType (Lead | Customer), entityId, slot (Primary | Secondary) — and never a telephone number: the number is read on the server by the module that owns it, which also applies its own perimeter. An agency perimeter refusal therefore reads as the owning module\&#39;s own code (CLIENT_NOT_FOUND, LEAD_NOT_YOURS). SYNCHRONOUS and never retried: the agent is waiting for their own telephone, and a retried call rings twice in somebody\&#39;s hand — re-click instead. Answers 422 TELEPHONY_USER_NOT_LINKED when the caller has no active provider account (link one under telephony/user-links), 422 TELEPHONY_DISABLED without an active telephony connection, 422 UNKNOWN_SENSITIVE_FIELD or LEAD_PHONE_SLOT_EMPTY when the slot holds no number, 502 TELEPHONY_PROVIDER_REFUSED when the provider said no, and 503 TELEPHONY_NUMBER_UNAVAILABLE when the owning module could not be asked. The response carries the request id; follow it with GET telephony/calls/{callId}/context once the call exists. Audited. Requires permission: Telephony.Call.Make.
+     * @param requestClickToCallRequest 
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     */
+    public requestTelephonyClickToCall(requestClickToCallRequest: RequestClickToCallRequest, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<RequestClickToCallResponse>;
+    public requestTelephonyClickToCall(requestClickToCallRequest: RequestClickToCallRequest, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<RequestClickToCallResponse>>;
+    public requestTelephonyClickToCall(requestClickToCallRequest: RequestClickToCallRequest, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<RequestClickToCallResponse>>;
+    public requestTelephonyClickToCall(requestClickToCallRequest: RequestClickToCallRequest, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
+        if (requestClickToCallRequest === null || requestClickToCallRequest === undefined) {
+            throw new Error('Required parameter requestClickToCallRequest was null or undefined when calling requestTelephonyClickToCall.');
+        }
+
+        let localVarHeaders = this.defaultHeaders;
+
+        let localVarCredential: string | undefined;
+        // authentication (BearerToken) required
+        localVarCredential = this.configuration.lookupCredential('BearerToken');
+        if (localVarCredential) {
+            localVarHeaders = localVarHeaders.set('Authorization', 'Bearer ' + localVarCredential);
+        }
+
+        let localVarHttpHeaderAcceptSelected: string | undefined = options && options.httpHeaderAccept;
+        if (localVarHttpHeaderAcceptSelected === undefined) {
+            // to determine the Accept header
+            const httpHeaderAccepts: string[] = [
+                'application/json'
+            ];
+            localVarHttpHeaderAcceptSelected = this.configuration.selectHeaderAccept(httpHeaderAccepts);
+        }
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+
+        let localVarHttpContext: HttpContext | undefined = options && options.context;
+        if (localVarHttpContext === undefined) {
+            localVarHttpContext = new HttpContext();
+        }
+
+
+        // to determine the Content-Type header
+        const consumes: string[] = [
+            'application/json'
+        ];
+        const httpContentTypeSelected: string | undefined = this.configuration.selectHeaderContentType(consumes);
+        if (httpContentTypeSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Content-Type', httpContentTypeSelected);
+        }
+
+        let responseType_: 'text' | 'json' | 'blob' = 'json';
+        if (localVarHttpHeaderAcceptSelected) {
+            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+                responseType_ = 'text';
+            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+                responseType_ = 'json';
+            } else {
+                responseType_ = 'blob';
+            }
+        }
+
+        let localVarPath = `/api/v1/integration/telephony/calls/click-to-call`;
+        return this.httpClient.request<RequestClickToCallResponse>('post', `${this.configuration.basePath}${localVarPath}`,
+            {
+                context: localVarHttpContext,
+                body: requestClickToCallRequest,
+                responseType: <any>responseType_,
+                withCredentials: this.configuration.withCredentials,
+                headers: localVarHeaders,
+                observe: observe,
+                reportProgress: reportProgress
+            }
+        );
+    }
+
+    /**
+     * Take an outcome out of the wrap-up list, or put it back
+     * {state} is \&#39;activate\&#39; or \&#39;deactivate\&#39;. NEVER a delete, for a baseline outcome or any other: a call wrapped up last year points at the code, and removing it would leave that call explained by nothing. A deactivated outcome is refused by the wrap-up, so a screen holding a stale list cannot keep using it. Audited. Requires permission: Telephony.Settings.Manage.
+     * @param code 
+     * @param state 
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     */
+    public setTelephonyCallOutcomeActive(code: string, state: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<any>;
+    public setTelephonyCallOutcomeActive(code: string, state: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<HttpResponse<any>>;
+    public setTelephonyCallOutcomeActive(code: string, state: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<HttpEvent<any>>;
+    public setTelephonyCallOutcomeActive(code: string, state: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<any> {
+        if (code === null || code === undefined) {
+            throw new Error('Required parameter code was null or undefined when calling setTelephonyCallOutcomeActive.');
+        }
+        if (state === null || state === undefined) {
+            throw new Error('Required parameter state was null or undefined when calling setTelephonyCallOutcomeActive.');
+        }
+
+        let localVarHeaders = this.defaultHeaders;
+
+        let localVarCredential: string | undefined;
+        // authentication (BearerToken) required
+        localVarCredential = this.configuration.lookupCredential('BearerToken');
+        if (localVarCredential) {
+            localVarHeaders = localVarHeaders.set('Authorization', 'Bearer ' + localVarCredential);
+        }
+
+        let localVarHttpHeaderAcceptSelected: string | undefined = options && options.httpHeaderAccept;
+        if (localVarHttpHeaderAcceptSelected === undefined) {
+            // to determine the Accept header
+            const httpHeaderAccepts: string[] = [
+            ];
+            localVarHttpHeaderAcceptSelected = this.configuration.selectHeaderAccept(httpHeaderAccepts);
+        }
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+
+        let localVarHttpContext: HttpContext | undefined = options && options.context;
+        if (localVarHttpContext === undefined) {
+            localVarHttpContext = new HttpContext();
+        }
+
+
+        let responseType_: 'text' | 'json' | 'blob' = 'json';
+        if (localVarHttpHeaderAcceptSelected) {
+            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+                responseType_ = 'text';
+            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+                responseType_ = 'json';
+            } else {
+                responseType_ = 'blob';
+            }
+        }
+
+        let localVarPath = `/api/v1/integration/telephony/call-outcomes/${this.configuration.encodeParam({name: "code", value: code, in: "path", style: "simple", explode: false, dataType: "string", dataFormat: undefined})}/${this.configuration.encodeParam({name: "state", value: state, in: "path", style: "simple", explode: false, dataType: "string", dataFormat: undefined})}`;
+        return this.httpClient.request<any>('post', `${this.configuration.basePath}${localVarPath}`,
+            {
+                context: localVarHttpContext,
                 responseType: <any>responseType_,
                 withCredentials: this.configuration.withCredentials,
                 headers: localVarHeaders,
@@ -383,6 +1190,160 @@ export class TelephonyApiService {
             {
                 context: localVarHttpContext,
                 body: setTelephonyCallerNumberRequest,
+                responseType: <any>responseType_,
+                withCredentials: this.configuration.withCredentials,
+                headers: localVarHeaders,
+                observe: observe,
+                reportProgress: reportProgress
+            }
+        );
+    }
+
+    /**
+     * Freeze a recording against the retention purge, or release it
+     * A hold suspends the RETENTION purge for a dispute. It is carried as a flag plus a reason rather than by pushing the retention date out, because the original date is the fact and the hold is the exception — merging them loses which was which. It does NOT survive an anonymisation of the client: a right-to-erasure request is a different instruction, and a hold placed years ago must not quietly veto one. The reason is mandatory when placing a hold. Audited. Requires permission: admin:compliance:manage.
+     * @param callId 
+     * @param setLegalHoldRequest 
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     */
+    public setTelephonyRecordingLegalHold(callId: string, setLegalHoldRequest: SetLegalHoldRequest, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<any>;
+    public setTelephonyRecordingLegalHold(callId: string, setLegalHoldRequest: SetLegalHoldRequest, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<HttpResponse<any>>;
+    public setTelephonyRecordingLegalHold(callId: string, setLegalHoldRequest: SetLegalHoldRequest, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<HttpEvent<any>>;
+    public setTelephonyRecordingLegalHold(callId: string, setLegalHoldRequest: SetLegalHoldRequest, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<any> {
+        if (callId === null || callId === undefined) {
+            throw new Error('Required parameter callId was null or undefined when calling setTelephonyRecordingLegalHold.');
+        }
+        if (setLegalHoldRequest === null || setLegalHoldRequest === undefined) {
+            throw new Error('Required parameter setLegalHoldRequest was null or undefined when calling setTelephonyRecordingLegalHold.');
+        }
+
+        let localVarHeaders = this.defaultHeaders;
+
+        let localVarCredential: string | undefined;
+        // authentication (BearerToken) required
+        localVarCredential = this.configuration.lookupCredential('BearerToken');
+        if (localVarCredential) {
+            localVarHeaders = localVarHeaders.set('Authorization', 'Bearer ' + localVarCredential);
+        }
+
+        let localVarHttpHeaderAcceptSelected: string | undefined = options && options.httpHeaderAccept;
+        if (localVarHttpHeaderAcceptSelected === undefined) {
+            // to determine the Accept header
+            const httpHeaderAccepts: string[] = [
+            ];
+            localVarHttpHeaderAcceptSelected = this.configuration.selectHeaderAccept(httpHeaderAccepts);
+        }
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+
+        let localVarHttpContext: HttpContext | undefined = options && options.context;
+        if (localVarHttpContext === undefined) {
+            localVarHttpContext = new HttpContext();
+        }
+
+
+        // to determine the Content-Type header
+        const consumes: string[] = [
+            'application/json'
+        ];
+        const httpContentTypeSelected: string | undefined = this.configuration.selectHeaderContentType(consumes);
+        if (httpContentTypeSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Content-Type', httpContentTypeSelected);
+        }
+
+        let responseType_: 'text' | 'json' | 'blob' = 'json';
+        if (localVarHttpHeaderAcceptSelected) {
+            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+                responseType_ = 'text';
+            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+                responseType_ = 'json';
+            } else {
+                responseType_ = 'blob';
+            }
+        }
+
+        let localVarPath = `/api/v1/integration/telephony/calls/${this.configuration.encodeParam({name: "callId", value: callId, in: "path", style: "simple", explode: false, dataType: "string", dataFormat: "uuid"})}/recording/legal-hold`;
+        return this.httpClient.request<any>('post', `${this.configuration.basePath}${localVarPath}`,
+            {
+                context: localVarHttpContext,
+                body: setLegalHoldRequest,
+                responseType: <any>responseType_,
+                withCredentials: this.configuration.withCredentials,
+                headers: localVarHeaders,
+                observe: observe,
+                reportProgress: reportProgress
+            }
+        );
+    }
+
+    /**
+     * Decide whether and which calls are recorded
+     * Any mode but Disabled REQUIRES a legal basis and a purpose: 422 TELEPHONY_RECORDING_LEGAL_BASIS_REQUIRED / TELEPHONY_RECORDING_PURPOSE_REQUIRED. They are free text in your own words — the bases differ by regulator and an enum would make the platform\&#39;s list a constraint on what you may claim — and each is copied onto every recording at retrieval and FROZEN there, so shortening a retention never reaches back and lengthening one never extends a file already taken. Switching back to Disabled keeps the words, because the recordings already taken are still held under them. OnDemand keeps only the calls an agent asked to keep — the mode for a basis of consent, which is given per conversation. deleteAtProvider is honoured only where the provider supports deletion. Audited, payload included. Requires permission: admin:compliance:manage.
+     * @param setRecordingPolicyRequest 
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     */
+    public setTelephonyRecordingPolicy(setRecordingPolicyRequest: SetRecordingPolicyRequest, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<any>;
+    public setTelephonyRecordingPolicy(setRecordingPolicyRequest: SetRecordingPolicyRequest, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<HttpResponse<any>>;
+    public setTelephonyRecordingPolicy(setRecordingPolicyRequest: SetRecordingPolicyRequest, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<HttpEvent<any>>;
+    public setTelephonyRecordingPolicy(setRecordingPolicyRequest: SetRecordingPolicyRequest, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<any> {
+        if (setRecordingPolicyRequest === null || setRecordingPolicyRequest === undefined) {
+            throw new Error('Required parameter setRecordingPolicyRequest was null or undefined when calling setTelephonyRecordingPolicy.');
+        }
+
+        let localVarHeaders = this.defaultHeaders;
+
+        let localVarCredential: string | undefined;
+        // authentication (BearerToken) required
+        localVarCredential = this.configuration.lookupCredential('BearerToken');
+        if (localVarCredential) {
+            localVarHeaders = localVarHeaders.set('Authorization', 'Bearer ' + localVarCredential);
+        }
+
+        let localVarHttpHeaderAcceptSelected: string | undefined = options && options.httpHeaderAccept;
+        if (localVarHttpHeaderAcceptSelected === undefined) {
+            // to determine the Accept header
+            const httpHeaderAccepts: string[] = [
+            ];
+            localVarHttpHeaderAcceptSelected = this.configuration.selectHeaderAccept(httpHeaderAccepts);
+        }
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+
+        let localVarHttpContext: HttpContext | undefined = options && options.context;
+        if (localVarHttpContext === undefined) {
+            localVarHttpContext = new HttpContext();
+        }
+
+
+        // to determine the Content-Type header
+        const consumes: string[] = [
+            'application/json'
+        ];
+        const httpContentTypeSelected: string | undefined = this.configuration.selectHeaderContentType(consumes);
+        if (httpContentTypeSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Content-Type', httpContentTypeSelected);
+        }
+
+        let responseType_: 'text' | 'json' | 'blob' = 'json';
+        if (localVarHttpHeaderAcceptSelected) {
+            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+                responseType_ = 'text';
+            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+                responseType_ = 'json';
+            } else {
+                responseType_ = 'blob';
+            }
+        }
+
+        let localVarPath = `/api/v1/integration/telephony/recording-policy`;
+        return this.httpClient.request<any>('put', `${this.configuration.basePath}${localVarPath}`,
+            {
+                context: localVarHttpContext,
+                body: setRecordingPolicyRequest,
                 responseType: <any>responseType_,
                 withCredentials: this.configuration.withCredentials,
                 headers: localVarHeaders,
@@ -601,6 +1562,164 @@ export class TelephonyApiService {
             {
                 context: localVarHttpContext,
                 body: unlinkTelephonyUserRequest,
+                responseType: <any>responseType_,
+                withCredentials: this.configuration.withCredentials,
+                headers: localVarHeaders,
+                observe: observe,
+                reportProgress: reportProgress
+            }
+        );
+    }
+
+    /**
+     * Rename an outcome and move it in the list
+     * The LABEL and the ORDER only. The two behaviour flags are deliberately not editable: countsAsContact decides whether a call stops a lead\&#39;s SLA, and flipping it would retroactively change what every call already wrapped up under that code meant — a month of SLA figures recomputed by a settings screen. To change behaviour, add an outcome and deactivate the old one, which leaves the history saying what it said. Audited. Requires permission: Telephony.Settings.Manage.
+     * @param code 
+     * @param updateCallOutcomeRequest 
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     */
+    public updateTelephonyCallOutcome(code: string, updateCallOutcomeRequest: UpdateCallOutcomeRequest, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<any>;
+    public updateTelephonyCallOutcome(code: string, updateCallOutcomeRequest: UpdateCallOutcomeRequest, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<HttpResponse<any>>;
+    public updateTelephonyCallOutcome(code: string, updateCallOutcomeRequest: UpdateCallOutcomeRequest, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<HttpEvent<any>>;
+    public updateTelephonyCallOutcome(code: string, updateCallOutcomeRequest: UpdateCallOutcomeRequest, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<any> {
+        if (code === null || code === undefined) {
+            throw new Error('Required parameter code was null or undefined when calling updateTelephonyCallOutcome.');
+        }
+        if (updateCallOutcomeRequest === null || updateCallOutcomeRequest === undefined) {
+            throw new Error('Required parameter updateCallOutcomeRequest was null or undefined when calling updateTelephonyCallOutcome.');
+        }
+
+        let localVarHeaders = this.defaultHeaders;
+
+        let localVarCredential: string | undefined;
+        // authentication (BearerToken) required
+        localVarCredential = this.configuration.lookupCredential('BearerToken');
+        if (localVarCredential) {
+            localVarHeaders = localVarHeaders.set('Authorization', 'Bearer ' + localVarCredential);
+        }
+
+        let localVarHttpHeaderAcceptSelected: string | undefined = options && options.httpHeaderAccept;
+        if (localVarHttpHeaderAcceptSelected === undefined) {
+            // to determine the Accept header
+            const httpHeaderAccepts: string[] = [
+            ];
+            localVarHttpHeaderAcceptSelected = this.configuration.selectHeaderAccept(httpHeaderAccepts);
+        }
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+
+        let localVarHttpContext: HttpContext | undefined = options && options.context;
+        if (localVarHttpContext === undefined) {
+            localVarHttpContext = new HttpContext();
+        }
+
+
+        // to determine the Content-Type header
+        const consumes: string[] = [
+            'application/json'
+        ];
+        const httpContentTypeSelected: string | undefined = this.configuration.selectHeaderContentType(consumes);
+        if (httpContentTypeSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Content-Type', httpContentTypeSelected);
+        }
+
+        let responseType_: 'text' | 'json' | 'blob' = 'json';
+        if (localVarHttpHeaderAcceptSelected) {
+            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+                responseType_ = 'text';
+            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+                responseType_ = 'json';
+            } else {
+                responseType_ = 'blob';
+            }
+        }
+
+        let localVarPath = `/api/v1/integration/telephony/call-outcomes/${this.configuration.encodeParam({name: "code", value: code, in: "path", style: "simple", explode: false, dataType: "string", dataFormat: undefined})}`;
+        return this.httpClient.request<any>('put', `${this.configuration.basePath}${localVarPath}`,
+            {
+                context: localVarHttpContext,
+                body: updateCallOutcomeRequest,
+                responseType: <any>responseType_,
+                withCredentials: this.configuration.withCredentials,
+                headers: localVarHeaders,
+                observe: observe,
+                reportProgress: reportProgress
+            }
+        );
+    }
+
+    /**
+     * Say how the call went
+     * The outcome must be an ACTIVE code of your tenant\&#39;s referential — see GET telephony/call-outcomes — because two of its columns carry behaviour: one decides whether the call stops a lead\&#39;s first-contact SLA, another makes callbackAt mandatory (422 TELEPHONY_CALLBACK_DATE_REQUIRED). A call that has not ended is refused (422 TELEPHONY_CALL_NOT_ENDED): the agent is still speaking. Only your own call — or one nobody is attributed — may be wrapped up; another agent\&#39;s answers 404, because a 403 would confirm a colleague spoke to somebody. The note is kept ENCRYPTED and never leaves this module: it is excluded from the event M13 consumes and from every timeline summary. Wrapping up twice is allowed — an agent may correct an outcome — and M13 is idempotent on the call. Audited. Requires permission: Telephony.Call.View.
+     * @param callId 
+     * @param wrapUpCallRequest 
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     */
+    public wrapUpTelephonyCall(callId: string, wrapUpCallRequest: WrapUpCallRequest, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<any>;
+    public wrapUpTelephonyCall(callId: string, wrapUpCallRequest: WrapUpCallRequest, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<HttpResponse<any>>;
+    public wrapUpTelephonyCall(callId: string, wrapUpCallRequest: WrapUpCallRequest, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<HttpEvent<any>>;
+    public wrapUpTelephonyCall(callId: string, wrapUpCallRequest: WrapUpCallRequest, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<any> {
+        if (callId === null || callId === undefined) {
+            throw new Error('Required parameter callId was null or undefined when calling wrapUpTelephonyCall.');
+        }
+        if (wrapUpCallRequest === null || wrapUpCallRequest === undefined) {
+            throw new Error('Required parameter wrapUpCallRequest was null or undefined when calling wrapUpTelephonyCall.');
+        }
+
+        let localVarHeaders = this.defaultHeaders;
+
+        let localVarCredential: string | undefined;
+        // authentication (BearerToken) required
+        localVarCredential = this.configuration.lookupCredential('BearerToken');
+        if (localVarCredential) {
+            localVarHeaders = localVarHeaders.set('Authorization', 'Bearer ' + localVarCredential);
+        }
+
+        let localVarHttpHeaderAcceptSelected: string | undefined = options && options.httpHeaderAccept;
+        if (localVarHttpHeaderAcceptSelected === undefined) {
+            // to determine the Accept header
+            const httpHeaderAccepts: string[] = [
+            ];
+            localVarHttpHeaderAcceptSelected = this.configuration.selectHeaderAccept(httpHeaderAccepts);
+        }
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+
+        let localVarHttpContext: HttpContext | undefined = options && options.context;
+        if (localVarHttpContext === undefined) {
+            localVarHttpContext = new HttpContext();
+        }
+
+
+        // to determine the Content-Type header
+        const consumes: string[] = [
+            'application/json'
+        ];
+        const httpContentTypeSelected: string | undefined = this.configuration.selectHeaderContentType(consumes);
+        if (httpContentTypeSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Content-Type', httpContentTypeSelected);
+        }
+
+        let responseType_: 'text' | 'json' | 'blob' = 'json';
+        if (localVarHttpHeaderAcceptSelected) {
+            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+                responseType_ = 'text';
+            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+                responseType_ = 'json';
+            } else {
+                responseType_ = 'blob';
+            }
+        }
+
+        let localVarPath = `/api/v1/integration/telephony/calls/${this.configuration.encodeParam({name: "callId", value: callId, in: "path", style: "simple", explode: false, dataType: "string", dataFormat: "uuid"})}/wrap-up`;
+        return this.httpClient.request<any>('post', `${this.configuration.basePath}${localVarPath}`,
+            {
+                context: localVarHttpContext,
+                body: wrapUpCallRequest,
                 responseType: <any>responseType_,
                 withCredentials: this.configuration.withCredentials,
                 headers: localVarHeaders,

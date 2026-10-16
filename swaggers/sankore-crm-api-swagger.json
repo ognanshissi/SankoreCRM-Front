@@ -19448,6 +19448,660 @@
         }
       }
     },
+    "/api/v1/integration/telephony/calls/click-to-call": {
+      "post": {
+        "tags": [
+          "Telephony"
+        ],
+        "summary": "Ring my handset, then dial one of this record's numbers",
+        "description": "Takes a RECORD and a SLOT — entityType (Lead | Customer), entityId, slot (Primary | Secondary) — and never a telephone number: the number is read on the server by the module that owns it, which also applies its own perimeter. An agency perimeter refusal therefore reads as the owning module's own code (CLIENT_NOT_FOUND, LEAD_NOT_YOURS). SYNCHRONOUS and never retried: the agent is waiting for their own telephone, and a retried call rings twice in somebody's hand — re-click instead. Answers 422 TELEPHONY_USER_NOT_LINKED when the caller has no active provider account (link one under telephony/user-links), 422 TELEPHONY_DISABLED without an active telephony connection, 422 UNKNOWN_SENSITIVE_FIELD or LEAD_PHONE_SLOT_EMPTY when the slot holds no number, 502 TELEPHONY_PROVIDER_REFUSED when the provider said no, and 503 TELEPHONY_NUMBER_UNAVAILABLE when the owning module could not be asked. The response carries the request id; follow it with GET telephony/calls/{callId}/context once the call exists. Audited. Requires permission: Telephony.Call.Make.",
+        "operationId": "RequestTelephonyClickToCall",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RequestClickToCallRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RequestClickToCallResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "422": {
+            "description": "Unprocessable Entity"
+          },
+          "502": {
+            "description": "Bad Gateway"
+          },
+          "503": {
+            "description": "Service Unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/integration/telephony/calls/{callId}/context": {
+      "get": {
+        "tags": [
+          "Telephony"
+        ],
+        "summary": "Who is on this call, for the screen that opens while it rings",
+        "description": "The other half of the screen pop: the realtime push carries a call id and nothing else, and this turns it into a name — under your permission and inside your agency perimeter, neither of which a websocket frame can apply. matchStatus says what to render: Matched is one candidate, Ambiguous is several (a family handset, a shop line — the agent chooses, with POST calls/{callId}/link), Unknown is nobody on file. A candidate with outOfPerimeter=true carries NO displayName: the caller is known to the institution elsewhere, which stops you searching for somebody you cannot see, and the record stays hidden. NO TELEPHONE NUMBER is ever returned. Requires permission: Telephony.Call.View.",
+        "operationId": "GetTelephonyCallContext",
+        "parameters": [
+          {
+            "name": "callId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TelephonyCallContext"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/api/v1/integration/telephony/calls/{callId}/link": {
+      "post": {
+        "tags": [
+          "Telephony"
+        ],
+        "summary": "Say which record a call was about, or correct it",
+        "description": "What makes an Ambiguous call useful: the journal refuses to guess between two people who share a number, and this is how the human who just spoke to one of them settles it. A manual attachment OVERRIDES an automatic one and is never overwritten by a later sweep. The reason is mandatory and is kept in the audit trail — a conversation filed against the wrong person is something a later reader must be able to understand. BOTH SIDES are authorized: only your own call — or one nobody is attributed, which is the agency's 'to attribute' queue — may be moved, and the target record must be one you may work (M01's agency perimeter for a client, M13's assignee-or-supervisor rule for a lead). A call that is not yours answers 404, because a 403 would confirm a colleague spoke to somebody; a record that is not yours answers 403 TELEPHONY_ENTITY_NOT_YOURS, because you can already see the call and 'not found' would send you looking for a record in front of you. Requires permission: Telephony.Call.Link.",
+        "operationId": "LinkTelephonyCall",
+        "parameters": [
+          {
+            "name": "callId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LinkCallRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "422": {
+            "description": "Unprocessable Entity"
+          }
+        }
+      }
+    },
+    "/api/v1/integration/telephony/calls/{callId}/wrap-up": {
+      "post": {
+        "tags": [
+          "Telephony"
+        ],
+        "summary": "Say how the call went",
+        "description": "The outcome must be an ACTIVE code of your tenant's referential — see GET telephony/call-outcomes — because two of its columns carry behaviour: one decides whether the call stops a lead's first-contact SLA, another makes callbackAt mandatory (422 TELEPHONY_CALLBACK_DATE_REQUIRED). A call that has not ended is refused (422 TELEPHONY_CALL_NOT_ENDED): the agent is still speaking. Only your own call — or one nobody is attributed — may be wrapped up; another agent's answers 404, because a 403 would confirm a colleague spoke to somebody. The note is kept ENCRYPTED and never leaves this module: it is excluded from the event M13 consumes and from every timeline summary. Wrapping up twice is allowed — an agent may correct an outcome — and M13 is idempotent on the call. Audited. Requires permission: Telephony.Call.View.",
+        "operationId": "WrapUpTelephonyCall",
+        "parameters": [
+          {
+            "name": "callId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WrapUpCallRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "422": {
+            "description": "Unprocessable Entity"
+          }
+        }
+      }
+    },
+    "/api/v1/integration/telephony/calls/missed": {
+      "get": {
+        "tags": [
+          "Telephony"
+        ],
+        "summary": "The calls nobody answered, grouped per caller",
+        "description": "YOUR missed calls plus the ones attributed to nobody — the agency's 'to attribute' queue, which is the call most likely to be forgotten. A colleague's is theirs: showing it here would have two agents calling one person back. Grouped on a 30-minute gap between consecutive attempts, so somebody who tried three times in ten minutes is one entry with attemptCount=3 — and the callId is their LAST attempt, which carries the most recent reading of who they are. Calls already wrapped up are excluded. Voicemail counts as missed (somebody left a message); a FAILED call does not (an operator refusal has nobody waiting to be called back). No name and no number: read GET calls/{callId}/context for a name, which applies your perimeter. Defaults to the last 7 days. Requires permission: Telephony.Call.View.",
+        "operationId": "ListTelephonyMissedCalls",
+        "parameters": [
+          {
+            "name": "since",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MissedCallDto"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        }
+      }
+    },
+    "/api/v1/integration/telephony/calls/{callId}/create-lead": {
+      "post": {
+        "tags": [
+          "Telephony"
+        ],
+        "summary": "Turn a call from an unknown number into a lead",
+        "description": "On your initiative, never automatic: most unanswered calls to a branch are not prospects, and a tenant whose every missed call became a lead would have a pipeline nobody trusts within a week. The lead gets a SYNTHETIC name ('Appel manqué du ...') because nobody spoke — replace it on your first real contact — and you become its owner. Idempotent on the NUMBER: a second call from the same caller answers the existing open lead instead of creating a duplicate. Answers 409 TELEPHONY_CALLER_IS_ALREADY_A_CLIENT when the number turns out to belong to a client (the call is attached to them instead), 409 TELEPHONY_CALL_ALREADY_ATTACHED when the journal already resolved the caller, and 422 TELEPHONY_NUMBER_UNAVAILABLE for a withheld caller id. Audited. Requires permission: Telephony.Call.Link.",
+        "operationId": "CreateLeadFromTelephonyCall",
+        "parameters": [
+          {
+            "name": "callId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateLeadFromCallResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "409": {
+            "description": "Conflict"
+          },
+          "422": {
+            "description": "Unprocessable Entity"
+          }
+        }
+      }
+    },
+    "/api/v1/integration/telephony/call-outcomes": {
+      "get": {
+        "tags": [
+          "Telephony"
+        ],
+        "summary": "The tenant's call outcomes, in display order",
+        "description": "What the wrap-up screen offers. Two of the fields carry BEHAVIOUR: countsAsContact decides whether the call stops a lead's first-contact SLA, and requiresCallbackDate makes callbackAt mandatory on the wrap-up. isSystem marks the platform baseline — renameable and deactivatable, never deletable, because a call wrapped up last year points at the code. Inactive ones are excluded unless includeInactive=true. Requires permission: Telephony.Call.View.",
+        "operationId": "ListTelephonyCallOutcomes",
+        "parameters": [
+          {
+            "name": "includeInactive",
+            "in": "query",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CallOutcomeDto"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Telephony"
+        ],
+        "summary": "Add an outcome of your own",
+        "description": "The code is upper-cased and must be unique in your tenant — including against a DEACTIVATED one, which answers 409: re-adding a code somebody switched off is a reactivation (POST call-outcomes/{code}/activate), not a creation, and treating it as one would silently keep the old row's behaviour flags. Audited. Requires permission: Telephony.Settings.Manage.",
+        "operationId": "CreateTelephonyCallOutcome",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCallOutcomeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "409": {
+            "description": "Conflict"
+          },
+          "422": {
+            "description": "Unprocessable Entity"
+          }
+        }
+      }
+    },
+    "/api/v1/integration/telephony/call-outcomes/{code}": {
+      "put": {
+        "tags": [
+          "Telephony"
+        ],
+        "summary": "Rename an outcome and move it in the list",
+        "description": "The LABEL and the ORDER only. The two behaviour flags are deliberately not editable: countsAsContact decides whether a call stops a lead's SLA, and flipping it would retroactively change what every call already wrapped up under that code meant — a month of SLA figures recomputed by a settings screen. To change behaviour, add an outcome and deactivate the old one, which leaves the history saying what it said. Audited. Requires permission: Telephony.Settings.Manage.",
+        "operationId": "UpdateTelephonyCallOutcome",
+        "parameters": [
+          {
+            "name": "code",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateCallOutcomeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "422": {
+            "description": "Unprocessable Entity"
+          }
+        }
+      }
+    },
+    "/api/v1/integration/telephony/call-outcomes/{code}/{state}": {
+      "post": {
+        "tags": [
+          "Telephony"
+        ],
+        "summary": "Take an outcome out of the wrap-up list, or put it back",
+        "description": "{state} is 'activate' or 'deactivate'. NEVER a delete, for a baseline outcome or any other: a call wrapped up last year points at the code, and removing it would leave that call explained by nothing. A deactivated outcome is refused by the wrap-up, so a screen holding a stale list cannot keep using it. Audited. Requires permission: Telephony.Settings.Manage.",
+        "operationId": "SetTelephonyCallOutcomeActive",
+        "parameters": [
+          {
+            "name": "code",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "state",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "422": {
+            "description": "Unprocessable Entity"
+          }
+        }
+      }
+    },
+    "/api/v1/integration/telephony/recording-policy": {
+      "get": {
+        "tags": [
+          "Telephony"
+        ],
+        "summary": "Whether this institution keeps call recordings, and under what basis",
+        "description": "Disabled for a tenant that has never configured one, which is every tenant until a compliance officer decides otherwise — the feature ships built and switched OFF, because a recording is a person's voice and the lawful basis for keeping one differs by country and by what the customer was told before the tone. updatedBy is null when nobody has decided anything, which is a different thing from somebody having chosen Disabled. Requires permission: admin:compliance:manage.",
+        "operationId": "GetTelephonyRecordingPolicy",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecordingPolicyDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Telephony"
+        ],
+        "summary": "Decide whether and which calls are recorded",
+        "description": "Any mode but Disabled REQUIRES a legal basis and a purpose: 422 TELEPHONY_RECORDING_LEGAL_BASIS_REQUIRED / TELEPHONY_RECORDING_PURPOSE_REQUIRED. They are free text in your own words — the bases differ by regulator and an enum would make the platform's list a constraint on what you may claim — and each is copied onto every recording at retrieval and FROZEN there, so shortening a retention never reaches back and lengthening one never extends a file already taken. Switching back to Disabled keeps the words, because the recordings already taken are still held under them. OnDemand keeps only the calls an agent asked to keep — the mode for a basis of consent, which is given per conversation. deleteAtProvider is honoured only where the provider supports deletion. Audited, payload included. Requires permission: admin:compliance:manage.",
+        "operationId": "SetTelephonyRecordingPolicy",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetRecordingPolicyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "422": {
+            "description": "Unprocessable Entity"
+          }
+        }
+      }
+    },
+    "/api/v1/integration/telephony/calls/{callId}/recording": {
+      "get": {
+        "tags": [
+          "Telephony"
+        ],
+        "summary": "Play a call's recording",
+        "description": "Streams the decrypted audio and records WHO listened in tel_recording_access_log, in the SAME transaction — so there is no window in which a voice was heard without a trace. An authenticated stream and not a signed link, because a link only ever proves that it was ISSUED. Pass ?reason= when the caller stated one; it is optional here and mandatory on the export. 404 for a call with no recording, 422 TELEPHONY_RECORDING_NOT_AVAILABLE when the row exists but the bytes do not — pending retrieval, failed, or purged, which are different answers from 'never existed'. Requires permission: Telephony.Recording.Listen.",
+        "operationId": "ListenTelephonyRecording",
+        "parameters": [
+          {
+            "name": "callId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "reason",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "$ref": "#/components/schemas/Void"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "422": {
+            "description": "Unprocessable Entity"
+          }
+        }
+      }
+    },
+    "/api/v1/integration/telephony/calls/{callId}/recording/export": {
+      "get": {
+        "tags": [
+          "Telephony"
+        ],
+        "summary": "Download a call's recording out of the platform",
+        "description": "A different act from listening and a different permission: past this point no control of ours applies to the file. The reason is MANDATORY (422 TELEPHONY_RECORDING_EXPORT_REASON_REQUIRED) and is kept in tel_recording_access_log — it is the only thing that makes the export answerable afterwards. Served as an attachment. Requires permission: Telephony.Recording.Export.",
+        "operationId": "ExportTelephonyRecording",
+        "parameters": [
+          {
+            "name": "callId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "reason",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "$ref": "#/components/schemas/Void"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "422": {
+            "description": "Unprocessable Entity"
+          }
+        }
+      }
+    },
+    "/api/v1/integration/telephony/calls/{callId}/recording/legal-hold": {
+      "post": {
+        "tags": [
+          "Telephony"
+        ],
+        "summary": "Freeze a recording against the retention purge, or release it",
+        "description": "A hold suspends the RETENTION purge for a dispute. It is carried as a flag plus a reason rather than by pushing the retention date out, because the original date is the fact and the hold is the exception — merging them loses which was which. It does NOT survive an anonymisation of the client: a right-to-erasure request is a different instruction, and a hold placed years ago must not quietly veto one. The reason is mandatory when placing a hold. Audited. Requires permission: admin:compliance:manage.",
+        "operationId": "SetTelephonyRecordingLegalHold",
+        "parameters": [
+          {
+            "name": "callId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetLegalHoldRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "422": {
+            "description": "Unprocessable Entity"
+          }
+        }
+      }
+    },
     "/api/v1/integration/telephony/webhooks/simulate": {
       "post": {
         "tags": [
@@ -25293,6 +25947,36 @@
         },
         "additionalProperties": false
       },
+      "CallOutcomeDto": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "nullable": true
+          },
+          "label": {
+            "type": "string",
+            "nullable": true
+          },
+          "countsAsContact": {
+            "type": "boolean"
+          },
+          "requiresCallbackDate": {
+            "type": "boolean"
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "isSystem": {
+            "type": "boolean"
+          },
+          "displayOrder": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
       "CancelIntegrationCommandRequest": {
         "type": "object",
         "properties": {
@@ -27761,6 +28445,30 @@
         },
         "additionalProperties": false
       },
+      "CreateCallOutcomeRequest": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "nullable": true
+          },
+          "label": {
+            "type": "string",
+            "nullable": true
+          },
+          "countsAsContact": {
+            "type": "boolean"
+          },
+          "requiresCallbackDate": {
+            "type": "boolean"
+          },
+          "displayOrder": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
       "CreateClientResult": {
         "type": "object",
         "properties": {
@@ -28172,6 +28880,16 @@
           },
           "alreadyExisted": {
             "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "CreateLeadFromCallResponse": {
+        "type": "object",
+        "properties": {
+          "leadId": {
+            "type": "string",
+            "format": "uuid"
           }
         },
         "additionalProperties": false
@@ -34716,6 +35434,24 @@
         },
         "additionalProperties": false
       },
+      "LinkCallRequest": {
+        "type": "object",
+        "properties": {
+          "entityType": {
+            "type": "string",
+            "nullable": true
+          },
+          "entityId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "reason": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "LinkProductToCbsRequest": {
         "type": "object",
         "properties": {
@@ -35351,6 +36087,40 @@
           "destination": {
             "type": "string",
             "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "MissedCallDto": {
+        "type": "object",
+        "properties": {
+          "callId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "attemptCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "firstAttemptAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "lastAttemptAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "entityType": {
+            "type": "string",
+            "nullable": true
+          },
+          "entityId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "canCreateLead": {
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -38631,6 +39401,50 @@
         },
         "additionalProperties": false
       },
+      "RecordingPolicyDto": {
+        "type": "object",
+        "properties": {
+          "mode": {
+            "enum": [
+              "Disabled",
+              "AllCalls",
+              "OnDemand"
+            ],
+            "type": "string",
+            "description": "One of: Disabled, AllCalls, OnDemand"
+          },
+          "legalBasis": {
+            "type": "string",
+            "nullable": true
+          },
+          "purpose": {
+            "type": "string",
+            "nullable": true
+          },
+          "retentionDays": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "deleteAtProvider": {
+            "type": "boolean"
+          },
+          "maxDurationSeconds": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "updatedBy": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "RecycleLeadRequest": {
         "type": "object",
         "properties": {
@@ -39111,6 +39925,38 @@
             ],
             "type": "string",
             "description": "One of: Accepted, Rejected, Duplicate, Failed"
+          }
+        },
+        "additionalProperties": false
+      },
+      "RequestClickToCallRequest": {
+        "type": "object",
+        "properties": {
+          "entityType": {
+            "type": "string",
+            "nullable": true
+          },
+          "entityId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "slot": {
+            "enum": [
+              "Primary",
+              "Secondary"
+            ],
+            "type": "string",
+            "description": "One of: Primary, Secondary"
+          }
+        },
+        "additionalProperties": false
+      },
+      "RequestClickToCallResponse": {
+        "type": "object",
+        "properties": {
+          "requestId": {
+            "type": "string",
+            "format": "uuid"
           }
         },
         "additionalProperties": false
@@ -40812,6 +41658,19 @@
         },
         "additionalProperties": false
       },
+      "SetLegalHoldRequest": {
+        "type": "object",
+        "properties": {
+          "hold": {
+            "type": "boolean"
+          },
+          "reason": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "SetMonthlyQuotaCommand": {
         "type": "object",
         "properties": {
@@ -40843,6 +41702,43 @@
           "completeness": {
             "type": "number",
             "format": "double"
+          }
+        },
+        "additionalProperties": false
+      },
+      "SetRecordingPolicyRequest": {
+        "type": "object",
+        "properties": {
+          "mode": {
+            "enum": [
+              "Disabled",
+              "AllCalls",
+              "OnDemand"
+            ],
+            "type": "string",
+            "description": "One of: Disabled, AllCalls, OnDemand"
+          },
+          "legalBasis": {
+            "type": "string",
+            "nullable": true
+          },
+          "purpose": {
+            "type": "string",
+            "nullable": true
+          },
+          "retentionDays": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "deleteAtProvider": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "maxDurationSeconds": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -42558,6 +43454,60 @@
         },
         "additionalProperties": false
       },
+      "TelephonyCallContext": {
+        "type": "object",
+        "properties": {
+          "callId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "direction": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "nullable": true
+          },
+          "matchStatus": {
+            "type": "string",
+            "nullable": true
+          },
+          "candidates": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TelephonyCandidate"
+            },
+            "nullable": true
+          },
+          "startedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false
+      },
+      "TelephonyCandidate": {
+        "type": "object",
+        "properties": {
+          "entityType": {
+            "type": "string",
+            "nullable": true
+          },
+          "entityId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "displayName": {
+            "type": "string",
+            "nullable": true
+          },
+          "outOfPerimeter": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
       "TelephonyDirectoryDto": {
         "type": "object",
         "properties": {
@@ -43374,6 +44324,20 @@
             "type": "string",
             "format": "date",
             "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "UpdateCallOutcomeRequest": {
+        "type": "object",
+        "properties": {
+          "label": {
+            "type": "string",
+            "nullable": true
+          },
+          "displayOrder": {
+            "type": "integer",
+            "format": "int32"
           }
         },
         "additionalProperties": false
@@ -45471,6 +46435,25 @@
           "contribution": {
             "type": "number",
             "format": "double"
+          }
+        },
+        "additionalProperties": false
+      },
+      "WrapUpCallRequest": {
+        "type": "object",
+        "properties": {
+          "outcomeCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "note": {
+            "type": "string",
+            "nullable": true
+          },
+          "callbackAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
           }
         },
         "additionalProperties": false

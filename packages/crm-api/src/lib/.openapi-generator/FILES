@@ -140,6 +140,7 @@ model/call-log-operation-stats.interface.ts
 model/call-log-page.interface.ts
 model/call-log-row.interface.ts
 model/call-log-stats.interface.ts
+model/call-outcome-dto.interface.ts
 model/cancel-integration-command-request.interface.ts
 model/cancel-integration-command-result.interface.ts
 model/capture-answer.interface.ts
@@ -198,6 +199,7 @@ model/correct-kyc-field-request.interface.ts
 model/correct-kyc-field-response.interface.ts
 model/create-agency-request.interface.ts
 model/create-agency-result.interface.ts
+model/create-call-outcome-request.interface.ts
 model/create-client-result.interface.ts
 model/create-connection-request.interface.ts
 model/create-connection-response.interface.ts
@@ -209,6 +211,7 @@ model/create-individual-client-request.interface.ts
 model/create-insurance-product-request.interface.ts
 model/create-kyc-file-request.interface.ts
 model/create-kyc-file-response.interface.ts
+model/create-lead-from-call-response.interface.ts
 model/create-lead-source-request.interface.ts
 model/create-legal-client-request.interface.ts
 model/create-legal-client-result.interface.ts
@@ -380,6 +383,7 @@ model/leads-person-identity-dto.interface.ts
 model/leads-remove-household-member-request.interface.ts
 model/leads-update-household-member-request.interface.ts
 model/legal-form-dto.interface.ts
+model/link-call-request.interface.ts
 model/link-product-to-cbs-request.interface.ts
 model/link-telephony-user-request.interface.ts
 model/link-telephony-user-response.interface.ts
@@ -406,6 +410,7 @@ model/merge-lead-result.interface.ts
 model/merge-leads-request.interface.ts
 model/merged-into-dto.interface.ts
 model/migrate-objects-result.interface.ts
+model/missed-call-dto.interface.ts
 model/missing-fatca-declaration.interface.ts
 model/missing-questionnaire.interface.ts
 model/models.ts
@@ -496,6 +501,7 @@ model/record-kyc-auto-approval-control-result.interface.ts
 model/record-profile-notice-request.interface.ts
 model/record-profile-notice-response.interface.ts
 model/record-relay-heartbeat-request.interface.ts
+model/recording-policy-dto.interface.ts
 model/recycle-lead-request.interface.ts
 model/refresh-token-request.interface.ts
 model/register-relay-agent-request.interface.ts
@@ -515,6 +521,8 @@ model/replay-integration-command-result.interface.ts
 model/report-suspicious-login-request.interface.ts
 model/reprocess-ingestion-request.interface.ts
 model/reprocess-ingestion-result.interface.ts
+model/request-click-to-call-request.interface.ts
+model/request-click-to-call-response.interface.ts
 model/request-client-export-request.interface.ts
 model/request-client-export-result.interface.ts
 model/request-client-merge-request.interface.ts
@@ -569,9 +577,11 @@ model/set-biometry-token-request.interface.ts
 model/set-connection-secret-request.interface.ts
 model/set-intent-level-request.interface.ts
 model/set-kyc-remote-policy-request.interface.ts
+model/set-legal-hold-request.interface.ts
 model/set-monthly-quota-command.interface.ts
 model/set-pep-status-request.interface.ts
 model/set-qualification-completeness-request.interface.ts
+model/set-recording-policy-request.interface.ts
 model/set-secret-request.interface.ts
 model/set-sms-monthly-quota-command.interface.ts
 model/set-telephony-caller-number-request.interface.ts
@@ -624,6 +634,8 @@ model/tag-dto.interface.ts
 model/task-dto.interface.ts
 model/task-generation-rule-dto.interface.ts
 model/task-type-dto.interface.ts
+model/telephony-call-context.interface.ts
+model/telephony-candidate.interface.ts
 model/telephony-directory-dto.interface.ts
 model/telephony-directory-entry-dto.interface.ts
 model/telephony-user-link-dto.interface.ts
@@ -646,6 +658,7 @@ model/unmapped-codes-response.interface.ts
 model/unmapped-crm-code.interface.ts
 model/update-agency-request.interface.ts
 model/update-aml-profile-request.interface.ts
+model/update-call-outcome-request.interface.ts
 model/update-client-request.interface.ts
 model/update-client-sensitive-request.interface.ts
 model/update-company-info-command.interface.ts
@@ -707,5 +720,6 @@ model/workflow-step-dto.interface.ts
 model/workflow-template-dto.interface.ts
 model/working-day-dto.interface.ts
 model/workload-factor.interface.ts
+model/wrap-up-call-request.interface.ts
 param.ts
 variables.ts
