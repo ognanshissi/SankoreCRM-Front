@@ -244,6 +244,28 @@ export const PERMISSIONS = {
   INS_COMPLAINT_HANDLE: 'Ins.Complaint.Handle',
 
   INS_RECONCILIATION_RESOLVE: 'Ins.Reconciliation.Resolve',
+
+  // ——— Téléphonie ———
+  //
+  // Même forme PascalCase pointée que les intégrations, et pour la même raison : c'est
+  // la chaîne exacte que les endpoints `/api/v1/integration/telephony/**` déclarent
+  // dans leur description (par ex. « Requires permission: Telephony.Call.View. »).
+  // Les réécrire en `telephony:call:view` donnerait des gardes qui ne matchent jamais.
+  TELEPHONY_CALL_MAKE: 'Telephony.Call.Make',
+  TELEPHONY_CALL_VIEW: 'Telephony.Call.View',
+  TELEPHONY_CALL_LINK: 'Telephony.Call.Link',
+  TELEPHONY_RECORDING_LISTEN: 'Telephony.Recording.Listen',
+  TELEPHONY_RECORDING_EXPORT: 'Telephony.Recording.Export',
+  TELEPHONY_STATS_VIEW: 'Telephony.Stats.View',
+  TELEPHONY_SETTINGS_MANAGE: 'Telephony.Settings.Manage',
+
+  // Volontairement en minuscules à deux-points, contrairement à ses voisines de ce
+  // bloc : c'est la chaîne exacte que les endpoints de la politique d'enregistrement
+  // accordent (`RecordingPolicySlices` et `RecordingAccessEndpoints` disent
+  // « Requires permission: admin:compliance:manage. »), parce que le droit vient du
+  // catalogue Administration et non de la famille Téléphonie. L'uniformiser en
+  // `Admin.Compliance.Manage` produirait une garde que le serveur ne satisfait jamais.
+  ADMIN_COMPLIANCE_MANAGE: 'admin:compliance:manage',
 } as const;
 
 /** Code de permission valide. Tout autre littéral est refusé à la compilation. */

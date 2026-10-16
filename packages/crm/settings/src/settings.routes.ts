@@ -370,6 +370,10 @@ const settingsRoutes: Routes = [
     loadChildren: () => import('@sankore/crm/integration'),
   },
   {
+    path: 'telephony',
+    loadChildren: () => import('@sankore/crm/telephony'),
+  },
+  {
     path: 'audit',
     canActivate: [hasPermissionGuard('audit:read')],
     loadComponent: () =>

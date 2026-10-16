@@ -1,0 +1,482 @@
+<!-- En-tête -->
+<div class="mb-4 flex flex-wrap items-start justify-between gap-3">
+  <div class="min-w-0">
+    <h1 class="text-lg font-semibold text-slate-800">Indicateurs téléphonie</h1>
+    <p class="mt-0.5 text-sm text-slate-500">
+      Activité téléphonique par jour, par agent et par agence. Les chiffres sont recomptés
+      depuis le journal des appels : ce ne sont pas des compteurs en temps réel.
+    </p>
+  </div>
+
+  <div class="flex flex-wrap items-center gap-2">
+    <button
+      tas-outlined-button
+      type="button"
+      [disabled]="isLoading() || !canExport()"
+      (click)="exportCsv()"
+    >
+      <tas-icon iconName="feather:download" style="font-size:14px"></tas-icon>
+      Exporter (CSV)
+    </button>
+    <button tas-outlined-button type="button" [disabled]="isLoading()" (click)="reload()">
+      <tas-icon iconName="feather:refresh-cw" style="font-size:14px"></tas-icon>
+      Actualiser
+    </button>
+  </div>
+</div>
+
+<!--
+  Fraîcheur de la projection. C'est l'honnêteté de l'écran : les compteurs sont recalculés
+  toutes les heures sur deux jours et toutes les nuits sur sept, donc l'âge des chiffres
+  fait partie des chiffres.
+-->
+<div
+  class="mb-4 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3"
+  [class.border-amber-200]="freshness().isStale"
+  [class.bg-amber-50]="freshness().isStale"
+>
+  <div class="flex flex-wrap items-center justify-between gap-3">
+    <div class="flex min-w-0 flex-wrap items-center gap-2">
+      <tas-tag [severity]="freshness().severity">{{ freshness().label }}</tas-tag>
+      @if (!freshness().isEmpty && stats()?.computedAt) {
+        <span class="text-xs text-slate-500 tabular-nums">{{ stats()?.computedAt }}</span>
+      }
+    </div>
+
+    @if (canRecompute()) {
+      <div class="flex flex-col items-start gap-1">
+        <button
+          tas-text-button
+          color="primary"
+          type="button"
+          size="small"
+          [disabled]="isRecomputing() || isLoading() || !!periodError()"
+          [isLoading]="isRecomputing()"
+          (click)="confirmRecompute()"
+        >
+          <tas-icon iconName="feather:rotate-ccw" style="font-size:12px"></tas-icon>
+          Recalculer la période
+        </button>
+        <span class="text-xs text-slate-400">
+          Recompte les compteurs de la période depuis le journal — à lancer après avoir
+          corrigé un résultat d'appel ou réattribué des appels.
+        </span>
+      </div>
+    }
+  </div>
+
+  <p class="mt-2 text-xs text-slate-500">
+    <tas-icon iconName="feather:info" style="font-size:12px" class="text-slate-400"></tas-icon>
+    Les <span class="font-medium">appels internes</span> (de collègue à collègue) sont exclus
+    de tous ces chiffres : comptés, une matinée passée à consulter son responsable
+    devancerait une matinée passée avec des clients. Un total plus faible que celui de la
+    console de votre opérateur vient de là. Les journées sont des
+    <span class="font-medium">journées UTC</span>.
+  </p>
+</div>
+
+<!-- Filtres -->
+<tas-card class="mb-4 block">
+  <div class="p-4">
+    <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <tas-form-field>
+        <tas-label>Du</tas-label>
+        <input
+          tasInput
+          type="date"
+          [value]="filterFrom()"
+          (change)="onFromChange($any($event.target).value)"
+        />
+      </tas-form-field>
+
+      <tas-form-field>
+        <tas-label>au</tas-label>
+        <input
+          tasInput
+          type="date"
+          [value]="filterTo()"
+          (change)="onToChange($any($event.target).value)"
+        />
+        @if (periodDays(); as days) {
+          <tas-hint>{{ days }} jour(s), bornes incluses.</tas-hint>
+        }
+      </tas-form-field>
+
+      <tas-form-field>
+        <tas-label>Agence</tas-label>
+        <tas-select
+          clearable
+          [searchable]="true"
+          [options]="agencyOptions()"
+          optionLabel="label"
+          optionValue="value"
+          placeholder="Toutes les agences"
+          [ngModel]="filterAgencyId()"
+          (ngModelChange)="onAgencyChange($event)"
+        ></tas-select>
+        <tas-hint>
+          Une agence hors de votre périmètre répond une période vide, pas un refus.
+        </tas-hint>
+      </tas-form-field>
+
+      <tas-form-field>
+        <tas-label>Agent</tas-label>
+        <tas-select
+          clearable
+          [searchable]="true"
+          [options]="agentOptions()"
+          optionLabel="label"
+          optionValue="value"
+          placeholder="Tous les agents"
+          [ngModel]="filterAgentId()"
+          (ngModelChange)="onAgentChange($event)"
+        ></tas-select>
+      </tas-form-field>
+    </div>
+
+    @if (periodError()) {
+      <p class="mt-3 text-sm text-functional-error" role="alert">{{ periodError() }}</p>
+    }
+
+    @if (hasActiveFilters()) {
+      <div class="mt-3 flex justify-end">
+        <button tas-text-button type="button" size="small" (click)="resetFilters()">
+          <tas-icon iconName="feather:x" style="font-size:12px"></tas-icon>
+          Revenir aux 31 derniers jours
+        </button>
+      </div>
+    }
+  </div>
+</tas-card>
+
+@if (loadError()) {
+  <div class="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3" role="alert">
+    <p class="text-sm text-slate-700">{{ loadError() }}</p>
+    <button tas-text-button color="primary" type="button" size="small" (click)="reload()">
+      Réessayer
+    </button>
+  </div>
+}
+
+<!-- Le spinner ne recouvre QUE les données : les filtres restent manipulables. -->
+@if (isLoading()) {
+  <div class="flex items-center justify-center py-20">
+    <tas-spinner size="10" class="text-primary"></tas-spinner>
+  </div>
+} @else if (!loadError()) {
+  @if (calls() === 0) {
+    <tas-card class="block">
+      <div class="flex flex-col items-center justify-center px-4 py-16 text-center">
+        <tas-icon
+          iconName="feather:phone-off"
+          class="mb-3 text-slate-300"
+          style="font-size:32px"
+        ></tas-icon>
+        @if (filterAgentId()) {
+          <p class="mb-1 text-sm font-medium text-slate-600">
+            Aucun appel pour cet agent sur la période.
+          </p>
+          <p class="text-xs text-slate-400">
+            Son poste est peut-être rattaché depuis peu : vérifiez le rattachement dans
+            « Rattachement des postes ».
+          </p>
+        } @else if (filterAgencyId()) {
+          <p class="mb-1 text-sm font-medium text-slate-600">
+            Aucun appel pour cette agence sur la période.
+          </p>
+          <p class="text-xs text-slate-400">
+            Si cette agence n'est pas dans votre périmètre, le serveur répond une période
+            vide plutôt qu'un refus : ce n'est pas une erreur, et le chiffre n'est pas
+            masqué.
+          </p>
+        } @else {
+          <p class="mb-1 text-sm font-medium text-slate-600">
+            Aucun appel enregistré sur cette période.
+          </p>
+          <p class="text-xs text-slate-400">
+            Élargissez la période, ou vérifiez que la téléphonie est activée et les postes
+            rattachés.
+          </p>
+        }
+        @if (hasActiveFilters()) {
+          <button tas-outlined-button type="button" class="mt-4" (click)="resetFilters()">
+            Revenir aux 31 derniers jours
+          </button>
+        }
+      </div>
+    </tas-card>
+  } @else {
+    <!-- Tuiles -->
+    <div class="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <tas-card class="block">
+        <div class="p-4">
+          <p class="text-xs font-medium uppercase tracking-wide text-slate-500">
+            Appels sortants
+          </p>
+          <p class="mt-1 text-2xl font-semibold text-slate-800 tabular-nums">
+            {{ formatCount(totals().outbound) }}
+          </p>
+          <p class="mt-1 text-xs text-slate-400">
+            sur {{ formatCount(calls()) }} appel(s) de la période
+          </p>
+        </div>
+      </tas-card>
+
+      <tas-card class="block">
+        <div class="p-4">
+          <p class="text-xs font-medium uppercase tracking-wide text-slate-500">
+            Appels entrants
+          </p>
+          <p class="mt-1 text-2xl font-semibold text-slate-800 tabular-nums">
+            {{ formatCount(totals().inbound) }}
+          </p>
+          <p class="mt-1 text-xs text-slate-400">
+            {{ formatCount(totals().missed) }} manqué(s), {{ formatCount(totals().failed) }}
+            en échec
+          </p>
+        </div>
+      </tas-card>
+
+      <tas-card class="block">
+        <div class="p-4">
+          <p class="text-xs font-medium uppercase tracking-wide text-slate-500">
+            Taux de décroché
+          </p>
+          <p class="mt-1 text-2xl font-semibold text-slate-800 tabular-nums">
+            {{ formatPercent(answerRate()) }}
+          </p>
+          <p class="mt-1 text-xs text-slate-400">
+            {{ formatCount(totals().answered) }} décroché(s) ÷ appels entrants et sortants
+          </p>
+        </div>
+      </tas-card>
+
+      <tas-card class="block">
+        <div class="p-4">
+          <p class="text-xs font-medium uppercase tracking-wide text-slate-500">
+            Durée moyenne de conversation
+          </p>
+          <p class="mt-1 text-2xl font-semibold text-slate-800 tabular-nums">
+            {{ formatDuration(averageTalkSeconds()) }}
+          </p>
+          <p class="mt-1 text-xs text-slate-400">
+            par appel décroché · attente moyenne {{ formatDuration(averageRingSeconds()) }}
+          </p>
+        </div>
+      </tas-card>
+    </div>
+
+    <!--
+      Les deux indicateurs de premier contact ne sont pas des compteurs téléphoniques :
+      l'horloge part de l'attribution du lead et s'arrête sur un contact, quel qu'en soit
+      le canal. Ils viennent du module Leads, et leur droit de lecture est le sien.
+    -->
+    @if (canReadLeadSla()) {
+      <div class="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <tas-card class="block">
+          <div class="p-4">
+            <p class="text-xs font-medium uppercase tracking-wide text-slate-500">
+              Délai moyen de premier contact
+            </p>
+            @if (isLeadSlaLoading()) {
+              <p class="mt-2 text-sm text-slate-400">Chargement…</p>
+            } @else if (leadSlaError()) {
+              <p class="mt-2 text-sm text-slate-500">{{ leadSlaError() }}</p>
+            } @else {
+              <p class="mt-1 text-2xl font-semibold text-slate-800 tabular-nums">
+                {{ formatMinutes(leadSla().averageFirstContactMinutes) }}
+              </p>
+              <p class="mt-1 text-xs text-slate-400">
+                après attribution du lead, tous canaux confondus — y compris un premier
+                contact pris par courriel ou en agence.
+              </p>
+            }
+          </div>
+        </tas-card>
+
+        <tas-card class="block">
+          <div class="p-4">
+            <p class="text-xs font-medium uppercase tracking-wide text-slate-500">
+              Leads contactés dans le SLA
+            </p>
+            @if (isLeadSlaLoading()) {
+              <p class="mt-2 text-sm text-slate-400">Chargement…</p>
+            } @else if (leadSlaError()) {
+              <p class="mt-2 text-sm text-slate-500">{{ leadSlaError() }}</p>
+            } @else {
+              <p class="mt-1 text-2xl font-semibold text-slate-800 tabular-nums">
+                {{ formatPercent(leadSla().slaShare) }}
+              </p>
+              <p class="mt-1 text-xs text-slate-400">
+                {{ formatCount(leadSla().contactedWithinSla) }} dans le délai ·
+                {{ formatCount(leadSla().contactedLate) }} en retard ·
+                {{ formatCount(leadSla().notContacted) }} jamais contacté(s), sur
+                {{ formatCount(leadSla().assigned) }} lead(s) attribué(s).
+              </p>
+            }
+          </div>
+        </tas-card>
+      </div>
+    }
+
+    <!-- Série par jour -->
+    <tas-card class="mb-4 block">
+      <div class="p-4">
+        <div class="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+          <h2 class="text-sm font-semibold text-slate-700">Appels par jour</h2>
+          <div class="flex items-center gap-3 text-xs text-slate-500">
+            <span class="flex items-center gap-1">
+              <span class="inline-block h-2 w-2 rounded-sm bg-primary"></span>
+              {{ directionLabel('Outbound') }}
+            </span>
+            <span class="flex items-center gap-1">
+              <span class="inline-block h-2 w-2 rounded-sm bg-slate-300"></span>
+              {{ directionLabel('Inbound') }}
+            </span>
+          </div>
+        </div>
+
+        <!--
+          Pas de bibliothèque de graphiques dans le repo, et cet écran n'en justifie pas
+          une : une rangée de barres CSS, comme la page « Ma performance ». Les journées
+          sans appel sont remplies à zéro côté client — le serveur les OMET — faute de quoi
+          la courbe sauterait les dimanches et tasserait la semaine.
+        -->
+        <div
+          class="flex h-40 items-end gap-px overflow-x-auto"
+          role="img"
+          [attr.aria-label]="
+            'Appels par jour du ' +
+            formatDayLong(servedFrom()) +
+            ' au ' +
+            formatDayLong(servedTo()) +
+            ', maximum ' +
+            formatCount(chartPeak()) +
+            ' appels en une journée'
+          "
+        >
+          @for (column of chartColumns(); track column.day) {
+            <div
+              class="flex min-w-[2px] flex-1 flex-col justify-end"
+              [title]="column.title"
+            >
+              @if (column.total === 0) {
+                <!-- Journée mesurée et vide : la barre nulle se voit, l'absence de barre non. -->
+                <div class="h-0.5 w-full rounded-sm bg-slate-200"></div>
+              } @else {
+                <div class="w-full rounded-t-sm bg-slate-300" [style.height.%]="column.inboundPercent"></div>
+                <div class="w-full bg-primary" [style.height.%]="column.outboundPercent"></div>
+              }
+            </div>
+          }
+        </div>
+
+        <div class="mt-2 flex justify-between text-xs text-slate-400">
+          @for (tick of chartTicks(); track $index) {
+            <span>{{ tick }}</span>
+          }
+        </div>
+
+        <p class="mt-2 text-xs text-slate-400">
+          Journées UTC, du {{ formatDayLong(servedFrom()) }} au
+          {{ formatDayLong(servedTo()) }}. Plus haute journée :
+          <span class="tabular-nums">{{ formatCount(chartPeak()) }}</span> appel(s).
+        </p>
+      </div>
+    </tas-card>
+
+    <!-- Classement par agent -->
+    <div class="mb-2 flex flex-wrap items-baseline justify-between gap-2">
+      <h2 class="text-sm font-semibold text-slate-700">Par agent</h2>
+      <p class="text-xs text-slate-400">
+        {{ formatCount(agentRows().length) }} agent(s) ayant passé ou reçu au moins un appel.
+      </p>
+    </div>
+
+    <div class="overflow-x-auto">
+      <tas-table
+        [data]="agentRows()"
+        identifierField="key"
+        [config]="tableConfig()"
+        [isLoading]="false"
+        [hasCaption]="false"
+      >
+        <ng-template #header>
+          <tr>
+            <th>Agent</th>
+            <th>Agence</th>
+            <th class="text-right">Appels</th>
+            <th class="text-right">Sortants</th>
+            <th class="text-right">Entrants</th>
+            <th class="text-right">Décrochés</th>
+            <th class="text-right">Taux</th>
+            <th class="text-right">Contacts utiles</th>
+            <th class="text-right">Durée moyenne</th>
+            <th class="text-right">Temps total</th>
+          </tr>
+        </ng-template>
+
+        <ng-template #body let-item>
+          <tr class="hover:bg-slate-50">
+            <td class="py-3">
+              @if (item.crmUserId === null) {
+                <div class="flex items-center gap-1.5">
+                  <span class="text-sm font-medium text-slate-600">{{ nobodyLabel }}</span>
+                  <tas-icon
+                    iconName="feather:help-circle"
+                    class="text-slate-400"
+                    style="font-size:13px"
+                    [title]="nobodyHint"
+                  ></tas-icon>
+                </div>
+              } @else {
+                <span class="text-sm font-medium text-slate-800">
+                  {{ agentName(item.crmUserId) }}
+                </span>
+              }
+            </td>
+            <td class="text-sm text-slate-600">{{ agenciesLabel(item.agencyIds) }}</td>
+            <td class="text-right text-sm font-medium text-slate-800 tabular-nums">
+              {{ formatCount(item.calls) }}
+            </td>
+            <td class="text-right text-sm text-slate-600 tabular-nums">
+              {{ formatCount(item.totals.outbound) }}
+            </td>
+            <td class="text-right text-sm text-slate-600 tabular-nums">
+              {{ formatCount(item.totals.inbound) }}
+            </td>
+            <td class="text-right text-sm text-slate-600 tabular-nums">
+              {{ formatCount(item.totals.answered) }}
+            </td>
+            <td class="text-right text-sm text-slate-600 tabular-nums">
+              {{ formatPercent(item.answerRate) }}
+            </td>
+            <td class="text-right text-sm text-slate-600 tabular-nums">
+              {{ formatCount(item.totals.contact) }}
+            </td>
+            <td class="text-right text-sm text-slate-600 tabular-nums">
+              {{ formatDuration(item.averageTalkSeconds) }}
+            </td>
+            <td class="text-right text-sm text-slate-600 tabular-nums">
+              {{ formatDuration(item.totals.talkSeconds) }}
+            </td>
+          </tr>
+        </ng-template>
+      </tas-table>
+    </div>
+
+    @if (hasNobodyBucket()) {
+      <p class="mt-2 text-xs text-slate-500">
+        <tas-icon iconName="feather:info" style="font-size:12px" class="text-slate-400"></tas-icon>
+        {{ nobodyHint }}
+      </p>
+    }
+
+    <p class="mt-2 text-xs text-slate-400">
+      Un agent muté en cours de période peut relever de deux agences : l'agence est
+      enregistrée sur l'appel au moment où il est passé, et non reprise de l'agence
+      actuelle de l'agent — c'est ce qui empêche les chiffres du mois dernier de bouger
+      après coup.
+    </p>
+  }
+}

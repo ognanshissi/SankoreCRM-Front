@@ -103,6 +103,7 @@
           [fields]="formSchema.settings"
           [family]="family()"
           [mode]="formMode()"
+          [kind]="kind()"
           [expectedKind]="dto.settings?.expectedKind ?? null"
         ></connection-settings-form>
       </div>
@@ -130,6 +131,10 @@
       <p class="text-sm text-slate-500 mt-1 mb-4">
         Les valeurs partent dans un coffre et ne sont relisibles par aucun écran. Seul l'indice
         masqué revient, assez pour distinguer deux identifiants pendant une rotation.
+        @if (isTelephony()) {
+          Pour une connexion de téléphonie, « identifiant d'appel » est la clé d'API du
+          fournisseur : elle ne se consulte pas, elle se remplace.
+        }
       </p>
       @if (canManage()) {
         <connection-secrets-panel
@@ -144,6 +149,25 @@
       }
     </div>
   </tas-card>
+
+  @if (isTelephony()) {
+    <tas-card class="block mt-4">
+      <div class="p-4">
+        <h2 class="text-sm font-semibold text-slate-700 mb-4">Webhook du fournisseur</h2>
+        @if (canManage()) {
+          <telephony-webhook-panel
+            [connectionId]="id()"
+            [canManage]="canManage()"
+            (secretChanged)="reload()"
+          ></telephony-webhook-panel>
+        } @else {
+          <p class="text-sm text-slate-500">
+            La gestion du webhook demande le droit de gestion des connexions.
+          </p>
+        }
+      </div>
+    </tas-card>
+  }
 
   <tas-card class="block mt-4">
     <div class="p-4">
@@ -250,6 +274,8 @@
             Cette connexion est active.
             @if (family() === 'Insurance') {
               Les produits de cet assureur peuvent être souscrits.
+            } @else if (isTelephony()) {
+              Les appels passent par elle, et ses webhooks alimentent le journal des appels.
             }
           </p>
           @if (canManage()) {
@@ -270,6 +296,10 @@
           @if (family() === 'Insurance') {
             Plusieurs connexions assurance peuvent être actives en même temps, une par assureur
             que vous distribuez.
+          } @else if (isTelephony()) {
+            Tant qu'aucune connexion de téléphonie n'est active, la téléphonie est éteinte pour
+            tout l'établissement : aucun agent ne voit de bouton « Appeler » et aucun appel
+            n'entre au journal.
           } @else {
             Une seule connexion core banking peut être active : un client ne peut pas être créé
             dans deux systèmes de comptes.
@@ -309,7 +339,11 @@
           </ul>
         } @else {
           <p class="text-sm text-functional-success mt-4">
-            Rien ne bloque : le test est passé et aucune correspondance obligatoire ne manque.
+            @if (isTelephony()) {
+              Rien ne bloque : le test de connexion est passé.
+            } @else {
+              Rien ne bloque : le test est passé et aucune correspondance obligatoire ne manque.
+            }
           </p>
         }
 
@@ -339,7 +373,7 @@
           </div>
         }
 
-        @if (!canManageMappings()) {
+        @if (!canManageMappings() && !isTelephony()) {
           <p class="text-sm text-slate-500 mt-3">
             La vérification des correspondances obligatoires demande le droit de gestion des
             correspondances.

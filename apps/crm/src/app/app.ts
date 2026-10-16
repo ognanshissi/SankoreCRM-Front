@@ -14,6 +14,7 @@ import {
   LoadingComponent,
   PageLoadingComponent,
 } from '@sankore/crm/common';
+import { CallPanel } from '@sankore/crm/telephony';
 
 @Component({
   imports: [
@@ -21,6 +22,7 @@ import {
     LoadingComponent,
     PageLoadingComponent,
     AccessDeniedBanner,
+    CallPanel,
   ],
   selector: 'app-root',
   templateUrl: './app.html',

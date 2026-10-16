@@ -1,0 +1,499 @@
+<!-- En-tête -->
+<div class="mb-5 flex items-start justify-between gap-4">
+  <div>
+    <h1 class="text-lg font-semibold text-slate-800">Journal des appels</h1>
+    <p class="mt-0.5 max-w-3xl text-sm text-slate-500">
+      Les appels de votre périmètre : les vôtres, ceux qui ne sont attribués à personne, et
+      ceux des agences que vous couvrez. Ce n'est pas l'activité de tout l'établissement — le
+      serveur applique ce périmètre, l'écran ne l'élargit pas.
+    </p>
+  </div>
+  <div class="flex shrink-0 items-center gap-2">
+    @if (canExport()) {
+      <button
+        tas-outlined-button
+        type="button"
+        [disabled]="isExporting() || isLoading()"
+        [isLoading]="isExporting()"
+        (click)="exportCsv()"
+      >
+        <tas-icon iconName="feather:download" style="font-size:14px"></tas-icon>
+        Exporter en CSV
+      </button>
+    }
+    <button tas-outlined-button type="button" [disabled]="isLoading()" (click)="reload()">
+      <tas-icon iconName="feather:refresh-cw" style="font-size:14px"></tas-icon>
+      Actualiser
+    </button>
+  </div>
+</div>
+
+<!-- Onglets : les trois files du serveur, plus la vue complète -->
+<div class="mb-4">
+  <div class="flex flex-wrap items-center gap-1 border-b border-slate-200">
+    @for (tab of tabs; track tab.value) {
+      <button
+        type="button"
+        class="-mb-px border-b-2 px-3 py-2 text-sm transition-colors"
+        [class.border-primary]="filterTab() === tab.value"
+        [class.text-primary]="filterTab() === tab.value"
+        [class.font-medium]="filterTab() === tab.value"
+        [class.border-transparent]="filterTab() !== tab.value"
+        [class.text-slate-500]="filterTab() !== tab.value"
+        (click)="onTabChange(tab.value)"
+      >
+        {{ tab.label }}
+        @if (tab.value === 'ToAssign') {
+          <span class="ml-1 text-xs text-slate-400">(administration)</span>
+        }
+      </button>
+    }
+  </div>
+  <p class="mt-2 max-w-4xl text-xs text-slate-500">{{ activeTab().hint }}</p>
+  @if (isAssignTab() && canManageUserLinks()) {
+    <a
+      class="mt-1 inline-block text-xs text-primary underline"
+      routerLink="/settings/telephony/user-links"
+    >
+      Ouvrir « Rattachement des postes »
+    </a>
+  }
+</div>
+
+<!-- Filtres -->
+<tas-card class="mb-4 block">
+  <div class="p-4">
+    <div class="grid grid-cols-4 gap-3">
+      <div class="grid grid-cols-2 gap-3">
+        <tas-form-field>
+          <tas-label>Appels du</tas-label>
+          <input
+            tasInput
+            type="date"
+            [value]="filterFrom() ?? ''"
+            (change)="onFromChange($any($event.target).value)"
+          />
+        </tas-form-field>
+        <tas-form-field>
+          <tas-label>au</tas-label>
+          <input
+            tasInput
+            type="date"
+            [value]="filterTo() ?? ''"
+            (change)="onToChange($any($event.target).value)"
+          />
+        </tas-form-field>
+      </div>
+
+      <tas-form-field>
+        <tas-label>Agent</tas-label>
+        <tas-select
+          clearable
+          [searchable]="true"
+          [options]="agentOptions()"
+          optionLabel="label"
+          optionValue="value"
+          placeholder="Tous les agents"
+          [ngModel]="filterAgent()"
+          (ngModelChange)="onAgentChange($event)"
+        ></tas-select>
+        @if (directoryUnavailable()) {
+          <tas-hint>Annuaire indisponible : les noms s'affichent « — ».</tas-hint>
+        }
+      </tas-form-field>
+
+      <tas-form-field>
+        <tas-label>Agence</tas-label>
+        <tas-select
+          clearable
+          [searchable]="true"
+          [options]="agencyOptions()"
+          optionLabel="label"
+          optionValue="value"
+          placeholder="Toutes les agences"
+          [ngModel]="filterAgency()"
+          (ngModelChange)="onAgencyChange($event)"
+        ></tas-select>
+        <tas-hint>L'agence de l'appel est celle de l'agent au moment de l'appel.</tas-hint>
+      </tas-form-field>
+
+      <tas-form-field>
+        <tas-label>Sens</tas-label>
+        <tas-select
+          clearable
+          [options]="directionOptions"
+          optionLabel="label"
+          optionValue="value"
+          placeholder="Tous les sens"
+          [ngModel]="filterDirection()"
+          (ngModelChange)="onDirectionChange($event)"
+        ></tas-select>
+      </tas-form-field>
+
+      <tas-form-field>
+        <tas-label>Statut</tas-label>
+        <tas-select
+          clearable
+          [options]="statusOptions"
+          optionLabel="label"
+          optionValue="value"
+          placeholder="Tous les statuts"
+          [ngModel]="filterStatus()"
+          (ngModelChange)="onStatusChange($event)"
+        ></tas-select>
+      </tas-form-field>
+
+      <tas-form-field>
+        <tas-label>Rattachement</tas-label>
+        <tas-select
+          clearable
+          [options]="attachmentOptions"
+          optionLabel="label"
+          optionValue="value"
+          placeholder="Tous les rattachements"
+          [ngModel]="filterAttachment()"
+          (ngModelChange)="onAttachmentChange($event)"
+        ></tas-select>
+      </tas-form-field>
+
+      <tas-form-field>
+        <tas-label>Issue</tas-label>
+        <tas-select
+          clearable
+          [searchable]="true"
+          [options]="outcomeOptions()"
+          optionLabel="label"
+          optionValue="value"
+          placeholder="Toutes les issues"
+          [ngModel]="filterOutcome()"
+          (ngModelChange)="onOutcomeChange($event)"
+        ></tas-select>
+      </tas-form-field>
+
+      <tas-form-field>
+        <tas-label>Type de fiche</tas-label>
+        <tas-select
+          clearable
+          [options]="entityTypeOptions"
+          optionLabel="label"
+          optionValue="value"
+          placeholder="Toutes les fiches"
+          [ngModel]="filterEntityType()"
+          (ngModelChange)="onEntityTypeChange($event)"
+        ></tas-select>
+      </tas-form-field>
+
+      <tas-form-field>
+        <tas-label>Identifiant de la fiche</tas-label>
+        <input
+          tasInput
+          type="text"
+          placeholder="Collez l'identifiant du lead ou du client"
+          [ngModel]="filterEntityId()"
+          (ngModelChange)="onEntityIdChange($event)"
+        />
+        @if (entityIdError()) {
+          <tas-error>{{ entityIdError() }}</tas-error>
+        } @else {
+          <tas-hint>Avec le type de fiche, donne l'historique d'une seule fiche.</tas-hint>
+        }
+      </tas-form-field>
+    </div>
+
+    <div class="mt-3 flex items-center justify-between gap-3">
+      <p class="text-xs text-slate-500">
+        <span class="font-medium text-slate-700 tabular-nums">{{ totalCount() }}</span>
+        appel(s) dans cette vue.
+      </p>
+      @if (hasActiveFilters()) {
+        <button tas-text-button type="button" size="small" (click)="resetFilters()">
+          <tas-icon iconName="feather:x" style="font-size:12px"></tas-icon>
+          Retirer les filtres
+        </button>
+      }
+    </div>
+  </div>
+</tas-card>
+
+@if (loadError()) {
+  <div class="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3" role="alert">
+    <p class="text-sm text-slate-700">{{ loadError() }}</p>
+    <button tas-text-button color="primary" type="button" size="small" (click)="reload()">
+      Réessayer
+    </button>
+  </div>
+}
+
+@if (!isLoading() && rows().length === 0 && !loadError()) {
+  <tas-card class="block">
+    <div class="flex flex-col items-center justify-center py-16 text-center">
+      <tas-icon
+        iconName="feather:phone-off"
+        class="mb-3 text-slate-300"
+        style="font-size:32px"
+      ></tas-icon>
+      <p class="mb-1 text-sm font-medium text-slate-600">{{ activeTab().emptyTitle }}</p>
+      <p class="max-w-md text-xs text-slate-400">{{ activeTab().emptyHint }}</p>
+      @if (hasActiveFilters()) {
+        <button tas-outlined-button type="button" class="mt-4" (click)="resetFilters()">
+          Retirer les filtres
+        </button>
+      }
+    </div>
+  </tas-card>
+} @else {
+  <tas-table
+    [data]="rows()"
+    identifierField="callId"
+    [config]="tableConfig()"
+    [isLoading]="isLoading()"
+    [hasCaption]="false"
+    (pageEventChange)="onPageChange($event)"
+  >
+    <ng-template #header>
+      <tr>
+        <th>Appel</th>
+        <th>Sens</th>
+        <th>Statut</th>
+        <th>Durée</th>
+        <th>Agent</th>
+        <th>Agence</th>
+        <th>Rattachement</th>
+        <th>Issue</th>
+        <th></th>
+        <th class="text-right"></th>
+      </tr>
+    </ng-template>
+
+    <ng-template #body let-item>
+      <tr
+        class="cursor-pointer transition-colors hover:bg-slate-50"
+        [class.bg-slate-50]="expandedId() === item.callId"
+        (click)="toggleRow(item)"
+      >
+        <td class="py-3">
+          <div class="text-sm font-medium text-slate-800">{{ item.startedAt | dateTimeAgo }}</div>
+          <div class="text-xs text-slate-400 tabular-nums">
+            {{ item.startedAt ? (item.startedAt | date: 'dd/MM/yyyy HH:mm') : emptyLabel }}
+          </div>
+        </td>
+
+        <td>
+          <div class="flex items-center gap-1.5">
+            <tas-icon
+              [iconName]="
+                item.direction === 'Outbound'
+                  ? 'feather:phone-outgoing'
+                  : item.direction === 'Internal'
+                    ? 'feather:repeat'
+                    : 'feather:phone-incoming'
+              "
+              class="text-slate-400"
+              style="font-size:13px"
+            ></tas-icon>
+            <span class="text-sm text-slate-700">{{ directionLabel(item.direction) }}</span>
+          </div>
+        </td>
+
+        <td>
+          <tas-tag [severity]="statusSeverity(item.status)">
+            {{ statusLabel(item.status) }}
+          </tas-tag>
+        </td>
+
+        <td class="text-sm text-slate-700 tabular-nums">{{ durationLabel(item) }}</td>
+
+        <td class="max-w-[160px]">
+          <span class="block truncate text-sm text-slate-700">
+            {{ agentName(item.crmUserId) }}
+          </span>
+        </td>
+
+        <td class="max-w-[160px]">
+          <span class="block truncate text-sm text-slate-700">
+            {{ agencyName(item.agencyId) }}
+          </span>
+        </td>
+
+        <td>
+          <tas-tag [severity]="matchSeverity(item.matchStatus)">
+            {{ matchLabel(item.matchStatus) }}
+          </tas-tag>
+          @if (item.entityType) {
+            <div class="mt-0.5 text-xs text-slate-400">
+              {{ entityTypeLabel(item.entityType) }}
+            </div>
+          }
+        </td>
+
+        <td class="max-w-[180px]">
+          <span class="block truncate text-sm text-slate-700" [title]="outcomeText(item)">
+            {{ outcomeText(item) }}
+          </span>
+          @if (item.countsAsContact) {
+            <span class="text-xs text-slate-400">compte comme contact</span>
+          }
+        </td>
+
+        <!-- Traces : la note n'a pas de contenu dans le contrat, seulement une existence. -->
+        <td>
+          <div class="flex items-center gap-1.5">
+            @if (item.hasNote) {
+              <tas-icon
+                iconName="feather:file-text"
+                class="text-slate-400"
+                style="font-size:13px"
+                title="Une note existe sur cet appel"
+              ></tas-icon>
+            }
+            @if (item.recordingStatus && item.recordingStatus !== 'NotRecorded') {
+              <tas-icon
+                iconName="feather:mic"
+                [class]="item.canListen ? 'text-primary' : 'text-slate-300'"
+                style="font-size:13px"
+                [title]="recordingLabel(item.recordingStatus)"
+              ></tas-icon>
+            }
+          </div>
+        </td>
+
+        <td class="text-right" (click)="$event.stopPropagation()">
+          <div class="flex items-center justify-end gap-1">
+            @if (canLinkRow(item)) {
+              <button
+                tas-button
+                iconButton
+                type="button"
+                title="Rattacher cet appel à une fiche"
+                (click)="openLink(item)"
+              >
+                <tas-icon iconName="feather:link" iconSize="sm"></tas-icon>
+              </button>
+            }
+            @if (canQualifyRow(item)) {
+              <button
+                tas-button
+                iconButton
+                type="button"
+                title="Qualifier cet appel"
+                (click)="startQualify(item)"
+              >
+                <tas-icon iconName="feather:check-square" iconSize="sm"></tas-icon>
+              </button>
+            }
+            <tas-icon
+              [iconName]="
+                expandedId() === item.callId ? 'feather:chevron-down' : 'feather:chevron-right'
+              "
+              class="text-slate-400"
+              style="font-size:14px"
+            ></tas-icon>
+          </div>
+        </td>
+      </tr>
+
+      <!-- Détail de la ligne, sous la ligne cliquée : la note se dit, l'audio s'écoute. -->
+      @if (expandedId() === item.callId) {
+        <tr>
+          <td colspan="10" class="border-t border-slate-100 bg-slate-50 px-5 py-4">
+            @if (qualifyingId() === item.callId) {
+              <p class="mb-3 text-xs font-semibold text-slate-600">Qualifier cet appel</p>
+              <lib-wrap-up-form
+                [callId]="item.callId"
+                [callStatus]="item.status"
+                [outcomes]="outcomes()"
+                [recordingMode]="recordingMode()"
+                (saved)="onQualified()"
+                (cancelled)="cancelQualify()"
+              ></lib-wrap-up-form>
+            } @else {
+              <div class="flex flex-col gap-4">
+                <div class="grid grid-cols-2 gap-4 md:grid-cols-4">
+                  <div>
+                    <p class="text-xs font-semibold text-slate-600">Sonnerie</p>
+                    <p class="text-sm text-slate-700 tabular-nums">
+                      {{ secondsLabel(item.ringSeconds) }}
+                    </p>
+                  </div>
+                  <div>
+                    <p class="text-xs font-semibold text-slate-600">Conversation</p>
+                    <p class="text-sm text-slate-700 tabular-nums">
+                      {{ secondsLabel(item.talkSeconds) }}
+                    </p>
+                  </div>
+                  <div>
+                    <p class="text-xs font-semibold text-slate-600">Décroché</p>
+                    <p class="text-sm text-slate-700">
+                      {{ item.answeredAt ? (item.answeredAt | date: 'dd/MM/yyyy HH:mm:ss') : 'Jamais décroché' }}
+                    </p>
+                  </div>
+                  <div>
+                    <p class="text-xs font-semibold text-slate-600">Raccroché</p>
+                    <p class="text-sm text-slate-700">
+                      {{ item.endedAt ? (item.endedAt | date: 'dd/MM/yyyy HH:mm:ss') : 'Appel en cours' }}
+                    </p>
+                  </div>
+                </div>
+
+                <div>
+                  <p class="text-xs font-semibold text-slate-600">Note</p>
+                  @if (item.hasNote) {
+                    <p class="text-sm text-slate-700">
+                      Une note a été saisie sur cet appel. Son contenu est chiffré et ne sort
+                      pas du module de téléphonie : il se relit depuis la fiche rattachée.
+                    </p>
+                  } @else {
+                    <p class="text-sm text-slate-500">Aucune note.</p>
+                  }
+                </div>
+
+                @if (item.recordingStatus) {
+                  <lib-recording-player
+                    [callId]="item.callId"
+                    [recordingStatus]="item.recordingStatus"
+                    [canListen]="!!item.canListen"
+                  ></lib-recording-player>
+                }
+
+                <div class="flex flex-wrap items-center gap-2">
+                  @if (canQualifyRow(item)) {
+                    <button
+                      tas-outlined-button
+                      color="primary"
+                      type="button"
+                      size="small"
+                      (click)="startQualify(item)"
+                    >
+                      Qualifier
+                    </button>
+                  }
+                  @if (canLinkRow(item)) {
+                    <button
+                      tas-outlined-button
+                      color="primary"
+                      type="button"
+                      size="small"
+                      (click)="openLink(item)"
+                    >
+                      Rattacher à une fiche
+                    </button>
+                  } @else if (canCorrectRow(item)) {
+                    <button
+                      tas-text-button
+                      color="primary"
+                      type="button"
+                      size="small"
+                      (click)="openLink(item)"
+                    >
+                      Corriger le rattachement
+                    </button>
+                  }
+                </div>
+              </div>
+            }
+          </td>
+        </tr>
+      }
+    </ng-template>
+  </tas-table>
+}

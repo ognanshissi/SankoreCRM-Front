@@ -1,0 +1,402 @@
+<div class="flex flex-wrap items-start justify-between gap-3 mb-5">
+  <div class="min-w-0">
+    <div class="flex items-center gap-2.5">
+      <h1 class="text-lg font-semibold text-slate-800">Rattachement des postes</h1>
+      @if (rows().length > 0) {
+        <span
+          class="px-2 py-0.5 rounded-md bg-slate-100 text-slate-500 text-xs font-medium tabular-nums"
+        >
+          {{ filteredRows().length }}
+        </span>
+      }
+      @if (brokenCount() > 0) {
+        <tas-tag severity="error">{{ brokenCount() }} cassé(s)</tas-tag>
+      }
+    </div>
+    <p class="text-sm text-slate-400 mt-0.5">
+      Qui, chez le fournisseur de téléphonie, est qui dans SANKORE. Sans rattachement, un agent
+      n'a pas de bouton « Appeler » et ses appels ne sont attribués à personne.
+    </p>
+  </div>
+
+  <div class="flex items-center gap-2">
+    <button
+      tas-outlined-button
+      color="primary"
+      type="button"
+      (click)="importDirectory()"
+      [disabled]="isImporting()"
+      [isLoading]="isImporting()"
+    >
+      <tas-icon iconName="feather:download" style="font-size:14px"></tas-icon>
+      Importer l'annuaire
+    </button>
+    <button tas-filled-button color="primary" type="button" (click)="openLinkDrawer()">
+      <tas-icon iconName="feather:plus" style="font-size:14px"></tas-icon>
+      Rattacher un poste
+    </button>
+  </div>
+</div>
+
+<!--
+  La téléphonie désactivée n'est pas une panne : sans connexion ACTIVE, l'annuaire répond
+  422 et aucun agent ne peut appeler. On le dit avant que l'administrateur conclue que
+  l'écran est cassé.
+-->
+@if (myStatus() && !myStatus()?.telephonyEnabled) {
+  <div class="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-4">
+    <p class="text-sm font-medium text-amber-900">Aucune connexion téléphonie active</p>
+    <p class="text-sm text-amber-800 mt-1">
+      Les rattachements se préparent quand même, mais aucun appel ne passera et l'annuaire du
+      fournisseur restera illisible tant qu'une connexion n'est pas activée.
+    </p>
+    <button tas-text-button type="button" class="-ml-2 mt-1" (click)="openConnection()">
+      Ouvrir la connexion téléphonie
+    </button>
+  </div>
+}
+
+@if (directoryError()) {
+  <div class="mb-4 rounded-lg border border-functional-error bg-white p-4">
+    <p class="text-sm font-medium text-functional-error">Annuaire du fournisseur indisponible</p>
+    <p class="text-sm text-slate-600 mt-1">{{ directoryError() }}</p>
+    <button tas-text-button type="button" class="-ml-2 mt-1" (click)="importDirectory()">
+      Réessayer l'import
+    </button>
+  </div>
+}
+
+@if (usersUnavailable()) {
+  <div class="mb-4 flex items-start gap-2 rounded-lg border border-slate-200 bg-slate-50 p-3">
+    <tas-icon iconName="feather:lock" class="mt-0.5 shrink-0 text-slate-500" style="font-size:14px"></tas-icon>
+    <p class="text-xs text-slate-600">
+      La liste des utilisateurs SANKORE n'a pas pu être lue : la colonne « Agence » reste vide et
+      le rattachement manuel ne propose aucun utilisateur. Cela demande le droit de lecture des
+      utilisateurs, distinct de celui des réglages de téléphonie.
+    </p>
+  </div>
+}
+
+@if (directory()?.ambiguousEmails?.length) {
+  <div class="mb-4 rounded-lg border border-slate-200 bg-white p-4">
+    <p class="text-sm font-medium text-slate-800">
+      {{ directory()?.ambiguousEmails?.length }} adresse(s) sur lesquelles le serveur a refusé de
+      deviner
+    </p>
+    <p class="text-sm text-slate-500 mt-1">
+      Plusieurs comptes SANKORE répondent à ces adresses. Choisir à sa place reviendrait à décider
+      à qui seront attribués les appels : rattachez-les à la main.
+    </p>
+    <ul class="mt-2 text-sm text-slate-700 list-disc pl-5">
+      @for (mail of directory()?.ambiguousEmails ?? []; track mail) {
+        <li>{{ mail }}</li>
+      }
+    </ul>
+  </div>
+}
+
+@if (applicableProposals().length > 0) {
+  <div class="mb-4 rounded-lg border border-primary bg-white p-4">
+    <div class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+        <p class="text-sm font-medium text-slate-800">
+          {{ applicableProposals().length }} proposition(s) de rattachement
+        </p>
+        <p class="text-sm text-slate-500 mt-0.5">
+          Appariées sur l'adresse e-mail. Rien n'est appliqué tant que vous ne confirmez pas.
+        </p>
+      </div>
+      <div class="flex items-center gap-2">
+        @if (selectedCount() > 0) {
+          <button tas-text-button type="button" (click)="clearSelection()">
+            Tout décocher
+          </button>
+          <button
+            tas-raised-button
+            color="primary"
+            type="button"
+            (click)="applySelectedProposals()"
+            [disabled]="isApplying()"
+            [isLoading]="isApplying()"
+          >
+            Valider {{ selectedCount() }} proposition(s)
+          </button>
+        } @else {
+          <button tas-outlined-button color="primary" type="button" (click)="selectAllProposals()">
+            Tout sélectionner
+          </button>
+        }
+      </div>
+    </div>
+  </div>
+}
+
+<tas-card class="mb-4 block">
+  <div class="p-4">
+    <div class="grid grid-cols-4 gap-3 items-end">
+      <tas-form-field>
+        <tas-label>Recherche</tas-label>
+        <input
+          tasInput
+          type="search"
+          placeholder="Utilisateur, e-mail, compte…"
+          [ngModel]="searchQuery()"
+          [ngModelOptions]="{ standalone: true }"
+          (ngModelChange)="onSearchInput($event)"
+        />
+      </tas-form-field>
+
+      <tas-form-field>
+        <tas-label>État</tas-label>
+        <tas-select
+          clearable
+          [options]="stateOptions"
+          optionLabel="label"
+          optionValue="value"
+          placeholder="Tous les états"
+          [ngModel]="filterState()"
+          [ngModelOptions]="{ standalone: true }"
+          (ngModelChange)="onFilterChange('etat', $event)"
+        ></tas-select>
+      </tas-form-field>
+
+      <tas-form-field>
+        <tas-label>Agence</tas-label>
+        <tas-select
+          clearable
+          [searchable]="true"
+          [options]="agencyFilterOptions()"
+          optionLabel="label"
+          optionValue="value"
+          placeholder="Toutes les agences"
+          [ngModel]="filterAgency()"
+          [ngModelOptions]="{ standalone: true }"
+          (ngModelChange)="onFilterChange('agence', $event)"
+        ></tas-select>
+      </tas-form-field>
+
+      <div class="flex items-center gap-3">
+        <tas-checkbox
+          [checked]="includeDisabled()"
+          (valueChange)="toggleIncludeDisabled($event)"
+        >
+          <span class="text-sm text-slate-600">Postes détachés</span>
+        </tas-checkbox>
+        <button tas-text-button type="button" (click)="refresh()">
+          <tas-icon iconName="feather:refresh-cw" style="font-size:14px"></tas-icon>
+          Actualiser
+        </button>
+      </div>
+    </div>
+    @if (hasActiveFilter()) {
+      <button tas-text-button type="button" class="-ml-2 mt-2" (click)="clearFilters()">
+        Effacer les filtres
+      </button>
+    }
+  </div>
+</tas-card>
+
+<!--
+  Trois états strictement distincts : une panne ne doit jamais s'afficher « aucun poste »,
+  dont on conclurait que personne n'est rattaché alors que les rattachements sont inconnus.
+-->
+@if (loadError()) {
+  <tas-card class="block">
+    <div class="p-10 text-center">
+      <tas-icon iconName="feather:wifi-off" class="text-functional-error" style="font-size:18px"></tas-icon>
+      <p class="text-sm font-medium text-slate-800 mt-2">Chargement impossible</p>
+      <p class="text-sm text-slate-500 mt-1">{{ loadError() }}</p>
+      <div class="mt-4">
+        <button tas-raised-button color="primary" type="button" (click)="refresh()">
+          Réessayer
+        </button>
+      </div>
+    </div>
+  </tas-card>
+} @else if (isLoading() && rows().length === 0) {
+  <div class="flex justify-center py-24">
+    <tas-spinner size="10" class="text-primary"></tas-spinner>
+  </div>
+} @else if (isEmpty()) {
+  <tas-card class="block">
+    <div class="p-12 text-center">
+      <p class="text-sm font-medium text-slate-700">Aucun poste rattaché</p>
+      <p class="text-sm text-slate-500 mt-1">
+        @if (directoryError()) {
+          L'annuaire du fournisseur n'a pas pu être lu : rattachez un poste à la main, ou
+          réessayez l'import.
+        } @else {
+          Importez l'annuaire du fournisseur : SANKORE proposera un rattachement par adresse
+          e-mail, que vous confirmerez.
+        }
+      </p>
+      <div class="mt-4 flex items-center justify-center gap-2">
+        <button tas-raised-button color="primary" type="button" (click)="importDirectory()">
+          Importer l'annuaire
+        </button>
+        <button tas-outlined-button color="primary" type="button" (click)="openLinkDrawer()">
+          Rattacher un poste
+        </button>
+      </div>
+    </div>
+  </tas-card>
+} @else if (filteredRows().length === 0) {
+  <tas-card class="block">
+    <div class="p-12 text-center">
+      <p class="text-sm font-medium text-slate-700">Aucun poste ne correspond à ces filtres.</p>
+      <button tas-text-button type="button" class="mt-2" (click)="clearFilters()">
+        Effacer les filtres
+      </button>
+    </div>
+  </tas-card>
+} @else {
+  <tas-table
+    [data]="filteredRows()"
+    identifierField="id"
+    [config]="tableConfig()"
+    [isLoading]="isLoading() || isApplying()"
+    [hasCaption]="false"
+  >
+    <ng-template #header>
+      <tr>
+        <th class="w-10"></th>
+        <th>Utilisateur SANKORE</th>
+        <th>Agence</th>
+        <th>Compte du fournisseur</th>
+        <th>Numéro d'appelant</th>
+        <th>État</th>
+        <th class="text-right"></th>
+      </tr>
+    </ng-template>
+
+    <ng-template #body let-item>
+      <tr class="hover:bg-slate-50 transition-colors">
+        <td class="py-3">
+          @if (item.state === 'Proposed' && item.proposedCrmUserId && !item.proposedCrmUserIsDisabled) {
+            <tas-checkbox
+              [checked]="isSelected(item)"
+              (valueChange)="toggleSelection(item, $event)"
+            ></tas-checkbox>
+          }
+        </td>
+
+        <td class="py-3">
+          @if (item.crmUserId) {
+            <div class="font-medium text-slate-800 leading-tight">{{ item.crmUserName }}</div>
+          } @else if (item.proposedCrmUserName) {
+            <div class="font-medium text-slate-800 leading-tight">
+              {{ item.proposedCrmUserName }}
+            </div>
+            <div class="text-xs text-primary mt-0.5">proposé par adresse e-mail</div>
+            @if (item.proposedCrmUserIsDisabled) {
+              <div class="text-xs text-functional-error mt-0.5">
+                Ce compte SANKORE est désactivé : la proposition n'est pas validable.
+              </div>
+            }
+          } @else {
+            <div class="text-sm text-slate-400">Personne</div>
+            @if (item.isAmbiguous) {
+              <div class="text-xs text-slate-500 mt-0.5">
+                Plusieurs comptes répondent à cette adresse : à rattacher à la main.
+              </div>
+            }
+          }
+        </td>
+
+        <td class="text-sm text-slate-700">{{ item.agencyName }}</td>
+
+        <td class="py-3">
+          <div class="text-sm text-slate-800">{{ item.externalDisplayName }}</div>
+          <div class="text-xs text-slate-400 mt-0.5">{{ item.externalEmail }}</div>
+          @if (item.isActiveAtProvider === false && item.knownAtProvider) {
+            <div class="text-xs text-functional-error mt-0.5">
+              Compte désactivé chez le fournisseur
+            </div>
+          } @else if (item.knownAtProvider === false) {
+            <div class="text-xs text-functional-error mt-0.5">
+              Le fournisseur ne liste plus ce compte
+            </div>
+          }
+        </td>
+
+        <td class="text-sm text-slate-700 tabular-nums">
+          {{ item.callerNumber }}
+          @if (item.linkId && !item.rawCallerNumber) {
+            <span class="block text-xs text-slate-400">numéro de la connexion</span>
+          }
+        </td>
+
+        <td>
+          <tas-tag [severity]="item.stateSeverity">{{ item.stateLabel }}</tas-tag>
+          @if (item.statusReason) {
+            <div class="text-xs text-slate-500 mt-1 max-w-56">{{ item.statusReason }}</div>
+          }
+          @if (item.linkedAt && item.linkId) {
+            <div class="text-xs text-slate-400 mt-0.5">
+              rattaché {{ item.linkedAt | dateTimeAgo }}
+            </div>
+          }
+        </td>
+
+        <td class="text-right">
+          <div class="flex items-center justify-end gap-1">
+            @if (item.state === 'Proposed' && item.proposedCrmUserId && !item.proposedCrmUserIsDisabled) {
+              <button
+                tas-outlined-button
+                color="primary"
+                type="button"
+                (click)="applyProposal(item)"
+                [disabled]="isApplying()"
+              >
+                Valider
+              </button>
+            }
+            @if (!item.linkId) {
+              <button
+                tas-text-button
+                type="button"
+                (click)="openLinkDrawer(item)"
+                title="Rattacher ce compte"
+              >
+                Rattacher
+              </button>
+            } @else {
+              <button
+                tas-button
+                iconButton
+                type="button"
+                title="Numéro d'appelant"
+                [attr.aria-label]="'Numéro d’appelant de ' + item.crmUserName"
+                (click)="openCallerNumber(item)"
+              >
+                <tas-icon iconName="feather:phone" iconSize="sm"></tas-icon>
+              </button>
+              @if (item.state !== 'Disabled') {
+                <button
+                  tas-button
+                  iconButton
+                  color="warn"
+                  type="button"
+                  title="Détacher le poste"
+                  [attr.aria-label]="'Détacher le poste de ' + item.crmUserName"
+                  (click)="openUnlink(item)"
+                >
+                  <tas-icon iconName="feather:link-2" iconSize="sm"></tas-icon>
+                </button>
+              } @else {
+                <button
+                  tas-text-button
+                  type="button"
+                  (click)="openLinkDrawer(item)"
+                  title="Réactiver ce rattachement"
+                >
+                  Réactiver
+                </button>
+              }
+            }
+          </div>
+        </td>
+      </tr>
+    </ng-template>
+  </tas-table>
+}

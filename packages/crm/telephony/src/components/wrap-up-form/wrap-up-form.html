@@ -1,0 +1,69 @@
+<form [formRoot]="formSchema" class="flex flex-col gap-4">
+  <tas-form-field>
+    <tas-label>Issue de l'appel <span class="text-functional-error">*</span></tas-label>
+    <tas-select
+      [options]="outcomeOptions()"
+      optionLabel="label"
+      optionValue="value"
+      placeholder="Choisissez une issue"
+      [formField]="formSchema.outcomeCode"
+    ></tas-select>
+    @if (formSchema.outcomeCode().touched() && formSchema.outcomeCode().invalid()) {
+      <tas-error>{{ formSchema.outcomeCode().errors()[0].message }}</tas-error>
+    }
+  </tas-form-field>
+
+  @if (requiresCallback()) {
+    <tas-form-field>
+      <tas-label>Date de rappel <span class="text-functional-error">*</span></tas-label>
+      <tas-date-picker [formField]="formSchema.callbackAt"></tas-date-picker>
+      @if (formSchema.callbackAt().touched() && formSchema.callbackAt().invalid()) {
+        <tas-error>{{ formSchema.callbackAt().errors()[0].message }}</tas-error>
+      } @else {
+        <tas-hint>Cette issue demande une date : c'est elle qui crée le rappel.</tas-hint>
+      }
+    </tas-form-field>
+  }
+
+  <tas-form-field>
+    <tas-label>Note</tas-label>
+    <input
+      tasInput
+      type="text"
+      placeholder="Ce qui a été dit, en une phrase"
+      [formField]="formSchema.note"
+    />
+    <!-- Dit explicitement, parce que c'est vrai et que l'agent ne peut pas le deviner : la
+         note est chiffrée, elle ne part pas dans l'événement que le module leads consomme et
+         n'apparaît dans aucun résumé de timeline. -->
+    <tas-hint>
+      La note reste dans le module téléphonie, chiffrée. Elle n'apparaît pas dans les résumés
+      de la fiche.
+    </tas-hint>
+  </tas-form-field>
+
+  @if (showKeepRecording()) {
+    <tas-checkbox [formField]="formSchema.keepRecording">
+      Conserver l'enregistrement de cet appel
+    </tas-checkbox>
+    <!-- Visible uniquement en « À la demande » : c'est le seul mode où le serveur en tient
+         compte, et c'est aussi le SEUL moyen qu'un enregistrement y soit conservé. -->
+    <p class="-mt-2 text-xs text-slate-500">
+      Sans cette case, l'enregistrement de cet appel ne sera pas conservé.
+    </p>
+  }
+
+  <div class="flex items-center gap-2">
+    <button
+      tas-raised-button
+      color="primary"
+      type="button"
+      [disabled]="formSchema().invalid() || isSaving()"
+      [isLoading]="isSaving()"
+      (click)="handleSubmit()"
+    >
+      Enregistrer la qualification
+    </button>
+    <button tas-text-button type="button" (click)="cancel()">Plus tard</button>
+  </div>
+</form>

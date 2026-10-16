@@ -1,0 +1,464 @@
+<div class="flex flex-wrap items-start justify-between gap-3 mb-5">
+  <div class="min-w-0">
+    <div class="flex items-center gap-2.5">
+      <h1 class="text-lg font-semibold text-slate-800">Paramètres de téléphonie</h1>
+      @if (myStatus(); as status) {
+        @if (status.telephonyEnabled) {
+          <tas-tag severity="success">Opérationnel</tas-tag>
+        } @else {
+          <tas-tag severity="warning">Aucune connexion active</tas-tag>
+        }
+      }
+    </div>
+    <p class="text-sm text-slate-400 mt-0.5">
+      Le référentiel des résultats d'appel, et la politique d'enregistrement de votre
+      établissement.
+    </p>
+  </div>
+</div>
+
+@if (myStatus() && !myStatus()?.telephonyEnabled) {
+  <!--
+    Dit en tête, comme sur le canal SMS : sans connexion ACTIVE, ces réglages sont corrects
+    et inertes. Un écran muet là-dessus se lirait comme une panne de paramétrage.
+  -->
+  <div class="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-4">
+    <p class="text-sm font-medium text-amber-900">Configuration incomplète</p>
+    <p class="text-sm text-amber-800 mt-1">
+      Aucune connexion de téléphonie n'est active : ces réglages sont enregistrés mais aucun appel
+      ne passe, et aucun agent ne voit de bouton « Appeler ». Déclarez puis activez une connexion
+      de téléphonie dans les intégrations.
+    </p>
+  </div>
+}
+
+<!-- ——— Résultats d'appel ——— -->
+<tas-card class="block mb-4">
+  <div class="p-4 border-b border-slate-100">
+    <div class="flex flex-wrap items-start justify-between gap-3">
+      <div>
+        <p class="text-sm font-semibold text-slate-700">Résultats d'appel</p>
+        <p class="text-xs text-slate-500 mt-0.5">
+          Ce que l'agent choisit en qualifiant son appel. Deux des colonnes portent du
+          comportement, pas de l'affichage : « compte comme un contact » arrête le délai de
+          premier contact d'un lead, « date de rappel » rend cette date obligatoire.
+        </p>
+      </div>
+      <div class="flex items-center gap-2">
+        <tas-checkbox
+          [checked]="includeInactive()"
+          (valueChange)="toggleIncludeInactive($event)"
+        >
+          <span class="text-sm text-slate-600">Inclure les désactivés</span>
+        </tas-checkbox>
+        <button tas-text-button type="button" (click)="reloadOutcomes()">
+          <tas-icon iconName="feather:refresh-cw" style="font-size:14px"></tas-icon>
+          Actualiser
+        </button>
+        @if (canManageSettings()) {
+          <button tas-filled-button color="primary" type="button" (click)="openCreateOutcome()">
+            <tas-icon iconName="feather:plus" style="font-size:14px"></tas-icon>
+            Nouveau résultat
+          </button>
+        }
+      </div>
+    </div>
+  </div>
+
+  <div class="p-4">
+    @if (outcomesError()) {
+      <div class="rounded-lg border border-functional-error bg-white p-6 text-center">
+        <p class="text-sm font-medium text-slate-800">Chargement impossible</p>
+        <p class="text-sm text-slate-500 mt-1">{{ outcomesError() }}</p>
+        <button tas-outlined-button color="primary" type="button" class="mt-3" (click)="reloadOutcomes()">
+          Réessayer
+        </button>
+      </div>
+    } @else if (isLoadingOutcomes() && outcomes().length === 0) {
+      <div class="flex justify-center py-16">
+        <tas-spinner size="10" class="text-primary"></tas-spinner>
+      </div>
+    } @else if (outcomes().length === 0) {
+      <div class="rounded-lg border border-dashed border-slate-300 p-10 text-center">
+        <p class="text-sm font-medium text-slate-800">Aucun résultat d'appel</p>
+        <p class="text-xs text-slate-500 mt-1">
+          Sans résultat actif, aucun appel ne peut être qualifié : les agents resteront bloqués au
+          moment de conclure.
+        </p>
+        @if (canManageSettings()) {
+          <button tas-raised-button color="primary" type="button" class="mt-3" (click)="openCreateOutcome()">
+            Créer le premier résultat
+          </button>
+        }
+      </div>
+    } @else {
+      @if (activeOutcomeCount() === 0) {
+        <div class="mb-3 rounded-lg border border-functional-error bg-white p-3">
+          <p class="text-sm text-functional-error">
+            Aucun résultat n'est actif : les agents ne pourront pas qualifier leurs appels.
+            Réactivez-en un.
+          </p>
+        </div>
+      }
+
+      <tas-table
+        [data]="sortedOutcomes()"
+        identifierField="code"
+        [config]="outcomesTableConfig()"
+        [isLoading]="isLoadingOutcomes()"
+        [hasCaption]="false"
+      >
+        <ng-template #header>
+          <tr>
+            <th>Résultat</th>
+            <th>Comportement</th>
+            <th>Ordre</th>
+            <th>État</th>
+            <th class="text-right"></th>
+          </tr>
+        </ng-template>
+
+        <ng-template #body let-item>
+          <tr class="hover:bg-slate-50 transition-colors">
+            <td class="py-3">
+              <div class="font-medium text-slate-800 leading-tight">{{ item.label }}</div>
+              <div class="font-mono text-xs text-slate-400 mt-0.5">{{ item.code }}</div>
+              @if (item.isSystem) {
+                <div class="text-xs text-slate-500 mt-0.5">
+                  Référentiel de la plateforme : renommable et désactivable, jamais supprimable.
+                </div>
+              }
+            </td>
+
+            <td class="py-3">
+              <div class="flex flex-wrap items-center gap-1.5">
+                @if (item.countsAsContact) {
+                  <tas-tag severity="success">Compte comme un contact</tas-tag>
+                }
+                @if (item.requiresCallbackDate) {
+                  <tas-tag severity="info">Date de rappel obligatoire</tas-tag>
+                }
+                @if (!item.countsAsContact && !item.requiresCallbackDate) {
+                  <span class="text-xs text-slate-400">Aucun comportement particulier</span>
+                }
+              </div>
+            </td>
+
+            <td class="text-sm text-slate-700 tabular-nums">{{ item.displayOrder }}</td>
+
+            <td>
+              <tas-tag [severity]="item.isActive ? 'success' : 'neutral'">
+                {{ item.isActive ? 'Actif' : 'Désactivé' }}
+              </tas-tag>
+            </td>
+
+            <td class="text-right">
+              @if (canManageSettings()) {
+                <div class="flex items-center justify-end gap-1">
+                  <button
+                    tas-button
+                    iconButton
+                    type="button"
+                    title="Modifier le libellé et l'ordre"
+                    [attr.aria-label]="'Modifier le résultat ' + item.code"
+                    (click)="openEditOutcome(item)"
+                  >
+                    <tas-icon iconName="feather:edit-2" iconSize="sm"></tas-icon>
+                  </button>
+                  <button
+                    tas-text-button
+                    type="button"
+                    [disabled]="togglingCode() === item.code"
+                    (click)="confirmToggleActive(item)"
+                  >
+                    {{ item.isActive ? 'Désactiver' : 'Réactiver' }}
+                  </button>
+                </div>
+              }
+            </td>
+          </tr>
+        </ng-template>
+      </tas-table>
+
+      <p class="text-xs text-slate-400 mt-3">
+        Un résultat ne se supprime jamais, pas même un résultat de la plateforme : un appel
+        qualifié l'an dernier pointe sur son code.
+      </p>
+    }
+  </div>
+</tas-card>
+
+<!-- ——— Politique d'enregistrement ——— -->
+<tas-card class="block mb-4">
+  <div class="p-4 border-b border-slate-100">
+    <p class="text-sm font-semibold text-slate-700">Enregistrement des appels</p>
+    <p class="text-xs text-slate-500 mt-0.5">
+      Un enregistrement est la voix d'une personne : ce bloc relève de la conformité, et d'une
+      habilitation distincte de celle des réglages de téléphonie.
+    </p>
+  </div>
+
+  @if (!canManageCompliance()) {
+    <div class="p-4">
+      <div class="flex items-start gap-2 rounded-lg border border-slate-200 bg-slate-50 p-3">
+        <tas-icon iconName="feather:lock" class="mt-0.5 shrink-0 text-slate-500" style="font-size:14px"></tas-icon>
+        <p class="text-xs text-slate-600">
+          La politique d'enregistrement demande l'habilitation de conformité
+          (<span class="font-mono">admin:compliance:manage</span>), que vous n'avez pas. Elle n'est
+          ni affichée ni modifiable ici — ce n'est pas une panne, et la demander à un responsable
+          conformité est la voie normale.
+        </p>
+      </div>
+    </div>
+  } @else if (isLoadingPolicy()) {
+    <div class="flex justify-center py-16">
+      <tas-spinner size="10" class="text-primary"></tas-spinner>
+    </div>
+  } @else if (policyError()) {
+    <div class="p-4">
+      <div class="rounded-lg border border-functional-error bg-white p-6 text-center">
+        <p class="text-sm font-medium text-slate-800">Lecture impossible</p>
+        <p class="text-sm text-slate-500 mt-1">{{ policyError() }}</p>
+        <button tas-outlined-button color="primary" type="button" class="mt-3" (click)="reloadPolicy()">
+          Réessayer
+        </button>
+      </div>
+    </div>
+  } @else {
+    <div class="p-4">
+      <!-- Trace de la décision : `updatedAt` nul veut dire que personne n'a jamais décidé,
+           ce qui n'est pas la même chose qu'avoir choisi « aucun enregistrement ». -->
+      <div class="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 bg-slate-50 p-3">
+        <div>
+          <p class="text-xs text-slate-400">Politique en vigueur</p>
+          <div class="mt-1 flex items-center gap-2">
+            <tas-tag [severity]="modeSeverity(policy()?.mode)">
+              {{ modeLabel(policy()?.mode) }}
+            </tas-tag>
+          </div>
+        </div>
+        <div class="text-right">
+          @if (hasDecision()) {
+            <p class="text-xs text-slate-500">
+              Décidé le {{ policy()?.updatedAt | date: 'dd/MM/yyyy à HH:mm' }}
+            </p>
+            <p class="text-xs text-slate-400 mt-0.5">
+              par {{ policyAuthorName() ?? 'Utilisateur inconnu' }}
+            </p>
+          } @else {
+            <p class="text-xs text-slate-500">Personne n'a encore décidé</p>
+            <p class="text-xs text-slate-400 mt-0.5 max-w-80">
+              L'enregistrement est livré construit et éteint : « aucun enregistrement » est ici
+              l'état par défaut, pas un choix qui aurait été fait.
+            </p>
+          }
+        </div>
+      </div>
+
+      <form [formRoot]="policyForm" class="flex flex-col gap-5">
+        <tas-form-field>
+          <tas-label>Mode <span class="text-functional-error">*</span></tas-label>
+          <tas-select
+            [options]="modeOptions"
+            optionLabel="label"
+            optionValue="value"
+            [formField]="policyForm.mode"
+          ></tas-select>
+          @if (policyForm.mode().touched() && policyForm.mode().invalid()) {
+            <tas-error>{{ policyForm.mode().errors()[0].message }}</tas-error>
+          } @else {
+            <tas-hint>
+              @switch (selectedMode()) {
+                @case ('Disabled') {
+                  Aucun appel n'est enregistré. Les enregistrements déjà pris restent conservés.
+                }
+                @case ('AllCalls') {
+                  Tous les appels sont enregistrés, sous la base légale et la finalité ci-dessous.
+                }
+                @case ('OnDemand') {
+                  Seuls les appels que l'agent demande de conserver sont gardés, case cochée au
+                  moment de la qualification. C'est le mode d'un consentement donné conversation
+                  par conversation.
+                }
+              }
+            </tas-hint>
+          }
+        </tas-form-field>
+
+        @if (modeChanges()) {
+          <div class="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3">
+            <tas-icon iconName="feather:alert-triangle" class="mt-0.5 shrink-0 text-amber-600" style="font-size:14px"></tas-icon>
+            <p class="text-xs text-amber-800">
+              Vous changez le mode : il vous sera demandé de confirmer avant l'enregistrement.
+            </p>
+          </div>
+        }
+
+        @if (selectedMode() !== 'Disabled') {
+          <tas-form-field>
+            <tas-label>Base légale <span class="text-functional-error">*</span></tas-label>
+            <input
+              tasInput
+              type="text"
+              placeholder="ex: intérêt légitime — preuve des instructions données par téléphone"
+              [formField]="policyForm.legalBasis"
+            />
+            @if (policyForm.legalBasis().touched() && policyForm.legalBasis().invalid()) {
+              <tas-error>{{ policyForm.legalBasis().errors()[0].message }}</tas-error>
+            } @else {
+              <tas-hint>
+                Vos propres mots : les bases diffèrent d'un régulateur à l'autre. Cette phrase est
+                copiée sur chaque enregistrement au moment où il est récupéré, et figée là.
+              </tas-hint>
+            }
+          </tas-form-field>
+
+          <tas-form-field>
+            <tas-label>Finalité <span class="text-functional-error">*</span></tas-label>
+            <input
+              tasInput
+              type="text"
+              placeholder="ex: traitement des réclamations et formation des conseillers"
+              [formField]="policyForm.purpose"
+            />
+            @if (policyForm.purpose().touched() && policyForm.purpose().invalid()) {
+              <tas-error>{{ policyForm.purpose().errors()[0].message }}</tas-error>
+            } @else {
+              <tas-hint>
+                « Nous pouvons » et « nous avons besoin de » sont deux questions distinctes : le
+                serveur exige les deux réponses.
+              </tas-hint>
+            }
+          </tas-form-field>
+
+          <div class="grid grid-cols-2 gap-4">
+            <tas-form-field>
+              <tas-label>
+                Conservation (jours) <span class="text-functional-error">*</span>
+              </tas-label>
+              <input tasInput type="number" [formField]="policyForm.retentionDays" />
+              @if (policyForm.retentionDays().touched() && policyForm.retentionDays().invalid()) {
+                <tas-error>{{ policyForm.retentionDays().errors()[0].message }}</tas-error>
+              } @else {
+                <tas-hint>
+                  Raccourcir ne touche pas un enregistrement déjà pris, et rallonger ne le
+                  prolonge pas : chacun garde la durée sous laquelle il a été récupéré.
+                </tas-hint>
+              }
+            </tas-form-field>
+
+            <tas-form-field>
+              <tas-label>Durée maximale d'un enregistrement (secondes)</tas-label>
+              <input tasInput type="number" placeholder="—" [formField]="policyForm.maxDurationSeconds" />
+              @if (policyForm.maxDurationSeconds().touched() && policyForm.maxDurationSeconds().invalid()) {
+                <tas-error>{{ policyForm.maxDurationSeconds().errors()[0].message }}</tas-error>
+              } @else {
+                <tas-hint>Facultatif. Au-delà, l'enregistrement est tronqué.</tas-hint>
+              }
+            </tas-form-field>
+          </div>
+
+          <div class="rounded-lg border border-slate-200 p-3">
+            <tas-checkbox [formField]="policyForm.deleteAtProvider">
+              <span class="text-sm text-slate-700">
+                Demander aussi la suppression chez le fournisseur
+              </span>
+            </tas-checkbox>
+            <p class="text-xs text-slate-500 mt-2">
+              Honoré uniquement là où le fournisseur sait supprimer. Quand il ne le sait pas, la
+              purge de fin de conservation ne porte que sur la copie conservée par SANKORE.
+            </p>
+          </div>
+
+          @if (selectedMode() === 'AllCalls') {
+            <div class="rounded-lg border border-amber-200 bg-amber-50 p-3">
+              <tas-checkbox [formField]="policyForm.callersInformed">
+                <span class="text-sm text-amber-900">
+                  Je confirme que les appelants sont informés de l'enregistrement avant la tonalité
+                </span>
+              </tas-checkbox>
+              @if (policyForm.callersInformed().touched() && policyForm.callersInformed().invalid()) {
+                <tas-error>{{ policyForm.callersInformed().errors()[0].message }}</tas-error>
+              }
+              <p class="text-xs text-amber-800 mt-2">
+                Cette confirmation n'est pas enregistrée : aucun champ du contrat ne la transporte,
+                et elle vous est donc redemandée à chaque modification. Elle conditionne la
+                validation de ce mode, elle ne le documente pas.
+              </p>
+            </div>
+          }
+        } @else if (policy()?.legalBasis || policy()?.purpose) {
+          <div class="rounded-lg border border-slate-200 bg-slate-50 p-3">
+            <p class="text-xs text-slate-600">
+              La base légale et la finalité déjà saisies sont conservées : les enregistrements
+              pris avant la coupure sont toujours détenus sous ces mots-là.
+            </p>
+            <dl class="mt-2 grid grid-cols-2 gap-x-6 gap-y-1 text-xs">
+              <div>
+                <dt class="text-slate-400">Base légale</dt>
+                <dd class="text-slate-700">{{ policy()?.legalBasis || '—' }}</dd>
+              </div>
+              <div>
+                <dt class="text-slate-400">Finalité</dt>
+                <dd class="text-slate-700">{{ policy()?.purpose || '—' }}</dd>
+              </div>
+            </dl>
+          </div>
+        }
+
+        <div class="flex items-center justify-end">
+          <button
+            tas-raised-button
+            color="primary"
+            type="button"
+            (click)="handlePolicySubmit()"
+            [disabled]="policyForm().invalid() || policyForm().submitting()"
+            [isLoading]="policyForm().submitting()"
+          >
+            Enregistrer la politique
+          </button>
+        </div>
+      </form>
+    </div>
+  }
+</tas-card>
+
+<!--
+  Ce que cet écran ne peut PAS régler, dit plutôt que simulé. TEL-F-03 demandait aussi des
+  règles de SLA téléphonique, des horaires d'appel et une obligation de qualification :
+  aucune des trois n'a d'endpoint, d'aucune sorte. Des champs qui n'écrivent nulle part
+  seraient pires que leur absence — personne ne va vérifier qu'un réglage affiché
+  « enregistré » l'a vraiment été.
+-->
+<tas-card class="block">
+  <div class="p-4">
+    <div class="flex items-start gap-2">
+      <tas-icon iconName="feather:info" class="mt-0.5 shrink-0 text-slate-500" style="font-size:14px"></tas-icon>
+      <div>
+        <p class="text-sm font-semibold text-slate-700">Réglages pas encore disponibles</p>
+        <p class="text-xs text-slate-500 mt-1">
+          Trois réglages attendus sur cet écran n'existent pas encore côté serveur : aucune API ne
+          les porte, et ils ne sont donc ni affichés ni paramétrables ici.
+        </p>
+        <ul class="mt-2 text-xs text-slate-600 list-disc pl-5 space-y-1">
+          <li>
+            <span class="font-medium">Règles de SLA téléphonique</span> — délai de rappel attendu
+            et alertes associées.
+          </li>
+          <li>
+            <span class="font-medium">Horaires d'appel</span> — plages pendant lesquelles les
+            appels sortants sont autorisés.
+          </li>
+          <li>
+            <span class="font-medium">Qualification obligatoire</span> — imposer une qualification
+            avant de reprendre un autre appel.
+          </li>
+        </ul>
+        <p class="text-xs text-slate-500 mt-2">
+          En attendant, un appel non qualifié reste visible dans la file « À qualifier » du
+          journal : c'est le seul rappel en place.
+        </p>
+      </div>
+    </div>
+  </div>
+</tas-card>

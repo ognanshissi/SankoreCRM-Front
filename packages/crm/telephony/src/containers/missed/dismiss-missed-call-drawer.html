@@ -1,0 +1,44 @@
+<tas-side-drawer>
+  <tas-drawer-title>
+    <TasTitle class="text-lg">Clôturer cet appel manqué</TasTitle>
+  </tas-drawer-title>
+
+  <tas-drawer-content>
+    <form [formRoot]="formSchema" class="flex flex-col gap-5">
+      <div class="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
+        <p class="text-sm font-medium text-slate-800">{{ data.contextLabel }}</p>
+        <p class="mt-0.5 text-xs text-slate-500">{{ attemptLabel }}</p>
+      </div>
+
+      <p class="text-sm text-slate-500">{{ notice }}</p>
+
+      <tas-form-field>
+        <tas-label>Motif <span class="text-functional-error">*</span></tas-label>
+        <input
+          tasInput
+          type="text"
+          placeholder="Ex. : le client a été joint sur un autre canal"
+          [formField]="formSchema.reason"
+        />
+        <tas-hint>{{ reasonHint }}</tas-hint>
+        @if (formSchema.reason().touched() && formSchema.reason().invalid()) {
+          <tas-error>{{ formSchema.reason().errors()[0].message }}</tas-error>
+        }
+      </tas-form-field>
+    </form>
+  </tas-drawer-content>
+
+  <tas-drawer-action>
+    <button tas-outlined-button color="primary" type="button" (click)="close()">Annuler</button>
+    <button
+      tas-raised-button
+      color="primary"
+      type="button"
+      (click)="handleSubmit()"
+      [disabled]="formSchema().invalid() || formSchema().submitting()"
+      [isLoading]="formSchema().submitting()"
+    >
+      Clôturer
+    </button>
+  </tas-drawer-action>
+</tas-side-drawer>

@@ -25,6 +25,8 @@ import { CreateCallOutcomeRequest } from '../model/create-call-outcome-request.i
 // @ts-ignore
 import { CreateLeadFromCallResponse } from '../model/create-lead-from-call-response.interface';
 // @ts-ignore
+import { DismissMissedCallRequest } from '../model/dismiss-missed-call-request.interface';
+// @ts-ignore
 import { LinkCallRequest } from '../model/link-call-request.interface';
 // @ts-ignore
 import { LinkTelephonyUserRequest } from '../model/link-telephony-user-request.interface';
@@ -32,6 +34,10 @@ import { LinkTelephonyUserRequest } from '../model/link-telephony-user-request.i
 import { LinkTelephonyUserResponse } from '../model/link-telephony-user-response.interface';
 // @ts-ignore
 import { MissedCallDto } from '../model/missed-call-dto.interface';
+// @ts-ignore
+import { MyTelephonyStatusDto } from '../model/my-telephony-status-dto.interface';
+// @ts-ignore
+import { PagedResultOfTelephonyCallListItemDto } from '../model/paged-result-of-telephony-call-list-item-dto.interface';
 // @ts-ignore
 import { RecomputeTelephonyStatsRequest } from '../model/recompute-telephony-stats-request.interface';
 // @ts-ignore
@@ -277,6 +283,205 @@ export class TelephonyApiService {
     }
 
     /**
+     * Close a missed call without calling back
+     * Takes the entry out of GET telephony/calls/missed when no call back is needed. A reason is REQUIRED and is kept in the audit trail rather than on the call, because a column would hold the last reason only while a reviewer needs the sequence. Only a Missed or Voicemail call can be closed (422 TELEPHONY_CALL_NOT_MISSED): a conversation that took place has nothing to dismiss, and allowing it would be a way to clear a call out of a colleague\&#39;s queue without qualifying it. Wrapping up is the OTHER way out of the list and means something different — it describes a conversation, creates a lead activity and may stop an SLA clock. Do not use an outcome code to mean \&#39;nothing\&#39;. Your own call, or one nobody is attributed; a colleague\&#39;s answers 404. Closing twice is a success. Audited. Requires permission: Telephony.Call.View.
+     * @param callId 
+     * @param dismissMissedCallRequest 
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     */
+    public dismissTelephonyMissedCall(callId: string, dismissMissedCallRequest: DismissMissedCallRequest, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<any>;
+    public dismissTelephonyMissedCall(callId: string, dismissMissedCallRequest: DismissMissedCallRequest, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<HttpResponse<any>>;
+    public dismissTelephonyMissedCall(callId: string, dismissMissedCallRequest: DismissMissedCallRequest, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<HttpEvent<any>>;
+    public dismissTelephonyMissedCall(callId: string, dismissMissedCallRequest: DismissMissedCallRequest, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<any> {
+        if (callId === null || callId === undefined) {
+            throw new Error('Required parameter callId was null or undefined when calling dismissTelephonyMissedCall.');
+        }
+        if (dismissMissedCallRequest === null || dismissMissedCallRequest === undefined) {
+            throw new Error('Required parameter dismissMissedCallRequest was null or undefined when calling dismissTelephonyMissedCall.');
+        }
+
+        let localVarHeaders = this.defaultHeaders;
+
+        let localVarCredential: string | undefined;
+        // authentication (BearerToken) required
+        localVarCredential = this.configuration.lookupCredential('BearerToken');
+        if (localVarCredential) {
+            localVarHeaders = localVarHeaders.set('Authorization', 'Bearer ' + localVarCredential);
+        }
+
+        let localVarHttpHeaderAcceptSelected: string | undefined = options && options.httpHeaderAccept;
+        if (localVarHttpHeaderAcceptSelected === undefined) {
+            // to determine the Accept header
+            const httpHeaderAccepts: string[] = [
+            ];
+            localVarHttpHeaderAcceptSelected = this.configuration.selectHeaderAccept(httpHeaderAccepts);
+        }
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+
+        let localVarHttpContext: HttpContext | undefined = options && options.context;
+        if (localVarHttpContext === undefined) {
+            localVarHttpContext = new HttpContext();
+        }
+
+
+        // to determine the Content-Type header
+        const consumes: string[] = [
+            'application/json'
+        ];
+        const httpContentTypeSelected: string | undefined = this.configuration.selectHeaderContentType(consumes);
+        if (httpContentTypeSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Content-Type', httpContentTypeSelected);
+        }
+
+        let responseType_: 'text' | 'json' | 'blob' = 'json';
+        if (localVarHttpHeaderAcceptSelected) {
+            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+                responseType_ = 'text';
+            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+                responseType_ = 'json';
+            } else {
+                responseType_ = 'blob';
+            }
+        }
+
+        let localVarPath = `/api/v1/integration/telephony/calls/${this.configuration.encodeParam({name: "callId", value: callId, in: "path", style: "simple", explode: false, dataType: "string", dataFormat: "uuid"})}/dismiss`;
+        return this.httpClient.request<any>('post', `${this.configuration.basePath}${localVarPath}`,
+            {
+                context: localVarHttpContext,
+                body: dismissMissedCallRequest,
+                responseType: <any>responseType_,
+                withCredentials: this.configuration.withCredentials,
+                headers: localVarHeaders,
+                observe: observe,
+                reportProgress: reportProgress
+            }
+        );
+    }
+
+    /**
+     * The call journal as a CSV file
+     * Takes the SAME filters as GET telephony/calls and applies the SAME perimeter — the query is shared, so the file and the screen cannot disagree about who may see what. Behind Telephony.Stats.View rather than Telephony.Call.View: reading a screen of calls and carrying a year of them out of the building are different acts. The perimeter still applies on top, so a supervisor exports their own branches. Columns carry identifiers, instants, durations and the outcome — NO telephone number and NO note, exactly as the screen. hasNote says one exists. UTF-8 with a byte-order mark and semicolon-separated, because a French Excel opens a comma-separated file as one column and mangles accents without the BOM. A period matching more than 20 000 calls is refused (422 TELEPHONY_EXPORT_TOO_LARGE): narrow the period rather than stream a quarter. The export is logged with its row count. Requires permission: Telephony.Stats.View.
+     * @param from 
+     * @param to 
+     * @param crmUserId 
+     * @param agencyId 
+     * @param direction One of: Inbound, Outbound, Internal
+     * @param status One of: Ringing, InProgress, Completed, Missed, Voicemail, Failed
+     * @param attachment One of: Unknown, Matched, Ambiguous, Internal
+     * @param outcomeCode 
+     * @param entityType 
+     * @param entityId 
+     * @param queue One of: ToAttach, ToQualify, ToAssign
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     */
+    public exportTelephonyCalls(from?: string, to?: string, crmUserId?: string, agencyId?: string, direction?: 'Inbound' | 'Outbound' | 'Internal', status?: 'Ringing' | 'InProgress' | 'Completed' | 'Missed' | 'Voicemail' | 'Failed', attachment?: 'Unknown' | 'Matched' | 'Ambiguous' | 'Internal', outcomeCode?: string, entityType?: string, entityId?: string, queue?: 'ToAttach' | 'ToQualify' | 'ToAssign', observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'text/csv; charset&#x3D;utf-8', context?: HttpContext}): Observable<string>;
+    public exportTelephonyCalls(from?: string, to?: string, crmUserId?: string, agencyId?: string, direction?: 'Inbound' | 'Outbound' | 'Internal', status?: 'Ringing' | 'InProgress' | 'Completed' | 'Missed' | 'Voicemail' | 'Failed', attachment?: 'Unknown' | 'Matched' | 'Ambiguous' | 'Internal', outcomeCode?: string, entityType?: string, entityId?: string, queue?: 'ToAttach' | 'ToQualify' | 'ToAssign', observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'text/csv; charset&#x3D;utf-8', context?: HttpContext}): Observable<HttpResponse<string>>;
+    public exportTelephonyCalls(from?: string, to?: string, crmUserId?: string, agencyId?: string, direction?: 'Inbound' | 'Outbound' | 'Internal', status?: 'Ringing' | 'InProgress' | 'Completed' | 'Missed' | 'Voicemail' | 'Failed', attachment?: 'Unknown' | 'Matched' | 'Ambiguous' | 'Internal', outcomeCode?: string, entityType?: string, entityId?: string, queue?: 'ToAttach' | 'ToQualify' | 'ToAssign', observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'text/csv; charset&#x3D;utf-8', context?: HttpContext}): Observable<HttpEvent<string>>;
+    public exportTelephonyCalls(from?: string, to?: string, crmUserId?: string, agencyId?: string, direction?: 'Inbound' | 'Outbound' | 'Internal', status?: 'Ringing' | 'InProgress' | 'Completed' | 'Missed' | 'Voicemail' | 'Failed', attachment?: 'Unknown' | 'Matched' | 'Ambiguous' | 'Internal', outcomeCode?: string, entityType?: string, entityId?: string, queue?: 'ToAttach' | 'ToQualify' | 'ToAssign', observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'text/csv; charset&#x3D;utf-8', context?: HttpContext}): Observable<any> {
+
+        let localVarQueryParameters = new HttpParams({encoder: this.encoder});
+        if (from !== undefined && from !== null) {
+          localVarQueryParameters = this.addToHttpParams(localVarQueryParameters,
+            <any>from, 'from');
+        }
+        if (to !== undefined && to !== null) {
+          localVarQueryParameters = this.addToHttpParams(localVarQueryParameters,
+            <any>to, 'to');
+        }
+        if (crmUserId !== undefined && crmUserId !== null) {
+          localVarQueryParameters = this.addToHttpParams(localVarQueryParameters,
+            <any>crmUserId, 'crmUserId');
+        }
+        if (agencyId !== undefined && agencyId !== null) {
+          localVarQueryParameters = this.addToHttpParams(localVarQueryParameters,
+            <any>agencyId, 'agencyId');
+        }
+        if (direction !== undefined && direction !== null) {
+          localVarQueryParameters = this.addToHttpParams(localVarQueryParameters,
+            <any>direction, 'direction');
+        }
+        if (status !== undefined && status !== null) {
+          localVarQueryParameters = this.addToHttpParams(localVarQueryParameters,
+            <any>status, 'status');
+        }
+        if (attachment !== undefined && attachment !== null) {
+          localVarQueryParameters = this.addToHttpParams(localVarQueryParameters,
+            <any>attachment, 'attachment');
+        }
+        if (outcomeCode !== undefined && outcomeCode !== null) {
+          localVarQueryParameters = this.addToHttpParams(localVarQueryParameters,
+            <any>outcomeCode, 'outcomeCode');
+        }
+        if (entityType !== undefined && entityType !== null) {
+          localVarQueryParameters = this.addToHttpParams(localVarQueryParameters,
+            <any>entityType, 'entityType');
+        }
+        if (entityId !== undefined && entityId !== null) {
+          localVarQueryParameters = this.addToHttpParams(localVarQueryParameters,
+            <any>entityId, 'entityId');
+        }
+        if (queue !== undefined && queue !== null) {
+          localVarQueryParameters = this.addToHttpParams(localVarQueryParameters,
+            <any>queue, 'queue');
+        }
+
+        let localVarHeaders = this.defaultHeaders;
+
+        let localVarCredential: string | undefined;
+        // authentication (BearerToken) required
+        localVarCredential = this.configuration.lookupCredential('BearerToken');
+        if (localVarCredential) {
+            localVarHeaders = localVarHeaders.set('Authorization', 'Bearer ' + localVarCredential);
+        }
+
+        let localVarHttpHeaderAcceptSelected: string | undefined = options && options.httpHeaderAccept;
+        if (localVarHttpHeaderAcceptSelected === undefined) {
+            // to determine the Accept header
+            const httpHeaderAccepts: string[] = [
+                'text/csv; charset=utf-8'
+            ];
+            localVarHttpHeaderAcceptSelected = this.configuration.selectHeaderAccept(httpHeaderAccepts);
+        }
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+
+        let localVarHttpContext: HttpContext | undefined = options && options.context;
+        if (localVarHttpContext === undefined) {
+            localVarHttpContext = new HttpContext();
+        }
+
+
+        let responseType_: 'text' | 'json' | 'blob' = 'json';
+        if (localVarHttpHeaderAcceptSelected) {
+            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+                responseType_ = 'text';
+            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+                responseType_ = 'json';
+            } else {
+                responseType_ = 'blob';
+            }
+        }
+
+        let localVarPath = `/api/v1/integration/telephony/calls/export.csv`;
+        return this.httpClient.request<string>('get', `${this.configuration.basePath}${localVarPath}`,
+            {
+                context: localVarHttpContext,
+                params: localVarQueryParameters,
+                responseType: <any>responseType_,
+                withCredentials: this.configuration.withCredentials,
+                headers: localVarHeaders,
+                observe: observe,
+                reportProgress: reportProgress
+            }
+        );
+    }
+
+    /**
      * Download a call\&#39;s recording out of the platform
      * A different act from listening and a different permission: past this point no control of ours applies to the file. The reason is MANDATORY (422 TELEPHONY_RECORDING_EXPORT_REASON_REQUIRED) and is kept in tel_recording_access_log — it is the only thing that makes the export answerable afterwards. Served as an attachment. Requires permission: Telephony.Recording.Export.
      * @param callId 
@@ -341,6 +546,68 @@ export class TelephonyApiService {
             {
                 context: localVarHttpContext,
                 params: localVarQueryParameters,
+                responseType: <any>responseType_,
+                withCredentials: this.configuration.withCredentials,
+                headers: localVarHeaders,
+                observe: observe,
+                reportProgress: reportProgress
+            }
+        );
+    }
+
+    /**
+     * Whether YOUR telephony works, and why not
+     * The one telephony read an ordinary agent can make about themselves. Every other route that could answer it is gated behind an administrator\&#39;s permission, which is the wrong person: the user who needs to know why their Appeler button is missing is exactly the user who cannot look. telephonyEnabled is false when the institution has no ACTIVE telephony connection — which is most tenants, and the whole area should then be hidden. linkStatus is NotLinked, Active, Broken or Disabled: four values and not a boolean, because the repairs differ (nobody paired you, the provider stopped listing your account, an administrator unpaired you with a reason). canMakeCalls combines all three conditions — telephony on, you are paired, you hold Telephony.Call.Make — so a screen has one flag to read instead of three to recombine. A Broken link still allows calls; only Disabled stops them. Exposes nothing but your own state, so it needs no permission beyond being signed in.
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     */
+    public getMyTelephonyStatus(observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<MyTelephonyStatusDto>;
+    public getMyTelephonyStatus(observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<MyTelephonyStatusDto>>;
+    public getMyTelephonyStatus(observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<MyTelephonyStatusDto>>;
+    public getMyTelephonyStatus(observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
+
+        let localVarHeaders = this.defaultHeaders;
+
+        let localVarCredential: string | undefined;
+        // authentication (BearerToken) required
+        localVarCredential = this.configuration.lookupCredential('BearerToken');
+        if (localVarCredential) {
+            localVarHeaders = localVarHeaders.set('Authorization', 'Bearer ' + localVarCredential);
+        }
+
+        let localVarHttpHeaderAcceptSelected: string | undefined = options && options.httpHeaderAccept;
+        if (localVarHttpHeaderAcceptSelected === undefined) {
+            // to determine the Accept header
+            const httpHeaderAccepts: string[] = [
+                'application/json'
+            ];
+            localVarHttpHeaderAcceptSelected = this.configuration.selectHeaderAccept(httpHeaderAccepts);
+        }
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+
+        let localVarHttpContext: HttpContext | undefined = options && options.context;
+        if (localVarHttpContext === undefined) {
+            localVarHttpContext = new HttpContext();
+        }
+
+
+        let responseType_: 'text' | 'json' | 'blob' = 'json';
+        if (localVarHttpHeaderAcceptSelected) {
+            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+                responseType_ = 'text';
+            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+                responseType_ = 'json';
+            } else {
+                responseType_ = 'blob';
+            }
+        }
+
+        let localVarPath = `/api/v1/integration/telephony/me`;
+        return this.httpClient.request<MyTelephonyStatusDto>('get', `${this.configuration.basePath}${localVarPath}`,
+            {
+                context: localVarHttpContext,
                 responseType: <any>responseType_,
                 withCredentials: this.configuration.withCredentials,
                 headers: localVarHeaders,
@@ -851,8 +1118,138 @@ export class TelephonyApiService {
     }
 
     /**
+     * The call journal, filtered and paged
+     * PERIMETER-FILTERED, and that is the point: you see your own calls, the ones nobody is attributed — the agency\&#39;s \&#39;to attribute\&#39; queue, which is the call most likely to be forgotten — and the calls of the agencies you cover. A tenant-wide account sees everything. The agency is the one the call belonged to AT THE TIME, so an agent moving branch does not take their history with them. queue&#x3D;ToAttach|ToQualify|ToAssign are the three work piles, each a rule rather than a filter combination: ToAttach is anything not settled, ToQualify is ended-and-unqualified-and-not-dismissed, ToAssign is attributed to nobody. They compose with the other filters. entityType + entityId together give the calls of ONE record, which is what a lead\&#39;s or a client\&#39;s history asks for. canListen says whether YOU may hear the recording, so a screen does not have to probe for a 404. hasNote says a note exists and never what it says — notes are encrypted and never leave the module. NO TELEPHONE NUMBER is returned in any field. Newest first. 100 rows is the page ceiling. Requires permission: Telephony.Call.View.
+     * @param from 
+     * @param to 
+     * @param crmUserId 
+     * @param agencyId 
+     * @param direction One of: Inbound, Outbound, Internal
+     * @param status One of: Ringing, InProgress, Completed, Missed, Voicemail, Failed
+     * @param attachment One of: Unknown, Matched, Ambiguous, Internal
+     * @param outcomeCode 
+     * @param entityType 
+     * @param entityId 
+     * @param queue One of: ToAttach, ToQualify, ToAssign
+     * @param page 
+     * @param pageSize 
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     */
+    public listTelephonyCalls(from?: string, to?: string, crmUserId?: string, agencyId?: string, direction?: 'Inbound' | 'Outbound' | 'Internal', status?: 'Ringing' | 'InProgress' | 'Completed' | 'Missed' | 'Voicemail' | 'Failed', attachment?: 'Unknown' | 'Matched' | 'Ambiguous' | 'Internal', outcomeCode?: string, entityType?: string, entityId?: string, queue?: 'ToAttach' | 'ToQualify' | 'ToAssign', page?: number, pageSize?: number, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<PagedResultOfTelephonyCallListItemDto>;
+    public listTelephonyCalls(from?: string, to?: string, crmUserId?: string, agencyId?: string, direction?: 'Inbound' | 'Outbound' | 'Internal', status?: 'Ringing' | 'InProgress' | 'Completed' | 'Missed' | 'Voicemail' | 'Failed', attachment?: 'Unknown' | 'Matched' | 'Ambiguous' | 'Internal', outcomeCode?: string, entityType?: string, entityId?: string, queue?: 'ToAttach' | 'ToQualify' | 'ToAssign', page?: number, pageSize?: number, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<PagedResultOfTelephonyCallListItemDto>>;
+    public listTelephonyCalls(from?: string, to?: string, crmUserId?: string, agencyId?: string, direction?: 'Inbound' | 'Outbound' | 'Internal', status?: 'Ringing' | 'InProgress' | 'Completed' | 'Missed' | 'Voicemail' | 'Failed', attachment?: 'Unknown' | 'Matched' | 'Ambiguous' | 'Internal', outcomeCode?: string, entityType?: string, entityId?: string, queue?: 'ToAttach' | 'ToQualify' | 'ToAssign', page?: number, pageSize?: number, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<PagedResultOfTelephonyCallListItemDto>>;
+    public listTelephonyCalls(from?: string, to?: string, crmUserId?: string, agencyId?: string, direction?: 'Inbound' | 'Outbound' | 'Internal', status?: 'Ringing' | 'InProgress' | 'Completed' | 'Missed' | 'Voicemail' | 'Failed', attachment?: 'Unknown' | 'Matched' | 'Ambiguous' | 'Internal', outcomeCode?: string, entityType?: string, entityId?: string, queue?: 'ToAttach' | 'ToQualify' | 'ToAssign', page?: number, pageSize?: number, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
+
+        let localVarQueryParameters = new HttpParams({encoder: this.encoder});
+        if (from !== undefined && from !== null) {
+          localVarQueryParameters = this.addToHttpParams(localVarQueryParameters,
+            <any>from, 'from');
+        }
+        if (to !== undefined && to !== null) {
+          localVarQueryParameters = this.addToHttpParams(localVarQueryParameters,
+            <any>to, 'to');
+        }
+        if (crmUserId !== undefined && crmUserId !== null) {
+          localVarQueryParameters = this.addToHttpParams(localVarQueryParameters,
+            <any>crmUserId, 'crmUserId');
+        }
+        if (agencyId !== undefined && agencyId !== null) {
+          localVarQueryParameters = this.addToHttpParams(localVarQueryParameters,
+            <any>agencyId, 'agencyId');
+        }
+        if (direction !== undefined && direction !== null) {
+          localVarQueryParameters = this.addToHttpParams(localVarQueryParameters,
+            <any>direction, 'direction');
+        }
+        if (status !== undefined && status !== null) {
+          localVarQueryParameters = this.addToHttpParams(localVarQueryParameters,
+            <any>status, 'status');
+        }
+        if (attachment !== undefined && attachment !== null) {
+          localVarQueryParameters = this.addToHttpParams(localVarQueryParameters,
+            <any>attachment, 'attachment');
+        }
+        if (outcomeCode !== undefined && outcomeCode !== null) {
+          localVarQueryParameters = this.addToHttpParams(localVarQueryParameters,
+            <any>outcomeCode, 'outcomeCode');
+        }
+        if (entityType !== undefined && entityType !== null) {
+          localVarQueryParameters = this.addToHttpParams(localVarQueryParameters,
+            <any>entityType, 'entityType');
+        }
+        if (entityId !== undefined && entityId !== null) {
+          localVarQueryParameters = this.addToHttpParams(localVarQueryParameters,
+            <any>entityId, 'entityId');
+        }
+        if (queue !== undefined && queue !== null) {
+          localVarQueryParameters = this.addToHttpParams(localVarQueryParameters,
+            <any>queue, 'queue');
+        }
+        if (page !== undefined && page !== null) {
+          localVarQueryParameters = this.addToHttpParams(localVarQueryParameters,
+            <any>page, 'page');
+        }
+        if (pageSize !== undefined && pageSize !== null) {
+          localVarQueryParameters = this.addToHttpParams(localVarQueryParameters,
+            <any>pageSize, 'pageSize');
+        }
+
+        let localVarHeaders = this.defaultHeaders;
+
+        let localVarCredential: string | undefined;
+        // authentication (BearerToken) required
+        localVarCredential = this.configuration.lookupCredential('BearerToken');
+        if (localVarCredential) {
+            localVarHeaders = localVarHeaders.set('Authorization', 'Bearer ' + localVarCredential);
+        }
+
+        let localVarHttpHeaderAcceptSelected: string | undefined = options && options.httpHeaderAccept;
+        if (localVarHttpHeaderAcceptSelected === undefined) {
+            // to determine the Accept header
+            const httpHeaderAccepts: string[] = [
+                'application/json'
+            ];
+            localVarHttpHeaderAcceptSelected = this.configuration.selectHeaderAccept(httpHeaderAccepts);
+        }
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+
+        let localVarHttpContext: HttpContext | undefined = options && options.context;
+        if (localVarHttpContext === undefined) {
+            localVarHttpContext = new HttpContext();
+        }
+
+
+        let responseType_: 'text' | 'json' | 'blob' = 'json';
+        if (localVarHttpHeaderAcceptSelected) {
+            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+                responseType_ = 'text';
+            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+                responseType_ = 'json';
+            } else {
+                responseType_ = 'blob';
+            }
+        }
+
+        let localVarPath = `/api/v1/integration/telephony/calls`;
+        return this.httpClient.request<PagedResultOfTelephonyCallListItemDto>('get', `${this.configuration.basePath}${localVarPath}`,
+            {
+                context: localVarHttpContext,
+                params: localVarQueryParameters,
+                responseType: <any>responseType_,
+                withCredentials: this.configuration.withCredentials,
+                headers: localVarHeaders,
+                observe: observe,
+                reportProgress: reportProgress
+            }
+        );
+    }
+
+    /**
      * The calls nobody answered, grouped per caller
-     * YOUR missed calls plus the ones attributed to nobody — the agency\&#39;s \&#39;to attribute\&#39; queue, which is the call most likely to be forgotten. A colleague\&#39;s is theirs: showing it here would have two agents calling one person back. Grouped on a 30-minute gap between consecutive attempts, so somebody who tried three times in ten minutes is one entry with attemptCount&#x3D;3 — and the callId is their LAST attempt, which carries the most recent reading of who they are. Calls already wrapped up are excluded. Voicemail counts as missed (somebody left a message); a FAILED call does not (an operator refusal has nobody waiting to be called back). No name and no number: read GET calls/{callId}/context for a name, which applies your perimeter. Defaults to the last 7 days. Requires permission: Telephony.Call.View.
+     * YOUR missed calls plus the ones attributed to nobody — the agency\&#39;s \&#39;to attribute\&#39; queue, which is the call most likely to be forgotten. A colleague\&#39;s is theirs: showing it here would have two agents calling one person back. Grouped on a 30-minute gap between consecutive attempts, so somebody who tried three times in ten minutes is one entry with attemptCount&#x3D;3 — and the callId is their LAST attempt, which carries the most recent reading of who they are. Calls already wrapped up are excluded, and so are the ones closed with POST calls/{callId}/dismiss. Voicemail counts as missed (somebody left a message); a FAILED call does not (an operator refusal has nobody waiting to be called back). No name and no number: read GET calls/{callId}/context for a name, which applies your perimeter. Defaults to the last 7 days. Requires permission: Telephony.Call.View.
      * @param since 
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
@@ -1817,7 +2214,7 @@ export class TelephonyApiService {
 
     /**
      * Say how the call went
-     * The outcome must be an ACTIVE code of your tenant\&#39;s referential — see GET telephony/call-outcomes — because two of its columns carry behaviour: one decides whether the call stops a lead\&#39;s first-contact SLA, another makes callbackAt mandatory (422 TELEPHONY_CALLBACK_DATE_REQUIRED). A call that has not ended is refused (422 TELEPHONY_CALL_NOT_ENDED): the agent is still speaking. Only your own call — or one nobody is attributed — may be wrapped up; another agent\&#39;s answers 404, because a 403 would confirm a colleague spoke to somebody. The note is kept ENCRYPTED and never leaves this module: it is excluded from the event M13 consumes and from every timeline summary. Wrapping up twice is allowed — an agent may correct an outcome — and M13 is idempotent on the call. Audited. Requires permission: Telephony.Call.View.
+     * The outcome must be an ACTIVE code of your tenant\&#39;s referential — see GET telephony/call-outcomes — because two of its columns carry behaviour: one decides whether the call stops a lead\&#39;s first-contact SLA, another makes callbackAt mandatory (422 TELEPHONY_CALLBACK_DATE_REQUIRED). A call that has not ended is refused (422 TELEPHONY_CALL_NOT_ENDED): the agent is still speaking. Only your own call — or one nobody is attributed — may be wrapped up; another agent\&#39;s answers 404, because a 403 would confirm a colleague spoke to somebody. The note is kept ENCRYPTED and never leaves this module: it is excluded from the event M13 consumes and from every timeline summary. Wrapping up twice is allowed — an agent may correct an outcome — and M13 is idempotent on the call. keepRecording asks for the conversation to be kept, and is the ONLY way a recording is kept under the OnDemand policy. It is ignored under AllCalls (redundant) and under Disabled (it would be a way around the policy), and it cannot be un-asked by a second wrap-up. Audited. Requires permission: Telephony.Call.View.
      * @param callId 
      * @param wrapUpCallRequest 
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.

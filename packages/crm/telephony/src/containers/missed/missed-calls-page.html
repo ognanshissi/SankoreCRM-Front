@@ -1,0 +1,319 @@
+<!-- En-tête -->
+<div class="mb-5 flex items-start justify-between gap-4">
+  <div>
+    <h1 class="text-lg font-semibold text-slate-800">Appels manqués</h1>
+    <p class="mt-0.5 max-w-3xl text-sm text-slate-500">
+      Vos appels manqués et ceux qui ne sont attribués à personne. Une ligne est une
+      personne, pas un appel : les tentatives rapprochées sont déjà regroupées par le
+      serveur. Un renvoi sur messagerie compte comme manqué ; un échec opérateur non, parce
+      que personne n'attend derrière.
+    </p>
+  </div>
+  <div class="flex shrink-0 items-center gap-2">
+    <span class="text-sm text-slate-500">
+      <span class="font-medium text-slate-700 tabular-nums">{{ openCount() }}</span>
+      à traiter
+    </span>
+    <button tas-outlined-button type="button" [disabled]="isLoading()" (click)="reload()">
+      <tas-icon iconName="feather:refresh-cw" style="font-size:14px"></tas-icon>
+      Actualiser
+    </button>
+  </div>
+</div>
+
+<!-- Filtre -->
+<tas-card class="mb-4 block">
+  <div class="p-4">
+    <div class="grid grid-cols-4 gap-3">
+      <tas-form-field>
+        <tas-label>Période</tas-label>
+        <tas-select
+          [options]="sinceOptions"
+          optionLabel="label"
+          optionValue="value"
+          placeholder="7 derniers jours"
+          [ngModel]="filterSince()"
+          (ngModelChange)="onSinceChange($event)"
+        ></tas-select>
+        <tas-hint>Cette liste n'est pas paginée par le serveur : resserrez plutôt la période.</tas-hint>
+      </tas-form-field>
+    </div>
+
+    @if (telephonyBlockedReason()) {
+      <p class="mt-3 text-xs text-slate-500">{{ telephonyBlockedReason() }}</p>
+    }
+  </div>
+</tas-card>
+
+@if (loadError()) {
+  <div class="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3" role="alert">
+    <p class="text-sm text-slate-700">{{ loadError() }}</p>
+    <button tas-text-button color="primary" type="button" size="small" (click)="reload()">
+      Réessayer
+    </button>
+  </div>
+}
+
+@if (!isLoading() && openCount() === 0 && !loadError()) {
+  <tas-card class="block">
+    <div class="flex flex-col items-center justify-center py-16 text-center">
+      <tas-icon
+        iconName="feather:check-circle"
+        class="mb-3 text-slate-300"
+        style="font-size:32px"
+      ></tas-icon>
+      @if (filterSince() === '7') {
+        <p class="mb-1 text-sm font-medium text-slate-600">
+          Personne n'attend d'être rappelé cette semaine.
+        </p>
+        <p class="max-w-md text-xs text-slate-400">
+          Les appels manqués des semaines précédentes se consultent en élargissant la période.
+        </p>
+      } @else {
+        <p class="mb-1 text-sm font-medium text-slate-600">
+          Aucun appel manqué sur cette période.
+        </p>
+        <p class="max-w-md text-xs text-slate-400">
+          Les appels déjà qualifiés ou clôturés n'y figurent plus, c'est voulu.
+        </p>
+      }
+    </div>
+  </tas-card>
+} @else {
+  <tas-table
+    [data]="pageRows()"
+    identifierField="callId"
+    [config]="tableConfig()"
+    [isLoading]="isLoading()"
+    [hasCaption]="false"
+    (pageEventChange)="onPageChange($event)"
+  >
+    <ng-template #header>
+      <tr>
+        <th>Dernière tentative</th>
+        <th>Tentatives</th>
+        <th>Appelant</th>
+        <th>Fiche</th>
+        <th class="text-right"></th>
+      </tr>
+    </ng-template>
+
+    <ng-template #body let-item>
+      <tr
+        class="cursor-pointer transition-colors hover:bg-slate-50"
+        [class.bg-slate-50]="expandedId() === item.callId"
+        (click)="toggleRow(item)"
+      >
+        <td class="py-3">
+          <div class="text-sm font-medium text-slate-800">
+            {{ item.lastAttemptAt | dateTimeAgo }}
+          </div>
+          <div class="text-xs text-slate-400 tabular-nums">
+            {{ item.lastAttemptAt ? (item.lastAttemptAt | date: 'dd/MM/yyyy HH:mm') : '—' }}
+          </div>
+        </td>
+
+        <td>
+          <div class="flex items-center gap-1.5">
+            @if ((item.attemptCount ?? 0) > 1) {
+              <tas-icon
+                iconName="feather:alert-circle"
+                class="text-functional-error"
+                style="font-size:13px"
+                title="Plusieurs tentatives rapprochées"
+              ></tas-icon>
+            }
+            <div>
+              <div class="text-sm text-slate-700 tabular-nums">
+                {{ attemptLabel(item.attemptCount) }}
+              </div>
+              @if (windowLabel(item)) {
+                <div class="text-xs text-slate-400">{{ windowLabel(item) }}</div>
+              }
+            </div>
+          </div>
+        </td>
+
+        <!-- Le contexte, lu par page affichée : la liste ne porte ni nom ni numéro. -->
+        <td class="max-w-[220px]">
+          @if (contextOf(item.callId).state === 'loaded') {
+            <span class="block truncate text-sm text-slate-700">
+              {{ contextOf(item.callId).label }}
+            </span>
+          } @else if (contextOf(item.callId).state === 'error') {
+            <span class="text-sm text-slate-400">Nom non lisible</span>
+          } @else {
+            <span class="text-sm text-slate-300">Lecture…</span>
+          }
+        </td>
+
+        <td>
+          @if (item.entityType) {
+            <span class="text-sm text-slate-700">{{ entityTypeLabel(item.entityType) }}</span>
+          } @else {
+            <span class="text-sm text-slate-400">Aucune</span>
+          }
+        </td>
+
+        <td class="text-right" (click)="$event.stopPropagation()">
+          <div class="flex items-center justify-end gap-1">
+            @if (actionInProgress() === item.callId) {
+              <span class="text-xs text-slate-400">…</span>
+            } @else {
+              @if (canCallBack(item)) {
+                <button
+                  tas-button
+                  iconButton
+                  type="button"
+                  title="Rappeler sur le numéro principal de la fiche"
+                  (click)="callBack(item, 'Primary')"
+                >
+                  <tas-icon iconName="feather:phone-call" iconSize="sm"></tas-icon>
+                </button>
+              }
+              @if (item.canCreateLead) {
+                <button
+                  tas-button
+                  iconButton
+                  type="button"
+                  title="Créer un lead depuis cet appel"
+                  (click)="confirmCreateLead(item)"
+                >
+                  <tas-icon iconName="feather:user-plus" iconSize="sm"></tas-icon>
+                </button>
+              }
+              <button
+                tas-button
+                iconButton
+                type="button"
+                title="Clôturer sans rappeler"
+                (click)="openDismiss(item)"
+              >
+                <tas-icon iconName="feather:x-circle" iconSize="sm"></tas-icon>
+              </button>
+            }
+            <tas-icon
+              [iconName]="
+                expandedId() === item.callId ? 'feather:chevron-down' : 'feather:chevron-right'
+              "
+              class="text-slate-400"
+              style="font-size:14px"
+            ></tas-icon>
+          </div>
+        </td>
+      </tr>
+
+      <!-- Détail : ce que le contexte a pu dire, et les actions en clair. -->
+      @if (expandedId() === item.callId) {
+        <tr>
+          <td colspan="5" class="border-t border-slate-100 bg-slate-50 px-5 py-4">
+            <div class="flex flex-col gap-4">
+              <div class="grid grid-cols-2 gap-4 md:grid-cols-3">
+                <div>
+                  <p class="text-xs font-semibold text-slate-600">Première tentative</p>
+                  <p class="text-sm text-slate-700">
+                    {{ item.firstAttemptAt ? (item.firstAttemptAt | date: 'dd/MM/yyyy HH:mm') : '—' }}
+                  </p>
+                </div>
+                <div>
+                  <p class="text-xs font-semibold text-slate-600">Dernière tentative</p>
+                  <p class="text-sm text-slate-700">
+                    {{ item.lastAttemptAt ? (item.lastAttemptAt | date: 'dd/MM/yyyy HH:mm') : '—' }}
+                  </p>
+                </div>
+                <div>
+                  <p class="text-xs font-semibold text-slate-600">Regroupement</p>
+                  <p class="text-sm text-slate-700">
+                    {{ attemptLabel(item.attemptCount) }}
+                    @if (windowLabel(item)) {
+                      {{ windowLabel(item) }}
+                    }
+                  </p>
+                </div>
+              </div>
+
+              <div>
+                <p class="text-xs font-semibold text-slate-600">Appelant</p>
+                @if (contextOf(item.callId).state === 'loaded') {
+                  @if (contextOf(item.callId).names.length > 0) {
+                    <ul class="mt-0.5 flex flex-col gap-0.5">
+                      @for (name of contextOf(item.callId).names; track name) {
+                        <li class="text-sm text-slate-700">{{ name }}</li>
+                      }
+                    </ul>
+                  } @else {
+                    <p class="text-sm text-slate-500">{{ contextOf(item.callId).label }}</p>
+                  }
+                  @if (contextOf(item.callId).hasHiddenCandidate) {
+                    <p class="mt-1 text-xs text-slate-400">
+                      Une fiche correspond hors de votre périmètre : son nom n'est
+                      volontairement pas communiqué.
+                    </p>
+                  }
+                } @else if (contextOf(item.callId).state === 'error') {
+                  <p class="text-sm text-slate-500">
+                    Le nom n'a pas pu être lu. Rechargez la liste pour réessayer.
+                  </p>
+                } @else {
+                  <p class="text-sm text-slate-400">Lecture en cours…</p>
+                }
+                <p class="mt-1 text-xs text-slate-400">
+                  Aucun numéro de téléphone n'est renvoyé par la téléphonie : le rappel part
+                  de la fiche, pas d'un numéro affiché.
+                </p>
+              </div>
+
+              <div class="flex flex-wrap items-center gap-2">
+                @if (canCallBack(item)) {
+                  <button
+                    tas-raised-button
+                    color="primary"
+                    type="button"
+                    size="small"
+                    [disabled]="actionInProgress() === item.callId"
+                    (click)="callBack(item, 'Primary')"
+                  >
+                    Rappeler (numéro principal)
+                  </button>
+                  <button
+                    tas-outlined-button
+                    color="primary"
+                    type="button"
+                    size="small"
+                    [disabled]="actionInProgress() === item.callId"
+                    (click)="callBack(item, 'Secondary')"
+                  >
+                    Rappeler (numéro secondaire)
+                  </button>
+                } @else if (!hasAttachedRecord(item)) {
+                  <p class="max-w-2xl text-sm text-slate-500">{{ callbackImpossibleHint }}</p>
+                }
+                @if (item.canCreateLead) {
+                  <button
+                    tas-outlined-button
+                    color="primary"
+                    type="button"
+                    size="small"
+                    [disabled]="actionInProgress() === item.callId"
+                    (click)="confirmCreateLead(item)"
+                  >
+                    Créer un lead
+                  </button>
+                }
+                <button
+                  tas-text-button
+                  type="button"
+                  size="small"
+                  [disabled]="actionInProgress() === item.callId"
+                  (click)="openDismiss(item)"
+                >
+                  Clôturer sans rappeler
+                </button>
+              </div>
+            </div>
+          </td>
+        </tr>
+      }
+    </ng-template>
+  </tas-table>
+}

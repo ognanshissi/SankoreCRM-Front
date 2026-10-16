@@ -22,6 +22,8 @@ import { Severity, TasTag } from '@talisoft/ui/tag';
 import { TimeagoPipe } from '@talisoft/ui/timeago';
 import { Menu, MenuItem, TasMenuTrigger } from '@talisoft/ui/menu';
 import { catchError, EMPTY, exhaustMap, finalize } from 'rxjs';
+// eslint-disable-next-line @nx/enforce-module-boundaries
+import { CallButton } from '@sankore/crm/telephony';
 import { LeadEditContext } from './lead-edit-context';
 import { LeadComplianceStore } from './lead-compliance-store';
 import { interestedProductLabel } from '../../components/interested-product';
@@ -107,6 +109,7 @@ function parseFactors(factorsJson: string | null | undefined): ScoreFactor[] {
     Menu,
     MenuItem,
     TasMenuTrigger,
+    CallButton,
   ],
   template: `
     @if (notFound()) {
@@ -167,6 +170,13 @@ function parseFactors(factorsJson: string | null | undefined): ScoreFactor[] {
           }
 
           <!-- Primary actions (always visible) -->
+          <!--
+            TEL-F-04 : le bouton se masque lui-même si le serveur dit que cet agent ne peut
+            pas appeler, donc rien n'est conditionné ici. Il n'affiche aucun numéro — le
+            front n'en détient aucun — et envoie la FICHE et l'emplacement, que le serveur
+            déchiffre et compose.
+          -->
+          <lib-call-button entityType="Lead" [entityId]="id()"></lib-call-button>
           @if (lead()!.status === 'New' && !lead()!.lastActivityAt) {
             <button tas-raised-button color="primary" type="button" class="text-xs"
               [disabled]="isRecordingFirstContact()" (click)="recordFirstContact()">

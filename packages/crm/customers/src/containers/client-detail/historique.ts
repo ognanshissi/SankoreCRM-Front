@@ -23,6 +23,8 @@ import {
   ClientTimelineSegmentsApiService,
 } from '@sankore/crm-api';
 import { PermissionsService } from '@sankore/crm/common';
+// eslint-disable-next-line @nx/enforce-module-boundaries
+import { CallHistory } from '@sankore/crm/telephony';
 import { ClientDetailStore } from '../../models/client-detail.store';
 
 const PAGE_SIZE = 20;
@@ -140,6 +142,7 @@ interface TimelineRequest {
     TasLabel,
     TasSelect,
     TimeagoPipe,
+    CallHistory,
   ],
   templateUrl: './historique.html',
 })

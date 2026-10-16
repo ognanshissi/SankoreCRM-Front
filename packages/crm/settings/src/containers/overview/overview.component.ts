@@ -271,6 +271,10 @@ export class OverviewComponent implements OnInit {
           type: 'basic',
           id: 'communication_channels_telephony',
           link: '/settings/telephony',
+          // Déclarée maintenant que la cible existe : la route redirige vers le journal,
+          // gardé sur `Telephony.Call.View`. Sans ce champ, l'entrée resterait visible de
+          // tous et renverrait sur un refus de garde au lieu de ne pas s'afficher.
+          permission: 'Telephony.Call.View',
           description:
             'Configurer votre système de téléphonie (Twilio, RingOver, Asterisk).',
         },

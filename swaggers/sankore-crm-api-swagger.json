@@ -19235,6 +19235,31 @@
         }
       }
     },
+    "/api/v1/integration/telephony/me": {
+      "get": {
+        "tags": [
+          "Telephony"
+        ],
+        "summary": "Whether YOUR telephony works, and why not",
+        "description": "The one telephony read an ordinary agent can make about themselves. Every other route that could answer it is gated behind an administrator's permission, which is the wrong person: the user who needs to know why their Appeler button is missing is exactly the user who cannot look. telephonyEnabled is false when the institution has no ACTIVE telephony connection — which is most tenants, and the whole area should then be hidden. linkStatus is NotLinked, Active, Broken or Disabled: four values and not a boolean, because the repairs differ (nobody paired you, the provider stopped listing your account, an administrator unpaired you with a reason). canMakeCalls combines all three conditions — telephony on, you are paired, you hold Telephony.Call.Make — so a screen has one flag to read instead of three to recombine. A Broken link still allows calls; only Disabled stops them. Exposes nothing but your own state, so it needs no permission beyond being signed in.",
+        "operationId": "GetMyTelephonyStatus",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyTelephonyStatusDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
     "/api/v1/integration/telephony/directory": {
       "get": {
         "tags": [
@@ -19585,13 +19610,326 @@
         }
       }
     },
+    "/api/v1/integration/telephony/calls": {
+      "get": {
+        "tags": [
+          "Telephony"
+        ],
+        "summary": "The call journal, filtered and paged",
+        "description": "PERIMETER-FILTERED, and that is the point: you see your own calls, the ones nobody is attributed — the agency's 'to attribute' queue, which is the call most likely to be forgotten — and the calls of the agencies you cover. A tenant-wide account sees everything. The agency is the one the call belonged to AT THE TIME, so an agent moving branch does not take their history with them. queue=ToAttach|ToQualify|ToAssign are the three work piles, each a rule rather than a filter combination: ToAttach is anything not settled, ToQualify is ended-and-unqualified-and-not-dismissed, ToAssign is attributed to nobody. They compose with the other filters. entityType + entityId together give the calls of ONE record, which is what a lead's or a client's history asks for. canListen says whether YOU may hear the recording, so a screen does not have to probe for a 404. hasNote says a note exists and never what it says — notes are encrypted and never leave the module. NO TELEPHONE NUMBER is returned in any field. Newest first. 100 rows is the page ceiling. Requires permission: Telephony.Call.View.",
+        "operationId": "ListTelephonyCalls",
+        "parameters": [
+          {
+            "name": "from",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "crmUserId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "agencyId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "direction",
+            "in": "query",
+            "description": "One of: Inbound, Outbound, Internal",
+            "schema": {
+              "enum": [
+                "Inbound",
+                "Outbound",
+                "Internal"
+              ],
+              "type": "string",
+              "description": "One of: Inbound, Outbound, Internal"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "description": "One of: Ringing, InProgress, Completed, Missed, Voicemail, Failed",
+            "schema": {
+              "enum": [
+                "Ringing",
+                "InProgress",
+                "Completed",
+                "Missed",
+                "Voicemail",
+                "Failed"
+              ],
+              "type": "string",
+              "description": "One of: Ringing, InProgress, Completed, Missed, Voicemail, Failed"
+            }
+          },
+          {
+            "name": "attachment",
+            "in": "query",
+            "description": "One of: Unknown, Matched, Ambiguous, Internal",
+            "schema": {
+              "enum": [
+                "Unknown",
+                "Matched",
+                "Ambiguous",
+                "Internal"
+              ],
+              "type": "string",
+              "description": "One of: Unknown, Matched, Ambiguous, Internal"
+            }
+          },
+          {
+            "name": "outcomeCode",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "entityType",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "entityId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "queue",
+            "in": "query",
+            "description": "One of: ToAttach, ToQualify, ToAssign",
+            "schema": {
+              "enum": [
+                "ToAttach",
+                "ToQualify",
+                "ToAssign"
+              ],
+              "type": "string",
+              "description": "One of: ToAttach, ToQualify, ToAssign"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PagedResultOfTelephonyCallListItemDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "422": {
+            "description": "Unprocessable Entity"
+          }
+        }
+      }
+    },
+    "/api/v1/integration/telephony/calls/export.csv": {
+      "get": {
+        "tags": [
+          "Telephony"
+        ],
+        "summary": "The call journal as a CSV file",
+        "description": "Takes the SAME filters as GET telephony/calls and applies the SAME perimeter — the query is shared, so the file and the screen cannot disagree about who may see what. Behind Telephony.Stats.View rather than Telephony.Call.View: reading a screen of calls and carrying a year of them out of the building are different acts. The perimeter still applies on top, so a supervisor exports their own branches. Columns carry identifiers, instants, durations and the outcome — NO telephone number and NO note, exactly as the screen. hasNote says one exists. UTF-8 with a byte-order mark and semicolon-separated, because a French Excel opens a comma-separated file as one column and mangles accents without the BOM. A period matching more than 20 000 calls is refused (422 TELEPHONY_EXPORT_TOO_LARGE): narrow the period rather than stream a quarter. The export is logged with its row count. Requires permission: Telephony.Stats.View.",
+        "operationId": "ExportTelephonyCalls",
+        "parameters": [
+          {
+            "name": "from",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "crmUserId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "agencyId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "direction",
+            "in": "query",
+            "description": "One of: Inbound, Outbound, Internal",
+            "schema": {
+              "enum": [
+                "Inbound",
+                "Outbound",
+                "Internal"
+              ],
+              "type": "string",
+              "description": "One of: Inbound, Outbound, Internal"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "description": "One of: Ringing, InProgress, Completed, Missed, Voicemail, Failed",
+            "schema": {
+              "enum": [
+                "Ringing",
+                "InProgress",
+                "Completed",
+                "Missed",
+                "Voicemail",
+                "Failed"
+              ],
+              "type": "string",
+              "description": "One of: Ringing, InProgress, Completed, Missed, Voicemail, Failed"
+            }
+          },
+          {
+            "name": "attachment",
+            "in": "query",
+            "description": "One of: Unknown, Matched, Ambiguous, Internal",
+            "schema": {
+              "enum": [
+                "Unknown",
+                "Matched",
+                "Ambiguous",
+                "Internal"
+              ],
+              "type": "string",
+              "description": "One of: Unknown, Matched, Ambiguous, Internal"
+            }
+          },
+          {
+            "name": "outcomeCode",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "entityType",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "entityId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "queue",
+            "in": "query",
+            "description": "One of: ToAttach, ToQualify, ToAssign",
+            "schema": {
+              "enum": [
+                "ToAttach",
+                "ToQualify",
+                "ToAssign"
+              ],
+              "type": "string",
+              "description": "One of: ToAttach, ToQualify, ToAssign"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/csv; charset=utf-8": {
+                "schema": {
+                  "type": "string",
+                  "format": "byte"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "422": {
+            "description": "Unprocessable Entity"
+          }
+        }
+      }
+    },
     "/api/v1/integration/telephony/calls/{callId}/wrap-up": {
       "post": {
         "tags": [
           "Telephony"
         ],
         "summary": "Say how the call went",
-        "description": "The outcome must be an ACTIVE code of your tenant's referential — see GET telephony/call-outcomes — because two of its columns carry behaviour: one decides whether the call stops a lead's first-contact SLA, another makes callbackAt mandatory (422 TELEPHONY_CALLBACK_DATE_REQUIRED). A call that has not ended is refused (422 TELEPHONY_CALL_NOT_ENDED): the agent is still speaking. Only your own call — or one nobody is attributed — may be wrapped up; another agent's answers 404, because a 403 would confirm a colleague spoke to somebody. The note is kept ENCRYPTED and never leaves this module: it is excluded from the event M13 consumes and from every timeline summary. Wrapping up twice is allowed — an agent may correct an outcome — and M13 is idempotent on the call. Audited. Requires permission: Telephony.Call.View.",
+        "description": "The outcome must be an ACTIVE code of your tenant's referential — see GET telephony/call-outcomes — because two of its columns carry behaviour: one decides whether the call stops a lead's first-contact SLA, another makes callbackAt mandatory (422 TELEPHONY_CALLBACK_DATE_REQUIRED). A call that has not ended is refused (422 TELEPHONY_CALL_NOT_ENDED): the agent is still speaking. Only your own call — or one nobody is attributed — may be wrapped up; another agent's answers 404, because a 403 would confirm a colleague spoke to somebody. The note is kept ENCRYPTED and never leaves this module: it is excluded from the event M13 consumes and from every timeline summary. Wrapping up twice is allowed — an agent may correct an outcome — and M13 is idempotent on the call. keepRecording asks for the conversation to be kept, and is the ONLY way a recording is kept under the OnDemand policy. It is ignored under AllCalls (redundant) and under Disabled (it would be a way around the policy), and it cannot be un-asked by a second wrap-up. Audited. Requires permission: Telephony.Call.View.",
         "operationId": "WrapUpTelephonyCall",
         "parameters": [
           {
@@ -19639,7 +19977,7 @@
           "Telephony"
         ],
         "summary": "The calls nobody answered, grouped per caller",
-        "description": "YOUR missed calls plus the ones attributed to nobody — the agency's 'to attribute' queue, which is the call most likely to be forgotten. A colleague's is theirs: showing it here would have two agents calling one person back. Grouped on a 30-minute gap between consecutive attempts, so somebody who tried three times in ten minutes is one entry with attemptCount=3 — and the callId is their LAST attempt, which carries the most recent reading of who they are. Calls already wrapped up are excluded. Voicemail counts as missed (somebody left a message); a FAILED call does not (an operator refusal has nobody waiting to be called back). No name and no number: read GET calls/{callId}/context for a name, which applies your perimeter. Defaults to the last 7 days. Requires permission: Telephony.Call.View.",
+        "description": "YOUR missed calls plus the ones attributed to nobody — the agency's 'to attribute' queue, which is the call most likely to be forgotten. A colleague's is theirs: showing it here would have two agents calling one person back. Grouped on a 30-minute gap between consecutive attempts, so somebody who tried three times in ten minutes is one entry with attemptCount=3 — and the callId is their LAST attempt, which carries the most recent reading of who they are. Calls already wrapped up are excluded, and so are the ones closed with POST calls/{callId}/dismiss. Voicemail counts as missed (somebody left a message); a FAILED call does not (an operator refusal has nobody waiting to be called back). No name and no number: read GET calls/{callId}/context for a name, which applies your perimeter. Defaults to the last 7 days. Requires permission: Telephony.Call.View.",
         "operationId": "ListTelephonyMissedCalls",
         "parameters": [
           {
@@ -19670,6 +20008,54 @@
           },
           "403": {
             "description": "Forbidden"
+          }
+        }
+      }
+    },
+    "/api/v1/integration/telephony/calls/{callId}/dismiss": {
+      "post": {
+        "tags": [
+          "Telephony"
+        ],
+        "summary": "Close a missed call without calling back",
+        "description": "Takes the entry out of GET telephony/calls/missed when no call back is needed. A reason is REQUIRED and is kept in the audit trail rather than on the call, because a column would hold the last reason only while a reviewer needs the sequence. Only a Missed or Voicemail call can be closed (422 TELEPHONY_CALL_NOT_MISSED): a conversation that took place has nothing to dismiss, and allowing it would be a way to clear a call out of a colleague's queue without qualifying it. Wrapping up is the OTHER way out of the list and means something different — it describes a conversation, creates a lead activity and may stop an SLA clock. Do not use an outcome code to mean 'nothing'. Your own call, or one nobody is attributed; a colleague's answers 404. Closing twice is a success. Audited. Requires permission: Telephony.Call.View.",
+        "operationId": "DismissTelephonyMissedCall",
+        "parameters": [
+          {
+            "name": "callId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DismissMissedCallRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "422": {
+            "description": "Unprocessable Entity"
           }
         }
       }
@@ -30803,6 +31189,16 @@
         },
         "additionalProperties": false
       },
+      "DismissMissedCallRequest": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "DismissProfileNoticeRequest": {
         "type": "object",
         "properties": {
@@ -36495,6 +36891,35 @@
         },
         "additionalProperties": false
       },
+      "MyTelephonyStatusDto": {
+        "type": "object",
+        "properties": {
+          "telephonyEnabled": {
+            "type": "boolean"
+          },
+          "linkStatus": {
+            "type": "string",
+            "nullable": true
+          },
+          "externalUserId": {
+            "type": "string",
+            "nullable": true
+          },
+          "defaultCallerNumber": {
+            "type": "string",
+            "nullable": true
+          },
+          "canMakeCalls": {
+            "type": "boolean"
+          },
+          "connectionId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "NextActionDto": {
         "type": "object",
         "properties": {
@@ -37723,6 +38148,44 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/StalledHoldingDto"
+            },
+            "nullable": true
+          },
+          "totalCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "page": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalPages": {
+            "type": "integer",
+            "format": "int32",
+            "readOnly": true
+          },
+          "hasNextPage": {
+            "type": "boolean",
+            "readOnly": true
+          },
+          "hasPreviousPage": {
+            "type": "boolean",
+            "readOnly": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "PagedResultOfTelephonyCallListItemDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TelephonyCallListItemDto"
             },
             "nullable": true
           },
@@ -43608,6 +44071,111 @@
         },
         "additionalProperties": false
       },
+      "TelephonyCallListItemDto": {
+        "type": "object",
+        "properties": {
+          "callId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "connectionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "direction": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "nullable": true
+          },
+          "startedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "answeredAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "endedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "ringSeconds": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "talkSeconds": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "crmUserId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "agencyId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "entityType": {
+            "type": "string",
+            "nullable": true
+          },
+          "entityId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "matchStatus": {
+            "type": "string",
+            "nullable": true
+          },
+          "matchMethod": {
+            "type": "string",
+            "nullable": true
+          },
+          "outcomeCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "outcomeLabel": {
+            "type": "string",
+            "nullable": true
+          },
+          "countsAsContact": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "wrappedUpAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "dismissedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "recordingStatus": {
+            "type": "string",
+            "nullable": true
+          },
+          "canListen": {
+            "type": "boolean"
+          },
+          "hasNote": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
       "TelephonyCandidate": {
         "type": "object",
         "properties": {
@@ -46715,6 +47283,10 @@
           "callbackAt": {
             "type": "string",
             "format": "date-time",
+            "nullable": true
+          },
+          "keepRecording": {
+            "type": "boolean",
             "nullable": true
           }
         },

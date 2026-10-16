@@ -166,4 +166,18 @@
       </div>
     }
   </tas-card>
+
+  <!--
+    TEL-F-07 : historique téléphonique de la fiche. Il vient d'un module et d'une
+    permission distincts de la timeline 360° (`Telephony.Call.View`), d'où un bloc à côté
+    plutôt qu'une fusion : un agent sans ce droit voit la timeline et rien de plus, et
+    aucun appel ne manque silencieusement à un total.
+  -->
+  @if (store.clientId(); as clientId) {
+    <lib-call-history
+      entityType="Customer"
+      [entityId]="clientId"
+      title="Appels téléphoniques"
+    ></lib-call-history>
+  }
 </div>

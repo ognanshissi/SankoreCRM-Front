@@ -15,9 +15,7 @@
           @if (data.family) {
             <div>
               <p class="text-sm text-slate-500 mb-1">Famille</p>
-              <p class="text-sm font-medium text-slate-800">
-                {{ selectedFamily() === 'Insurance' ? 'Assurance' : 'Core banking' }}
-              </p>
+              <p class="text-sm font-medium text-slate-800">{{ selectedFamilyLabel() }}</p>
               <p class="text-xs text-slate-400 mt-1">{{ familyDescription() }}</p>
             </div>
           } @else {
@@ -104,6 +102,7 @@
           [fields]="formSchema.settings"
           [family]="selectedFamily()"
           [mode]="selectedMode()"
+          [kind]="selectedKind()"
         ></connection-settings-form>
       </section>
     </form>

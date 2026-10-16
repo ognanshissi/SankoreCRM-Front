@@ -1,0 +1,132 @@
+<tas-side-drawer>
+  <tas-drawer-title>
+    <TasTitle class="text-lg">
+      {{ isCorrection ? 'Corriger le rattachement' : "Rattacher l'appel à une fiche" }}
+    </TasTitle>
+  </tas-drawer-title>
+
+  <tas-drawer-content>
+    <form [formRoot]="formSchema" class="flex flex-col gap-5">
+      @if (isCorrection) {
+        <div class="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
+          <p class="text-sm text-slate-600">{{ correctionNotice }}</p>
+          <p class="mt-1 text-xs text-slate-500">
+            Rattachement actuel : {{ entityTypeLabel(data.currentEntityType) }}
+          </p>
+        </div>
+      } @else {
+        <p class="text-sm text-slate-500">
+          Cherchez la fiche de la personne avec qui cet appel a eu lieu. Le numéro n'est pas
+          affiché ici — aucune lecture téléphonique ne le renvoie — donc la recherche se fait
+          sur le nom.
+        </p>
+      }
+
+      <tas-form-field>
+        <tas-label>Type de fiche <span class="text-functional-error">*</span></tas-label>
+        <tas-select
+          [options]="entityTypeOptions"
+          optionLabel="label"
+          optionValue="value"
+          placeholder="Lead"
+          [ngModel]="model().entityType"
+          [ngModelOptions]="{ standalone: true }"
+          (ngModelChange)="onEntityTypeChange($event)"
+        ></tas-select>
+      </tas-form-field>
+
+      <tas-form-field>
+        <tas-label>Fiche <span class="text-functional-error">*</span></tas-label>
+        <input
+          tasInput
+          type="text"
+          placeholder="Saisissez au moins deux caractères…"
+          [ngModel]="searchTerm()"
+          [ngModelOptions]="{ standalone: true }"
+          (ngModelChange)="onSearchChange($event)"
+        />
+        <tas-hint>{{ searchHint() }}</tas-hint>
+        @if (formSchema.entityId().touched() && formSchema.entityId().invalid()) {
+          <tas-error>{{ formSchema.entityId().errors()[0].message }}</tas-error>
+        }
+      </tas-form-field>
+
+      <div class="rounded-lg border border-slate-200">
+        @if (isSearching()) {
+          <div class="flex justify-center py-10">
+            <tas-spinner size="8" class="text-primary"></tas-spinner>
+          </div>
+        } @else if (!hasSearched()) {
+          <div class="px-4 py-10 text-center text-sm text-slate-400">
+            Les résultats apparaîtront ici.
+          </div>
+        } @else if (candidates().length === 0) {
+          <div class="px-4 py-10 text-center text-sm text-slate-500">
+            Aucune fiche ne correspond à cette recherche, dans votre périmètre.
+          </div>
+        } @else {
+          <ul class="max-h-80 divide-y divide-slate-100 overflow-y-auto">
+            @for (candidate of candidates(); track candidate.entityId) {
+              <li
+                class="flex items-center gap-3 px-4 py-3"
+                tabindex="0"
+                role="button"
+                [ngClass]="candidateRowClass(candidate)"
+                (click)="selectCandidate(candidate)"
+                (keydown.enter)="selectCandidate(candidate)"
+                (keydown.space)="selectCandidate(candidate)"
+              >
+                <div class="min-w-0 flex-1">
+                  <p class="truncate text-sm font-medium text-slate-800">
+                    {{ candidate.displayName }}
+                  </p>
+                  @if (candidate.secondaryLine) {
+                    <p class="truncate text-xs text-slate-500">{{ candidate.secondaryLine }}</p>
+                  }
+                </div>
+                @if (candidate.entityId === selected()?.entityId) {
+                  <tas-icon iconName="feather:check" class="text-primary"></tas-icon>
+                }
+              </li>
+            }
+          </ul>
+        }
+      </div>
+
+      @if (selected()) {
+        <div class="rounded-lg border border-slate-200 bg-slate-50 p-4">
+          <p class="text-xs text-slate-500">Fiche retenue</p>
+          <p class="text-sm font-medium text-slate-800">{{ selected()?.displayName }}</p>
+        </div>
+      }
+
+      <tas-form-field>
+        <tas-label>Motif <span class="text-functional-error">*</span></tas-label>
+        <input
+          tasInput
+          type="text"
+          placeholder="Ex. : le client a confirmé son identité pendant l'appel"
+          [formField]="formSchema.reason"
+        />
+        <tas-hint>{{ reasonHint }}</tas-hint>
+        @if (formSchema.reason().touched() && formSchema.reason().invalid()) {
+          <tas-error>{{ formSchema.reason().errors()[0].message }}</tas-error>
+        }
+      </tas-form-field>
+    </form>
+  </tas-drawer-content>
+
+  <tas-drawer-action>
+    <button tas-outlined-button color="primary" type="button" (click)="close()">Annuler</button>
+    <button
+      tas-raised-button
+      color="primary"
+      type="button"
+      (click)="handleSubmit()"
+      [disabled]="formSchema().invalid() || formSchema().submitting()"
+      [isLoading]="formSchema().submitting()"
+    >
+      {{ isCorrection ? 'Corriger' : 'Rattacher' }}
+    </button>
+  </tas-drawer-action>
+</tas-side-drawer>

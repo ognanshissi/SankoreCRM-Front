@@ -1,0 +1,291 @@
+@if (call(); as active) {
+  @if (isPanelOwner()) {
+    <!--
+      `role="dialog"` sans `aria-modal` : le panneau ne bloque RIEN. L'agent doit pouvoir
+      continuer à travailler sur l'écran pendant qu'il parle, ce qui exclut un modal.
+      `tabindex="-1"` le rend focusable pour que l'ouverture puisse lui donner le focus.
+    -->
+    <div
+      #dialog
+      role="dialog"
+      aria-labelledby="call-panel-title"
+      tabindex="-1"
+      class="fixed z-[1000] inset-x-2 bottom-2 sm:inset-x-auto sm:right-4 sm:bottom-4 sm:w-96 max-h-[85vh] overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-xl focus:outline-none focus:ring-2 focus:ring-primary/40"
+    >
+      <div class="flex items-start gap-2 p-3 border-b border-slate-100">
+        <div
+          class="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0"
+        >
+          <tas-icon iconName="feather:phone-incoming" style="font-size:14px"></tas-icon>
+        </div>
+        <div class="flex-1 min-w-0">
+          <p id="call-panel-title" class="text-sm font-semibold text-slate-800">
+            {{ panelTitle() }}
+          </p>
+          <!--
+            `aria-live` : la séquence sonnerie → décroché → raccroché arrive sans action
+            de l'utilisateur. Sans annonce, un lecteur d'écran laisserait l'agent devant
+            un panneau silencieux.
+          -->
+          <p class="text-xs text-slate-500" role="status" aria-live="polite">
+            @if (clock(); as elapsed) {
+              <span class="tabular-nums">{{ elapsed }}</span>
+            } @else if (startedAtLabel(); as started) {
+              Début {{ started }}
+            }
+            @if (context()?.status; as status) {
+              · {{ statusLabel(status) }}
+            }
+          </p>
+        </div>
+        <button
+          type="button"
+          class="shrink-0 text-slate-400 hover:text-slate-600"
+          aria-label="Fermer le panneau d'appel"
+          (click)="close()"
+        >
+          <tas-icon iconName="feather:x" style="font-size:14px"></tas-icon>
+        </button>
+      </div>
+
+      <div class="p-3 flex flex-col gap-3">
+        @if (!canView()) {
+          <p class="text-sm text-slate-500">
+            Vous n'avez pas le droit de consulter les appels : le correspondant ne peut pas
+            être identifié.
+          </p>
+        } @else if (isLoadingContext() && !context()) {
+          <div class="flex items-center gap-2 py-4">
+            <tas-spinner size="5" class="text-primary"></tas-spinner>
+            <span class="text-sm text-slate-500">Identification du correspondant…</span>
+          </div>
+        } @else if (contextError(); as error) {
+          <p class="text-sm text-functional-error">{{ error }}</p>
+        } @else if (context()) {
+          <div class="flex items-center gap-2 flex-wrap">
+            <tas-tag [severity]="matchSeverity(matchStatus())">
+              {{ matchLabel(matchStatus()) }}
+            </tas-tag>
+            @if (context()!.direction; as direction) {
+              <span class="text-xs text-slate-500">{{ directionLabel(direction) }}</span>
+            }
+          </div>
+
+          @switch (matchStatus()) {
+            @case ('Matched') {
+              @if (matchedCandidate(); as candidate) {
+                <div class="rounded-lg border border-slate-200 p-3">
+                  <p class="text-sm font-medium text-slate-800 truncate">
+                    {{ candidateName(candidate) }}
+                  </p>
+                  <p class="text-xs text-slate-500 mt-0.5">
+                    {{ entityTypeLabel(candidate.entityType) }}
+                  </p>
+                  <button
+                    tas-raised-button
+                    color="primary"
+                    type="button"
+                    class="text-xs mt-3"
+                    (click)="openRecord(candidate)"
+                  >
+                    <tas-icon iconName="feather:external-link" style="font-size:12px"></tas-icon>
+                    Ouvrir la fiche
+                  </button>
+                </div>
+              } @else {
+                <!-- Rattaché, mais à une fiche d'une autre agence : aucun nom n'est renvoyé. -->
+                <p class="text-sm text-slate-600">
+                  Contact connu d'une autre agence. La fiche n'est pas consultable depuis votre
+                  périmètre.
+                </p>
+              }
+            }
+
+            @case ('Ambiguous') {
+              <p class="text-xs text-slate-500">
+                Plusieurs fiches partagent ce numéro. Choisissez celle à qui vous parlez : le
+                rattachement manuel ne sera pas écrasé.
+              </p>
+              <ul class="flex flex-col gap-1.5">
+                @for (candidate of candidates(); track candidate.entityId) {
+                  <li>
+                    @if (candidate.outOfPerimeter) {
+                      <div
+                        class="w-full px-2.5 py-2 rounded-lg border border-dashed border-slate-200 bg-slate-50"
+                      >
+                        <p class="text-sm text-slate-500">Contact connu d'une autre agence</p>
+                      </div>
+                    } @else {
+                      <div class="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          class="flex-1 min-w-0 text-left px-2.5 py-2 rounded-lg border border-slate-200 hover:border-primary/50 hover:bg-primary/5"
+                          [disabled]="!canLink()"
+                          (click)="choose(candidate)"
+                        >
+                          <span class="block text-sm text-slate-800 truncate">
+                            {{ candidateName(candidate) }}
+                          </span>
+                          <span class="block text-xs text-slate-500">
+                            {{ entityTypeLabel(candidate.entityType) }}
+                          </span>
+                        </button>
+                        <button
+                          tas-button
+                          iconButton
+                          type="button"
+                          [attr.aria-label]="'Ouvrir ' + candidateName(candidate)"
+                          (click)="openRecord(candidate)"
+                        >
+                          <tas-icon iconName="feather:external-link" style="font-size:13px"></tas-icon>
+                        </button>
+                      </div>
+                    }
+                  </li>
+                }
+              </ul>
+              @if (!canLink()) {
+                <p class="text-xs text-slate-500">
+                  Vous n'avez pas le droit de rattacher un appel : demandez à un collègue de
+                  trancher.
+                </p>
+              }
+            }
+
+            @case ('Unknown') {
+              <p class="text-sm text-slate-600">
+                Aucune fiche ne correspond à cet appelant. Aucun numéro n'est transmis au
+                navigateur : c'est le serveur qui détient le numéro.
+              </p>
+              @if (canLink()) {
+                <div class="flex flex-wrap items-center gap-2">
+                  <button
+                    tas-raised-button
+                    color="primary"
+                    type="button"
+                    class="text-xs"
+                    [disabled]="isCreatingLead()"
+                    [isLoading]="isCreatingLead()"
+                    (click)="createLead()"
+                  >
+                    <tas-icon iconName="feather:user-plus" style="font-size:12px"></tas-icon>
+                    Créer un lead
+                  </button>
+                  <button
+                    tas-outlined-button
+                    color="primary"
+                    type="button"
+                    class="text-xs"
+                    (click)="togglePicker()"
+                  >
+                    Rattacher à une fiche
+                  </button>
+                </div>
+              } @else {
+                <p class="text-xs text-slate-500">
+                  Vous n'avez pas le droit de créer un lead ni de rattacher cet appel.
+                </p>
+              }
+            }
+
+            @case ('Internal') {
+              <p class="text-sm text-slate-600">
+                Appel interne : les deux postes sont ceux de l'établissement. Il n'y a pas de
+                fiche à rattacher, et cet appel ne compte dans aucun indicateur commercial.
+              </p>
+            }
+
+            @default {
+              <!-- Statut de rattachement inconnu de cette version : lisible, et sans action
+                   inventée. Le journal reste la source de vérité. -->
+              <p class="text-sm text-slate-600">
+                {{ matchLabel(matchStatus()) }} — ouvrez le journal des appels pour traiter cet
+                appel.
+              </p>
+            }
+          }
+        }
+
+        @if (showPicker()) {
+          <div class="rounded-lg border border-slate-200 p-3">
+            <lib-call-record-picker (picked)="onPicked($event)"></lib-call-record-picker>
+          </div>
+        }
+
+        @if (pendingLink(); as target) {
+          <!-- Le motif est OBLIGATOIRE côté serveur et vit dans l'audit : un rattachement
+               silencieux laisserait un relecteur sans moyen de comprendre un appel classé
+               sur la mauvaise personne. -->
+          <form [formRoot]="formSchema" class="rounded-lg border border-primary/30 bg-primary/5 p-3 flex flex-col gap-2">
+            <p class="text-sm text-slate-700">
+              Rattacher à <span class="font-medium">{{ target.displayName }}</span>
+            </p>
+            <tas-form-field>
+              <tas-label>Motif <span class="text-functional-error">*</span></tas-label>
+              <input
+                tasInput
+                type="text"
+                placeholder="Le correspondant s'est identifié…"
+                [formField]="formSchema.reason"
+              />
+              @if (formSchema.reason().touched() && formSchema.reason().invalid()) {
+                <tas-error>{{ formSchema.reason().errors()[0].message }}</tas-error>
+              }
+              <tas-hint>Conservé au journal d'audit, avec votre nom.</tas-hint>
+            </tas-form-field>
+            <div class="flex items-center gap-2">
+              <button
+                tas-raised-button
+                color="primary"
+                type="button"
+                class="text-xs"
+                [disabled]="formSchema().invalid() || isLinking()"
+                [isLoading]="isLinking()"
+                (click)="handleLink()"
+              >
+                Rattacher
+              </button>
+              <button tas-text-button type="button" class="text-xs" (click)="cancelLink()">
+                Annuler
+              </button>
+            </div>
+          </form>
+        }
+
+        @if (isEnded()) {
+          <div class="border-t border-slate-100 pt-3">
+            <p class="text-sm font-medium text-slate-800 mb-2">Qualifier l'appel</p>
+            <!--
+              Le mode d'enregistrement vaut `null` : `GET telephony/recording-policy` exige
+              `admin:compliance:manage`, qu'un agent n'a pas. La case « Conserver
+              l'enregistrement » reste donc masquée ici — faire dépendre le panneau d'un 403
+              serait pire.
+            -->
+            <lib-wrap-up-form
+              [callId]="active.callId"
+              [callStatus]="wrapUpStatus()"
+              [outcomes]="outcomes()"
+              [recordingMode]="null"
+              (saved)="onWrapUpSaved()"
+              (cancelled)="close()"
+            ></lib-wrap-up-form>
+          </div>
+        }
+      </div>
+    </div>
+  } @else {
+    <!--
+      Onglet non propriétaire : badge discret et rien d'autre. L'élection est déjà faite
+      dans le client temps réel ; afficher le panneau ici ouvrirait autant de panneaux que
+      l'agent a d'onglets.
+    -->
+    <div
+      class="fixed z-[1000] right-3 bottom-3 inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-slate-800 text-white text-xs shadow-lg"
+      role="status"
+      aria-live="polite"
+    >
+      <tas-icon iconName="feather:phone-call" style="font-size:12px"></tas-icon>
+      Appel en cours dans un autre onglet
+    </div>
+  }
+}

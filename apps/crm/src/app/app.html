@@ -1,4 +1,10 @@
 <loader />
 <page-loader/>
 <access-denied-banner />
+<!--
+  Panneau d'appel (TEL-F-05) : monté UNE SEULE FOIS, ici, comme la bannière au-dessus.
+  Un panneau par écran rouvrirait le même appel autant de fois qu'il y a d'écrans montés,
+  et c'est aussi ce composant qui ferme la connexion temps réel à la destruction.
+-->
+<lib-call-panel />
 <router-outlet></router-outlet>

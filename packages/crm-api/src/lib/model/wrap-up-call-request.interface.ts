@@ -15,5 +15,6 @@ export interface WrapUpCallRequest {
     outcomeCode?: string | null;
     note?: string | null;
     callbackAt?: string | null;
+    keepRecording?: boolean | null;
 }
 

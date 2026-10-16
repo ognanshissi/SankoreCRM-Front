@@ -32,6 +32,7 @@ import {
   connectionSettingsToDto,
 } from '../../components/connection-settings-form';
 import { RelayAgentPanelComponent } from '../../components/relay-agent-panel';
+import { TelephonyWebhookPanel } from './telephony-webhook-panel';
 import {
   integrationErrorMessage,
   IntegrationFacadeService,
@@ -123,6 +124,7 @@ class EditConnectionFormModel {
     ConnectionSecretsPanelComponent,
     ConnectionSettingsFormComponent,
     RelayAgentPanelComponent,
+    TelephonyWebhookPanel,
   ],
 })
 export class ConnectionDetailPage {
@@ -177,12 +179,30 @@ export class ConnectionDetailPage {
   public formSchema = form(this.model, (schema) => {
     required(schema.name, { message: 'Le nom de la connexion est obligatoire' });
     required(schema.mode, { message: 'Choisissez un mode' });
-    apply(schema.settings, connectionSettingsSchema);
+    // Le système est fixé par la connexion : il est lu dans les validateurs des champs
+    // propres au `$kind`, et il ne change jamais pendant l'édition.
+    apply(schema.settings, connectionSettingsSchema(() => this.kind()));
   });
 
-  public readonly family = computed<ConnectionFamily>(() =>
-    this.connection()?.family === 'Insurance' ? 'Insurance' : 'CoreBanking',
-  );
+  /**
+   * La famille venait d'un ternaire « assurance ou cœur bancaire » : une connexion de
+   * TÉLÉPHONIE s'affichait donc « Core banking », proposait les périodes de
+   * synchronisation du cœur bancaire et annonçait la règle d'unicité du cœur bancaire sur
+   * son activation. Les trois familles du contrat sont désormais reconnues.
+   */
+  public readonly family = computed<ConnectionFamily>(() => {
+    const family = this.connection()?.family;
+    if (family === 'Insurance') return 'Insurance';
+    if (family === 'Telephony') return 'Telephony';
+    return 'CoreBanking';
+  });
+
+  public readonly kind = computed<ConnectionKind | null>(() => {
+    const kind = this.connection()?.kind;
+    return kind ? (kind as ConnectionKind) : null;
+  });
+
+  public readonly isTelephony = computed(() => this.family() === 'Telephony');
 
   public readonly savedMode = computed<ConnectionMode>(() => {
     const mode = this.connection()?.mode;
@@ -351,6 +371,7 @@ export class ConnectionDetailPage {
               value.settings,
               dto.settings,
               dto.kind as ConnectionKind,
+              this.family(),
             ),
             // Le contrat veut l'une des deux sentinelles : sans elles, deux
             // administrateurs qui enregistrent en même temps s'écrasent en silence.
@@ -493,6 +514,7 @@ export class ConnectionDetailPage {
   }
 
   public backToList(): void {
+    // La téléphonie n'a pas d'écran de liste dédié : elle vit dans la liste générale.
     this._router.navigate([
       this.family() === 'Insurance'
         ? '/settings/integrations/insurance'
@@ -581,6 +603,19 @@ export class ConnectionDetailPage {
         .subscribe((rows) => this._siblings.set(rows));
     } else {
       this._siblings.set([]);
+    }
+
+    if (dto.family === 'Telephony') {
+      /**
+       * Les correspondances de codes ne concernent PAS la téléphonie : un standard
+       * téléphonique n'a ni produits, ni types de pièce, et l'agence d'un appel est lue sur
+       * l'agent par le module Administration, pas par une table de correspondance. Sans ce
+       * court-circuit, les codes CRM sans contrepartie externe remontaient comme des
+       * blocages d'activation et le bouton « Activer » restait grisé pour toujours, alors
+       * que le serveur n'exige qu'un test de connexion réussi.
+       */
+      this._mappingChecks.set([]);
+      return;
     }
 
     if (!this.canManageMappings()) {

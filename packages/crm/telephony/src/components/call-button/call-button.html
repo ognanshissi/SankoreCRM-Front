@@ -1,0 +1,97 @@
+@if (canCall()) {
+  <div class="inline-flex flex-col gap-1.5 min-w-0">
+    @if (hasMenu()) {
+      <!--
+        Deux emplacements proposés à l'aveugle : aucun endpoint ne dit lequel contient un
+        numéro. Un hôte qui n'en gère qu'un passe [slots]="['Primary']" et retrouve un
+        bouton simple.
+      -->
+      <button
+        type="button"
+        TasMenuTrigger
+        [panel]="slotMenu"
+        [disabled]="isBusy()"
+        [isLoading]="isBusy()"
+        color="primary"
+        [attr.aria-label]="compact() ? label() : null"
+        [attr.title]="compact() ? label() : null"
+        [iconButton]="compact()"
+        tas-outlined-button
+        class="text-xs"
+      >
+        <tas-icon iconName="feather:phone" style="font-size:13px"></tas-icon>
+        @if (!compact()) {
+          {{ label() }}
+          <tas-icon iconName="feather:chevron-down" style="font-size:10px"></tas-icon>
+        }
+      </button>
+
+      <ng-template #slotMenu>
+        <tas-menu>
+          @for (slot of slots(); track slot) {
+            <tas-menu-item [disabled]="isBusy()">
+              <button
+                type="button"
+                class="w-full flex items-center gap-2 text-sm text-slate-700"
+                (click)="call(slot)"
+              >
+                <tas-icon
+                  iconName="feather:phone-outgoing"
+                  class="text-slate-400"
+                  style="font-size:13px"
+                ></tas-icon>
+                {{ slotLabel(slot) }}
+              </button>
+            </tas-menu-item>
+          }
+        </tas-menu>
+      </ng-template>
+    } @else {
+      @for (slot of slots(); track slot) {
+        <button
+          type="button"
+          tas-outlined-button
+          color="primary"
+          class="text-xs"
+          [disabled]="isBusy()"
+          [isLoading]="isBusy()"
+          [iconButton]="compact()"
+          [attr.aria-label]="compact() ? label() : null"
+          [attr.title]="compact() ? label() : null"
+          (click)="call(slot)"
+        >
+          <tas-icon iconName="feather:phone" style="font-size:13px"></tas-icon>
+          @if (!compact()) {
+            {{ label() }}
+          }
+        </button>
+      }
+    }
+
+    @if (notice(); as message) {
+      <!--
+        Bandeau de suivi. `aria-live` parce que l'information arrive sans action de
+        l'utilisateur — la sonnerie du poste est le seul autre signal, et un lecteur
+        d'écran ne l'entend pas.
+      -->
+      <div
+        class="flex items-start gap-2 px-2.5 py-1.5 rounded-lg border text-xs max-w-xs"
+        [class]="noticeTone()"
+        role="status"
+        aria-live="polite"
+      >
+        <span class="flex-1 min-w-0">{{ message }}</span>
+        @if (!isBusy()) {
+          <button
+            type="button"
+            class="shrink-0 opacity-60 hover:opacity-100"
+            aria-label="Masquer ce message"
+            (click)="dismissNotice()"
+          >
+            <tas-icon iconName="feather:x" style="font-size:12px"></tas-icon>
+          </button>
+        }
+      </div>
+    }
+  </div>
+}

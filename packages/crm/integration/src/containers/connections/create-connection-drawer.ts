@@ -32,6 +32,7 @@ import {
 } from '../../data-access/integration-facade.service';
 import {
   CONNECTION_FAMILIES,
+  CONNECTION_FAMILY_LABELS,
   CONNECTION_KINDS_BY_FAMILY,
   CONNECTION_MODES,
   ConnectionFamily,
@@ -53,6 +54,7 @@ export interface CreateConnectionDrawerData {
 const FAMILY_ENUM: Record<ConnectionFamily, CreateConnectionRequestFamilyEnum> = {
   CoreBanking: CreateConnectionRequestFamilyEnum.CoreBanking,
   Insurance: CreateConnectionRequestFamilyEnum.Insurance,
+  Telephony: CreateConnectionRequestFamilyEnum.Telephony,
 };
 
 const KIND_ENUM: Record<ConnectionKind, CreateConnectionRequestKindEnum> = {
@@ -61,6 +63,7 @@ const KIND_ENUM: Record<ConnectionKind, CreateConnectionRequestKindEnum> = {
   Sab: CreateConnectionRequestKindEnum.Sab,
   PerfectVision: CreateConnectionRequestKindEnum.PerfectVision,
   Orass: CreateConnectionRequestKindEnum.Orass,
+  Ringover: CreateConnectionRequestKindEnum.Ringover,
   Fake: CreateConnectionRequestKindEnum.Fake,
 };
 
@@ -154,12 +157,31 @@ export class CreateConnectionDrawer {
         : { kind: 'mismatch', message: 'Ce système n’appartient pas à la famille choisie' };
     });
 
-    apply(schema.settings, connectionSettingsSchema);
+    // Le système n'est pas encore choisi à l'ouverture et change pendant la saisie : il
+    // est donc passé en fonction, lue dans les validateurs des champs propres au `$kind`.
+    apply(schema.settings, connectionSettingsSchema(() => this.selectedKind()));
   });
 
+  /**
+   * Les trois familles du contrat, et plus un ternaire « assurance ou cœur bancaire » :
+   * déclarer une connexion de TÉLÉPHONIE passait sinon les réglages du cœur bancaire au
+   * formulaire, avec ses périodes de synchronisation et son libellé.
+   */
   public readonly selectedFamily = computed<ConnectionFamily>(() => {
     const family = this.formSchema.family().value();
-    return family === 'Insurance' ? 'Insurance' : 'CoreBanking';
+    if (family === 'Insurance') return 'Insurance';
+    if (family === 'Telephony') return 'Telephony';
+    return 'CoreBanking';
+  });
+
+  public readonly selectedFamilyLabel = computed(
+    () => CONNECTION_FAMILY_LABELS[this.selectedFamily()],
+  );
+
+  /** Le système choisi, ou `null` tant qu'il ne l'est pas. */
+  public readonly selectedKind = computed<ConnectionKind | null>(() => {
+    const kind = this.formSchema.kind().value();
+    return kind ? (kind as ConnectionKind) : null;
   });
 
   public readonly selectedMode = computed<ConnectionMode>(() => {
@@ -221,6 +243,7 @@ export class CreateConnectionDrawer {
               value.settings,
               null,
               value.kind as ConnectionKind,
+              family,
             ),
           })
           .pipe(

@@ -15,13 +15,14 @@ import { Severity } from '@talisoft/ui/tag';
 
 // ——— Connexions ———
 
-export type ConnectionFamily = 'CoreBanking' | 'Insurance';
+export type ConnectionFamily = 'CoreBanking' | 'Insurance' | 'Telephony';
 export type ConnectionKind =
   | 'Temenos'
   | 'Amplitude'
   | 'Sab'
   | 'PerfectVision'
   | 'Orass'
+  | 'Ringover'
   | 'Fake';
 export type ConnectionMode = 'Api' | 'Batch' | 'Relay';
 
@@ -40,11 +41,18 @@ export const CONNECTION_FAMILIES: ReadonlyArray<{
     label: 'Assurance',
     description: "Le back-office d'un assureur partenaire dont vous distribuez les produits.",
   },
+  {
+    value: 'Telephony',
+    label: 'Téléphonie',
+    description:
+      "Le standard téléphonique de vos agences : appels sortants depuis une fiche, journal des appels et enregistrements.",
+  },
 ];
 
 export const CONNECTION_FAMILY_LABELS: Record<ConnectionFamily, string> = {
   CoreBanking: 'Core banking',
   Insurance: 'Assurance',
+  Telephony: 'Téléphonie',
 };
 
 /**
@@ -67,6 +75,90 @@ export const CONNECTION_KINDS_BY_FAMILY: Record<
     { value: 'Orass', label: 'ORASS®Suite' },
     { value: 'Fake', label: 'Simulateur (recette)' },
   ],
+  // Plus vide : le formulaire saisit désormais les champs propres au `$kind`
+  // (`CONNECTION_KIND_FIELDS` ci-dessous), ce qui lève les deux blocages que cette liste
+  // documentait.
+  //
+  // 1. `RingoverSettings.apiHost` est OBLIGATOIRE côté serveur — le fournisseur sert ses
+  //    régions sur des hôtes distincts, il n'existe aucun défaut juste pour tout le monde.
+  //    Il est maintenant un champ du formulaire, obligatoire, au lieu d'un 422 systématique.
+  // 2. `FakeSettings.family` valait `CoreBanking` par défaut, donc un simulateur créé ici se
+  //    croyait cœur bancaire. Il est maintenant DÉDUIT de la famille de la connexion par
+  //    `connectionSettingsToDto`, pour les trois familles.
+  Telephony: [
+    { value: 'Ringover', label: 'Ringover' },
+    { value: 'Fake', label: 'Simulateur (recette)' },
+  ],
+};
+
+/**
+ * Champs propres à un `$kind`, c'est-à-dire ce que le socle commun ne porte pas.
+ *
+ * `ConnectionSettings` est polymorphe : le swagger publie une variante par système, chacune
+ * avec ses propres coordonnées. Le formulaire est engendré depuis cette table, exactement
+ * comme il l'est depuis `CONNECTION_SETTING_FIELDS` pour le socle — jamais depuis une liste
+ * de champs écrite dans un écran, parce qu'un champ que le contrat ne déclare pas est refusé
+ * à l'enregistrement et la saisie serait perdue sans explication.
+ *
+ * **Les systèmes dont la liste est vide se comportent exactement comme avant** : leur sac de
+ * coordonnées (`baseUrl`, `entity`, `sftpHost`, `companyId`…) continue d'être REPORTÉ tel quel
+ * par `connectionSettingsToDto` et reste donc administrable par l'API seule. Les déclarer ici
+ * sans pouvoir les éprouver contre un vrai système reviendrait à exposer, sur cinq connexions
+ * de production, des champs dont personne n'a vérifié le refus — c'est le risque que cette
+ * table est faite pour éviter, pas pour prendre.
+ */
+export interface ConnectionKindField {
+  /** Nom du champ DANS `settings`, tel que le swagger le déclare. */
+  key: string;
+  label: string;
+  hint: string;
+  kind: 'text' | 'number' | 'select';
+  isRequired: boolean;
+  placeholder?: string;
+  /** Mutable : l'entrée `options` de `tas-select` refuse un `ReadonlyArray` (TS4104). */
+  options?: Array<{ value: string; label: string }>;
+  /** Validation de forme, en plus de l'obligation. Rend un message ou `null`. */
+  validate?: (value: string) => string | null;
+}
+
+export const CONNECTION_KIND_FIELDS: Record<
+  ConnectionKind,
+  ReadonlyArray<ConnectionKindField>
+> = {
+  Temenos: [],
+  Amplitude: [],
+  Sab: [],
+  PerfectVision: [],
+  Orass: [],
+  Ringover: [
+    {
+      key: 'apiHost',
+      label: 'Hôte de l’API (région)',
+      hint:
+        "L'hôte que le fournisseur vous a indiqué pour votre région. Il n'y a pas de valeur par défaut : une région sert ses appels sur son propre hôte.",
+      kind: 'text',
+      isRequired: true,
+      placeholder: 'public-api.ringover.com',
+      validate: (value) =>
+        /^[a-z0-9.-]+\.[a-z]{2,}$/i.test(value)
+          ? null
+          : "Entrez un nom d'hôte, sans https:// ni chemin (ex: public-api.ringover.com)",
+    },
+    {
+      key: 'defaultCallerNumber',
+      label: 'Numéro d’appelant par défaut',
+      hint:
+        "Présenté aux clients quand l'agent n'a pas son propre numéro. Format international : un « + » puis 8 à 15 chiffres.",
+      kind: 'text',
+      isRequired: false,
+      placeholder: '+2252012345678',
+      validate: (value) =>
+        /^\+[1-9]\d{7,14}$/.test(value)
+          ? null
+          : 'Format international attendu : un « + » puis 8 à 15 chiffres, sans espace',
+    },
+  ],
+  Fake: [],
 };
 
 export const CONNECTION_KIND_LABELS: Record<ConnectionKind, string> = {
@@ -75,6 +167,7 @@ export const CONNECTION_KIND_LABELS: Record<ConnectionKind, string> = {
   Sab: 'SAB',
   PerfectVision: 'Perfect Vision',
   Orass: 'ORASS®Suite',
+  Ringover: 'Ringover',
   Fake: 'Simulateur (recette)',
 };
 
@@ -187,7 +280,7 @@ export const CONNECTION_SETTING_FIELDS: ReadonlyArray<{
 
 /** Les six flux dont `syncIntervalMinutes` accepte une période, d'après le schéma. */
 export const CONNECTION_SYNC_FLOWS: ReadonlyArray<{
-  key: 'Customers' | 'Accounts' | 'Transactions' | 'Loans' | 'Policies' | 'Claims';
+  key: 'Customers' | 'Accounts' | 'Transactions' | 'Loans' | 'Policies' | 'Claims' | 'Calls';
   label: string;
   families: ReadonlyArray<ConnectionFamily>;
 }> = [
@@ -197,6 +290,10 @@ export const CONNECTION_SYNC_FLOWS: ReadonlyArray<{
   { key: 'Loans', label: 'Prêts', families: ['CoreBanking'] },
   { key: 'Policies', label: 'Contrats', families: ['Insurance'] },
   { key: 'Claims', label: 'Sinistres', families: ['Insurance'] },
+  // Le rattrapage des appels (TEL-B-14). Bien plus serré que les autres par défaut côté serveur
+  // — quinze minutes — parce que ce balayage n'est pas la source des appels, c'est le filet sous
+  // les webhooks : un appel dont l'événement s'est perdu est un appel qu'aucun agent ne voit.
+  { key: 'Calls', label: 'Appels', families: ['Telephony'] },
 ];
 
 // ——— Mappings ———

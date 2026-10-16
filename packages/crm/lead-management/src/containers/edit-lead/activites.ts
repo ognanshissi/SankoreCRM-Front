@@ -11,6 +11,8 @@ import { LeadsApiService, ActivityDto, ActivityDtoTypeEnum } from '@sankore/crm-
 import { LogActivityDrawer } from './log-activity-drawer';
 import { PermissionsService } from '@sankore/crm/common';
 import { LeadEditContext } from './lead-edit-context';
+// eslint-disable-next-line @nx/enforce-module-boundaries
+import { CallHistory } from '@sankore/crm/telephony';
 import { ConvertedLeadNotice } from './converted-lead-notice';
 
 function activityTypeMeta(type: ActivityDtoTypeEnum | undefined): { icon: string; label: string; severity: Severity } {
@@ -29,7 +31,7 @@ function activityTypeMeta(type: ActivityDtoTypeEnum | undefined): { icon: string
 
 @Component({
   selector: 'lead-activites',
-  imports: [TasCard, TasSpinner, TasIcon, TasTag, TimeagoPipe, Button, ConvertedLeadNotice],
+  imports: [TasCard, TasSpinner, TasIcon, TasTag, TimeagoPipe, Button, ConvertedLeadNotice, CallHistory],
   template: `
     @if (isLoading()) {
       <div class="flex justify-center py-24">
@@ -150,6 +152,21 @@ function activityTypeMeta(type: ActivityDtoTypeEnum | undefined): { icon: string
             }
           }
         </tas-card>
+
+        <!--
+          TEL-F-07 : historique téléphonique du lead. Il est à côté des activités et non
+          dedans : une activité est saisie à la main par un agent, un appel est enregistré
+          par le système de téléphonie, et seul le second porte un enregistrement et une
+          permission d'écoute. Le bloc se masque de lui-même sans le droit de lecture
+          des appels.
+        -->
+        <div class="mt-4">
+          <lib-call-history
+            entityType="Lead"
+            [entityId]="id()"
+            title="Appels téléphoniques"
+          ></lib-call-history>
+        </div>
       </div>
     }
   `,

@@ -31,6 +31,12 @@
 
     <div tasNavigationNavbarRight>
       <div class="flex space-x-4 items-center">
+        <!--
+          État de la téléphonie (TEL-F-11). La pastille se masque elle-même tant que le
+          module Téléphonie n'a rien posé — c'est le cas de tous les établissements sans
+          téléphonie active, c'est-à-dire la plupart : rien à conditionner ici.
+        -->
+        <lib-telephony-status-pill></lib-telephony-status-pill>
 <!--        <div>-->
 <!--          <button tas-raised-button color="primary">-->
 <!--            <tas-icon iconName="feather:plus" iconSize="md"></tas-icon>-->

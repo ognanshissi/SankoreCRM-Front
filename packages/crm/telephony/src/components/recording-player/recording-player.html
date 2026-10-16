@@ -1,0 +1,118 @@
+<div class="rounded-lg border border-slate-200 p-4">
+  <div class="flex items-center justify-between gap-3">
+    <div class="flex items-center gap-2">
+      <tas-icon iconName="feather:mic" style="font-size: 14px" class="text-slate-400"></tas-icon>
+      <span class="text-sm font-medium text-slate-700">Enregistrement</span>
+      <tas-tag [severity]="statusSeverity()">{{ statusLabel() }}</tas-tag>
+    </div>
+
+    @if (canExport() && isPlayable()) {
+      <button tas-outlined-button color="primary" type="button" size="small" (click)="openExport()">
+        Exporter
+      </button>
+    }
+  </div>
+
+  @if (!isPlayable()) {
+    <!-- Les trois états non écoutables disent lequel c'est : « Récupération en cours » est une
+         attente, « Indisponible » un incident à signaler, « Supprimé » la fin normale d'une
+         durée de conservation. Les confondre ferait signaler un incident pour une purge. -->
+    <p class="mt-3 text-sm text-slate-500">
+      @if (!canListen()) {
+        Vous n'avez pas accès à cet enregistrement.
+      } @else {
+        {{ statusLabel() }}.
+      }
+    </p>
+  } @else if (!audioUrl()) {
+    <div class="mt-3 flex items-center gap-3">
+      <button
+        tas-raised-button
+        color="primary"
+        type="button"
+        size="small"
+        [disabled]="isLoading()"
+        [isLoading]="isLoading()"
+        (click)="load()"
+      >
+        Écouter
+      </button>
+
+      @if (isLoading()) {
+        <tas-spinner size="10" class="text-primary"></tas-spinner>
+        <span class="text-xs text-slate-500">Chargement de l'enregistrement…</span>
+      }
+    </div>
+
+    @if (loadError()) {
+      <div
+        role="alert"
+        class="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-slate-700"
+      >
+        {{ loadError() }}
+      </div>
+    }
+  } @else {
+    <audio #player class="mt-3 w-full" controls [src]="audioUrl()"></audio>
+
+    <div class="mt-2 flex items-center gap-2">
+      <span class="text-xs text-slate-500">Vitesse</span>
+      @for (rate of [1, 1.5, 2]; track rate) {
+        <button
+          tas-text-button
+          type="button"
+          size="small"
+          [class.text-primary]="speed() === rate"
+          (click)="setSpeed($any(rate), player)"
+        >
+          {{ rate }}×
+        </button>
+      }
+    </div>
+  }
+
+  <!-- Affiché en permanence, et pas seulement pendant la lecture : la personne doit le savoir
+       AVANT de cliquer, pas après. -->
+  <p class="mt-3 flex items-start gap-2 text-xs text-slate-400">
+    <tas-icon iconName="feather:info" style="font-size: 12px" class="mt-0.5"></tas-icon>
+    <span>Cette écoute est enregistrée dans le journal d'audit.</span>
+  </p>
+</div>
+
+@if (isExportOpen()) {
+  <div class="mt-3 rounded-lg border border-orange-200 bg-orange-50 p-4">
+    <p class="text-sm text-slate-700">
+      L'export fait sortir cet enregistrement de la plateforme, hors de portée des contrôles du
+      lecteur. Le motif est conservé au journal d'audit.
+    </p>
+
+    <tas-form-field class="mt-3 block">
+      <tas-label>Motif <span class="text-functional-error">*</span></tas-label>
+      <input
+        tasInput
+        type="text"
+        placeholder="Ex : demande du responsable conformité, dossier n°…"
+        [ngModel]="exportReason()"
+        (ngModelChange)="exportReason.set($event)"
+      />
+      @if (exportReasonError()) {
+        <tas-error>{{ exportReasonError() }}</tas-error>
+      }
+    </tas-form-field>
+
+    <div class="mt-3 flex items-center gap-2">
+      <button
+        tas-raised-button
+        color="warn"
+        type="button"
+        size="small"
+        [disabled]="!!exportReasonError() || isExporting()"
+        [isLoading]="isExporting()"
+        (click)="submitExport()"
+      >
+        Confirmer l'export
+      </button>
+      <button tas-text-button type="button" size="small" (click)="closeExport()">Annuler</button>
+    </div>
+  </div>
+}

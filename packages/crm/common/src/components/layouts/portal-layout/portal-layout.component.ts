@@ -15,6 +15,11 @@ import { BreadcrumbComponent } from '../../breadcrumb/breadcrumb.component';
 import { ImpersonationBanner } from '../../impersonation-banner/impersonation-banner';
 import { TenantProvider, AuthenticationService, PermissionsService } from '../../../services';
 import { TenantContextResponse } from '@sankore/crm-api';
+// La pastille est LOCALE à `common` et alimentée par le module Téléphonie via
+// `TelephonyTopBarState` (TEL-F-11). Importer le composant depuis `@sankore/crm/telephony`
+// fermait un cycle d'imports qui empêchait des modules de s'évaluer : voir l'en-tête de
+// `telephony-top-bar-state.ts`.
+import { TelephonyStatusPill } from './telephony-status-pill';
 
 @Component({
   selector: 'common-portal-layout',
@@ -35,6 +40,7 @@ import { TenantContextResponse } from '@sankore/crm-api';
     Menu,
     MenuItem,
     TasMenuTrigger,
+    TelephonyStatusPill,
   ],
 })
 export class PortalLayoutComponent implements OnInit {

@@ -1,0 +1,229 @@
+@if (canView()) {
+  <tas-card class="block">
+    <div class="p-4 border-b border-slate-100 flex items-start justify-between gap-3">
+      <div>
+        <p class="font-semibold text-slate-800">{{ title() }}</p>
+        <p class="text-sm text-slate-500">
+          Appels de cette fiche. Aucun numéro n'est affiché : le serveur ne le transmet pas.
+        </p>
+      </div>
+      <div class="flex items-center gap-2 shrink-0">
+        <span class="text-xs text-slate-400 tabular-nums">
+          {{ totalCount() }} appel{{ totalCount() > 1 ? 's' : '' }}
+        </span>
+        <button
+          tas-button
+          iconButton
+          type="button"
+          aria-label="Rafraîchir l'historique des appels"
+          (click)="reload()"
+        >
+          <tas-icon iconName="feather:refresh-cw" style="font-size:13px"></tas-icon>
+        </button>
+      </div>
+    </div>
+
+    @if (loadError(); as error) {
+      <div class="p-6 text-center">
+        <tas-icon
+          iconName="feather:alert-circle"
+          class="text-slate-300"
+          style="font-size:26px"
+        ></tas-icon>
+        <p class="text-sm text-slate-600 mt-2">{{ error }}</p>
+        <button tas-outlined-button color="primary" type="button" class="text-xs mt-3" (click)="reload()">
+          Réessayer
+        </button>
+      </div>
+    } @else if (!isLoading() && rows().length === 0) {
+      <div class="p-8 text-center">
+        <tas-icon iconName="feather:phone" class="text-slate-300" style="font-size:28px"></tas-icon>
+        <p class="text-sm font-medium text-slate-700 mt-2">Aucun appel enregistré</p>
+        <p class="text-sm text-slate-500 mt-1">
+          Les appels passés depuis cette fiche et ceux reçus de ce correspondant
+          apparaîtront ici.
+        </p>
+      </div>
+    } @else {
+      <tas-table
+        [data]="rows()"
+        identifierField="callId"
+        [config]="tableConfig()"
+        [isLoading]="isLoading()"
+        (pageEventChange)="onPageChange($event)"
+      >
+        <ng-template #header>
+          <tr>
+            <th class="hidden sm:table-cell">Sens</th>
+            <th class="hidden sm:table-cell">Agent</th>
+            <th class="hidden sm:table-cell">Date</th>
+            <th class="hidden sm:table-cell">Durée</th>
+            <th class="hidden sm:table-cell">Issue</th>
+            <th class="hidden sm:table-cell">Note</th>
+            <th class="hidden sm:table-cell">Enregistrement</th>
+          </tr>
+        </ng-template>
+
+        <ng-template #body let-item>
+          <tr>
+            <!-- Carte, sous 640 px -->
+            <td class="sm:hidden" [attr.colspan]="columnCount()">
+              <div class="p-3 flex flex-col gap-2">
+                <div class="flex items-start justify-between gap-2">
+                  <div class="min-w-0 flex items-center gap-2">
+                    <tas-icon
+                      [iconName]="directionIcon(item.direction)"
+                      class="text-slate-400"
+                      style="font-size:13px"
+                    ></tas-icon>
+                    <div class="min-w-0">
+                      <p class="text-sm font-medium text-slate-800">
+                        {{ directionLabel(item.direction) }}
+                      </p>
+                      <p class="text-xs text-slate-500">{{ agentName(item.crmUserId) }}</p>
+                    </div>
+                  </div>
+                  <tas-tag [severity]="statusSeverity(item.status)" class="shrink-0">
+                    {{ statusLabel(item.status) }}
+                  </tas-tag>
+                </div>
+
+                <div class="flex items-center gap-2 text-xs text-slate-500 flex-wrap">
+                  @if (item.startedAt) {
+                    <span>{{ item.startedAt | dateTimeAgo }}</span>
+                    <span class="text-slate-300">·</span>
+                  }
+                  <span class="tabular-nums">{{ durationLabel(item.talkSeconds) }}</span>
+                  @if (item.hasNote) {
+                    <span class="text-slate-300">·</span>
+                    <span class="inline-flex items-center gap-1">
+                      <tas-icon iconName="feather:file-text" style="font-size:11px"></tas-icon>
+                      Note
+                    </span>
+                  }
+                </div>
+
+                <div class="flex items-center gap-2 flex-wrap">
+                  <span class="text-xs text-slate-600">
+                    {{ item.outcomeLabel || emptyLabel }}
+                  </span>
+                  @if (item.countsAsContact) {
+                    <tas-tag severity="success">Compte comme contact</tas-tag>
+                  }
+                </div>
+
+                <div class="flex items-center gap-2 flex-wrap">
+                  <tas-tag [severity]="recordingSeverity(item.recordingStatus)">
+                    {{ recordingLabel(item.recordingStatus) }}
+                  </tas-tag>
+                  @if (item.canListen) {
+                    <button
+                      tas-outlined-button
+                      color="primary"
+                      type="button"
+                      class="text-xs"
+                      (click)="toggleRecording(item)"
+                    >
+                      {{ expandedId() === item.callId ? 'Masquer' : 'Écouter' }}
+                    </button>
+                  }
+                </div>
+              </div>
+            </td>
+
+            <!-- Colonnes, à partir de 640 px -->
+            <td class="hidden sm:table-cell py-3">
+              <div class="flex items-center gap-2">
+                <tas-icon
+                  [iconName]="directionIcon(item.direction)"
+                  class="text-slate-400"
+                  style="font-size:13px"
+                ></tas-icon>
+                <div>
+                  <span class="text-sm text-slate-800">{{ directionLabel(item.direction) }}</span>
+                  <tas-tag [severity]="statusSeverity(item.status)" class="ml-1">
+                    {{ statusLabel(item.status) }}
+                  </tas-tag>
+                </div>
+              </div>
+            </td>
+
+            <td class="hidden sm:table-cell">
+              <span class="text-sm text-slate-700">{{ agentName(item.crmUserId) }}</span>
+            </td>
+
+            <td class="hidden sm:table-cell">
+              @if (item.startedAt) {
+                <span class="text-sm text-slate-700">{{ item.startedAt | dateTimeAgo }}</span>
+              } @else {
+                <span class="text-sm text-slate-400">{{ emptyLabel }}</span>
+              }
+            </td>
+
+            <td class="hidden sm:table-cell">
+              <span class="text-sm text-slate-700 tabular-nums">
+                {{ durationLabel(item.talkSeconds) }}
+              </span>
+            </td>
+
+            <td class="hidden sm:table-cell">
+              <span class="text-sm text-slate-700">{{ item.outcomeLabel || emptyLabel }}</span>
+              @if (item.countsAsContact) {
+                <span class="block text-xs text-emerald-600">Compte comme contact</span>
+              }
+            </td>
+
+            <td class="hidden sm:table-cell">
+              @if (item.hasNote) {
+                <!-- `hasNote` dit qu'une note existe et JAMAIS ce qu'elle dit : les notes
+                     sont chiffrées et ne sortent pas du module. -->
+                <tas-icon
+                  iconName="feather:file-text"
+                  class="text-slate-400"
+                  style="font-size:14px"
+                  [attr.aria-label]="'Une note existe sur cet appel'"
+                  [attr.title]="'Une note existe sur cet appel. Son contenu ne quitte pas le module.'"
+                ></tas-icon>
+              } @else {
+                <span class="text-sm text-slate-400">{{ emptyLabel }}</span>
+              }
+            </td>
+
+            <td class="hidden sm:table-cell">
+              <div class="flex items-center gap-2">
+                <tas-tag [severity]="recordingSeverity(item.recordingStatus)">
+                  {{ recordingLabel(item.recordingStatus) }}
+                </tas-tag>
+                @if (item.canListen) {
+                  <!-- `canListen` vient du serveur, périmètre et permission d'écoute
+                       compris : on ne le recalcule pas. -->
+                  <button
+                    tas-outlined-button
+                    color="primary"
+                    type="button"
+                    class="text-xs"
+                    (click)="toggleRecording(item)"
+                  >
+                    {{ expandedId() === item.callId ? 'Masquer' : 'Écouter' }}
+                  </button>
+                }
+              </div>
+            </td>
+          </tr>
+
+          @if (expandedId() === item.callId) {
+            <tr>
+              <td [attr.colspan]="columnCount()" class="p-3">
+                <lib-recording-player
+                  [callId]="item.callId"
+                  [recordingStatus]="item.recordingStatus"
+                  [canListen]="item.canListen"
+                ></lib-recording-player>
+              </td>
+            </tr>
+          }
+        </ng-template>
+      </tas-table>
+    }
+  </tas-card>
+}

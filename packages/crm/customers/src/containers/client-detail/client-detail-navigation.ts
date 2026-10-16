@@ -35,6 +35,8 @@ import {
   riskLevelLabel,
   riskLevelSeverity,
 } from '../../models/client-labels';
+// eslint-disable-next-line @nx/enforce-module-boundaries
+import { CallButton } from '@sankore/crm/telephony';
 import { ClientActionsMenu } from './client-actions-menu';
 
 interface ClientTab {
@@ -68,6 +70,7 @@ const PENDING_KYC_ALERT_DAYS = 15;
     TasTag,
     Anchor,
     ClientActionsMenu,
+    CallButton,
   ],
   template: `
     @if (store.isLoading()) {
@@ -167,7 +170,15 @@ const PENDING_KYC_ALERT_DAYS = 15;
                   {{ client()!.clientNumber || '—' }} — {{ typeLabel() }}
                 </p>
               </div>
-              <client-actions-menu></client-actions-menu>
+              <div class="flex items-start gap-2 shrink-0">
+                <!--
+                  TEL-F-04 : le bouton se masque lui-même quand le serveur dit que cet
+                  agent ne peut pas appeler. Aucun numéro n'est affiché ni envoyé — c'est
+                  la fiche et l'emplacement qui partent, le serveur compose.
+                -->
+                <lib-call-button entityType="Customer" [entityId]="id()"></lib-call-button>
+                <client-actions-menu></client-actions-menu>
+              </div>
             </div>
 
             <div class="grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-4 mt-4 pt-4 border-t border-slate-100">

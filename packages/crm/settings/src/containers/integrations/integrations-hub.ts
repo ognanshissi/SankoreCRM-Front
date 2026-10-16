@@ -56,8 +56,9 @@ const INTEGRATIONS: Integration[] = [
     description: 'Intégrer votre système de téléphonie pour les appels sortants et entrants.',
     icon: 'feather:phone-call',
     category: 'communication',
-    status: 'coming_soon',
-    link: null,
+    status: 'available',
+    link: '/settings/telephony',
+    permission: 'Telephony.Call.View',
   },
   {
     id: 'sms',
