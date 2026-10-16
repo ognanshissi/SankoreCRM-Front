@@ -59,6 +59,7 @@ api/sms-webhooks.service.ts
 api/task-generation-rules.service.ts
 api/task-types.service.ts
 api/tasks.service.ts
+api/telephony.service.ts
 api/territories.service.ts
 api/user-import.service.ts
 api/users.service.ts
@@ -380,6 +381,8 @@ model/leads-remove-household-member-request.interface.ts
 model/leads-update-household-member-request.interface.ts
 model/legal-form-dto.interface.ts
 model/link-product-to-cbs-request.interface.ts
+model/link-telephony-user-request.interface.ts
+model/link-telephony-user-response.interface.ts
 model/list-mappings-response.interface.ts
 model/list-users-result.interface.ts
 model/live-balance-dto.interface.ts
@@ -530,6 +533,7 @@ model/review-kyc-document-request.interface.ts
 model/review-kyc-document-result.interface.ts
 model/revoke-kyc-remote-invitation-request.interface.ts
 model/revoke-role-request.interface.ts
+model/ringover-settings.interface.ts
 model/role-detail-dto.interface.ts
 model/role-dto.interface.ts
 model/role-permission-dto.interface.ts
@@ -570,9 +574,12 @@ model/set-pep-status-request.interface.ts
 model/set-qualification-completeness-request.interface.ts
 model/set-secret-request.interface.ts
 model/set-sms-monthly-quota-command.interface.ts
+model/set-telephony-caller-number-request.interface.ts
 model/sign-holding-request.interface.ts
 model/simulate-dispatch-request.interface.ts
 model/simulate-dispatch-result.interface.ts
+model/simulate-telephony-webhook-request.interface.ts
+model/simulate-telephony-webhook-response.interface.ts
 model/simulated-candidate-dto.interface.ts
 model/sla-breach-dto.interface.ts
 model/sla-config-dto.interface.ts
@@ -617,6 +624,9 @@ model/tag-dto.interface.ts
 model/task-dto.interface.ts
 model/task-generation-rule-dto.interface.ts
 model/task-type-dto.interface.ts
+model/telephony-directory-dto.interface.ts
+model/telephony-directory-entry-dto.interface.ts
+model/telephony-user-link-dto.interface.ts
 model/temenos-settings.interface.ts
 model/template-diff-dto.interface.ts
 model/template-queue-dto.interface.ts
@@ -631,6 +641,7 @@ model/transition-dto.interface.ts
 model/transition-snapshot-dto.interface.ts
 model/transitions-diff-dto.interface.ts
 model/trigger-dto.interface.ts
+model/unlink-telephony-user-request.interface.ts
 model/unmapped-codes-response.interface.ts
 model/unmapped-crm-code.interface.ts
 model/update-agency-request.interface.ts

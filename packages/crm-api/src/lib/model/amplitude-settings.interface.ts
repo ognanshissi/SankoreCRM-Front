@@ -31,7 +31,7 @@ export interface AmplitudeSettings {
     retentionDays?: number;
     ackTimeoutHours?: number;
     /**
-     * One of: Temenos, Amplitude, Sab, PerfectVision, Orass, Fake
+     * One of: Temenos, Amplitude, Sab, PerfectVision, Orass, Ringover, Fake
      */
     readonly expectedKind?: AmplitudeSettingsExpectedKindEnum;
     /**
@@ -51,6 +51,7 @@ export enum AmplitudeSettingsExpectedKindEnum {
     Sab = 'Sab',
     PerfectVision = 'PerfectVision',
     Orass = 'Orass',
+    Ringover = 'Ringover',
     Fake = 'Fake'
 };
 export enum AmplitudeSettingsAmplitudeVersionEnum {

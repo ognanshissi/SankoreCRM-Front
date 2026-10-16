@@ -15,11 +15,11 @@ import { ConnectionSettings } from './connection-settings.interface';
 export interface ConnectionDetailDto { 
     id?: string;
     /**
-     * One of: CoreBanking, Insurance
+     * One of: CoreBanking, Insurance, Telephony
      */
     family?: ConnectionDetailDtoFamilyEnum;
     /**
-     * One of: Temenos, Amplitude, Sab, PerfectVision, Orass, Fake
+     * One of: Temenos, Amplitude, Sab, PerfectVision, Orass, Ringover, Fake
      */
     kind?: ConnectionDetailDtoKindEnum;
     /**
@@ -42,7 +42,8 @@ export interface ConnectionDetailDto {
 }
 export enum ConnectionDetailDtoFamilyEnum {
     CoreBanking = 'CoreBanking',
-    Insurance = 'Insurance'
+    Insurance = 'Insurance',
+    Telephony = 'Telephony'
 };
 export enum ConnectionDetailDtoKindEnum {
     Temenos = 'Temenos',
@@ -50,6 +51,7 @@ export enum ConnectionDetailDtoKindEnum {
     Sab = 'Sab',
     PerfectVision = 'PerfectVision',
     Orass = 'Orass',
+    Ringover = 'Ringover',
     Fake = 'Fake'
 };
 export enum ConnectionDetailDtoModeEnum {

@@ -14,11 +14,11 @@
 export interface ConnectionListDto { 
     id?: string;
     /**
-     * One of: CoreBanking, Insurance
+     * One of: CoreBanking, Insurance, Telephony
      */
     family?: ConnectionListDtoFamilyEnum;
     /**
-     * One of: Temenos, Amplitude, Sab, PerfectVision, Orass, Fake
+     * One of: Temenos, Amplitude, Sab, PerfectVision, Orass, Ringover, Fake
      */
     kind?: ConnectionListDtoKindEnum;
     /**
@@ -34,7 +34,8 @@ export interface ConnectionListDto {
 }
 export enum ConnectionListDtoFamilyEnum {
     CoreBanking = 'CoreBanking',
-    Insurance = 'Insurance'
+    Insurance = 'Insurance',
+    Telephony = 'Telephony'
 };
 export enum ConnectionListDtoKindEnum {
     Temenos = 'Temenos',
@@ -42,6 +43,7 @@ export enum ConnectionListDtoKindEnum {
     Sab = 'Sab',
     PerfectVision = 'PerfectVision',
     Orass = 'Orass',
+    Ringover = 'Ringover',
     Fake = 'Fake'
 };
 export enum ConnectionListDtoModeEnum {

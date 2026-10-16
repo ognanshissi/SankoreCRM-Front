@@ -20,7 +20,7 @@ export interface TemenosSettings {
     timeoutSeconds?: number;
     syncIntervalMinutes?: AmplitudeSettingsSyncIntervalMinutes | null;
     /**
-     * One of: Temenos, Amplitude, Sab, PerfectVision, Orass, Fake
+     * One of: Temenos, Amplitude, Sab, PerfectVision, Orass, Ringover, Fake
      */
     readonly expectedKind?: TemenosSettingsExpectedKindEnum;
     baseUrl?: string | null;
@@ -45,6 +45,7 @@ export enum TemenosSettingsExpectedKindEnum {
     Sab = 'Sab',
     PerfectVision = 'PerfectVision',
     Orass = 'Orass',
+    Ringover = 'Ringover',
     Fake = 'Fake'
 };
 export enum TemenosSettingsAuthModeEnum {

@@ -5525,14 +5525,15 @@
           {
             "name": "family",
             "in": "query",
-            "description": "One of: CoreBanking, Insurance",
+            "description": "One of: CoreBanking, Insurance, Telephony",
             "schema": {
               "enum": [
                 "CoreBanking",
-                "Insurance"
+                "Insurance",
+                "Telephony"
               ],
               "type": "string",
-              "description": "One of: CoreBanking, Insurance"
+              "description": "One of: CoreBanking, Insurance, Telephony"
             }
           },
           {
@@ -19207,6 +19208,290 @@
         }
       }
     },
+    "/integration/telephony/webhooks/{connectionId}": {
+      "post": {
+        "tags": [
+          "Telephony"
+        ],
+        "operationId": "TelephonyWebhook",
+        "parameters": [
+          {
+            "name": "connectionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/v1/integration/telephony/directory": {
+      "get": {
+        "tags": [
+          "Telephony"
+        ],
+        "summary": "The provider's user accounts, with the CRM account each one looks like",
+        "description": "Reads the telephony provider's directory LIVE and proposes a pairing per account, matched on the e-mail address. A proposal is never applied: confirm it with POST telephony/user-links. An address several CRM accounts answer to yields no proposal and is listed in ambiguousEmails — picking one would be picking whose calls get attributed to whom. Already-linked accounts come back with linkedCrmUserId set. Answers 422 TELEPHONY_DISABLED when the tenant has no active telephony connection, 422 INTEGRATION_CAPABILITY_NOT_SUPPORTED when its provider publishes no directory, and 503 INTEGRATION_UNAVAILABLE when the provider could not be reached — the three are distinct repairs. Requires permission: Telephony.Settings.Manage.",
+        "operationId": "GetTelephonyDirectory",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TelephonyDirectoryDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "422": {
+            "description": "Unprocessable Entity"
+          },
+          "503": {
+            "description": "Service Unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/integration/telephony/user-links": {
+      "get": {
+        "tags": [
+          "Telephony"
+        ],
+        "summary": "Which CRM users are linked to a provider account",
+        "description": "Broken links first — those are the ones asking for action, and statusReason says what the nightly check found. Disabled links are excluded unless includeDisabled=true: they are history, kept because they explain calls already in the journal. Reads this module's own rows and never calls the provider, so it answers normally while the provider is down. Requires permission: Telephony.Settings.Manage.",
+        "operationId": "ListTelephonyUserLinks",
+        "parameters": [
+          {
+            "name": "includeDisabled",
+            "in": "query",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TelephonyUserLinkDto"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Telephony"
+        ],
+        "summary": "Confirm that a CRM user owns a provider account",
+        "description": "Takes the pairing GET telephony/directory proposed, or one typed by hand. One CRM user holds at most one account and one account at most one CRM user: a live link on either side answers 409 TELEPHONY_USER_LINK_ALREADY_TAKEN rather than moving the account, because moving it silently re-attributes every call that follows. Confirming a link that already exists is a SUCCESS, and it revives one that was broken or unlinked. Audited. Requires permission: Telephony.Settings.Manage.",
+        "operationId": "LinkTelephonyUser",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LinkTelephonyUserRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LinkTelephonyUserResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "409": {
+            "description": "Conflict"
+          },
+          "422": {
+            "description": "Unprocessable Entity"
+          }
+        }
+      }
+    },
+    "/api/v1/integration/telephony/user-links/{linkId}/caller-number": {
+      "put": {
+        "tags": [
+          "Telephony"
+        ],
+        "summary": "The number this user's outbound calls present",
+        "description": "E.164 only (a leading + and 8 to 15 digits): the value is handed to the provider's API verbatim, and a local form is refused there rather than here. A null or blank value CLEARS the override and falls the user back on the connection's default caller number, which is the ordinary state. Audited. Requires permission: Telephony.Settings.Manage.",
+        "operationId": "SetTelephonyCallerNumber",
+        "parameters": [
+          {
+            "name": "linkId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetTelephonyCallerNumberRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "422": {
+            "description": "Unprocessable Entity"
+          }
+        }
+      }
+    },
+    "/api/v1/integration/telephony/user-links/{linkId}/unlink": {
+      "post": {
+        "tags": [
+          "Telephony"
+        ],
+        "summary": "Switch a user's provider link off, with a reason",
+        "description": "The link is DISABLED, never deleted: the agent's calls already in the journal point at it, and it is what explains why nothing new is attributed to them. The reason is mandatory and audited — an agent leaving, an account recycled and a mistaken pairing are three different facts. Unlinking an already unlinked link is a success. Linking the same pair again revives this row. Requires permission: Telephony.Settings.Manage.",
+        "operationId": "UnlinkTelephonyUser",
+        "parameters": [
+          {
+            "name": "linkId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UnlinkTelephonyUserRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "422": {
+            "description": "Unprocessable Entity"
+          }
+        }
+      }
+    },
+    "/api/v1/integration/telephony/webhooks/simulate": {
+      "post": {
+        "tags": [
+          "Telephony"
+        ],
+        "summary": "DEVELOPMENT ONLY — post a webhook to your own telephony connection",
+        "description": "Signs the body you give with this connection's stored webhook secret and runs the real webhook's decision path: verification, deduplication, and the job that re-reads the call from the provider and journals it. The body is passed through untouched and must be whatever the tenant's adapter parses — the fake adapter takes '<eventType>:<providerCallId>', e.g. 'ringing:fake-call-1'. Posting the same body twice is deduplicated and does no second piece of work, which is the property worth checking. Answers 404 outside Development and 422 TELEPHONY_DISABLED without an active telephony connection. Requires permission: Telephony.Settings.Manage.",
+        "operationId": "SimulateTelephonyWebhook",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SimulateTelephonyWebhookRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SimulateTelephonyWebhookResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "422": {
+            "description": "Unprocessable Entity"
+          }
+        }
+      }
+    },
     "/api/v1/territories": {
       "post": {
         "tags": [
@@ -23949,6 +24234,10 @@
               "Claims": {
                 "type": "integer",
                 "format": "int32"
+              },
+              "Calls": {
+                "type": "integer",
+                "format": "int32"
               }
             },
             "additionalProperties": false,
@@ -24005,10 +24294,11 @@
               "Sab",
               "PerfectVision",
               "Orass",
+              "Ringover",
               "Fake"
             ],
             "type": "string",
-            "description": "One of: Temenos, Amplitude, Sab, PerfectVision, Orass, Fake",
+            "description": "One of: Temenos, Amplitude, Sab, PerfectVision, Orass, Ringover, Fake",
             "readOnly": true
           },
           "amplitudeVersion": {
@@ -26923,10 +27213,11 @@
           "family": {
             "enum": [
               "CoreBanking",
-              "Insurance"
+              "Insurance",
+              "Telephony"
             ],
             "type": "string",
-            "description": "One of: CoreBanking, Insurance"
+            "description": "One of: CoreBanking, Insurance, Telephony"
           },
           "kind": {
             "enum": [
@@ -26935,10 +27226,11 @@
               "Sab",
               "PerfectVision",
               "Orass",
+              "Ringover",
               "Fake"
             ],
             "type": "string",
-            "description": "One of: Temenos, Amplitude, Sab, PerfectVision, Orass, Fake"
+            "description": "One of: Temenos, Amplitude, Sab, PerfectVision, Orass, Ringover, Fake"
           },
           "mode": {
             "enum": [
@@ -27036,10 +27328,11 @@
           "family": {
             "enum": [
               "CoreBanking",
-              "Insurance"
+              "Insurance",
+              "Telephony"
             ],
             "type": "string",
-            "description": "One of: CoreBanking, Insurance"
+            "description": "One of: CoreBanking, Insurance, Telephony"
           },
           "kind": {
             "enum": [
@@ -27048,10 +27341,11 @@
               "Sab",
               "PerfectVision",
               "Orass",
+              "Ringover",
               "Fake"
             ],
             "type": "string",
-            "description": "One of: Temenos, Amplitude, Sab, PerfectVision, Orass, Fake"
+            "description": "One of: Temenos, Amplitude, Sab, PerfectVision, Orass, Ringover, Fake"
           },
           "mode": {
             "enum": [
@@ -27129,6 +27423,9 @@
             "$ref": "#/components/schemas/OrassSettings"
           },
           {
+            "$ref": "#/components/schemas/RingoverSettings"
+          },
+          {
             "$ref": "#/components/schemas/FakeSettings"
           }
         ],
@@ -27141,6 +27438,7 @@
             "Sab": "#/components/schemas/SabSettings",
             "PerfectVision": "#/components/schemas/PerfectVisionSettings",
             "Orass": "#/components/schemas/OrassSettings",
+            "Ringover": "#/components/schemas/RingoverSettings",
             "Fake": "#/components/schemas/FakeSettings"
           }
         }
@@ -27504,10 +27802,11 @@
           "family": {
             "enum": [
               "CoreBanking",
-              "Insurance"
+              "Insurance",
+              "Telephony"
             ],
             "type": "string",
-            "description": "One of: CoreBanking, Insurance"
+            "description": "One of: CoreBanking, Insurance, Telephony"
           },
           "kind": {
             "enum": [
@@ -27516,10 +27815,11 @@
               "Sab",
               "PerfectVision",
               "Orass",
+              "Ringover",
               "Fake"
             ],
             "type": "string",
-            "description": "One of: Temenos, Amplitude, Sab, PerfectVision, Orass, Fake"
+            "description": "One of: Temenos, Amplitude, Sab, PerfectVision, Orass, Ringover, Fake"
           },
           "mode": {
             "enum": [
@@ -30552,6 +30852,10 @@
               "Claims": {
                 "type": "integer",
                 "format": "int32"
+              },
+              "Calls": {
+                "type": "integer",
+                "format": "int32"
               }
             },
             "additionalProperties": false,
@@ -30564,19 +30868,21 @@
               "Sab",
               "PerfectVision",
               "Orass",
+              "Ringover",
               "Fake"
             ],
             "type": "string",
-            "description": "One of: Temenos, Amplitude, Sab, PerfectVision, Orass, Fake",
+            "description": "One of: Temenos, Amplitude, Sab, PerfectVision, Orass, Ringover, Fake",
             "readOnly": true
           },
           "family": {
             "enum": [
               "CoreBanking",
-              "Insurance"
+              "Insurance",
+              "Telephony"
             ],
             "type": "string",
-            "description": "One of: CoreBanking, Insurance"
+            "description": "One of: CoreBanking, Insurance, Telephony"
           },
           "forcedErrorCode": {
             "type": "string",
@@ -31476,10 +31782,11 @@
               "Sab",
               "PerfectVision",
               "Orass",
+              "Ringover",
               "Fake"
             ],
             "type": "string",
-            "description": "One of: Temenos, Amplitude, Sab, PerfectVision, Orass, Fake"
+            "description": "One of: Temenos, Amplitude, Sab, PerfectVision, Orass, Ringover, Fake"
           },
           "insurerProductCode": {
             "type": "string",
@@ -34423,6 +34730,38 @@
         },
         "additionalProperties": false
       },
+      "LinkTelephonyUserRequest": {
+        "type": "object",
+        "properties": {
+          "crmUserId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "externalUserId": {
+            "type": "string",
+            "nullable": true
+          },
+          "externalEmail": {
+            "type": "string",
+            "nullable": true
+          },
+          "defaultCallerNumber": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "LinkTelephonyUserResponse": {
+        "type": "object",
+        "properties": {
+          "linkId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "additionalProperties": false
+      },
       "ListMappingsResponse": {
         "type": "object",
         "properties": {
@@ -35603,6 +35942,10 @@
               "Claims": {
                 "type": "integer",
                 "format": "int32"
+              },
+              "Calls": {
+                "type": "integer",
+                "format": "int32"
               }
             },
             "additionalProperties": false,
@@ -35659,10 +36002,11 @@
               "Sab",
               "PerfectVision",
               "Orass",
+              "Ringover",
               "Fake"
             ],
             "type": "string",
-            "description": "One of: Temenos, Amplitude, Sab, PerfectVision, Orass, Fake",
+            "description": "One of: Temenos, Amplitude, Sab, PerfectVision, Orass, Ringover, Fake",
             "readOnly": true
           },
           "baseUrl": {
@@ -36585,6 +36929,10 @@
               "Claims": {
                 "type": "integer",
                 "format": "int32"
+              },
+              "Calls": {
+                "type": "integer",
+                "format": "int32"
               }
             },
             "additionalProperties": false,
@@ -36641,10 +36989,11 @@
               "Sab",
               "PerfectVision",
               "Orass",
+              "Ringover",
               "Fake"
             ],
             "type": "string",
-            "description": "One of: Temenos, Amplitude, Sab, PerfectVision, Orass, Fake",
+            "description": "One of: Temenos, Amplitude, Sab, PerfectVision, Orass, Ringover, Fake",
             "readOnly": true
           },
           "balanceViewName": {
@@ -39158,6 +39507,99 @@
         },
         "additionalProperties": false
       },
+      "RingoverSettings": {
+        "required": [
+          "$kind"
+        ],
+        "type": "object",
+        "properties": {
+          "schemaVersion": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "rateLimitPerMinute": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "circuitBreakerFailureThreshold": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "circuitBreakerBreakSeconds": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "timeoutSeconds": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "syncIntervalMinutes": {
+            "type": "object",
+            "properties": {
+              "Customers": {
+                "type": "integer",
+                "format": "int32"
+              },
+              "Accounts": {
+                "type": "integer",
+                "format": "int32"
+              },
+              "Transactions": {
+                "type": "integer",
+                "format": "int32"
+              },
+              "Loans": {
+                "type": "integer",
+                "format": "int32"
+              },
+              "Policies": {
+                "type": "integer",
+                "format": "int32"
+              },
+              "Claims": {
+                "type": "integer",
+                "format": "int32"
+              },
+              "Calls": {
+                "type": "integer",
+                "format": "int32"
+              }
+            },
+            "additionalProperties": false,
+            "nullable": true
+          },
+          "expectedKind": {
+            "enum": [
+              "Temenos",
+              "Amplitude",
+              "Sab",
+              "PerfectVision",
+              "Orass",
+              "Ringover",
+              "Fake"
+            ],
+            "type": "string",
+            "description": "One of: Temenos, Amplitude, Sab, PerfectVision, Orass, Ringover, Fake",
+            "readOnly": true
+          },
+          "apiHost": {
+            "type": "string",
+            "nullable": true
+          },
+          "defaultCallerNumber": {
+            "type": "string",
+            "nullable": true
+          },
+          "$kind": {
+            "enum": [
+              "Ringover"
+            ],
+            "type": "string",
+            "description": "Discriminator. Must be \"Ringover\" for these settings."
+          }
+        },
+        "additionalProperties": false
+      },
       "RoleDetailDto": {
         "type": "object",
         "properties": {
@@ -39555,6 +39997,10 @@
               "Claims": {
                 "type": "integer",
                 "format": "int32"
+              },
+              "Calls": {
+                "type": "integer",
+                "format": "int32"
               }
             },
             "additionalProperties": false,
@@ -39567,10 +40013,11 @@
               "Sab",
               "PerfectVision",
               "Orass",
+              "Ringover",
               "Fake"
             ],
             "type": "string",
-            "description": "One of: Temenos, Amplitude, Sab, PerfectVision, Orass, Fake",
+            "description": "One of: Temenos, Amplitude, Sab, PerfectVision, Orass, Ringover, Fake",
             "readOnly": true
           },
           "baseUrl": {
@@ -40426,6 +40873,16 @@
         },
         "additionalProperties": false
       },
+      "SetTelephonyCallerNumberRequest": {
+        "type": "object",
+        "properties": {
+          "defaultCallerNumber": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "SignHoldingRequest": {
         "type": "object",
         "properties": {
@@ -40487,6 +40944,29 @@
           "excludedCount": {
             "type": "integer",
             "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "SimulateTelephonyWebhookRequest": {
+        "type": "object",
+        "properties": {
+          "body": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "SimulateTelephonyWebhookResponse": {
+        "type": "object",
+        "properties": {
+          "connectionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "accepted": {
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -42078,6 +42558,115 @@
         },
         "additionalProperties": false
       },
+      "TelephonyDirectoryDto": {
+        "type": "object",
+        "properties": {
+          "entries": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TelephonyDirectoryEntryDto"
+            },
+            "nullable": true
+          },
+          "ambiguousEmails": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "TelephonyDirectoryEntryDto": {
+        "type": "object",
+        "properties": {
+          "externalUserId": {
+            "type": "string",
+            "nullable": true
+          },
+          "email": {
+            "type": "string",
+            "nullable": true
+          },
+          "displayName": {
+            "type": "string",
+            "nullable": true
+          },
+          "isActiveAtProvider": {
+            "type": "boolean"
+          },
+          "linkedCrmUserId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "proposedCrmUserId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "proposedCrmUserName": {
+            "type": "string",
+            "nullable": true
+          },
+          "proposedCrmUserIsDisabled": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "TelephonyUserLinkDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "crmUserId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "crmUserName": {
+            "type": "string",
+            "nullable": true
+          },
+          "externalUserId": {
+            "type": "string",
+            "nullable": true
+          },
+          "externalEmail": {
+            "type": "string",
+            "nullable": true
+          },
+          "defaultCallerNumber": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "enum": [
+              "Active",
+              "Broken",
+              "Disabled"
+            ],
+            "type": "string",
+            "description": "One of: Active, Broken, Disabled"
+          },
+          "statusReason": {
+            "type": "string",
+            "nullable": true
+          },
+          "linkedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "version": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
       "TemenosSettings": {
         "required": [
           "$kind"
@@ -42130,6 +42719,10 @@
               "Claims": {
                 "type": "integer",
                 "format": "int32"
+              },
+              "Calls": {
+                "type": "integer",
+                "format": "int32"
               }
             },
             "additionalProperties": false,
@@ -42142,10 +42735,11 @@
               "Sab",
               "PerfectVision",
               "Orass",
+              "Ringover",
               "Fake"
             ],
             "type": "string",
-            "description": "One of: Temenos, Amplitude, Sab, PerfectVision, Orass, Fake",
+            "description": "One of: Temenos, Amplitude, Sab, PerfectVision, Orass, Ringover, Fake",
             "readOnly": true
           },
           "baseUrl": {
@@ -42634,6 +43228,16 @@
           "createdAt": {
             "type": "string",
             "format": "date-time"
+          }
+        },
+        "additionalProperties": false
+      },
+      "UnlinkTelephonyUserRequest": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false

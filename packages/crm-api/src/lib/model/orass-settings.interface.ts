@@ -31,7 +31,7 @@ export interface OrassSettings {
     retentionDays?: number;
     ackTimeoutHours?: number;
     /**
-     * One of: Temenos, Amplitude, Sab, PerfectVision, Orass, Fake
+     * One of: Temenos, Amplitude, Sab, PerfectVision, Orass, Ringover, Fake
      */
     readonly expectedKind?: OrassSettingsExpectedKindEnum;
     baseUrl?: string | null;
@@ -52,6 +52,7 @@ export enum OrassSettingsExpectedKindEnum {
     Sab = 'Sab',
     PerfectVision = 'PerfectVision',
     Orass = 'Orass',
+    Ringover = 'Ringover',
     Fake = 'Fake'
 };
 export enum OrassSettingsBranchEnum {

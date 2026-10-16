@@ -17,7 +17,7 @@ export interface InsuranceProductDto {
     connectionId?: string;
     connectionName?: string | null;
     /**
-     * One of: Temenos, Amplitude, Sab, PerfectVision, Orass, Fake
+     * One of: Temenos, Amplitude, Sab, PerfectVision, Orass, Ringover, Fake
      */
     connectionKind?: InsuranceProductDtoConnectionKindEnum;
     insurerProductCode?: string | null;
@@ -62,6 +62,7 @@ export enum InsuranceProductDtoConnectionKindEnum {
     Sab = 'Sab',
     PerfectVision = 'PerfectVision',
     Orass = 'Orass',
+    Ringover = 'Ringover',
     Fake = 'Fake'
 };
 export enum InsuranceProductDtoPeriodicityEnum {

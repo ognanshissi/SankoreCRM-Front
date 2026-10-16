@@ -12,6 +12,7 @@
 import { FakeSettings } from './fake-settings.interface';
 import { AmplitudeSettingsSyncIntervalMinutes } from './amplitude-settings-sync-interval-minutes.interface';
 import { OrassSettings } from './orass-settings.interface';
+import { RingoverSettings } from './ringover-settings.interface';
 import { TemenosSettings } from './temenos-settings.interface';
 import { AmplitudeSettings } from './amplitude-settings.interface';
 import { PerfectVisionSettings } from './perfect-vision-settings.interface';
@@ -26,5 +27,5 @@ import { SabSettings } from './sab-settings.interface';
  * Per-kind connection coordinates. The \"$kind\" discriminator is REQUIRED and names the connection kind; it is matched case-insensitively and must agree with the row\'s own \"kind\". Never carries a credential — only a vault reference.
  * @export
  */
-export type ConnectionSettings = AmplitudeSettings | FakeSettings | OrassSettings | PerfectVisionSettings | SabSettings | TemenosSettings;
+export type ConnectionSettings = AmplitudeSettings | FakeSettings | OrassSettings | PerfectVisionSettings | RingoverSettings | SabSettings | TemenosSettings;
 

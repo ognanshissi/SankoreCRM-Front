@@ -18,5 +18,6 @@ export interface AmplitudeSettingsSyncIntervalMinutes {
     Loans?: number;
     Policies?: number;
     Claims?: number;
+    Calls?: number;
 }
 

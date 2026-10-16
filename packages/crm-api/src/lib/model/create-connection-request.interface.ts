@@ -14,11 +14,11 @@ import { ConnectionSettings } from './connection-settings.interface';
 
 export interface CreateConnectionRequest { 
     /**
-     * One of: CoreBanking, Insurance
+     * One of: CoreBanking, Insurance, Telephony
      */
     family?: CreateConnectionRequestFamilyEnum;
     /**
-     * One of: Temenos, Amplitude, Sab, PerfectVision, Orass, Fake
+     * One of: Temenos, Amplitude, Sab, PerfectVision, Orass, Ringover, Fake
      */
     kind?: CreateConnectionRequestKindEnum;
     /**
@@ -30,7 +30,8 @@ export interface CreateConnectionRequest {
 }
 export enum CreateConnectionRequestFamilyEnum {
     CoreBanking = 'CoreBanking',
-    Insurance = 'Insurance'
+    Insurance = 'Insurance',
+    Telephony = 'Telephony'
 };
 export enum CreateConnectionRequestKindEnum {
     Temenos = 'Temenos',
@@ -38,6 +39,7 @@ export enum CreateConnectionRequestKindEnum {
     Sab = 'Sab',
     PerfectVision = 'PerfectVision',
     Orass = 'Orass',
+    Ringover = 'Ringover',
     Fake = 'Fake'
 };
 export enum CreateConnectionRequestModeEnum {

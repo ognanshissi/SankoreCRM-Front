@@ -31,7 +31,7 @@ export interface PerfectVisionSettings {
     retentionDays?: number;
     ackTimeoutHours?: number;
     /**
-     * One of: Temenos, Amplitude, Sab, PerfectVision, Orass, Fake
+     * One of: Temenos, Amplitude, Sab, PerfectVision, Orass, Ringover, Fake
      */
     readonly expectedKind?: PerfectVisionSettingsExpectedKindEnum;
     balanceViewName?: string | null;
@@ -46,6 +46,7 @@ export enum PerfectVisionSettingsExpectedKindEnum {
     Sab = 'Sab',
     PerfectVision = 'PerfectVision',
     Orass = 'Orass',
+    Ringover = 'Ringover',
     Fake = 'Fake'
 };
 export enum PerfectVisionSettingsKindEnum {
