@@ -33,6 +33,8 @@ import { LinkTelephonyUserResponse } from '../model/link-telephony-user-response
 // @ts-ignore
 import { MissedCallDto } from '../model/missed-call-dto.interface';
 // @ts-ignore
+import { RecomputeTelephonyStatsRequest } from '../model/recompute-telephony-stats-request.interface';
+// @ts-ignore
 import { RecordingPolicyDto } from '../model/recording-policy-dto.interface';
 // @ts-ignore
 import { RequestClickToCallRequest } from '../model/request-click-to-call-request.interface';
@@ -52,6 +54,8 @@ import { SimulateTelephonyWebhookResponse } from '../model/simulate-telephony-we
 import { TelephonyCallContext } from '../model/telephony-call-context.interface';
 // @ts-ignore
 import { TelephonyDirectoryDto } from '../model/telephony-directory-dto.interface';
+// @ts-ignore
+import { TelephonyStatsDto } from '../model/telephony-stats-dto.interface';
 // @ts-ignore
 import { TelephonyUserLinkDto } from '../model/telephony-user-link-dto.interface';
 // @ts-ignore
@@ -537,6 +541,91 @@ export class TelephonyApiService {
     }
 
     /**
+     * Call indicators by day, agent and agency
+     * Read from a projection recomputed from the journal, not from the journal itself — so computedAt tells you how old the figures are. Internal calls (colleague to colleague) are excluded by design: counted in, an agent spending the morning consulting their manager would outrank one spending it on clients. Days are UTC days. Empty days are absent rather than zero-filled. crmUserId or agencyId null is the \&#39;nobody\&#39; bucket — a call from a provider account no link resolves — and it is visible only to a caller who sees the whole tenant, because showing it inside one branch\&#39;s figures would attribute another branch\&#39;s work to it. Asking for an agency outside your perimeter answers an empty period, not a refusal. Defaults to the last 31 days; 400 is the ceiling. Requires permission: Telephony.Stats.View.
+     * @param from 
+     * @param to 
+     * @param agencyId 
+     * @param crmUserId 
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     */
+    public getTelephonyStats(from?: string, to?: string, agencyId?: string, crmUserId?: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<TelephonyStatsDto>;
+    public getTelephonyStats(from?: string, to?: string, agencyId?: string, crmUserId?: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<TelephonyStatsDto>>;
+    public getTelephonyStats(from?: string, to?: string, agencyId?: string, crmUserId?: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<TelephonyStatsDto>>;
+    public getTelephonyStats(from?: string, to?: string, agencyId?: string, crmUserId?: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
+
+        let localVarQueryParameters = new HttpParams({encoder: this.encoder});
+        if (from !== undefined && from !== null) {
+          localVarQueryParameters = this.addToHttpParams(localVarQueryParameters,
+            <any>from, 'from');
+        }
+        if (to !== undefined && to !== null) {
+          localVarQueryParameters = this.addToHttpParams(localVarQueryParameters,
+            <any>to, 'to');
+        }
+        if (agencyId !== undefined && agencyId !== null) {
+          localVarQueryParameters = this.addToHttpParams(localVarQueryParameters,
+            <any>agencyId, 'agencyId');
+        }
+        if (crmUserId !== undefined && crmUserId !== null) {
+          localVarQueryParameters = this.addToHttpParams(localVarQueryParameters,
+            <any>crmUserId, 'crmUserId');
+        }
+
+        let localVarHeaders = this.defaultHeaders;
+
+        let localVarCredential: string | undefined;
+        // authentication (BearerToken) required
+        localVarCredential = this.configuration.lookupCredential('BearerToken');
+        if (localVarCredential) {
+            localVarHeaders = localVarHeaders.set('Authorization', 'Bearer ' + localVarCredential);
+        }
+
+        let localVarHttpHeaderAcceptSelected: string | undefined = options && options.httpHeaderAccept;
+        if (localVarHttpHeaderAcceptSelected === undefined) {
+            // to determine the Accept header
+            const httpHeaderAccepts: string[] = [
+                'application/json'
+            ];
+            localVarHttpHeaderAcceptSelected = this.configuration.selectHeaderAccept(httpHeaderAccepts);
+        }
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+
+        let localVarHttpContext: HttpContext | undefined = options && options.context;
+        if (localVarHttpContext === undefined) {
+            localVarHttpContext = new HttpContext();
+        }
+
+
+        let responseType_: 'text' | 'json' | 'blob' = 'json';
+        if (localVarHttpHeaderAcceptSelected) {
+            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+                responseType_ = 'text';
+            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+                responseType_ = 'json';
+            } else {
+                responseType_ = 'blob';
+            }
+        }
+
+        let localVarPath = `/api/v1/integration/telephony/stats`;
+        return this.httpClient.request<TelephonyStatsDto>('get', `${this.configuration.basePath}${localVarPath}`,
+            {
+                context: localVarHttpContext,
+                params: localVarQueryParameters,
+                responseType: <any>responseType_,
+                withCredentials: this.configuration.withCredentials,
+                headers: localVarHeaders,
+                observe: observe,
+                reportProgress: reportProgress
+            }
+        );
+    }
+
+    /**
      * Say which record a call was about, or correct it
      * What makes an Ambiguous call useful: the journal refuses to guess between two people who share a number, and this is how the human who just spoke to one of them settles it. A manual attachment OVERRIDES an automatic one and is never overwritten by a later sweep. The reason is mandatory and is kept in the audit trail — a conversation filed against the wrong person is something a later reader must be able to understand. BOTH SIDES are authorized: only your own call — or one nobody is attributed, which is the agency\&#39;s \&#39;to attribute\&#39; queue — may be moved, and the target record must be one you may work (M01\&#39;s agency perimeter for a client, M13\&#39;s assignee-or-supervisor rule for a lead). A call that is not yours answers 404, because a 403 would confirm a colleague spoke to somebody; a record that is not yours answers 403 TELEPHONY_ENTITY_NOT_YOURS, because you can already see the call and \&#39;not found\&#39; would send you looking for a record in front of you. Requires permission: Telephony.Call.Link.
      * @param callId 
@@ -966,6 +1055,82 @@ export class TelephonyApiService {
             {
                 context: localVarHttpContext,
                 params: localVarQueryParameters,
+                responseType: <any>responseType_,
+                withCredentials: this.configuration.withCredentials,
+                headers: localVarHeaders,
+                observe: observe,
+                reportProgress: reportProgress
+            }
+        );
+    }
+
+    /**
+     * Derive the indicators of a period again from the journal
+     * Replaces every bucket of the period with figures counted from tel_call. Idempotent: running it twice gives the same rows, because nothing is incremented. Use it after correcting an outcome\&#39;s \&#39;counts as contact\&#39; flag, re-attributing calls, or restoring a backup — the nightly schedule only reaches back seven days. 400 days is the ceiling. Requires permission: Telephony.Settings.Manage.
+     * @param recomputeTelephonyStatsRequest 
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     */
+    public recomputeTelephonyStats(recomputeTelephonyStatsRequest: RecomputeTelephonyStatsRequest, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<number>;
+    public recomputeTelephonyStats(recomputeTelephonyStatsRequest: RecomputeTelephonyStatsRequest, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<number>>;
+    public recomputeTelephonyStats(recomputeTelephonyStatsRequest: RecomputeTelephonyStatsRequest, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<number>>;
+    public recomputeTelephonyStats(recomputeTelephonyStatsRequest: RecomputeTelephonyStatsRequest, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
+        if (recomputeTelephonyStatsRequest === null || recomputeTelephonyStatsRequest === undefined) {
+            throw new Error('Required parameter recomputeTelephonyStatsRequest was null or undefined when calling recomputeTelephonyStats.');
+        }
+
+        let localVarHeaders = this.defaultHeaders;
+
+        let localVarCredential: string | undefined;
+        // authentication (BearerToken) required
+        localVarCredential = this.configuration.lookupCredential('BearerToken');
+        if (localVarCredential) {
+            localVarHeaders = localVarHeaders.set('Authorization', 'Bearer ' + localVarCredential);
+        }
+
+        let localVarHttpHeaderAcceptSelected: string | undefined = options && options.httpHeaderAccept;
+        if (localVarHttpHeaderAcceptSelected === undefined) {
+            // to determine the Accept header
+            const httpHeaderAccepts: string[] = [
+                'application/json'
+            ];
+            localVarHttpHeaderAcceptSelected = this.configuration.selectHeaderAccept(httpHeaderAccepts);
+        }
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+
+        let localVarHttpContext: HttpContext | undefined = options && options.context;
+        if (localVarHttpContext === undefined) {
+            localVarHttpContext = new HttpContext();
+        }
+
+
+        // to determine the Content-Type header
+        const consumes: string[] = [
+            'application/json'
+        ];
+        const httpContentTypeSelected: string | undefined = this.configuration.selectHeaderContentType(consumes);
+        if (httpContentTypeSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Content-Type', httpContentTypeSelected);
+        }
+
+        let responseType_: 'text' | 'json' | 'blob' = 'json';
+        if (localVarHttpHeaderAcceptSelected) {
+            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+                responseType_ = 'text';
+            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+                responseType_ = 'json';
+            } else {
+                responseType_ = 'blob';
+            }
+        }
+
+        let localVarPath = `/api/v1/integration/telephony/stats/recompute`;
+        return this.httpClient.request<number>('post', `${this.configuration.basePath}${localVarPath}`,
+            {
+                context: localVarHttpContext,
+                body: recomputeTelephonyStatsRequest,
                 responseType: <any>responseType_,
                 withCredentials: this.configuration.withCredentials,
                 headers: localVarHeaders,

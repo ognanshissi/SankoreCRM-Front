@@ -486,6 +486,7 @@ model/raise-kyc-review-request.interface.ts
 model/raise-kyc-review-result.interface.ts
 model/reassign-task-request.interface.ts
 model/recalculate-lead-score-result.interface.ts
+model/recompute-telephony-stats-request.interface.ts
 model/reconciliation-gap-page.interface.ts
 model/reconciliation-gap-row.interface.ts
 model/reconciliation-run-summary.interface.ts
@@ -638,6 +639,9 @@ model/telephony-call-context.interface.ts
 model/telephony-candidate.interface.ts
 model/telephony-directory-dto.interface.ts
 model/telephony-directory-entry-dto.interface.ts
+model/telephony-stats-day-dto.interface.ts
+model/telephony-stats-dto.interface.ts
+model/telephony-stats-row-dto.interface.ts
 model/telephony-user-link-dto.interface.ts
 model/temenos-settings.interface.ts
 model/template-diff-dto.interface.ts
