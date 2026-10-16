@@ -61,11 +61,9 @@
         <div class="flex flex-wrap items-center gap-2">
           <div class="flex items-stretch flex-1 min-w-[18rem] rounded-lg border border-slate-200 bg-white">
             <div class="w-40 shrink-0 border-r border-slate-200">
-              <tas-form-field>
                 <tas-select [options]="criterionOptions" optionLabel="label" optionValue="value"
                 [ngModel]="forcedCriterion()" (ngModelChange)="onCriterionChange($event)"
                 aria-label="Champ recherché"></tas-select>
-              </tas-form-field>
             </div>
             <label class="flex items-center gap-2 px-3 flex-1 min-w-0">
               <tas-icon iconName="feather:search" class="text-slate-400 shrink-0" style="font-size:14px"></tas-icon>

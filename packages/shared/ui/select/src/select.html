@@ -1,4 +1,4 @@
-<button (click)="$event.stopPropagation()">
+<div (click)="$event.stopPropagation()">
   <div class="relative">
     <button
       class="relative block justify-between items-center py-2 px-2 text-left w-full rounded-lg mr-6"
@@ -89,7 +89,7 @@
   <!-- List dropdown -->
   @if (isDropdownOpened()) {
   <ul
-    class="absolute z-20 mt-2 border border-gray-300 max-w-60 max-h-60 w-full overflow-auto rounded-md bg-white pb-1 text-base shadow-xl ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm"
+    class="absolute z-20 mt-2 border border-gray-300  max-h-60 overflow-auto rounded-md bg-white pb-1 text-base shadow-xl ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm"
     tabindex="-1"
     role="listbox"
     aria-labelledby="listbox-label"
@@ -131,4 +131,4 @@
   </ul>
 
   }
-</button>
+</div>
