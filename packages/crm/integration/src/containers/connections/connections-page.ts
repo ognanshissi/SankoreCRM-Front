@@ -1,4 +1,4 @@
-import { Component, DestroyRef, computed, inject, input, signal } from '@angular/core';
+import { Component, DestroyRef, OnInit, computed, inject, input, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { HttpErrorResponse } from '@angular/common/http';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -105,7 +105,7 @@ export interface ConnectionGroupHeader {
   templateUrl: './connections-page.html',
   imports: [Button, TasIcon, TasTable, TimeagoPipe],
 })
-export class ConnectionsPage {
+export class ConnectionsPage implements OnInit {
   private readonly _facade = inject(IntegrationFacadeService);
   private readonly _router = inject(Router);
   private readonly _route = inject(ActivatedRoute);
@@ -149,7 +149,7 @@ export class ConnectionsPage {
   public readonly pageIntent = computed(() =>
     this.isInsurance()
       ? 'Les back-offices des assureurs dont vous distribuez les produits.'
-      : 'Les systèmes externes avec lesquels SANKORE échange : core banking, assurance, téléphonie.',
+      : 'Les systèmes externes avec lesquels vous échangez : core banking, assurance, téléphonie.',
   );
 
   public readonly showFamilyTabs = computed(() => this.family() === undefined);
