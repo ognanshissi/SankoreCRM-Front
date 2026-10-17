@@ -1,8 +1,8 @@
 import { EnvironmentConfig } from '@sankore/crm/common';
 
 export const environment: EnvironmentConfig = {
-  production: false,
-  apiUrl: 'http://localhost:5080',
+  production: true,
+  apiUrl: 'https://api-sankore-crm.talisoft.net',
   apiKey: '',
-  ingestUrl: 'https://ingest.sankore-crm.com',
+  ingestUrl: 'https://api-sankore-crm.talisoft.net',
 };

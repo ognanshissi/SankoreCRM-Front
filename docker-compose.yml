@@ -29,9 +29,14 @@ services:
       # Hôte public d'ingestion (webhooks remis aux fournisseurs). Vide → retombe sur
       # l'URL de l'API, ce qui est le comportement attendu en local.
       NG_INGEST_URL: "${NG_INGEST_URL:-}"
-      # Derrière un reverse proxy qui termine TLS, décommenter pour que le rendu voie le
-      # schéma et l'hôte d'origine :
-      # NG_TRUST_PROXY_HEADERS: "x-forwarded-proto,x-forwarded-host"
+      # Traefik termine TLS devant ce conteneur et lui parle en HTTP : sans ceci le rendu
+      # SSR voit `http://` et l'hôte interne, et construit des URL absolues fausses —
+      # redirections vers http, liens canoniques erronés. Activé, @angular/ssr lit
+      # `x-forwarded-proto` / `x-forwarded-host` posés par le proxy.
+      #
+      # À ne laisser actif QUE derrière un proxy de confiance : ces en-têtes sont
+      # falsifiables par le client quand rien ne les réécrit en amont.
+      NG_TRUST_PROXY_HEADERS: "${NG_TRUST_PROXY_HEADERS:-}"
     restart: unless-stopped
     healthcheck:
       # Sonde sur un fichier statique : express.static est monté avant le handler Angular,
