@@ -21,6 +21,14 @@ services:
       # ne sert rien. En déploiement, remplacer par le ou les domaines publics, séparés
       # par des virgules.
       NG_ALLOWED_HOSTS: "${NG_ALLOWED_HOSTS:-localhost}"
+      # URL de l'API, relayée au navigateur par /config.json : le bundle client est
+      # statique et ne lit pas process.env, c'est ce qui rend l'image réutilisable d'un
+      # environnement à l'autre. `host.docker.internal` joint l'API qui tourne sur la
+      # machine hôte ; en déploiement, le domaine public de l'API.
+      NG_API_URL: "${NG_API_URL:-http://localhost:5080}"
+      # Hôte public d'ingestion (webhooks remis aux fournisseurs). Vide → retombe sur
+      # l'URL de l'API, ce qui est le comportement attendu en local.
+      NG_INGEST_URL: "${NG_INGEST_URL:-}"
       # Derrière un reverse proxy qui termine TLS, décommenter pour que le rendu voie le
       # schéma et l'hôte d'origine :
       # NG_TRUST_PROXY_HEADERS: "x-forwarded-proto,x-forwarded-host"
@@ -38,3 +46,13 @@ services:
       timeout: 5s
       start_period: 20s
       retries: 3
+    networks:
+      - sankore-internal
+
+# Clé de premier niveau `networks` (au pluriel) : indentée sous `services`, elle était lue
+# comme un service nommé « network » et Compose refusait tout le fichier. Déclarer le
+# réseau ne suffit pas, il faut aussi l'attacher au service — sinon `web` reste sur le
+# réseau `default` créé automatiquement.
+networks:
+  sankore-internal:
+    driver: bridge

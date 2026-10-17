@@ -47,7 +47,13 @@ ENV PORT=4000
 # par défaut rend le conteneur testable en local ; en déploiement, passer le ou les domaines
 # publics séparés par des virgules (`-e NG_ALLOWED_HOSTS=crm.example.com`).
 ENV NG_ALLOWED_HOSTS=localhost
-ENV NG_API_URL=http://localhost:5000
+
+# URL de l'API, servie au navigateur par `/config.json` (cf. apps/crm/src/server.ts). Pas
+# de valeur par défaut volontairement : non définie, l'app retombe sur celle compilée dans
+# `environment.prod.ts`, alors qu'un défaut erroné silencieux coûte une session de debug.
+# `localhost` ne vaut rien ici — dans le conteneur il désigne le conteneur lui-même.
+#   -e NG_API_URL=https://api.example.com
+# NG_INGEST_URL : hôte public d'ingestion (webhooks remis à des tiers), si distinct.
 
 # Derrière un reverse proxy qui termine TLS, décommenter pour que le rendu voie le schéma et
 # l'hôte d'origine : ENV NG_TRUST_PROXY_HEADERS=x-forwarded-proto,x-forwarded-host

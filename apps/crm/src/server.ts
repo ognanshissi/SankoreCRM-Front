@@ -38,6 +38,28 @@ app.use(
 );
 
 /**
+ * Configuration lue au démarrage par le bundle navigateur (`main.ts`).
+ *
+ * C'est le seul chemin par lequel une variable du conteneur atteint le client : les
+ * routes de l'application sont en `RenderMode.Client`, le rendu a donc lieu dans le
+ * navigateur, qui exécute un bundle statique sans accès à `process.env`. Sans cet
+ * endpoint, l'URL de l'API resterait celle compilée dans l'image.
+ *
+ * Déclaré avant le handler Angular, sinon le `app.use('/**')` ci-dessous l'absorbe.
+ *
+ * La réponse est publique : n'y mettre que des URL, jamais une clé ou un secret. Une
+ * variable absente est omise du JSON (`JSON.stringify` saute les `undefined`), ce qui
+ * laisse `main.ts` retomber sur la valeur compilée.
+ */
+app.get('/config.json', (_req, res) => {
+  res.set('Cache-Control', 'no-store');
+  res.json({
+    apiUrl: process.env['NG_API_URL'],
+    ingestUrl: process.env['NG_INGEST_URL'],
+  });
+});
+
+/**
  * Handle all other requests by rendering the Angular application.
  */
 app.use('/**', (req, res, next) => {
