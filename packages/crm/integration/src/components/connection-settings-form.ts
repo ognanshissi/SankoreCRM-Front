@@ -37,6 +37,8 @@ const ALL_KIND_FIELD_KEYS: ReadonlyArray<string> = [
   ),
 ];
 
+export type ConnectionSettingsSection = 'kind' | 'limits' | 'sync';
+
 export type ConnectionSyncFlowKey = (typeof CONNECTION_SYNC_FLOWS)[number]['key'];
 
 /**
@@ -288,7 +290,7 @@ export function connectionSettingsSchema(kind: () => ConnectionKind | null) {
         </div>
       }
 
-      @if (kindFieldRows().length > 0) {
+      @if (show('kind') && kindFieldRows().length > 0) {
         <div class="flex flex-col gap-4 rounded-lg border border-slate-200 p-4">
           <div>
             <p class="text-sm font-medium text-slate-700">
@@ -347,6 +349,7 @@ export function connectionSettingsSchema(kind: () => ConnectionKind | null) {
         </div>
       }
 
+      @if (show('limits')) {
       <div class="grid grid-cols-2 gap-4">
         @for (row of numericFields(); track row.meta.key) {
           <tas-form-field>
@@ -360,8 +363,9 @@ export function connectionSettingsSchema(kind: () => ConnectionKind | null) {
           </tas-form-field>
         }
       </div>
+      }
 
-      @if (syncFlows().length > 0) {
+      @if (show('sync') && syncFlows().length > 0) {
         <div class="rounded-lg border border-slate-200">
           <button
             tas-text-button
@@ -404,6 +408,16 @@ export class ConnectionSettingsFormComponent {
   public readonly expectedKind = input<ConnectionKind | string | null>(null);
   /** Le système RÉELLEMENT choisi : c'est lui qui décide des champs propres au `$kind`. */
   public readonly kind = input<ConnectionKind | null>(null);
+  /**
+   * Les blocs à rendre. Le drawer de création les répartit dans ses propres étapes
+   * (coordonnées sous le nom, bornes dans « Protection du système externe ») ; l'écran de
+   * la connexion garde les trois à la suite.
+   */
+  public readonly sections = input<ReadonlyArray<ConnectionSettingsSection>>(['kind', 'limits', 'sync']);
+
+  public show(section: ConnectionSettingsSection): boolean {
+    return this.sections().includes(section);
+  }
 
   public readonly expectedKindLabel = computed(() => {
     const kind = this.expectedKind();

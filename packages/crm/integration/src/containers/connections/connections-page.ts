@@ -1,23 +1,16 @@
 import { Component, DestroyRef, computed, inject, input, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { HttpErrorResponse } from '@angular/common/http';
-import { FormsModule } from '@angular/forms';
-import { PageEvent } from '@angular/material/paginator';
 import { ActivatedRoute, Router } from '@angular/router';
-import { ConnectionListDto } from '@sankore/crm-api';
+import { ConnectionHealthDto, ConnectionListDto } from '@sankore/crm-api';
 import { BreadcrumbService, PermissionsService } from '@sankore/crm/common';
 import { Button } from '@talisoft/ui/button';
-import { TasCard } from '@talisoft/ui/card';
-import { TasFormField, TasLabel } from '@talisoft/ui/form-field';
 import { TasIcon } from '@talisoft/ui/icon';
-import { TasSelect } from '@talisoft/ui/select';
 import { SnackbarService } from '@talisoft/ui/snackbar';
 import { TableConfig, TasTable } from '@talisoft/ui/table';
-import { TasTag } from '@talisoft/ui/tag';
 import { TimeagoPipe } from '@talisoft/ui/timeago';
 import { SideDrawerService } from '@talisoft/ui/side-drawer';
-import { catchError, EMPTY, Subject, switchMap } from 'rxjs';
-import { ConnectionHealthBadgeComponent } from '../../components/connection-health-badge';
+import { catchError, EMPTY, finalize, Subject, switchMap } from 'rxjs';
 import {
   integrationErrorMessage,
   IntegrationFacadeService,
@@ -31,29 +24,86 @@ import {
   ConnectionKind,
   ConnectionMode,
 } from '../../data-access/integration-referential';
-import { CreateConnectionDrawer, CreateConnectionDrawerData } from './create-connection-drawer';
+import {
+  CreateConnectionDrawer,
+  CreateConnectionDrawerData,
+  CreateConnectionDrawerResult,
+} from './create-connection-drawer';
+
+/**
+ * Au-delà, un test réussi est montré comme « ancien ». Le serveur n'impose aucun délai —
+ * un test passé débloque l'activation quel que soit son âge — c'est un repère d'écran :
+ * un système qui répondait il y a des mois n'est pas un système qui répond.
+ */
+const TEST_STALE_AFTER_MS = 30 * 24 * 60 * 60 * 1000;
+
+const DATE_FORMAT = new Intl.DateTimeFormat('fr-FR', {
+  day: 'numeric',
+  month: 'short',
+  year: 'numeric',
+});
+
+/** Les trois tuiles d'état, qui sont aussi des filtres. */
+export type ConnectionView = 'live' | 'fix' | 'totest';
+
+type TestState = 'running' | 'fresh' | 'recent' | 'old' | 'never' | 'failed';
+
+const TEST_STATE: Record<TestState, { label: string; tone: string; dot: string }> = {
+  running: { label: 'Test en cours…', tone: 'text-blue-800', dot: 'bg-blue-400 animate-pulse' },
+  fresh: { label: 'Test réussi', tone: 'text-green-800', dot: 'bg-green-700' },
+  recent: { label: 'Test réussi', tone: 'text-green-800', dot: 'bg-green-700' },
+  old: { label: 'Test réussi, mais ancien', tone: 'text-amber-800', dot: 'bg-amber-400' },
+  never: { label: 'Jamais testée', tone: 'text-slate-600', dot: 'bg-slate-300' },
+  failed: { label: 'Test échoué', tone: 'text-functional-error', dot: 'bg-functional-error' },
+};
+
+const FAMILY_TILE: Record<ConnectionFamily, string> = {
+  CoreBanking: 'bg-primary/10 text-primary',
+  Insurance: 'bg-blue-50 text-blue-800',
+  Telephony: 'bg-amber-50 text-amber-800',
+};
+
+export interface ConnectionRow {
+  type: 'row';
+  key: string;
+  connection: ConnectionListDto;
+  name: string;
+  initials: string;
+  tile: string;
+  system: string;
+  mode: string;
+  isTest: boolean;
+  isFirst: boolean;
+  test: TestState;
+  testLabel: string;
+  testTone: string;
+  testDot: string;
+  testNote: string;
+  actionLabel: string;
+  isActionPrimary: boolean;
+  errorDetail: string | null;
+}
+
+export interface ConnectionGroupHeader {
+  type: 'group';
+  key: string;
+  title: string;
+  summary: string;
+}
 
 /**
  * Liste des connexions, montée deux fois : sans famille pour l'écran « Connexions », et
  * avec `family: 'Insurance'` (par les `data` de route) pour l'écran « Assurance ». Un seul
  * écran parce que les deux listes répondent à la même question — laquelle est active, et
  * laquelle est en panne — et que les dupliquer les aurait fait diverger.
+ *
+ * La liste est chargée ENTIÈRE (`listAllConnections`) puis filtrée ici : les tuiles
+ * comptent sur toutes les connexions, quel que soit le filtre, et une page serveur n'en
+ * donnerait qu'une partie. Un tenant en déclare quelques-unes, jamais des centaines.
  */
 @Component({
   templateUrl: './connections-page.html',
-  imports: [
-    FormsModule,
-    Button,
-    TasCard,
-    TasIcon,
-    TasTable,
-    TasTag,
-    TasSelect,
-    TasFormField,
-    TasLabel,
-    TimeagoPipe,
-    ConnectionHealthBadgeComponent,
-  ],
+  imports: [Button, TasIcon, TasTable, TimeagoPipe],
 })
 export class ConnectionsPage {
   private readonly _facade = inject(IntegrationFacadeService);
@@ -67,34 +117,26 @@ export class ConnectionsPage {
   private readonly _permissions = inject(PermissionsService);
   public readonly canManage = this._permissions.can('Integration.Connection.Manage');
 
-  /** Famille imposée par la route. Absente, l'écran laisse choisir la famille en filtre. */
+  /** Famille imposée par la route. Absente, l'écran laisse choisir la famille en onglet. */
   public readonly family = input<ConnectionFamily | undefined>(undefined);
 
   public readonly isLoading = signal(true);
   public readonly connections = signal<ConnectionListDto[]>([]);
-  public readonly totalCount = signal(0);
 
-  public readonly filterFamily = signal<string | null>(null);
-  public readonly filterActive = signal<string | null>(null);
+  public readonly filterFamily = signal<ConnectionFamily | null>(null);
+  public readonly filterView = signal<ConnectionView | null>(null);
 
-  public readonly familyOptions = CONNECTION_FAMILIES.map((f) => ({
-    label: f.label,
-    value: f.value,
-  }));
-
-  public readonly activeOptions = [
-    { label: 'Actives', value: 'true' },
-    { label: 'Inactives', value: 'false' },
-  ];
+  /** Tests lancés depuis cet écran, en cours ou rendus, par id de connexion. */
+  public readonly runningTests = signal<ReadonlySet<string>>(new Set());
+  public readonly testResults = signal<ReadonlyMap<string, ConnectionHealthDto>>(new Map());
 
   public readonly tableConfig = signal<TableConfig>({
-    property: 'id',
+    property: 'key',
     pagination: {
-      serverSide: true,
+      serverSide: false,
       pageIndex: 0,
-      pageSize: 20,
-      pageSizeOptions: [10, 20, 50],
-      totalElements: 0,
+      pageSize: 100,
+      pageSizeOptions: [100],
     },
   });
 
@@ -106,26 +148,123 @@ export class ConnectionsPage {
 
   public readonly pageIntent = computed(() =>
     this.isInsurance()
-      ? 'Déclarez les back-offices des assureurs dont vous distribuez les produits.'
-      : 'Déclarez les systèmes externes avec lesquels SANKORE échange.',
+      ? 'Les back-offices des assureurs dont vous distribuez les produits.'
+      : 'Les systèmes externes avec lesquels SANKORE échange : core banking, assurance, téléphonie.',
   );
 
-  /** Pour une connexion assurance, le nom de la connexion EST le nom de l'assureur. */
-  public readonly nameColumnLabel = computed(() => (this.isInsurance() ? 'Assureur' : 'Nom'));
+  public readonly showFamilyTabs = computed(() => this.family() === undefined);
 
-  public readonly showFamilyColumn = computed(() => this.family() === undefined);
-
-  public readonly hasActiveFilter = computed(
-    () => this.filterActive() !== null || this.filterFamily() !== null,
+  public readonly hasFilter = computed(
+    () => this.filterView() !== null || this.filterFamily() !== null,
   );
+
+  private readonly _testStates = computed(() => {
+    const running = this.runningTests();
+    const results = this.testResults();
+    const now = Date.now();
+    const states = new Map<string, TestState>();
+    for (const c of this.connections()) {
+      const id = c.id ?? '';
+      const result = results.get(id);
+      let state: TestState;
+      if (running.has(id)) state = 'running';
+      else if (result) state = result.isHealthy ? 'fresh' : 'failed';
+      else if (c.lastHealthStatus === false) state = 'failed';
+      else if (c.lastHealthStatus !== true) state = 'never';
+      else {
+        const at = Date.parse(c.lastHealthAt ?? '');
+        state = Number.isFinite(at) && now - at > TEST_STALE_AFTER_MS ? 'old' : 'recent';
+      }
+      states.set(id, state);
+    }
+    return states;
+  });
+
+  private _view(c: ConnectionListDto): ConnectionView | null {
+    const state = this._testStates().get(c.id ?? '');
+    if (state === 'failed') return 'fix';
+    if (state === 'never') return 'totest';
+    return c.isActive ? 'live' : null;
+  }
+
+  public readonly tiles = computed(() => {
+    const all = this.connections();
+    const live = all.filter((c) => this._view(c) === 'live');
+    const fix = all.filter((c) => this._view(c) === 'fix').length;
+    const totest = all.filter((c) => this._view(c) === 'totest').length;
+    const liveTest = live.filter((c) => c.kind === 'Fake').length;
+
+    let liveNote = `${live.length} sur ${all.length}`;
+    if (live.length > 0 && liveTest === live.length) liveNote += ', toutes en recette';
+    else if (liveTest > 0) liveNote += `, dont ${liveTest} en recette`;
+
+    return [
+      { view: 'live' as const, value: live.length, label: 'En service', note: liveNote, tone: 'bg-green-100 text-green-800' },
+      { view: 'fix' as const, value: fix, label: 'À corriger', note: fix ? 'Dernier test en échec' : 'Rien à corriger', tone: 'bg-red-100 text-red-800' },
+      { view: 'totest' as const, value: totest, label: 'À tester', note: totest ? 'Jamais testées, donc inactives' : 'Tout a été testé', tone: 'bg-amber-100 text-amber-800' },
+    ];
+  });
 
   /**
-   * Les connexions actives dont le dernier test a échoué : c'est l'information que
-   * l'exploitant cherche en arrivant, et elle se perdrait dans une colonne de plus.
+   * Des connexions actives, mais toutes sur des simulateurs : rien de réel n'est échangé,
+   * et rien dans la liste ne le dit autrement qu'une colonne « Recette » à lire ligne à ligne.
    */
-  public readonly failingConnections = computed(() =>
-    this.connections().filter((row) => row.isActive && row.lastHealthStatus === false),
+  public readonly onlyTestIsActive = computed(() => {
+    const active = this.connections().filter((c) => c.isActive);
+    return active.length > 0 && active.every((c) => c.kind === 'Fake');
+  });
+
+  public readonly activeCount = computed(
+    () => this.connections().filter((c) => c.isActive).length,
   );
+
+  public readonly tabs = computed(() => {
+    const all = this.connections();
+    return [
+      { value: null, label: 'Toutes', count: all.length },
+      ...CONNECTION_FAMILIES.map((f) => ({
+        value: f.value,
+        label: f.label,
+        count: all.filter((c) => c.family === f.value).length,
+      })),
+    ];
+  });
+
+  private readonly _visible = computed(() =>
+    this.connections().filter(
+      (c) =>
+        (this.filterFamily() === null || c.family === this.filterFamily()) &&
+        (this.filterView() === null || this._view(c) === this.filterView()),
+    ),
+  );
+
+  public readonly shownLabel = computed(() => {
+    const shown = this._visible().length;
+    return `${shown} sur ${this.connections().length} affichée${shown > 1 ? 's' : ''}`;
+  });
+
+  /**
+   * Les lignes de la table, avec une ligne d'en-tête par famille : `tas-table` rend une
+   * liste plate, et le regroupement de la maquette tient dans cette liste plutôt que
+   * dans trois tables, qui auraient chacune leur pagination et leur état vide.
+   */
+  public readonly entries = computed<Array<ConnectionGroupHeader | ConnectionRow>>(() => {
+    const visible = this._visible();
+    const entries: Array<ConnectionGroupHeader | ConnectionRow> = [];
+    for (const family of CONNECTION_FAMILIES) {
+      const rows = visible.filter((c) => c.family === family.value);
+      if (rows.length === 0) continue;
+      const actives = rows.filter((c) => c.isActive).length;
+      entries.push({
+        type: 'group',
+        key: `group-${family.value}`,
+        title: family.label,
+        summary: `${rows.length} connexion${rows.length > 1 ? 's' : ''} · ${actives} active${actives > 1 ? 's' : ''}`,
+      });
+      rows.forEach((c, i) => entries.push(this._row(c, i === 0)));
+    }
+    return entries;
+  });
 
   private readonly _reload$ = new Subject<void>();
 
@@ -136,87 +275,51 @@ export class ConnectionsPage {
       { label: this.isInsurance() ? 'Assurance' : 'Connexions' },
     ]);
 
-    /**
-     * Les chargements passent par un `switchMap` : deux changements de filtre rapprochés
-     * laissaient sinon gagner la réponse du filtre précédent.
-     */
     this._reload$
       .pipe(
         switchMap(() => {
           this.isLoading.set(true);
-          return this._facade
-            .listConnections({
-              family: this._effectiveFamily(),
-              isActive: this.filterActive() === null ? undefined : this.filterActive() === 'true',
-              // L'API d'intégration pagine en 1-based ; `PageEvent.pageIndex` est 0-based.
-              page: this.tableConfig().pagination.pageIndex + 1,
-              pageSize: this.tableConfig().pagination.pageSize,
-            })
-            .pipe(
-              catchError((err: HttpErrorResponse) => {
-                this._snackbar.error(
-                  'Erreur',
-                  integrationErrorMessage(err, 'Impossible de charger les connexions.'),
-                );
-                this.isLoading.set(false);
-                return EMPTY;
-              }),
-            );
+          return this._facade.listAllConnections(this.family()).pipe(
+            catchError((err: HttpErrorResponse) => {
+              this._snackbar.error(
+                'Erreur',
+                integrationErrorMessage(err, 'Impossible de charger les connexions.'),
+              );
+              this.isLoading.set(false);
+              return EMPTY;
+            }),
+          );
         }),
         takeUntilDestroyed(this._destroyRef),
       )
-      .subscribe((result) => {
-        this.connections.set(result.items ?? []);
-        this.totalCount.set(result.totalCount ?? 0);
-        this.tableConfig.update((config) => ({
-          ...config,
-          pagination: { ...config.pagination, totalElements: result.totalCount ?? 0 },
-        }));
+      .subscribe((items) => {
+        this.connections.set(items);
         this.isLoading.set(false);
       });
 
     const params = this._route.snapshot.queryParams;
-    if (params['famille']) this.filterFamily.set(params['famille']);
-    if (params['actif']) this.filterActive.set(params['actif']);
-    const page = Number(params['page']);
-    if (Number.isInteger(page) && page > 1) {
-      this.tableConfig.update((config) => ({
-        ...config,
-        pagination: { ...config.pagination, pageIndex: page - 1 },
-      }));
-    }
+    const famille = params['famille'];
+    if (CONNECTION_FAMILIES.some((f) => f.value === famille)) this.filterFamily.set(famille);
+    const vue = params['vue'];
+    if (vue === 'live' || vue === 'fix' || vue === 'totest') this.filterView.set(vue);
 
     this._reload$.next();
   }
 
-  public familyLabel(family: ConnectionFamily | undefined): string {
-    return family ? CONNECTION_FAMILY_LABELS[family] : '—';
-  }
-
-  public kindLabel(kind: ConnectionKind | undefined): string {
-    return kind ? CONNECTION_KIND_LABELS[kind] : '—';
-  }
-
-  public modeLabel(mode: ConnectionMode | undefined): string {
-    return mode ? CONNECTION_MODE_LABELS[mode] : '—';
-  }
-
-  public onFilterChange(key: 'famille' | 'actif', value: string | null): void {
-    if (key === 'famille') this.filterFamily.set(value);
-    else this.filterActive.set(value);
-
-    this.tableConfig.update((config) => ({
-      ...config,
-      pagination: { ...config.pagination, pageIndex: 0 },
-    }));
+  public pickTab(family: ConnectionFamily | null): void {
+    this.filterFamily.set(family);
     this._applyFilters();
   }
 
-  public onPageChange(event: PageEvent): void {
-    this.tableConfig.update((config) => ({
-      ...config,
-      pagination: { ...config.pagination, pageIndex: event.pageIndex, pageSize: event.pageSize },
-    }));
+  /** Une tuile déjà choisie se désélectionne au second clic, comme dans la maquette. */
+  public pickView(view: ConnectionView): void {
+    this.filterView.update((current) => (current === view ? null : view));
+    this._applyFilters();
+  }
+
+  public clearFilters(): void {
+    this.filterFamily.set(null);
+    this.filterView.set(null);
     this._applyFilters();
   }
 
@@ -229,31 +332,112 @@ export class ConnectionsPage {
     this._router.navigate(['/settings/integrations/connections', connection.id]);
   }
 
-  public openCreateDrawer(): void {
-    const ref = this._sideDrawerService.open<string, CreateConnectionDrawerData, CreateConnectionDrawer>(
-      CreateConnectionDrawer,
-      {
-        data: { family: this.family() ?? null },
-        width: '100%',
-        height: '100%',
-        panelClass: 'side-drawer-panel',
-      },
-    );
+  /**
+   * Le test est ENREGISTRÉ par le serveur (date, résultat, détail) : on recharge la liste
+   * après coup pour afficher son état réel, et on garde la réponse pour son détail, que
+   * la liste ne porte pas.
+   */
+  public runTest(connection: ConnectionListDto): void {
+    const id = connection.id;
+    if (!id || this.runningTests().has(id)) return;
 
-    // Patron « création puis édition » : le drawer crée le brouillon inactif et rend son
-    // id, l'écran d'édition porte le reste du paramétrage.
-    ref.closed.subscribe((connectionId) => {
-      if (connectionId) {
-        this._router.navigate(['/settings/integrations/connections', connectionId]);
+    this.runningTests.update((set) => new Set(set).add(id));
+    this._facade
+      .checkConnectionHealth(id)
+      .pipe(
+        catchError((err: HttpErrorResponse) => {
+          this._snackbar.error(
+            'Erreur',
+            integrationErrorMessage(err, 'Impossible de lancer le test.'),
+          );
+          return EMPTY;
+        }),
+        finalize(() =>
+          this.runningTests.update((set) => {
+            const next = new Set(set);
+            next.delete(id);
+            return next;
+          }),
+        ),
+        takeUntilDestroyed(this._destroyRef),
+      )
+      .subscribe((result) => {
+        this.testResults.update((map) => new Map(map).set(id, result));
+        this._reload$.next();
+      });
+  }
+
+  public openCreateDrawer(): void {
+    const ref = this._sideDrawerService.open<
+      CreateConnectionDrawerResult,
+      CreateConnectionDrawerData,
+      CreateConnectionDrawer
+    >(CreateConnectionDrawer, {
+      data: { family: this.family() ?? null },
+      width: '100%',
+      height: '100%',
+      panelClass: 'side-drawer-panel',
+    });
+
+    // La connexion existe dès l'écran de succès du drawer : fermé par « Retour à la
+    // liste », il rend quand même son id pour que la liste la montre.
+    ref.closed.subscribe((result) => {
+      if (!result) return;
+      if (result.openDetail) {
+        this._router.navigate(['/settings/integrations/connections', result.connectionId]);
+      } else {
+        this._reload$.next();
       }
     });
   }
 
-  private _effectiveFamily(): ConnectionFamily | undefined {
-    const pinned = this.family();
-    if (pinned) return pinned;
-    const picked = this.filterFamily();
-    return picked ? (picked as ConnectionFamily) : undefined;
+  private _row(c: ConnectionListDto, isFirst: boolean): ConnectionRow {
+    const id = c.id ?? '';
+    const kind = c.kind as ConnectionKind | undefined;
+    const family = (c.family ?? 'CoreBanking') as ConnectionFamily;
+    const test = this._testStates().get(id) ?? 'never';
+    const result = this.testResults().get(id);
+    const system = kind ? CONNECTION_KIND_LABELS[kind] : '—';
+    const words = (kind === 'Fake' ? CONNECTION_FAMILY_LABELS[family] : system)
+      .replace('®Suite', '')
+      .split(/\s+/)
+      .filter(Boolean);
+    const lastAt = c.lastHealthAt ? DATE_FORMAT.format(new Date(c.lastHealthAt)) : '';
+
+    const notes: Record<TestState, string> = {
+      running: 'Connexion au système…',
+      fresh: 'À l’instant',
+      recent: lastAt ? `Le ${lastAt}` : '',
+      old: `Le ${lastAt} · ${c.isActive ? 'à refaire' : 'à refaire avant la mise en service'}`,
+      never: '',
+      failed: result ? 'À l’instant' : lastAt ? `Le ${lastAt}` : '',
+    };
+
+    return {
+      type: 'row',
+      key: id,
+      connection: c,
+      name: c.name || system,
+      initials: words.map((w) => w[0]).slice(0, 2).join('').toUpperCase(),
+      tile: FAMILY_TILE[family],
+      system: kind === 'Fake' ? `Simulateur ${CONNECTION_FAMILY_LABELS[family].toLowerCase()}` : system,
+      mode: c.mode ? CONNECTION_MODE_LABELS[c.mode as ConnectionMode] : '—',
+      isTest: kind === 'Fake',
+      isFirst,
+      test,
+      testLabel: TEST_STATE[test].label,
+      testTone: TEST_STATE[test].tone,
+      testDot: TEST_STATE[test].dot,
+      testNote: notes[test],
+      actionLabel:
+        test === 'never' ? 'Lancer le premier test' : test === 'failed' ? 'Relancer le test' : 'Tester',
+      isActionPrimary: test === 'never' || test === 'failed',
+      errorDetail:
+        test === 'failed'
+          ? result?.detail ||
+            'Le système n’a pas répondu comme attendu. Vérifiez l’adresse du service et les identifiants, puis relancez le test.'
+          : null,
+    };
   }
 
   private _applyFilters(): void {
@@ -261,14 +445,14 @@ export class ConnectionsPage {
       relativeTo: this._route,
       queryParams: {
         famille: this.family() ? null : this.filterFamily(),
-        actif: this.filterActive(),
-        page: this.tableConfig().pagination.pageIndex + 1,
+        vue: this.filterView(),
+        // Les anciens paramètres de l'écran précédent ne filtrent plus rien.
+        actif: null,
+        page: null,
       },
       queryParamsHandling: 'merge',
       replaceUrl: true,
     });
-
-    this._reload$.next();
   }
 }
 

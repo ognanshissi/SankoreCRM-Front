@@ -98,7 +98,7 @@
     </tas-card>
   } @else if (!isLoading() && rows().length === 0) {
     <tas-card class="block">
-      <div class="p-10 text-center">
+      <div class="p-10 flex flex-col items-center text-center">
         <tas-icon iconName="feather:package" class="text-slate-300" style="font-size:28px"></tas-icon>
         <p class="mt-2 text-sm font-medium text-slate-700">
           {{ hasFilters() ? 'Aucun produit pour ces filtres' : 'Aucun produit détenu' }}

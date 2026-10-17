@@ -62,18 +62,18 @@ export const CONNECTION_FAMILY_LABELS: Record<ConnectionFamily, string> = {
  */
 export const CONNECTION_KINDS_BY_FAMILY: Record<
   ConnectionFamily,
-  ReadonlyArray<{ value: ConnectionKind; label: string }>
+  ReadonlyArray<{ value: ConnectionKind; label: string; description: string }>
 > = {
   CoreBanking: [
-    { value: 'Temenos', label: 'Temenos' },
-    { value: 'Amplitude', label: 'Amplitude' },
-    { value: 'Sab', label: 'SAB' },
-    { value: 'PerfectVision', label: 'Perfect Vision' },
-    { value: 'Fake', label: 'Simulateur (recette)' },
+    { value: 'Temenos', label: 'Temenos', description: '' },
+    { value: 'Amplitude', label: 'Amplitude', description: 'Sopra Banking' },
+    { value: 'Sab', label: 'SAB', description: '' },
+    { value: 'PerfectVision', label: 'Perfect Vision', description: 'Version 6 et suivantes' },
+    { value: 'Fake', label: 'Simulateur (recette)', description: 'Pour la recette, sans données réelles' },
   ],
   Insurance: [
-    { value: 'Orass', label: 'ORASS®Suite' },
-    { value: 'Fake', label: 'Simulateur (recette)' },
+    { value: 'Orass', label: 'ORASS®Suite', description: 'Gestion des contrats d’assurance' },
+    { value: 'Fake', label: 'Simulateur (recette)', description: 'Pour la recette, sans données réelles' },
   ],
   // Plus vide : le formulaire saisit désormais les champs propres au `$kind`
   // (`CONNECTION_KIND_FIELDS` ci-dessous), ce qui lève les deux blocages que cette liste
@@ -86,8 +86,8 @@ export const CONNECTION_KINDS_BY_FAMILY: Record<
   //    croyait cœur bancaire. Il est maintenant DÉDUIT de la famille de la connexion par
   //    `connectionSettingsToDto`, pour les trois familles.
   Telephony: [
-    { value: 'Ringover', label: 'Ringover' },
-    { value: 'Fake', label: 'Simulateur (recette)' },
+    { value: 'Ringover', label: 'Ringover', description: 'Standard téléphonique cloud' },
+    { value: 'Fake', label: 'Simulateur (recette)', description: 'Pour la recette, sans appels réels' },
   ],
 };
 

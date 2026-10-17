@@ -1,124 +1,308 @@
 <tas-side-drawer>
   <tas-drawer-title>
-    <TasTitle class="text-lg">Déclarer une connexion</TasTitle>
+    @if (createdId()) {
+      <TasTitle class="text-lg">Connexion déclarée</TasTitle>
+      <p class="text-sm text-slate-500">Encore trois étapes avant de l’utiliser.</p>
+    } @else {
+      <TasTitle class="text-lg">Déclarer une connexion</TasTitle>
+      <p class="text-sm text-slate-500">
+        Trois choix suffisent. Les identifiants se saisissent ensuite.
+      </p>
+    }
   </tas-drawer-title>
 
   <tas-drawer-content>
-    <form [formRoot]="formSchema" class="flex flex-col gap-6">
-      <section class="flex flex-col gap-5">
-        <p class="text-sm text-slate-500">
-          La famille et le système ne se changent plus ensuite : un autre système est une autre
-          connexion. Le reste du paramétrage se fait sur l'écran de la connexion.
-        </p>
+    @if (createdId()) {
+      <div class="flex flex-col gap-6">
+        <div class="flex items-center gap-4 rounded-2xl bg-green-50 p-4">
+          <span
+            class="flex size-12 shrink-0 items-center justify-center rounded-xl bg-green-100 text-green-800"
+            aria-hidden="true"
+          >
+            <tas-icon iconName="feather:check" style="font-size: 22px"></tas-icon>
+          </span>
+          <div>
+            <p class="font-semibold text-slate-800">{{ createdName() }} est déclarée</p>
+            <p class="text-sm text-slate-500">
+              Elle reste inactive tant qu’elle n’a pas réussi un test.
+            </p>
+          </div>
+        </div>
 
-        <div class="grid grid-cols-2 gap-4">
-          @if (data.family) {
-            <div>
-              <p class="text-sm text-slate-500 mb-1">Famille</p>
-              <p class="text-sm font-medium text-slate-800">{{ selectedFamilyLabel() }}</p>
-              <p class="text-xs text-slate-400 mt-1">{{ familyDescription() }}</p>
+        <section class="flex flex-col gap-2.5">
+          <h3 class="text-sm font-semibold text-slate-800">Pour la mettre en service</h3>
+          <ol class="flex flex-col gap-2.5">
+            @for (step of nextSteps(); track step.title; let i = $index) {
+              <li class="flex items-center gap-3.5 rounded-2xl bg-slate-50 px-4 py-3.5">
+                <span
+                  class="flex size-7 shrink-0 items-center justify-center rounded-full text-sm font-semibold"
+                  [class]="i === 0 ? 'bg-primary text-white' : 'bg-primary/10 text-primary'"
+                  aria-hidden="true"
+                  >{{ i + 1 }}</span
+                >
+                <div>
+                  <p class="text-sm font-medium text-slate-800">{{ step.title }}</p>
+                  <p class="text-xs text-slate-500">{{ step.description }}</p>
+                </div>
+              </li>
+            }
+          </ol>
+        </section>
+      </div>
+    } @else {
+      <form [formRoot]="formSchema" class="flex flex-col gap-7">
+        <section class="flex flex-col gap-2.5">
+          <h3 class="flex items-center gap-2.5 text-sm font-semibold text-slate-800">
+            <ng-container
+              *ngTemplateOutlet="stepMark; context: { $implicit: 1, done: !!selectedFamily() }"
+            ></ng-container>
+            Que voulez-vous relier ?
+          </h3>
+          <div role="radiogroup" aria-label="Famille" class="grid grid-cols-3 gap-2.5">
+            @for (family of families(); track family.value) {
+              <button
+                type="button"
+                role="radio"
+                [attr.aria-checked]="family.isSelected"
+                [attr.aria-disabled]="data.family ? true : null"
+                (click)="pickFamily(family.value)"
+                class="flex flex-col gap-2 rounded-2xl p-3.5 text-left transition-colors"
+                [class]="
+                  family.isSelected
+                    ? 'border-2 border-primary bg-primary/5'
+                    : 'border border-slate-200 bg-white hover:border-slate-300'
+                "
+              >
+                <span
+                  class="flex size-9 items-center justify-center rounded-xl"
+                  [class]="family.tile"
+                  aria-hidden="true"
+                >
+                  <tas-icon [iconName]="family.icon" style="font-size: 16px"></tas-icon>
+                </span>
+                <span class="text-sm font-semibold text-slate-800">{{ family.label }}</span>
+                <span class="text-xs leading-snug text-slate-500">{{ family.description }}</span>
+              </button>
+            }
+          </div>
+        </section>
+
+        @if (selectedFamily()) {
+          <section class="flex flex-col gap-2.5">
+            <h3 class="flex items-center gap-2.5 text-sm font-semibold text-slate-800">
+              <ng-container
+                *ngTemplateOutlet="stepMark; context: { $implicit: 2, done: !!selectedKind() }"
+              ></ng-container>
+              Quel système ?
+            </h3>
+            <div role="radiogroup" aria-label="Système" class="flex flex-col gap-2">
+              @for (system of systems(); track system.value) {
+                <button
+                  type="button"
+                  role="radio"
+                  [attr.aria-checked]="system.isSelected"
+                  (click)="pickSystem(system.value)"
+                  class="flex items-center gap-3 rounded-xl px-3.5 py-3 text-left transition-colors"
+                  [class]="
+                    system.isSelected
+                      ? 'border-2 border-primary bg-primary/5'
+                      : 'border border-slate-200 bg-white hover:border-slate-300'
+                  "
+                >
+                  <span
+                    class="flex size-[18px] shrink-0 items-center justify-center rounded-full border-2"
+                    [class]="system.isSelected ? 'border-primary' : 'border-slate-400'"
+                    aria-hidden="true"
+                  >
+                    @if (system.isSelected) {
+                      <span class="size-2 rounded-full bg-primary"></span>
+                    }
+                  </span>
+                  <span class="flex flex-1 flex-col leading-snug">
+                    <span class="text-sm font-medium text-slate-800">{{ system.label }}</span>
+                    @if (system.description) {
+                      <span class="text-xs text-slate-500">{{ system.description }}</span>
+                    }
+                  </span>
+                  <span
+                    class="rounded-full px-2.5 py-0.5 text-xs font-semibold"
+                    [class]="system.isTest ? 'bg-slate-100 text-slate-700' : 'bg-primary/10 text-primary'"
+                    >{{ system.isTest ? 'Recette' : 'Production' }}</span
+                  >
+                </button>
+              }
             </div>
-          } @else {
+            <p class="flex items-center gap-2 text-xs text-slate-500">
+              <tas-icon iconName="feather:lock" style="font-size: 13px" aria-hidden="true"></tas-icon>
+              La famille et le système ne se changent plus après la déclaration.
+            </p>
+          </section>
+        }
+
+        @if (selectedKind()) {
+          <section class="flex flex-col gap-4">
+            <h3 class="flex items-center gap-2.5 text-sm font-semibold text-slate-800">
+              <ng-container
+                *ngTemplateOutlet="stepMark; context: { $implicit: 3, done: isNameDone() }"
+              ></ng-container>
+              Comment l’appeler ?
+            </h3>
+
             <tas-form-field>
-              <tas-label>Famille <span class="text-functional-error">*</span></tas-label>
-              <tas-select
-                [options]="familyOptions"
-                optionLabel="label"
-                optionValue="value"
-                placeholder="Choisissez une famille"
-                [formField]="formSchema.family"
-              ></tas-select>
-              @if (formSchema.family().touched() && formSchema.family().invalid()) {
-                <tas-error>{{ formSchema.family().errors()[0].message }}</tas-error>
-              } @else if (familyDescription()) {
-                <tas-hint>{{ familyDescription() }}</tas-hint>
+              <tas-label>Nom de la connexion <span class="text-functional-error">*</span></tas-label>
+              <input tasInput type="text" [formField]="formSchema.name" />
+              @if (formSchema.name().touched() && formSchema.name().invalid()) {
+                <tas-error>{{ formSchema.name().errors()[0].message }}</tas-error>
+              } @else if (isNameSuggested()) {
+                <tas-hint>Proposé à partir du système. Vous pouvez le modifier.</tas-hint>
+              } @else {
+                <tas-hint>Le nom sous lequel vos équipes reconnaîtront cette connexion.</tas-hint>
               }
             </tas-form-field>
-          }
 
-          <tas-form-field>
-            <tas-label>Système <span class="text-functional-error">*</span></tas-label>
-            <tas-select
-              [options]="kindOptions()"
-              optionLabel="label"
-              optionValue="value"
-              placeholder="Choisissez un système"
-              [formField]="formSchema.kind"
-            ></tas-select>
-            @if (formSchema.kind().touched() && formSchema.kind().invalid()) {
-              <tas-error>{{ formSchema.kind().errors()[0].message }}</tas-error>
+            <div class="flex flex-col gap-2">
+              <p class="text-sm font-medium text-slate-800">Mode d’échange</p>
+              <div role="radiogroup" aria-label="Mode d’échange" class="grid grid-cols-3 gap-2">
+                @for (mode of modes; track mode.value) {
+                  <button
+                    type="button"
+                    role="radio"
+                    [attr.aria-checked]="selectedMode() === mode.value"
+                    (click)="pickMode(mode.value)"
+                    class="rounded-xl px-3 py-2 text-sm font-medium transition-colors"
+                    [class]="
+                      selectedMode() === mode.value
+                        ? 'border-2 border-primary bg-primary/5 text-primary'
+                        : 'border border-slate-200 bg-white text-slate-700 hover:border-slate-300'
+                    "
+                  >
+                    {{ mode.label }}
+                  </button>
+                }
+              </div>
+              @for (mode of modes; track mode.value) {
+                @if (selectedMode() === mode.value) {
+                  <p class="rounded-xl bg-slate-50 px-3.5 py-3 text-sm text-slate-600">
+                    {{ mode.description }}
+                    @if (mode.value === 'Relay') {
+                      L’agent se rattache lui-même à la connexion lors de son enrôlement : vous
+                      générerez son jeton depuis l’écran de la connexion.
+                    }
+                  </p>
+                }
+              }
+            </div>
+
+            <connection-settings-form
+              [fields]="formSchema.settings"
+              [family]="settingsFamily()"
+              [mode]="selectedMode()"
+              [kind]="selectedKind()"
+              [sections]="['kind']"
+            ></connection-settings-form>
+          </section>
+
+          <section class="overflow-hidden rounded-2xl border border-slate-200">
+            <button
+              type="button"
+              class="flex w-full items-center gap-3 px-4 py-3.5 text-left"
+              [attr.aria-expanded]="isProtectionOpen()"
+              (click)="toggleProtection()"
+            >
+              <span class="flex flex-1 flex-col leading-snug">
+                <span class="flex flex-wrap items-center gap-2 text-sm font-semibold text-slate-800">
+                  Protection du système externe
+                  @if (isProtectionInvalid()) {
+                    <span class="rounded-full bg-red-50 px-2 py-px text-xs font-medium text-red-800"
+                      >À corriger</span
+                    >
+                  } @else if (isProtectionDefault()) {
+                    <span class="rounded-full bg-green-100 px-2 py-px text-xs font-medium text-green-800"
+                      >Valeurs recommandées</span
+                    >
+                  } @else {
+                    <span class="rounded-full bg-amber-100 px-2 py-px text-xs font-medium text-amber-800"
+                      >Personnalisé</span
+                    >
+                  }
+                </span>
+                <span class="text-xs text-slate-500">{{ protectionSummary() }}</span>
+              </span>
+              <span class="text-sm font-medium text-primary">{{
+                isProtectionOpen() ? 'Replier' : 'Modifier'
+              }}</span>
+            </button>
+
+            @if (isProtectionOpen()) {
+              <div class="flex flex-col gap-4 px-4 pb-4">
+                <connection-settings-form
+                  [fields]="formSchema.settings"
+                  [family]="settingsFamily()"
+                  [mode]="selectedMode()"
+                  [kind]="selectedKind()"
+                  [sections]="['limits']"
+                ></connection-settings-form>
+                <button
+                  tas-outlined-button
+                  color="primary"
+                  type="button"
+                  class="self-start"
+                  [disabled]="isProtectionDefault()"
+                  (click)="resetProtection()"
+                >
+                  Revenir aux valeurs recommandées
+                </button>
+              </div>
             }
-          </tas-form-field>
-        </div>
+          </section>
 
-        <div class="grid grid-cols-2 gap-4">
-          <tas-form-field>
-            <tas-label>Mode d'échange <span class="text-functional-error">*</span></tas-label>
-            <tas-select
-              [options]="modeOptions"
-              optionLabel="label"
-              optionValue="value"
-              placeholder="Choisissez un mode"
-              [formField]="formSchema.mode"
-            ></tas-select>
-            @if (formSchema.mode().touched() && formSchema.mode().invalid()) {
-              <tas-error>{{ formSchema.mode().errors()[0].message }}</tas-error>
-            } @else if (modeDescription()) {
-              <tas-hint>{{ modeDescription() }}</tas-hint>
-            }
-          </tas-form-field>
-
-          <tas-form-field>
-            <tas-label>Nom <span class="text-functional-error">*</span></tas-label>
-            <input
-              tasInput
-              type="text"
-              placeholder="ex: Core banking production"
-              [formField]="formSchema.name"
-            />
-            @if (formSchema.name().touched() && formSchema.name().invalid()) {
-              <tas-error>{{ formSchema.name().errors()[0].message }}</tas-error>
-            } @else {
-              <tas-hint>Le nom sous lequel vos équipes reconnaîtront cette connexion.</tas-hint>
-            }
-          </tas-form-field>
-        </div>
-
-        @if (selectedMode() === 'Relay') {
-          <p class="text-sm text-slate-600">
-            En mode Agent relais, l'agent se rattache lui-même à la connexion lors de son
-            enrôlement : vous générerez son jeton depuis l'écran de la connexion.
-          </p>
+          <connection-settings-form
+            [fields]="formSchema.settings"
+            [family]="settingsFamily()"
+            [mode]="selectedMode()"
+            [kind]="selectedKind()"
+            [sections]="['sync']"
+          ></connection-settings-form>
         }
-      </section>
-
-      <section>
-        <h2 class="text-sm font-semibold text-slate-700 mb-1">Réglages techniques</h2>
-        <p class="text-sm text-slate-500 mb-4">
-          Ces valeurs de départ protègent le système externe d'une rafale d'appels. Elles restent
-          modifiables ensuite.
-        </p>
-        <connection-settings-form
-          [fields]="formSchema.settings"
-          [family]="selectedFamily()"
-          [mode]="selectedMode()"
-          [kind]="selectedKind()"
-        ></connection-settings-form>
-      </section>
-    </form>
+      </form>
+    }
   </tas-drawer-content>
 
   <tas-drawer-action>
-    <button tas-outlined-button color="primary" type="button" (click)="close()">Annuler</button>
-    <button
-      tas-raised-button
-      color="primary"
-      type="button"
-      (click)="handleSubmit()"
-      [disabled]="formSchema().invalid() || formSchema().submitting()"
-      [isLoading]="formSchema().submitting()"
-    >
-      Déclarer la connexion
-    </button>
+    @if (createdId()) {
+      <button tas-outlined-button color="primary" type="button" (click)="close()">
+        Retour à la liste
+      </button>
+      <button tas-raised-button color="primary" type="button" (click)="openDetail()">
+        Renseigner les identifiants
+      </button>
+    } @else {
+      <span class="mr-auto text-xs text-slate-500">{{ footHint() }}</span>
+      <button tas-outlined-button color="primary" type="button" (click)="close()">Annuler</button>
+      <button
+        tas-raised-button
+        color="primary"
+        type="button"
+        (click)="handleSubmit()"
+        [disabled]="formSchema().invalid() || formSchema().submitting()"
+        [isLoading]="formSchema().submitting()"
+      >
+        Déclarer la connexion
+      </button>
+    }
   </tas-drawer-action>
 </tas-side-drawer>
+
+<ng-template #stepMark let-n let-done="done">
+  <span
+    class="flex size-6 items-center justify-center rounded-full text-xs font-semibold"
+    [class]="done ? 'bg-green-100 text-green-800' : 'bg-primary text-white'"
+    aria-hidden="true"
+  >
+    @if (done) {
+      <tas-icon iconName="feather:check" style="font-size: 12px"></tas-icon>
+    } @else {
+      {{ n }}
+    }
+  </span>
+</ng-template>
