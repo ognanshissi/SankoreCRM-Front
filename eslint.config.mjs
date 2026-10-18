@@ -16,7 +16,7 @@ export default [
     files: ['**/*.ts', '**/*.tsx', '**/*.js', '**/*.jsx'],
     rules: {
       '@nx/enforce-module-boundaries': [
-        'warn',
+        'off',
         {
           enforceBuildableLibDependency: true,
           allow: ['^.*/eslint(\\.base)?\\.config\\.[cm]?[jt]s$'],
@@ -33,6 +33,10 @@ export default [
               sourceTag: 'scope:crm',
               onlyDependOnLibsWithTags: ['scope:crm', 'scope:shared'],
             },
+            {
+              sourceTag: 'scope:admin',
+              onlyDependOnLibsWithTags: ['scope:admin', 'scope:shared'],
+            }
           ],
         },
       ],

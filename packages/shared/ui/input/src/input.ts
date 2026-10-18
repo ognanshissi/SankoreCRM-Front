@@ -1,6 +1,5 @@
 import { CommonModule } from '@angular/common';
 import { Component, ElementRef, inject } from '@angular/core';
-// eslint-disable-next-line @nx/enforce-module-boundaries
 import { AbstractFormFieldControl } from '@talisoft/ui/form-field';
 
 /**
