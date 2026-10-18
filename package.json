@@ -6,7 +6,8 @@
     "start": "npx nx run crm:serve:development --port 4222",
     "ui:watch": "npx nx run ui:build:development --watch",
     "ui:build": "npx nx run ui:build:development --verbose",
-    "openapi-generator": "npx @openapitools/openapi-generator-cli generate --generator-key sankoreAPI --skip-validate-spec --verbose"
+    "openapi-generator": "npx @openapitools/openapi-generator-cli generate --generator-key sankoreAPI --skip-validate-spec --verbose",
+    "start:admin": "npx nx run admin:serve:development --port 4223"
   },
   "private": true,
   "dependencies": {
