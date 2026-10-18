@@ -104,6 +104,7 @@ export * from './close-lead-request.interface';
 export * from './close-opportunity-request.interface';
 export * from './close-opportunity-response.interface';
 export * from './company-info-dto.interface';
+export * from './company-logo-response.interface';
 export * from './compatibility-factors.interface';
 export * from './complaint-dto.interface';
 export * from './complaint-report-dto.interface';

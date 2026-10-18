@@ -1,4 +1,5 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
+import { HttpErrorResponse } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
 import { form, FormField, FormRoot, required, submit } from '@angular/forms/signals';
 import { catchError, EMPTY, firstValueFrom } from 'rxjs';
@@ -12,6 +13,9 @@ import { TasSpinner } from '@talisoft/ui/spinner';
 import { CompanyInfoApiService, CompanyInfoDto, UpdateCompanyInfoCommandDefaultLanguageEnum } from '@sankore/crm-api';
 import { SnackbarService } from '@talisoft/ui/snackbar';
 import { BreadcrumbService, TenantProvider, PermissionsService } from '@sankore/crm/common';
+
+const LOGO_MAX_BYTES = 1024 * 1024;
+const LOGO_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
 
 class CompanyFormModel {
   public name!: string;
@@ -61,6 +65,17 @@ export class CompanyPage {
 
   public isLoading = signal(true);
   public isSaving = signal(false);
+  public isLogoBusy = signal(false);
+  /** Vrai quand l'aperçu ne se charge pas : une URL saisie à la main peut ne mener nulle part. */
+  public logoBroken = signal(false);
+
+  public readonly logoUrl = computed(() => this.formSchema.logoUrl().value());
+  /**
+   * Le logo vient-il d'un fichier déposé ? Reconnu à l'adresse de la route publique, la seule que
+   * le serveur écrit. Une adresse externe saisie à la main se modifie dans le champ ; un fichier
+   * déposé se remplace ou se retire.
+   */
+  public readonly isUploadedLogo = computed(() => this.logoUrl().includes('/public/branding/'));
 
   public updateModel = signal(new CompanyFormModel());
   public formSchema = form(this.updateModel, (schema) => {
@@ -123,6 +138,65 @@ export class CompanyPage {
       this._snackbarService.success('Succès', 'Informations mises à jour.');
       this.isSaving.set(false);
     });
+  }
+
+  public onLogoSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    // Remis à zéro tout de suite : choisir deux fois le même fichier doit relancer l'envoi.
+    input.value = '';
+    if (!file) return;
+
+    // Contrôles de confort seulement : le serveur relit le type dans les octets et refuse le reste.
+    if (!LOGO_TYPES.includes(file.type)) {
+      this._snackbarService.error('Format non pris en charge', 'Le logo doit être une image PNG, JPG ou WebP.');
+      return;
+    }
+    if (file.size > LOGO_MAX_BYTES) {
+      this._snackbarService.error('Logo trop lourd', 'Le logo ne peut pas dépasser 1 Mo.');
+      return;
+    }
+
+    this.isLogoBusy.set(true);
+    this._companyInfoApiService
+      .uploadCompanyLogo(file)
+      .pipe(
+        catchError((err: HttpErrorResponse) => {
+          this._snackbarService.error('Logo non enregistré', err.error?.detail ?? 'Le logo n’a pas pu être envoyé.');
+          this.isLogoBusy.set(false);
+          return EMPTY;
+        }),
+      )
+      .subscribe((res) => {
+        // Reporté dans le formulaire : sans cela, « Enregistrer » renverrait l'ancienne adresse et
+        // effacerait le logo qui vient d'être déposé.
+        this._setLogoUrl(res.logoUrl ?? '');
+        this.isLogoBusy.set(false);
+        this._snackbarService.success('Logo mis à jour', 'Il apparaît désormais dans les e-mails envoyés.');
+      });
+  }
+
+  public removeLogo(): void {
+    this.isLogoBusy.set(true);
+    this._companyInfoApiService
+      .deleteCompanyLogo()
+      .pipe(
+        catchError(() => {
+          this._snackbarService.error('Erreur', 'Le logo n’a pas pu être retiré.');
+          this.isLogoBusy.set(false);
+          return EMPTY;
+        }),
+      )
+      .subscribe(() => {
+        this._setLogoUrl('');
+        this.isLogoBusy.set(false);
+        this._snackbarService.success('Logo retiré', '');
+      });
+  }
+
+  private _setLogoUrl(url: string): void {
+    this.logoBroken.set(false);
+    this.updateModel.update((m) => Object.assign(new CompanyFormModel(), m, { logoUrl: url }));
   }
 
   public onColorPickerChange(field: 'primaryColor' | 'secondaryColor', hex: string): void {

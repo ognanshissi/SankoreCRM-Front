@@ -3809,6 +3809,103 @@
         }
       }
     },
+    "/api/v1/company-info/logo": {
+      "put": {
+        "tags": [
+          "Company Info"
+        ],
+        "summary": "Remplace le logo de l'institution (PNG, JPG ou WebP, 1 Mo maximum).",
+        "operationId": "UploadCompanyLogo",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "required": [
+                  "file"
+                ],
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                }
+              },
+              "encoding": {
+                "file": {
+                  "style": "form"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CompanyLogoResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Company Info"
+        ],
+        "summary": "Retire le logo déposé.",
+        "operationId": "DeleteCompanyLogo",
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        }
+      }
+    },
+    "/api/v1/public/branding/{tenantId}/logo": {
+      "get": {
+        "tags": [
+          "Company Info"
+        ],
+        "summary": "Le logo d'une institution, pour l'affichage (application, page de connexion, e-mails).",
+        "operationId": "GetPublicCompanyLogo",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
     "/api/v1/compliance-settings": {
       "get": {
         "tags": [
@@ -28010,6 +28107,16 @@
             "nullable": true
           },
           "defaultLanguage": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "CompanyLogoResponse": {
+        "type": "object",
+        "properties": {
+          "logoUrl": {
             "type": "string",
             "nullable": true
           }

@@ -41,15 +41,58 @@
           />
         </tas-form-field>
 
-        <tas-form-field>
-          <tas-label>URL du logo</tas-label>
-          <input
-            tasInput
-            type="url"
-            placeholder="https://example.com/logo.png"
-            [formField]="formSchema.logoUrl"
-          />
-        </tas-form-field>
+        <div class="flex flex-col gap-2">
+          <p class="text-sm font-medium text-slate-700">Logo</p>
+          <div class="flex flex-wrap items-center gap-4">
+            <div
+              class="flex h-20 w-40 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-slate-50"
+            >
+              @if (isLogoBusy()) {
+                <tas-spinner size="6" class="text-primary"></tas-spinner>
+              } @else if (logoUrl() && !logoBroken()) {
+                <img
+                  [src]="logoUrl()"
+                  alt="Logo de l'organisation"
+                  class="max-h-full max-w-full object-contain p-2"
+                  (error)="logoBroken.set(true)"
+                />
+              } @else {
+                <tas-icon iconName="feather:image" class="text-slate-400" style="font-size: 24px" aria-hidden="true"></tas-icon>
+              }
+            </div>
+            @if (canUpdate()) {
+              <div class="flex flex-col gap-2">
+                <div class="flex flex-wrap gap-2">
+                  <button tas-outlined-button color="primary" type="button" [disabled]="isLogoBusy()" (click)="logoInput.click()">
+                    <tas-icon iconName="feather:upload" style="font-size: 14px"></tas-icon>
+                    {{ isUploadedLogo() ? 'Remplacer' : 'Charger un logo' }}
+                  </button>
+                  @if (isUploadedLogo()) {
+                    <button tas-text-button color="warn" type="button" [disabled]="isLogoBusy()" (click)="removeLogo()">Retirer</button>
+                  }
+                </div>
+                <p class="text-xs text-slate-500">PNG, JPG ou WebP, 1 Mo maximum. Fond transparent conseillé.</p>
+                <input #logoInput type="file" accept="image/png,image/jpeg,image/webp" class="hidden" (change)="onLogoSelected($event)" />
+              </div>
+            }
+          </div>
+          @if (logoBroken() && logoUrl()) {
+            <p class="text-xs text-functional-error">L’image à cette adresse ne s’affiche pas. Vérifiez l’URL ou chargez un fichier.</p>
+          }
+        </div>
+
+        @if (!isUploadedLogo()) {
+          <tas-form-field>
+            <tas-label>Ou adresse d’une image en ligne</tas-label>
+            <input
+              tasInput
+              type="url"
+              placeholder="https://example.com/logo.png"
+              [formField]="formSchema.logoUrl"
+              (input)="logoBroken.set(false)"
+            />
+          </tas-form-field>
+        }
 
         <tas-form-field>
           <tas-label>Langue par défaut</tas-label>

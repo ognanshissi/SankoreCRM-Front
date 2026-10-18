@@ -178,6 +178,7 @@ model/close-lead-request.interface.ts
 model/close-opportunity-request.interface.ts
 model/close-opportunity-response.interface.ts
 model/company-info-dto.interface.ts
+model/company-logo-response.interface.ts
 model/compatibility-factors.interface.ts
 model/complaint-dto.interface.ts
 model/complaint-report-dto.interface.ts

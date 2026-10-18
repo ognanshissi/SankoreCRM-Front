@@ -1,44 +1,154 @@
-<div class="pb-8 px-4">
-  <tas-title>Paramétrage général</tas-title>
-</div>
-
-<div class="grid grid-cols-4 gap-4">
-  <div class="col-span-1 p-2">
-    <div class="space-y-2 flex flex-col">
-      @for (item of menus(); track item.id) {
-        @if (item.type === 'group') {
-          <button
-            class="p-2 hover:shadow border border-gray-300 hover:cursor-pointer hover:bg-primary/50 rounded-lg bg-white text-left min-h-[80px]"
-            [ngClass]="{'menu-group__active shadow border-gray-100': item.id === selectedMenu().id }"
-            (click)="toggleSelectedMenuGroup(item)"
-          >
-            <p class="font-semibold">{{ item.title }}</p>
-            <tas-text>{{ item.description }}</tas-text>
-          </button>
-        }
-      }
+<div class="flex flex-col gap-5">
+  <div class="flex flex-wrap items-center justify-between gap-4">
+    <div>
+      <h1 class="text-[26px] font-bold leading-[34px] text-slate-800">Paramétrage</h1>
+      <p class="mt-0.5 text-slate-600">Tout ce qui configure SANKORE pour votre institution.</p>
     </div>
+    <label class="flex min-h-11 w-full max-w-[380px] items-center gap-2 rounded-full bg-white px-4 shadow-xs sm:w-[380px]">
+      <tas-icon iconName="feather:search" class="text-slate-500" style="font-size: 16px" aria-hidden="true"></tas-icon>
+      <span class="sr-only">Rechercher un réglage</span>
+      <input
+        type="search"
+        class="min-w-0 flex-1 bg-transparent text-slate-800 outline-none placeholder:text-slate-500"
+        placeholder="Rechercher un réglage : rôles, import, SLA…"
+        [ngModel]="query()"
+        (ngModelChange)="query.set($event)"
+      />
+    </label>
   </div>
-  <div class="col-span-3 p-4">
-    @if (selectedMenu()) {
-    <div class="p-4">
-      <tas-title>{{ selectedMenu().title }}</tas-title>
-      <tas-text>{{ selectedMenu().description }}</tas-text>
-    </div>
 
-    <div class="grid grid-cols-3 gap-6 mt-8">
-      @for (item of selectedMenu().children; track item.id) {
-        @if (item.type === 'basic') {
-          <a
-            class="p-4 border border-gray-200 rounded-lg hover:bg-primary/50 bg-gray-50 text-left min-h-[80px]"
-            [routerLink]="item.link"
-          >
-            <p class="font-semibold">{{ item.title }}</p>
-            <tas-text>{{ item.description }}</tas-text>
-          </a>
+  @if (showSetup()) {
+    <section
+      aria-label="Mise en service"
+      class="flex flex-wrap items-center gap-x-7 gap-y-4 rounded-3xl bg-primary px-6 py-5 text-white"
+    >
+      <div class="flex min-w-[220px] flex-[0_1_260px] flex-col gap-2">
+        <span class="text-[13px] font-semibold text-[#b9d3d3]">Mise en service</span>
+        <span class="text-xl font-bold">{{ setupDone() }} étape{{ setupDone() > 1 ? 's' : '' }} sur {{ setup().length }}</span>
+        <span class="h-1.5 overflow-hidden rounded-full bg-white/20" aria-hidden="true">
+          <span class="block h-full rounded-full bg-[#9fe0b5]" [style.width.%]="setupPercent()"></span>
+        </span>
+      </div>
+      <ol class="grid flex-1 grid-cols-[repeat(auto-fill,minmax(210px,1fr))] gap-2">
+        @for (step of setup(); track step.title) {
+          <li>
+            <a
+              [routerLink]="step.link"
+              class="flex items-center gap-2.5 rounded-2xl px-3 py-2.5 text-white transition-colors hover:bg-white/20"
+              [class]="step.done ? 'bg-white/[0.06]' : 'bg-white/[0.14]'"
+            >
+              <span
+                class="flex size-6 shrink-0 items-center justify-center rounded-full text-xs font-bold"
+                [class]="step.done ? 'bg-[#9fe0b5] text-[#0d3b22]' : 'bg-[#fef3c7] text-[#7a4a12]'"
+                [attr.aria-label]="step.done ? 'Fait' : 'À faire'"
+                >{{ step.done ? '✓' : '!' }}</span
+              >
+              <span class="flex min-w-0 flex-col leading-tight">
+                <span class="text-sm font-semibold">{{ step.title }}</span>
+                <span class="truncate text-xs text-[#cfe2e2]">{{ step.detail }}</span>
+              </span>
+            </a>
+          </li>
         }
+      </ol>
+      <button
+        type="button"
+        class="flex size-9 shrink-0 items-center justify-center self-start rounded-full bg-white/[0.12] text-white hover:bg-white/20"
+        aria-label="Masquer la mise en service"
+        (click)="hideSetup()"
+      >
+        <tas-icon iconName="feather:x" style="font-size: 16px"></tas-icon>
+      </button>
+    </section>
+  }
+
+  <div class="flex flex-col gap-5 lg:flex-row lg:items-start">
+    <nav aria-label="Rubriques" class="flex shrink-0 flex-col gap-0.5 rounded-3xl bg-white p-2 shadow-xs lg:w-[276px]">
+      @for (g of groups(); track g.id) {
+        <button
+          type="button"
+          class="flex min-h-12 items-center gap-3 rounded-2xl px-3 text-left text-sm transition-colors"
+          [class]="activeGroupId() === g.id ? 'bg-primary font-bold text-white' : 'font-medium text-slate-800 hover:bg-slate-50'"
+          [attr.aria-current]="activeGroupId() === g.id ? 'page' : null"
+          (click)="pickGroup(g.id)"
+        >
+          <span
+            class="flex size-[30px] shrink-0 items-center justify-center rounded-[10px] text-primary"
+            [class]="activeGroupId() === g.id ? 'bg-white' : g.tint"
+            aria-hidden="true"
+          >
+            <tas-icon [iconName]="g.icon" style="font-size: 15px"></tas-icon>
+          </span>
+          <span class="flex-1">{{ g.title }}</span>
+          @if (g.alerts > 0) {
+            <span
+              class="flex h-5 min-w-5 items-center justify-center rounded-full bg-[#fef3c7] px-1.5 text-[11px] font-bold text-[#7a4a12]"
+              [attr.aria-label]="g.alerts + ' point(s) à revoir'"
+              >{{ g.alerts }}</span
+            >
+          }
+        </button>
+      }
+    </nav>
+
+    <div class="flex min-w-0 flex-1 flex-col gap-6">
+      @for (g of shown(); track g.id) {
+        <section class="flex flex-col gap-4">
+          <div>
+            <h2 class="text-xl font-bold leading-7 text-slate-800">{{ g.title }}</h2>
+            <p class="mt-0.5 text-slate-600">{{ g.description }}</p>
+          </div>
+          <div class="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-3.5">
+            @for (e of g.entries; track e.id) {
+              @if (e.link) {
+                <a
+                  [routerLink]="e.link"
+                  class="group flex flex-col gap-3.5 rounded-[20px] bg-white p-[18px] shadow-xs transition-shadow hover:shadow-md"
+                >
+                  <span class="flex items-start gap-3">
+                    <span class="flex size-10 shrink-0 items-center justify-center rounded-[13px] bg-[#e3ebeb] text-primary" aria-hidden="true">
+                      <tas-icon [iconName]="e.icon" style="font-size: 18px"></tas-icon>
+                    </span>
+                    <span class="flex min-w-0 flex-col leading-snug">
+                      <span class="font-bold text-slate-800">{{ e.title }}</span>
+                      <span class="text-sm text-slate-600">{{ e.description }}</span>
+                    </span>
+                  </span>
+                  <span class="mt-auto flex items-center justify-between gap-3 border-t border-[#f1ece4] pt-3 text-[13px]">
+                    @if (e.status) {
+                      <span class="flex items-center gap-2 font-semibold" [class]="e.statusText">
+                        <span class="size-2 shrink-0 rounded-full" [class]="e.dot" aria-hidden="true"></span>
+                        {{ e.status.label }}
+                      </span>
+                    } @else {
+                      <span class="font-semibold text-primary">Ouvrir</span>
+                    }
+                    <tas-icon iconName="feather:chevron-right" class="text-slate-500 group-hover:text-primary" style="font-size: 16px" aria-hidden="true"></tas-icon>
+                  </span>
+                </a>
+              } @else {
+                <div class="flex flex-col gap-3.5 rounded-[20px] border border-dashed border-[#e2dccf] p-[18px]">
+                  <span class="flex items-start gap-3">
+                    <span class="flex size-10 shrink-0 items-center justify-center rounded-[13px] bg-slate-100 text-slate-500" aria-hidden="true">
+                      <tas-icon [iconName]="e.icon" style="font-size: 18px"></tas-icon>
+                    </span>
+                    <span class="flex min-w-0 flex-col leading-snug">
+                      <span class="font-bold text-slate-600">{{ e.title }}</span>
+                      <span class="text-sm text-slate-500">{{ e.description }}</span>
+                    </span>
+                  </span>
+                  <span class="mt-auto border-t border-[#f1ece4] pt-3 text-[13px] font-semibold text-slate-500">Bientôt disponible</span>
+                </div>
+              }
+            }
+          </div>
+        </section>
+      } @empty {
+        <div class="rounded-3xl bg-white px-5 py-12 text-center">
+          <p class="text-sm font-medium text-slate-700">Aucun réglage ne correspond à « {{ query() }} ».</p>
+          <button tas-text-button color="primary" type="button" class="mt-2" (click)="query.set('')">Effacer la recherche</button>
+        </div>
       }
     </div>
-    }
   </div>
 </div>

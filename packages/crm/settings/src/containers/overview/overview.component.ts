@@ -1,492 +1,145 @@
-import {
-  Component,
-  computed,
-  effect,
-  inject,
-  OnInit,
-  signal,
-} from '@angular/core';
-import { TasTitle } from '@talisoft/ui/title';
-import { TasText } from '@talisoft/ui/text';
-import { NgClass } from '@angular/common';
-import { RouterLink } from '@angular/router';
-import {
-  BreadcrumbService,
-  PermissionCode,
-  PermissionsService,
-} from '@sankore/crm/common';
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, OnInit, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { FormsModule } from '@angular/forms';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { Button } from '@talisoft/ui/button';
+import { TasIcon } from '@talisoft/ui/icon';
+import { BreadcrumbService, PermissionsService } from '@sankore/crm/common';
+import { SettingsEntry, SettingsGroup, visibleCatalog } from '../../settings-catalog';
+import { EntryStatus, SettingsOverviewStatus, SettingsStatusService } from './settings-status.service';
 
-export interface MenuItem {
-  title: string;
-  icon?: string;
-  id: string;
-  link?: string;
-  permission?: PermissionCode | PermissionCode[];
-  type: 'basic' | 'group';
-  description?: string;
-  isActive?: boolean;
-  hidden?: (item: MenuItem) => boolean;
-  children?: MenuItem[];
+/** Masquer la mise en service est un choix de la personne, gardé dans ce navigateur seulement. */
+const SETUP_HIDDEN_KEY = 'SANKORE_SETTINGS_SETUP_HIDDEN';
+
+const TONE_STYLE: Record<EntryStatus['tone'], { dot: string; text: string }> = {
+  ok: { dot: 'bg-green-700', text: 'text-slate-700' },
+  warn: { dot: 'bg-[#e0a35a]', text: 'text-[#7a4a12]' },
+  neutral: { dot: 'bg-slate-300', text: 'text-slate-600' },
+};
+
+interface EntryView extends SettingsEntry {
+  status: EntryStatus | null;
+  dot: string;
+  statusText: string;
 }
 
+interface GroupView extends Omit<SettingsGroup, 'entries'> {
+  entries: EntryView[];
+  alerts: number;
+}
+
+/**
+ * L'accueil du paramétrage : une rubrique à la fois, avec l'état réel de chaque réglage, et la
+ * mise en service en tête tant qu'elle n'est pas terminée.
+ *
+ * La liste des rubriques est `settings-catalog`, la même que partout ailleurs ; les états viennent
+ * de `SettingsStatusService`, qui ne lit que ce que l'utilisateur a le droit de voir.
+ */
 @Component({
   selector: 'settings-overview',
   templateUrl: './overview.component.html',
-  standalone: true,
-  styles: [
-    `
-      .menu-group__active {
-        background-color: rgba(var(--tas-color-primary)) !important;
-        color: var(--tas-color-white);
-      }
-    `,
-  ],
-  imports: [TasTitle, TasText, NgClass, RouterLink],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [FormsModule, RouterLink, Button, TasIcon],
 })
 export class OverviewComponent implements OnInit {
-  private readonly menuData: MenuItem[] = [
-    {
-      title: 'Agences & utilisateurs',
-      type: 'group',
-      id: 'teams_territories',
-      description: "Gestion des utilisateurs et agences de l'organisation",
-      children: [
-        {
-          title: 'Workflows',
-          type: 'basic',
-          id: 'groups_workflows',
-          link: '/settings/workflows',
-          permission: 'workflow:read',
-          description:
-            'Définir les étapes de validation appliquées aux leads, contacts et opportunités',
-        },
-        {
-          title: "Stratégies d'affectation",
-          type: 'basic',
-          id: 'groups_dispatching',
-          link: '/settings/dispatch-rules',
-          permission: 'lead:dispatching-rule:read',
-          description:
-            "Configurer et simuler les stratégies d'affectation automatique des leads",
-        },
-        {
-          title: 'Utilisateurs',
-          type: 'basic',
-          id: 'teams_territories_users',
-          link: '/settings/users',
-          permission: 'user:read',
-          description: 'Gestion des utilisateurs et groupes par territoires',
-        },
-        {
-          title: 'Roles',
-          type: 'basic',
-          id: 'teams_territories_roles',
-          link: '/settings/roles',
-          permission: 'role:read',
-          description: 'Gestion des utilisateurs et groupes par territoires',
-        },
-        {
-          title: 'Agences',
-          type: 'basic',
-          id: 'teams_territories_agencies',
-          link: '/settings/agencies',
-          permission: 'agency:read',
-          description: "Gestion des agences de l'organisation",
-        },
-        {
-          title: 'Territoires',
-          type: 'basic',
-          id: 'teams_territories_territory',
-          link: '/settings/territories',
-          permission: 'territory:read',
-          description: 'Gestion des utilisateurs et groupes par territoires',
-        },
-      ],
-    },
-    {
-      title: 'Leads, Contacts & Compte',
-      type: 'group',
-      description: 'Gestion des personnes et vos différents clients',
-      id: 'leads_contacts_compte',
-      children: [
-        {
-          title: 'Sources & Campagnes',
-          type: 'basic',
-          id: 'leads_contacts_sources',
-          link: '/settings/lead-sources',
-          permission: 'lead:source:read',
-          description: "Gérer les sources d'acquisition et campagnes de leads",
-        },
-        {
-          title: 'Segmentation des clients',
-          type: 'basic',
-          id: 'leads_contacts_client_segments',
-          link: '/settings/client-segments',
-          permission: 'customers:update_sensitive',
-          description:
-            'Définir et ordonner les règles qui classent automatiquement les clients par segment',
-        },
-        {
-          title: 'Formulaires de qualification',
-          type: 'basic',
-          id: 'leads_contacts_qualification_templates',
-          link: '/settings/qualification-templates',
-          permission: 'lead:qualification-template:manage',
-          description:
-            'Configurer les formulaires de qualification par produit (sections, questions, règles conditionnelles)',
-        },
-        {
-          title: 'Étapes du pipeline',
-          type: 'basic',
-          id: 'leads_contacts_pipeline_stages',
-          link: '/settings/pipeline-stages',
-          permission: 'lead:pipeline-stage:read',
-          description:
-            'Définir, réordonner et activer/désactiver les étapes du pipeline commercial',
-        },
-        {
-          title: 'Règles de scoring',
-          type: 'basic',
-          id: 'leads_contacts_scoring',
-          link: '/settings/scoring-configs',
-          permission: 'lead:scoring-config:read',
-          description: 'Ajuster les poids et seuils du calcul de Lead Score',
-        },
-        {
-          title: 'SLA & Calendrier ouvré',
-          type: 'basic',
-          id: 'leads_contacts_sla',
-          link: '/settings/sla-configs',
-          permission: 'lead:sla-config:read',
-          description:
-            'Définir les délais SLA par agence et le calendrier ouvré',
-        },
-        {
-          title: 'Types de tâches',
-          type: 'basic',
-          id: 'activities_task_types',
-          link: '/settings/task-types',
-          permission: 'lead:task-type:read',
-          description:
-            'Définir les types de tâches, priorités par défaut et résultats obligatoires',
-        },
-      ],
-    },
-    {
-      title: 'Produits & Services',
-      type: 'group',
-      id: 'products_services',
-      description: 'Gestion des produits et services',
-      children: [
-        {
-          title: 'Produits',
-          type: 'basic',
-          id: 'products_services_products',
-          link: '/settings/products',
-          permission: 'product:read',
-          description: 'Gérer les produits et services des votre entreprise',
-        },
-      ],
-    },
-    {
-      title: 'Données & Importation',
-      type: 'group',
-      isActive: false,
-      id: 'data_import',
-      description: 'Gestion des importations des leads, contacts, utilisateurs',
-      children: [
-        {
-          title: 'Importer les utilisateurs',
-          type: 'basic',
-          id: 'data_import_users',
-          link: '/settings/import-users',
-          permission: 'user:create',
-          description: 'Importer les utilisateurs depuis différentes sources',
-        },
-        {
-          title: 'Importer les clients',
-          type: 'basic',
-          id: 'data_import_clients',
-          link: '/customers/import-clients',
-          permission: 'customers:create',
-          description: 'Importer les clients depuis un fichier CSV/Excel ou Google Sheets',
-        },
-        {
-          title: 'Importer les leads',
-          type: 'basic',
-          id: 'data_import_leads',
-          // La page vit dans le module Leads, pas dans Paramétrage : l'assistant appartient au
-          // domaine lead et sert aussi au drawer de la liste. `/settings/import-contacts` était un
-          // lien mort.
-          link: '/leads/import',
-          permission: 'lead:import',
-          description: 'Importer des leads depuis un fichier, Google Sheets ou Google Contacts',
-        }
-      ],
-    },
-    {
-      title: 'Canaux de communication',
-      type: 'group',
-      id: 'channels',
-      description:
-        'Gérer vos differents canaux de communication avec vos prospect, clients.',
-      children: [
-        {
-          title: 'Fournisseur Email',
-          type: 'basic',
-          id: 'channels_notifications',
-          link: '/settings/notifications',
-          permission: [
-            'notification:settings:read',
-            'notification:outbox:read',
-          ],
-          description:
-            "Fournisseur d'envoi, expéditeur, quota mensuel et journal de livraison",
-        },
-        {
-          title: "Modèles d'e-mail",
-          type: 'basic',
-          id: 'channels_email_templates',
-          link: '/settings/email-templates',
-          permission: 'notification:template:read',
-          description:
-            "Créer et personnaliser les modèles d'e-mail transactionnels et marketing",
-        },
-        {
-          title: 'WhatsApp Business',
-          type: 'basic',
-          id: 'communication_channels_whatsapp',
-          link: '/settings/whatsapp-configuration',
-          description: 'Configurer votre compte whatsapp entreprise.',
-        },
-        {
-          title: 'Fournisseur SMS',
-          type: 'basic',
-          id: 'communication_channels_sms_provider',
-          link: '/settings/whatsapp-configuration',
-          description: "Configurer votre compte entreprise afin d'envoyer les sms a vos prospects et clients.",
-        },
-        {
-          title: 'Téléphonie',
-          type: 'basic',
-          id: 'communication_channels_telephony',
-          link: '/settings/telephony',
-          // Déclarée maintenant que la cible existe : la route redirige vers le journal,
-          // gardé sur `Telephony.Call.View`. Sans ce champ, l'entrée resterait visible de
-          // tous et renverrait sur un refus de garde au lieu de ne pas s'afficher.
-          permission: 'Telephony.Call.View',
-          description:
-            'Configurer votre système de téléphonie (Twilio, RingOver, Asterisk).',
-        },
-      ],
-    },
-    {
-      title: 'Intégrations',
-      type: 'group',
-      id: 'integrations',
-      description:
-        'Connecter le CRM au système bancaire et aux back-offices des assureurs partenaires',
-      children: [
-        {
-          title: 'Vue d\'ensemble',
-          type: 'basic',
-          id: 'integrations_hub',
-          link: '/settings/integrations',
-          permission: 'lead:source:read',
-          description:
-            'Les services externes connectables depuis SANKORE, et leur état',
-        },
-        {
-          title: 'Connexions',
-          type: 'basic',
-          id: 'integrations_connections',
-          link: '/settings/integrations/connections',
-          permission: 'Integration.Connection.View',
-          description:
-            'Déclarer les systèmes externes, tester la connexion et les activer',
-        },
-        {
-          title: 'Correspondances de codes',
-          type: 'basic',
-          id: 'integrations_mappings',
-          link: '/settings/integrations/mappings',
-          permission: 'Integration.Mapping.Manage',
-          description:
-            'Faire correspondre les codes du CRM à ceux attendus par chaque système externe',
-        },
-        {
-          title: 'Écritures et rejets',
-          type: 'basic',
-          id: 'integrations_commands',
-          link: '/settings/integrations/commands',
-          permission: 'Integration.Command.View',
-          description:
-            'Suivre les écritures envoyées aux systèmes externes et traiter les rejets',
-        },
-        {
-          title: 'Fichiers échangés',
-          type: 'basic',
-          id: 'integrations_batch_files',
-          link: '/settings/integrations/batch-files',
-          permission: 'Integration.Command.View',
-          description:
-            "Suivre les fichiers sortants et entrants, et détecter un accusé manquant",
-        },
-        {
-          title: 'Réconciliation',
-          type: 'basic',
-          id: 'integrations_reconciliation',
-          link: '/settings/integrations/reconciliation',
-          permission: 'Integration.Reconciliation.View',
-          description:
-            'Consulter et traiter les écarts entre le CRM et les systèmes externes',
-        },
-        {
-          title: 'Connexions assurance',
-          type: 'basic',
-          id: 'integrations_insurance_connections',
-          link: '/settings/integrations/insurance-connections',
-          permission: 'Integration.Connection.View',
-          description:
-            'Connecter les back-offices des assureurs partenaires',
-        },
-        {
-          title: "Produits d'assurance",
-          type: 'basic',
-          id: 'integrations_insurance_products',
-          link: '/settings/integrations/insurance-products',
-          permission: 'Ins.Product.Manage',
-          description:
-            'Gérer les produits d\'assurance que vos agents peuvent proposer',
-        },
-        {
-          title: 'Bordereaux assurance',
-          type: 'basic',
-          id: 'integrations_insurance_statements',
-          link: '/settings/integrations/insurance-statements',
-          permission: 'Ins.Statement.View',
-          description:
-            'Justifier les primes reversées et les commissions, par assureur et par mois',
-        },
-      ],
-    },
-    {
-      title: 'Sécurité & Conformité',
-      type: 'group',
-      id: 'security_compliance',
-      description:
-        "Supervision des activités et traçabilité des actions sur l'organisation",
-      children: [
-        {
-          title: 'Paramètres KYC',
-          type: 'basic',
-          id: 'security_kyc_settings',
-          link: '/settings/kyc',
-          permission: 'kyc:read',
-          description:
-            "Plafonds du KYC simplifié, seuils d'alerte, périodicité de revue et tentatives de comparaison faciale",
-        },
-        {
-          title: 'FATCA et conformité',
-          type: 'basic',
-          id: 'security_compliance_settings',
-          link: '/settings/conformite',
-          permission: 'kyc:read',
-          description:
-            "Activation de FATCA, régime de l'institution, GIIN et durée de maintien du statut PPE",
-        },
-        {
-          title: "Journal d'audit",
-          type: 'basic',
-          id: 'security_audit',
-          link: '/settings/audit',
-          permission: 'audit:read',
-          description:
-            "Consulter l'historique des actions effectuées par les utilisateurs",
-        },
-      ],
-    },
-    {
-      title: 'Réglages de compte',
-      type: 'group',
-      id: 'account_settings',
-      description:
-        'Paramétrage global du compte, facturation, et souscription ',
-      children: [
-        {
-          title: "Informations de l'organisation",
-          type: 'basic',
-          id: 'account_settings_company',
-          link: '/settings/company',
-          permission: 'company:read',
-          description:
-            "Nom, logo, langue par défaut et couleurs de l'organisation",
-        },
-        {
-          title: 'Monnaie',
-          type: 'basic',
-          id: 'account_settings_currency',
-          link: '/settings/currency',
-          description: 'Gérer les differentes devises et monnaie',
-        },
-        {
-          title: 'Tags',
-          type: 'basic',
-          id: 'account_settings_tags',
-          link: '/settings/tags',
-          description: "Gérer l'ensemble des tags",
-        },
-        {
-          title: 'Plan et Facturation',
-          type: 'basic',
-          id: 'account_settings_billing',
-          link: '/settings/plan-facturation',
-          description: 'Gerer vos plan et facturations',
-        },
-      ],
-    },
-  ];
-
   private readonly _breadcrumbService = inject(BreadcrumbService);
   private readonly _permissions = inject(PermissionsService);
+  private readonly _statusService = inject(SettingsStatusService);
+  private readonly _router = inject(Router);
+  private readonly _route = inject(ActivatedRoute);
+  private readonly _destroyRef = inject(DestroyRef);
 
-  public menus = computed<MenuItem[]>(() => {
-    const granted = this._permissions.granted();
-    const allowed = (item: MenuItem): boolean => {
-      if (!item.permission) return true;
-      const codes = Array.isArray(item.permission)
-        ? item.permission
-        : [item.permission];
-      return codes.some((c) => granted.has(c));
-    };
+  public query = signal('');
+  public selectedId = signal<string | null>(null);
+  public status = signal<SettingsOverviewStatus | null>(null);
+  public setupHidden = signal(this._readSetupHidden());
 
-    return this.menuData
-      .map((group) => ({
-        ...group,
-        children: (group.children ?? []).filter(allowed),
-      }))
-      .filter((group) => allowed(group) && group.children.length > 0);
+  public readonly groups = computed<GroupView[]>(() => {
+    const entries = this.status()?.entries ?? {};
+    return visibleCatalog(this._permissions.granted()).map((g) => {
+      const views = g.entries.map((e) => {
+        const status = entries[e.id] ?? null;
+        const tone = TONE_STYLE[status?.tone ?? 'neutral'];
+        return { ...e, status, dot: tone.dot, statusText: tone.text };
+      });
+      return { ...g, entries: views, alerts: views.filter((e) => e.status?.tone === 'warn').length };
+    });
   });
 
-  public selectedMenu = signal<MenuItem>(this.menuData[0]);
+  /** Sans recherche, la rubrique choisie (la première par défaut) ; avec, toutes celles qui ont un résultat. */
+  public readonly shown = computed<GroupView[]>(() => {
+    const q = this._normalize(this.query());
+    const groups = this.groups();
+    if (!q) {
+      const selected = groups.find((g) => g.id === this.selectedId()) ?? groups[0];
+      return selected ? [selected] : [];
+    }
+    return groups
+      .map((g) => ({
+        ...g,
+        entries: g.entries.filter((e) => this._normalize(`${e.title} ${e.description} ${g.title}`).includes(q)),
+      }))
+      .filter((g) => g.entries.length > 0);
+  });
 
-  constructor() {
-    // Le groupe sélectionné doit rester un groupe visible.
-    effect(() => {
-      const visible = this.menus();
-      if (visible.length === 0) return;
-      if (!visible.some((g) => g.id === this.selectedMenu().id)) {
-        this.selectedMenu.set(visible[0]);
-      }
-    });
-  }
+  public readonly activeGroupId = computed(() =>
+    this.query().trim() ? null : (this.shown()[0]?.id ?? null),
+  );
+
+  public readonly setup = computed(() => this.status()?.setup ?? []);
+  public readonly setupDone = computed(() => this.setup().filter((s) => s.done).length);
+  public readonly setupPercent = computed(() =>
+    this.setup().length ? Math.round((this.setupDone() / this.setup().length) * 100) : 0,
+  );
+  /** Disparaît seule une fois tout fait : elle n'a plus rien à dire. */
+  public readonly showSetup = computed(
+    () => !this.setupHidden() && !this.query().trim() && this.setup().length > 0 && this.setupDone() < this.setup().length,
+  );
 
   public ngOnInit(): void {
     this._breadcrumbService.set([{ label: 'Paramétrage' }]);
+    this.selectedId.set(this._route.snapshot.queryParamMap.get('rubrique'));
+    this._statusService
+      .load()
+      .pipe(takeUntilDestroyed(this._destroyRef))
+      .subscribe((s) => this.status.set(s));
   }
 
-  public toggleSelectedMenuGroup(item: MenuItem) {
-    this.selectedMenu.set(item);
+  /** Dans l'URL, pour que le retour depuis un réglage rouvre la même rubrique. */
+  public pickGroup(id: string): void {
+    this.query.set('');
+    this.selectedId.set(id);
+    this._router.navigate([], {
+      relativeTo: this._route,
+      queryParams: { rubrique: id },
+      queryParamsHandling: 'merge',
+      replaceUrl: true,
+    });
+  }
+
+  public hideSetup(): void {
+    this.setupHidden.set(true);
+    try {
+      localStorage.setItem(SETUP_HIDDEN_KEY, '1');
+    } catch {
+      // Stockage indisponible (navigation privée) : masquée pour cette visite seulement.
+    }
+  }
+
+  private _readSetupHidden(): boolean {
+    try {
+      return localStorage.getItem(SETUP_HIDDEN_KEY) === '1';
+    } catch {
+      return false;
+    }
+  }
+
+  private _normalize(value: string): string {
+    return value
+      .normalize('NFD')
+      .replace(/[̀-ͯ]/g, '')
+      .toLowerCase()
+      .trim();
   }
 }
 

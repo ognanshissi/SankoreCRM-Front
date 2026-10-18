@@ -6,7 +6,7 @@ import EditUserNavigation from './containers/users/edit-user/edit-user-navigatio
 import EditWorkflowTemplateNavigation from './containers/workflows/edit-workflow-template/edit-workflow-template-navigation';
 import { hasPermissionGuard } from '@sankore/crm/common';
 
-const settingsRoutes: Routes = [
+const paneRoutes: Routes = [
   {
     path: '',
     loadComponent: () => OverviewComponent,
@@ -143,19 +143,11 @@ const settingsRoutes: Routes = [
     loadComponent: () =>
       import('./containers/workflows/workflow-analytics/workflow-analytics'),
   },
-  {
-    // Constructeur de parcours en pleine page, hors de la navigation du modèle : il porte son propre
-    // en-tête (version, publication) et a besoin de toute la largeur pour ses trois colonnes.
-    path: 'workflows/:id/parcours',
-    canActivate: [hasPermissionGuard('workflow:read')],
-    loadComponent: () =>
-      import('./containers/workflows/journey-builder/journey-builder'),
-  },
   // Redirections déclarées ici et non dans les enfants de `workflows/:id` : une redirection enfant ne
   // voit pas le `:id` de la route parente (« Cannot redirect … Cannot find ':id' »).
-  { path: 'workflows/:id', redirectTo: 'workflows/:id/parcours', pathMatch: 'full' },
+  { path: 'workflows/:id', redirectTo: '/settings/workflows/:id/parcours', pathMatch: 'full' },
   // Ancienne adresse du canevas libre : les liens existants mènent au nouveau constructeur.
-  { path: 'workflows/:id/builder', redirectTo: 'workflows/:id/parcours', pathMatch: 'full' },
+  { path: 'workflows/:id/builder', redirectTo: '/settings/workflows/:id/parcours', pathMatch: 'full' },
   {
     path: 'workflows/:id',
     canActivate: [hasPermissionGuard('workflow:read')],
@@ -414,5 +406,17 @@ const settingsRoutes: Routes = [
   },
 ];
 
+const settingsRoutes: Routes = [
+  {
+    // Constructeur de parcours en pleine page, hors de la navigation du modèle : il porte son propre
+    // en-tête (version, publication) et a besoin de toute la largeur pour ses trois colonnes.
+    // Déclaré avant `workflows/:id` pour ne pas être capturé par cette route.
+    path: 'workflows/:id/parcours',
+    canActivate: [hasPermissionGuard('workflow:read')],
+    loadComponent: () =>
+      import('./containers/workflows/journey-builder/journey-builder'),
+  },
+  ...paneRoutes,
+];
 
 export default settingsRoutes;
