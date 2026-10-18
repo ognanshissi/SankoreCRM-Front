@@ -1,266 +1,327 @@
-<!-- Page header -->
-<div class="flex items-start justify-between mb-5">
-  <div>
-    <h1 class="text-lg font-semibold text-slate-800">Utilisateurs</h1>
-    <p class="text-sm text-slate-400 mt-0.5">Gérez les accès et profils des membres de votre organisation.</p>
-  </div>
-  @if (canCreate()) {
-    <button tas-filled-button [color]="'primary'" (click)="openCreateDrawer()">
-      <tas-icon iconName="feather:user-plus"></tas-icon>
-      Ajouter un utilisateur
-    </button>
-  }
-</div>
-
-<!-- KPI stats row -->
-<div class="grid grid-cols-4 gap-3 mb-5">
-  <tas-card>
-    <div class="flex items-center gap-3 p-3">
-      <div class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center shrink-0">
-        <tas-icon iconName="feather:users" class="text-slate-500" style="font-size:14px"></tas-icon>
-      </div>
-      <div>
-        <p class="text-xl font-semibold text-slate-800 tabular-nums leading-none">{{ userStatusStats().total ?? 0 }}</p>
-        <p class="text-xs text-slate-400 mt-0.5">Total</p>
-      </div>
+<div class="flex flex-col gap-5">
+  <div class="flex flex-wrap items-center justify-between gap-4">
+    <div>
+      <h1 class="text-xl font-bold text-slate-800">Utilisateurs</h1>
+      <p class="mt-0.5 text-sm text-slate-500 tabular-nums">{{ summary() }}</p>
     </div>
-  </tas-card>
-  <tas-card>
-    <div class="flex items-center gap-3 p-3">
-      <div class="w-8 h-8 rounded-full bg-green-50 flex items-center justify-center shrink-0">
-        <tas-icon iconName="feather:user-check" class="text-green-500" style="font-size:14px"></tas-icon>
-      </div>
-      <div>
-        <p class="text-xl font-semibold text-slate-800 tabular-nums leading-none">{{ userStatusStats().active ?? 0 }}</p>
-        <p class="text-xs text-slate-400 mt-0.5">Actifs</p>
-      </div>
-    </div>
-  </tas-card>
-  <tas-card>
-    <div class="flex items-center gap-3 p-3">
-      <div class="w-8 h-8 rounded-full bg-amber-50 flex items-center justify-center shrink-0">
-        <tas-icon iconName="feather:clock" class="text-amber-500" style="font-size:14px"></tas-icon>
-      </div>
-      <div>
-        <p class="text-xl font-semibold text-slate-800 tabular-nums leading-none">{{ userStatusStats().pendingActivation ?? 0 }}</p>
-        <p class="text-xs text-slate-400 mt-0.5">En attente</p>
-      </div>
-    </div>
-  </tas-card>
-  <tas-card>
-    <div class="flex items-center gap-3 p-3">
-      <div class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center shrink-0">
-        <tas-icon iconName="feather:user-x" class="text-slate-400" style="font-size:14px"></tas-icon>
-      </div>
-      <div>
-        <p class="text-xl font-semibold text-slate-800 tabular-nums leading-none">
-          {{ (userStatusStats().disabled ?? 0) + (userStatusStats().locked ?? 0) }}
-        </p>
-        <p class="text-xs text-slate-400 mt-0.5">Désactivés / Suspendus</p>
-      </div>
-    </div>
-  </tas-card>
-</div>
-
-<!-- Status filter tabs -->
-<div class="flex items-center gap-1 mb-4 p-1 rounded-lg bg-slate-100 w-fit">
-  <button
-    type="button"
-    class="px-3 py-1.5 rounded-md text-sm font-medium transition-colors"
-    [class.bg-white]="statusFilter() === undefined"
-    [class.text-slate-800]="statusFilter() === undefined"
-    [class.shadow-sm]="statusFilter() === undefined"
-    [class.text-slate-500]="statusFilter() !== undefined"
-    (click)="onStatusFilterChange(undefined)"
-  >
-    Tous
-    <span class="ml-1 text-[10px] font-semibold tabular-nums">{{ userStatusStats().total ?? 0 }}</span>
-  </button>
-  <button
-    type="button"
-    class="px-3 py-1.5 rounded-md text-sm font-medium transition-colors"
-    [ngClass]="{'bg-white text-slate-800 shadow-sm text-slate-500': statusFilter() === 'Active'}"
-    (click)="onStatusFilterChange('Active')">
-    Actifs
-    <span class="ml-1 text-[10px] font-semibold tabular-nums">{{ userStatusStats().active ?? 0 }}</span>
-  </button>
-  <button
-    type="button"
-    class="px-3 py-1.5 rounded-md text-sm font-medium transition-colors"
-    [ngClass]="{'bg-white text-slate-800 shadow-sm text-slate-500': statusFilter() === 'PendingActivation'}"
-    (click)="onStatusFilterChange('PendingActivation')"
-  >
-    En attente
-    <span class="ml-1 text-[10px] font-semibold tabular-nums">{{ userStatusStats().pendingActivation ?? 0 }}</span>
-  </button>
-  <button
-    type="button"
-    class="px-3 py-1.5 rounded-md text-sm font-medium transition-colors"
-    [class.bg-white]="statusFilter() === 'Disabled'"
-    [class.text-slate-800]="statusFilter() === 'Disabled'"
-    [class.shadow-sm]="statusFilter() === 'Disabled'"
-    [class.text-slate-500]="statusFilter() !== 'Disabled'"
-    (click)="onStatusFilterChange('Disabled')"
-  >
-    Désactivés / Suspendus
-    <span class="ml-1 text-[10px] font-semibold tabular-nums">{{ (userStatusStats().disabled ?? 0) + (userStatusStats().locked ?? 0) }}</span>
-  </button>
-</div>
-
-<!--
-  Barre d'actions en masse. Elle n'apparaît qu'avec au moins un utilisateur
-  sélectionné, et dit explicitement que la sélection se limite à la page
-  affichée : la liste est paginée côté serveur, « tout sélectionner » ne peut
-  donc pas viser le tenant entier.
--->
-@if (selectedCount() > 0) {
-  <div class="mb-4 p-3 rounded-lg bg-primary/5 border border-primary/20 flex items-center justify-between gap-3">
-    <div class="flex items-baseline gap-2 min-w-0">
-      <span class="text-sm font-medium text-primary tabular-nums">
-        {{ selectedCount() }} utilisateur(s) sélectionné(s)
-      </span>
-      <span class="text-xs text-slate-400">sur cette page</span>
-      <button type="button" class="text-xs text-slate-400 hover:text-slate-600" (click)="clearSelection()">
-        Désélectionner
+    <div class="flex flex-wrap items-center gap-2">
+      <label class="flex min-h-11 min-w-[18rem] items-center gap-2 rounded-full bg-white px-4 shadow-xs">
+        <tas-icon iconName="feather:search" class="text-slate-500" style="font-size: 16px" aria-hidden="true"></tas-icon>
+        <span class="sr-only">Rechercher</span>
+        <input
+          type="search"
+          class="min-w-0 flex-1 bg-transparent text-sm text-slate-800 outline-none placeholder:text-slate-500"
+          placeholder="Nom ou adresse électronique"
+          [ngModel]="searchQuery()"
+          (ngModelChange)="onSearchChange($event)"
+        />
+      </label>
+      <button tas-button iconButton type="button" title="Actualiser" (click)="refresh()">
+        <tas-icon iconName="feather:refresh-cw" iconSize="sm"></tas-icon>
       </button>
-    </div>
-    <div class="flex items-center gap-2 shrink-0">
-      @if (canAssignAgency()) {
-        <button tas-button color="primary" type="button" class="text-xs" (click)="openBulkAssignDrawer('agency')">
-          <tas-icon iconName="feather:home" style="font-size:12px"></tas-icon>
-          Affecter à une agence
-        </button>
-      }
-      @if (canAssignRole()) {
-        <button tas-button color="primary" type="button" class="text-xs" (click)="openBulkAssignDrawer('role')">
-          <tas-icon iconName="feather:shield" style="font-size:12px"></tas-icon>
-          Attribuer un rôle
+      @if (canCreate()) {
+        <button tas-filled-button color="primary" type="button" (click)="openCreateDrawer()">
+          <tas-icon iconName="feather:user-plus"></tas-icon>
+          Inviter un membre
         </button>
       }
     </div>
   </div>
-}
 
-<!-- Table -->
-<tas-table
-  [data]="users()"
-  [config]="tableConfig()"
-  [hasCaption]="true"
-  [isLoading]="isLoading()"
-  (pageEventChange)="onPageChange($event)"
-  (searchInputChange)="onSearchChange($event)"
->
-  <ng-template #header>
-    <tr>
-      <th class="w-10">
-        <input
-          type="checkbox"
-          class="form-checkbox accent-primary cursor-pointer"
-          [checked]="allOnPageSelected()"
-          [indeterminate]="someOnPageSelected()"
-          [title]="'Sélectionner les ' + users().length + ' utilisateur(s) de cette page'"
-          (change)="toggleAllOnPage()"
-        />
-      </th>
-      <th>Membre</th>
-      <th>Agence</th>
-      <th>Type</th>
-      <th>Rôle</th>
-      <th>Statut</th>
-      <th>Dernière connexion</th>
-      <th></th>
-    </tr>
-  </ng-template>
+  <div class="flex flex-wrap items-start gap-5">
+    <aside aria-label="Filtres" class="flex min-w-[220px] flex-[0_1_260px] flex-col gap-5 rounded-3xl bg-white p-4 shadow-xs">
+      <fieldset class="flex flex-col gap-0.5">
+        <legend class="px-1.5 pb-1.5 text-sm font-bold text-slate-800">Statut</legend>
+        @for (opt of statusOptions(); track opt.value) {
+          <button
+            type="button"
+            class="flex min-h-10 items-center gap-2.5 rounded-xl px-2 text-left transition-colors hover:bg-slate-50"
+            [class]="opt.isSelected ? 'bg-primary/5' : ''"
+            [attr.aria-pressed]="opt.isSelected"
+            (click)="pickStatus(opt.value)"
+          >
+            <ng-container *ngTemplateOutlet="box; context: { $implicit: opt.isSelected }"></ng-container>
+            <span class="size-2 shrink-0 rounded-full" [class]="opt.dot" aria-hidden="true"></span>
+            <span class="flex-1 text-sm text-slate-800">{{ opt.label }}</span>
+            <span class="text-xs font-semibold text-slate-500 tabular-nums">{{ opt.count }}</span>
+          </button>
+        }
+      </fieldset>
 
-  <ng-template #body let-item>
-    <tr
-      class="cursor-pointer hover:bg-slate-50 transition-colors"
-      [class]="selectedIds().has(item.id) ? 'bg-primary/5' : ''"
-      (click)="navigateToEdit(item)"
-    >
-      <!-- Sélection : le clic ne doit pas ouvrir la fiche -->
-      <td class="py-3 w-10" (click)="$event.stopPropagation()">
-        <input
-          type="checkbox"
-          class="form-checkbox accent-primary cursor-pointer"
-          [checked]="selectedIds().has(item.id)"
-          (change)="toggleUser(item)"
-        />
-      </td>
-
-      <!-- Identity: avatar + name + email + MFA -->
-      <td class="py-3">
-        <div class="flex items-center gap-3">
-          <div class="relative flex-shrink-0">
-            <div
-              class="w-9 h-9 rounded-full flex items-center justify-center text-xs font-semibold select-none"
-              [ngClass]="avatarColor(item.fullName)"
+      @if (agencyOptions().length > 0) {
+        <fieldset class="flex flex-col gap-0.5">
+          <legend class="px-1.5 pb-1.5 text-sm font-bold text-slate-800">Agence</legend>
+          @for (opt of agencyOptions(); track opt.value) {
+            <button
+              type="button"
+              class="flex min-h-10 items-center gap-2.5 rounded-xl px-2 text-left transition-colors hover:bg-slate-50"
+              [class]="opt.isSelected ? 'bg-primary/5' : ''"
+              [attr.aria-pressed]="opt.isSelected"
+              (click)="pickAgency(opt.value)"
             >
-              {{ item.fullName | initials }}
-            </div>
-            @if (item.isAvailable) {
-              <span class="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-green-500 border-2 border-white"></span>
+              <ng-container *ngTemplateOutlet="box; context: { $implicit: opt.isSelected }"></ng-container>
+              <span class="flex-1 truncate text-sm text-slate-800">{{ opt.label }}</span>
+            </button>
+          }
+          @if (hiddenAgencyCount() > 0) {
+            <button type="button" class="self-start px-2 pt-1 text-xs font-semibold text-primary" (click)="showAllAgencies.set(true)">
+              Voir les {{ hiddenAgencyCount() }} autres agences
+            </button>
+          }
+        </fieldset>
+      }
+
+      <p class="px-1.5 text-xs text-slate-500">Un statut et une agence à la fois. Les nombres portent sur toute l’équipe.</p>
+
+      @if (hasFilters()) {
+        <button tas-outlined-button color="primary" type="button" (click)="clearFilters()">Effacer les filtres</button>
+      }
+    </aside>
+
+    <div class="flex min-w-0 flex-[1_1_640px] flex-col gap-3.5">
+      @if (pendingCount() > 0 && canUpdate()) {
+        <div class="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-orange-200 bg-orange-50 px-4.5 py-3.5">
+          <p class="text-sm text-slate-800">
+            <b>
+              {{ pendingCount() }}
+              {{ pendingCount() > 1 ? 'invitations attendent une réponse' : 'invitation attend une réponse' }}</b
+            >@if (expiredUsers().length > 0) {, dont {{ expiredUsers().length }} expirée{{ expiredUsers().length > 1 ? 's' : '' }}}.
+          </p>
+          @if (expiredUsers().length > 0) {
+            <button
+              tas-raised-button
+              color="primary"
+              type="button"
+              [disabled]="isResendingExpired()"
+              [isLoading]="isResendingExpired()"
+              (click)="resendExpired()"
+            >
+              Renvoyer les expirées
+            </button>
+          } @else if (statusFilter() !== 'PendingActivation') {
+            <button tas-outlined-button color="primary" type="button" (click)="showPending()">Voir les invitations</button>
+          }
+        </div>
+      }
+
+      <!--
+        Barre d'actions en masse. Elle n'apparaît qu'avec au moins un utilisateur
+        sélectionné, et dit explicitement que la sélection se limite à la page
+        affichée : la liste est paginée côté serveur, « tout sélectionner » ne peut
+        donc pas viser le tenant entier.
+      -->
+      @if (selectedCount() > 0) {
+        <div class="flex items-center justify-between gap-3 rounded-2xl border border-primary/20 bg-primary/5 p-3">
+          <div class="flex min-w-0 items-baseline gap-2">
+            <span class="text-sm font-medium text-primary tabular-nums">{{ selectedCount() }} utilisateur(s) sélectionné(s)</span>
+            <span class="text-xs text-slate-500">sur cette page</span>
+            <button type="button" class="text-xs text-slate-500 hover:text-slate-700" (click)="clearSelection()">
+              Désélectionner
+            </button>
+          </div>
+          <div class="flex shrink-0 items-center gap-2">
+            @if (canAssignAgency()) {
+              <button tas-button color="primary" type="button" class="text-xs" (click)="openBulkAssignDrawer('agency')">
+                <tas-icon iconName="feather:home" style="font-size: 12px"></tas-icon>
+                Affecter à une agence
+              </button>
+            }
+            @if (canAssignRole()) {
+              <button tas-button color="primary" type="button" class="text-xs" (click)="openBulkAssignDrawer('role')">
+                <tas-icon iconName="feather:shield" style="font-size: 12px"></tas-icon>
+                Attribuer un rôle
+              </button>
             }
           </div>
-          <div class="min-w-0">
-            <div class="flex items-center gap-1.5 leading-tight">
-              <span class="font-medium text-slate-800 truncate">{{ item.fullName ?? '—' }}</span>
-              @if (item.mfaEnabled) {
-                <tas-icon iconName="feather:shield" iconSize="sm" class="text-primary flex-shrink-0" title="MFA activé"></tas-icon>
-              }
-            </div>
-            <div class="text-xs text-slate-400 mt-0.5 truncate">{{ item.email ?? '' }}</div>
-          </div>
         </div>
-      </td>
+      }
 
-      <!-- Agency -->
-      <td class="text-sm text-slate-600">{{ item.agencyName ?? '—' }}</td>
-
-      <!-- Account type -->
-      <td>
-        @if (item.accountType !== null) {
-          <tas-tag severity="neutral">{{ accountTypeLabel(item.accountType) }}</tas-tag>
-        } @else {
-          <span class="text-slate-400 text-sm">—</span>
-        }
-      </td>
-
-      <!-- Roles -->
-      <td>
-        @if (item.roles?.length) {
-          @if (item.roles.length > 1) {
-            <tas-tag severity="neutral" [title]="displayRoles(item.roles)">{{ item.roles[0] }}, +{{ item.roles.length - 1 }}</tas-tag>
+      @if (!isLoading() && rows().length === 0) {
+        <div class="rounded-3xl bg-white px-5 py-12 text-center text-sm text-slate-500">
+          @if (hasFilters()) {
+            Aucun membre ne correspond à ces filtres.
           } @else {
-            <tas-tag severity="neutral">{{ item.roles[0] }}</tas-tag>
+            Aucun membre pour l’instant.
           }
-        } @else {
-          <span class="text-slate-400 text-sm">—</span>
-        }
-      </td>
-
-      <!-- Status -->
-      <td>
-        <tas-tag [severity]="statusSeverity(item.status)">{{ statusLabel(item.status) }}</tas-tag>
-      </td>
-
-      <!-- Last login -->
-      <td class="text-sm text-slate-500">
-        {{ item.lastLoginAt ? (item.lastLoginAt | dateTimeAgo) : 'Jamais connecté' }}
-      </td>
-
-      <!-- Action -->
-      <td class="text-right" (click)="$event.stopPropagation()">
-        <button
-          tas-button
-          iconButton
-          type="button"
-          (click)="navigateToEdit(item)"
-          title="Voir / modifier"
+        </div>
+      } @else {
+        <tas-table
+          [data]="rows()"
+          identifierField="id"
+          [config]="tableConfig()"
+          [hasCaption]="false"
+          [isLoading]="isLoading()"
+          (pageEventChange)="onPageChange($event)"
         >
-          <tas-icon iconName="feather:edit-2" iconSize="sm"></tas-icon>
-        </button>
-      </td>
-    </tr>
-  </ng-template>
-</tas-table>
+          <ng-template #header>
+            <tr class="text-left text-xs font-bold uppercase tracking-wide text-slate-500">
+              @if (canBulkAssign()) {
+                <th class="w-10 py-2.5 pl-5">
+                  <input
+                    type="checkbox"
+                    class="form-checkbox cursor-pointer accent-primary"
+                    [checked]="allOnPageSelected()"
+                    [indeterminate]="someOnPageSelected()"
+                    [attr.aria-label]="'Sélectionner les ' + users().length + ' utilisateur(s) de cette page'"
+                    (change)="toggleAllOnPage()"
+                  />
+                </th>
+              }
+              <th class="py-2.5" [class]="canBulkAssign() ? '' : 'pl-5'">Membre</th>
+              <th class="py-2.5">Rôle et agence</th>
+              <th class="py-2.5">Statut</th>
+              <th class="py-2.5 pr-5 text-right">Action</th>
+            </tr>
+          </ng-template>
+
+          <ng-template #body let-row>
+            <tr class="transition-colors hover:bg-slate-50" [class]="selectedIds().has(row.id) ? 'bg-primary/5' : ''">
+              @if (canBulkAssign()) {
+                <td
+                  class="w-10 py-3 pl-5"
+                  [class]="row.state === 'expired' ? 'shadow-[inset_4px_0_0_var(--color-orange-300)]' : ''"
+                >
+                  <input
+                    type="checkbox"
+                    class="form-checkbox cursor-pointer accent-primary"
+                    [checked]="selectedIds().has(row.id)"
+                    [attr.aria-label]="'Sélectionner ' + row.name"
+                    (change)="toggleUser(row.user)"
+                  />
+                </td>
+              }
+              <td
+                class="py-3"
+                [class]="
+                  (canBulkAssign() ? '' : 'pl-5 ') +
+                  (!canBulkAssign() && row.state === 'expired' ? 'shadow-[inset_4px_0_0_var(--color-orange-300)]' : '')
+                "
+              >
+                <div class="flex min-w-0 items-center gap-3">
+                  <span
+                    class="flex size-10 shrink-0 items-center justify-center rounded-[14px] text-sm font-bold"
+                    [class]="row.avatar"
+                    aria-hidden="true"
+                    >{{ row.initials | initials }}</span
+                  >
+                  <div class="flex min-w-0 flex-col leading-snug">
+                    <span class="flex flex-wrap items-center gap-1.5">
+                      <a
+                        href=""
+                        class="font-bold text-slate-800 hover:text-primary"
+                        (click)="$event.preventDefault(); navigateToEdit(row.user)"
+                        >{{ row.name }}</a
+                      >
+                      @if (row.isAdmin) {
+                        <span class="rounded-full bg-primary/10 px-2 py-px text-[11px] font-bold text-primary">Administrateur</span>
+                      }
+                      @if (row.isDuplicate) {
+                        <span class="rounded-full bg-amber-100 px-2 py-px text-[11px] font-bold text-amber-800">Doublon possible</span>
+                      }
+                      @if (row.isTestAddress) {
+                        <span class="rounded-full bg-slate-100 px-2 py-px text-[11px] font-bold text-slate-700">Adresse de test</span>
+                      }
+                      @if (row.user.mfaEnabled) {
+                        <tas-icon iconName="feather:shield" iconSize="sm" class="text-primary" title="Double authentification activée"></tas-icon>
+                      }
+                    </span>
+                    <span class="truncate text-xs text-slate-500">{{ row.email }}</span>
+                  </div>
+                </div>
+              </td>
+              <td class="py-3">
+                <div class="flex flex-col leading-snug">
+                  <span class="text-sm text-slate-800" [title]="row.rolesTitle">{{ row.role }}</span>
+                  <span class="text-xs text-slate-500">{{ row.agency }}</span>
+                </div>
+              </td>
+              <td class="py-3">
+                <div class="flex flex-col leading-snug">
+                  <span class="flex items-center gap-1.5 text-sm font-semibold" [class]="row.stateTone">
+                    <span class="size-2 rounded-full" [class]="row.stateDot" aria-hidden="true"></span>
+                    {{ row.stateLabel }}
+                  </span>
+                  <span class="text-xs text-slate-500">
+                    @switch (row.state) {
+                      @case ('active') {
+                        @if (row.user.lastLoginAt) {
+                          Connecté {{ row.user.lastLoginAt | dateTimeAgo }}
+                        } @else {
+                          Jamais connecté
+                        }
+                      }
+                      @case ('resent') {
+                        Nouveau lien envoyé
+                      }
+                      @case ('expired') {
+                        Expirée le {{ row.user.invitationExpiresAt | date: 'd MMM' }}
+                      }
+                      @case ('sent') {
+                        @if (row.user.invitationExpiresAt) {
+                          Expire le {{ row.user.invitationExpiresAt | date: 'd MMM, HH:mm' }}
+                        } @else {
+                          En attente d’activation
+                        }
+                      }
+                      @case ('disabled') {
+                        @if (row.user.deactivatedAt) {
+                          Désactivé le {{ row.user.deactivatedAt | date: 'd MMM y' }}
+                        } @else {
+                          Accès coupé
+                        }
+                      }
+                      @default {
+                        Compte verrouillé
+                      }
+                    }
+                  </span>
+                </div>
+              </td>
+              <td class="py-3 pr-5">
+                <div class="flex items-center justify-end gap-1">
+                  @if (row.isPending && canUpdate()) {
+                    @if (row.isResent) {
+                      <span class="text-xs font-semibold text-green-800">Envoyée ✓</span>
+                    } @else {
+                      <button
+                        tas-outlined-button
+                        color="primary"
+                        type="button"
+                        [disabled]="isResending(row.id)"
+                        [isLoading]="isResending(row.id)"
+                        (click)="resend(row)"
+                      >
+                        Renvoyer
+                      </button>
+                    }
+                  }
+                  <button
+                    tas-button
+                    iconButton
+                    type="button"
+                    [attr.aria-label]="'Ouvrir la fiche de ' + row.name"
+                    (click)="navigateToEdit(row.user)"
+                  >
+                    <tas-icon iconName="feather:chevron-right" iconSize="sm"></tas-icon>
+                  </button>
+                </div>
+              </td>
+            </tr>
+          </ng-template>
+        </tas-table>
+      }
+    </div>
+  </div>
+</div>
+
+<ng-template #box let-on>
+  <span
+    class="flex size-[18px] shrink-0 items-center justify-center rounded-[5px] border-2"
+    [class]="on ? 'border-primary bg-primary text-white' : 'border-slate-400 bg-white'"
+    aria-hidden="true"
+  >
+    @if (on) {
+      <tas-icon iconName="feather:check" style="font-size: 11px"></tas-icon>
+    }
+  </span>
+</ng-template>
