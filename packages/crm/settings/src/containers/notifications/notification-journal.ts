@@ -71,7 +71,10 @@ import { DeliveryLogDetailDrawer } from './delivery-log-detail-drawer';
           <div class="divide-y divide-slate-100">
             @for (log of logs(); track $index) {
               <div class="flex items-center gap-3 px-4 py-2.5 hover:bg-slate-50 transition-colors cursor-pointer"
-                (click)="openDetail(log)">
+                role="button" tabindex="0"
+                (click)="openDetail(log)"
+                (keydown.enter)="openDetail(log)"
+                (keydown.space)="$event.preventDefault(); openDetail(log)">
                 <div class="w-7 h-7 rounded-full flex items-center justify-center shrink-0"
                   [class]="statusBgClass(log.status)">
                   <tas-icon [iconName]="statusIcon(log.status)" style="font-size:11px"

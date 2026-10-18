@@ -1,4 +1,5 @@
 import nx from '@nx/eslint-plugin';
+import { templatePlugin } from 'angular-eslint';
 
 export default [
   ...nx.configs['flat/base'],
@@ -38,6 +39,19 @@ export default [
     },
   },
   {
+    // Les templates utilisent `x != null` comme test nullish : passer à `!==` ne couvrirait
+    // plus `undefined`, et un `0` légitime (taux, probabilité, latence) ne peut pas être
+    // testé par simple truthiness. L'option de la règle est faite pour ce cas.
+    files: ['**/*.html'],
+    plugins: { '@angular-eslint/template': templatePlugin },
+    rules: {
+      '@angular-eslint/template/eqeqeq': [
+        'error',
+        { allowNullOrUndefined: true },
+      ],
+    },
+  },
+  {
     files: [
       '**/*.ts',
       '**/*.tsx',
@@ -49,6 +63,14 @@ export default [
       '**/*.mjs',
     ],
     // Override or add rules here
-    rules: {},
+    rules: {
+      // Les modèles de formulaire exposent une fabrique statique et ferment le
+      // constructeur pour qu'on passe par elle : ce constructeur vide est l'intention,
+      // pas un oubli. L'autorisation reste limitée à ce cas.
+      '@typescript-eslint/no-empty-function': [
+        'error',
+        { allow: ['private-constructors'] },
+      ],
+    },
   },
 ];

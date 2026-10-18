@@ -75,7 +75,10 @@ function activityTypeMeta(type: ActivityDtoTypeEnum | undefined): { icon: string
           } @else {
             <div class="divide-y divide-slate-100">
               @for (activity of activities(); track activity.id) {
-                <div class="p-4 hover:bg-slate-50 transition-colors cursor-pointer" (click)="toggleDetail(activity)">
+                <div class="p-4 hover:bg-slate-50 transition-colors cursor-pointer" role="button" tabindex="0"
+                     (click)="toggleDetail(activity)"
+                     (keydown.enter)="toggleDetail(activity)"
+                     (keydown.space)="$event.preventDefault(); toggleDetail(activity)">
                   <div class="flex items-start gap-3">
                     <div
                       class="w-8 h-8 rounded-full flex items-center justify-center shrink-0"

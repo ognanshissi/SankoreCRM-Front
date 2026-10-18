@@ -118,7 +118,11 @@ import { PermissionsService } from '@sankore/crm/common';
               @for (instance of instances(); track instance.id) {
                 <div
                   class="flex items-center justify-between gap-4 py-3 cursor-pointer hover:bg-slate-50 -mx-4 px-4 rounded transition-colors"
+                  role="button"
+                  tabindex="0"
                   (click)="navigateToInstance(instance)"
+                  (keydown.enter)="navigateToInstance(instance)"
+                  (keydown.space)="$event.preventDefault(); navigateToInstance(instance)"
                 >
                   <div class="min-w-0">
                     <div class="flex items-center gap-2">

@@ -248,7 +248,7 @@ const DRAFT_STORAGE_KEY = 'pipeline_stages_draft';
                   </span>
 
                   <!-- Toggle switch -->
-                  <div class="shrink-0" (click)="$event.stopPropagation()">
+                  <div class="shrink-0" role="presentation" (click)="$event.stopPropagation()">
                     <tas-switch
                       [checked]="stage.enabled"
                       [ariaLabel]="

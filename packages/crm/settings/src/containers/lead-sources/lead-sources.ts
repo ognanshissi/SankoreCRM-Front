@@ -247,7 +247,10 @@ import { TimeagoPipe } from '@talisoft/ui/timeago';
                 @for (src of sources(); track src.id) {
                   <div class="flex items-center px-4 py-3 hover:bg-slate-50 transition-colors cursor-pointer"
                        [class.opacity-50]="src.status === 'Archived'"
-                       (click)="openSource(src.id!)">
+                       role="button" tabindex="0"
+                       (click)="openSource(src.id!)"
+                       (keydown.enter)="openSource(src.id!)"
+                       (keydown.space)="$event.preventDefault(); openSource(src.id!)">
                     <!-- Name + code + badges -->
                     <div class="w-[22%] min-w-0">
                       <div class="flex items-center gap-2">
@@ -318,7 +321,7 @@ import { TimeagoPipe } from '@talisoft/ui/timeago';
                     </div>
 
                     <!-- Actions (FE-09) -->
-                    <div class="w-[10%] flex justify-end" (click)="$event.stopPropagation()">
+                    <div class="w-[10%] flex justify-end" role="presentation" (click)="$event.stopPropagation()">
                       @if (!src.isSystem && canWrite()) {
                         @if (actionInProgress() === src.id) {
                           <tas-spinner size="3"></tas-spinner>

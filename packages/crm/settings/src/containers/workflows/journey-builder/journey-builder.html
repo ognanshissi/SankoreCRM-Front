@@ -114,6 +114,7 @@
     <!-- Canevas -->
     <section class="relative rounded-2xl border border-slate-100 min-h-[70vh] overflow-auto"
       style="background-color:#faf8f5; background-image:radial-gradient(circle, #e2ddd5 1px, transparent 1px); background-size:20px 20px;"
+      role="presentation"
       (click)="clearSelection()">
 
       <div class="sticky top-4 z-10 flex justify-end px-4 pointer-events-none">
@@ -135,7 +136,11 @@
           <!-- Déclencheur -->
           <div class="w-[340px] rounded-xl bg-white border p-4 flex items-start gap-3 cursor-pointer shadow-sm transition-colors"
             [class]="triggerPanelOpen() ? 'border-primary ring-2 ring-primary/30' : dropTarget() === 'trigger' ? 'border-primary border-dashed' : 'border-slate-200'"
+            role="button"
+            tabindex="0"
             (click)="openTriggerPanel($event)"
+            (keydown.enter)="openTriggerPanel($event)"
+            (keydown.space)="$event.preventDefault(); openTriggerPanel($event)"
             (dragover)="onTriggerDragOver($event)"
             (dragleave)="dropTarget.set(null)"
             (drop)="onTriggerDrop($event)">
@@ -255,7 +260,11 @@
   @let isIntegration = kind === StepKind.IntegrationAction;
   <div class="rounded-xl p-4 flex items-start gap-3 cursor-pointer transition-all"
     [class]="(narrow ? 'w-[300px] ' : 'w-[340px] ') + (isCondition ? 'bg-amber-50/60 border border-dashed border-amber-400 ' : 'bg-white border shadow-sm ') + (selectedStepId() === step.id ? 'border-primary ring-4 ring-primary/15 border-2' : isCondition ? '' : 'border-slate-200 hover:border-slate-300')"
-    (click)="selectStep(step, $event)">
+    role="button"
+    tabindex="0"
+    (click)="selectStep(step, $event)"
+    (keydown.enter)="selectStep(step, $event)"
+    (keydown.space)="$event.preventDefault(); selectStep(step, $event)">
     <span class="w-9 h-9 rounded-full flex items-center justify-center shrink-0"
       [class]="isCondition ? 'bg-amber-100 text-amber-700' : isIntegration ? 'bg-blue-50 text-blue-600' : 'bg-slate-100 text-slate-700'">
       <tas-icon [iconName]="STEP_KIND_META[kind].icon" style="font-size:15px"></tas-icon>

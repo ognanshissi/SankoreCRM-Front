@@ -248,7 +248,11 @@
 
             <div
               class="min-w-0 flex-1 cursor-pointer"
+              role="button"
+              tabindex="0"
               (click)="navigateToEdit(row.node)"
+              (keydown.enter)="navigateToEdit(row.node)"
+              (keydown.space)="$event.preventDefault(); navigateToEdit(row.node)"
             >
               <div class="flex items-center gap-2 flex-wrap">
                 <span class="font-medium text-slate-800 text-sm leading-tight truncate">

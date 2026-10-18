@@ -147,7 +147,7 @@ const BUSINESS_CASES: BusinessCase[] = [
           </h1>
           <p class="text-xs text-slate-400 mt-0.5">
             {{ step() === 'pick'
-              ? 'Choisissez un cas d\'usage pour configurer automatiquement le canal et le mode.'
+              ? "Choisissez un cas d'usage pour configurer automatiquement le canal et le mode."
               : 'Renseignez les informations de votre source.' }}
           </p>
         </div>
@@ -172,8 +172,13 @@ const BUSINESS_CASES: BusinessCase[] = [
 
         <!-- Question sub-step for lead factory -->
         @if (pendingCase()) {
-          <div class="fixed inset-0 bg-black/30 z-50 flex items-center justify-center" (click)="pendingCase.set(null)">
-            <div class="bg-white rounded-xl shadow-xl p-6 max-w-md w-full" (click)="$event.stopPropagation()">
+          <!-- Le voile est décoratif (role="presentation") : le clic dessus n'est qu'un
+               raccourci, la sortie au clavier passe par le bouton « Annuler » du panneau.
+               Le renvoi se fait via dismissPendingCase, qui ne ferme que si le clic vise le
+               voile lui-même — un stopPropagation sur le panneau ferait du panneau une zone
+               cliquable sans équivalent clavier. -->
+          <div class="fixed inset-0 bg-black/30 z-50 flex items-center justify-center" role="presentation" (click)="dismissPendingCase($event)">
+            <div class="bg-white rounded-xl shadow-xl p-6 max-w-md w-full" role="dialog" aria-modal="true">
               <p class="text-sm font-semibold text-slate-800 mb-2">{{ pendingCase()!.question }}</p>
               <div class="flex flex-col gap-2 mt-4">
                 @for (choice of pendingCase()!.choices; track choice.mode) {
@@ -429,6 +434,12 @@ export class CreateLeadSourcePage implements OnInit {
       this.pendingCase.set(bc);
     } else {
       this.confirmCase(bc, bc.mode!);
+    }
+  }
+
+  public dismissPendingCase(event: MouseEvent): void {
+    if (event.target === event.currentTarget) {
+      this.pendingCase.set(null);
     }
   }
 

@@ -34,7 +34,7 @@ import { MappingDomain } from '../data-access/integration-referential';
  * un nom accentué avec des espaces se transporte mal d'un poste à l'autre.
  */
 export function downloadMappingCsv(csv: string, domain: MappingDomain): void {
-  const content = csv.startsWith('﻿') ? csv : `﻿${csv}`;
+  const content = csv.startsWith('\uFEFF') ? csv : `\uFEFF${csv}`;
   const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement('a');

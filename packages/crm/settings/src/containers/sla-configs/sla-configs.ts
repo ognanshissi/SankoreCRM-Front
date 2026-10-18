@@ -89,7 +89,12 @@ function sampleDeadline(duration: string, holidays: string[]): string {
                   <div class="p-4 flex items-center gap-4">
                     <tas-switch [checked]="cfg.isActive ?? false" [isLoading]="togglingId() === cfg.id"
                       (toggle)="toggleActive(cfg, $event)"></tas-switch>
-                    <div class="flex-1 min-w-0" [class.cursor-pointer]="canManage()" (click)="canManage() && startEdit(cfg)">
+                    <div class="flex-1 min-w-0" [class.cursor-pointer]="canManage()"
+                         [attr.role]="canManage() ? 'button' : null"
+                         [attr.tabindex]="canManage() ? 0 : null"
+                         (click)="canManage() && startEdit(cfg)"
+                         (keydown.enter)="canManage() && startEdit(cfg)"
+                         (keydown.space)="$event.preventDefault(); canManage() && startEdit(cfg)">
                       <div class="flex items-center gap-2">
                         <p class="text-sm font-semibold text-slate-800">{{ cfg.name }}</p>
                         @if (cfg.isActive) { <tas-tag severity="success">Active</tas-tag> }

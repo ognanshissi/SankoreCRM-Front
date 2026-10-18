@@ -821,7 +821,7 @@ export class LeadHomepage implements OnInit {
       if (created && selectedIds.length > 1) {
         // Create tasks for remaining leads
         const tasksApi = this._leadsApiService;
-        let remaining = selectedIds.length - 1;
+        const remaining = selectedIds.length - 1;
         // The first task was already created by the drawer.
         // For the rest, we re-use the same pattern but via bulk:
         // Since there's no bulk-create-task API, we inform the user.

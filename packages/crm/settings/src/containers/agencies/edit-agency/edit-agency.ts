@@ -125,7 +125,11 @@ export class EditAgencyPage {
   });
 
   public moveModel = signal(MoveAgencyFormModel.instantiate());
-  public moveFormSchema = form(this.moveModel, (_schema) => {});
+  public moveFormSchema = form(this.moveModel, (schema) => {
+    required(schema.newParentAgencyId, {
+      message: "L'agence parente est obligatoire",
+    });
+  });
 
   public isHQ = computed(
     () =>

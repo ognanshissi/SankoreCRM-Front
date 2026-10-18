@@ -98,6 +98,10 @@
   @else if (file()) {
     <!-- Onglets : la bande défile horizontalement sur un écran étroit plutôt que de se replier -->
     <div class="mb-6 overflow-x-auto">
+      <!-- Le conteneur n'est volontairement pas focusable : le focus vit sur les onglets
+           (`[tabindex]` glissant ci-dessous) et le conteneur ne fait que recevoir les flèches
+           qui remontent. Le rendre focusable casserait la navigation clavier du tablist. -->
+      <!-- eslint-disable-next-line @angular-eslint/template/interactive-supports-focus -->
       <div
         class="inline-flex flex-nowrap gap-1 p-1 rounded-2xl bg-white border border-slate-100 shadow-sm min-w-max"
         role="tablist"

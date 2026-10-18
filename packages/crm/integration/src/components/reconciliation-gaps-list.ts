@@ -805,7 +805,7 @@ export class ReconciliationGapsList implements OnInit {
 
   private _download(csv: string): void {
     // BOM UTF-8 : sans lui, Excel casse les accents des libellés.
-    const blob = new Blob([`﻿${csv}`], { type: 'text/csv;charset=utf-8;' });
+    const blob = new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement('a');
     anchor.href = url;

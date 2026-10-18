@@ -110,7 +110,10 @@ function typeLabel(type: string | undefined): string {
                   propagation, sinon « Démarrer » ouvrirait aussi le drawer.
                 -->
                 <div class="p-4 hover:bg-slate-50 transition-colors cursor-pointer"
-                  (click)="openTaskDetail(task)">
+                  role="button" tabindex="0"
+                  (click)="openTaskDetail(task)"
+                  (keydown.enter)="openTaskDetail(task)"
+                  (keydown.space)="$event.preventDefault(); openTaskDetail(task)">
                   <div class="flex items-start justify-between gap-3">
                     <div class="flex-1 min-w-0">
                       <div class="flex items-center gap-2 mb-1">

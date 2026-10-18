@@ -476,7 +476,7 @@ export function customerMatchViewFromClient(
                             type="button"
                             class="text-xs"
                             [disabled]="item.customerId === selectedCustomerId()"
-                            (click)="select.emit(item)"
+                            (click)="matchSelected.emit(item)"
                           >
                             {{ selectLabel() }}
                           </button>
@@ -553,7 +553,7 @@ export function customerMatchViewFromClient(
                           type="button"
                           class="text-xs"
                           [disabled]="item.customerId === selectedCustomerId()"
-                          (click)="select.emit(item)"
+                          (click)="matchSelected.emit(item)"
                         >
                           {{ selectLabel() }}
                         </button>
@@ -626,7 +626,7 @@ export class CustomerMatchBanner {
    */
   public readonly showRejectAction = input(true);
 
-  public readonly select = output<CustomerMatchView>();
+  public readonly matchSelected = output<CustomerMatchView>();
   public readonly reject = output<void>();
   public readonly detach = output<CustomerMatchView>();
   public readonly openCustomer = output<string>();

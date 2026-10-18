@@ -122,8 +122,9 @@ import { PermissionsService } from '@sankore/crm/common';
                 <p class="text-sm font-medium text-slate-700">Nouveau déclencheur</p>
 
                 <div>
-                  <label class="text-xs text-slate-500 mb-1 block">Type</label>
+                  <label for="trigger-type" class="text-xs text-slate-500 mb-1 block">Type</label>
                   <select
+                    id="trigger-type"
                     class="w-full px-3 py-2 text-sm border border-slate-200 rounded-md bg-white focus:outline-none focus:ring-1 focus:ring-primary/40 focus:border-primary/40"
                     [value]="newTriggerType()"
                     (change)="newTriggerType.set($any($event.target).value)"
@@ -136,8 +137,9 @@ import { PermissionsService } from '@sankore/crm/common';
 
                 @if (newTriggerType() === AddTriggerRequestTriggerTypeEnum.EntityEvent) {
                   <div>
-                    <label class="text-xs text-slate-500 mb-1 block">Nom de l'événement</label>
+                    <label for="trigger-event-name" class="text-xs text-slate-500 mb-1 block">Nom de l'événement</label>
                     <input
+                      id="trigger-event-name"
                       type="text"
                       class="w-full px-3 py-2 text-sm border border-slate-200 rounded-md bg-white focus:outline-none focus:ring-1 focus:ring-primary/40 focus:border-primary/40 font-mono"
                       placeholder="ex: lead.created"

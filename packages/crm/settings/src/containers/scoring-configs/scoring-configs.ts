@@ -60,7 +60,12 @@ const WEIGHT_FIELDS: WeightField[] = [
               @for (cfg of configs(); track cfg.id) {
                 <tas-card class="block">
                   <div class="p-4 flex items-center gap-4">
-                    <div class="flex-1 min-w-0" [class.cursor-pointer]="canManage()" (click)="canManage() && startEdit(cfg)">
+                    <div class="flex-1 min-w-0" [class.cursor-pointer]="canManage()"
+                         [attr.role]="canManage() ? 'button' : null"
+                         [attr.tabindex]="canManage() ? 0 : null"
+                         (click)="canManage() && startEdit(cfg)"
+                         (keydown.enter)="canManage() && startEdit(cfg)"
+                         (keydown.space)="$event.preventDefault(); canManage() && startEdit(cfg)">
                       <div class="flex items-center gap-2">
                         <p class="text-sm font-semibold text-slate-800">{{ cfg.name }}</p>
                         <span class="text-[10px] text-slate-400">v{{ cfg.version }}</span>

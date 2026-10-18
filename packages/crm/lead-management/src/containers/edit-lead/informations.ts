@@ -126,7 +126,7 @@ function intentLabel(level: string | null | undefined): string {
           [actionsDisabledReason]="linkDisabledReason()"
           selectLabel="Rattacher…"
           [showRejectAction]="false"
-          (select)="openAttachDrawer($event)"
+          (matchSelected)="openAttachDrawer($event)"
           (detach)="openDetachDrawer($event)"
           (openCustomer)="openCustomer($event)"
           (openCustomerKyc)="openCustomerKyc($event)"

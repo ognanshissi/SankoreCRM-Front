@@ -40,7 +40,7 @@
         [selectedCustomerId]="selectedCustomerId()"
         [canAct]="true"
         [canOpenCustomer]="canReadCustomers()"
-        (select)="retainCustomer($event)"
+        (matchSelected)="retainCustomer($event)"
         (reject)="rejectCustomers()"
         (openCustomer)="viewCustomer($event)"
       ></customer-match-banner>

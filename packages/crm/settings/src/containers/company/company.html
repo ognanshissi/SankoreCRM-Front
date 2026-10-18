@@ -83,13 +83,15 @@
             </tas-form-field>
           </div>
           <div class="shrink-0 mt-5">
-            <label class="block text-xs text-slate-400 mb-1 sr-only">Sélecteur</label>
-            <input
-              type="color"
-              class="w-10 h-10 rounded-lg border border-slate-200 cursor-pointer p-0.5 bg-white"
-              [value]="formSchema.primaryColor().value() || '#1A4D4D'"
-              (input)="onColorPickerChange('primaryColor', $any($event.target).value)"
-            />
+            <label class="block text-xs text-slate-400 mb-1">
+              <span class="sr-only">Sélecteur de couleur primaire</span>
+              <input
+                type="color"
+                class="w-10 h-10 rounded-lg border border-slate-200 cursor-pointer p-0.5 bg-white"
+                [value]="formSchema.primaryColor().value() || '#1A4D4D'"
+                (input)="onColorPickerChange('primaryColor', $any($event.target).value)"
+              />
+            </label>
           </div>
         </div>
 
@@ -107,13 +109,15 @@
             </tas-form-field>
           </div>
           <div class="shrink-0 mt-5">
-            <label class="block text-xs text-slate-400 mb-1 sr-only">Sélecteur</label>
-            <input
-              type="color"
-              class="w-10 h-10 rounded-lg border border-slate-200 cursor-pointer p-0.5 bg-white"
-              [value]="formSchema.secondaryColor().value() || '#103456'"
-              (input)="onColorPickerChange('secondaryColor', $any($event.target).value)"
-            />
+            <label class="block text-xs text-slate-400 mb-1">
+              <span class="sr-only">Sélecteur de couleur secondaire</span>
+              <input
+                type="color"
+                class="w-10 h-10 rounded-lg border border-slate-200 cursor-pointer p-0.5 bg-white"
+                [value]="formSchema.secondaryColor().value() || '#103456'"
+                (input)="onColorPickerChange('secondaryColor', $any($event.target).value)"
+              />
+            </label>
           </div>
         </div>
 

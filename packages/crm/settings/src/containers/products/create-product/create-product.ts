@@ -138,14 +138,14 @@ class CreateProductFormModel {
           </tas-form-field>
 
           <div>
-            <label class="text-xs font-medium text-slate-500 mb-1 block"
-              >Date d'effet</label
-            >
-            <tas-date-picker
-              mode="date"
-              placeholder="Sélectionnez une date"
-              [formField]="formSchema.effectiveFrom"
-            ></tas-date-picker>
+            <tas-form-field>
+              <tas-label>Date d'effet</tas-label>
+              <tas-date-picker
+                mode="date"
+                placeholder="Sélectionnez une date"
+                [formField]="formSchema.effectiveFrom"
+              ></tas-date-picker>
+            </tas-form-field>
             <p class="text-xs text-slate-400 mt-1">
               Date à partir de laquelle le produit est disponible.
             </p>

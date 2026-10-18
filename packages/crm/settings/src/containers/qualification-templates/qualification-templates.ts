@@ -48,7 +48,10 @@ import { statusSeverity, statusLabel, productLabel } from './qualification-templ
             @for (tpl of templates(); track tpl.id) {
               <tas-card class="block">
                 <div class="p-4 flex items-center gap-4">
-                  <div class="flex-1 min-w-0 cursor-pointer" (click)="navigateToEdit(tpl)">
+                  <div class="flex-1 min-w-0 cursor-pointer" role="button" tabindex="0"
+                       (click)="navigateToEdit(tpl)"
+                       (keydown.enter)="navigateToEdit(tpl)"
+                       (keydown.space)="$event.preventDefault(); navigateToEdit(tpl)">
                     <div class="flex items-center gap-2">
                       <p class="text-sm font-semibold text-slate-800">{{ tpl.name }}</p>
                       <tas-tag [severity]="statusSeverity(tpl.status)">{{ statusLabel(tpl.status) }}</tas-tag>

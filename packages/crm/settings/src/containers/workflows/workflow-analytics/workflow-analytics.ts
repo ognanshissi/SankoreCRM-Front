@@ -118,7 +118,11 @@ function breachSeverity(rate: number | undefined): Severity {
               @for (t of sla()!.byTemplate!; track t.templateId) {
                 <div
                   class="flex items-center gap-4 px-4 py-3 cursor-pointer hover:bg-slate-50 transition-colors"
+                  role="button"
+                  tabindex="0"
                   (click)="navigateToTemplate(t.templateId)"
+                  (keydown.enter)="navigateToTemplate(t.templateId)"
+                  (keydown.space)="$event.preventDefault(); navigateToTemplate(t.templateId)"
                 >
                   <div class="flex-1 min-w-0">
                     <p class="text-sm font-medium text-slate-800 truncate">{{ t.templateName || '(modèle)' }}</p>
@@ -143,7 +147,11 @@ function breachSeverity(rate: number | undefined): Severity {
               @for (s of sla()!.overdueSteps!; track s.stepId) {
                 <div
                   class="flex items-center gap-4 px-4 py-3 cursor-pointer hover:bg-slate-50 transition-colors"
+                  role="button"
+                  tabindex="0"
                   (click)="navigateToInstance(s)"
+                  (keydown.enter)="navigateToInstance(s)"
+                  (keydown.space)="$event.preventDefault(); navigateToInstance(s)"
                 >
                   <div class="flex-1 min-w-0">
                     <p class="text-sm font-medium text-slate-800 truncate">{{ s.stepName || '(étape)' }}</p>
@@ -178,7 +186,11 @@ function breachSeverity(rate: number | undefined): Severity {
               @for (q of monitor()!.byTemplate!; track q.templateId) {
                 <div
                   class="flex items-center gap-4 px-4 py-3 cursor-pointer hover:bg-slate-50 transition-colors"
+                  role="button"
+                  tabindex="0"
                   (click)="navigateToTemplate(q.templateId)"
+                  (keydown.enter)="navigateToTemplate(q.templateId)"
+                  (keydown.space)="$event.preventDefault(); navigateToTemplate(q.templateId)"
                 >
                   <div class="flex-1 min-w-0">
                     <p class="text-sm font-medium text-slate-800 truncate">{{ q.templateName || '(modèle)' }}</p>
@@ -211,7 +223,11 @@ function breachSeverity(rate: number | undefined): Severity {
               @for (s of monitor()!.stuckInstances!; track s.instanceId) {
                 <div
                   class="flex items-center gap-4 px-4 py-3 cursor-pointer hover:bg-slate-50 transition-colors"
+                  role="button"
+                  tabindex="0"
                   (click)="navigateToStuckInstance(s)"
+                  (keydown.enter)="navigateToStuckInstance(s)"
+                  (keydown.space)="$event.preventDefault(); navigateToStuckInstance(s)"
                 >
                   <div class="flex-1 min-w-0">
                     <p class="text-sm font-medium text-slate-800 truncate">

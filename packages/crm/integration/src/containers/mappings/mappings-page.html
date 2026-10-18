@@ -49,6 +49,10 @@
   } @else {
     <!-- Onglets par domaine -->
     <div class="border-b border-slate-200 mb-4 overflow-x-auto">
+      <!-- Le conteneur n'est volontairement pas focusable : le focus vit sur les onglets
+           (`[tabindex]` glissant ci-dessous) et le conteneur ne fait que recevoir les flèches
+           qui remontent. Le rendre focusable casserait la navigation clavier du tablist. -->
+      <!-- eslint-disable-next-line @angular-eslint/template/interactive-supports-focus -->
       <div
         class="flex"
         role="tablist"

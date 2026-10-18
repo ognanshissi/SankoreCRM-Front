@@ -385,7 +385,7 @@
                         <div class="min-w-0">
                           @if (cell.sensitive; as sensitive) {
                             <!-- Le clic sur l'œil ne doit pas valoir choix de la valeur. -->
-                            <span class="inline-block" (click)="$event.stopPropagation()">
+                            <span class="inline-block" role="presentation" (click)="$event.stopPropagation()">
                               <sensitive-field
                                 [clientId]="cell.clientId"
                                 [field]="sensitive"

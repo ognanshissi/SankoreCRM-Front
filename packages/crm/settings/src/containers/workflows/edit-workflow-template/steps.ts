@@ -326,8 +326,9 @@ class EditStepFormModel {
                                 <div class="flex flex-col gap-2 p-3 rounded-md border border-slate-200 bg-white">
                                   <div class="grid grid-cols-2 gap-2">
                                     <div>
-                                      <label class="text-[10px] text-slate-400 mb-1 block">Type</label>
+                                      <label for="rule-type" class="text-[10px] text-slate-400 mb-1 block">Type</label>
                                       <select
+                                        id="rule-type"
                                         class="w-full px-2 py-1.5 text-xs border border-slate-200 rounded bg-white focus:outline-none focus:ring-1 focus:ring-primary/40"
                                         [value]="newRuleType()"
                                         (change)="newRuleType.set($any($event.target).value)"
@@ -338,8 +339,9 @@ class EditStepFormModel {
                                       </select>
                                     </div>
                                     <div>
-                                      <label class="text-[10px] text-slate-400 mb-1 block">Opérateur</label>
+                                      <label for="rule-operator" class="text-[10px] text-slate-400 mb-1 block">Opérateur</label>
                                       <select
+                                        id="rule-operator"
                                         class="w-full px-2 py-1.5 text-xs border border-slate-200 rounded bg-white focus:outline-none focus:ring-1 focus:ring-primary/40"
                                         [value]="newRuleOperator()"
                                         (change)="newRuleOperator.set($any($event.target).value)"
@@ -351,8 +353,9 @@ class EditStepFormModel {
                                     </div>
                                   </div>
                                   <div>
-                                    <label class="text-[10px] text-slate-400 mb-1 block">Champ</label>
+                                    <label for="rule-field" class="text-[10px] text-slate-400 mb-1 block">Champ</label>
                                     <input
+                                      id="rule-field"
                                       type="text"
                                       class="w-full px-2 py-1.5 text-xs border border-slate-200 rounded bg-white focus:outline-none focus:ring-1 focus:ring-primary/40 font-mono"
                                       placeholder="ex: status, amount"
@@ -362,8 +365,9 @@ class EditStepFormModel {
                                   </div>
                                   @if (!isNoValueOperator(newRuleOperator())) {
                                     <div>
-                                      <label class="text-[10px] text-slate-400 mb-1 block">Valeur</label>
+                                      <label for="rule-value" class="text-[10px] text-slate-400 mb-1 block">Valeur</label>
                                       <input
+                                        id="rule-value"
                                         type="text"
                                         class="w-full px-2 py-1.5 text-xs border border-slate-200 rounded bg-white focus:outline-none focus:ring-1 focus:ring-primary/40"
                                         placeholder="Valeur de comparaison"

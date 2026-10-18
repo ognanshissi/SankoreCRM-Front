@@ -129,7 +129,11 @@ export class RolePermissionsPage {
   public toggleModule(module: string): void {
     this.expandedModules.update((set) => {
       const next = new Set(set);
-      next.has(module) ? next.delete(module) : next.add(module);
+      if (next.has(module)) {
+        next.delete(module);
+      } else {
+        next.add(module);
+      }
       return next;
     });
   }

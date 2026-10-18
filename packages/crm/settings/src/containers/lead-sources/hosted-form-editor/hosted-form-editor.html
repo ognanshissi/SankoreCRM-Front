@@ -187,17 +187,19 @@
            [style.font-family]="config().fontFamily || 'inherit'">
         @for (field of config().fields; track field.name) {
           <div class="mb-3">
-            <label class="block text-xs font-medium text-slate-700 mb-1">
+            <label class="block text-xs font-medium text-slate-700 mb-1" [attr.for]="'hosted-preview-' + field.name">
               {{ field.label || field.name }}
               @if (field.isRequired) { <span class="text-red-500">*</span> }
             </label>
             @switch (field.type) {
               @case ('textarea') {
                 <textarea class="w-full border border-slate-300 rounded px-2 py-1.5 text-xs"
+                          [attr.id]="'hosted-preview-' + field.name"
                           rows="3" [attr.placeholder]="field.placeholder" disabled></textarea>
               }
               @case ('select') {
-                <select class="w-full border border-slate-300 rounded px-2 py-1.5 text-xs" disabled>
+                <select class="w-full border border-slate-300 rounded px-2 py-1.5 text-xs"
+                        [attr.id]="'hosted-preview-' + field.name" disabled>
                   @for (option of field.options; track $index) {
                     <option>{{ option }}</option>
                   }
@@ -205,6 +207,7 @@
               }
               @default {
                 <input class="w-full border border-slate-300 rounded px-2 py-1.5 text-xs"
+                       [attr.id]="'hosted-preview-' + field.name"
                        [attr.type]="field.type" [attr.placeholder]="field.placeholder" disabled />
               }
             }

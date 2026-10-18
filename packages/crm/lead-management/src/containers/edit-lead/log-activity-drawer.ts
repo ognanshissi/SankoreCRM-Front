@@ -423,14 +423,15 @@ type GeoStatus = 'idle' | 'acquiring' | 'acquired' | 'denied' | 'error' | 'manua
 
             @if (!photoPreviewUrl()) {
               <!-- Upload zone -->
-              <div
-                class="border-2 border-dashed border-slate-200 rounded-lg p-6 text-center hover:border-slate-300 transition-colors cursor-pointer"
+              <button
+                type="button"
+                class="w-full border-2 border-dashed border-slate-200 rounded-lg p-6 text-center hover:border-slate-300 transition-colors cursor-pointer"
                 (click)="fileInput.click()"
               >
                 <tas-icon iconName="feather:upload" class="text-slate-300 mb-2" style="font-size:24px"></tas-icon>
                 <p class="text-xs text-slate-500">Prendre ou importer une photo</p>
                 <p class="text-[10px] text-slate-400 mt-0.5">JPG, PNG — max 10 Mo</p>
-              </div>
+              </button>
               <input
                 #fileInput
                 type="file"

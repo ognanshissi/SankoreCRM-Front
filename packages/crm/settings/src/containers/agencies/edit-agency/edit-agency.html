@@ -186,7 +186,7 @@
                     tas-raised-button
                     color="primary"
                     type="button"
-                    [disabled]="!moveFormSchema.newParentAgencyId().value() || moveFormSchema().submitting()"
+                    [disabled]="moveFormSchema().invalid() || moveFormSchema().submitting()"
                     [isLoading]="moveFormSchema().submitting()"
                     (click)="handleMove()"
                     class="shrink-0"

@@ -222,7 +222,10 @@ const LOCALE_FILTER_OPTIONS = [
                 <div class="divide-y divide-slate-100">
                   @for (tpl of customTemplates(); track tpl.id) {
                     <div class="flex items-center gap-4 px-4 py-3 hover:bg-slate-50 transition-colors cursor-pointer"
-                      [class.opacity-50]="!tpl.isActive" (click)="navigateToEdit(tpl)">
+                      [class.opacity-50]="!tpl.isActive" role="button" tabindex="0"
+                      (click)="navigateToEdit(tpl)"
+                      (keydown.enter)="navigateToEdit(tpl)"
+                      (keydown.space)="$event.preventDefault(); navigateToEdit(tpl)">
                       <div class="w-9 h-9 rounded-full bg-indigo-50 flex items-center justify-center shrink-0">
                         <tas-icon iconName="feather:mail" class="text-indigo-500" style="font-size:15px"></tas-icon>
                       </div>
@@ -238,7 +241,7 @@ const LOCALE_FILTER_OPTIONS = [
                           @if (!tpl.isActive) { <tas-tag severity="warning">Inactif</tas-tag> }
                         </div>
                       </div>
-                      <div class="flex items-center gap-2" (click)="$event.stopPropagation()">
+                      <div class="flex items-center gap-2" role="presentation" (click)="$event.stopPropagation()">
                         <tas-switch [checked]="tpl.isActive ?? false"
                           [ariaLabel]="(tpl.isActive ? 'Désactiver' : 'Activer') + ' ' + (tpl.templateKey ?? '')"
                           [isLoading]="togglingId() === tpl.id" (toggle)="toggleActive(tpl)"></tas-switch>

@@ -50,7 +50,11 @@
               <li
                 class="flex items-center gap-3 px-4 py-3"
                 [ngClass]="candidateRowClass(candidate)"
+                role="button"
+                tabindex="0"
                 (click)="selectClient(candidate)"
+                (keydown.enter)="selectClient(candidate)"
+                (keydown.space)="$event.preventDefault(); selectClient(candidate)"
               >
                 <div class="flex-1">
                   <p class="text-sm font-medium text-slate-800">

@@ -260,15 +260,15 @@ const LOCALE_OPTIONS = [
                     />
                   </tas-form-field>
                   <div class="shrink-0 mt-5">
-                    <label class="block text-xs text-slate-400 mb-1 sr-only"
-                      >Sélecteur</label
-                    >
-                    <input
-                      type="color"
-                      class="w-8 h-8 rounded border border-slate-200 cursor-pointer p-0"
-                      [value]="optPrimaryColor()"
-                      (input)="optPrimaryColor.set($any($event.target).value)"
-                    />
+                    <label class="block text-xs text-slate-400 mb-1">
+                      <span class="sr-only">Sélecteur de couleur primaire</span>
+                      <input
+                        type="color"
+                        class="w-8 h-8 rounded border border-slate-200 cursor-pointer p-0"
+                        [value]="optPrimaryColor()"
+                        (input)="optPrimaryColor.set($any($event.target).value)"
+                      />
+                    </label>
                   </div>
                 </div>
                 <tas-form-field>
