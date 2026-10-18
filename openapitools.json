@@ -16,6 +16,19 @@
           "fileNaming": "kebab-case",
           "serviceSuffix": "ApiService"
         }
+      },
+      "sankoreAdminAPI": {
+        "generatorName": "typescript-angular",
+        "output": "#{cwd}/packages/crm-admin-api/src/lib",
+        "glob": "swaggers/sankore-crm-admin-api-swagger.json",
+        "skipValidateSpec": true,
+        "additionalProperties": {
+          "supportsES6": "true",
+          "stringEnums": "true",
+          "modelFileSuffix": ".interface",
+          "fileNaming": "kebab-case",
+          "serviceSuffix": "ApiService"
+        }
       }
     }
   }

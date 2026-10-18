@@ -68,7 +68,8 @@
       "@sankore/crm/kyc": ["./packages/crm/kyc/src/index.ts"],
       "@sankore/crm/integration": ["./packages/crm/integration/src/index.ts"],
       "@sankore/crm/telephony": ["./packages/crm/telephony/src/index.ts"],
-      "@sankore/admin/tenant": ["./packages/admin/tenant/src/index.ts"]
+      "@sankore/admin/tenant": ["./packages/admin/tenant/src/index.ts"],
+      "@sankore/crm-admin-api": ["./packages/crm-admin-api/src/index.ts"]
     }
   },
   "exclude": ["node_modules", "tmp"]

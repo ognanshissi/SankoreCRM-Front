@@ -1,0 +1,513 @@
+{
+"openapi": "3.0.1",
+"info": {
+"title": "Sankore Admin API",
+"description": "Administration API for SankoreCRM",
+"version": "v1"
+},
+"paths": {
+"/health": {
+"get": {
+"tags": [
+"Health"
+],
+"responses": {
+"200": {
+"description": "OK"
+}
+}
+}
+},
+"/api/v1/tenant-domains": {
+"post": {
+"tags": [
+"TenantDomains"
+],
+"summary": "Assign a new FQDN to a tenant",
+"operationId": "CreateTenantDomain",
+"requestBody": {
+"content": {
+"application/json": {
+"schema": {
+"$ref": "#/components/schemas/Sankore.Admin.Features.TenantDomains.CreateTenantDomain.CreateTenantDomainEndpoint+Request"
+}
+}
+},
+"required": true
+},
+"responses": {
+"201": {
+"description": "Created",
+"content": {
+"application/json": {
+"schema": {
+"$ref": "#/components/schemas/Sankore.Admin.Features.TenantDomains.CreateTenantDomain.CreateTenantDomainResponse"
+}
+}
+}
+},
+"400": {
+"description": "Bad Request"
+}
+}
+}
+},
+"/api/v1/tenant-domains/{id}": {
+"delete": {
+"tags": [
+"TenantDomains"
+],
+"summary": "Deactivate a tenant domain entry",
+"operationId": "DeactivateTenantDomain",
+"parameters": [
+{
+"name": "id",
+"in": "path",
+"required": true,
+"schema": {
+"type": "string",
+"format": "uuid"
+}
+}
+],
+"responses": {
+"204": {
+"description": "No Content",
+"content": {
+"application/json": {
+"schema": {
+"$ref": "#/components/schemas/Sankore.Admin.Features.TenantDomains.DeactivateTenantDomain.DeactivateTenantDomainResponse"
+}
+}
+}
+},
+"404": {
+"description": "Not Found"
+}
+}
+}
+},
+"/api/v1/tenants/{tenantId}/domains": {
+"get": {
+"tags": [
+"TenantDomains"
+],
+"summary": "List all domains assigned to a tenant",
+"operationId": "ListTenantDomainsByTenant",
+"parameters": [
+{
+"name": "tenantId",
+"in": "path",
+"required": true,
+"schema": {
+"type": "string",
+"format": "uuid"
+}
+}
+],
+"responses": {
+"200": {
+"description": "OK",
+"content": {
+"application/json": {
+"schema": {
+"type": "array",
+"items": {
+"$ref": "#/components/schemas/Sankore.Admin.Features.TenantDomains.TenantDomainResponse"
+}
+}
+}
+}
+}
+}
+}
+},
+"/api/v1/tenants": {
+"get": {
+"tags": [
+"Tenants"
+],
+"summary": "List all tenants",
+"operationId": "ListTenants",
+"parameters": [
+{
+"name": "activeOnly",
+"in": "query",
+"schema": {
+"type": "boolean"
+}
+}
+],
+"responses": {
+"200": {
+"description": "OK",
+"content": {
+"application/json": {
+"schema": {
+"type": "array",
+"items": {
+"$ref": "#/components/schemas/Sankore.Admin.Features.Tenants.GetTenant.TenantResponse"
+}
+}
+}
+}
+}
+}
+},
+"post": {
+"tags": [
+"Tenants"
+],
+"summary": "Create a new tenant",
+"operationId": "CreateTenant",
+"requestBody": {
+"content": {
+"application/json": {
+"schema": {
+"$ref": "#/components/schemas/Sankore.Admin.Features.Tenants.CreateTenant.CreateTenantEndpoint+Request"
+}
+}
+},
+"required": true
+},
+"responses": {
+"201": {
+"description": "Created",
+"content": {
+"application/json": {
+"schema": {}
+}
+}
+},
+"400": {
+"description": "Bad Request"
+}
+}
+}
+},
+"/api/v1/tenants/{id}": {
+"get": {
+"tags": [
+"Tenants"
+],
+"summary": "Get a tenant by ID",
+"operationId": "GetTenant",
+"parameters": [
+{
+"name": "id",
+"in": "path",
+"required": true,
+"schema": {
+"type": "string",
+"format": "uuid"
+}
+}
+],
+"responses": {
+"200": {
+"description": "OK",
+"content": {
+"application/json": {
+"schema": {
+"$ref": "#/components/schemas/Sankore.Admin.Features.Tenants.GetTenant.TenantResponse"
+}
+}
+}
+},
+"404": {
+"description": "Not Found"
+}
+}
+},
+"put": {
+"tags": [
+"Tenants"
+],
+"summary": "Update a tenant",
+"operationId": "UpdateTenant",
+"parameters": [
+{
+"name": "id",
+"in": "path",
+"required": true,
+"schema": {
+"type": "string",
+"format": "uuid"
+}
+}
+],
+"requestBody": {
+"content": {
+"application/json": {
+"schema": {
+"$ref": "#/components/schemas/Sankore.Admin.Features.Tenants.UpdateTenant.UpdateTenantEndpoint+Request"
+}
+}
+},
+"required": true
+},
+"responses": {
+"204": {
+"description": "No Content"
+},
+"404": {
+"description": "Not Found"
+}
+}
+},
+"delete": {
+"tags": [
+"Tenants"
+],
+"summary": "Delete a tenant",
+"operationId": "DeleteTenant",
+"parameters": [
+{
+"name": "id",
+"in": "path",
+"required": true,
+"schema": {
+"type": "string",
+"format": "uuid"
+}
+}
+],
+"responses": {
+"204": {
+"description": "No Content"
+},
+"404": {
+"description": "Not Found"
+}
+}
+}
+},
+"/api/v1/tenants/by-fqdn": {
+"get": {
+"tags": [
+"Tenants"
+],
+"summary": "Find a tenant by its fully-qualified domain name",
+"operationId": "GetTenantByFqdn",
+"parameters": [
+{
+"name": "domain",
+"in": "query",
+"required": true,
+"schema": {
+"type": "string"
+}
+}
+],
+"responses": {
+"200": {
+"description": "OK",
+"content": {
+"application/json": {
+"schema": {
+"$ref": "#/components/schemas/Sankore.Admin.Features.Tenants.GetTenant.TenantResponse"
+}
+}
+}
+},
+"404": {
+"description": "Not Found"
+}
+}
+}
+}
+},
+"components": {
+"schemas": {
+"Sankore.Admin.Features.TenantDomains.CreateTenantDomain.CreateTenantDomainEndpoint+Request": {
+"type": "object",
+"properties": {
+"tenantId": {
+"type": "string",
+"format": "uuid"
+},
+"fqdn": {
+"type": "string",
+"nullable": true
+},
+"isPrimary": {
+"type": "boolean"
+},
+"validFrom": {
+"type": "string",
+"format": "date-time",
+"nullable": true
+},
+"validTo": {
+"type": "string",
+"format": "date-time",
+"nullable": true
+}
+},
+"additionalProperties": false
+},
+"Sankore.Admin.Features.TenantDomains.CreateTenantDomain.CreateTenantDomainResponse": {
+"type": "object",
+"properties": {
+"id": {
+"type": "string",
+"format": "uuid"
+}
+},
+"additionalProperties": false
+},
+"Sankore.Admin.Features.TenantDomains.DeactivateTenantDomain.DeactivateTenantDomainResponse": {
+"type": "object",
+"properties": {
+"success": {
+"type": "boolean"
+}
+},
+"additionalProperties": false
+},
+"Sankore.Admin.Features.TenantDomains.TenantDomainResponse": {
+"type": "object",
+"properties": {
+"id": {
+"type": "string",
+"format": "uuid"
+},
+"tenantId": {
+"type": "string",
+"format": "uuid"
+},
+"fqdn": {
+"type": "string",
+"nullable": true
+},
+"isPrimary": {
+"type": "boolean"
+},
+"isActive": {
+"type": "boolean"
+},
+"validFrom": {
+"type": "string",
+"format": "date-time"
+},
+"validTo": {
+"type": "string",
+"format": "date-time",
+"nullable": true
+},
+"createdAt": {
+"type": "string",
+"format": "date-time"
+},
+"updatedAt": {
+"type": "string",
+"format": "date-time"
+}
+},
+"additionalProperties": false
+},
+"Sankore.Admin.Features.Tenants.CreateTenant.CreateTenantEndpoint+Request": {
+"type": "object",
+"properties": {
+"name": {
+"type": "string",
+"nullable": true
+},
+"rootUserEmail": {
+"type": "string",
+"nullable": true
+},
+"fqdn": {
+"type": "string",
+"nullable": true
+},
+"trialExpiresAt": {
+"type": "string",
+"format": "date-time",
+"nullable": true
+}
+},
+"additionalProperties": false
+},
+"Sankore.Admin.Features.Tenants.GetTenant.TenantResponse": {
+"type": "object",
+"properties": {
+"id": {
+"type": "string",
+"format": "uuid"
+},
+"name": {
+"type": "string",
+"nullable": true
+},
+"rootUserEmail": {
+"type": "string",
+"nullable": true
+},
+"fqdn": {
+"type": "string",
+"nullable": true
+},
+"isActive": {
+"type": "boolean"
+},
+"isMaintenance": {
+"type": "boolean"
+},
+"trialExpiresAt": {
+"type": "string",
+"format": "date-time",
+"nullable": true
+},
+"blockedAt": {
+"type": "string",
+"format": "date-time",
+"nullable": true
+},
+"createdAt": {
+"type": "string",
+"format": "date-time"
+},
+"updatedAt": {
+"type": "string",
+"format": "date-time"
+}
+},
+"additionalProperties": false
+},
+"Sankore.Admin.Features.Tenants.UpdateTenant.UpdateTenantEndpoint+Request": {
+"type": "object",
+"properties": {
+"name": {
+"type": "string",
+"nullable": true
+},
+"fqdn": {
+"type": "string",
+"nullable": true
+},
+"isActive": {
+"type": "boolean"
+},
+"isMaintenance": {
+"type": "boolean"
+}
+},
+"additionalProperties": false
+}
+},
+"securitySchemes": {
+"Bearer": {
+"type": "http",
+"description": "Enter your JWT token.",
+"scheme": "bearer",
+"bearerFormat": "JWT"
+}
+}
+},
+"security": [
+{
+"Bearer": []
+}
+]
+}
