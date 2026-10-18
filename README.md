@@ -33,7 +33,6 @@ git clone <your-fork-url>
 cd <your-repository-name>
 
 # Install dependencies
-# (Note: You may need --legacy-peer-deps)
 npm install
 
 # Serve the Angular shop application (this will simultaneously serve the API backend)

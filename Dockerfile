@@ -8,14 +8,18 @@
 # Étape séparée pour que la couche npm soit réutilisée tant que le lockfile ne
 # change pas. Pas de `--omit=dev` : nx et @angular/build sont en devDependencies.
 #
-# `--legacy-peer-deps` : ngx-quill@30 déclare un peer `@angular/core@^21` alors que
-# le workspace est en Angular 22. C'est la résolution avec laquelle le lockfile a été
-# produit ; sans le drapeau, `npm ci` échoue en ERESOLVE. À retirer dès que ngx-quill
-# publie une version compatible Angular 22.
+# `--legacy-peer-deps` RETIRÉ : il compensait ngx-quill@30, qui déclarait un peer
+# `@angular/core@^21` alors que le workspace est en Angular 22 — et la CI échouait en
+# ERESOLVE sur `npm ci`, qui ne porte pas le drapeau. ngx-quill@31 déclare `^22.0.0`, donc
+# le conflit n'existe plus et le drapeau n'a plus rien à masquer.
+#
+# Ne pas le remettre pour « débloquer » une installation : il fait accepter une résolution
+# que npm juge incorrecte, et le prochain conflit passerait alors inaperçu ici tout en
+# cassant la CI, qui l'exécute sans drapeau.
 FROM node:24-alpine AS deps
 WORKDIR /workspace
 COPY package.json package-lock.json ./
-RUN npm ci --no-audit --no-fund --legacy-peer-deps
+RUN npm ci --no-audit --no-fund
 
 # ── Build ─────────────────────────────────────────────────────────────────────
 FROM node:24-alpine AS build
