@@ -1,10 +1,14 @@
-# Application Angular en rendu serveur (SSR).
+# Les deux applications Angular du workspace, en rendu serveur (SSR) : `web` (crm) et
+# `admin`.
 #
-# L'image embarque le serveur Express généré par @angular/build et tourne sous Node :
+# Chaque image embarque le serveur Express généré par @angular/build et tourne sous Node :
 # nginx ne conviendrait pas ici, il ne sait pas exécuter ce bundle.
 #
-#   docker compose up --build
-#   http://localhost:4000
+#   docker compose up --build            # les deux
+#   docker compose up --build admin      # l'admin seule
+#
+# Ports hôte par défaut : crm sur ${WEB_PORT:-4000}, admin sur ${ADMIN_PORT:-4401}.
+# Chaque service écoute 4000 DANS son conteneur ; seul le port publié diffère.
 
 services:
   web:
@@ -42,6 +46,48 @@ services:
       # Sonde sur un fichier statique : express.static est monté avant le handler Angular,
       # donc la réponse ne dépend pas de NG_ALLOWED_HOSTS et ne déclenche pas un rendu SSR
       # complet à chaque intervalle.
+      test:
+        - CMD
+        - node
+        - -e
+        - "require('http').get({host:'127.0.0.1',port:process.env.PORT||4000,path:'/favicon.ico'},r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"
+      interval: 30s
+      timeout: 5s
+      start_period: 20s
+      retries: 3
+    networks:
+      - sankore-internal
+
+  # Application d'administration. Même forme que `web` : image Node qui exécute le serveur
+  # SSR, sur son propre port hôte pour que les deux applications tournent ensemble.
+  admin:
+    build:
+      context: .
+      dockerfile: admin.Dockerfile
+    image: sankore-admin:latest
+    container_name: sankore-admin
+    ports:
+      # Variables distinctes de celles de `web` (WEB_PORT, NG_ALLOWED_HOSTS) : le .env est
+      # commun aux deux services, un nom partagé donnerait la même valeur aux deux — donc
+      # un conflit de port sur l'hôte, et un seul domaine autorisé pour deux applications.
+      - "${ADMIN_PORT:-4401}:4000"
+    environment:
+      # Obligatoire : sans elle le conteneur répond 400 sur toutes les routes (validation
+      # de l'en-tête Host par Angular 22, cf. admin.Dockerfile). En déploiement, le ou les
+      # domaines publics de l'admin, séparés par des virgules.
+      NG_ALLOWED_HOSTS: "${ADMIN_ALLOWED_HOSTS:-localhost}"
+      # Pas de NG_API_URL : apps/admin/src/server.ts n'expose pas `/config.json` et
+      # l'application ne lit aucune URL d'API. Voir admin.Dockerfile pour ce qu'il faudra
+      # ajouter le jour où l'admin appellera le back.
+      #
+      # Traefik termine TLS devant ce conteneur et lui parle en HTTP : sans ceci le rendu
+      # SSR voit `http://` et l'hôte interne. À ne laisser actif QUE derrière un proxy de
+      # confiance, ces en-têtes étant falsifiables par le client sinon.
+      NG_TRUST_PROXY_HEADERS: "${NG_TRUST_PROXY_HEADERS:-}"
+    restart: unless-stopped
+    healthcheck:
+      # Fichier statique, servi par express.static avant le handler Angular : la sonde ne
+      # dépend donc pas de NG_ALLOWED_HOSTS et ne déclenche aucun rendu.
       test:
         - CMD
         - node

@@ -95,6 +95,17 @@ export class Configuration {
                     : this.accessToken;
             };
         }
+
+        // init default ApiKey credential
+        if (!this.credentials['ApiKey']) {
+            this.credentials['ApiKey'] = () => {
+                if (this.apiKeys === null || this.apiKeys === undefined) {
+                    return undefined;
+                } else {
+                    return this.apiKeys['ApiKey'] || this.apiKeys['X-Api-Key'];
+                }
+            };
+        }
     }
 
     /**

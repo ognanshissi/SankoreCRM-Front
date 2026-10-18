@@ -19,11 +19,11 @@ import { CustomHttpParameterCodec }                          from '../encoder';
 import { Observable }                                        from 'rxjs';
 
 // @ts-ignore
-import { SankoreAdminFeaturesTenantsCreateTenantCreateTenantEndpointRequest } from '../model/sankore-admin-features-tenants-create-tenant-create-tenant-endpoint-request.interface';
+import { CreateTenantRequest } from '../model/create-tenant-request.interface';
 // @ts-ignore
-import { SankoreAdminFeaturesTenantsGetTenantTenantResponse } from '../model/sankore-admin-features-tenants-get-tenant-tenant-response.interface';
+import { TenantResponse } from '../model/tenant-response.interface';
 // @ts-ignore
-import { SankoreAdminFeaturesTenantsUpdateTenantUpdateTenantEndpointRequest } from '../model/sankore-admin-features-tenants-update-tenant-update-tenant-endpoint-request.interface';
+import { UpdateTenantRequest } from '../model/update-tenant-request.interface';
 
 // @ts-ignore
 import { BASE_PATH, COLLECTION_FORMATS }                     from '../variables';
@@ -97,25 +97,25 @@ export class TenantsApiService {
 
     /**
      * Create a new tenant
-     * @param body 
+     * @param createTenantRequest 
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      */
-    public createTenant(body: SankoreAdminFeaturesTenantsCreateTenantCreateTenantEndpoint Request, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any>;
-    public createTenant(body: SankoreAdminFeaturesTenantsCreateTenantCreateTenantEndpoint Request, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<any>>;
-    public createTenant(body: SankoreAdminFeaturesTenantsCreateTenantCreateTenantEndpoint Request, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<any>>;
-    public createTenant(body: SankoreAdminFeaturesTenantsCreateTenantCreateTenantEndpoint Request, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
-        if (body === null || body === undefined) {
-            throw new Error('Required parameter body was null or undefined when calling createTenant.');
+    public createTenant(createTenantRequest: CreateTenantRequest, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any>;
+    public createTenant(createTenantRequest: CreateTenantRequest, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<any>>;
+    public createTenant(createTenantRequest: CreateTenantRequest, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<any>>;
+    public createTenant(createTenantRequest: CreateTenantRequest, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
+        if (createTenantRequest === null || createTenantRequest === undefined) {
+            throw new Error('Required parameter createTenantRequest was null or undefined when calling createTenant.');
         }
 
         let localVarHeaders = this.defaultHeaders;
 
         let localVarCredential: string | undefined;
-        // authentication (Bearer) required
-        localVarCredential = this.configuration.lookupCredential('Bearer');
+        // authentication (ApiKey) required
+        localVarCredential = this.configuration.lookupCredential('ApiKey');
         if (localVarCredential) {
-            localVarHeaders = localVarHeaders.set('Authorization', 'Bearer ' + localVarCredential);
+            localVarHeaders = localVarHeaders.set('X-Api-Key', localVarCredential);
         }
 
         let localVarHttpHeaderAcceptSelected: string | undefined = options && options.httpHeaderAccept;
@@ -160,7 +160,7 @@ export class TenantsApiService {
         return this.httpClient.request<any>('post', `${this.configuration.basePath}${localVarPath}`,
             {
                 context: localVarHttpContext,
-                body: body,
+                body: createTenantRequest,
                 responseType: <any>responseType_,
                 withCredentials: this.configuration.withCredentials,
                 headers: localVarHeaders,
@@ -187,10 +187,10 @@ export class TenantsApiService {
         let localVarHeaders = this.defaultHeaders;
 
         let localVarCredential: string | undefined;
-        // authentication (Bearer) required
-        localVarCredential = this.configuration.lookupCredential('Bearer');
+        // authentication (ApiKey) required
+        localVarCredential = this.configuration.lookupCredential('ApiKey');
         if (localVarCredential) {
-            localVarHeaders = localVarHeaders.set('Authorization', 'Bearer ' + localVarCredential);
+            localVarHeaders = localVarHeaders.set('X-Api-Key', localVarCredential);
         }
 
         let localVarHttpHeaderAcceptSelected: string | undefined = options && options.httpHeaderAccept;
@@ -240,9 +240,9 @@ export class TenantsApiService {
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      */
-    public getTenant(id: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<SankoreAdminFeaturesTenantsGetTenantTenantResponse>;
-    public getTenant(id: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<SankoreAdminFeaturesTenantsGetTenantTenantResponse>>;
-    public getTenant(id: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<SankoreAdminFeaturesTenantsGetTenantTenantResponse>>;
+    public getTenant(id: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<TenantResponse>;
+    public getTenant(id: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<TenantResponse>>;
+    public getTenant(id: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<TenantResponse>>;
     public getTenant(id: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
         if (id === null || id === undefined) {
             throw new Error('Required parameter id was null or undefined when calling getTenant.');
@@ -251,10 +251,10 @@ export class TenantsApiService {
         let localVarHeaders = this.defaultHeaders;
 
         let localVarCredential: string | undefined;
-        // authentication (Bearer) required
-        localVarCredential = this.configuration.lookupCredential('Bearer');
+        // authentication (ApiKey) required
+        localVarCredential = this.configuration.lookupCredential('ApiKey');
         if (localVarCredential) {
-            localVarHeaders = localVarHeaders.set('Authorization', 'Bearer ' + localVarCredential);
+            localVarHeaders = localVarHeaders.set('X-Api-Key', localVarCredential);
         }
 
         let localVarHttpHeaderAcceptSelected: string | undefined = options && options.httpHeaderAccept;
@@ -287,7 +287,7 @@ export class TenantsApiService {
         }
 
         let localVarPath = `/api/v1/tenants/${this.configuration.encodeParam({name: "id", value: id, in: "path", style: "simple", explode: false, dataType: "string", dataFormat: "uuid"})}`;
-        return this.httpClient.request<SankoreAdminFeaturesTenantsGetTenantTenantResponse>('get', `${this.configuration.basePath}${localVarPath}`,
+        return this.httpClient.request<TenantResponse>('get', `${this.configuration.basePath}${localVarPath}`,
             {
                 context: localVarHttpContext,
                 responseType: <any>responseType_,
@@ -305,9 +305,9 @@ export class TenantsApiService {
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      */
-    public getTenantByFqdn(domain: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<SankoreAdminFeaturesTenantsGetTenantTenantResponse>;
-    public getTenantByFqdn(domain: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<SankoreAdminFeaturesTenantsGetTenantTenantResponse>>;
-    public getTenantByFqdn(domain: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<SankoreAdminFeaturesTenantsGetTenantTenantResponse>>;
+    public getTenantByFqdn(domain: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<TenantResponse>;
+    public getTenantByFqdn(domain: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<TenantResponse>>;
+    public getTenantByFqdn(domain: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<TenantResponse>>;
     public getTenantByFqdn(domain: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
         if (domain === null || domain === undefined) {
             throw new Error('Required parameter domain was null or undefined when calling getTenantByFqdn.');
@@ -322,10 +322,10 @@ export class TenantsApiService {
         let localVarHeaders = this.defaultHeaders;
 
         let localVarCredential: string | undefined;
-        // authentication (Bearer) required
-        localVarCredential = this.configuration.lookupCredential('Bearer');
+        // authentication (ApiKey) required
+        localVarCredential = this.configuration.lookupCredential('ApiKey');
         if (localVarCredential) {
-            localVarHeaders = localVarHeaders.set('Authorization', 'Bearer ' + localVarCredential);
+            localVarHeaders = localVarHeaders.set('X-Api-Key', localVarCredential);
         }
 
         let localVarHttpHeaderAcceptSelected: string | undefined = options && options.httpHeaderAccept;
@@ -358,7 +358,7 @@ export class TenantsApiService {
         }
 
         let localVarPath = `/api/v1/tenants/by-fqdn`;
-        return this.httpClient.request<SankoreAdminFeaturesTenantsGetTenantTenantResponse>('get', `${this.configuration.basePath}${localVarPath}`,
+        return this.httpClient.request<TenantResponse>('get', `${this.configuration.basePath}${localVarPath}`,
             {
                 context: localVarHttpContext,
                 params: localVarQueryParameters,
@@ -377,9 +377,9 @@ export class TenantsApiService {
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      */
-    public listTenants(activeOnly?: boolean, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<Array<SankoreAdminFeaturesTenantsGetTenantTenantResponse>>;
-    public listTenants(activeOnly?: boolean, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<Array<SankoreAdminFeaturesTenantsGetTenantTenantResponse>>>;
-    public listTenants(activeOnly?: boolean, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<Array<SankoreAdminFeaturesTenantsGetTenantTenantResponse>>>;
+    public listTenants(activeOnly?: boolean, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<Array<TenantResponse>>;
+    public listTenants(activeOnly?: boolean, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<Array<TenantResponse>>>;
+    public listTenants(activeOnly?: boolean, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<Array<TenantResponse>>>;
     public listTenants(activeOnly?: boolean, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
 
         let localVarQueryParameters = new HttpParams({encoder: this.encoder});
@@ -391,10 +391,10 @@ export class TenantsApiService {
         let localVarHeaders = this.defaultHeaders;
 
         let localVarCredential: string | undefined;
-        // authentication (Bearer) required
-        localVarCredential = this.configuration.lookupCredential('Bearer');
+        // authentication (ApiKey) required
+        localVarCredential = this.configuration.lookupCredential('ApiKey');
         if (localVarCredential) {
-            localVarHeaders = localVarHeaders.set('Authorization', 'Bearer ' + localVarCredential);
+            localVarHeaders = localVarHeaders.set('X-Api-Key', localVarCredential);
         }
 
         let localVarHttpHeaderAcceptSelected: string | undefined = options && options.httpHeaderAccept;
@@ -427,7 +427,7 @@ export class TenantsApiService {
         }
 
         let localVarPath = `/api/v1/tenants`;
-        return this.httpClient.request<Array<SankoreAdminFeaturesTenantsGetTenantTenantResponse>>('get', `${this.configuration.basePath}${localVarPath}`,
+        return this.httpClient.request<Array<TenantResponse>>('get', `${this.configuration.basePath}${localVarPath}`,
             {
                 context: localVarHttpContext,
                 params: localVarQueryParameters,
@@ -443,28 +443,28 @@ export class TenantsApiService {
     /**
      * Update a tenant
      * @param id 
-     * @param body 
+     * @param updateTenantRequest 
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      */
-    public updateTenant(id: string, body: SankoreAdminFeaturesTenantsUpdateTenantUpdateTenantEndpoint Request, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<any>;
-    public updateTenant(id: string, body: SankoreAdminFeaturesTenantsUpdateTenantUpdateTenantEndpoint Request, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<HttpResponse<any>>;
-    public updateTenant(id: string, body: SankoreAdminFeaturesTenantsUpdateTenantUpdateTenantEndpoint Request, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<HttpEvent<any>>;
-    public updateTenant(id: string, body: SankoreAdminFeaturesTenantsUpdateTenantUpdateTenantEndpoint Request, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<any> {
+    public updateTenant(id: string, updateTenantRequest: UpdateTenantRequest, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<any>;
+    public updateTenant(id: string, updateTenantRequest: UpdateTenantRequest, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<HttpResponse<any>>;
+    public updateTenant(id: string, updateTenantRequest: UpdateTenantRequest, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<HttpEvent<any>>;
+    public updateTenant(id: string, updateTenantRequest: UpdateTenantRequest, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<any> {
         if (id === null || id === undefined) {
             throw new Error('Required parameter id was null or undefined when calling updateTenant.');
         }
-        if (body === null || body === undefined) {
-            throw new Error('Required parameter body was null or undefined when calling updateTenant.');
+        if (updateTenantRequest === null || updateTenantRequest === undefined) {
+            throw new Error('Required parameter updateTenantRequest was null or undefined when calling updateTenant.');
         }
 
         let localVarHeaders = this.defaultHeaders;
 
         let localVarCredential: string | undefined;
-        // authentication (Bearer) required
-        localVarCredential = this.configuration.lookupCredential('Bearer');
+        // authentication (ApiKey) required
+        localVarCredential = this.configuration.lookupCredential('ApiKey');
         if (localVarCredential) {
-            localVarHeaders = localVarHeaders.set('Authorization', 'Bearer ' + localVarCredential);
+            localVarHeaders = localVarHeaders.set('X-Api-Key', localVarCredential);
         }
 
         let localVarHttpHeaderAcceptSelected: string | undefined = options && options.httpHeaderAccept;
@@ -508,7 +508,7 @@ export class TenantsApiService {
         return this.httpClient.request<any>('put', `${this.configuration.basePath}${localVarPath}`,
             {
                 context: localVarHttpContext,
-                body: body,
+                body: updateTenantRequest,
                 responseType: <any>responseType_,
                 withCredentials: this.configuration.withCredentials,
                 headers: localVarHeaders,

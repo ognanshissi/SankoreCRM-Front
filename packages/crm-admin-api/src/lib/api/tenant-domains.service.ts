@@ -19,13 +19,13 @@ import { CustomHttpParameterCodec }                          from '../encoder';
 import { Observable }                                        from 'rxjs';
 
 // @ts-ignore
-import { SankoreAdminFeaturesTenantDomainsCreateTenantDomainCreateTenantDomainEndpointRequest } from '../model/sankore-admin-features-tenant-domains-create-tenant-domain-create-tenant-domain-endpoint-request.interface';
+import { CreateTenantDomainRequest } from '../model/create-tenant-domain-request.interface';
 // @ts-ignore
-import { SankoreAdminFeaturesTenantDomainsCreateTenantDomainCreateTenantDomainResponse } from '../model/sankore-admin-features-tenant-domains-create-tenant-domain-create-tenant-domain-response.interface';
+import { CreateTenantDomainResponse } from '../model/create-tenant-domain-response.interface';
 // @ts-ignore
-import { SankoreAdminFeaturesTenantDomainsDeactivateTenantDomainDeactivateTenantDomainResponse } from '../model/sankore-admin-features-tenant-domains-deactivate-tenant-domain-deactivate-tenant-domain-response.interface';
+import { DeactivateTenantDomainResponse } from '../model/deactivate-tenant-domain-response.interface';
 // @ts-ignore
-import { SankoreAdminFeaturesTenantDomainsTenantDomainResponse } from '../model/sankore-admin-features-tenant-domains-tenant-domain-response.interface';
+import { TenantDomainResponse } from '../model/tenant-domain-response.interface';
 
 // @ts-ignore
 import { BASE_PATH, COLLECTION_FORMATS }                     from '../variables';
@@ -99,25 +99,25 @@ export class TenantDomainsApiService {
 
     /**
      * Assign a new FQDN to a tenant
-     * @param body 
+     * @param createTenantDomainRequest 
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      */
-    public createTenantDomain(body: SankoreAdminFeaturesTenantDomainsCreateTenantDomainCreateTenantDomainEndpoint Request, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<SankoreAdminFeaturesTenantDomainsCreateTenantDomainCreateTenantDomainResponse>;
-    public createTenantDomain(body: SankoreAdminFeaturesTenantDomainsCreateTenantDomainCreateTenantDomainEndpoint Request, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<SankoreAdminFeaturesTenantDomainsCreateTenantDomainCreateTenantDomainResponse>>;
-    public createTenantDomain(body: SankoreAdminFeaturesTenantDomainsCreateTenantDomainCreateTenantDomainEndpoint Request, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<SankoreAdminFeaturesTenantDomainsCreateTenantDomainCreateTenantDomainResponse>>;
-    public createTenantDomain(body: SankoreAdminFeaturesTenantDomainsCreateTenantDomainCreateTenantDomainEndpoint Request, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
-        if (body === null || body === undefined) {
-            throw new Error('Required parameter body was null or undefined when calling createTenantDomain.');
+    public createTenantDomain(createTenantDomainRequest: CreateTenantDomainRequest, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<CreateTenantDomainResponse>;
+    public createTenantDomain(createTenantDomainRequest: CreateTenantDomainRequest, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<CreateTenantDomainResponse>>;
+    public createTenantDomain(createTenantDomainRequest: CreateTenantDomainRequest, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<CreateTenantDomainResponse>>;
+    public createTenantDomain(createTenantDomainRequest: CreateTenantDomainRequest, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
+        if (createTenantDomainRequest === null || createTenantDomainRequest === undefined) {
+            throw new Error('Required parameter createTenantDomainRequest was null or undefined when calling createTenantDomain.');
         }
 
         let localVarHeaders = this.defaultHeaders;
 
         let localVarCredential: string | undefined;
-        // authentication (Bearer) required
-        localVarCredential = this.configuration.lookupCredential('Bearer');
+        // authentication (ApiKey) required
+        localVarCredential = this.configuration.lookupCredential('ApiKey');
         if (localVarCredential) {
-            localVarHeaders = localVarHeaders.set('Authorization', 'Bearer ' + localVarCredential);
+            localVarHeaders = localVarHeaders.set('X-Api-Key', localVarCredential);
         }
 
         let localVarHttpHeaderAcceptSelected: string | undefined = options && options.httpHeaderAccept;
@@ -159,10 +159,10 @@ export class TenantDomainsApiService {
         }
 
         let localVarPath = `/api/v1/tenant-domains`;
-        return this.httpClient.request<SankoreAdminFeaturesTenantDomainsCreateTenantDomainCreateTenantDomainResponse>('post', `${this.configuration.basePath}${localVarPath}`,
+        return this.httpClient.request<CreateTenantDomainResponse>('post', `${this.configuration.basePath}${localVarPath}`,
             {
                 context: localVarHttpContext,
-                body: body,
+                body: createTenantDomainRequest,
                 responseType: <any>responseType_,
                 withCredentials: this.configuration.withCredentials,
                 headers: localVarHeaders,
@@ -178,9 +178,9 @@ export class TenantDomainsApiService {
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      */
-    public deactivateTenantDomain(id: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<SankoreAdminFeaturesTenantDomainsDeactivateTenantDomainDeactivateTenantDomainResponse>;
-    public deactivateTenantDomain(id: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<SankoreAdminFeaturesTenantDomainsDeactivateTenantDomainDeactivateTenantDomainResponse>>;
-    public deactivateTenantDomain(id: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<SankoreAdminFeaturesTenantDomainsDeactivateTenantDomainDeactivateTenantDomainResponse>>;
+    public deactivateTenantDomain(id: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<DeactivateTenantDomainResponse>;
+    public deactivateTenantDomain(id: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<DeactivateTenantDomainResponse>>;
+    public deactivateTenantDomain(id: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<DeactivateTenantDomainResponse>>;
     public deactivateTenantDomain(id: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
         if (id === null || id === undefined) {
             throw new Error('Required parameter id was null or undefined when calling deactivateTenantDomain.');
@@ -189,10 +189,10 @@ export class TenantDomainsApiService {
         let localVarHeaders = this.defaultHeaders;
 
         let localVarCredential: string | undefined;
-        // authentication (Bearer) required
-        localVarCredential = this.configuration.lookupCredential('Bearer');
+        // authentication (ApiKey) required
+        localVarCredential = this.configuration.lookupCredential('ApiKey');
         if (localVarCredential) {
-            localVarHeaders = localVarHeaders.set('Authorization', 'Bearer ' + localVarCredential);
+            localVarHeaders = localVarHeaders.set('X-Api-Key', localVarCredential);
         }
 
         let localVarHttpHeaderAcceptSelected: string | undefined = options && options.httpHeaderAccept;
@@ -225,7 +225,7 @@ export class TenantDomainsApiService {
         }
 
         let localVarPath = `/api/v1/tenant-domains/${this.configuration.encodeParam({name: "id", value: id, in: "path", style: "simple", explode: false, dataType: "string", dataFormat: "uuid"})}`;
-        return this.httpClient.request<SankoreAdminFeaturesTenantDomainsDeactivateTenantDomainDeactivateTenantDomainResponse>('delete', `${this.configuration.basePath}${localVarPath}`,
+        return this.httpClient.request<DeactivateTenantDomainResponse>('delete', `${this.configuration.basePath}${localVarPath}`,
             {
                 context: localVarHttpContext,
                 responseType: <any>responseType_,
@@ -243,9 +243,9 @@ export class TenantDomainsApiService {
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      */
-    public listTenantDomainsByTenant(tenantId: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<Array<SankoreAdminFeaturesTenantDomainsTenantDomainResponse>>;
-    public listTenantDomainsByTenant(tenantId: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<Array<SankoreAdminFeaturesTenantDomainsTenantDomainResponse>>>;
-    public listTenantDomainsByTenant(tenantId: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<Array<SankoreAdminFeaturesTenantDomainsTenantDomainResponse>>>;
+    public listTenantDomainsByTenant(tenantId: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<Array<TenantDomainResponse>>;
+    public listTenantDomainsByTenant(tenantId: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<Array<TenantDomainResponse>>>;
+    public listTenantDomainsByTenant(tenantId: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<Array<TenantDomainResponse>>>;
     public listTenantDomainsByTenant(tenantId: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
         if (tenantId === null || tenantId === undefined) {
             throw new Error('Required parameter tenantId was null or undefined when calling listTenantDomainsByTenant.');
@@ -254,10 +254,10 @@ export class TenantDomainsApiService {
         let localVarHeaders = this.defaultHeaders;
 
         let localVarCredential: string | undefined;
-        // authentication (Bearer) required
-        localVarCredential = this.configuration.lookupCredential('Bearer');
+        // authentication (ApiKey) required
+        localVarCredential = this.configuration.lookupCredential('ApiKey');
         if (localVarCredential) {
-            localVarHeaders = localVarHeaders.set('Authorization', 'Bearer ' + localVarCredential);
+            localVarHeaders = localVarHeaders.set('X-Api-Key', localVarCredential);
         }
 
         let localVarHttpHeaderAcceptSelected: string | undefined = options && options.httpHeaderAccept;
@@ -290,7 +290,7 @@ export class TenantDomainsApiService {
         }
 
         let localVarPath = `/api/v1/tenants/${this.configuration.encodeParam({name: "tenantId", value: tenantId, in: "path", style: "simple", explode: false, dataType: "string", dataFormat: "uuid"})}/domains`;
-        return this.httpClient.request<Array<SankoreAdminFeaturesTenantDomainsTenantDomainResponse>>('get', `${this.configuration.basePath}${localVarPath}`,
+        return this.httpClient.request<Array<TenantDomainResponse>>('get', `${this.configuration.basePath}${localVarPath}`,
             {
                 context: localVarHttpContext,
                 responseType: <any>responseType_,

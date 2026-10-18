@@ -8,7 +8,9 @@
   "targets": {
     "build": {
       "executor": "@angular/build:application",
-      "outputs": ["{options.outputPath}"],
+      "outputs": [
+        "{options.outputPath}"
+      ],
       "defaultConfiguration": "production",
       "options": {
         "outputPath": "dist/apps/admin",
@@ -18,9 +20,18 @@
           {
             "glob": "**/*",
             "input": "apps/admin/public"
+          },
+          {
+            "glob": "**/*",
+            "input": "packages/shared/ui/icon/src/assets",
+            "output": "assets"
           }
         ],
-        "styles": ["apps/admin/src/styles.css"],
+        "styles": [
+          "packages/shared/ui/styles/src/themes/tailwind.css",
+          "packages/shared/ui/styles/src/themes/styles.scss",
+          "apps/admin/src/styles.css"
+        ],
         "server": "apps/admin/src/main.server.ts",
         "ssr": {
           "entry": "apps/admin/src/server.ts"

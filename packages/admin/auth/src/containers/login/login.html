@@ -1,0 +1,56 @@
+<main class="flex min-h-screen items-center justify-center bg-surface px-4 py-12">
+  <div class="flex w-full max-w-md flex-col gap-8 rounded-3xl bg-white p-8 shadow-xs sm:p-10">
+    <header class="flex flex-col gap-2">
+      <p class="text-xs font-semibold uppercase tracking-wide text-primary/80">Sankore · Administration</p>
+      <h1 class="text-2xl font-bold text-slate-800">Connexion opérateur</h1>
+      <p class="text-sm text-slate-500">Espace réservé aux administrateurs de la plateforme.</p>
+    </header>
+
+    <form [formRoot]="formSchema" class="flex flex-col gap-5">
+      <tas-form-field>
+        <tas-label>Adresse électronique</tas-label>
+        <input
+          tasInput
+          type="email"
+          autocomplete="username"
+          placeholder="vous@exemple.com"
+          [formField]="formSchema.email"
+        />
+        @if (formSchema.email().touched() && formSchema.email().invalid()) {
+          <tas-error>{{ formSchema.email().errors()[0].message }}</tas-error>
+        }
+      </tas-form-field>
+
+      <div class="flex flex-col gap-1">
+        <tas-input-password [formField]="formSchema.password" placeholder="Votre mot de passe">
+          Mot de passe
+        </tas-input-password>
+        @if (formSchema.password().touched() && formSchema.password().invalid()) {
+          <tas-error>{{ formSchema.password().errors()[0].message }}</tas-error>
+        }
+      </div>
+
+      @if (serverError()) {
+        <p role="alert" class="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-800">{{ serverError() }}</p>
+      }
+
+      <button
+        tas-raised-button
+        type="submit"
+        size="large"
+        color="primary"
+        class="mt-2 w-full"
+        [disabled]="formSchema().submitting()"
+        [isLoading]="formSchema().submitting()"
+      >
+        Se connecter
+        <tas-icon iconName="feather:arrow-right"></tas-icon>
+      </button>
+    </form>
+
+    <p class="flex items-center justify-center gap-1.5 text-xs text-slate-500">
+      <tas-icon iconName="feather:lock" style="font-size: 12px" aria-hidden="true"></tas-icon>
+      Le compte se verrouille 15 minutes après 5 échecs.
+    </p>
+  </div>
+</main>

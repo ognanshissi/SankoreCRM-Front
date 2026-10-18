@@ -23,5 +23,7 @@ vitest.config.ts
 vitest.workspace.ts
 
 Dockerfile
+admin.Dockerfile
+nginx.Dockerfile
 .dockerignore
 *.md

@@ -1,1 +1,11 @@
-/* You can add global styles to this file, and also import other style files */
+/* Couleurs de marque Sankore, les mêmes que le CRM (apps/crm/src/styles.scss) : le design
+   system lit ces variables et retombe sinon sur ses valeurs par défaut (vert). */
+:root {
+  --tas-color-primary: 26, 77, 77;
+  --tas-color-accent: 16, 52, 86;
+  --tas-color-warn: 221, 47, 47;
+  --tas-color-surface: #f6efe5;
+  --tas-btn-padding-x: 0.8rem;
+  --tas-field-border-radius: 0.5rem;
+  --tas-btn-border-radius: 2rem;
+}
