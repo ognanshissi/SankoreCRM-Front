@@ -27,11 +27,13 @@ const DOMAIN_STYLE: Record<DomainState, { label: string; tone: string; dot: stri
 };
 
 /**
- * Durée pendant laquelle Sankore.Api peut encore servir un tenant ou un domaine désactivé : il le
- * garde en cache par origine (`TenantStore:FqdnCacheTtl`, 24 h par défaut). Dit dans chaque
- * confirmation, sinon l'opérateur croit l'accès coupé à l'instant.
+ * Délais de prise en compte côté Sankore.Api, qui met le registre en cache. Le STATUT d'un tenant
+ * est relu toutes les 30 s (`TenantStore:CacheTtl`) ; le lien entre une origine et son tenant est
+ * gardé 24 h (`TenantStore:FqdnCacheTtl`), donc un domaine désactivé peut encore ouvrir le tenant
+ * jusque-là. Dit dans chaque confirmation, sinon l'opérateur croit l'effet immédiat.
  */
-const API_CACHE_NOTICE = 'Le CRM peut continuer à l’accepter jusqu’à 24 h, le temps que son cache expire.';
+const TENANT_DELAY_NOTICE = 'L’accès est coupé dans les 30 secondes, y compris pour les sessions déjà ouvertes.';
+const DOMAIN_DELAY_NOTICE = 'Le CRM peut encore accepter cette origine jusqu’à 24 h, le temps que son cache expire.';
 
 @Component({
   templateUrl: './tenant-detail.html',
@@ -126,7 +128,7 @@ export class TenantDetail implements OnInit {
       title: 'Désactiver ce domaine ?',
       message:
         `${domain.fqdn} ne donnera plus accès à ${this.tenant()?.name ?? 'ce tenant'}. ` +
-        `La désactivation est définitive : cette origine ne pourra pas être réattribuée. ${API_CACHE_NOTICE}`,
+        `La désactivation est définitive : cette origine ne pourra pas être réattribuée. ${DOMAIN_DELAY_NOTICE}`,
       closable: true,
       showCancelButton: true,
       icon: 'feather:alert-triangle',
@@ -143,7 +145,7 @@ export class TenantDetail implements OnInit {
     this._confirm.confirm({
       title: deactivating ? 'Désactiver ce tenant ?' : 'Réactiver ce tenant ?',
       message: deactivating
-        ? `Plus aucun utilisateur de ${tenant.name} ne pourra se connecter au CRM, sur aucun de ses domaines. Les données sont conservées. ${API_CACHE_NOTICE}`
+        ? `Plus aucun utilisateur de ${tenant.name} ne pourra se connecter au CRM, sur aucun de ses domaines. Les données sont conservées. ${TENANT_DELAY_NOTICE}`
         : `Les utilisateurs de ${tenant.name} pourront de nouveau se connecter au CRM.`,
       closable: true,
       showCancelButton: true,
@@ -189,7 +191,7 @@ export class TenantDetail implements OnInit {
         finalize(() => this.deactivatingDomainId.set(null)),
       )
       .subscribe(() => {
-        this._snackbar.success('Domaine désactivé', API_CACHE_NOTICE);
+        this._snackbar.success('Domaine désactivé', DOMAIN_DELAY_NOTICE);
         this._reloadDomains();
       });
   }

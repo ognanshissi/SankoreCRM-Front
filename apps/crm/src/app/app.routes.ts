@@ -3,6 +3,7 @@ import {
   AuthLayoutComponent,
   PortalLayoutComponent,
   UnknownTenantComponent,
+  TenantSuspendedComponent,
   authorized,
   tenantGuard,
 } from '@sankore/crm/common';
@@ -72,6 +73,11 @@ export const appRoutes: Route[] = [
     // ci-dessous renverrait vers /auth/login — lui-même gardé.
     path: 'unknown-tenant',
     component: UnknownTenantComponent,
+  },
+  {
+    // Même raison d'être sans garde que `unknown-tenant` : c'est la destination de `tenantGuard`.
+    path: 'tenant-suspended',
+    component: TenantSuspendedComponent,
   },
   {
     path: '**',

@@ -5,7 +5,14 @@ import { TenantProvider } from '../services';
 
 /**
  * Renvoie vers /unknown-tenant quand le contexte du tenant n'a pas pu être
- * chargé — domaine inconnu du back, ou back injoignable au démarrage.
+ * chargé — domaine inconnu du back, ou back injoignable au démarrage — et vers
+ * /tenant-suspended quand il l'a été mais que le tenant est désactivé ou en
+ * maintenance.
+ *
+ * Le second cas n'était pas traité : le contexte arrivait avec `isActive: false`
+ * et la garde ne regardait que sa présence, si bien qu'une institution
+ * désactivée depuis l'administration ouvrait l'application normalement et ne
+ * découvrait le refus qu'au premier appel à l'API.
  *
  * À placer AVANT `authorized` : `tenantInterceptor` estampille chaque requête
  * du FQDN du tenant, si bien qu'une vérification de jeton faite sans contexte
@@ -21,9 +28,20 @@ export const tenantGuard: CanActivateFn = () => {
     return true;
   }
 
-  if (inject(TenantProvider).isLoaded()) {
-    return true;
+  const tenant = inject(TenantProvider);
+  const router = inject(Router);
+
+  if (!tenant.isLoaded()) {
+    return router.createUrlTree(['/unknown-tenant']);
   }
 
-  return inject(Router).navigate(['/unknown-tenant']);
+  const ctx = tenant.context();
+  if (ctx?.isActive === false) {
+    return router.createUrlTree(['/tenant-suspended']);
+  }
+  if (ctx?.isMaintenance) {
+    return router.createUrlTree(['/tenant-suspended'], { queryParams: { raison: 'maintenance' } });
+  }
+
+  return true;
 };

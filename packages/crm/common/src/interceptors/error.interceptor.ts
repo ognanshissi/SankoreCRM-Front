@@ -30,6 +30,19 @@ export const errorInterceptor: HttpInterceptorFn = (
         return EMPTY;
       }
 
+      // Le serveur refuse un tenant désactivé (403) ou en maintenance (503) avec un code
+      // dédié. Une session déjà ouverte au moment de la désactivation passe par ici : sans
+      // cette redirection, chaque écran affichait sa propre erreur générique.
+      const code = (error.error as { code?: string } | null)?.code;
+      if (code === 'TENANT_INACTIVE') {
+        router.navigate(['/tenant-suspended']).then();
+        return EMPTY;
+      }
+      if (code === 'TENANT_MAINTENANCE') {
+        router.navigate(['/tenant-suspended'], { queryParams: { raison: 'maintenance' } }).then();
+        return EMPTY;
+      }
+
       return throwError(() => error);
     }),
   );
