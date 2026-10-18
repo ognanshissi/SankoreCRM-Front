@@ -1,6 +1,5 @@
 import {
   Component,
-  ElementRef,
   HostBinding,
   output,
   signal,
@@ -26,8 +25,6 @@ export class RowSelectionItem {
   public toggle() {
     this.isChecked.set(!this.isChecked());
   }
-
-  constructor(private readonly _elementRef: ElementRef<any>) {}
 
   @HostBinding('class')
   public get classes() {

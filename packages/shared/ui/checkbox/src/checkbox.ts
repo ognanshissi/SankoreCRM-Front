@@ -88,6 +88,10 @@ export class TasCheckbox
 
   override setDisabledState(isDisabled: boolean) {
     super.setDisabledState(isDisabled);
-    isDisabled ? this.control.disable() : this.control.enable();
+    if (isDisabled) {
+      this.control.disable();
+    } else {
+      this.control.enable();
+    }
   }
 }

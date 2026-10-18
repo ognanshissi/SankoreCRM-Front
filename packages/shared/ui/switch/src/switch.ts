@@ -34,5 +34,10 @@ export class TasSwitch {
   public disabled = input<boolean>(false);
   public isLoading = input<boolean>(false);
   public ariaLabel = input<string>('');
+  // `toggle` est bien un nom d'évènement DOM, mais seulement sur `<details>` et `<dialog>` :
+  // ni l'un ni l'autre n'apparaît dans le template de `tas-switch`, donc aucune collision
+  // n'est possible ici. Le renommer casserait les 23 liaisons `(toggle)` du CRM — ce qui
+  // reste une option, mais à faire volontairement, pas au détour d'un correctif de lint.
+  // eslint-disable-next-line @angular-eslint/no-output-native
   public toggle = output<boolean>();
 }

@@ -1,3 +1,9 @@
+<!--
+  Ce conteneur n'est pas interactif : il ne fait que barrer la propagation vers le
+  listener `document:click` qui ferme la liste (cf. `_closeDropdownOnOutsideClick`).
+  Sans lui, le clic sur le bouton d'ouverture refermerait la liste aussitôt.
+-->
+<!-- eslint-disable-next-line @angular-eslint/template/click-events-have-key-events, @angular-eslint/template/interactive-supports-focus -->
 <div (click)="$event.stopPropagation()">
   <div class="relative">
     <button

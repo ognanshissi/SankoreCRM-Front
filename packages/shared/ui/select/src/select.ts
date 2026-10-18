@@ -1,5 +1,4 @@
 import {
-  AfterViewInit,
   booleanAttribute,
   Component,
   computed,
@@ -17,7 +16,7 @@ import {
 import { FormControl, FormsModule, NG_VALUE_ACCESSOR } from '@angular/forms';
 import { AbstractControlValueAccessor } from '@talisoft/ui/core';
 import { SelectionModel } from '@angular/cdk/collections';
-import { NgClass, NgIf, NgTemplateOutlet } from '@angular/common';
+import { NgClass, NgTemplateOutlet } from '@angular/common';
 import { TasFormField } from '@talisoft/ui/form-field';
 import { TasInput } from '@talisoft/ui/input';
 import { fromEvent } from 'rxjs';
@@ -41,7 +40,7 @@ import { fromEvent } from 'rxjs';
 })
 export class TasSelect<T>
   extends AbstractControlValueAccessor<string[] | string>
-  implements OnInit, AfterViewInit, OnChanges
+  implements OnInit, OnChanges
 {
   public selectionModel: SelectionModel<string> = new SelectionModel<string>(
     false,
@@ -113,8 +112,6 @@ export class TasSelect<T>
       this.value = this.selectionModel.selected[0] ?? null;
     });
   }
-
-  public ngAfterViewInit() {}
 
   /**
    * Direction modèle → vue.

@@ -50,6 +50,12 @@ import { COUNTRIES, CountryDef } from './countries';
       </button>
 
       @if (dropdownOpen()) {
+        <!--
+          Barrage de propagation uniquement : le listener document:click ferme la liste,
+          et sans ce stopPropagation un clic dans la liste la refermerait avant que
+          selectCountry ne soit traité. Pas de backtick ici : le template est inline.
+        -->
+        <!-- eslint-disable-next-line @angular-eslint/template/click-events-have-key-events, @angular-eslint/template/interactive-supports-focus -->
         <div
           class="tas-phone-input__dropdown"
           role="listbox"
@@ -67,11 +73,14 @@ import { COUNTRIES, CountryDef } from './countries';
               <li
                 role="option"
                 class="tas-phone-input__option"
+                tabindex="0"
                 [class.tas-phone-input__option--selected]="
                   country.code === selectedCountry().code
                 "
                 [attr.aria-selected]="country.code === selectedCountry().code"
                 (click)="selectCountry(country)"
+                (keydown.enter)="selectCountry(country)"
+                (keydown.space)="selectCountry(country); $event.preventDefault()"
               >
                 <span class="tas-phone-input__flag">{{ country.flag }}</span>
                 <span class="tas-phone-input__option-name">{{ country.name }}</span>
@@ -181,7 +190,11 @@ export class TasInputPhone extends AbstractControlValueAccessor<string> {
 
   override setDisabledState(isDisabled: boolean) {
     super.setDisabledState(isDisabled);
-    isDisabled ? this.phoneControl.disable() : this.phoneControl.enable();
+    if (isDisabled) {
+      this.phoneControl.disable();
+    } else {
+      this.phoneControl.enable();
+    }
   }
 
   override validate(control: AbstractControl): ValidationErrors | null {

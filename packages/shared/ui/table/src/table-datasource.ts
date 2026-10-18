@@ -54,7 +54,9 @@ export class TableDataSource<TEntity> extends DataSource<TEntity> {
    *  Called when the table is being destroyed. Use this function, to clean up
    * any open connections or free any held resources that were set up during connect.
    */
-  disconnect(): void {}
+  disconnect(): void {
+    // Rien à libérer : la source expose un BehaviorSubject détenu par l'appelant.
+  }
 
   /**
    * Paginate the data (client-side). If you're using server-side pagination,

@@ -4,9 +4,8 @@ import {
   Component,
   ContentChild,
   HostBinding,
-  Inject,
+  inject,
   input,
-  Optional,
   viewChild,
   ViewChild,
   ViewEncapsulation,
@@ -14,7 +13,6 @@ import {
 import { AbstractFormFieldControl } from './abstract-form-field-control';
 import { TasError } from './form-error.component';
 import {
-  AbstractFormFieldConfigOptions,
   FormFieldAppearanceOption,
   TAS_FORM_FIELD_OPTIONS,
   TasFormFieldSizeOption,
@@ -45,11 +43,7 @@ import { TasLabel } from './label.component';
   `,
 })
 export class TasFormField {
-  constructor(
-    @Optional()
-    @Inject(TAS_FORM_FIELD_OPTIONS)
-    private _formFieldOptions: AbstractFormFieldConfigOptions,
-  ) {}
+  private _formFieldOptions = inject(TAS_FORM_FIELD_OPTIONS);
 
   public appearance = input<FormFieldAppearanceOption>('fill');
   public size = input<TasFormFieldSizeOption>('medium');

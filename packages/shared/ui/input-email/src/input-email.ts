@@ -87,7 +87,11 @@ export class TasInputEmail
 
   override setDisabledState(isDisabled: boolean) {
     super.setDisabledState(isDisabled);
-    isDisabled ? this.emailControl.disable() : this.emailControl.enable();
+    if (isDisabled) {
+      this.emailControl.disable();
+    } else {
+      this.emailControl.enable();
+    }
   }
 
   override validate(control: AbstractControl): ValidationErrors | null {

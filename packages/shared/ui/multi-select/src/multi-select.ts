@@ -1,5 +1,4 @@
 import {
-  AfterViewInit,
   booleanAttribute,
   Component,
   computed,
@@ -15,7 +14,7 @@ import {
 } from '@angular/core';
 import { FormControl, FormsModule, NG_VALUE_ACCESSOR } from '@angular/forms';
 import { SelectionModel } from '@angular/cdk/collections';
-import { NgClass, NgForOf, NgIf, NgTemplateOutlet } from '@angular/common';
+import { NgClass, NgTemplateOutlet } from '@angular/common';
 import { fromEvent } from 'rxjs';
 import { TasFormField } from '@talisoft/ui/form-field';
 import { AbstractControlValueAccessor } from '@talisoft/ui/core';
@@ -34,19 +33,11 @@ import { TasInput } from '@talisoft/ui/input';
       multi: true,
     },
   ],
-  imports: [
-    NgIf,
-    FormsModule,
-    TasFormField,
-    TasInput,
-    NgTemplateOutlet,
-    NgClass,
-    NgForOf,
-  ],
+  imports: [FormsModule, TasFormField, TasInput, NgTemplateOutlet, NgClass],
 })
 export class TasMultiSelect<T>
   extends AbstractControlValueAccessor<string[]>
-  implements OnInit, AfterViewInit, OnChanges
+  implements OnInit, OnChanges
 {
   public selectionModel: SelectionModel<{
     [key: string]: string;
@@ -103,8 +94,6 @@ export class TasMultiSelect<T>
       );
     });
   }
-
-  public ngAfterViewInit() {}
 
   /**
    * Update the writeValue method when the field has default value

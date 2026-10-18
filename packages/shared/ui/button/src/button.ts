@@ -2,10 +2,10 @@ import {
   AfterViewInit,
   ChangeDetectionStrategy,
   Component,
+  inject,
   Input,
   NgZone,
   OnDestroy,
-  Optional,
   ViewEncapsulation,
 } from '@angular/core';
 import { ButtonBaseMixins } from './button-mixin';
@@ -36,9 +36,7 @@ export class Button extends ButtonBaseMixins {
   exportAs: 'TasAnchor',
 })
 export class Anchor extends Button implements AfterViewInit, OnDestroy {
-  constructor(@Optional() private _ngZone?: NgZone) {
-    super();
-  }
+  private _ngZone = inject(NgZone, { optional: true });
 
   override ngAfterViewInit() {
     super.ngAfterViewInit();

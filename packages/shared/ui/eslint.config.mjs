@@ -12,6 +12,17 @@ export default [
         'error',
         {
           ignoredFiles: ['{projectRoot}/eslint.config.{js,cjs,mjs,ts,cts,mts}'],
+          // Outillage de build et de test (cibles nx, postcss, specs vitest) : ces paquets
+          // ne font pas partie de l'API de @talisoft/ui. En peerDependencies, ils
+          // obligeraient tout consommateur de la librairie à installer la chaîne de build
+          // du monorepo.
+          ignoredDependencies: [
+            'tailwindcss',
+            'vite',
+            '@nx/vite',
+            '@nx/angular',
+            '@analogjs/vite-plugin-angular',
+          ],
         },
       ],
     },
