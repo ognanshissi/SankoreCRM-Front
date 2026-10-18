@@ -9,7 +9,11 @@ export const appRoutes: Route[] = [
   {
     path: '',
     canActivate: [adminAuthorized],
-    loadComponent: () => import('./home'),
+    loadComponent: () => import('./shell'),
+    children: [
+      { path: '', pathMatch: 'full', redirectTo: 'tenants' },
+      { path: 'tenants', loadChildren: () => import('@sankore/admin/tenant') },
+    ],
   },
   { path: '**', redirectTo: '' },
 ];

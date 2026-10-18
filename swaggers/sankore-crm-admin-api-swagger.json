@@ -199,12 +199,42 @@
             }
           },
           "400": {
-            "description": "Bad Request"
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
           }
         },
         "security": [
           {
             "ApiKey": [ ]
+          },
+          {
+            "Bearer": [ ]
           }
         ]
       }
@@ -214,7 +244,7 @@
         "tags": [
           "TenantDomains"
         ],
-        "summary": "Deactivate a tenant domain entry",
+        "summary": "Deactivate a tenant domain entry (never the primary one)",
         "operationId": "DeactivateTenantDomain",
         "parameters": [
           {
@@ -229,22 +259,28 @@
         ],
         "responses": {
           "204": {
-            "description": "No Content",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/DeactivateTenantDomainResponse"
-                }
-              }
-            }
+            "description": "No Content"
           },
           "404": {
             "description": "Not Found"
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
           }
         },
         "security": [
           {
             "ApiKey": [ ]
+          },
+          {
+            "Bearer": [ ]
           }
         ]
       }
@@ -285,6 +321,9 @@
         "security": [
           {
             "ApiKey": [ ]
+          },
+          {
+            "Bearer": [ ]
           }
         ]
       }
@@ -323,6 +362,9 @@
         "security": [
           {
             "ApiKey": [ ]
+          },
+          {
+            "Bearer": [ ]
           }
         ]
       },
@@ -358,6 +400,9 @@
         "security": [
           {
             "ApiKey": [ ]
+          },
+          {
+            "Bearer": [ ]
           }
         ]
       }
@@ -398,6 +443,9 @@
         "security": [
           {
             "ApiKey": [ ]
+          },
+          {
+            "Bearer": [ ]
           }
         ]
       },
@@ -439,6 +487,9 @@
         "security": [
           {
             "ApiKey": [ ]
+          },
+          {
+            "Bearer": [ ]
           }
         ]
       },
@@ -470,6 +521,9 @@
         "security": [
           {
             "ApiKey": [ ]
+          },
+          {
+            "Bearer": [ ]
           }
         ]
       }
@@ -509,6 +563,81 @@
         "security": [
           {
             "ApiKey": [ ]
+          },
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/api/v1/tenants/{id}/deactivate": {
+      "post": {
+        "tags": [
+          "Tenants"
+        ],
+        "summary": "Cut a tenant's access",
+        "operationId": "DeactivateTenant",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        },
+        "security": [
+          {
+            "ApiKey": [ ]
+          },
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/api/v1/tenants/{id}/activate": {
+      "post": {
+        "tags": [
+          "Tenants"
+        ],
+        "summary": "Restore a tenant's access",
+        "operationId": "ActivateTenant",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        },
+        "security": [
+          {
+            "ApiKey": [ ]
+          },
+          {
+            "Bearer": [ ]
           }
         ]
       }
@@ -617,15 +746,6 @@
             "type": "string",
             "format": "date-time",
             "nullable": true
-          }
-        },
-        "additionalProperties": false
-      },
-      "DeactivateTenantDomainResponse": {
-        "type": "object",
-        "properties": {
-          "success": {
-            "type": "boolean"
           }
         },
         "additionalProperties": false

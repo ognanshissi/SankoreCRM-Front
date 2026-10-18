@@ -1,0 +1,146 @@
+<div class="flex flex-col gap-5">
+  <div class="flex flex-wrap items-center justify-between gap-4">
+    <div>
+      <h1 class="text-xl font-bold text-slate-800">Tenants</h1>
+      <p class="mt-0.5 text-sm text-slate-500 tabular-nums">{{ summary() }}</p>
+    </div>
+    <div class="flex flex-wrap items-center gap-2">
+      <label class="flex min-h-11 min-w-[18rem] items-center gap-2 rounded-full bg-white px-4 shadow-xs">
+        <tas-icon iconName="feather:search" class="text-slate-500" style="font-size: 16px" aria-hidden="true"></tas-icon>
+        <span class="sr-only">Rechercher</span>
+        <input
+          type="search"
+          class="min-w-0 flex-1 bg-transparent text-sm text-slate-800 outline-none placeholder:text-slate-500"
+          placeholder="Nom, domaine ou e-mail racine"
+          [ngModel]="searchQuery()"
+          (ngModelChange)="onSearchChange($event)"
+        />
+      </label>
+      <button tas-button iconButton type="button" title="Actualiser" (click)="load()">
+        <tas-icon iconName="feather:refresh-cw" iconSize="sm"></tas-icon>
+      </button>
+    </div>
+  </div>
+
+  <div class="flex flex-wrap items-center justify-between gap-3">
+    <div role="tablist" aria-label="Statut" class="flex flex-wrap gap-1 rounded-full bg-slate-100 p-1">
+      @for (f of filters(); track f.label) {
+        <button
+          type="button"
+          role="tab"
+          [attr.aria-selected]="f.isSelected"
+          class="min-h-10 rounded-full px-4 text-sm font-semibold transition-colors"
+          [class]="f.isSelected ? 'bg-white text-primary shadow-xs' : 'text-slate-700 hover:text-slate-900'"
+          (click)="pickFilter(f.value)"
+        >
+          {{ f.label }}
+          <span class="font-medium text-slate-500 tabular-nums">{{ f.count }}</span>
+        </button>
+      }
+    </div>
+    @if (hasFilters()) {
+      <button tas-outlined-button color="primary" type="button" (click)="clearFilters()">Tout afficher</button>
+    }
+  </div>
+
+  @if (loadError()) {
+    <div role="alert" class="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-red-50 px-5 py-4">
+      <p class="text-sm text-red-800">{{ loadError() }}</p>
+      <button tas-outlined-button color="primary" type="button" (click)="load()">Réessayer</button>
+    </div>
+  } @else if (!isLoading() && rows().length === 0) {
+    <div class="rounded-3xl bg-white px-5 py-12 text-center text-sm text-slate-500">
+      @if (hasFilters()) {
+        Aucun tenant ne correspond à cette sélection.
+      } @else {
+        Aucun tenant n’est enregistré.
+      }
+    </div>
+  } @else {
+    <tas-table
+      [data]="rows()"
+      identifierField="id"
+      [config]="tableConfig()"
+      [hasCaption]="false"
+      [isLoading]="isLoading()"
+    >
+      <ng-template #header>
+        <tr class="text-left text-xs font-bold uppercase tracking-wide text-slate-500">
+          <th class="py-2.5 pl-5">Tenant</th>
+          <th class="py-2.5">Utilisateur racine</th>
+          <th class="py-2.5">Statut</th>
+          <th class="py-2.5 text-right">Créé le</th>
+          <th class="w-12 py-2.5 pr-5"><span class="sr-only">Ouvrir</span></th>
+        </tr>
+      </ng-template>
+
+      <ng-template #body let-row>
+        <tr class="transition-colors hover:bg-slate-50">
+          <td class="py-3 pl-5">
+            <div class="flex min-w-0 items-center gap-3">
+              <span
+                class="flex size-10 shrink-0 items-center justify-center rounded-[14px] bg-primary/10 text-sm font-bold text-primary"
+                aria-hidden="true"
+                >{{ row.initials }}</span
+              >
+              <div class="flex min-w-0 flex-col leading-snug">
+                <a [routerLink]="[row.id]" class="font-bold text-slate-800 hover:text-primary">{{ row.name }}</a>
+                @if (originHref(row.fqdn); as href) {
+                  <a
+                    [href]="href"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="truncate text-xs text-slate-500 hover:text-primary"
+                    >{{ row.fqdn }}</a
+                  >
+                } @else {
+                  <span class="truncate text-xs text-slate-500">{{ row.fqdn || '—' }}</span>
+                }
+              </div>
+            </div>
+          </td>
+          <td class="py-3 text-sm text-slate-700">{{ row.rootUserEmail || '—' }}</td>
+          <td class="py-3">
+            <div class="flex flex-col leading-snug">
+              <span class="flex items-center gap-1.5 text-sm font-semibold" [class]="row.stateTone">
+                <span class="size-2 rounded-full" [class]="row.stateDot" aria-hidden="true"></span>
+                {{ row.stateLabel }}
+              </span>
+              <span class="text-xs text-slate-500">
+                @switch (row.state) {
+                  @case ('trial') {
+                    Jusqu’au {{ row.trialExpiresAt | date: 'd MMM y' }}
+                  }
+                  @case ('trial-expired') {
+                    Terminé le {{ row.trialExpiresAt | date: 'd MMM y' }}
+                  }
+                  @case ('inactive') {
+                    @if (row.blockedAt) {
+                      Désactivé le {{ row.blockedAt | date: 'd MMM y' }}
+                    } @else {
+                      Accès coupé
+                    }
+                  }
+                  @case ('maintenance') {
+                    Accès suspendu pendant l’intervention
+                  }
+                  @default {
+                    Accès ouvert
+                  }
+                }
+              </span>
+            </div>
+          </td>
+          <td class="py-3 text-right text-sm text-slate-600 tabular-nums">
+            {{ row.createdAt ? (row.createdAt | date: 'd MMM y') : '—' }}
+          </td>
+          <td class="py-3 pr-5 text-right">
+            <a tas-button iconButton [routerLink]="[row.id]" [attr.aria-label]="'Ouvrir ' + row.name">
+              <tas-icon iconName="feather:chevron-right" iconSize="sm"></tas-icon>
+            </a>
+          </td>
+        </tr>
+      </ng-template>
+    </tas-table>
+  }
+</div>

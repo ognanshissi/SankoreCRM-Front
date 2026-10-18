@@ -1,0 +1,153 @@
+<div class="flex flex-col gap-5">
+  <a routerLink="/tenants" class="flex w-fit items-center gap-1.5 text-sm font-semibold text-primary">
+    <tas-icon iconName="feather:arrow-left" style="font-size: 14px" aria-hidden="true"></tas-icon>
+    Tous les tenants
+  </a>
+
+  @if (isLoading() && !tenant()) {
+    <div class="rounded-3xl bg-white px-5 py-12 text-center text-sm text-slate-500">Chargement…</div>
+  } @else if (notFound()) {
+    <div class="rounded-3xl bg-white px-5 py-12 text-center">
+      <p class="text-sm font-medium text-slate-700">Ce tenant n’existe pas ou a été supprimé.</p>
+    </div>
+  } @else if (loadError()) {
+    <div role="alert" class="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-red-50 px-5 py-4">
+      <p class="text-sm text-red-800">{{ loadError() }}</p>
+      <button tas-outlined-button color="primary" type="button" (click)="load()">Réessayer</button>
+    </div>
+  } @else if (tenant(); as t) {
+    <section class="flex flex-col gap-5 rounded-3xl bg-white p-6 shadow-xs">
+      <div class="flex flex-wrap items-start justify-between gap-4">
+        <div class="flex min-w-0 flex-col gap-1">
+          <div class="flex flex-wrap items-center gap-2.5">
+            <h1 class="text-xl font-bold text-slate-800">{{ t.name }}</h1>
+            @if (!t.isActive) {
+              <span class="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-bold text-slate-700">Inactif</span>
+            } @else if (t.isMaintenance) {
+              <span class="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-bold text-amber-800">Maintenance</span>
+            } @else {
+              <span class="rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-bold text-green-800">Actif</span>
+            }
+          </div>
+          @if (originHref(t.fqdn); as href) {
+            <a [href]="href" target="_blank" rel="noopener noreferrer" class="w-fit text-sm text-slate-500 hover:text-primary">{{ t.fqdn }}</a>
+          }
+        </div>
+        <button
+          tas-outlined-button
+          [color]="t.isActive ? 'warn' : 'primary'"
+          type="button"
+          [disabled]="isTogglingTenant()"
+          [isLoading]="isTogglingTenant()"
+          (click)="confirmToggleTenant()"
+        >
+          <tas-icon [iconName]="t.isActive ? 'feather:slash' : 'feather:check-circle'" style="font-size: 14px"></tas-icon>
+          {{ t.isActive ? 'Désactiver le tenant' : 'Réactiver le tenant' }}
+        </button>
+      </div>
+
+      @if (!t.isActive) {
+        <p class="rounded-xl bg-slate-50 px-4 py-3 text-sm text-slate-700">
+          Accès coupé
+          @if (t.blockedAt) {
+            depuis le {{ t.blockedAt | date: 'd MMMM y, HH:mm' }}
+          }
+          : aucun utilisateur de ce tenant ne peut se connecter au CRM. Les données sont conservées.
+        </p>
+      }
+
+      <dl class="grid grid-cols-1 gap-x-6 gap-y-4 border-t border-slate-100 pt-5 sm:grid-cols-2 lg:grid-cols-4">
+        <div>
+          <dt class="text-xs font-semibold uppercase tracking-wide text-slate-500">Utilisateur racine</dt>
+          <dd class="mt-1 break-all text-sm text-slate-800">{{ t.rootUserEmail || '—' }}</dd>
+        </div>
+        <div>
+          <dt class="text-xs font-semibold uppercase tracking-wide text-slate-500">Période d’essai</dt>
+          <dd class="mt-1 text-sm text-slate-800">
+            {{ t.trialExpiresAt ? 'Jusqu’au ' + (t.trialExpiresAt | date: 'd MMM y') : 'Aucune' }}
+          </dd>
+        </div>
+        <div>
+          <dt class="text-xs font-semibold uppercase tracking-wide text-slate-500">Créé le</dt>
+          <dd class="mt-1 text-sm text-slate-800 tabular-nums">{{ t.createdAt | date: 'd MMM y' }}</dd>
+        </div>
+        <div>
+          <dt class="text-xs font-semibold uppercase tracking-wide text-slate-500">Identifiant</dt>
+          <dd class="mt-1 break-all font-mono text-xs text-slate-600">{{ t.id }}</dd>
+        </div>
+      </dl>
+    </section>
+
+    <section class="flex flex-col gap-3">
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 class="text-base font-bold text-slate-800">Domaines</h2>
+          <p class="text-sm text-slate-500 tabular-nums">
+            {{ activeDomainCount() }} actif{{ activeDomainCount() > 1 ? 's' : '' }} sur {{ domainRows().length }}
+          </p>
+        </div>
+        <button tas-filled-button color="primary" type="button" (click)="openAddDomain()">
+          <tas-icon iconName="feather:plus"></tas-icon>
+          Ajouter un domaine
+        </button>
+      </div>
+
+      @if (domainRows().length === 0) {
+        <div class="rounded-3xl bg-white px-5 py-10 text-center text-sm text-slate-500">
+          Aucun domaine enregistré pour ce tenant.
+        </div>
+      } @else {
+        <tas-table [data]="domainRows()" identifierField="id" [config]="tableConfig()" [hasCaption]="false">
+          <ng-template #header>
+            <tr class="text-left text-xs font-bold uppercase tracking-wide text-slate-500">
+              <th class="py-2.5 pl-5">Origine</th>
+              <th class="py-2.5">Statut</th>
+              <th class="py-2.5">Validité</th>
+              <th class="py-2.5 pr-5 text-right">Action</th>
+            </tr>
+          </ng-template>
+          <ng-template #body let-d>
+            <tr class="transition-colors hover:bg-slate-50">
+              <td class="py-3 pl-5">
+                <span class="flex flex-wrap items-center gap-2">
+                  <span class="break-all text-sm font-semibold text-slate-800">{{ d.fqdn }}</span>
+                  @if (d.isMain) {
+                    <span class="rounded-full bg-primary/10 px-2 py-px text-[11px] font-bold text-primary">Principal</span>
+                  }
+                </span>
+              </td>
+              <td class="py-3">
+                <span class="flex items-center gap-1.5 text-sm font-semibold" [class]="d.tone">
+                  <span class="size-2 rounded-full" [class]="d.dot" aria-hidden="true"></span>
+                  {{ d.label }}
+                </span>
+              </td>
+              <td class="py-3 text-xs text-slate-600 tabular-nums">
+                Depuis le {{ d.validFrom | date: 'd MMM y' }}
+                @if (d.validTo) {
+                  <br />{{ d.state === 'inactive' ? 'Désactivé le' : 'Jusqu’au' }} {{ d.validTo | date: 'd MMM y' }}
+                }
+              </td>
+              <td class="py-3 pr-5 text-right">
+                @if (d.isMain) {
+                  <span class="text-xs text-slate-500">Adresse du tenant</span>
+                } @else if (d.state !== 'inactive') {
+                  <button
+                    tas-outlined-button
+                    color="warn"
+                    type="button"
+                    [disabled]="deactivatingDomainId() === d.id"
+                    [isLoading]="deactivatingDomainId() === d.id"
+                    (click)="confirmDeactivateDomain(d)"
+                  >
+                    Désactiver
+                  </button>
+                }
+              </td>
+            </tr>
+          </ng-template>
+        </tas-table>
+      }
+    </section>
+  }
+</div>

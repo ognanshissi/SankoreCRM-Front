@@ -3,7 +3,6 @@ export * from './create-tenant-domain-request.interface';
 export * from './create-tenant-domain-response.interface';
 export * from './create-tenant-request.interface';
 export * from './current-admin-response.interface';
-export * from './deactivate-tenant-domain-response.interface';
 export * from './login-request.interface';
 export * from './logout-request.interface';
 export * from './problem-details.interface';

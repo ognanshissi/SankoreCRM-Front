@@ -23,7 +23,7 @@ import { CreateTenantDomainRequest } from '../model/create-tenant-domain-request
 // @ts-ignore
 import { CreateTenantDomainResponse } from '../model/create-tenant-domain-response.interface';
 // @ts-ignore
-import { DeactivateTenantDomainResponse } from '../model/deactivate-tenant-domain-response.interface';
+import { ProblemDetails } from '../model/problem-details.interface';
 // @ts-ignore
 import { TenantDomainResponse } from '../model/tenant-domain-response.interface';
 
@@ -103,10 +103,10 @@ export class TenantDomainsApiService {
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      */
-    public createTenantDomain(createTenantDomainRequest: CreateTenantDomainRequest, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<CreateTenantDomainResponse>;
-    public createTenantDomain(createTenantDomainRequest: CreateTenantDomainRequest, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<CreateTenantDomainResponse>>;
-    public createTenantDomain(createTenantDomainRequest: CreateTenantDomainRequest, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<CreateTenantDomainResponse>>;
-    public createTenantDomain(createTenantDomainRequest: CreateTenantDomainRequest, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
+    public createTenantDomain(createTenantDomainRequest: CreateTenantDomainRequest, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json' | 'application/problem+json', context?: HttpContext}): Observable<CreateTenantDomainResponse>;
+    public createTenantDomain(createTenantDomainRequest: CreateTenantDomainRequest, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json' | 'application/problem+json', context?: HttpContext}): Observable<HttpResponse<CreateTenantDomainResponse>>;
+    public createTenantDomain(createTenantDomainRequest: CreateTenantDomainRequest, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json' | 'application/problem+json', context?: HttpContext}): Observable<HttpEvent<CreateTenantDomainResponse>>;
+    public createTenantDomain(createTenantDomainRequest: CreateTenantDomainRequest, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json' | 'application/problem+json', context?: HttpContext}): Observable<any> {
         if (createTenantDomainRequest === null || createTenantDomainRequest === undefined) {
             throw new Error('Required parameter createTenantDomainRequest was null or undefined when calling createTenantDomain.');
         }
@@ -120,11 +120,18 @@ export class TenantDomainsApiService {
             localVarHeaders = localVarHeaders.set('X-Api-Key', localVarCredential);
         }
 
+        // authentication (Bearer) required
+        localVarCredential = this.configuration.lookupCredential('Bearer');
+        if (localVarCredential) {
+            localVarHeaders = localVarHeaders.set('Authorization', 'Bearer ' + localVarCredential);
+        }
+
         let localVarHttpHeaderAcceptSelected: string | undefined = options && options.httpHeaderAccept;
         if (localVarHttpHeaderAcceptSelected === undefined) {
             // to determine the Accept header
             const httpHeaderAccepts: string[] = [
-                'application/json'
+                'application/json',
+                'application/problem+json'
             ];
             localVarHttpHeaderAcceptSelected = this.configuration.selectHeaderAccept(httpHeaderAccepts);
         }
@@ -173,15 +180,15 @@ export class TenantDomainsApiService {
     }
 
     /**
-     * Deactivate a tenant domain entry
+     * Deactivate a tenant domain entry (never the primary one)
      * @param id 
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      */
-    public deactivateTenantDomain(id: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<DeactivateTenantDomainResponse>;
-    public deactivateTenantDomain(id: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<DeactivateTenantDomainResponse>>;
-    public deactivateTenantDomain(id: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<DeactivateTenantDomainResponse>>;
-    public deactivateTenantDomain(id: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
+    public deactivateTenantDomain(id: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/problem+json', context?: HttpContext}): Observable<any>;
+    public deactivateTenantDomain(id: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/problem+json', context?: HttpContext}): Observable<HttpResponse<any>>;
+    public deactivateTenantDomain(id: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/problem+json', context?: HttpContext}): Observable<HttpEvent<any>>;
+    public deactivateTenantDomain(id: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/problem+json', context?: HttpContext}): Observable<any> {
         if (id === null || id === undefined) {
             throw new Error('Required parameter id was null or undefined when calling deactivateTenantDomain.');
         }
@@ -195,11 +202,17 @@ export class TenantDomainsApiService {
             localVarHeaders = localVarHeaders.set('X-Api-Key', localVarCredential);
         }
 
+        // authentication (Bearer) required
+        localVarCredential = this.configuration.lookupCredential('Bearer');
+        if (localVarCredential) {
+            localVarHeaders = localVarHeaders.set('Authorization', 'Bearer ' + localVarCredential);
+        }
+
         let localVarHttpHeaderAcceptSelected: string | undefined = options && options.httpHeaderAccept;
         if (localVarHttpHeaderAcceptSelected === undefined) {
             // to determine the Accept header
             const httpHeaderAccepts: string[] = [
-                'application/json'
+                'application/problem+json'
             ];
             localVarHttpHeaderAcceptSelected = this.configuration.selectHeaderAccept(httpHeaderAccepts);
         }
@@ -225,7 +238,7 @@ export class TenantDomainsApiService {
         }
 
         let localVarPath = `/api/v1/tenant-domains/${this.configuration.encodeParam({name: "id", value: id, in: "path", style: "simple", explode: false, dataType: "string", dataFormat: "uuid"})}`;
-        return this.httpClient.request<DeactivateTenantDomainResponse>('delete', `${this.configuration.basePath}${localVarPath}`,
+        return this.httpClient.request<any>('delete', `${this.configuration.basePath}${localVarPath}`,
             {
                 context: localVarHttpContext,
                 responseType: <any>responseType_,
@@ -258,6 +271,12 @@ export class TenantDomainsApiService {
         localVarCredential = this.configuration.lookupCredential('ApiKey');
         if (localVarCredential) {
             localVarHeaders = localVarHeaders.set('X-Api-Key', localVarCredential);
+        }
+
+        // authentication (Bearer) required
+        localVarCredential = this.configuration.lookupCredential('Bearer');
+        if (localVarCredential) {
+            localVarHeaders = localVarHeaders.set('Authorization', 'Bearer ' + localVarCredential);
         }
 
         let localVarHttpHeaderAcceptSelected: string | undefined = options && options.httpHeaderAccept;

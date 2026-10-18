@@ -1,0 +1,53 @@
+<tas-side-drawer>
+  <tas-drawer-title>
+    <TasTitle class="text-lg">Ajouter un domaine</TasTitle>
+    <p class="text-sm text-slate-500">{{ data.tenantName }}</p>
+  </tas-drawer-title>
+
+  <tas-drawer-content>
+    <form [formRoot]="formSchema" class="flex flex-col gap-5">
+      <p class="rounded-xl bg-slate-50 px-4 py-3 text-sm text-slate-600">
+        Le CRM reconnaîtra ce tenant sur cette nouvelle origine, en plus de son adresse principale.
+        Le domaine est actif dès l’enregistrement.
+      </p>
+
+      <tas-form-field>
+        <tas-label>Origine <span class="text-functional-error">*</span></tas-label>
+        <input tasInput type="url" placeholder="https://crm.exemple.com" [formField]="formSchema.fqdn" />
+        @if (formSchema.fqdn().touched() && formSchema.fqdn().invalid()) {
+          <tas-error>{{ formSchema.fqdn().errors()[0].message }}</tas-error>
+        } @else {
+          <tas-hint>Schéma compris, sans chemin : c’est l’adresse exacte que le navigateur affiche.</tas-hint>
+        }
+      </tas-form-field>
+
+      <tas-form-field>
+        <tas-label>Fin de validité</tas-label>
+        <input tasInput type="date" [min]="today" [formField]="formSchema.validTo" />
+        @if (formSchema.validTo().touched() && formSchema.validTo().invalid()) {
+          <tas-error>{{ formSchema.validTo().errors()[0].message }}</tas-error>
+        } @else {
+          <tas-hint>Facultatif. Laissez vide pour un domaine sans échéance.</tas-hint>
+        }
+      </tas-form-field>
+
+      @if (serverError()) {
+        <p role="alert" class="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-800">{{ serverError() }}</p>
+      }
+    </form>
+  </tas-drawer-content>
+
+  <tas-drawer-action>
+    <button tas-outlined-button color="primary" type="button" (click)="close()">Annuler</button>
+    <button
+      tas-raised-button
+      color="primary"
+      type="button"
+      (click)="handleSubmit()"
+      [disabled]="formSchema().invalid() || formSchema().submitting()"
+      [isLoading]="formSchema().submitting()"
+    >
+      Ajouter le domaine
+    </button>
+  </tas-drawer-action>
+</tas-side-drawer>

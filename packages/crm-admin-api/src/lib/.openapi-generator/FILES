@@ -15,7 +15,6 @@ model/create-tenant-domain-request.interface.ts
 model/create-tenant-domain-response.interface.ts
 model/create-tenant-request.interface.ts
 model/current-admin-response.interface.ts
-model/deactivate-tenant-domain-response.interface.ts
 model/login-request.interface.ts
 model/logout-request.interface.ts
 model/models.ts
