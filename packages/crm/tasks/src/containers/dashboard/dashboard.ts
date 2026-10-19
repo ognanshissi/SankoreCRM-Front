@@ -15,8 +15,10 @@ import { AuthenticationService, BreadcrumbService } from '@sankore/crm/common';
 import { computeDue, leadDisplayName, taskActionLabel, workStatusLabel } from './task-meta';
 import { TaskWorkPanel } from './task-work-panel';
 import { ReassignTaskDrawer, ReassignTaskDrawerData } from './reassign-task-drawer';
+import { ApprovalItem, MyApprovalsService } from './my-approvals.service';
+import { ApprovalsList } from './approvals-list';
 
-type TaskTab = 'todo' | 'overdue' | 'done';
+type TaskTab = 'todo' | 'overdue' | 'done' | 'approvals';
 
 function deadlineOf(task: CrmTaskDto): number {
   const d = task.slaDeadline ?? task.dueAt;
@@ -25,7 +27,7 @@ function deadlineOf(task: CrmTaskDto): number {
 
 @Component({
   templateUrl: './dashboard.html',
-  imports: [TasTable, TaskWorkPanel],
+  imports: [TasTable, TaskWorkPanel, ApprovalsList],
 })
 export class DashboardComponent implements OnInit, OnDestroy {
   private readonly _tasksApi = inject(TasksApiService);
@@ -35,6 +37,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   private readonly _sideDrawer = inject(SideDrawerService);
   private readonly _router = inject(Router);
   private readonly _breadcrumbService = inject(BreadcrumbService);
+  private readonly _approvalsService = inject(MyApprovalsService);
 
   public readonly computeDue = computeDue;
   public readonly taskActionLabel = taskActionLabel;
@@ -49,6 +52,15 @@ export class DashboardComponent implements OnInit, OnDestroy {
   public activeTab = signal<TaskTab>('todo');
   public selectedTaskId = signal<string | null>(null);
   public agencyName = signal('');
+
+  /** Ce qui attend la signature de l'utilisateur, chargé avec la page pour que l'onglet affiche son compte. */
+  public approvals = signal<ApprovalItem[]>([]);
+  public kycAwaitingTotal = signal(0);
+  public isApprovalsLoading = signal(true);
+  public readonly approvalsCount = computed(
+    () => Math.max(this.kycAwaitingTotal(), this.approvals().filter((a) => a.kind === 'kyc').length)
+      + this.approvals().filter((a) => a.kind === 'workflow').length,
+  );
 
   public readonly userName = computed(() => this._auth.connectedUser()?.fullName?.trim() ?? '');
 
@@ -89,6 +101,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     this._breadcrumbService.set([{ label: 'Mes tâches' }]);
     this._loadTasks();
+    this.loadApprovals();
     this._loadAgency();
     this._tickTimer = setInterval(() => this.now.set(Date.now()), 30_000);
   }
@@ -133,6 +146,15 @@ export class DashboardComponent implements OnInit, OnDestroy {
       if (!reassigned) return;
       this.selectedTaskId.set(null);
       this._loadTasks();
+    });
+  }
+
+  public loadApprovals(): void {
+    this.isApprovalsLoading.set(true);
+    this._approvalsService.load().subscribe((result) => {
+      this.approvals.set(result.items);
+      this.kycAwaitingTotal.set(result.kycAwaitingTotal);
+      this.isApprovalsLoading.set(false);
     });
   }
 

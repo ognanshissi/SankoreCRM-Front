@@ -23,8 +23,27 @@
       (click)="setTab('done')">
       Terminées
     </button>
+    <button type="button" class="px-4 py-2 rounded-full text-sm font-semibold transition-colors"
+      [class]="activeTab() === 'approvals' ? 'bg-primary text-white' : 'text-slate-700 hover:bg-slate-50'"
+      (click)="setTab('approvals')">
+      Approbations
+      @if (approvalsCount() > 0) {
+        <span class="ml-1 inline-flex min-w-5 justify-center rounded-full px-1.5 text-xs tabular-nums"
+          [class]="activeTab() === 'approvals' ? 'bg-white/20' : 'bg-amber-100 text-amber-800'">{{ approvalsCount() }}</span>
+      }
+    </button>
   </div>
 </div>
+
+@if (activeTab() === 'approvals') {
+  <tasks-approvals-list
+    [items]="approvals()"
+    [kycAwaitingTotal]="kycAwaitingTotal()"
+    [isLoading]="isApprovalsLoading()"
+    [now]="now()"
+    (changed)="loadApprovals()"
+  ></tasks-approvals-list>
+} @else {
 
 <div class="grid grid-cols-1 xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] gap-6 items-start">
   <!-- Liste -->
@@ -79,3 +98,4 @@
     </div>
   }
 </div>
+}
