@@ -37,7 +37,10 @@ interface LeadMenuItem {
 function leadStatusMeta(status: string | null | undefined): { label: string; severity: Severity } {
   switch (status) {
     case 'New':       return { label: 'Nouveau',  severity: 'info' };
-    case 'Contacted': return { label: 'Contacté', severity: 'warning' };
+    case 'Open':      return { label: 'Contacté', severity: 'warning' };
+    case 'Qualifying': return { label: 'En qualification', severity: 'warning' };
+    case 'Disqualified': return { label: 'Disqualifié', severity: 'error' };
+    case 'Archived':  return { label: 'Archivé',   severity: 'neutral' };
     case 'Qualified': return { label: 'Qualifié', severity: 'warning' };
     case 'Converted': return { label: 'Converti', severity: 'success' };
     case 'Lost':      return { label: 'Perdu',     severity: 'error' };
@@ -185,7 +188,7 @@ function parseFactors(factorsJson: string | null | undefined): ScoreFactor[] {
               1er contact
             </button>
           }
-          @if (lead()!.status !== 'Converted' && lead()!.status !== 'Lost' && lead()!.status !== 'Expired') {
+          @if (lead()!.status !== 'Converted' && lead()!.status !== 'Lost' && lead()!.status !== 'Disqualified' && lead()!.status !== 'Archived') {
             <!--
               Désactivé sur le canConvert de l'API (BNF-F-08), jamais sur une règle recalculée
               ici. Le libellé change pour un lead rattaché à un client existant (BNF-F-19) :
@@ -205,7 +208,8 @@ function parseFactors(factorsJson: string | null | undefined): ScoreFactor[] {
               </span>
             }
           }
-          @if (lead()!.status === 'Lost' || lead()!.status === 'Expired' || lead()!.status === 'Recycled') {
+          <!-- Les statuts que le serveur accepte de rouvrir (Lead.Reopen). « Expired » n'existe pas côté serveur. -->
+          @if (lead()!.status === 'Lost' || lead()!.status === 'Disqualified' || lead()!.status === 'Recycled') {
             <button tas-button color="primary" type="button"
               [disabled]="isReopening()" (click)="reopenLead()">
               @if (isReopening()) { <tas-spinner size="3" class="text-white"></tas-spinner> }
@@ -570,14 +574,14 @@ export class EditLeadNavigation implements OnDestroy {
 
   public readonly lifecycleSteps = [
     { status: 'New',       label: 'Nouveau',  activeColor: 'bg-blue-500',   activeText: 'text-blue-600' },
-    { status: 'Contacted', label: 'Contacté',  activeColor: 'bg-amber-500',  activeText: 'text-amber-600' },
+    { status: 'Open',      label: 'Contacté',  activeColor: 'bg-amber-500',  activeText: 'text-amber-600' },
     { status: 'Qualified', label: 'Qualifié',  activeColor: 'bg-purple-500', activeText: 'text-purple-600' },
     { status: 'Converted', label: 'Converti',  activeColor: 'bg-green-500',  activeText: 'text-green-600' },
   ];
 
   private readonly _lifecycleOrder: Record<string, number> = {
-    New: 0, Contacted: 1, Qualified: 2, Converted: 3,
-    Nurturing: 1, Recycled: 1, Lost: -1, Expired: -1,
+    New: 0, Open: 1, Qualifying: 1, Qualified: 2, Converted: 3,
+    Nurturing: 1, Recycled: 1, Lost: -1, Disqualified: -1, Archived: -1,
   };
 
   public isLifecycleReached(stepStatus: string): boolean {

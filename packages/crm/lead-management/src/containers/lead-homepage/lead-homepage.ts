@@ -44,12 +44,18 @@ import { AuthenticationService, PermissionsService } from '@sankore/crm/common';
 function leadStatusMeta(status: string | null | undefined): { label: string; severity: Severity } {
   switch (status) {
     case 'New':       return { label: 'Nouveau',  severity: 'info' };
-    case 'Contacted': return { label: 'Contacté', severity: 'warning' };
-    case 'Qualified': return { label: 'Qualifié', severity: 'warning' };
-    case 'Converted': return { label: 'Converti', severity: 'success' };
-    case 'Lost':      return { label: 'Perdu',    severity: 'error' };
-    case 'Expired':   return { label: 'Expiré',   severity: 'neutral' };
-    default:          return { label: status ?? '—', severity: 'neutral' };
+    // `Open` est le statut serveur d'un lead joint ; il n'existe pas de statut `Contacted`, que cet
+    // écran attendait — la pastille « Contacté » n'apparaissait donc jamais.
+    case 'Open':         return { label: 'Contacté',         severity: 'warning' };
+    case 'Qualifying':   return { label: 'En qualification', severity: 'warning' };
+    case 'Qualified':    return { label: 'Qualifié',         severity: 'warning' };
+    case 'Nurturing':    return { label: 'En maturation',    severity: 'neutral' };
+    case 'Recycled':     return { label: 'Recyclé',          severity: 'neutral' };
+    case 'Converted':    return { label: 'Converti',         severity: 'success' };
+    case 'Lost':         return { label: 'Perdu',            severity: 'error' };
+    case 'Disqualified': return { label: 'Disqualifié',      severity: 'error' };
+    case 'Archived':     return { label: 'Archivé',          severity: 'neutral' };
+    default:             return { label: status ?? '—', severity: 'neutral' };
   }
 }
 
@@ -196,11 +202,17 @@ export interface CardSla {
   tone: 'ok' | 'warning' | 'breach';
 }
 
+/** Le paramètre `status` de `listLeads` : le nom du statut serveur. */
+type ListLeadStatus = Parameters<LeadsApiService['listLeads']>[2];
+
+/** Les anciens liens portaient l'indice de l'onglet (`status=1`) : on les relit sous leur sens d'alors. */
+const LEGACY_STATUS_PARAM: Record<string, string> = { '0': 'New', '1': 'Open', '2': 'Qualified', '3': 'Converted', '4': 'Lost' };
+
 // ——— Old status-based columns (kept for status-view backward compat) ———
 
 const KANBAN_COLUMNS = [
   { status: 'New',       statusValue: 'New',       label: 'Nouveau',  color: '#6366f1' },
-  { status: 'Contacted', statusValue: 'Contacted', label: 'Contacté', color: '#f59e0b' },
+  { status: 'Open',      statusValue: 'Open',      label: 'Contacté', color: '#f59e0b' },
   { status: 'Qualified', statusValue: 'Qualified', label: 'Qualifié', color: '#8b5cf6' },
   { status: 'Converted', statusValue: 'Converted', label: 'Converti', color: '#22c55e' },
   { status: 'Lost',      statusValue: 'Lost',      label: 'Perdu',    color: '#ef4444' },
@@ -210,7 +222,7 @@ const KANBAN_COLUMNS = [
 interface StatusTab {
   label: string;
   value: string;
-  apiValue: number | undefined;
+  apiValue: string | undefined;
   count: Signal<number>;
 }
 
@@ -360,11 +372,14 @@ export class LeadHomepage implements OnInit {
   // Status tabs with live counts from stats
   public readonly statusTabs: StatusTab[] = [
     { label: 'Tous',      value: '',  apiValue: undefined, count: computed(() => this.stats().total ?? 0) },
-    { label: 'Nouveaux',  value: '0', apiValue: 0,         count: computed(() => this.statusCount('New')) },
-    { label: 'Contactés', value: '1', apiValue: 1,         count: computed(() => this.statusCount('Contacted')) },
-    { label: 'Qualifiés', value: '2', apiValue: 2,         count: computed(() => this.statusCount('Qualified')) },
-    { label: 'Convertis', value: '3', apiValue: 3,         count: computed(() => this.statusCount('Converted')) },
-    { label: 'Perdus',    value: '4', apiValue: 4,         count: computed(() => this.statusCount('Lost')) },
+    // Les noms du statut serveur, pas des indices : « 2 », « 3 », « 4 » étaient lus comme
+    // Qualifying, Qualified et Nurturing, si bien que « Qualifiés », « Convertis » et « Perdus »
+    // filtraient sur autre chose que ce qu'ils comptaient.
+    { label: 'Nouveaux',  value: 'New',       apiValue: 'New',       count: computed(() => this.statusCount('New')) },
+    { label: 'Contactés', value: 'Open',      apiValue: 'Open',      count: computed(() => this.statusCount('Open')) },
+    { label: 'Qualifiés', value: 'Qualified', apiValue: 'Qualified', count: computed(() => this.statusCount('Qualified')) },
+    { label: 'Convertis', value: 'Converted', apiValue: 'Converted', count: computed(() => this.statusCount('Converted')) },
+    { label: 'Perdus',    value: 'Lost',      apiValue: 'Lost',      count: computed(() => this.statusCount('Lost')) },
   ];
 
   public hasActiveSecondaryFilters = computed(() =>
@@ -391,7 +406,7 @@ export class LeadHomepage implements OnInit {
     // rafraîchissement retrouve la même vue.
     const params = this._route.snapshot.queryParams;
     if (params['q']) this.searchQuery.set(params['q']);
-    if (params['status']) this.filterStatus.set(params['status']);
+    if (params['status']) this.filterStatus.set(LEGACY_STATUS_PARAM[params['status']] ?? params['status']);
     // `leadSource` et non `source` : la valeur a changé de nature (uuid au lieu d'un indice
     // d'énumération). Un ancien lien portant `source=2` est donc ignoré plutôt que mal interprété —
     // aucune correspondance n'existe entre les deux vocabulaires.
@@ -725,7 +740,7 @@ export class LeadHomepage implements OnInit {
   public loadLeads(page: number, pageSize: number): void {
     this.isLoading.set(true);
 
-    const status = this.filterStatus() ? Number(this.filterStatus()) as any : undefined;
+    const status = (this.filterStatus() || undefined) as ListLeadStatus | undefined;
     const agencyId = this.filterAgencyId() || undefined;
     const intent = this.filterIntent() ? Number(this.filterIntent()) as any : undefined;
     const search = this.searchQuery() || undefined;
@@ -866,7 +881,7 @@ export class LeadHomepage implements OnInit {
    */
   public exportLeads(): void {
     this.isExporting.set(true);
-    const status = this.filterStatus() ? Number(this.filterStatus()) as any : undefined;
+    const status = (this.filterStatus() || undefined) as ListLeadStatus | undefined;
     const agencyId = this.filterAgencyId() || undefined;
     const search = this.searchQuery() || undefined;
     const leadSourceConfigId = this.filterLeadSourceId() || undefined;

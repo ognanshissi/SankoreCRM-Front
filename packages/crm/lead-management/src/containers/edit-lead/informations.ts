@@ -68,14 +68,21 @@ function sourceLabel(source: string | null | undefined): string {
 
 function pipelineLabel(stage: string | null | undefined): string {
   switch (stage) {
-    case 'Captured':       return 'Capturé';
-    case 'Contacted':      return 'Contacté';
-    case 'Qualified':      return 'Qualifié';
-    case 'ProposalSent':   return 'Proposition envoyée';
-    case 'Negotiation':    return 'Négociation';
-    case 'Won':            return 'Gagné';
-    case 'Lost':           return 'Perdu';
-    default:               return stage ?? '—';
+    // Les étapes du serveur (PipelineStage) : l'ancienne liste (Captured, ProposalSent, Won…)
+    // n'en reconnaissait aucune et affichait le code brut.
+    case 'New':                  return 'Nouveau';
+    case 'ContactAttempted':     return 'Contact tenté';
+    case 'ContactEstablished':   return 'Contact établi';
+    case 'NeedIdentified':       return 'Besoin identifié';
+    case 'Qualified':            return 'Qualifié';
+    case 'ProductProposed':      return 'Produit proposé';
+    case 'ApplicationStarted':   return 'Dossier démarré';
+    case 'DocumentCollection':   return 'Collecte des pièces';
+    case 'ApplicationCompleted': return 'Dossier complet';
+    case 'ApprovalPending':      return 'En approbation';
+    case 'Converted':            return 'Converti';
+    case 'Lost':                 return 'Perdu';
+    default:                     return stage ?? '—';
   }
 }
 

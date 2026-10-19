@@ -55,7 +55,7 @@ type KeyOption = { label: string; value: string };
 function leadStatusMeta(status: string | null | undefined): { label: string; severity: Severity } {
   switch (status) {
     case 'New':       return { label: 'Nouveau',  severity: 'info' };
-    case 'Contacted': return { label: 'Contacté', severity: 'warning' };
+    case 'Open':      return { label: 'Contacté', severity: 'warning' };
     case 'Qualified': return { label: 'Qualifié', severity: 'warning' };
     case 'Converted': return { label: 'Converti', severity: 'success' };
     case 'Lost':      return { label: 'Perdu',    severity: 'error' };
