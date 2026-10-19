@@ -10708,6 +10708,55 @@
         }
       }
     },
+    "/api/v1/leads/dispatching/overview": {
+      "get": {
+        "tags": [
+          "Lead Dispatching"
+        ],
+        "summary": "Every dispatching rule with what it routed over the period, to whom, and the latest assignments",
+        "operationId": "GetDispatchOverview",
+        "parameters": [
+          {
+            "name": "from",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DispatchOverviewDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/leads/import/validate": {
       "post": {
         "tags": [
@@ -31701,6 +31750,94 @@
         },
         "additionalProperties": false
       },
+      "DispatchAgentDto": {
+        "type": "object",
+        "properties": {
+          "agentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "received": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "contacted": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "waiting": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "openLeads": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "DispatchFeedItemDto": {
+        "type": "object",
+        "properties": {
+          "assignmentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "leadId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "leadName": {
+            "type": "string",
+            "nullable": true
+          },
+          "source": {
+            "type": "string",
+            "nullable": true
+          },
+          "agentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "agentName": {
+            "type": "string",
+            "nullable": true
+          },
+          "strategy": {
+            "enum": [
+              "RoundRobin",
+              "WeightedRoundRobin",
+              "CherryPicking",
+              "CompatibilityScoring",
+              "StickyAssignment"
+            ],
+            "type": "string",
+            "description": "One of: RoundRobin, WeightedRoundRobin, CherryPicking, CompatibilityScoring, StickyAssignment"
+          },
+          "score": {
+            "type": "number",
+            "format": "double"
+          },
+          "at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "outcome": {
+            "enum": [
+              "Contacted",
+              "ToContact",
+              "Reassigned"
+            ],
+            "type": "string",
+            "description": "One of: Contacted, ToContact, Reassigned"
+          }
+        },
+        "additionalProperties": false
+      },
       "DispatchLeadRequest": {
         "type": "object",
         "properties": {
@@ -31750,6 +31887,31 @@
           "slaDeadline": {
             "type": "string",
             "format": "date-time"
+          }
+        },
+        "additionalProperties": false
+      },
+      "DispatchOverviewDto": {
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "to": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "queueCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "rules": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DispatchRuleOverviewDto"
+            },
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -31843,6 +32005,124 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/DispatchPreviewCandidate"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "DispatchRuleOverviewDto": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string",
+            "nullable": true
+          },
+          "ruleId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "kind": {
+            "enum": [
+              "Rule",
+              "BuiltInDefault",
+              "Manual",
+              "DeletedRule"
+            ],
+            "type": "string",
+            "description": "One of: Rule, BuiltInDefault, Manual, DeletedRule"
+          },
+          "usage": {
+            "enum": [
+              "AppliesByDefault",
+              "PinnedToSources",
+              "NeverReached",
+              "Inactive",
+              "NotARule"
+            ],
+            "type": "string",
+            "description": "One of: AppliesByDefault, PinnedToSources, NeverReached, Inactive, NotARule"
+          },
+          "strategy": {
+            "enum": [
+              "RoundRobin",
+              "WeightedRoundRobin",
+              "CherryPicking",
+              "CompatibilityScoring",
+              "StickyAssignment"
+            ],
+            "type": "string",
+            "description": "One of: RoundRobin, WeightedRoundRobin, CherryPicking, CompatibilityScoring, StickyAssignment",
+            "nullable": true
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "priority": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "maxLeadsPerAgent": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "maxTasksPerAgent": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "antiMonopolyThreshold": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "firstContactSla": {
+            "type": "string",
+            "format": "date-span",
+            "nullable": true
+          },
+          "excludedAgentCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pinnedSources": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "dispatched": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "reassigned": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "medianDelayMinutes": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "agents": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DispatchAgentDto"
+            },
+            "nullable": true
+          },
+          "recent": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DispatchFeedItemDto"
             },
             "nullable": true
           }

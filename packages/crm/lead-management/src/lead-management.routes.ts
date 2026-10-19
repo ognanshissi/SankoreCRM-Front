@@ -17,6 +17,12 @@ export const leadManagementRoutes = [
     loadComponent: () => import('./containers/reports/reports-page'),
   },
   {
+    path: 'dispatching',
+    canActivate: [hasPermissionGuard('lead:dispatching-rule:read')],
+    title: 'Dispatching',
+    loadComponent: () => import('./containers/dispatching/dispatching-page'),
+  },
+  {
     path: 'analytics',
     canActivate: [hasPermissionGuard('lead:analytics:view')],
     loadComponent: () => import('./containers/analytics/analytics-dashboard'),

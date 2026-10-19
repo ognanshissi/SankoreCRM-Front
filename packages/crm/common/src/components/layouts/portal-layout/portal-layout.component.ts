@@ -101,6 +101,17 @@ export class PortalLayoutComponent implements OnInit {
         type: 'basic',
         link: '/leads',
       },
+      ...(this._permissions.has('lead:dispatching-rule:read')
+        ? [
+            {
+              id: 'lead-dispatching',
+              icon: 'feather:shuffle',
+              title: 'Dispatching',
+              type: 'basic' as const,
+              link: '/leads/dispatching',
+            },
+          ]
+        : []),
       // `/portal/customers` ne correspondait à aucune route : l'entrée renvoyait vers
       // la redirection joker. Le module est monté sur `/customers`.
       ...(this._permissions.has('customers:read')
