@@ -1,10 +1,41 @@
 <!-- En-tête -->
 <div class="flex flex-wrap items-start justify-between gap-4 mb-6">
-  <div>
-    <h1 class="text-lg font-semibold text-slate-800">Mes tâches</h1>
-    <p class="text-sm text-slate-500 mt-0.5">
-      {{ userName() }}@if (agencyName()) { · {{ agencyName() }}}
-    </p>
+  <div class="flex flex-col gap-3">
+    <div>
+      <h1 class="text-lg font-semibold text-slate-800">{{ scope() === 'team' ? 'Tâches de l’équipe' : 'Mes tâches' }}</h1>
+      <p class="text-sm text-slate-500 mt-0.5">
+        @if (scope() === 'team') {
+          Les tâches de vos agents@if (agencyName()) { · {{ agencyName() }} et ses sous-agences}
+        } @else {
+          {{ userName() }}@if (agencyName()) { · {{ agencyName() }}}
+        }
+      </p>
+    </div>
+    @if (isSupervisor()) {
+      <div class="flex flex-wrap items-center gap-2">
+        <div role="group" aria-label="Tâches affichées" class="flex gap-1 rounded-full bg-slate-100 p-1">
+          <button type="button" class="min-h-9 rounded-full px-3.5 text-sm font-semibold transition-colors"
+            [class]="scope() === 'mine' ? 'bg-white text-primary shadow-xs' : 'text-slate-700 hover:text-slate-900'"
+            [attr.aria-pressed]="scope() === 'mine'"
+            (click)="setScope('mine')">Mes tâches</button>
+          <button type="button" class="min-h-9 rounded-full px-3.5 text-sm font-semibold transition-colors"
+            [class]="scope() === 'team' ? 'bg-white text-primary shadow-xs' : 'text-slate-700 hover:text-slate-900'"
+            [attr.aria-pressed]="scope() === 'team'"
+            (click)="setScope('team')">Équipe</button>
+        </div>
+        @if (scope() === 'team') {
+          <div class="w-56">
+            <tas-select
+              [options]="agentOptions()"
+              [ngModel]="agentFilter()"
+              (ngModelChange)="setAgentFilter($event)"
+              placeholder="Tous les agents"
+              aria-label="Agent"
+            ></tas-select>
+          </div>
+        }
+      </div>
+    }
   </div>
 
   <div class="flex items-center gap-1 p-1 rounded-full bg-white border border-slate-200 shadow-sm">
@@ -23,15 +54,18 @@
       (click)="setTab('done')">
       Terminées
     </button>
-    <button type="button" class="px-4 py-2 rounded-full text-sm font-semibold transition-colors"
-      [class]="activeTab() === 'approvals' ? 'bg-primary text-white' : 'text-slate-700 hover:bg-slate-50'"
-      (click)="setTab('approvals')">
-      Approbations
-      @if (approvalsCount() > 0) {
-        <span class="ml-1 inline-flex min-w-5 justify-center rounded-full px-1.5 text-xs tabular-nums"
-          [class]="activeTab() === 'approvals' ? 'bg-white/20' : 'bg-amber-100 text-amber-800'">{{ approvalsCount() }}</span>
-      }
-    </button>
+    <!-- Les approbations sont celles de l'utilisateur : pas d'équivalent « équipe ». -->
+    @if (scope() === 'mine') {
+      <button type="button" class="px-4 py-2 rounded-full text-sm font-semibold transition-colors"
+        [class]="activeTab() === 'approvals' ? 'bg-primary text-white' : 'text-slate-700 hover:bg-slate-50'"
+        (click)="setTab('approvals')">
+        Approbations
+        @if (approvalsCount() > 0) {
+          <span class="ml-1 inline-flex min-w-5 justify-center rounded-full px-1.5 text-xs tabular-nums"
+            [class]="activeTab() === 'approvals' ? 'bg-white/20' : 'bg-amber-100 text-amber-800'">{{ approvalsCount() }}</span>
+        }
+      </button>
+    }
   </div>
 </div>
 
@@ -52,6 +86,9 @@
       <tr class="bg-slate-50 text-left text-xs font-medium uppercase tracking-wide text-slate-500">
         <th class="px-4 py-3">Tâche</th>
         <th class="px-4 py-3">Lead</th>
+        @if (scope() === 'team') {
+          <th class="px-4 py-3">Agent</th>
+        }
         <th class="px-4 py-3">Échéance</th>
         <th class="px-4 py-3">Statut</th>
       </tr>
@@ -59,16 +96,35 @@
 
     <ng-template #body let-item>
       @let due = computeDue(item, now());
-      <tr class="cursor-pointer transition-colors"
-        [class]="selectedTask()?.id === item.id ? 'bg-primary/5' : 'hover:bg-slate-50'"
-        (click)="selectTask(item)">
-        <td class="px-4 py-4 text-sm font-semibold text-slate-800">{{ taskActionLabel(item) }}</td>
+      @let isSelected = selectedTask()?.id === item.id;
+      <!--
+        Fond, barre à gauche et titre en couleur : un fond seul à 5 % d'opacité ne se distinguait
+        pas du survol, et rien ne reliait la ligne au panneau de droite.
+      -->
+      <tr class="cursor-pointer transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
+        [class]="isSelected ? 'bg-primary/10 shadow-[inset_4px_0_0_0_var(--color-primary)]' : 'hover:bg-slate-50'"
+        tabindex="0"
+        [attr.aria-selected]="isSelected"
+        (click)="selectTask(item)"
+        (keydown.enter)="selectTask(item)"
+        (keydown.space)="$event.preventDefault(); selectTask(item)">
+        <td class="px-4 py-4 text-sm font-semibold" [class]="isSelected ? 'text-primary' : 'text-slate-800'">
+          <span class="flex items-center gap-2">
+            @if (isSelected) {
+              <span class="size-2 shrink-0 rounded-full bg-primary" aria-hidden="true"></span>
+            }
+            {{ taskActionLabel(item) }}
+          </span>
+        </td>
         <td class="px-4 py-4">
           <p class="text-sm text-slate-800">{{ leadName(item) || '—' }}</p>
           @if (leadOf(item)?.interestedProduct) {
             <p class="text-xs text-slate-500 mt-0.5">{{ leadOf(item)!.interestedProduct }}</p>
           }
         </td>
+        @if (scope() === 'team') {
+          <td class="px-4 py-4 text-sm text-slate-700">{{ assigneeName(item) }}</td>
+        }
         <td class="px-4 py-4">
           @if (due.tone === 'breach') {
             <span class="inline-flex px-2 py-0.5 rounded-md bg-red-100 text-red-700 text-xs font-medium">{{ due.label }}</span>
@@ -84,12 +140,16 @@
   </tas-table>
 
   <!-- Panneau de travail -->
-  @if (selectedTask(); as task) {
-    <div class="bg-white rounded-xl shadow-sm border border-slate-100">
+  <!--
+    Un @for indexé sur l'id plutôt qu'un @if : changer de tâche recrée le panneau, ce qui rejoue
+    l'animation d'entrée, alors qu'un rechargement de la même tâche le laisse en place.
+  -->
+  @for (task of selectedTaskAsList(); track task.id) {
+    <div class="task-panel bg-white rounded-xl shadow-sm border border-slate-100" animate.enter="task-panel-enter">
       <task-work-panel
         [task]="task"
         [lead]="leadOf(task)"
-        [agentName]="userName()"
+        [agentName]="scope() === 'team' ? assigneeName(task) : userName()"
         [now]="now()"
         (completed)="onTaskCompleted()"
         (reassignRequested)="openReassign($event)"
