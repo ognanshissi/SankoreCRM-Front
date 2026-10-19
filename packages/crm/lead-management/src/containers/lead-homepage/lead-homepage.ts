@@ -301,6 +301,8 @@ export class LeadHomepage implements OnInit {
   public filterProduct = signal('');
   public filterOwnerId = signal('');
   public filterSlaRisk = signal(false);
+  /** File d'attente de dispatch : leads qu'aucun agent n'a pu prendre, relancés automatiquement. */
+  public filterAwaitingDispatch = signal(false);
   public agents = signal<Map<string, UserDto>>(new Map());
 
   public readonly agentOptions = computed(() =>
@@ -397,6 +399,7 @@ export class LeadHomepage implements OnInit {
     if (params['agency']) this.filterAgencyId.set(params['agency']);
     if (params['intent']) this.filterIntent.set(params['intent']);
     if (params['owner']) this.filterOwnerId.set(params['owner']);
+    if (params['queue'] === '1') this.filterAwaitingDispatch.set(true);
     if (params['view'] === 'list') this.viewMode.set('list');
 
     this.reloadCurrentPage();
@@ -452,6 +455,11 @@ export class LeadHomepage implements OnInit {
 
   public setOwnerFilter(ownerId: string): void {
     this.filterOwnerId.set(ownerId);
+    this._applyFilters();
+  }
+
+  public toggleAwaitingDispatch(): void {
+    this.filterAwaitingDispatch.set(!this.filterAwaitingDispatch());
     this._applyFilters();
   }
 
@@ -694,6 +702,7 @@ export class LeadHomepage implements OnInit {
         agency: this.filterAgencyId() || null,
         intent: this.filterIntent() || null,
         owner: this.filterOwnerId() || null,
+        queue: this.filterAwaitingDispatch() ? '1' : null,
       },
       queryParamsHandling: 'merge',
       replaceUrl: true,
@@ -722,6 +731,7 @@ export class LeadHomepage implements OnInit {
     const search = this.searchQuery() || undefined;
     const leadSourceConfigId = this.filterLeadSourceId() || undefined;
     const ownerId = this.filterOwnerId() || undefined;
+    const awaitingDispatch = this.filterAwaitingDispatch() || undefined;
 
     // `source` (5e paramètre) reste `undefined` : le filtrage passe désormais par
     // `leadSourceConfigId` (11e), qui désigne la source configurée et non le canal d'entrée.
@@ -738,6 +748,7 @@ export class LeadHomepage implements OnInit {
         undefined,
         intent,
         leadSourceConfigId,
+        awaitingDispatch,
       )
       .subscribe({
         next: (result) => {

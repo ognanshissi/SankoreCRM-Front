@@ -11472,6 +11472,13 @@
               "type": "string",
               "format": "uuid"
             }
+          },
+          {
+            "name": "awaitingDispatch",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
           }
         ],
         "responses": {
@@ -35602,6 +35609,11 @@
           },
           "leadSourceLabel": {
             "type": "string",
+            "nullable": true
+          },
+          "awaitingDispatchSince": {
+            "type": "string",
+            "format": "date-time",
             "nullable": true
           }
         },

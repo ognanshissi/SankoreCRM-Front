@@ -434,6 +434,21 @@ function parseFactors(factorsJson: string | null | undefined): ScoreFactor[] {
               lead converti, l'accepter ou l'ignorer écrirait une décision qui
               n'a plus d'objet.
             -->
+            @if (lead()?.awaitingDispatchSince && !lead()?.currentAssignmentId) {
+              <div class="p-3 border-b border-gray-100" role="status">
+                <div class="p-2.5 rounded-lg border border-amber-200 bg-amber-50">
+                  <div class="flex items-center gap-1.5 mb-1">
+                    <tas-icon iconName="feather:clock" class="text-amber-700" style="font-size:12px"></tas-icon>
+                    <p class="text-[10px] font-semibold text-amber-800">En file d'attente de dispatch</p>
+                  </div>
+                  <p class="text-xs text-slate-700">
+                    Aucun agent n'a pu le prendre {{ lead()!.awaitingDispatchSince | dateTimeAgo }}.
+                    Il partira seul dès qu'un agent sera disponible, selon la règle de dispatch.
+                  </p>
+                </div>
+              </div>
+            }
+
             @if (nextAction() && !isConverted()) {
               <div class="p-3 border-b border-gray-100">
                 <div class="p-2.5 rounded-lg border border-primary/20 bg-primary/5">

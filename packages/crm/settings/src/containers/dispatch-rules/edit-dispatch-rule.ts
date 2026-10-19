@@ -167,6 +167,11 @@ import {
               <p class="text-[10px] text-slate-400 mt-1">Format HH:MM:SS</p>
             </tas-form-field>
             <tas-form-field>
+              <tas-label>Max tâches ouvertes par agent</tas-label>
+              <input tasInput type="number" min="0" placeholder="Illimité" [ngModel]="editMaxTasks()" (ngModelChange)="editMaxTasks.set($event)" />
+              <p class="text-[10px] text-slate-400 mt-1">Au-delà, l'agent ne reçoit plus de leads. Vide ou 0 : pas de limite.</p>
+            </tas-form-field>
+            <tas-form-field>
               <tas-label>Seuil anti-monopole</tas-label>
               <input tasInput type="number" placeholder="80" [ngModel]="editAntiMonopoly()" (ngModelChange)="editAntiMonopoly.set($event)" />
             </tas-form-field>
@@ -342,6 +347,7 @@ export class EditDispatchRulePage {
   public editStrategy = signal<DispatchingRuleDtoStrategyEnum>(DispatchingRuleDtoStrategyEnum.RoundRobin);
   public editWeights = signal<ScoringWeightsDto>({ ...DEFAULT_WEIGHTS });
   public editMaxLeads = signal<number | null>(null);
+  public editMaxTasks = signal<number | null>(null);
   public editSla = signal('');
   public editAntiMonopoly = signal<number | null>(null);
   public editPriority = signal<number | null>(null);
@@ -377,6 +383,7 @@ export class EditDispatchRulePage {
           this.editStrategy.set(dto.strategy ?? DispatchingRuleDtoStrategyEnum.RoundRobin);
           this.editWeights.set(dto.weights ?? { ...DEFAULT_WEIGHTS });
           this.editMaxLeads.set(dto.maxLeadsPerAgent ?? null);
+          this.editMaxTasks.set(dto.maxTasksPerAgent || null);
           this.editSla.set(dto.firstContactSla ?? '');
           this.editAntiMonopoly.set(dto.antiMonopolyThreshold ?? null);
           this.editPriority.set(dto.priority ?? null);
@@ -436,6 +443,9 @@ export class EditDispatchRulePage {
       name: this.editName(),
       weights: needsWeights(this.editStrategy()) ? this.editWeights() : undefined,
       maxLeadsPerAgent: this.editMaxLeads() ?? undefined,
+      // Envoyé explicitement : absent du formulaire, il repartait à 0 à chaque enregistrement et
+      // écrasait le plafond réglé. 0 = pas de limite côté serveur.
+      maxTasksPerAgent: this.editMaxTasks() ?? 0,
       firstContactSla: this.editSla() || undefined,
       antiMonopolyThreshold: this.editAntiMonopoly() ?? undefined,
       priority: this.editPriority() ?? undefined,

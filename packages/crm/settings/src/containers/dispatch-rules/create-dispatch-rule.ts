@@ -199,6 +199,20 @@ import {
             <p class="text-[10px] text-slate-400 mt-1">Format HH:MM:SS</p>
           </tas-form-field>
           <tas-form-field>
+            <tas-label>Max tâches ouvertes par agent</tas-label>
+            <input
+              tasInput
+              type="number"
+              min="0"
+              placeholder="Illimité"
+              [ngModel]="maxTasks()"
+              (ngModelChange)="maxTasks.set($event)"
+            />
+            <p class="text-[10px] text-slate-400 mt-1">
+              Au-delà, l'agent ne reçoit plus de leads. Vide ou 0 : pas de limite.
+            </p>
+          </tas-form-field>
+          <tas-form-field>
             <tas-label>Seuil anti-monopole</tas-label>
             <input
               tasInput
@@ -359,6 +373,7 @@ export class CreateDispatchRulePage implements OnInit {
   );
   public weights = signal<ScoringWeightsDto>({ ...DEFAULT_WEIGHTS });
   public maxLeads = signal<number | null>(null);
+  public maxTasks = signal<number | null>(null);
   public sla = signal('');
   public antiMonopoly = signal<number | null>(null);
   public priority = signal<number | null>(null);
@@ -435,6 +450,7 @@ export class CreateDispatchRulePage implements OnInit {
         strategy: this.strategy() as any,
         weights: needsWeights(this.strategy()) ? this.weights() : undefined,
         maxLeadsPerAgent: this.maxLeads() ?? undefined,
+        maxTasksPerAgent: this.maxTasks() ?? 0,
         firstContactSla: this.sla() || undefined,
         antiMonopolyThreshold: this.antiMonopoly() ?? undefined,
         priority: this.priority() ?? undefined,

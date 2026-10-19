@@ -60,5 +60,6 @@ export interface LeadDto {
     leadSourceConfigId?: string | null;
     leadSourceCode?: string | null;
     leadSourceLabel?: string | null;
+    awaitingDispatchSince?: string | null;
 }
 

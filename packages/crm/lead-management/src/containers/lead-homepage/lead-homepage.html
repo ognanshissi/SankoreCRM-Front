@@ -104,6 +104,14 @@
     </tas-menu>
   </ng-template>
 
+  <button type="button" class="px-3 py-1 rounded-full text-xs font-medium transition-colors"
+    [class]="filterAwaitingDispatch() ? 'bg-amber-600 text-white' : 'bg-amber-50 text-amber-800 hover:bg-amber-100'"
+    [attr.aria-pressed]="filterAwaitingDispatch()"
+    title="Leads qu'aucun agent n'a pu prendre : ils partent seuls dès qu'un agent est disponible"
+    (click)="toggleAwaitingDispatch()">
+    En file d'attente
+  </button>
+
   @if (viewMode() === 'kanban') {
     <button type="button" class="px-3 py-1 rounded-full text-xs font-medium transition-colors"
       [class]="filterSlaRisk() ? 'bg-red-600 text-white' : 'bg-red-50 text-red-700 hover:bg-red-100'"
@@ -354,6 +362,12 @@
           <tas-tag [severity]="leadStatusMeta(item.status).severity">
             {{ leadStatusMeta(item.status).label }}
           </tas-tag>
+          @if (item.awaitingDispatchSince && !item.currentAssignmentId) {
+            <div class="mt-1 text-[11px] font-medium text-amber-800"
+              title="Aucun agent n'a pu le prendre ; il partira seul dès qu'un agent sera disponible">
+              En file d'attente · {{ item.awaitingDispatchSince | dateTimeAgo }}
+            </div>
+          }
         </td>
         <td class="text-sm text-slate-500">{{ item.capturedAt | dateTimeAgo }}</td>
       </tr>
@@ -419,7 +433,12 @@
                   }
                 </p>
 
-                @if (phase.key === 'new') {
+                @if (lead.awaitingDispatchSince && !lead.currentAssignmentId) {
+                  <span class="inline-flex mt-2 px-2 py-0.5 rounded-md bg-amber-100 text-amber-800 text-xs font-medium"
+                    title="Aucun agent n'a pu le prendre ; il partira seul dès qu'un agent sera disponible">
+                    En file d'attente · {{ lead.awaitingDispatchSince | dateTimeAgo }}
+                  </span>
+                } @else if (phase.key === 'new') {
                   <span class="inline-flex mt-2 px-2 py-0.5 rounded-md bg-green-50 text-green-700 text-xs font-medium">À dispatcher</span>
                 } @else if (phase.key !== 'converted' && sla) {
                   <span class="inline-flex mt-2 px-2 py-0.5 rounded-md text-xs font-medium"
