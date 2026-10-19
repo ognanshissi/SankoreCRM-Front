@@ -33,6 +33,7 @@ api/kyc-public.service.ts
 api/kyc-settings.service.ts
 api/kyc.service.ts
 api/lead-import.service.ts
+api/lead-reports.service.ts
 api/lead-settings.service.ts
 api/lead-sources.service.ts
 api/leads-analytics.service.ts
@@ -97,7 +98,10 @@ model/advance-opportunity-stage-request.interface.ts
 model/agency-dto.interface.ts
 model/agency-factor.interface.ts
 model/agency-tree-node-dto.interface.ts
+model/agent-comparison-dto.interface.ts
 model/agent-performance-dto.interface.ts
+model/agent-report-dto.interface.ts
+model/agent-report-point.interface.ts
 model/agent-settings-dto.interface.ts
 model/amplitude-settings-sync-interval-minutes.interface.ts
 model/amplitude-settings.interface.ts
@@ -371,6 +375,14 @@ model/lead-household-dto.interface.ts
 model/lead-import-status-response.interface.ts
 model/lead-intent-level-dto.interface.ts
 model/lead-questionnaires-dto.interface.ts
+model/lead-report-agency.interface.ts
+model/lead-report-agent.interface.ts
+model/lead-report-dto.interface.ts
+model/lead-report-kpis.interface.ts
+model/lead-report-point.interface.ts
+model/lead-report-source.interface.ts
+model/lead-report-stage.interface.ts
+model/lead-report-status.interface.ts
 model/lead-row-validation-result.interface.ts
 model/lead-setting-dto.interface.ts
 model/lead-source-detail-dto.interface.ts

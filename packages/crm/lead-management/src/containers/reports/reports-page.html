@@ -1,0 +1,203 @@
+<div class="flex flex-col gap-5">
+  <!-- En-tête et filtres, sur une seule ligne au-dessus des graphes -->
+  <div class="flex flex-wrap items-end justify-between gap-4">
+    <div>
+      <h1 class="text-xl font-bold text-slate-800">Rapports</h1>
+      <p class="mt-0.5 text-sm text-slate-500">{{ rangeLabel() || 'Leads, agents et progression du pipeline' }}</p>
+    </div>
+    <div class="flex flex-wrap items-center gap-2">
+      <div role="group" aria-label="Période" class="flex gap-1 rounded-full border border-slate-100 bg-white p-1 shadow-xs">
+        @for (p of periods; track p.key) {
+          <button
+            type="button"
+            class="min-h-9 rounded-full px-3.5 text-sm font-semibold transition-colors"
+            [class]="period() === p.key ? 'bg-primary text-white' : 'text-slate-700 hover:bg-slate-50'"
+            [attr.aria-pressed]="period() === p.key"
+            (click)="pickPeriod(p.key)"
+          >
+            {{ p.label }}
+          </button>
+        }
+      </div>
+      <div class="w-56">
+        <tas-select
+          [options]="agencyOptions()"
+          [ngModel]="agencyId()"
+          (ngModelChange)="pickAgency($event)"
+          placeholder="Toutes les agences"
+          aria-label="Agence"
+        ></tas-select>
+      </div>
+      <button
+        tas-outlined-button
+        color="primary"
+        type="button"
+        [disabled]="isExporting() || !report()"
+        [isLoading]="isExporting()"
+        (click)="exportExcel()"
+      >
+        <tas-icon iconName="feather:download" style="font-size: 14px"></tas-icon>
+        Exporter (Excel)
+      </button>
+      <button tas-button iconButton type="button" title="Actualiser" (click)="reload()">
+        <tas-icon iconName="feather:refresh-cw" iconSize="sm"></tas-icon>
+      </button>
+    </div>
+  </div>
+
+  @if (error()) {
+    <div role="alert" class="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-red-50 px-5 py-4">
+      <p class="text-sm text-red-800">{{ error() }}</p>
+      <button tas-outlined-button color="primary" type="button" (click)="reload()">Réessayer</button>
+    </div>
+  } @else if (!report() && isLoading()) {
+    <div class="flex justify-center py-24"><tas-spinner size="10" class="text-primary"></tas-spinner></div>
+  } @else if (report()) {
+    <div class="relative flex flex-col gap-5" [class.opacity-60]="isLoading()" [attr.aria-busy]="isLoading()">
+      <!-- Indicateurs clés -->
+      <section aria-label="Indicateurs clés" class="grid grid-cols-[repeat(auto-fill,minmax(160px,1fr))] gap-3">
+        @for (k of kpis(); track k.label) {
+          <div class="flex flex-col gap-1 rounded-2xl border border-slate-100 bg-white p-4 shadow-xs">
+            <span class="text-xs font-medium text-slate-500">{{ k.label }}</span>
+            <span class="flex items-center gap-1.5 text-2xl font-bold tabular-nums"
+                  [class]="k.tone === 'warn' ? 'text-[#b4532a]' : 'text-slate-800'">
+              @if (k.tone === 'warn') {
+                <tas-icon iconName="feather:alert-triangle" style="font-size: 16px" aria-hidden="true"></tas-icon>
+              }
+              {{ k.value }}
+            </span>
+            <span class="text-xs text-slate-500">{{ k.hint }}</span>
+          </div>
+        }
+      </section>
+
+      <!-- Évolution -->
+      <section class="rounded-2xl border border-slate-100 bg-white p-5 shadow-xs">
+        <h2 class="text-base font-semibold text-slate-900">Évolution des leads</h2>
+        <p class="mb-4 text-xs text-slate-500">
+          Leads captés et conversions réalisées par
+          {{ report()!.granularity === 'Month' ? 'mois' : report()!.granularity === 'Week' ? 'semaine' : 'jour' }}.
+        </p>
+        <report-line-chart [series]="lineSeries" [points]="linePoints()" ariaLabel="Leads captés et convertis sur la période"></report-line-chart>
+      </section>
+
+      <!-- Progression -->
+      <section class="rounded-2xl border border-slate-100 bg-white p-5 shadow-xs">
+        <h2 class="text-base font-semibold text-slate-900">Progression des leads</h2>
+        <p class="mb-4 text-xs text-slate-500">Où en sont aujourd’hui les leads captés sur la période, étape par étape du pipeline.</p>
+        <report-bar-list [items]="progression()" [color]="colors.captured" name="Leads"></report-bar-list>
+      </section>
+
+      <div class="grid grid-cols-1 gap-5 xl:grid-cols-2">
+        <section class="rounded-2xl border border-slate-100 bg-white p-5 shadow-xs">
+          <h2 class="text-base font-semibold text-slate-900">Statuts</h2>
+          <p class="mb-4 text-xs text-slate-500">Statut actuel des leads captés sur la période.</p>
+          <report-bar-list [items]="statuses()" [color]="colors.captured" name="Leads"></report-bar-list>
+        </section>
+
+        <section class="rounded-2xl border border-slate-100 bg-white p-5 shadow-xs">
+          <h2 class="text-base font-semibold text-slate-900">Canaux d’acquisition</h2>
+          <p class="mb-4 text-xs text-slate-500">Leads captés par canal, et combien sont convertis à ce jour.</p>
+          <report-bar-list [items]="sources()" [color]="colors.captured" [color2]="colors.converted" name="Captés" name2="Convertis"></report-bar-list>
+        </section>
+      </div>
+
+      <!-- Classement -->
+      <report-agent-ranking
+        [agents]="agents()"
+        [criterion]="rankingCriterion()"
+        (criterionChange)="pickCriterion($event)"
+        (view)="showAgent($event)"
+      ></report-agent-ranking>
+
+      <!-- Agents -->
+      <section class="flex flex-col gap-3">
+        <div>
+          <h2 class="text-base font-semibold text-slate-900">Performance des agents</h2>
+          <p class="text-xs text-slate-500">
+            Affectations reçues et conversions réalisées sur la période ; la charge est celle d’aujourd’hui.
+          </p>
+        </div>
+        @if (agents().length === 0) {
+          <div class="rounded-2xl border border-slate-100 bg-white px-5 py-10 text-center text-sm text-slate-500">
+            Aucune affectation sur la période.
+          </div>
+        } @else {
+          <tas-table [data]="agents()" identifierField="agentId" [config]="agentTableConfig()" [hasCaption]="false">
+            <ng-template #header>
+              <tr class="bg-slate-50 text-left text-xs font-medium uppercase tracking-wide text-slate-500">
+                <th class="px-4 py-3">Agent</th>
+                <th class="px-4 py-3 text-right">Affectés</th>
+                <th class="px-4 py-3">Délai respecté</th>
+                <th class="px-4 py-3 text-right">Premier contact</th>
+                <th class="px-4 py-3 text-right">Convertis</th>
+                <th class="px-4 py-3 text-right">Charge actuelle</th>
+                <th class="px-4 py-3 text-right"><span class="sr-only">Actions</span></th>
+              </tr>
+            </ng-template>
+            <ng-template #body let-a>
+              <tr class="transition-colors hover:bg-slate-50">
+                <td class="px-4 py-3 text-sm font-semibold text-slate-800">{{ a.name }}</td>
+                <td class="px-4 py-3 text-right text-sm tabular-nums text-slate-700">{{ fmt(a.assigned) }}</td>
+                <td class="px-4 py-3">
+                  @if (a.slaComplianceRate !== null && a.slaComplianceRate !== undefined) {
+                    <div class="flex items-center gap-2" [title]="a.contactedWithinSla + ' dans le délai, ' + a.contactedLate + ' en retard, ' + a.notContacted + ' sans contact'">
+                      <span class="h-2 w-24 overflow-hidden rounded-full bg-slate-100" aria-hidden="true">
+                        <span class="block h-full rounded-full" [style.width.%]="slaWidth(a.slaComplianceRate)" [style.background]="colors.captured"></span>
+                      </span>
+                      <span class="text-xs font-semibold tabular-nums text-slate-800">{{ pct(a.slaComplianceRate) }}</span>
+                      @if (a.notContacted > 0) {
+                        <span class="text-xs text-slate-500">· {{ a.notContacted }} sans contact</span>
+                      }
+                    </div>
+                  } @else {
+                    <span class="text-xs text-slate-400">—</span>
+                  }
+                </td>
+                <td class="px-4 py-3 text-right text-sm tabular-nums text-slate-700">{{ duration(a.avgFirstContactMinutes) }}</td>
+                <td class="px-4 py-3 text-right text-sm font-semibold tabular-nums text-slate-800">{{ fmt(a.converted) }}</td>
+                <td class="px-4 py-3 text-right text-sm tabular-nums text-slate-700">{{ fmt(a.openLeads) }}</td>
+                <td class="px-4 py-3">
+                  <div class="flex justify-end gap-1">
+                    <button tas-button type="button" size="small" color="primary" (click)="showAgent(a.agentId)"
+                      [attr.aria-label]="'Voir la fiche de ' + a.name">Voir</button>
+                    @if (agentA() && agentA() !== a.agentId) {
+                      <button tas-button type="button" size="small" color="primary" (click)="compareAgent(a.agentId)"
+                        [attr.aria-label]="'Comparer ' + a.name + ' à l’agent affiché'">Comparer</button>
+                    }
+                  </div>
+                </td>
+              </tr>
+            </ng-template>
+          </tas-table>
+        }
+      </section>
+
+      <!-- Fiche agent et comparaison -->
+      <div id="agent-panel" class="scroll-mt-4">
+        <report-agent-panel
+          [options]="agentOptions()"
+          [agentA]="agentA()"
+          [agentB]="agentB()"
+          [data]="agentReport()"
+          [isLoading]="isAgentLoading()"
+          [error]="agentError()"
+          (pickA)="pickAgentA($event)"
+          (pickB)="pickAgentB($event)"
+        ></report-agent-panel>
+      </div>
+
+      <!-- Agences -->
+      <section class="rounded-2xl border border-slate-100 bg-white p-5 shadow-xs">
+        <h2 class="text-base font-semibold text-slate-900">Agences</h2>
+        <p class="mb-4 text-xs text-slate-500">Leads captés par agence sur la période, et combien sont convertis à ce jour.</p>
+        <report-bar-list [items]="agencies()" [color]="colors.captured" [color2]="colors.converted" name="Captés" name2="Convertis"></report-bar-list>
+      </section>
+
+      <p class="text-xs text-slate-500">
+        Les périodes sont découpées en heure universelle (UTC). Le taux de conversion porte sur les leads captés pendant la
+        période : sur une période récente, il paraît bas tant que ses leads n’ont pas eu le temps d’aboutir.
+      </p>
+    </div>
+  }
+</div>

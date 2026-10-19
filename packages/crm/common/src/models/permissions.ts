@@ -78,6 +78,8 @@ export const PERMISSIONS = {
   LEAD_EXPORT: 'lead:export',
   LEAD_IMPORT: 'lead:import',
   LEAD_ANALYTICS_VIEW: 'lead:analytics:view',
+  // Rapport institutionnel (toutes équipes, sans restriction d'équipe) : administrateurs par défaut.
+  LEAD_REPORT_VIEW: 'lead:report:view',
   LEAD_ACTIVITY_LOG: 'lead:activity:log',
   LEAD_CONSENT_RECORD: 'lead:consent:record',
   LEAD_CONSENT_WITHDRAW: 'lead:consent:withdraw',

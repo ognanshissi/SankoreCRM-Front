@@ -1,0 +1,117 @@
+<section class="flex flex-col gap-5 rounded-2xl border border-slate-100 bg-white p-5 shadow-xs" aria-labelledby="agent-panel-title">
+  <div class="flex flex-wrap items-end justify-between gap-4">
+    <div>
+      <h2 id="agent-panel-title" class="text-base font-semibold text-slate-900">
+        {{ comparing() ? 'Comparaison de deux agents' : 'Fiche agent' }}
+      </h2>
+      <p class="text-xs text-slate-500">Mêmes définitions que le tableau des agents, sur la même période.</p>
+    </div>
+    <div class="flex flex-wrap items-end gap-3">
+      <label class="flex w-60 flex-col gap-1 text-xs font-medium text-slate-600">
+        <span class="flex items-center gap-1.5">
+          @if (agentB()) { <span class="size-2.5 rounded-sm" [style.background]="colors[0]" aria-hidden="true"></span> }
+          Agent
+        </span>
+        <tas-select [options]="options()" [ngModel]="agentA()" (ngModelChange)="pickA.emit($event ?? '')" placeholder="Choisir un agent"></tas-select>
+      </label>
+      <label class="flex w-60 flex-col gap-1 text-xs font-medium text-slate-600">
+        <span class="flex items-center gap-1.5">
+          @if (agentB()) { <span class="size-2.5 rounded-sm" [style.background]="colors[1]" aria-hidden="true"></span> }
+          Comparer avec
+        </span>
+        <tas-select [options]="optionsB()" [ngModel]="agentB()" (ngModelChange)="pickB.emit($event ?? '')" [disabled]="!agentA()" placeholder="Aucune comparaison"></tas-select>
+      </label>
+    </div>
+  </div>
+
+  @if (!agentA()) {
+    <p class="rounded-xl bg-slate-50 px-4 py-8 text-center text-sm text-slate-500">
+      Choisissez un agent ci-dessus, ou « Voir » sur une ligne du tableau des agents.
+    </p>
+  } @else if (error()) {
+    <p role="alert" class="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-800">{{ error() }}</p>
+  } @else if (!a() && isLoading()) {
+    <div class="flex justify-center py-12"><tas-spinner size="8" class="text-primary"></tas-spinner></div>
+  } @else if (a(); as agent) {
+    <div class="flex flex-col gap-5" [class.opacity-60]="isLoading()" [attr.aria-busy]="isLoading()">
+      @if (!comparing()) {
+        <!-- Un agent -->
+        <div class="grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-3">
+          @for (k of kpis(agent); track k.label) {
+            <div class="flex flex-col gap-1 rounded-xl bg-slate-50 p-3">
+              <span class="text-xs font-medium text-slate-500">{{ k.label }}</span>
+              <span class="text-xl font-bold tabular-nums" [class]="k.warn ? 'text-[#b4532a]' : 'text-slate-800'">{{ k.value }}</span>
+              <span class="text-[11px] leading-snug text-slate-500">{{ k.hint }}</span>
+            </div>
+          }
+        </div>
+
+        <div>
+          <h3 class="mb-3 text-sm font-semibold text-slate-800">Activité de {{ agent.name }}</h3>
+          <report-line-chart [series]="soloSeries" [points]="soloPoints()" [ariaLabel]="'Affectations, premiers contacts et conversions de ' + agent.name"></report-line-chart>
+        </div>
+
+        <div>
+          <h3 class="mb-1 text-sm font-semibold text-slate-800">Progression de ses leads</h3>
+          <p class="mb-3 text-xs text-slate-500">Où en sont aujourd’hui les leads qu’il ou elle a reçus sur la période.</p>
+          <report-bar-list [items]="progression()" [color]="colors[0]" name="Leads"></report-bar-list>
+        </div>
+      } @else {
+        <!-- Deux agents -->
+        <div class="overflow-x-auto">
+          <table class="w-full min-w-[520px] text-left text-sm">
+            <caption class="sr-only">Comparaison des indicateurs des deux agents</caption>
+            <thead>
+              <tr class="border-b border-slate-100 text-xs uppercase tracking-wide text-slate-500">
+                <th scope="col" class="py-2 pr-4 font-medium">Indicateur</th>
+                <th scope="col" class="py-2 pr-4 text-right font-medium">
+                  <span class="inline-flex items-center gap-1.5"><span class="size-2.5 rounded-sm" [style.background]="colors[0]" aria-hidden="true"></span>{{ a()?.name }}</span>
+                </th>
+                <th scope="col" class="py-2 text-right font-medium">
+                  <span class="inline-flex items-center gap-1.5"><span class="size-2.5 rounded-sm" [style.background]="colors[1]" aria-hidden="true"></span>{{ b()?.name }}</span>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (r of compareRows(); track r.label) {
+                <tr class="border-b border-slate-50">
+                  <th scope="row" class="py-2.5 pr-4 font-medium text-slate-700">{{ r.label }}</th>
+                  <td class="py-2.5 pr-4 text-right tabular-nums" [class]="r.better === 'a' ? 'font-bold text-slate-900' : 'text-slate-700'">
+                    {{ r.a }}@if (r.better === 'a') { <span class="ml-1 text-xs font-semibold text-green-800">▲<span class="sr-only"> meilleur</span></span> }
+                  </td>
+                  <td class="py-2.5 text-right tabular-nums" [class]="r.better === 'b' ? 'font-bold text-slate-900' : 'text-slate-700'">
+                    {{ r.b }}@if (r.better === 'b') { <span class="ml-1 text-xs font-semibold text-green-800">▲<span class="sr-only"> meilleur</span></span> }
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+          <p class="mt-2 text-xs text-slate-500">▲ signale le meilleur des deux quand l’indicateur a un sens (plus de conversions, moins de délais dépassés…).</p>
+        </div>
+
+        <div class="grid grid-cols-1 gap-5 xl:grid-cols-2">
+          <div>
+            <h3 class="mb-3 text-sm font-semibold text-slate-800">Affectations reçues</h3>
+            <report-line-chart [series]="compareSeries()" [points]="compareAssigned()" ariaLabel="Affectations reçues par les deux agents"></report-line-chart>
+          </div>
+          <div>
+            <h3 class="mb-3 text-sm font-semibold text-slate-800">Conversions</h3>
+            <report-line-chart [series]="compareSeries()" [points]="compareConverted()" ariaLabel="Conversions des deux agents"></report-line-chart>
+          </div>
+        </div>
+
+        <div>
+          <h3 class="mb-1 text-sm font-semibold text-slate-800">Progression de leurs leads</h3>
+          <p class="mb-3 text-xs text-slate-500">Où en sont aujourd’hui les leads reçus sur la période, étape par étape.</p>
+          <report-bar-list
+            [items]="progression()"
+            [color]="colors[0]"
+            [color2]="colors[1]"
+            [name]="a()?.name ?? 'Agent 1'"
+            [name2]="b()?.name ?? 'Agent 2'"
+          ></report-bar-list>
+        </div>
+      }
+    </div>
+  }
+</section>

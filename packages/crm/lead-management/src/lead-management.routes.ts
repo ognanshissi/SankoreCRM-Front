@@ -11,6 +11,12 @@ export const leadManagementRoutes = [
     component: LeadHomepage,
   },
   {
+    path: 'reports',
+    canActivate: [hasPermissionGuard('lead:report:view')],
+    title: 'Rapports',
+    loadComponent: () => import('./containers/reports/reports-page'),
+  },
+  {
     path: 'analytics',
     canActivate: [hasPermissionGuard('lead:analytics:view')],
     loadComponent: () => import('./containers/analytics/analytics-dashboard'),

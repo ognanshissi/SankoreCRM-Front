@@ -10948,6 +10948,232 @@
         }
       }
     },
+    "/api/v1/leads/reports/overview": {
+      "get": {
+        "tags": [
+          "Lead Reports"
+        ],
+        "summary": "Administrators' lead report: KPIs, time series, progression, sources, agents and agencies",
+        "operationId": "GetLeadReport",
+        "parameters": [
+          {
+            "name": "from",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "agencyId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "granularity",
+            "in": "query",
+            "description": "One of: Day, Week, Month",
+            "schema": {
+              "enum": [
+                "Day",
+                "Week",
+                "Month"
+              ],
+              "type": "string",
+              "description": "One of: Day, Week, Month"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LeadReportDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/leads/reports/overview/export": {
+      "get": {
+        "tags": [
+          "Lead Reports"
+        ],
+        "summary": "The administrators' lead report as an Excel workbook (one sheet per block)",
+        "operationId": "ExportLeadReport",
+        "parameters": [
+          {
+            "name": "from",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "agencyId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "granularity",
+            "in": "query",
+            "description": "One of: Day, Week, Month",
+            "schema": {
+              "enum": [
+                "Day",
+                "Week",
+                "Month"
+              ],
+              "type": "string",
+              "description": "One of: Day, Week, Month"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
+                "schema": {
+                  "type": "string",
+                  "format": "byte"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/leads/reports/agents": {
+      "get": {
+        "tags": [
+          "Lead Reports"
+        ],
+        "summary": "One agent's detailed report, or up to four side by side for comparison",
+        "operationId": "GetAgentReport",
+        "parameters": [
+          {
+            "name": "agentIds",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "uuid"
+              }
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "agencyId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "granularity",
+            "in": "query",
+            "description": "One of: Day, Week, Month",
+            "schema": {
+              "enum": [
+                "Day",
+                "Week",
+                "Month"
+              ],
+              "type": "string",
+              "description": "One of: Day, Week, Month"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentComparisonDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/lead-settings": {
       "get": {
         "tags": [
@@ -25310,6 +25536,36 @@
         },
         "additionalProperties": false
       },
+      "AgentComparisonDto": {
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "to": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "granularity": {
+            "enum": [
+              "Day",
+              "Week",
+              "Month"
+            ],
+            "type": "string",
+            "description": "One of: Day, Week, Month"
+          },
+          "agents": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AgentReportDto"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "AgentPerformanceDto": {
         "type": "object",
         "properties": {
@@ -25343,6 +25599,98 @@
             "nullable": true
           },
           "convertedLeads": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "AgentReportDto": {
+        "type": "object",
+        "properties": {
+          "agentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "assigned": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "contactedWithinSla": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "contactedLate": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "notContacted": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "slaComplianceRate": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "avgFirstContactMinutes": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "converted": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "conversionRate": {
+            "type": "number",
+            "format": "double"
+          },
+          "openLeads": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "openSlaBreaches": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "series": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AgentReportPoint"
+            },
+            "nullable": true
+          },
+          "progression": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LeadReportStage"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "AgentReportPoint": {
+        "type": "object",
+        "properties": {
+          "periodStart": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "assigned": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "contacted": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "converted": {
             "type": "integer",
             "format": "int32"
           }
@@ -35445,6 +35793,300 @@
           },
           "isComplete": {
             "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "LeadReportAgency": {
+        "type": "object",
+        "properties": {
+          "agencyId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "captured": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "converted": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "conversionRate": {
+            "type": "number",
+            "format": "double"
+          }
+        },
+        "additionalProperties": false
+      },
+      "LeadReportAgent": {
+        "type": "object",
+        "properties": {
+          "agentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "assigned": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "contactedWithinSla": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "contactedLate": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "notContacted": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "slaComplianceRate": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "avgFirstContactMinutes": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "converted": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "conversionRate": {
+            "type": "number",
+            "format": "double"
+          },
+          "openLeads": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "LeadReportDto": {
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "to": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "granularity": {
+            "enum": [
+              "Day",
+              "Week",
+              "Month"
+            ],
+            "type": "string",
+            "description": "One of: Day, Week, Month"
+          },
+          "kpis": {
+            "$ref": "#/components/schemas/LeadReportKpis"
+          },
+          "series": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LeadReportPoint"
+            },
+            "nullable": true
+          },
+          "progression": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LeadReportStage"
+            },
+            "nullable": true
+          },
+          "byStatus": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LeadReportStatus"
+            },
+            "nullable": true
+          },
+          "bySource": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LeadReportSource"
+            },
+            "nullable": true
+          },
+          "agents": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LeadReportAgent"
+            },
+            "nullable": true
+          },
+          "agencies": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LeadReportAgency"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "LeadReportKpis": {
+        "type": "object",
+        "properties": {
+          "captured": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "convertedInPeriod": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "cohortConversionRate": {
+            "type": "number",
+            "format": "double"
+          },
+          "lost": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "openLeads": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "avgFirstContactMinutes": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "slaComplianceRate": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "openSlaBreaches": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "LeadReportPoint": {
+        "type": "object",
+        "properties": {
+          "periodStart": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "captured": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "converted": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "LeadReportSource": {
+        "type": "object",
+        "properties": {
+          "source": {
+            "enum": [
+              "Web",
+              "MobileAgent",
+              "Agency",
+              "CallCenter",
+              "Sms",
+              "Ussd",
+              "WhatsApp",
+              "Referral",
+              "Partner",
+              "FileImport",
+              "Campaign"
+            ],
+            "type": "string",
+            "description": "One of: Web, MobileAgent, Agency, CallCenter, Sms, Ussd, WhatsApp, Referral, Partner, FileImport, Campaign"
+          },
+          "captured": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "converted": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "conversionRate": {
+            "type": "number",
+            "format": "double"
+          }
+        },
+        "additionalProperties": false
+      },
+      "LeadReportStage": {
+        "type": "object",
+        "properties": {
+          "stage": {
+            "enum": [
+              "New",
+              "ContactAttempted",
+              "ContactEstablished",
+              "NeedIdentified",
+              "Qualified",
+              "ProductProposed",
+              "ApplicationStarted",
+              "DocumentCollection",
+              "ApplicationCompleted",
+              "ApprovalPending",
+              "Converted",
+              "Lost"
+            ],
+            "type": "string",
+            "description": "One of: New, ContactAttempted, ContactEstablished, NeedIdentified, Qualified, ProductProposed, ApplicationStarted, DocumentCollection, ApplicationCompleted, ApprovalPending, Converted, Lost"
+          },
+          "count": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "LeadReportStatus": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "enum": [
+              "New",
+              "Open",
+              "Qualifying",
+              "Qualified",
+              "Nurturing",
+              "Recycled",
+              "Converted",
+              "Lost",
+              "Disqualified",
+              "Archived"
+            ],
+            "type": "string",
+            "description": "One of: New, Open, Qualifying, Qualified, Nurturing, Recycled, Converted, Lost, Disqualified, Archived"
+          },
+          "count": {
+            "type": "integer",
+            "format": "int32"
           }
         },
         "additionalProperties": false

@@ -76,6 +76,17 @@ export class PortalLayoutComponent implements OnInit {
         type: 'basic',
         link: '/leads/analytics',
       },
+      ...(this._permissions.has('lead:report:view')
+        ? [
+            {
+              id: 'lead-reports',
+              icon: 'feather:pie-chart',
+              title: 'Rapports',
+              type: 'basic' as const,
+              link: '/leads/reports',
+            },
+          ]
+        : []),
       {
         id: 'tasks',
         icon: 'feather:grid',
