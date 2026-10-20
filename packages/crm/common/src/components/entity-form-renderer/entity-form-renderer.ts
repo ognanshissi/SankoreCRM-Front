@@ -119,6 +119,8 @@ export class EntityFormRenderer {
    */
   public readonly maskedKeys = input<string[]>([]);
   public readonly revealable = input(false, { transform: booleanAttribute });
+  /** En lecture seule, ce qu'affiche un champ vide — « À demander » plutôt que « — ». */
+  public readonly emptyLabel = input<string | null>(null);
 
   public readonly valuesChange = output<WireValues>();
   /** La clé d'un champ masqué dont l'utilisateur demande la valeur ; l'hôte appelle le serveur. */
@@ -326,6 +328,12 @@ export class EntityFormRenderer {
   );
 
   /** La valeur lisible d'un champ, pour le mode lecture seule. */
+  /** Vrai quand le champ n'a pas de valeur — son libellé vide est alors mis en avant. */
+  public isBlank(field: EntityFormField): boolean {
+    return !this.isMasked(field) && field.type !== FormFieldTypeEnum.Boolean
+      && isEmpty(this.wireValues()[field.key ?? ''] ?? null);
+  }
+
   public isMasked(field: EntityFormField): boolean {
     return this.maskedKeys().includes(field.key ?? '');
   }
@@ -337,7 +345,7 @@ export class EntityFormRenderer {
   public display(field: EntityFormField): string {
     if (this.isMasked(field)) return '••••••';
     const value: WireValue = this.wireValues()[field.key ?? ''] ?? null;
-    if (isEmpty(value)) return field.type === FormFieldTypeEnum.Boolean ? 'Non' : '—';
+    if (isEmpty(value)) return field.type === FormFieldTypeEnum.Boolean ? 'Non' : this.emptyLabel() ?? '—';
     if (field.isSensitive && this.maskSensitive()) return '••••••';
 
     const label = (v: string) => this.optionsOf(field).find((o) => o.value === v)?.label ?? v;

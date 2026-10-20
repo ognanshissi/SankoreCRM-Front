@@ -37,7 +37,8 @@
         @if (readonly()) {
           <!-- Lecture seule -->
           <p class="text-xs text-slate-500">{{ field.label }}</p>
-          <p class="text-sm text-slate-800 mt-0.5 whitespace-pre-line" [class.tabular-nums]="field.type === Type.Money || field.type === Type.Integer || field.type === Type.Decimal || field.type === Type.Percent">
+          <p class="text-sm mt-0.5 whitespace-pre-line"
+             [class]="isBlank(field) && emptyLabel() ? 'text-amber-700 font-semibold' : 'text-slate-800'" [class.tabular-nums]="field.type === Type.Money || field.type === Type.Integer || field.type === Type.Decimal || field.type === Type.Percent">
             {{ display(field) }}
             @if (isMasked(field) && revealable()) {
               <button type="button" class="ml-2 text-xs text-primary hover:underline" (click)="reveal.emit(field.key ?? '')">Afficher</button>

@@ -19,7 +19,7 @@ import {
     `
       @reference "../../tailwind-ref.css";
       tas-card {
-        @apply rounded-xl shadow block bg-white;
+        @apply rounded-2xl shadow block bg-white;
       }
     `,
   ],

@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, DestroyRef, effect, inject, input, output, signal, viewChild } from '@angular/core';
+import { NgTemplateOutlet } from '@angular/common';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { HttpErrorResponse } from '@angular/common/http';
 import { catchError, EMPTY, finalize, Observable } from 'rxjs';
@@ -32,61 +33,76 @@ export type CustomFieldsEntity = 'Lead' | 'Client' | 'Product';
 @Component({
   selector: 'custom-fields-card',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [TasCard, TasIcon, TasSpinner, Button, EntityFormRenderer],
+  imports: [NgTemplateOutlet, TasCard, TasIcon, TasSpinner, Button, EntityFormRenderer],
   template: `
     @if (form(); as f) {
       @if (hasCustomFields()) {
-        <tas-card class="block">
-          <div class="p-4">
-            <div class="flex items-center justify-between mb-3">
-              <p class="text-xs font-semibold text-slate-400">{{ title() }}</p>
-              @if (canEdit() && !editing()) {
-                <button type="button" class="text-xs text-primary hover:underline flex items-center gap-1" (click)="startEdit()">
-                  <tas-icon iconName="feather:edit-2" style="font-size:10px"></tas-icon>
-                  Modifier
-                </button>
-              }
+        @if (bare()) {
+          <ng-container *ngTemplateOutlet="body; context: { $implicit: f }"></ng-container>
+        } @else {
+          <tas-card class="block">
+            <div class="p-4">
+              <ng-container *ngTemplateOutlet="body; context: { $implicit: f }"></ng-container>
             </div>
+          </tas-card>
+        }
+      }
+    } @else if (loading() && !bare()) {
+      <div class="flex justify-center py-4"><tas-spinner size="5" class="text-primary"></tas-spinner></div>
+    }
 
-            <entity-form-renderer
-              [form]="f"
-              mode="full"
-              scope="custom"
-              [values]="rendererValues()"
-              [readonly]="!editing()"
-              [maskedKeys]="masked()"
-              [revealable]="!!revealFn()"
-              (reveal)="revealValue($event)"
-            ></entity-form-renderer>
+    <ng-template #body let-f>
+      <div class="flex items-center justify-between" [class.mb-3]="!!title()">
+        @if (title()) {
+          <p class="text-xs font-semibold text-slate-400">{{ title() }}</p>
+        } @else {
+          <span></span>
+        }
+        @if (canEdit() && !editing()) {
+          <button type="button" class="text-xs text-primary hover:underline flex items-center gap-1" (click)="startEdit()">
+            <tas-icon iconName="feather:edit-2" style="font-size:10px"></tas-icon>
+            {{ editLabel() }}
+          </button>
+        }
+      </div>
 
-            @if (!editing() && archivedValues().length > 0) {
-              <div class="mt-4 pt-3 border-t border-slate-100">
-                <p class="text-[11px] font-semibold uppercase tracking-wide text-slate-400 mb-2">Champs archivés</p>
-                <div class="grid grid-cols-2 gap-x-6 gap-y-2">
-                  @for (a of archivedValues(); track a.key) {
-                    <div>
-                      <p class="text-xs text-slate-400">{{ a.label }}</p>
-                      <p class="text-sm text-slate-600">{{ a.value }}</p>
-                    </div>
-                  }
-                </div>
-              </div>
-            }
+      <entity-form-renderer
+        [form]="f"
+        mode="full"
+        scope="custom"
+        [values]="rendererValues()"
+        [readonly]="!editing()"
+        [exclude]="excludedKeys()"
+        [maskedKeys]="masked()"
+        [revealable]="!!revealFn()"
+        [emptyLabel]="emptyLabel()"
+        [columns]="columns()"
+        (reveal)="revealValue($event)"
+      ></entity-form-renderer>
 
-            @if (editing()) {
-              <div class="flex justify-end gap-2 mt-4 pt-3 border-t border-slate-100">
-                <button tas-outlined-button type="button" (click)="cancel()" [disabled]="saving()">Annuler</button>
-                <button tas-raised-button color="primary" type="button" (click)="submit()" [disabled]="saving()" [isLoading]="saving()">
-                  Enregistrer
-                </button>
+      @if (!editing() && archivedValues().length > 0) {
+        <div class="mt-4 pt-3 border-t border-slate-100">
+          <p class="text-[11px] font-semibold uppercase tracking-wide text-slate-400 mb-2">Champs archivés</p>
+          <div class="grid grid-cols-2 gap-x-6 gap-y-2">
+            @for (a of archivedValues(); track a.key) {
+              <div>
+                <p class="text-xs text-slate-400">{{ a.label }}</p>
+                <p class="text-sm text-slate-600">{{ a.value }}</p>
               </div>
             }
           </div>
-        </tas-card>
+        </div>
       }
-    } @else if (loading()) {
-      <div class="flex justify-center py-4"><tas-spinner size="5" class="text-primary"></tas-spinner></div>
-    }
+
+      @if (editing()) {
+        <div class="flex justify-end gap-2 mt-4 pt-3 border-t border-slate-100">
+          <button tas-outlined-button type="button" (click)="cancel()" [disabled]="saving()">Annuler</button>
+          <button tas-raised-button color="primary" type="button" (click)="submit()" [disabled]="saving()" [isLoading]="saving()">
+            Enregistrer
+          </button>
+        </div>
+      }
+    </ng-template>
   `,
 })
 export class CustomFieldsCard {
@@ -103,6 +119,15 @@ export class CustomFieldsCard {
   public readonly maskedKeys = input<string[] | null | undefined>([]);
   public readonly canEdit = input(false);
   public readonly title = input('Informations complémentaires');
+  /** Sans cadre ni titre — la carte s'insère dans un bloc de l'hôte (« Sa demande »). */
+  public readonly bare = input(false);
+  /** Ne montrer que les champs de ces sections de la mise en page. */
+  public readonly sections = input<string[] | null>(null);
+  /** Ne pas montrer les champs de ces sections — l'hôte les affiche ailleurs. */
+  public readonly excludeSections = input<string[]>([]);
+  public readonly emptyLabel = input<string | null>(null);
+  public readonly editLabel = input('Modifier');
+  public readonly columns = input<1 | 2>(2);
   public readonly save = input<((payload: Record<string, WireValue>) => Observable<unknown>) | null>(null);
   /** Rend la valeur en clair d'un champ masqué — un appel audité au serveur. */
   public readonly revealFn = input<((key: string) => Observable<string>) | null>(null);
@@ -119,8 +144,20 @@ export class CustomFieldsCard {
   /** Change à chaque annulation, pour que le moteur reparte des valeurs de la fiche. */
   private readonly _resetToken = signal(0);
 
+  private _inScope(field: EntityFormField): boolean {
+    const section = field.sectionKey ?? '';
+    const only = this.sections();
+    if (only && !only.includes(section)) return false;
+    return !this.excludeSections().includes(section);
+  }
+
   public readonly hasCustomFields = computed(() =>
-    (this.form()?.fields ?? []).some((f) => !f.isNative && !f.isArchived && !f.isHidden),
+    (this.form()?.fields ?? []).some((f) => !f.isNative && !f.isArchived && !f.isHidden && this._inScope(f)),
+  );
+
+  /** Les champs personnalisés hors du périmètre de cette carte, passés au moteur à exclure. */
+  public readonly excludedKeys = computed(() =>
+    (this.form()?.fields ?? []).filter((f) => !f.isNative && !this._inScope(f)).map((f) => f.key ?? ''),
   );
 
   public readonly masked = computed(() =>
@@ -139,7 +176,7 @@ export class CustomFieldsCard {
   public readonly archivedValues = computed(() => {
     const values = this.values() ?? {};
     return (this.form()?.fields ?? [])
-      .filter((f) => !f.isNative && f.isArchived && values[f.key ?? ''] != null)
+      .filter((f) => !f.isNative && f.isArchived && this._inScope(f) && values[f.key ?? ''] != null)
       .map((f) => ({ key: f.key ?? '', label: f.label ?? f.key ?? '', value: plain(f, values[f.key ?? '']) }));
   });
 

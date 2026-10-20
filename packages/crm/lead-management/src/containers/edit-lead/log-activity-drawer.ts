@@ -33,6 +33,8 @@ import { AuthenticationService } from '@sankore/crm/common';
 export interface LogActivityDrawerData {
   leadId: string;
   leadName: string;
+  /** Type présélectionné — « Noter l'appel » ouvre le panneau sur un appel. */
+  initialType?: LogActivityRequestTypeEnum;
 }
 
 export interface LogActivityDrawerResult {
@@ -533,7 +535,7 @@ export class LogActivityDrawer {
   public readonly outcomeOptions = OUTCOME_OPTIONS;
 
   // ——— Form state ———
-  public selectedType = signal<LogActivityRequestTypeEnum | ''>('');
+  public selectedType = signal<LogActivityRequestTypeEnum | ''>(this.data.initialType ?? '');
   public subject = signal('');
   public notes = signal('');
   public durationMinutes = signal<number | null>(null);

@@ -43,4 +43,20 @@ export class LeadEditContext {
   public set(lead: LeadDto | null): void {
     this._lead.set(lead);
   }
+
+  private _reloader: (() => void) | null = null;
+
+  /**
+   * Relit le lead pour toute la fiche — en-tête, colonne de gauche et onglets. Un onglet qui écrit
+   * sur le lead l'appelle au lieu de recharger sa propre copie : l'en-tête ne rattrapait une
+   * modification faite dans l'onglet Informations qu'au rafraîchissement suivant, 30 secondes plus
+   * tard. Branché par `EditLeadNavigation`, qui détient le chargement.
+   */
+  public reload(): void {
+    this._reloader?.();
+  }
+
+  public registerReloader(reloader: () => void): void {
+    this._reloader = reloader;
+  }
 }

@@ -1,13 +1,25 @@
 import { Component, computed, effect, inject, input, signal, OnDestroy } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { TasIcon } from '@talisoft/ui/icon';
 import { TasCard } from '@talisoft/ui/card';
 import { TasSpinner } from '@talisoft/ui/spinner';
 import { Anchor, Button } from '@talisoft/ui/button';
-import { LeadsApiService, LeadDto, NextActionDto, LeadIntentLevelDto, CloseLeadRequestReasonEnum } from '@sankore/crm-api';
+import {
+  AcknowledgeNextActionRequestActionEnum,
+  CloseLeadRequestReasonEnum,
+  DuplicateMatchResult,
+  FormFieldReferenceTargetEnum,
+  LeadDto,
+  LeadIntentLevelDto,
+  LeadsApiService,
+  NextActionDto,
+  NextActionDtoActionTypeEnum,
+} from '@sankore/crm-api';
 import { ConfirmDialogService } from '@talisoft/ui/confirm-dialog';
 import {
   BreadcrumbService,
+  EntityFormReferences,
   FatcaStatusBadge,
   PepExposureBadge,
   PermissionsService,
@@ -18,15 +30,22 @@ import { ReassignLeadDrawer } from './reassign-lead-drawer';
 import { EditLeadInfoDrawer } from './edit-lead-info-drawer';
 import { ConvertLeadWizard } from './convert-lead-wizard';
 import { NurtureRecycleDrawer } from './nurture-recycle-drawer';
-import { Severity, TasTag } from '@talisoft/ui/tag';
+import { TasTag } from '@talisoft/ui/tag';
 import { TimeagoPipe } from '@talisoft/ui/timeago';
 import { Menu, MenuItem, TasMenuTrigger } from '@talisoft/ui/menu';
-import { catchError, EMPTY, exhaustMap, finalize } from 'rxjs';
-// eslint-disable-next-line @nx/enforce-module-boundaries
-import { CallButton } from '@sankore/crm/telephony';
+import { catchError, EMPTY, forkJoin, map, of } from 'rxjs';
 import { LeadEditContext } from './lead-edit-context';
 import { LeadComplianceStore } from './lead-compliance-store';
 import { interestedProductLabel } from '../../components/interested-product';
+import {
+  displayName,
+  formatDay,
+  initials,
+  intentOption,
+  isConsentGap,
+  leadStatusMeta,
+  originLabel,
+} from './lead-view.models';
 
 interface LeadMenuItem {
   label: string;
@@ -34,45 +53,46 @@ interface LeadMenuItem {
   route: string;
 }
 
-function leadStatusMeta(status: string | null | undefined): { label: string; severity: Severity } {
-  switch (status) {
-    case 'New':       return { label: 'Nouveau',  severity: 'info' };
-    case 'Open':      return { label: 'Contacté', severity: 'warning' };
-    case 'Qualifying': return { label: 'En qualification', severity: 'warning' };
-    case 'Disqualified': return { label: 'Disqualifié', severity: 'error' };
-    case 'Archived':  return { label: 'Archivé',   severity: 'neutral' };
-    case 'Qualified': return { label: 'Qualifié', severity: 'warning' };
-    case 'Converted': return { label: 'Converti', severity: 'success' };
-    case 'Lost':      return { label: 'Perdu',     severity: 'error' };
-    case 'Expired':   return { label: 'Expiré',    severity: 'neutral' };
-    case 'Nurturing': return { label: 'Nurturing', severity: 'accent' };
-    case 'Recycled':  return { label: 'Recyclé',   severity: 'secondary' };
-    default:          return { label: status ?? '—', severity: 'neutral' };
-  }
+interface LeadMenuGroup {
+  title: string;
+  items: LeadMenuItem[];
 }
 
-interface TemperatureMeta {
-  label: string;
-  key: string;
-  colorClasses: string;
-  dotClass: string;
-}
-
-function temperatureMeta(intentLevel: string | null | undefined): TemperatureMeta {
-  switch (String(intentLevel)) {
-    case '0': return { label: 'Froid',      key: 'COLD',    colorClasses: 'bg-slate-100 text-slate-700 border-slate-300',   dotClass: 'bg-slate-400' };
-    case '1': return { label: 'Tiède',      key: 'WARM',    colorClasses: 'bg-blue-50 text-blue-700 border-blue-300',       dotClass: 'bg-blue-500' };
-    case '2': return { label: 'Chaud',      key: 'HOT',     colorClasses: 'bg-amber-50 text-amber-700 border-amber-300',    dotClass: 'bg-amber-500' };
-    case '3': return { label: 'Très chaud', key: 'VERY HOT', colorClasses: 'bg-red-50 text-red-700 border-red-300',         dotClass: 'bg-red-500' };
-    default:  return { label: 'Inconnu',    key: 'UNKNOWN', colorClasses: 'bg-gray-50 text-gray-500 border-gray-300',       dotClass: 'bg-gray-400' };
-  }
-}
-
-function scoreColor(score: number): { bg: string; text: string; bar: string } {
-  if (score >= 70) return { bg: 'bg-green-50',  text: 'text-green-700', bar: 'bg-green-500' };
-  if (score >= 40) return { bg: 'bg-amber-50',  text: 'text-amber-700', bar: 'bg-amber-500' };
-  return               { bg: 'bg-red-50',    text: 'text-red-700',   bar: 'bg-red-400' };
-}
+/**
+ * Les onglets de la fiche, regroupés comme le parcours d'un agent : qui est le prospect, ce qui
+ * a été fait avec lui, ce que son dossier demande encore.
+ */
+const MENU: ReadonlyArray<LeadMenuGroup> = [
+  {
+    title: 'Le prospect',
+    items: [
+      { label: 'Informations', icon: 'feather:user', route: 'informations' },
+      { label: 'Identité', icon: 'feather:user-check', route: 'identite' },
+      { label: 'Foyer', icon: 'feather:users', route: 'foyer' },
+      { label: 'Doublons', icon: 'feather:copy', route: 'doublons' },
+    ],
+  },
+  {
+    title: 'Suivi',
+    items: [
+      { label: 'Activités', icon: 'feather:activity', route: 'activites' },
+      { label: 'Rappels', icon: 'feather:bell', route: 'rappels' },
+      { label: 'Tâches', icon: 'feather:check-square', route: 'taches' },
+      { label: 'Chronologie', icon: 'feather:clock', route: 'timeline' },
+    ],
+  },
+  {
+    title: 'Dossier',
+    items: [
+      { label: 'Qualification', icon: 'feather:list', route: 'qualification' },
+      { label: 'Score', icon: 'feather:bar-chart-2', route: 'score' },
+      { label: 'Questionnaires', icon: 'feather:clipboard', route: 'questionnaires' },
+      { label: 'Conformité', icon: 'feather:flag', route: 'conformite' },
+      { label: 'Consentements', icon: 'feather:shield', route: 'consentement' },
+      { label: 'Opportunités', icon: 'feather:briefcase', route: 'opportunites' },
+    ],
+  },
+];
 
 interface ScoreFactor {
   label: string;
@@ -95,6 +115,12 @@ function parseFactors(factorsJson: string | null | undefined): ScoreFactor[] {
   }
 }
 
+function scoreClasses(score: number): string {
+  if (score >= 70) return 'border-green-500 text-green-700';
+  if (score >= 40) return 'border-amber-500 text-amber-700';
+  return 'border-red-400 text-red-700';
+}
+
 @Component({
   imports: [
     RouterLink,
@@ -112,403 +138,17 @@ function parseFactors(factorsJson: string | null | undefined): ScoreFactor[] {
     Menu,
     MenuItem,
     TasMenuTrigger,
-    CallButton,
   ],
-  template: `
-    @if (notFound()) {
-      <!-- 404 screen -->
-      <div class="flex flex-col items-center justify-center py-32 text-center">
-        <div class="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center mb-4">
-          <tas-icon iconName="feather:alert-circle" class="text-slate-400" style="font-size:28px"></tas-icon>
-        </div>
-        <h2 class="text-lg font-semibold text-slate-800 mb-1">Lead introuvable</h2>
-        <p class="text-sm text-slate-500 mb-6 max-w-sm">
-          Ce lead n'existe pas ou vous n'avez pas les droits pour y accéder.
-        </p>
-        <a [routerLink]="['/leads']" tas-button iconButton class="inline-flex items-center gap-2 text-sm">
-          <tas-icon iconName="feather:arrow-left" style="font-size:14px"></tas-icon>
-          Retour aux leads
-        </a>
-      </div>
-    } @else {
-      <!-- Header -->
-      <div class="flex items-center gap-3 mb-4">
-        <a [routerLink]="['/leads']" tas-button iconButton>
-          <tas-icon iconName="feather:chevron-left"></tas-icon>
-        </a>
-        <div class="flex-1 min-w-0">
-          @if (isLoading()) {
-            <div class="h-5 w-48 bg-slate-200 rounded animate-pulse"></div>
-          } @else {
-            <h1 class="text-lg font-semibold text-slate-900 truncate">
-              {{ displayName() }}
-            </h1>
-            <!-- Le produit demandé est ce qui oriente tout le traitement du lead : il doit se
-                 lire avec le nom, pas au milieu des informations commerciales. -->
-            @if (lead(); as l) {
-              <div class="mt-1 flex items-center gap-2">
-                @if (productLabel(); as product) {
-                  <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-blue-50 text-blue-700 text-sm font-semibold">
-                    <tas-icon iconName="feather:package" style="font-size:13px"></tas-icon>
-                    {{ product }}
-                  </span>
-                } @else {
-                  <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-100 text-slate-500 text-xs font-medium">
-                    <tas-icon iconName="feather:package" style="font-size:12px"></tas-icon>
-                    Produit d'intérêt non précisé
-                  </span>
-                  @if (canUpdate() && !isConverted()) {
-                    <button tas-text-button type="button" class="text-xs" (click)="openEditInfoDrawer()">Préciser</button>
-                  }
-                }
-              </div>
-            }
-          }
-        </div>
-        @if (!isLoading() && lead()) {
-          <tas-tag [severity]="statusMeta().severity">{{ statusMeta().label }}</tas-tag>
-          <pep-exposure-badge [exposed]="compliance.hasPepExposure()"></pep-exposure-badge>
-          @if (compliance.fatcaEnabled()) {
-            <fatca-status-badge [status]="compliance.principalFatcaStatus()"></fatca-status-badge>
-          }
-
-          <!-- Primary actions (always visible) -->
-          <!--
-            TEL-F-04 : le bouton se masque lui-même si le serveur dit que cet agent ne peut
-            pas appeler, donc rien n'est conditionné ici. Il n'affiche aucun numéro — le
-            front n'en détient aucun — et envoie la FICHE et l'emplacement, que le serveur
-            déchiffre et compose.
-          -->
-          <lib-call-button entityType="Lead" [entityId]="id()"></lib-call-button>
-          @if (lead()!.status === 'New' && !lead()!.lastActivityAt) {
-            <button tas-raised-button color="primary" type="button" class="text-xs"
-              [disabled]="isRecordingFirstContact()" (click)="recordFirstContact()">
-              @if (isRecordingFirstContact()) { <tas-spinner size="3" class="text-white"></tas-spinner> }
-              <tas-icon iconName="feather:phone-forwarded" style="font-size:14px"></tas-icon>
-              1er contact
-            </button>
-          }
-          @if (lead()!.status !== 'Converted' && lead()!.status !== 'Lost' && lead()!.status !== 'Disqualified' && lead()!.status !== 'Archived') {
-            <!--
-              Désactivé sur le canConvert de l'API (BNF-F-08), jamais sur une règle recalculée
-              ici. Le libellé change pour un lead rattaché à un client existant (BNF-F-19) :
-              aucune fiche ne sera créée, c'est une souscription.
-            -->
-            <button tas-raised-button color="primary" type="button"
-              [disabled]="convertDisabled()"
-              [attr.title]="convertDisabledHint()"
-              [attr.aria-describedby]="convertDisabled() ? 'convert-disabled-hint' : null"
-              (click)="openConvertWizard()">
-              <tas-icon iconName="feather:user-check" style="font-size:14px"></tas-icon>
-              {{ convertActionLabel() }}
-            </button>
-            @if (convertDisabled() && !compliance.isLoading()) {
-              <span id="convert-disabled-hint" class="sr-only">
-                {{ convertDisabledHint() }}
-              </span>
-            }
-          }
-          <!-- Les statuts que le serveur accepte de rouvrir (Lead.Reopen). « Expired » n'existe pas côté serveur. -->
-          @if (lead()!.status === 'Lost' || lead()!.status === 'Disqualified' || lead()!.status === 'Recycled') {
-            <button tas-button color="primary" type="button"
-              [disabled]="isReopening()" (click)="reopenLead()">
-              @if (isReopening()) { <tas-spinner size="3" class="text-white"></tas-spinner> }
-              <tas-icon iconName="feather:rotate-ccw" style="font-size:14px"></tas-icon>
-              Réouvrir
-            </button>
-          }
-
-          <!-- Actions menu -->
-          <button tas-outlined-button type="button" color="primary" TasMenuTrigger [panel]="actionsMenu">
-            <tas-icon iconName="feather:more-horizontal" style="font-size:14px"></tas-icon>
-            Actions
-            <tas-icon iconName="feather:chevron-down" style="font-size:10px"></tas-icon>
-          </button>
-
-          <ng-template #actionsMenu>
-            <tas-menu>
-              <!--
-                Un lead converti est figé : les actions qui l'écrivent
-                disparaissent du menu. Celles qui restent (convertir, clôturer,
-                nurturing) étaient déjà conditionnées au statut.
-              -->
-              @if (canUpdate() && !isConverted()) {
-                <tas-menu-item>
-                  <button type="button" class="w-full flex items-center gap-2 text-slate-700" (click)="openEditInfoDrawer()">
-                    <tas-icon iconName="feather:edit-2" class="text-slate-400" style="font-size:13px"></tas-icon>
-                    Modifier les informations
-                  </button>
-                </tas-menu-item>
-              }
-              @if (!isConverted()) {
-                <tas-menu-item>
-                  <button type="button" class="w-full flex items-center gap-2  text-slate-700" (click)="openReassignDrawer()">
-                    <tas-icon iconName="feather:user-plus" class="text-slate-400" style="font-size:13px"></tas-icon>
-                    Réassigner à un agent
-                  </button>
-                </tas-menu-item>
-                <tas-menu-item [disabled]="isReturningToQueue()">
-                  <button type="button" class="w-full flex items-center gap-2 text-slate-700" (click)="returnToQueue()">
-                    <tas-icon iconName="feather:corner-down-left" class="text-slate-400" style="font-size:13px"></tas-icon>
-                    Remettre en file d'attente
-                  </button>
-                </tas-menu-item>
-              }
-              @if (lead()!.status !== 'Converted') {
-                <tas-menu-item>
-                  <button type="button" class="w-full flex items-center gap-2  text-slate-700" (click)="openNurtureRecycleDrawer()">
-                    <tas-icon iconName="feather:refresh-cw" class="text-amber-500" style="font-size:13px"></tas-icon>
-                    Nurturing / Recycler
-                  </button>
-                </tas-menu-item>
-                <tas-menu-item>
-                  <button type="button" class="w-full flex items-center gap-2 text-red-600" (click)="closeLead()">
-                    <tas-icon iconName="feather:x-square" class="text-red-400" style="font-size:13px"></tas-icon>
-                    Clôturer le lead
-                  </button>
-                </tas-menu-item>
-              }
-            </tas-menu>
-          </ng-template>
-        }
-      </div>
-
-      <!-- Grid: sidebar + content -->
-      <div class="grid grid-cols-4 gap-4">
-
-        <!-- Sidebar -->
-        <div class="col-span-1">
-          <tas-card>
-            <!-- Lead summary -->
-            @if (isLoading()) {
-              <div class="p-4 flex justify-center">
-                <tas-spinner size="5" class="text-primary"></tas-spinner>
-              </div>
-            } @else if (lead()) {
-              <div class="p-4 border-b border-gray-100">
-                <p class="text-sm font-medium text-slate-800 truncate">{{ displayName() }}</p>
-                @if (lead()!.email) {
-                  <p class="text-xs text-slate-500 mt-0.5 truncate">{{ lead()!.email }}</p>
-                }
-                @if (lead()!.phoneNumber) {
-                  <p class="text-xs text-slate-400 mt-1 flex items-center gap-1">
-                    <tas-icon iconName="feather:phone" class="inline-block w-3 h-3"></tas-icon>
-                    {{ lead()!.phoneNumber }}
-                  </p>
-                }
-                @if (lead()!.source) {
-                  <p class="text-xs text-slate-400 mt-1 flex items-center gap-1">
-                    <tas-icon iconName="feather:globe" class="inline-block w-3 h-3"></tas-icon>
-                    {{ lead()!.source }}
-                  </p>
-                }
-                <!-- Status lifecycle -->
-                <div class="mt-3">
-                  <p class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-2">Cycle de vie</p>
-                  <div class="flex items-center gap-0.5">
-                    @for (step of lifecycleSteps; track step.status) {
-                      <div class="flex-1 flex flex-col items-center gap-0.5">
-                        <div class="w-full h-1 rounded-full"
-                          [class]="isLifecycleReached(step.status) ? step.activeColor : 'bg-slate-100'"></div>
-                        <span class="text-[8px] leading-none"
-                          [class]="lead()!.status === step.status ? 'font-bold ' + step.activeText : isLifecycleReached(step.status) ? 'text-slate-500' : 'text-slate-300'">
-                          {{ step.label }}
-                        </span>
-                      </div>
-                    }
-                  </div>
-                </div>
-
-                <!-- Score & Temperature badge -->
-                @if (lead()!.score !== null || lead()!.intentLevel !== null) {
-                  <div class="mt-3 relative">
-                    <button
-                      type="button"
-                      class="w-full flex items-center gap-2 p-2 rounded-lg border cursor-pointer transition-colors hover:shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
-                      [class]="scoreBadgeClasses()"
-                      (click)="toggleFactorsPanel()"
-                      (keydown.enter)="toggleFactorsPanel()"
-                      (keydown.space)="toggleFactorsPanel(); $event.preventDefault()"
-                      [attr.aria-expanded]="showFactors()"
-                      aria-controls="score-factors-panel"
-                    >
-                      <!-- Score circle -->
-                      <div
-                        class="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold tabular-nums shrink-0"
-                        [class]="scoreCircleClasses()"
-                      >
-                        {{ lead()!.score ?? '—' }}
-                      </div>
-                      <div class="flex-1 min-w-0 text-left">
-                        <div class="flex items-center gap-1">
-                          <span class="w-2 h-2 rounded-full shrink-0" [class]="tempMeta().dotClass"></span>
-                          <span class="text-xs font-semibold truncate">{{ tempMeta().label }}</span>
-                        </div>
-                        <span class="text-[10px] opacity-70">Score {{ lead()!.score ?? 0 }}/100</span>
-                      </div>
-                      <tas-icon
-                        [iconName]="showFactors() ? 'feather:chevron-up' : 'feather:chevron-down'"
-                        class="shrink-0 opacity-50"
-                        style="font-size:14px"
-                      ></tas-icon>
-                    </button>
-
-                    <!-- Factors detail panel -->
-                    @if (showFactors()) {
-                      <div
-                        id="score-factors-panel"
-                        class="mt-2 rounded-lg border border-slate-200 bg-white shadow-sm overflow-hidden"
-                        role="region"
-                        aria-label="Détail du score"
-                      >
-                        <div class="px-3 py-2 border-b border-slate-100 bg-slate-50">
-                          <p class="text-xs font-semibold text-slate-700">Facteurs du score</p>
-                        </div>
-                        @if (scoreFactors().length === 0) {
-                          <div class="px-3 py-4 text-center">
-                            <p class="text-xs text-slate-400">Aucun détail disponible</p>
-                          </div>
-                        } @else {
-                          <div class="divide-y divide-slate-100">
-                            @for (factor of scoreFactors(); track factor.label) {
-                              <div class="px-3 py-2 flex items-start justify-between gap-2">
-                                <div class="min-w-0">
-                                  <p class="text-xs font-medium text-slate-700 truncate">{{ factor.label }}</p>
-                                  <p class="text-[10px] text-slate-500 truncate">{{ factor.value }}</p>
-                                </div>
-                                @if (factor.impact) {
-                                  <span
-                                    class="text-[10px] font-semibold tabular-nums shrink-0"
-                                    [class]="factor.impact.startsWith('-') ? 'text-red-600' : 'text-green-600'"
-                                  >
-                                    {{ factor.impact.startsWith('-') ? '' : '+' }}{{ factor.impact }}
-                                  </span>
-                                }
-                              </div>
-                            }
-                          </div>
-                        }
-                        <!-- Intent level detail (from getLeadIntentLevel) -->
-                        @if (intentLevelDetail()) {
-                          <div class="px-3 py-2 border-t border-slate-100 flex items-center justify-between">
-                            <span class="text-[10px] text-slate-400">Score d'intention</span>
-                            <span class="text-xs font-semibold tabular-nums text-slate-700">{{ intentLevelDetail()!.score ?? '—' }}</span>
-                          </div>
-                          @if (intentLevelDetail()!.updatedAt) {
-                            <div class="px-3 pb-1 flex items-center justify-between">
-                              <span class="text-[10px] text-slate-400">Mis à jour</span>
-                              <span class="text-[10px] text-slate-400">{{ intentLevelDetail()!.updatedAt | dateTimeAgo }}</span>
-                            </div>
-                          }
-                        }
-                        <!--
-                          La température écrit sur le lead : le sélecteur
-                          disparaît une fois converti, la valeur atteinte reste
-                          lisible au-dessus.
-                        -->
-                        @if (!isConverted()) {
-                        <div class="px-3 py-2 border-t border-slate-100 bg-slate-50">
-                          <p class="text-[10px] text-slate-400 mb-1.5">Température</p>
-                          <div class="flex items-center gap-1">
-                            @for (lvl of intentLevels; track lvl.value) {
-                              <button
-                                type="button"
-                                class="flex-1 py-1 rounded text-[10px] font-medium transition-colors"
-                                [class]="lead()!.intentLevel === lvl.value
-                                  ? lvl.activeClass
-                                  : 'bg-slate-100 text-slate-400 hover:bg-slate-200'"
-                                (click)="setIntentLevel(lvl.value); $event.stopPropagation()"
-                              >
-                                {{ lvl.label }}
-                              </button>
-                            }
-                          </div>
-                        </div>
-                        }
-                      </div>
-                    }
-                  </div>
-                }
-              </div>
-            }
-
-            <!-- Next action widget -->
-            <!--
-              L'action recommandée porte sur un lead encore en cours : sur un
-              lead converti, l'accepter ou l'ignorer écrirait une décision qui
-              n'a plus d'objet.
-            -->
-            @if (lead()?.awaitingDispatchSince && !lead()?.currentAssignmentId) {
-              <div class="p-3 border-b border-gray-100" role="status">
-                <div class="p-2.5 rounded-lg border border-amber-200 bg-amber-50">
-                  <div class="flex items-center gap-1.5 mb-1">
-                    <tas-icon iconName="feather:clock" class="text-amber-700" style="font-size:12px"></tas-icon>
-                    <p class="text-[10px] font-semibold text-amber-800">En file d'attente de dispatch</p>
-                  </div>
-                  <p class="text-xs text-slate-700">
-                    Aucun agent n'a pu le prendre {{ lead()!.awaitingDispatchSince | dateTimeAgo }}.
-                    Il partira seul dès qu'un agent sera disponible, selon la règle de dispatch.
-                  </p>
-                </div>
-              </div>
-            }
-
-            @if (nextAction() && !isConverted()) {
-              <div class="p-3 border-b border-gray-100">
-                <div class="p-2.5 rounded-lg border border-primary/20 bg-primary/5">
-                  <div class="flex items-center gap-1.5 mb-1">
-                    <tas-icon iconName="feather:zap" class="text-primary" style="font-size:12px"></tas-icon>
-                    <p class="text-[10px] font-semibold text-primary">Action recommandée</p>
-                  </div>
-                  <p class="text-xs font-medium text-slate-800">{{ nextAction()!.title }}</p>
-                  @if (nextAction()!.detail) {
-                    <p class="text-[10px] text-slate-500 mt-0.5">{{ nextAction()!.detail }}</p>
-                  }
-                  @if (nextAction()!.urgency) {
-                    <p class="text-[10px] text-amber-600 mt-0.5">{{ nextAction()!.urgency }}</p>
-                  }
-                  <div class="flex items-center gap-1 mt-2">
-                    <button
-                      type="button"
-                      class="text-[10px] px-2 py-0.5 rounded bg-primary text-white hover:bg-primary/90"
-                      (click)="acknowledgeNextAction('Accept')"
-                    >Accepter</button>
-                    <button
-                      type="button"
-                      class="text-[10px] px-2 py-0.5 rounded bg-slate-100 text-slate-600 hover:bg-slate-200"
-                      (click)="acknowledgeNextAction('Ignore')"
-                    >Ignorer</button>
-                  </div>
-                </div>
-              </div>
-            }
-
-            <!-- Menu items -->
-            @for (item of menuItems; track item.route) {
-              <a
-                class="px-4 py-3 hover:bg-gray-200 flex items-center gap-2 text-sm"
-                [routerLink]="item.route"
-                [routerLinkActive]="'is-link-active'"
-              >
-                <tas-icon [iconName]="item.icon"></tas-icon>
-                <span>{{ item.label }}</span>
-              </a>
-            }
-          </tas-card>
-        </div>
-
-        <!-- Page content -->
-        <div class="col-span-3 h-[calc(100vh_-_130px)] overflow-y-auto">
-          <router-outlet></router-outlet>
-        </div>
-      </div>
-    }
-  `,
+  templateUrl: './edit-lead-navigation.html',
   styles: [
     `
       .is-link-active {
-        background-color: rgba(var(--tas-color-primary), 0.2);
-        color: var(--tas-color-primary);
+        background-color: rgb(var(--tas-color-primary));
+        color: white;
+        font-weight: 600;
+      }
+      .is-link-active tas-icon {
+        color: white;
       }
     `,
   ],
@@ -524,16 +164,97 @@ export class EditLeadNavigation implements OnDestroy {
   private readonly _confirmDialog = inject(ConfirmDialogService);
   private readonly _router = inject(Router);
   private readonly _leadEditContext = inject(LeadEditContext);
+  private readonly _references = inject(EntityFormReferences);
   protected readonly compliance = inject(LeadComplianceStore);
   private _pollTimer: ReturnType<typeof setInterval> | null = null;
 
   public readonly id = input.required<string>();
 
+  public readonly menu = MENU;
+  public readonly formatDay = formatDay;
+
   public isLoading = signal(true);
   public lead = signal<LeadDto | null>(null);
+  public notFound = signal(false);
+  public showFactors = signal(false);
+  public isReopening = signal(false);
+  public isReturningToQueue = signal(false);
+  public nextAction = signal<NextActionDto | null>(null);
+  public intentLevelDetail = signal<LeadIntentLevelDto | null>(null);
+  public latestFactorsJson = signal<string | null>(null);
+  private readonly _duplicates = signal<DuplicateMatchResult[]>([]);
+  private readonly _dismissed = signal<Set<string>>(new Set());
+
   /** Lu par le template : un lead converti n'offre plus d'action d'écriture. */
   public readonly isConverted = computed(() => this.lead()?.status === 'Converted');
   public readonly productLabel = computed(() => interestedProductLabel(this.lead()?.interestedProduct));
+  public readonly name = computed(() => displayName(this.lead()));
+  public readonly avatar = computed(() => initials(this.name()));
+  public readonly statusMeta = computed(() => leadStatusMeta(this.lead()?.status));
+  public readonly intent = computed(() => intentOption(this.lead()?.intentLevel));
+  public readonly origin = computed(() => originLabel(this.lead()));
+  public readonly scoreFactors = computed(() => parseFactors(this.latestFactorsJson()));
+
+  /** « suivi par Fatou Diallo » — l'agent qui a le lead, ou son responsable à défaut. */
+  private readonly _users = toSignal(
+    this._references.options(FormFieldReferenceTargetEnum.User).pipe(
+      map((options) => new Map(options.map((o) => [o.value, o.label] as const))),
+    ),
+    { initialValue: new Map<string, string>() },
+  );
+  public readonly followedBy = computed(() => {
+    const lead = this.lead();
+    const id = lead?.currentAssignedId ?? lead?.ownerId;
+    return id ? this._users().get(id) ?? null : null;
+  });
+
+  /**
+   * « Pas encore qualifié » tant qu'aucune réponse de qualification n'existe : le score calculé à
+   * la capture ne pèse que la source et les données saisies, et l'afficher comme un verdict fait
+   * lire 30/100 comme un mauvais prospect plutôt que comme un prospect pas encore interrogé.
+   */
+  public readonly isUnqualified = computed(() => {
+    const lead = this.lead();
+    return !!lead && (lead.qualificationCompleteness ?? 0) === 0
+      && lead.status !== 'Qualified' && lead.status !== 'Converted';
+  });
+
+  public readonly scoreRing = computed(() => scoreClasses(this.lead()?.score ?? 0));
+
+  // ——— Ce que les compteurs du menu et l'en-tête signalent ———
+
+  public readonly missingConsents = computed(
+    () => (this.compliance.completeness()?.gaps ?? []).filter((g) => isConsentGap(g.code)).length,
+  );
+
+  public readonly duplicateCount = computed(() => {
+    const id = this.id();
+    const dismissed = this._dismissed();
+    return this._duplicates().filter((d) => d.leadId && d.leadId !== id && !dismissed.has(d.leadId)).length;
+  });
+
+  public readonly qualificationBadge = computed(() => {
+    const done = this.lead()?.qualificationCompleteness ?? 0;
+    if (this.isConverted()) return null;
+    if (done <= 0) return 'À faire';
+    if (done < 1) return 'En cours';
+    return null;
+  });
+
+  public badgeFor(route: string): { text: string; tone: 'red' | 'amber' | 'slate' } | null {
+    switch (route) {
+      case 'doublons':
+        return this.duplicateCount() > 0 ? { text: String(this.duplicateCount()), tone: 'red' } : null;
+      case 'consentement':
+        return this.missingConsents() > 0 ? { text: String(this.missingConsents()), tone: 'amber' } : null;
+      case 'qualification': {
+        const badge = this.qualificationBadge();
+        return badge ? { text: badge, tone: 'slate' } : null;
+      }
+      default:
+        return null;
+    }
+  }
 
   /**
    * BNF-F-08 : « Convertir » n'est actif que si l'API l'autorise. La complétude *indisponible*
@@ -549,7 +270,7 @@ export class EditLeadNavigation implements OnDestroy {
   public readonly convertDisabledHint = computed(() => {
     if (!this.convertDisabled()) return null;
     if (this.compliance.isLoading()) return 'Contrôle du dossier en cours…';
-    return "Dossier incomplet : complétez les éléments manquants listés dans l'onglet Identité.";
+    return 'Dossier incomplet : complétez les éléments manquants listés dans « Fiche complète ».';
   });
 
   /**
@@ -561,22 +282,25 @@ export class EditLeadNavigation implements OnDestroy {
     const attached = !!lead?.customerReference?.trim() || !!lead?.convertedToCustomerId;
     return attached ? 'Créer la souscription' : 'Convertir en client';
   });
-  public notFound = signal(false);
-  public showFactors = signal(false);
-  public isReopening = signal(false);
-  public isRecordingFirstContact = signal(false);
-  public isReturningToQueue = signal(false);
-  public nextAction = signal<NextActionDto | null>(null);
-  public intentLevelDetail = signal<LeadIntentLevelDto | null>(null);
-  public latestFactorsJson = signal<string | null>(null);
 
-  public readonly scoreFactors = computed(() => parseFactors(this.latestFactorsJson()));
+  public readonly canBeConverted = computed(() => {
+    const status = this.lead()?.status;
+    return status !== 'Converted' && status !== 'Lost' && status !== 'Disqualified' && status !== 'Archived';
+  });
+
+  /** Les statuts que le serveur accepte de rouvrir (Lead.Reopen). */
+  public readonly canBeReopened = computed(() => {
+    const status = this.lead()?.status;
+    return status === 'Lost' || status === 'Disqualified' || status === 'Recycled';
+  });
+
+  // ——— Cycle de vie ———
 
   public readonly lifecycleSteps = [
-    { status: 'New',       label: 'Nouveau',  activeColor: 'bg-blue-500',   activeText: 'text-blue-600' },
-    { status: 'Open',      label: 'Contacté',  activeColor: 'bg-amber-500',  activeText: 'text-amber-600' },
-    { status: 'Qualified', label: 'Qualifié',  activeColor: 'bg-purple-500', activeText: 'text-purple-600' },
-    { status: 'Converted', label: 'Converti',  activeColor: 'bg-green-500',  activeText: 'text-green-600' },
+    { status: 'New', label: 'Nouveau', bar: 'bg-primary', text: 'text-primary' },
+    { status: 'Open', label: 'Contacté', bar: 'bg-amber-500', text: 'text-amber-700' },
+    { status: 'Qualified', label: 'Qualifié', bar: 'bg-violet-500', text: 'text-violet-700' },
+    { status: 'Converted', label: 'Converti', bar: 'bg-green-600', text: 'text-green-700' },
   ];
 
   private readonly _lifecycleOrder: Record<string, number> = {
@@ -585,35 +309,14 @@ export class EditLeadNavigation implements OnDestroy {
   };
 
   public isLifecycleReached(stepStatus: string): boolean {
-    const currentStatus = this.lead()?.status ?? '';
-    const currentOrder = this._lifecycleOrder[currentStatus] ?? -1;
-    const stepOrder = this._lifecycleOrder[stepStatus] ?? -1;
-    return stepOrder <= currentOrder;
+    const currentOrder = this._lifecycleOrder[this.lead()?.status ?? ''] ?? -1;
+    return (this._lifecycleOrder[stepStatus] ?? -1) <= currentOrder;
   }
 
-  public readonly intentLevels = [
-    { value: '0', label: 'Froid',  activeClass: 'bg-slate-200 text-slate-700' },
-    { value: '1', label: 'Tiède',  activeClass: 'bg-blue-100 text-blue-700' },
-    { value: '2', label: 'Chaud',  activeClass: 'bg-amber-100 text-amber-700' },
-    { value: '3', label: 'Très chaud', activeClass: 'bg-red-100 text-red-700' },
-  ];
-
-  public readonly menuItems: LeadMenuItem[] = [
-    { label: 'Informations',  icon: 'feather:user',        route: 'informations' },
-    { label: 'Identité',      icon: 'feather:user-check',   route: 'identite' },
-    { label: 'Foyer',         icon: 'feather:users',        route: 'foyer' },
-    { label: 'Conformité',    icon: 'feather:flag',         route: 'conformite' },
-    { label: 'Questionnaires', icon: 'feather:clipboard',   route: 'questionnaires' },
-    { label: 'Qualification', icon: 'feather:clipboard',    route: 'qualification' },
-    { label: 'Score',         icon: 'feather:bar-chart-2',  route: 'score' },
-    { label: 'Timeline',      icon: 'feather:clock',        route: 'timeline' },
-    { label: 'Tâches',        icon: 'feather:check-square', route: 'taches' },
-    { label: 'Activités',     icon: 'feather:activity',     route: 'activites' },
-    { label: 'Rappels',      icon: 'feather:bell',         route: 'rappels' },
-    { label: 'Opportunités', icon: 'feather:briefcase',    route: 'opportunites' },
-    { label: 'Doublons',      icon: 'feather:copy',         route: 'doublons' },
-    { label: 'Consentement',  icon: 'feather:shield',       route: 'consentement' },
-  ];
+  public isLifecycleCurrent(stepStatus: string): boolean {
+    const current = this._lifecycleOrder[this.lead()?.status ?? ''] ?? -1;
+    return current === this._lifecycleOrder[stepStatus];
+  }
 
   constructor() {
     // Le lead est rechargé à une dizaine d'endroits (actions du menu, polling).
@@ -621,6 +324,7 @@ export class EditLeadNavigation implements OnDestroy {
     // fois : il suffit qu'un jour un `lead.set()` de plus soit ajouté ici pour
     // que les onglets restent corrects.
     effect(() => this._leadEditContext.set(this.lead()));
+    this._leadEditContext.registerReloader(() => this.reload());
 
     // Le foyer, la PPE, FATCA et les questionnaires sont chargés une fois pour
     // la fiche entière : l'en-tête en a besoin pour ses badges, et chaque onglet
@@ -642,15 +346,12 @@ export class EditLeadNavigation implements OnDestroy {
           return EMPTY;
         }),
       ).subscribe((lead) => {
-        this.lead.set(lead);
+        this._setLead(lead);
         this.isLoading.set(false);
-        this._breadcrumbService.set([
-          { label: 'Leads', link: ['/leads'] },
-          { label: this._displayName(lead) },
-        ]);
         this._loadScoreFactors(id);
         this._loadNextAction(id);
         this._loadIntentLevel(id);
+        this._loadDuplicates(lead);
         this._startPolling(id);
       });
     });
@@ -660,26 +361,21 @@ export class EditLeadNavigation implements OnDestroy {
     this._stopPolling();
   }
 
-  public displayName(): string {
-    return this._displayName(this.lead());
+  /** Relit le lead pour toute la fiche — voir `LeadEditContext.reload`. */
+  public reload(): void {
+    this._leadsApiService.getLead(this.id()).pipe(catchError(() => EMPTY)).subscribe((lead) => {
+      this._setLead(lead);
+      this._loadNextAction(this.id());
+    });
+    this.compliance.reloadAfterWrite();
   }
 
-  public statusMeta(): { label: string; severity: Severity } {
-    return leadStatusMeta(this.lead()?.status);
-  }
-
-  public tempMeta(): TemperatureMeta {
-    return temperatureMeta(this.lead()?.intentLevel);
-  }
-
-  public scoreBadgeClasses(): string {
-    return temperatureMeta(this.lead()?.intentLevel).colorClasses;
-  }
-
-  public scoreCircleClasses(): string {
-    const s = this.lead()?.score ?? 0;
-    const c = scoreColor(s);
-    return `${c.bg} ${c.text}`;
+  private _setLead(lead: LeadDto): void {
+    this.lead.set(lead);
+    this._breadcrumbService.set([
+      { label: 'Leads', link: ['/leads'] },
+      { label: displayName(lead) },
+    ]);
   }
 
   public closeLead(): void {
@@ -696,29 +392,9 @@ export class EditLeadNavigation implements OnDestroy {
         }).pipe(catchError(() => { this._snackbar.error('Erreur', 'Clôture échouée.'); return EMPTY; }))
           .subscribe(() => {
             this._snackbar.success('Lead clôturé', 'Le lead a été marqué comme perdu.');
-            this._leadsApiService.getLead(this.id()).pipe(catchError(() => EMPTY))
-              .subscribe((lead) => this.lead.set(lead));
+            this.reload();
           });
       },
-    });
-  }
-
-  public recordFirstContact(): void {
-    this.isRecordingFirstContact.set(true);
-    this._leadsApiService.recordFirstContact(this.id(), { contactedAt: new Date().toISOString() }).pipe(
-      catchError(() => { this._snackbar.error('Erreur', 'Enregistrement échoué.'); return EMPTY; }),
-      finalize(() => this.isRecordingFirstContact.set(false)),
-      exhaustMap(() => {
-        this._snackbar.success(
-          'Premier contact',
-          'Le premier contact a été enregistré.',
-        );
-        return this._leadsApiService
-          .getLead(this.id())
-          .pipe(catchError(() => EMPTY))
-      })
-    ).subscribe((lead) => {
-      this.lead.set(lead)
     });
   }
 
@@ -736,34 +412,31 @@ export class EditLeadNavigation implements OnDestroy {
         ).subscribe(() => {
           this._snackbar.success('Lead en file', 'Le lead a été remis en file d\'attente.');
           this.isReturningToQueue.set(false);
-          this._leadsApiService.getLead(this.id()).pipe(catchError(() => EMPTY))
-            .subscribe((lead) => this.lead.set(lead));
+          this.reload();
         });
       },
     });
   }
 
-  public acknowledgeNextAction(action: string): void {
-    this._leadsApiService.acknowledgeLeadNextAction(this.id(), { action: action as any }).pipe(
-      catchError(() => EMPTY),
-    ).subscribe(() => {
-      this.nextAction.set(null);
-      if (action === 'Accept') {
-        this._snackbar.success('Action acceptée', 'L\'action recommandée a été prise en charge.');
-      }
-    });
+  /**
+   * « Lancer » : l'action recommandée est acceptée, et quand elle consiste à qualifier le lead,
+   * l'agent est mené à l'onglet où il le fait — accepter sans y aller ne faisait rien voir.
+   */
+  public acceptNextAction(): void {
+    const action = this.nextAction();
+    this.acknowledgeNextAction('Accept');
+    if (action?.actionType === NextActionDtoActionTypeEnum.Qualify
+        || action?.actionType === NextActionDtoActionTypeEnum.CompleteQualification) {
+      this._router.navigate(['/leads', this.id(), 'qualification']);
+    }
   }
 
-  public setIntentLevel(level: string): void {
-    const intentMap: Record<string, string> = { '0': 'Cold', '1': 'Warm', '2': 'Hot', '3': 'Hot' };
-    this._leadsApiService.setLeadIntentLevel(this.id(), {
-      intentLevel: intentMap[level] as any,
+  public acknowledgeNextAction(action: 'Accept' | 'Ignore'): void {
+    this._leadsApiService.acknowledgeLeadNextAction(this.id(), {
+      action: action === 'Accept' ? AcknowledgeNextActionRequestActionEnum.Accept : AcknowledgeNextActionRequestActionEnum.Ignore,
     }).pipe(
-      catchError(() => { this._snackbar.error('Erreur', 'Impossible de modifier la température.'); return EMPTY; }),
-    ).subscribe(() => {
-      this.lead.update((l) => l ? { ...l, intentLevel: level } : l);
-      this._snackbar.success('Température mise à jour', `Température modifiée.`);
-    });
+      catchError(() => EMPTY),
+    ).subscribe(() => this.nextAction.set(null));
   }
 
   public reopenLead(): void {
@@ -777,8 +450,7 @@ export class EditLeadNavigation implements OnDestroy {
     ).subscribe(() => {
       this._snackbar.success('Lead réouvert', 'Le lead est de nouveau actif.');
       this.isReopening.set(false);
-      this._leadsApiService.getLead(this.id()).pipe(catchError(() => EMPTY))
-        .subscribe((lead) => this.lead.set(lead));
+      this.reload();
     });
   }
 
@@ -793,12 +465,8 @@ export class EditLeadNavigation implements OnDestroy {
       data: { lead: currentLead },
     });
 
-    ref.closed.subscribe((result: any) => {
-      if (result === 'nurtured' || result === 'recycled') {
-        this._leadsApiService.getLead(this.id()).pipe(
-          catchError(() => EMPTY),
-        ).subscribe((lead) => this.lead.set(lead));
-      }
+    ref.closed.subscribe((result: unknown) => {
+      if (result === 'nurtured' || result === 'recycled') this.reload();
     });
   }
 
@@ -818,11 +486,7 @@ export class EditLeadNavigation implements OnDestroy {
         this._router.navigate(['/customers', result.clientId]);
         return;
       }
-      if (result) {
-        this._leadsApiService.getLead(this.id()).pipe(
-          catchError(() => EMPTY),
-        ).subscribe((lead) => this.lead.set(lead));
-      }
+      if (result) this.reload();
     });
   }
 
@@ -838,17 +502,7 @@ export class EditLeadNavigation implements OnDestroy {
     });
 
     ref.closed.subscribe((updated) => {
-      if (updated) {
-        this._leadsApiService.getLead(this.id()).pipe(
-          catchError(() => EMPTY),
-        ).subscribe((lead) => {
-          this.lead.set(lead);
-          this._breadcrumbService.set([
-            { label: 'Leads', link: ['/leads'] },
-            { label: this._displayName(lead) },
-          ]);
-        });
-      }
+      if (updated) this.reload();
     });
   }
 
@@ -861,14 +515,7 @@ export class EditLeadNavigation implements OnDestroy {
     });
 
     ref.closed.subscribe((reassigned) => {
-      if (reassigned) {
-        // Reload lead to reflect new assignment
-        this._leadsApiService.getLead(this.id()).pipe(
-          catchError(() => EMPTY),
-        ).subscribe((lead) => {
-          this.lead.set(lead);
-        });
-      }
+      if (reassigned) this.reload();
     });
   }
 
@@ -897,6 +544,27 @@ export class EditLeadNavigation implements OnDestroy {
     });
   }
 
+  /**
+   * Le compteur du menu « Doublons » : la même recherche que l'onglet, moins le lead lui-même et
+   * les correspondances déjà écartées. Une panne laisse le compteur vide, pas l'écran.
+   */
+  private _loadDuplicates(lead: LeadDto): void {
+    forkJoin({
+      duplicates: this._leadsApiService
+        .findLeadDuplicates(
+          lead.phoneNumber ?? undefined, lead.email ?? undefined, lead.nationalId ?? undefined,
+          lead.customerReference ?? undefined, lead.fullName ?? undefined,
+          undefined, undefined, undefined, undefined, lead.id,
+        )
+        .pipe(catchError(() => of([] as DuplicateMatchResult[]))),
+      dismissals: this._leadsApiService.listDismissals(lead.id ?? this.id()).pipe(catchError(() => of([]))),
+    }).subscribe(({ duplicates, dismissals }) => {
+      this._duplicates.set(duplicates ?? []);
+      // `candidateLeadId` est le lead écarté ; `leadId` est celui-ci.
+      this._dismissed.set(new Set((dismissals ?? []).map((d) => d.candidateLeadId ?? '').filter(Boolean)));
+    });
+  }
+
   /** Poll every 30s to pick up real-time score recalculations */
   private _startPolling(leadId: string): void {
     this._pollTimer = setInterval(() => {
@@ -904,8 +572,6 @@ export class EditLeadNavigation implements OnDestroy {
         catchError(() => EMPTY),
       ).subscribe((lead) => {
         const current = this.lead();
-        // `updatedAt` est dans la condition pour que l'en-tête (nom, badges) rattrape aussi une
-        // modification faite depuis l'onglet Informations, qui tient son propre signal.
         if (current && (current.score !== lead.score
             || current.intentLevel !== lead.intentLevel
             || current.updatedAt !== lead.updatedAt)) {
@@ -921,13 +587,6 @@ export class EditLeadNavigation implements OnDestroy {
       clearInterval(this._pollTimer);
       this._pollTimer = null;
     }
-  }
-
-  private _displayName(lead: LeadDto | null | undefined): string {
-    if (!lead) return 'Lead';
-    if (lead.fullName) return lead.fullName;
-    const parts = [lead.firstName, lead.lastName].filter(Boolean);
-    return parts.length ? parts.join(' ') : lead.phoneNumber ?? lead.email ?? 'Lead';
   }
 }
 
