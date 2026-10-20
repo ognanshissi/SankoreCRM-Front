@@ -23,5 +23,8 @@ export interface ConsentDto {
     withdrawnAt?: string | null;
     withdrawnBy?: string | null;
     withdrawalReason?: string | null;
+    proofActivityId?: string | null;
+    subjectType?: string | null;
+    subjectId?: string | null;
 }
 

@@ -13,7 +13,7 @@
 
 export interface RecordConsentRequest { 
     /**
-     * One of: Marketing, DataProcessing, EmailContact, SmsContact, PhoneContact, ThirdPartySharing, ProfilingAndAnalytics, LocationTracking, HealthData
+     * One of: Marketing, DataProcessing, EmailContact, SmsContact, PhoneContact, ThirdPartySharing, ProfilingAndAnalytics, LocationTracking, HealthData, CreditBureauCheck
      */
     type?: RecordConsentRequestTypeEnum;
     /**
@@ -21,6 +21,8 @@ export interface RecordConsentRequest {
      */
     channel?: RecordConsentRequestChannelEnum;
     proofReference?: string | null;
+    granted?: boolean;
+    proofActivityId?: string | null;
 }
 export enum RecordConsentRequestTypeEnum {
     Marketing = 'Marketing',
@@ -31,7 +33,8 @@ export enum RecordConsentRequestTypeEnum {
     ThirdPartySharing = 'ThirdPartySharing',
     ProfilingAndAnalytics = 'ProfilingAndAnalytics',
     LocationTracking = 'LocationTracking',
-    HealthData = 'HealthData'
+    HealthData = 'HealthData',
+    CreditBureauCheck = 'CreditBureauCheck'
 };
 export enum RecordConsentRequestChannelEnum {
     WebForm = 'WebForm',

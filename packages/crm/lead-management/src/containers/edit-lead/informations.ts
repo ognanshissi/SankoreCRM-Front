@@ -25,7 +25,7 @@ import {
 } from '@sankore/crm-api';
 import {
   AuthenticationService,
-  completenessGapLabel,
+  completenessGapTitle,
   completenessGapSection,
   CustomFieldsCard,
   PERMISSIONS,
@@ -76,6 +76,7 @@ const GAP_SECTION_LABEL: Record<string, string> = {
   foyer: 'Foyer',
   questionnaires: 'Questionnaires',
   conformite: 'Conformité',
+  consentement: 'Consentements',
   client: 'Fiche client',
 };
 
@@ -199,7 +200,7 @@ export class LeadInformationsPage {
     (this.completeness()?.gaps ?? []).map((g) => {
       const section = completenessGapSection(g.code);
       return {
-        label: g.detail || completenessGapLabel(g.code),
+        label: completenessGapTitle(g),
         where: GAP_SECTION_LABEL[section] ?? 'Identité',
         route: section === 'client' ? null : section,
         blocking: g.blocking ?? false,

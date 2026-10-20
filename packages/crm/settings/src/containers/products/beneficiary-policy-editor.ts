@@ -56,12 +56,15 @@ const DESIGNATION_ROLE_CODES = [
 ];
 
 /**
- * Codes de `requiredFieldsBeforeConversion`. Le contrat ne déclare qu'un
- * `Array<string>` sans énumération ni endpoint de référentiel : ces codes sont
- * une proposition front, alignée sur les champs du formulaire d'identité du
- * socle (`PersonIdentityModel`) et sur les sujets de conformité déjà gérés
- * (PPE, FATCA, consentement santé, KYC). Ils devront être confirmés côté
- * back-office. L'administrateur ne voit jamais le code, seulement le libellé.
+ * Codes de `requiredFieldsBeforeConversion` : exactement le catalogue fermé du serveur
+ * (`PersonFieldCode`, Kernel), qui REFUSE tout code inconnu à l'enregistrement de la politique.
+ *
+ * L'écran proposait auparavant des codes de son invention (`LastName`, `AddressLine`,
+ * `HealthConsent`, `KycTier`…) : aucun n'existait côté serveur, si bien que cocher une case faisait
+ * échouer l'enregistrement (`BENEFICIARY_POLICY_UNKNOWN_REQUIRED_FIELD`). Le niveau KYC a son propre
+ * champ plus bas, FATCA dépend du réglage de conformité de l'établissement, et le consentement santé
+ * est exigé par les questionnaires qui en ont besoin : aucun des trois n'est un champ requis.
+ * L'administrateur ne voit jamais le code, seulement le libellé.
  */
 const REQUIRED_FIELD_GROUPS: {
   title: string;
@@ -70,24 +73,38 @@ const REQUIRED_FIELD_GROUPS: {
   {
     title: 'Identité',
     fields: [
-      { code: 'LastName', label: 'Nom' },
-      { code: 'FirstName', label: 'Prénom' },
-      { code: 'BirthDate', label: 'Date de naissance' },
-      { code: 'Gender', label: 'Sexe' },
-      { code: 'AddressLine', label: 'Adresse' },
-      { code: 'City', label: 'Ville' },
-      { code: 'CountryCode', label: 'Pays' },
-      { code: 'NationalId', label: "Pièce d'identité" },
-      { code: 'SpouseUnionType', label: "Type d'union du conjoint" },
+      { code: 'LAST_NAME', label: 'Nom' },
+      { code: 'FIRST_NAME', label: 'Prénom' },
+      { code: 'USAGE_NAME', label: "Nom d'usage" },
+      { code: 'BIRTH_DATE', label: 'Date de naissance' },
+      { code: 'GENDER', label: 'Sexe' },
+      { code: 'ADDRESS', label: 'Adresse' },
+      { code: 'POSTAL_CODE', label: 'Boîte postale' },
+      { code: 'CITY', label: 'Ville' },
+      { code: 'COUNTRY', label: 'Pays' },
+    ],
+  },
+  {
+    title: 'Contact et demande',
+    fields: [
+      { code: 'PHONE', label: 'Téléphone' },
+      { code: 'EMAIL', label: 'E-mail' },
+      { code: 'NATIONAL_ID', label: "Pièce d'identité" },
+      { code: 'DESIRED_AMOUNT', label: 'Montant demandé' },
     ],
   },
   {
     title: 'Conformité',
+    fields: [{ code: 'PEP_STATUS', label: 'Statut PPE déclaré' }],
+  },
+  {
+    // Un consentement requis bloque la conversion tant que le prospect ne l'a pas donné ; l'onglet
+    // Consentements du lead le marque « Obligatoire ».
+    title: 'Consentements',
     fields: [
-      { code: 'PepStatus', label: 'Statut PPE' },
-      { code: 'FatcaDeclaration', label: 'Déclaration FATCA' },
-      { code: 'HealthConsent', label: 'Consentement santé' },
-      { code: 'KycTier', label: 'Niveau KYC' },
+      { code: 'CONSENT_DATA_PROCESSING', label: 'Traitement des données personnelles' },
+      { code: 'CONSENT_CREDIT_BUREAU', label: "Consultation du Bureau d'Information sur le Crédit" },
+      { code: 'CONSENT_THIRD_PARTY_SHARING', label: 'Partage avec un partenaire (assureur)' },
     ],
   },
 ];

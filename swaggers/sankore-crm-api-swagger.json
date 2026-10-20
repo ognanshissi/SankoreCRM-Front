@@ -29384,6 +29384,20 @@
           "withdrawalReason": {
             "type": "string",
             "nullable": true
+          },
+          "proofActivityId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "subjectType": {
+            "type": "string",
+            "nullable": true
+          },
+          "subjectId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -36158,6 +36172,13 @@
               "$ref": "#/components/schemas/MissingQuestionnaire"
             },
             "nullable": true
+          },
+          "requiredConsents": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -41357,10 +41378,11 @@
               "ThirdPartySharing",
               "ProfilingAndAnalytics",
               "LocationTracking",
-              "HealthData"
+              "HealthData",
+              "CreditBureauCheck"
             ],
             "type": "string",
-            "description": "One of: Marketing, DataProcessing, EmailContact, SmsContact, PhoneContact, ThirdPartySharing, ProfilingAndAnalytics, LocationTracking, HealthData"
+            "description": "One of: Marketing, DataProcessing, EmailContact, SmsContact, PhoneContact, ThirdPartySharing, ProfilingAndAnalytics, LocationTracking, HealthData, CreditBureauCheck"
           },
           "channel": {
             "enum": [
@@ -41378,6 +41400,14 @@
           },
           "proofReference": {
             "type": "string",
+            "nullable": true
+          },
+          "granted": {
+            "type": "boolean"
+          },
+          "proofActivityId": {
+            "type": "string",
+            "format": "uuid",
             "nullable": true
           }
         },

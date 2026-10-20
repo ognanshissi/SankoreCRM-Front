@@ -3,7 +3,7 @@ import { TasCard } from '@talisoft/ui/card';
 import { TasIcon } from '@talisoft/ui/icon';
 import { TasTag } from '@talisoft/ui/tag';
 import { CompletenessGap, LeadCompletenessDto } from '@sankore/crm-api';
-import { completenessGapLabel } from './compliance-labels';
+import { completenessGapLabel, completenessGapTitle } from './compliance-labels';
 
 /** Un manquant, enrichi de son libellé et de la section où le corriger. */
 export interface CompletenessGapView {
@@ -31,12 +31,17 @@ export type CompletenessSection =
   | 'foyer'
   | 'conformite'
   | 'questionnaires'
+  | 'consentement'
   | 'client';
 
 export function completenessGapSection(code: string | null | undefined): CompletenessSection {
   const value = code ?? '';
   if (value.startsWith('FATCA') || value.startsWith('PEP')) return 'conformite';
-  if (value.startsWith('QUESTIONNAIRE') || value.includes('CONSENT')) return 'questionnaires';
+  // Un consentement exigé par la ligne de produit se recueille dans l'onglet Consentements ; le
+  // consentement santé, lui, se donne par personne avec son questionnaire.
+  if (value === 'CONSENT_MISSING') return 'consentement';
+  if (value.startsWith('QUESTIONNAIRE') || value === 'MISSING_QUESTIONNAIRE' || value.includes('CONSENT')) return 'questionnaires';
+  if (value.startsWith('CUSTOMER_')) return 'client';
   if (value.startsWith('SPOUSE') || value.startsWith('CHILD') || value.startsWith('HOUSEHOLD')) return 'foyer';
   if (value.startsWith('KYC')) return 'client';
   return 'identite';
@@ -45,8 +50,9 @@ export function completenessGapSection(code: string | null | undefined): Complet
 function toView(gap: CompletenessGap): CompletenessGapView {
   return {
     code: gap.code ?? '',
-    label: completenessGapLabel(gap.code),
-    detail: gap.detail ?? null,
+    // Le champ ou le consentement nommé quand le détail est un code connu, plutôt que le code brut.
+    label: completenessGapTitle(gap) !== (gap.detail ?? '') ? completenessGapTitle(gap) : completenessGapLabel(gap.code),
+    detail: completenessGapTitle(gap) !== (gap.detail ?? '') ? null : gap.detail ?? null,
     actionHint: gap.actionHint ?? null,
     blocking: gap.blocking ?? false,
   };

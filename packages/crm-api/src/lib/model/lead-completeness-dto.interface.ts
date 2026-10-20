@@ -22,5 +22,6 @@ export interface LeadCompletenessDto {
     canConvert?: boolean;
     gaps?: Array<CompletenessGap> | null;
     missingQuestionnaires?: Array<MissingQuestionnaire> | null;
+    requiredConsents?: Array<string> | null;
 }
 

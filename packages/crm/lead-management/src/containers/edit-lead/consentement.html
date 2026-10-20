@@ -1,0 +1,245 @@
+<div class="pb-6 flex flex-col gap-4">
+  <converted-lead-notice></converted-lead-notice>
+
+  @if (isLoading()) {
+    <div class="flex justify-center py-24"><tas-spinner size="10" class="text-primary"></tas-spinner></div>
+  } @else if (loadFailed()) {
+    <tas-card class="block">
+      <div class="p-10 text-center" role="alert">
+        <p class="text-sm font-medium text-slate-700">Consentements indisponibles</p>
+        <p class="text-sm text-slate-500 mt-1">La liste n'a pas pu être chargée.</p>
+        <button tas-outlined-button color="primary" type="button" class="mt-4" (click)="retry()">Réessayer</button>
+      </div>
+    </tas-card>
+  } @else {
+    <!-- En-tête : ce qui manque pour convertir -->
+    <tas-card class="block">
+      <div class="p-5 flex items-center gap-5 flex-wrap">
+        <svg viewBox="0 0 36 36" class="w-14 h-14 shrink-0 -rotate-90" role="img"
+             [attr.aria-label]="requiredGiven() + ' sur ' + requiredCount() + ' consentements obligatoires recueillis'">
+          <circle cx="18" cy="18" r="15.9155" fill="none" stroke-width="3" class="stroke-slate-100"></circle>
+          <circle cx="18" cy="18" r="15.9155" fill="none" stroke-width="3" stroke-linecap="round"
+                  pathLength="100" stroke-dasharray="100" [attr.stroke-dashoffset]="ringOffset()"
+                  [class]="requiredGiven() === requiredCount() ? 'stroke-green-600' : 'stroke-amber-500'"></circle>
+        </svg>
+        <div class="flex-1 min-w-64">
+          <h2 class="text-xl font-bold text-slate-900">{{ headline() }}</h2>
+          <p class="text-sm text-slate-500 mt-0.5">{{ subline() }}</p>
+        </div>
+        <p class="text-sm text-slate-500 flex items-center gap-1.5">
+          <tas-icon iconName="feather:shield" style="font-size:14px"></tas-icon>
+          Chaque décision est conservée avec sa preuve
+        </p>
+      </div>
+    </tas-card>
+
+    <!-- Une carte par finalité -->
+    @for (view of purposes(); track view.purpose.type) {
+      <div class="rounded-2xl bg-white shadow-sm border"
+           [class]="collecting() === view.purpose.type || withdrawing() === view.purpose.type ? 'border-2 border-primary' : 'border-slate-100'">
+        <div class="p-5 flex items-center gap-4 flex-wrap">
+          <span class="w-10 h-10 shrink-0 rounded-xl flex items-center justify-center"
+                [class]="view.required ? 'bg-orange-50 text-orange-700' : 'bg-slate-50 text-slate-600'">
+            <tas-icon [iconName]="view.purpose.icon" style="font-size:16px"></tas-icon>
+          </span>
+          <div class="flex-1 min-w-64">
+            <p class="flex items-center gap-2 flex-wrap">
+              <span class="font-semibold text-slate-900">{{ view.purpose.title }}</span>
+              @if (view.required) {
+                <span class="px-2 py-0.5 rounded-md bg-orange-50 text-[11px] font-semibold text-orange-800">Obligatoire</span>
+              } @else {
+                <span class="px-2 py-0.5 rounded-md bg-slate-100 text-[11px] font-semibold text-slate-600">Facultatif</span>
+              }
+            </p>
+            <p class="text-sm text-slate-600 mt-0.5">{{ describe(view) }}</p>
+          </div>
+
+          <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-medium"
+                [class]="view.state === 'granted' ? 'bg-green-50 text-green-800'
+                       : view.state === 'refused' ? 'bg-red-50 text-red-700'
+                       : view.state === 'withdrawn' ? 'bg-amber-50 text-amber-800'
+                       : 'bg-slate-50 text-slate-600'">
+            <tas-icon [iconName]="view.state === 'granted' ? 'feather:check' : view.state === 'refused' ? 'feather:x' : view.state === 'withdrawn' ? 'feather:rotate-ccw' : 'feather:minus'" style="font-size:12px"></tas-icon>
+            {{ stateLabel(view) }}
+          </span>
+
+          @if (collecting() !== view.purpose.type && withdrawing() !== view.purpose.type) {
+            @if (view.state === 'granted') {
+              @if (canWithdraw()) {
+                <button type="button" class="px-4 py-2 rounded-full border border-slate-200 text-sm font-semibold text-red-700 hover:bg-red-50"
+                        (click)="startWithdraw(view)">
+                  Retirer
+                </button>
+              }
+            } @else if (canRecord()) {
+              <button type="button" class="px-4 py-2 rounded-full text-sm font-semibold"
+                      [class]="view.required ? 'bg-primary text-white hover:opacity-90' : 'bg-slate-100 text-slate-800 hover:bg-slate-200'"
+                      (click)="startCollect(view)">
+                {{ view.state === 'none' ? 'Recueillir' : 'Recueillir à nouveau' }}
+              </button>
+            }
+          }
+        </div>
+
+        <!-- Recueil -->
+        @if (collecting() === view.purpose.type) {
+          <form [formRoot]="collectForm" class="border-t border-slate-100 bg-slate-50/50 px-5 py-4 flex flex-col gap-4 rounded-b-2xl">
+            <div class="flex flex-wrap gap-6">
+              <div>
+                <p class="text-sm font-semibold text-slate-800" id="consent-decision-label">Réponse du prospect</p>
+                <div class="mt-2 inline-flex rounded-full bg-slate-100 p-1" role="radiogroup" aria-labelledby="consent-decision-label">
+                  <button type="button" role="radio" class="flex items-center gap-1.5 px-4 py-1.5 rounded-full text-sm"
+                          [class]="collectModel().decision === 'accept' ? 'bg-white shadow-sm font-semibold text-green-800' : 'text-slate-600'"
+                          [attr.aria-checked]="collectModel().decision === 'accept'" (click)="setDecision('accept')">
+                    <tas-icon iconName="feather:check" style="font-size:13px"></tas-icon> Accepte
+                  </button>
+                  <button type="button" role="radio" class="flex items-center gap-1.5 px-4 py-1.5 rounded-full text-sm"
+                          [class]="collectModel().decision === 'refuse' ? 'bg-white shadow-sm font-semibold text-red-700' : 'text-slate-600'"
+                          [attr.aria-checked]="collectModel().decision === 'refuse'" (click)="setDecision('refuse')">
+                    <tas-icon iconName="feather:x" style="font-size:13px"></tas-icon> Refuse
+                  </button>
+                </div>
+              </div>
+              <div class="flex-1 min-w-64">
+                <p class="text-sm font-semibold text-slate-800" id="consent-channel-label">Comment il l'a donnée</p>
+                <div class="mt-2 flex flex-wrap gap-2" role="radiogroup" aria-labelledby="consent-channel-label">
+                  @for (channel of channels; track channel.value) {
+                    <button type="button" role="radio"
+                            class="flex items-center gap-2 px-3.5 py-2 rounded-xl border text-sm bg-white"
+                            [class]="collectModel().channel === channel.value ? 'border-2 border-primary font-semibold text-slate-900' : 'border-slate-200 text-slate-700 hover:border-slate-300'"
+                            [attr.aria-checked]="collectModel().channel === channel.value"
+                            (click)="setChannel(channel.value)">
+                      <tas-icon [iconName]="channel.icon" style="font-size:14px"></tas-icon>
+                      {{ channel.label }}
+                    </button>
+                  }
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <p class="text-sm font-semibold text-slate-800">Preuve</p>
+              @if (showCalls()) {
+                <div class="mt-2 flex flex-col gap-2" role="radiogroup" aria-label="Appel qui prouve la réponse">
+                  @for (call of calls(); track call.id) {
+                    <button type="button" role="radio"
+                            class="flex items-center gap-3 rounded-xl border bg-white px-4 py-3 text-left"
+                            [class]="collectModel().proofActivityId === call.id ? 'border-2 border-primary' : 'border-slate-200 hover:border-slate-300'"
+                            [attr.aria-checked]="collectModel().proofActivityId === call.id"
+                            (click)="setProofCall(call.id!)">
+                      <span class="w-4 h-4 shrink-0 rounded-full border-2 flex items-center justify-center"
+                            [class]="collectModel().proofActivityId === call.id ? 'border-primary' : 'border-slate-300'">
+                        @if (collectModel().proofActivityId === call.id) { <span class="w-2 h-2 rounded-full bg-primary"></span> }
+                      </span>
+                      <span class="flex-1 min-w-0">
+                        <span class="block text-sm font-semibold text-slate-900">{{ callLabel(call) }}</span>
+                        <span class="block text-xs text-slate-500">{{ callDetail(call) }}</span>
+                      </span>
+                      @if (call.ctiCallReference) {
+                        <tas-icon iconName="feather:play-circle" class="text-slate-500" style="font-size:16px"
+                                  [attr.title]="'Enregistrement ' + call.ctiCallReference"></tas-icon>
+                      }
+                    </button>
+                  }
+                  <button type="button" class="self-start text-xs font-semibold text-primary hover:underline" (click)="setProofCall('')">
+                    Saisir une autre référence
+                  </button>
+                </div>
+              } @else if (collectModel().channel === 'Phone') {
+                <div class="mt-2 rounded-xl border border-dashed border-slate-300 bg-white px-4 py-3 flex items-center gap-3 flex-wrap">
+                  <p class="flex-1 text-sm text-slate-600">Aucun appel n'est noté sur ce lead : notez-le, il servira de preuve.</p>
+                  <button tas-outlined-button color="primary" type="button" (click)="logCall()">
+                    <tas-icon iconName="feather:phone" style="font-size:13px"></tas-icon>&nbsp;Noter l'appel
+                  </button>
+                </div>
+              }
+              @if (!collectModel().proofActivityId) {
+                <tas-form-field class="mt-2">
+                  <tas-label class="sr-only">Référence de la preuve</tas-label>
+                  <input tasInput type="text" [attr.placeholder]="selectedChannel()?.proofHint ?? 'Référence de la preuve'"
+                         [formField]="collectForm.proofReference" />
+                  @if (collectForm.proofReference().touched() && collectForm.proofReference().invalid()) {
+                    <tas-error>{{ collectForm.proofReference().errors()[0].message }}</tas-error>
+                  }
+                </tas-form-field>
+              }
+            </div>
+
+            <div class="flex items-center gap-3 flex-wrap pt-1">
+              <p class="flex-1 text-sm text-slate-500">Enregistré par {{ recorder() }}, horodaté automatiquement.</p>
+              <button tas-text-button type="button" (click)="cancelCollect()">Annuler</button>
+              <button tas-raised-button color="primary" type="button"
+                      [disabled]="collectForm().invalid() || collectForm().submitting()"
+                      [isLoading]="collectForm().submitting()"
+                      (click)="saveCollect(view)">
+                {{ collectModel().decision === 'accept' ? 'Enregistrer l’accord' : 'Enregistrer le refus' }}
+              </button>
+            </div>
+          </form>
+        }
+
+        <!-- Retrait -->
+        @if (withdrawing() === view.purpose.type) {
+          <form [formRoot]="withdrawForm" class="border-t border-slate-100 bg-slate-50/50 px-5 py-4 flex items-end gap-3 flex-wrap rounded-b-2xl">
+            <tas-form-field class="flex-1 min-w-64">
+              <tas-label>Pourquoi le prospect retire-t-il son accord ?</tas-label>
+              <input tasInput type="text" placeholder="Ex. Ne souhaite plus être démarché" [formField]="withdrawForm.reason" />
+              @if (withdrawForm.reason().touched() && withdrawForm.reason().invalid()) {
+                <tas-error>{{ withdrawForm.reason().errors()[0].message }}</tas-error>
+              }
+            </tas-form-field>
+            <button tas-text-button type="button" (click)="withdrawing.set(null)">Annuler</button>
+            <button tas-raised-button color="warn" type="button"
+                    [disabled]="withdrawForm().invalid() || withdrawForm().submitting()"
+                    [isLoading]="withdrawForm().submitting()"
+                    (click)="saveWithdraw(view)">
+              Retirer le consentement
+            </button>
+          </form>
+        }
+      </div>
+    }
+
+    <!-- Historique -->
+    <tas-card class="block">
+      <div class="p-5">
+        <div class="flex items-center justify-between gap-3 flex-wrap">
+          <h3 class="text-base font-bold text-slate-900">Historique des consentements</h3>
+          <p class="text-sm text-slate-500">Rien n'est effacé : un retrait s'ajoute à la suite</p>
+        </div>
+        @if (history().length === 0) {
+          <div class="mt-4 rounded-xl bg-slate-50 px-5 py-4 flex items-start gap-3">
+            <tas-icon iconName="feather:shield" class="text-slate-400 shrink-0 mt-0.5" style="font-size:16px"></tas-icon>
+            <p class="text-sm text-slate-600">
+              Aucun consentement recueilli pour l'instant. Chaque réponse apparaîtra ici avec sa date, son canal, sa preuve
+              et la personne qui l'a enregistrée.
+            </p>
+          </div>
+        } @else {
+          <tas-table [data]="history()" identifierField="key" [config]="historyTable" [hasCaption]="false">
+            <ng-template #body let-entry>
+              <tr>
+                <td class="py-3">
+                  <div class="flex items-start gap-3">
+                    <span class="w-8 h-8 shrink-0 rounded-full flex items-center justify-center"
+                          [class]="entry.kind === 'granted' ? 'bg-green-50 text-green-700' : entry.kind === 'refused' ? 'bg-red-50 text-red-700' : 'bg-amber-50 text-amber-800'">
+                      <tas-icon [iconName]="entry.kind === 'granted' ? 'feather:check' : entry.kind === 'refused' ? 'feather:x' : 'feather:rotate-ccw'" style="font-size:13px"></tas-icon>
+                    </span>
+                    <div class="flex-1 min-w-0">
+                      <p class="text-sm font-semibold text-slate-800">{{ entry.title }}</p>
+                      <p class="text-xs text-slate-500 mt-0.5">{{ entry.detail }}</p>
+                    </div>
+                    <div class="text-right shrink-0">
+                      <p class="text-xs text-slate-600">{{ historyDate(entry.at) }}</p>
+                      @if (entry.by) { <p class="text-xs text-slate-400">par {{ entry.by }}</p> }
+                    </div>
+                  </div>
+                </td>
+              </tr>
+            </ng-template>
+          </tas-table>
+        }
+      </div>
+    </tas-card>
+  }
+</div>

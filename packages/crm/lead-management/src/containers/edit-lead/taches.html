@@ -1,0 +1,224 @@
+@if (isLoading()) {
+  <div class="flex justify-center py-24">
+    <tas-spinner size="10" class="text-primary"></tas-spinner>
+  </div>
+} @else {
+  <div class="pb-6 flex flex-col gap-4">
+    <converted-lead-notice></converted-lead-notice>
+
+    <!-- En-tête -->
+    <tas-card class="block">
+      <div class="px-5 py-4 flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 class="text-lg font-semibold text-slate-800">Tâches</h2>
+          <p class="text-sm text-slate-500 mt-0.5">{{ summary() }}</p>
+        </div>
+        <div class="flex flex-wrap items-center gap-3">
+          <div class="inline-flex rounded-xl bg-slate-100 p-1" role="tablist" aria-label="Filtrer les tâches">
+            @for (f of filters(); track f.key) {
+              <button
+                type="button"
+                role="tab"
+                [attr.aria-selected]="filter() === f.key"
+                class="px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
+                [class]="filter() === f.key ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-600 hover:text-slate-800'"
+                (click)="filter.set(f.key)"
+              >
+                {{ f.label }} <span class="tabular-nums text-slate-400">{{ f.count }}</span>
+              </button>
+            }
+          </div>
+          @if (canManageTask()) {
+            <button tas-raised-button color="primary" type="button" (click)="openCreateTaskDrawer()">
+              <tas-icon iconName="feather:plus" style="font-size:14px"></tas-icon>
+              Nouvelle tâche
+            </button>
+          }
+        </div>
+      </div>
+    </tas-card>
+
+    @if (showOpen()) {
+      <!-- À faire -->
+      <section class="flex flex-col gap-2">
+        <h3 class="px-1 text-xs font-semibold uppercase tracking-wider text-slate-500">À faire · {{ openTasks().length }}</h3>
+
+        @if (openTasks().length === 0) {
+          <tas-card class="block">
+            <p class="px-5 py-3.5 text-sm text-slate-600 flex items-center gap-2.5">
+              <tas-icon iconName="feather:check" class="text-emerald-600" style="font-size:16px"></tas-icon>
+              Rien à faire pour l'instant.
+              @if (suggestions().length > 0) { Les suggestions ci-dessous aident à avancer le dossier. }
+            </p>
+          </tas-card>
+        } @else {
+          @for (task of openTasks(); track task.id) {
+            @let due = dueLabel(task);
+            @let assignee = assigneeName(task);
+            <!--
+              Toute la carte ouvre le détail ; les boutons qu'elle contient arrêtent la
+              propagation, sinon « Démarrer » ouvrirait aussi le drawer.
+            -->
+            <div
+              class="rounded-2xl border bg-white px-4 py-3.5 flex items-start gap-3 cursor-pointer transition-colors hover:border-slate-300"
+              [class]="due?.late ? 'border-red-200' : 'border-slate-200'"
+              role="button"
+              tabindex="0"
+              (click)="openTaskDetail(task)"
+              (keydown.enter)="openTaskDetail(task)"
+              (keydown.space)="$event.preventDefault(); openTaskDetail(task)"
+            >
+              <span class="w-9 h-9 rounded-lg bg-slate-100 text-slate-600 flex items-center justify-center shrink-0">
+                <tas-icon [iconName]="typeMeta(task.type).icon" style="font-size:15px"></tas-icon>
+              </span>
+              <div class="flex-1 min-w-0">
+                <div class="flex flex-wrap items-center gap-2">
+                  <p class="text-sm font-semibold text-slate-800">{{ task.title || typeMeta(task.type).label }}</p>
+                  @if (task.status === 'InProgress') { <tas-tag severity="info">En cours</tas-tag> }
+                  @if (isHighPriority(task)) {
+                    <tas-tag [severity]="task.priority === 'Critical' ? 'error' : 'warning'">
+                      {{ task.priority === 'Critical' ? 'Critique' : 'Prioritaire' }}
+                    </tas-tag>
+                  }
+                </div>
+                @if (task.description) {
+                  <p class="text-sm text-slate-500 mt-0.5 line-clamp-2">{{ task.description }}</p>
+                }
+                <div class="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1.5 text-xs text-slate-500">
+                  <span class="inline-flex items-center gap-1">
+                    <tas-icon [iconName]="typeMeta(task.type).icon" style="font-size:11px"></tas-icon>
+                    {{ typeMeta(task.type).label }}
+                  </span>
+                  @if (due) {
+                    <span class="inline-flex items-center gap-1" [class]="due.late ? 'text-functional-error font-medium' : ''">
+                      <tas-icon iconName="feather:calendar" style="font-size:11px"></tas-icon>
+                      {{ due.text }}
+                    </span>
+                  }
+                  @if (assignee) {
+                    <span class="inline-flex items-center gap-1">
+                      <tas-icon iconName="feather:user" style="font-size:11px"></tas-icon>
+                      {{ assignee === 'vous' ? 'Assignée à vous' : assignee }}
+                    </span>
+                  }
+                </div>
+              </div>
+
+              @if (canManageTask()) {
+                <div class="flex items-center gap-1 shrink-0">
+                  @if (task.status === 'Pending') {
+                    <button
+                      tas-outlined-button
+                      color="primary"
+                      type="button"
+                      [disabled]="actionInProgress() === task.id"
+                      (click)="startTask(task); $event.stopPropagation()"
+                    >Démarrer</button>
+                  } @else {
+                    <button
+                      tas-raised-button
+                      color="primary"
+                      type="button"
+                      [disabled]="actionInProgress() === task.id"
+                      (click)="completeTask(task); $event.stopPropagation()"
+                    >Terminer</button>
+                  }
+                  <button
+                    tas-button
+                    iconButton
+                    type="button"
+                    class="text-slate-400 hover:text-red-500"
+                    aria-label="Refuser cette tâche"
+                    title="Refuser cette tâche"
+                    (click)="declineTask(task); $event.stopPropagation()"
+                  >
+                    <tas-icon iconName="feather:x" style="font-size:14px"></tas-icon>
+                  </button>
+                </div>
+              }
+            </div>
+          }
+        }
+      </section>
+
+      <!-- Suggestions -->
+      @if (suggestions().length > 0) {
+        <section class="rounded-2xl bg-slate-100/70 p-4 flex flex-col gap-2.5">
+          <h3 class="text-sm font-semibold text-primary flex items-center gap-2">
+            <tas-icon iconName="feather:zap" style="font-size:14px"></tas-icon>
+            Pour faire avancer le dossier
+          </h3>
+          @for (s of suggestions(); track s.key) {
+            <div class="rounded-xl bg-white px-4 py-3 flex flex-wrap items-center gap-3">
+              <span class="w-9 h-9 rounded-lg bg-slate-100 text-slate-600 flex items-center justify-center shrink-0">
+                <tas-icon [iconName]="s.icon" style="font-size:15px"></tas-icon>
+              </span>
+              <div class="flex-1 min-w-48">
+                <p class="text-sm font-semibold text-slate-800">{{ s.title }}</p>
+                <p class="text-sm text-slate-500">{{ s.description }}</p>
+              </div>
+              <div class="flex items-center gap-1 shrink-0">
+                <button
+                  tas-raised-button
+                  color="primary"
+                  type="button"
+                  [isLoading]="addingSuggestion() === s.key"
+                  [disabled]="addingSuggestion() !== null"
+                  (click)="addSuggestion(s)"
+                >Ajouter</button>
+                <button tas-text-button type="button" [disabled]="addingSuggestion() === s.key" (click)="dismissSuggestion(s)">Ignorer</button>
+              </div>
+            </div>
+          }
+        </section>
+      }
+    }
+
+    @if (showClosed()) {
+      <!-- Terminées -->
+      <section class="flex flex-col gap-2">
+        <h3 class="px-1 text-xs font-semibold uppercase tracking-wider text-slate-500">Terminées · {{ closedTasks().length }}</h3>
+
+        @if (closedTasks().length === 0) {
+          <p class="px-1 text-sm text-slate-500">Aucune tâche terminée pour l'instant.</p>
+        } @else {
+          @for (task of closedTasks(); track task.id) {
+            @let cancelled = task.status === 'Cancelled';
+            @let timing = timingChip(task);
+            <div
+              class="rounded-2xl border border-slate-200 bg-slate-50/60 px-4 py-3.5 flex items-start gap-3 cursor-pointer transition-colors hover:border-slate-300"
+              role="button"
+              tabindex="0"
+              (click)="openTaskDetail(task)"
+              (keydown.enter)="openTaskDetail(task)"
+              (keydown.space)="$event.preventDefault(); openTaskDetail(task)"
+            >
+              <span
+                class="w-6 h-6 rounded-full flex items-center justify-center shrink-0 mt-0.5 text-white"
+                [class]="cancelled ? 'bg-slate-400' : 'bg-emerald-700'"
+              >
+                <tas-icon [iconName]="cancelled ? 'feather:x' : 'feather:check'" style="font-size:13px"></tas-icon>
+              </span>
+              <div class="flex-1 min-w-0">
+                <p class="text-sm font-semibold text-slate-500 line-through">{{ task.title || typeMeta(task.type).label }}</p>
+                <p class="text-sm text-slate-600 mt-0.5">{{ closedLabel(task) }}</p>
+                <div class="flex flex-wrap items-center gap-1.5 mt-1.5">
+                  <span class="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-2 py-0.5 text-xs font-medium text-slate-600">
+                    <tas-icon [iconName]="typeMeta(task.type).icon" style="font-size:11px"></tas-icon>
+                    {{ typeMeta(task.type).label }}
+                  </span>
+                  @if (timing) {
+                    <span
+                      class="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium"
+                      [class]="timing.onTime ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'"
+                    >{{ timing.text }}</span>
+                  }
+                </div>
+              </div>
+            </div>
+          }
+        }
+      </section>
+    }
+  </div>
+}

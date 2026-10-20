@@ -291,11 +291,57 @@ const GAP_CODE: Record<string, string> = {
   KYC_INVALID:                    'KYC non valide',
   KYC_TIER_INSUFFICIENT:          'Niveau KYC insuffisant',
   REQUIRED_FIELD_MISSING:         'Champ obligatoire manquant',
+  // Les codes que le serveur produit réellement (`CompletenessCodes`) : sans eux, la plupart des
+  // lignes de la jauge s'affichaient « Point à vérifier ».
+  PRODUCT_LINE_NOT_RESOLVED:      'Produit à rattacher au catalogue',
+  MISSING_QUESTIONNAIRE:          'Questionnaire à compléter',
+  MISSING_REQUIRED_FIELD:         'Champ obligatoire manquant',
+  PEP_NOT_DECLARED:               'Statut PPE non déclaré',
+  FATCA_DOCUMENTATION_OUTSTANDING: 'Justificatif FATCA manquant',
+  CUSTOMER_KYC_NOT_APPROVED:      'KYC du client non validé',
+  CUSTOMER_KYC_EXPIRED:           'KYC du client expiré',
+  CUSTOMER_KYC_REJECTED:          'KYC du client refusé',
+  CUSTOMER_KYC_TIER_INSUFFICIENT: 'Niveau KYC insuffisant',
+  CUSTOMER_NOT_ACTIVE:            'Fiche client inactive',
+  CUSTOMER_NOT_FOUND:             'Fiche client introuvable',
+  COMPLETENESS_CHECK_UNAVAILABLE: 'Vérification indisponible',
 };
 
 export function completenessGapLabel(code: string | null | undefined): string {
   if (!code) return UNKNOWN_CODE_LABEL;
   return GAP_CODE[code] ?? UNKNOWN_CODE_LABEL;
+}
+
+/**
+ * Les codes de champs requis (`PersonFieldCode` côté serveur), tels que les porte le `detail` d'un
+ * écart `MISSING_REQUIRED_FIELD` ou `CONSENT_MISSING`. Affichés tels quels, ils donnaient
+ * « CONSENT_CREDIT_BUREAU » à lire à l'agent.
+ */
+const REQUIRED_FIELD_LABEL: Record<string, string> = {
+  LAST_NAME:      'Nom',
+  FIRST_NAME:     'Prénom',
+  USAGE_NAME:     "Nom d'usage",
+  BIRTH_DATE:     'Date de naissance',
+  GENDER:         'Sexe',
+  ADDRESS:        'Adresse',
+  POSTAL_CODE:    'Boîte postale',
+  CITY:           'Ville',
+  COUNTRY:        'Pays',
+  PHONE:          'Téléphone',
+  EMAIL:          'E-mail',
+  NATIONAL_ID:    "Pièce d'identité",
+  DESIRED_AMOUNT: 'Montant demandé',
+  PEP_STATUS:     'Statut PPE',
+  CONSENT_DATA_PROCESSING:     'Consentement : traitement des données personnelles',
+  CONSENT_CREDIT_BUREAU:       "Consentement : Bureau d'Information sur le Crédit",
+  CONSENT_THIRD_PARTY_SHARING: 'Consentement : partage avec un partenaire',
+};
+
+/** Le titre d'une ligne de la jauge : le champ ou le consentement nommé, sinon le libellé du code. */
+export function completenessGapTitle(gap: { code?: string | null; detail?: string | null }): string {
+  const detail = gap.detail?.trim();
+  if (detail && REQUIRED_FIELD_LABEL[detail]) return REQUIRED_FIELD_LABEL[detail];
+  return detail || completenessGapLabel(gap.code);
 }
 
 // ——— Écarts de réconciliation (BNF-F-13) ———
