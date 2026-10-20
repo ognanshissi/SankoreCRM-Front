@@ -10,7 +10,6 @@ import {
     <ng-content select="card-header"></ng-content>
     <ng-content></ng-content>
     <ng-content select="card-action"></ng-content>
-    <br/>
   `,
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,

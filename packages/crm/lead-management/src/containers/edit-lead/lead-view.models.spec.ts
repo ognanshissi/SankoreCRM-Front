@@ -1,5 +1,8 @@
 import { LeadDto } from '@sankore/crm-api';
-import { ageOf, formatAmount, initials, intentOption, isConsentGap, originLabel, originPhrase } from './lead-view.models';
+import {
+  ageOf, countryFromPhone, formatAmount, initials, intentOption, isConsentGap, missingAddressParts, nameNeedsCheck,
+  originLabel, originPhrase,
+} from './lead-view.models';
 
 describe('lead view models', () => {
   it('reads the intent level the API sends, not the indices the old header compared it to', () => {
@@ -35,5 +38,27 @@ describe('lead view models', () => {
     expect(isConsentGap('CONSENT_MISSING')).toBe(true);
     expect(isConsentGap('HEALTH_CONSENT_MISSING')).toBe(true);
     expect(isConsentGap('ADDRESS_MISSING')).toBe(false);
+  });
+});
+
+describe('identity view models', () => {
+  it('lists the address parts still missing, with the points the server gives them', () => {
+    expect(missingAddressParts(null).map((p) => p.points)).toEqual([2, 8, 6, 2]);
+    expect(missingAddressParts({ countryCode: 'CI', city: ' ', neighbourhood: 'Cocody' }).map((p) => p.key))
+      .toEqual(['city', 'landmark']);
+  });
+
+  it('asks to check a name typed in capitals over USSD, until somebody confirmed it', () => {
+    const ussd = { channel: 'Ussd', firstName: 'KOFFI', lastName: 'BROU' } as LeadDto;
+    expect(nameNeedsCheck(ussd)).toBe(true);
+    expect(nameNeedsCheck({ ...ussd, nameVerifiedAt: '2026-10-20T10:00:00Z' })).toBe(false);
+    expect(nameNeedsCheck({ ...ussd, firstName: 'Koffi', lastName: 'Brou' })).toBe(false);
+    expect(nameNeedsCheck({ ...ussd, channel: 'Agency', source: 'Agency' })).toBe(false);
+  });
+
+  it('reads the country from an international dialling code', () => {
+    expect(countryFromPhone('+225 07 00 00 00 01')).toEqual({ dial: '225', country: 'CI' });
+    expect(countryFromPhone('00221770000000')).toEqual({ dial: '221', country: 'SN' });
+    expect(countryFromPhone('0700000001')).toBeNull();
   });
 });

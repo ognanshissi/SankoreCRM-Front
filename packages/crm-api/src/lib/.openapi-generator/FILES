@@ -379,6 +379,7 @@ model/kyc-submit-response.interface.ts
 model/kyc-upload-response.interface.ts
 model/kyc-verification-dto.interface.ts
 model/language-factor.interface.ts
+model/lead-address-dto.interface.ts
 model/lead-completeness-dto.interface.ts
 model/lead-dto.interface.ts
 model/lead-fatca-dto.interface.ts

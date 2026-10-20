@@ -3,63 +3,66 @@ import {
   Component,
   computed,
   effect,
-  ElementRef,
   inject,
   signal,
-  viewChild,
+  untracked,
 } from '@angular/core';
+import { NgTemplateOutlet } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
-import { ActivatedRoute, Router } from '@angular/router';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import {
   apply,
   form,
   FormField,
   FormRoot,
+  maxLength,
+  readonly,
+  required,
   submit,
   validate,
 } from '@angular/forms/signals';
-import { catchError, EMPTY, finalize, firstValueFrom, forkJoin, map } from 'rxjs';
+import { catchError, EMPTY, firstValueFrom, map } from 'rxjs';
 import { Button } from '@talisoft/ui/button';
 import { TasCard } from '@talisoft/ui/card';
 import { TasError, TasFormField, TasHint, TasLabel } from '@talisoft/ui/form-field';
 import { TasIcon } from '@talisoft/ui/icon';
+import { TasInput } from '@talisoft/ui/input';
 import { TasSelect } from '@talisoft/ui/select';
-import { TasSpinner } from '@talisoft/ui/spinner';
+import { SideDrawerService } from '@talisoft/ui/side-drawer';
 import { SnackbarService } from '@talisoft/ui/snackbar';
 import {
   ActivityDto,
   EnrichLeadRequest,
+  FormFieldReferenceTargetEnum,
+  LeadDto,
   LeadsApiService,
-  LeadsPersonIdentityDto,
+  LogActivityRequestTypeEnum,
 } from '@sankore/crm-api';
 import {
-  CompletenessGapView,
-  CompletenessGauge,
+  EntityFormReferences,
   PERMISSIONS,
   PermissionsService,
-  PersonIdentityFields,
   PersonIdentityModel,
-  completenessGapSection,
-  genderLabel,
   identityToDto,
   personIdentitySchema,
 } from '@sankore/crm/common';
 import { ConvertedLeadNotice } from './converted-lead-notice';
-import { LeadComplianceStore } from './lead-compliance-store';
 import { LeadEditContext } from './lead-edit-context';
-
-/** Une ligne du rendu en lecture seule. */
-interface IdentityRow {
-  label: string;
-  value: string;
-}
-
-/** `yyyy-MM-dd` → `dd/MM/yyyy`, sans passer par `Date`. */
-function frenchDate(value: string | null | undefined): string {
-  const parts = (value ?? '').slice(0, 10).split('-');
-  return parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : '';
-}
+import { LogActivityDrawer, LogActivityDrawerData } from './log-activity-drawer';
+import {
+  AddressPart,
+  AddressPartKey,
+  ageOf,
+  countryFromPhone,
+  displayName,
+  formatDay,
+  isSelfServiceCapture,
+  missingAddressParts,
+  nameNeedsCheck,
+  originLabel,
+  originPhrase,
+} from './lead-view.models';
 
 function todayISODate(): string {
   return new Date().toISOString().slice(0, 10);
@@ -67,42 +70,61 @@ function todayISODate(): string {
 
 const ACTIVITY_TYPE_LABELS: Record<string, string> = {
   Call: 'Appel',
-  Meeting: 'Réunion',
-  Email: 'E-mail',
+  Meeting: 'Rendez-vous',
   Visit: 'Visite',
-  Note: 'Note',
-  Sms: 'SMS',
-  WhatsApp: 'WhatsApp',
-  Task: 'Tâche',
 };
 
+/** Les activités où l'on a pu parler au prospect de son identité. */
+const CONFIRMING_TYPES = new Set(Object.keys(ACTIVITY_TYPE_LABELS));
+
 /**
- * Identité du principal et activité d'origine de l'enrichissement.
- *
- * `sourceActivityId` vit dans le même modèle que l'identité parce que le contrat
- * les porte dans **une seule** requête (`POST /leads/{id}/enrich`) : deux
- * formulaires séparés laisseraient enregistrer l'identité sans son rattachement.
+ * L'identité telle que l'onglet l'édite. Le cœur reste le `PersonIdentityModel` partagé avec la
+ * fiche client — sa validation vient avec — et le quartier et le point de repère, que seul le lead
+ * porte, sont à côté. La boîte postale est `identity.postalCode`.
  */
 class LeadIdentityFormModel {
   public identity!: PersonIdentityModel;
-  public sourceActivityId!: string;
+  public neighbourhood!: string;
+  public landmark!: string;
 
-  public static fromPrincipal(
-    principal: LeadsPersonIdentityDto | null | undefined,
-  ): LeadIdentityFormModel {
-    const model = new LeadIdentityFormModel();
-    model.identity = PersonIdentityModel.fromDto(principal);
-    model.sourceActivityId = '';
-    return model;
+  public static fromLead(lead: LeadDto | null | undefined): LeadIdentityFormModel {
+    const m = new LeadIdentityFormModel();
+    const address = lead?.address;
+    m.identity = PersonIdentityModel.fromDto({
+      firstName: lead?.firstName,
+      lastName: lead?.lastName,
+      usageName: lead?.usageName,
+      birthDate: lead?.dateOfBirth,
+      gender: lead?.gender === 'Male' || lead?.gender === 'Female' || lead?.gender === 'Other' ? lead.gender : null,
+      addressLine: address?.addressLine,
+      postalCode: address?.postalCode,
+      city: address?.city,
+      countryCode: address?.countryCode,
+    });
+    m.neighbourhood = address?.neighbourhood ?? '';
+    m.landmark = address?.landmark ?? '';
+    return m;
   }
 }
 
-/** Onglet « Identité du principal » de la fiche lead (BNF-F-02). */
+/** Le rattachement de l'identité à l'appel ou à la visite qui l'a confirmée. */
+class AttachSourceFormModel {
+  public activityId!: string;
+
+  public static instantiate(): AttachSourceFormModel {
+    const m = new AttachSourceFormModel();
+    m.activityId = '';
+    return m;
+  }
+}
+
+/** Onglet « Identité » de la fiche lead : état civil, adresse, et d'où viennent ces informations. */
 @Component({
   selector: 'lead-identite',
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './identite.html',
   imports: [
+    NgTemplateOutlet,
     FormsModule,
     FormRoot,
     FormField,
@@ -113,138 +135,292 @@ class LeadIdentityFormModel {
     TasError,
     TasHint,
     TasIcon,
+    TasInput,
     TasSelect,
-    TasSpinner,
-    CompletenessGauge,
-    PersonIdentityFields,
     ConvertedLeadNotice,
   ],
 })
 export class LeadIdentite {
-  protected readonly compliance = inject(LeadComplianceStore);
   private readonly _context = inject(LeadEditContext);
   private readonly _leadsApi = inject(LeadsApiService);
   private readonly _permissions = inject(PermissionsService);
   private readonly _snackbar = inject(SnackbarService);
-  private readonly _router = inject(Router);
-  private readonly _route = inject(ActivatedRoute);
+  private readonly _sideDrawer = inject(SideDrawerService);
+  private readonly _references = inject(EntityFormReferences);
 
-  private readonly _section = viewChild<ElementRef<HTMLElement>>('identiteSection');
+  public readonly formatDay = formatDay;
 
   /**
-   * Le contrat ne porte **pas** de `canEdit` côté lead : ni `LeadDto`, ni
-   * `LeadHouseholdDto`, ni `LeadCompletenessDto` ne l'exposent (seuls
-   * `ClientHouseholdDto` et `HoldingDto` l'ont). Plutôt que de fabriquer un faux
-   * drapeau, on retombe sur ce qui existe déjà dans le repo : un lead converti
-   * n'est plus modifiable (`LeadEditContext.isReadOnly()`) et la modification
-   * exige `lead:update`. L'assignation et la délégation restent arbitrées par le
-   * serveur, qui répondra 403 — c'est lui qui tranche, pas l'écran.
+   * Le contrat ne porte pas de `canEdit` côté lead : un lead converti est figé
+   * (`LeadEditContext.isReadOnly()`) et la modification exige `lead:update`. L'assignation reste
+   * arbitrée par le serveur, qui répond 403.
    */
   public readonly hasUpdatePermission = this._permissions.can(PERMISSIONS.LEAD_UPDATE);
-  public readonly canEdit = computed(
-    () => this.hasUpdatePermission() && !this._context.isReadOnly(),
-  );
+  public readonly canEdit = computed(() => this.hasUpdatePermission() && !this._context.isReadOnly());
 
+  public readonly lead = this._context.lead;
+  public readonly name = computed(() => displayName(this.lead()));
+  public readonly countries = toSignal(this._references.options(FormFieldReferenceTargetEnum.Country), {
+    initialValue: [],
+  });
   public readonly activities = signal<ActivityDto[]>([]);
   public readonly submitError = signal<string | null>(null);
+  public readonly isVerifyingName = signal(false);
+  public readonly showAttach = signal(false);
 
-  /** Vrai quand l'API n'a renvoyé aucune des deux ressources de l'onglet. */
-  private readonly _recovered = signal(false);
-  public readonly hasFailed = computed(
-    () => this.compliance.loadFailed() && !this._recovered(),
-  );
-  public readonly isRetrying = signal(false);
-
-  /** Principal connu mais entièrement vide : l'écran doit le dire (BNF-F-02). */
-  public readonly isPrincipalEmpty = computed(() => {
-    const principal = this.compliance.principal();
-    if (!principal) return true;
-    return !Object.values(principal).some(
-      (value) => typeof value === 'string' && value.trim().length > 0,
-    );
-  });
-
-  public readonly activityOptions = computed(() => [
-    { label: 'Aucune activité rattachée', value: '' },
-    ...this.activities().map((activity) => ({
-      label: this._activityLabel(activity),
-      value: activity.id ?? '',
-    })),
-  ]);
-
-  public readonly readOnlyRows = computed<IdentityRow[]>(() => {
-    const principal = this.compliance.principal();
-    const rows: IdentityRow[] = [
-      { label: 'Prénom', value: principal?.firstName ?? '' },
-      { label: 'Nom', value: principal?.lastName ?? '' },
-      { label: "Nom d'usage", value: principal?.usageName ?? '' },
-      { label: 'Date de naissance', value: frenchDate(principal?.birthDate) },
-      { label: 'Genre', value: principal?.gender ? genderLabel(principal.gender) : '' },
-      { label: 'Adresse', value: principal?.addressLine ?? '' },
-      { label: 'Code postal', value: principal?.postalCode ?? '' },
-      { label: 'Ville', value: principal?.city ?? '' },
-      { label: 'Pays', value: principal?.countryCode ?? '' },
-    ];
-    return rows.map((row) => ({ label: row.label, value: row.value.trim() || '—' }));
-  });
-
-  public model = signal(LeadIdentityFormModel.fromPrincipal(null));
+  public model = signal(LeadIdentityFormModel.fromLead(null));
 
   public formSchema = form(this.model, (schema) => {
     apply(schema.identity, personIdentitySchema);
+    readonly(schema, { when: () => !this.canEdit() });
     validate(schema.identity.birthDate, (ctx) => {
       const value = ctx.value();
-      if (!value) return null;
-      return value > todayISODate()
+      return value && value > todayISODate()
         ? { kind: 'max', message: 'La date de naissance ne peut pas être dans le futur' }
         : null;
     });
+    maxLength(schema.identity.city, 100, { message: 'La ville ne peut pas dépasser 100 caractères' });
+    maxLength(schema.neighbourhood, 100, { message: 'Le quartier ne peut pas dépasser 100 caractères' });
+    maxLength(schema.landmark, 200, { message: 'Le point de repère ne peut pas dépasser 200 caractères' });
+    maxLength(schema.identity.addressLine, 300, { message: "L'adresse ne peut pas dépasser 300 caractères" });
+    maxLength(schema.identity.postalCode, 20, { message: 'La boîte postale ne peut pas dépasser 20 caractères' });
+  });
+
+  public attachModel = signal(AttachSourceFormModel.instantiate());
+  public attachSchema = form(this.attachModel, (schema) => {
+    required(schema.activityId, { message: "Choisissez l'appel ou la visite" });
+  });
+
+  // ——— Ce que l'en-tête et les cartes affichent ———
+
+  /** Calculé sur ce que l'agent est en train de saisir, pour que les pastilles disparaissent à la frappe. */
+  public readonly missingParts = computed(() => {
+    const value = this.model();
+    return missingAddressParts({
+      countryCode: value.identity.countryCode,
+      city: value.identity.city,
+      neighbourhood: value.neighbourhood,
+      landmark: value.landmark,
+    });
+  });
+  public readonly missingPoints = computed(() => this.missingParts().reduce((sum, p) => sum + p.points, 0));
+
+  /**
+   * « … et lui fait atteindre le seuil de qualification » — seulement quand c'est vrai : le score
+   * actuel plus les points de l'adresse franchissent le seuil, et il ne l'a pas déjà franchi.
+   */
+  public readonly reachesThreshold = computed(() => {
+    const lead = this.lead();
+    const threshold = lead?.qualificationThreshold;
+    if (!lead || threshold == null) return false;
+    const score = lead.score ?? 0;
+    return score < threshold && score + this.missingPoints() >= threshold;
+  });
+
+  public readonly pointsFor = (key: AddressPartKey): AddressPart | null =>
+    this.missingParts().find((p) => p.key === key) ?? null;
+
+  public readonly age = computed(() => ageOf(this.model().identity.birthDate));
+  public readonly nameToCheck = computed(() => nameNeedsCheck(this.lead()));
+
+  /** « Déduit de l'indicatif +225 » — proposé tant qu'aucun pays n'est saisi. */
+  public readonly suggestedCountry = computed(() => {
+    if (this.model().identity.countryCode) return null;
+    const guess = countryFromPhone(this.lead()?.phoneNumber);
+    if (!guess) return null;
+    const label = this.countries().find((c) => c.value === guess.country)?.label;
+    return label ? { ...guess, label } : null;
+  });
+
+  public readonly genderChoices = [
+    { value: 'Male', label: 'Homme' },
+    { value: 'Female', label: 'Femme' },
+  ];
+
+  // ——— D'où viennent ces informations ———
+
+  public readonly selfService = computed(() => isSelfServiceCapture(this.lead()));
+  public readonly origin = computed(() => originLabel(this.lead()));
+  public readonly originSentence = computed(() => {
+    const lead = this.lead();
+    if (!lead) return '';
+    const day = formatDay(lead.capturedAt, true);
+    if (this.selfService() && this.origin() !== '—') {
+      return `Saisie par le prospect via ${this.origin()} le ${day} (déclaratif).`;
+    }
+    const phrase = originPhrase(lead);
+    return phrase ? `Saisie ${phrase} le ${day}.` : `Saisie le ${day}.`;
+  });
+
+  public readonly confirmingActivities = computed(() =>
+    this.activities().filter((a) => CONFIRMING_TYPES.has(a.type ?? '')),
+  );
+  public readonly activityOptions = computed(() =>
+    this.confirmingActivities().map((a) => ({ value: a.id ?? '', label: this.activityLabel(a) })),
+  );
+  public readonly confirmedBy = computed(() => {
+    const id = this.lead()?.identitySourceActivityId;
+    if (!id) return null;
+    return this.activities().find((a) => a.id === id) ?? null;
   });
 
   constructor() {
-    // Le principal arrive après coup (foyer chargé en parallèle du lead) et
-    // revient après chaque enregistrement : le modèle est reposé à chaque fois,
-    // pour que le formulaire montre ce que le serveur a réellement retenu.
+    // Le lead revient après chaque enregistrement et à chaque relecture de la coque (actions,
+    // polling de 30 s) : on repose le modèle pour montrer ce que le serveur a retenu — sauf quand
+    // l'agent est en train de saisir, que le polling effacerait sinon sous ses doigts.
     effect(() => {
-      const principal = this.compliance.principal();
-      this.model.set(LeadIdentityFormModel.fromPrincipal(principal));
+      const lead = this.lead();
+      untracked(() => {
+        if (this.formSchema().dirty()) return;
+        this.model.set(LeadIdentityFormModel.fromLead(lead));
+      });
     });
 
     effect(() => {
-      const leadId = this.compliance.leadId();
-      if (leadId) this._loadActivities(leadId);
+      const id = this.lead()?.id;
+      if (id) untracked(() => this._loadActivities(id));
     });
   }
 
+  public setGender(value: string): void {
+    if (!this.canEdit()) return;
+    this.formSchema.identity.gender().value.set(value);
+    this.formSchema.identity.gender().markAsDirty();
+  }
+
+  public acceptSuggestedCountry(): void {
+    const suggestion = this.suggestedCountry();
+    if (!suggestion || !this.canEdit()) return;
+    this.formSchema.identity.countryCode().value.set(suggestion.country);
+    this.formSchema.identity.countryCode().markAsDirty();
+  }
+
+  /** Une pastille « + Ville · +8 » mène au champ. */
+  public focusPart(key: AddressPartKey): void {
+    document.getElementById(`identite-${key}`)?.focus();
+  }
+
+  public cancel(): void {
+    this.submitError.set(null);
+    this.formSchema().reset(LeadIdentityFormModel.fromLead(this.lead()));
+  }
+
   public handleSubmit(): void {
+    this._save(false);
+  }
+
+  /**
+   * « C'est vérifié » : enregistre la confirmation, avec les corrections en cours quand l'agent a
+   * retouché le nom avant de cliquer — confirmer un nom et laisser sa correction en plan serait
+   * confirmer la mauvaise orthographe.
+   */
+  public verifyName(): void {
+    if (this.formSchema().dirty()) {
+      this._save(true);
+      return;
+    }
+    const lead = this.lead();
+    if (!lead?.id) return;
+    this.isVerifyingName.set(true);
+    this._leadsApi.enrichLead(lead.id, { nameVerified: true, expectedUpdatedAt: lead.updatedAt ?? null }).pipe(
+      catchError((error: HttpErrorResponse) => {
+        this.isVerifyingName.set(false);
+        this._snackbar.error('Erreur', this._errorMessage(error));
+        return EMPTY;
+      }),
+    ).subscribe(() => {
+      this.isVerifyingName.set(false);
+      this._snackbar.success('Nom vérifié', "L'orthographe du nom est confirmée.");
+      this._context.reload();
+    });
+  }
+
+  public attachSource(): void {
+    submit(this.attachSchema, async (field) => {
+      const lead = this.lead();
+      if (!lead?.id) return;
+      const done = await firstValueFrom(
+        this._leadsApi.enrichLead(lead.id, {
+          sourceActivityId: field().value().activityId,
+          expectedUpdatedAt: lead.updatedAt ?? null,
+        }).pipe(
+          map(() => true),
+          catchError((error: HttpErrorResponse) => {
+            this._snackbar.error('Erreur', this._errorMessage(error));
+            return EMPTY;
+          }),
+        ),
+        { defaultValue: false },
+      );
+      if (!done) return;
+      this._snackbar.success('Rattachée', "L'identité est rattachée à cet échange.");
+      this.showAttach.set(false);
+      this.attachSchema().reset(AttachSourceFormModel.instantiate());
+      this._context.reload();
+    });
+  }
+
+  /** Pas encore d'appel à rattacher : on le note d'abord, puis il apparaît dans la liste. */
+  public logCall(): void {
+    const lead = this.lead();
+    if (!lead?.id) return;
+    const data: LogActivityDrawerData = {
+      leadId: lead.id,
+      leadName: displayName(lead),
+      initialType: LogActivityRequestTypeEnum.Call,
+    };
+    const ref = this._sideDrawer.open(LogActivityDrawer, {
+      width: '100%',
+      height: '100%',
+      panelClass: 'side-drawer-panel',
+      data,
+    });
+    ref.closed.subscribe((result) => {
+      if (!result) return;
+      this._loadActivities(lead.id!);
+      this._context.reload();
+    });
+  }
+
+  public activityLabel(activity: ActivityDto): string {
+    const type = ACTIVITY_TYPE_LABELS[activity.type ?? ''] ?? 'Échange';
+    const day = formatDay(activity.performedAt ?? activity.scheduledAt ?? null, true);
+    const subject = activity.subject?.trim();
+    return [`${type} du ${day}`, subject].filter(Boolean).join(' — ');
+  }
+
+  private _save(nameVerified: boolean): void {
     this.submitError.set(null);
     submit(this.formSchema, async (field) => {
-      const leadId = this.compliance.leadId();
-      if (!leadId) return;
-
+      const lead = this.lead();
+      if (!lead?.id) return;
       const value = field().value();
       const identity = identityToDto(value.identity);
 
-      // `productLineId` est volontairement absent et `clearProductLine` à false :
-      // le même endpoint résout la ligne de produit, et cet onglet ne la touche
-      // pas — l'omettre est la seule façon de ne pas l'effacer.
+      // Les champs vides partent en chaîne vide et non en null : pour `enrich`, null veut dire
+      // « ne pas toucher » et vide veut dire « effacer ». Un repère effacé ici doit l'être là-bas.
+      // `productLineId` est absent et `clearProductLine` à false : cet onglet ne touche pas la
+      // ligne de produit, que le même endpoint résout.
       const request: EnrichLeadRequest = {
         firstName: identity.firstName,
         lastName: identity.lastName,
-        usageName: identity.usageName,
+        usageName: identity.usageName ?? '',
         birthDate: identity.birthDate,
         gender: identity.gender,
-        addressLine: identity.addressLine,
-        postalCode: identity.postalCode,
-        city: identity.city,
-        countryCode: identity.countryCode,
+        addressLine: identity.addressLine ?? '',
+        postalCode: identity.postalCode ?? '',
+        city: identity.city ?? '',
+        countryCode: identity.countryCode ?? '',
+        neighbourhood: value.neighbourhood.trim(),
+        landmark: value.landmark.trim(),
+        nameVerified,
         clearProductLine: false,
-        sourceActivityId: value.sourceActivityId || null,
-        expectedUpdatedAt: this._context.lead()?.updatedAt ?? null,
+        expectedUpdatedAt: lead.updatedAt ?? null,
       };
 
-      const completeness = await firstValueFrom(
-        this._leadsApi.enrichLead(leadId, request).pipe(
+      const saved = await firstValueFrom(
+        this._leadsApi.enrichLead(lead.id, request).pipe(
+          map(() => true),
           catchError((error: HttpErrorResponse) => {
             const message = this._errorMessage(error);
             this.submitError.set(message);
@@ -252,70 +428,16 @@ export class LeadIdentite {
             return EMPTY;
           }),
         ),
+        { defaultValue: false },
       );
+      if (!saved) return;
 
-      if (!completeness) return;
-
-      this._snackbar.success(
-        'Identité enregistrée',
-        "L'identité du principal a été mise à jour.",
-      );
-
-      // Un 200 sur `enrich` ne dit rien du reste du dossier : la jauge et
-      // l'identité du principal sont relues à la source plutôt que déduites de
-      // la réponse.
-      this.compliance.reloadCompleteness().subscribe();
-      this.compliance.reloadHousehold().subscribe();
-      this._refreshLeadToken(leadId);
+      this._snackbar.success('Identité enregistrée', "L'identité et l'adresse du prospect sont à jour.");
+      // Pristine d'abord, pour que la relecture du lead repose le modèle : le score recalculé par
+      // le serveur, le jeton de concurrence et le badge du menu viennent tous de là.
+      this.formSchema().reset();
+      this._context.reload();
     });
-  }
-
-  /** Clic sur un manquant de la jauge : on va là où l'agent peut agir. */
-  public goToGap(gap: CompletenessGapView): void {
-    const section = completenessGapSection(gap.code);
-
-    if (section === 'identite') {
-      this._section()?.nativeElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      return;
-    }
-
-    if (section === 'client') {
-      const customerId = this._context.customerId();
-      if (!customerId) {
-        this._snackbar.info(
-          'Fiche client indisponible',
-          "Ce point se corrige sur la fiche client, qui n'existe pas encore.",
-        );
-        return;
-      }
-      this._router.navigate(['/customers', customerId]);
-      return;
-    }
-
-    this._router.navigate([`../${section}`], { relativeTo: this._route });
-  }
-
-  public retry(): void {
-    this.isRetrying.set(true);
-    forkJoin({
-      household: this.compliance.reloadHousehold(),
-      completeness: this.compliance.reloadCompleteness(),
-    })
-      .pipe(finalize(() => this.isRetrying.set(false)))
-      .subscribe(({ household, completeness }) => {
-        // `loadFailed()` n'est remis à plat que par `load()`, que la route ne
-        // rejoue pas : on lève l'état d'erreur localement dès qu'une des deux
-        // ressources répond.
-        if (household || completeness) this._recovered.set(true);
-      });
-  }
-
-  private _activityLabel(activity: ActivityDto): string {
-    const type = ACTIVITY_TYPE_LABELS[activity.type ?? ''] ?? 'Activité';
-    const date = frenchDate(activity.performedAt ?? activity.scheduledAt);
-    const subject = activity.subject?.trim();
-    const parts = [type, date, subject].filter((part) => !!part);
-    return parts.join(' — ');
   }
 
   private _loadActivities(leadId: string): void {
@@ -328,36 +450,18 @@ export class LeadIdentite {
       .subscribe((activities) => this.activities.set(activities));
   }
 
-  /**
-   * `expectedUpdatedAt` est un jeton de concurrence : après un enrichissement
-   * réussi, celui que porte le contexte est périmé et un second enregistrement
-   * partirait en 409. On relit donc le lead et on repose le contexte — ce qui
-   * rafraîchit aussi le nom affiché dans l'en-tête.
-   */
-  private _refreshLeadToken(leadId: string): void {
-    this._leadsApi
-      .getLead(leadId)
-      .pipe(catchError(() => EMPTY))
-      .subscribe((lead) => this._context.set(lead));
-  }
-
   private _errorMessage(error: HttpErrorResponse): string {
     if (error.status === 403) {
-      return "Vous n'êtes pas autorisé à enrichir ce lead : il doit vous être assigné ou délégué.";
+      return "Vous n'êtes pas autorisé à modifier ce lead : il doit vous être assigné ou délégué.";
     }
     if (error.status === 409) {
       return 'La fiche a été modifiée entre-temps. Rechargez la page avant de réessayer.';
     }
     const validationErrors = error.error?.errors as Record<string, string[]> | undefined;
-    const firstError = validationErrors
-      ? Object.values(validationErrors).flat()[0]
-      : undefined;
-    return (
-      firstError ??
-      error.error?.title ??
-      "Impossible d'enregistrer l'identité du principal."
-    );
+    const firstError = validationErrors ? Object.values(validationErrors).flat()[0] : undefined;
+    return firstError ?? error.error?.title ?? "Impossible d'enregistrer l'identité.";
   }
+
 }
 
 export default LeadIdentite;

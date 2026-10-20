@@ -10,6 +10,7 @@
  * Do not edit the class manually.
  */
 import { Money } from './money.interface';
+import { LeadAddressDto } from './lead-address-dto.interface';
 
 
 export interface LeadDto { 
@@ -62,5 +63,10 @@ export interface LeadDto {
     leadSourceLabel?: string | null;
     awaitingDispatchSince?: string | null;
     customFields?: { [key: string]: any; } | null;
+    address?: LeadAddressDto;
+    usageName?: string | null;
+    nameVerifiedAt?: string | null;
+    identitySourceActivityId?: string | null;
+    qualificationThreshold?: number | null;
 }
 

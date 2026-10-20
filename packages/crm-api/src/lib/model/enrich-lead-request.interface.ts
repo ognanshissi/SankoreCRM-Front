@@ -25,5 +25,8 @@ export interface EnrichLeadRequest {
     clearProductLine?: boolean;
     sourceActivityId?: string | null;
     expectedUpdatedAt?: string | null;
+    neighbourhood?: string | null;
+    landmark?: string | null;
+    nameVerified?: boolean;
 }
 

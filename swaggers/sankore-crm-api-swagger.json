@@ -32819,6 +32819,17 @@
             "type": "string",
             "format": "date-time",
             "nullable": true
+          },
+          "neighbourhood": {
+            "type": "string",
+            "nullable": true
+          },
+          "landmark": {
+            "type": "string",
+            "nullable": true
+          },
+          "nameVerified": {
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -36002,6 +36013,36 @@
         },
         "additionalProperties": false
       },
+      "LeadAddressDto": {
+        "type": "object",
+        "properties": {
+          "countryCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "city": {
+            "type": "string",
+            "nullable": true
+          },
+          "neighbourhood": {
+            "type": "string",
+            "nullable": true
+          },
+          "landmark": {
+            "type": "string",
+            "nullable": true
+          },
+          "addressLine": {
+            "type": "string",
+            "nullable": true
+          },
+          "postalCode": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "LeadCompletenessDto": {
         "type": "object",
         "properties": {
@@ -36256,6 +36297,28 @@
           "customFields": {
             "type": "object",
             "additionalProperties": { },
+            "nullable": true
+          },
+          "address": {
+            "$ref": "#/components/schemas/LeadAddressDto"
+          },
+          "usageName": {
+            "type": "string",
+            "nullable": true
+          },
+          "nameVerifiedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "identitySourceActivityId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "qualificationThreshold": {
+            "type": "integer",
+            "format": "int32",
             "nullable": true
           }
         },

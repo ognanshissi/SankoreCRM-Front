@@ -13,6 +13,7 @@ import {
   LeadDto,
   LeadIntentLevelDto,
   LeadsApiService,
+  LogActivityRequestTypeEnum,
   NextActionDto,
   NextActionDtoActionTypeEnum,
 } from '@sankore/crm-api';
@@ -30,6 +31,7 @@ import { ReassignLeadDrawer } from './reassign-lead-drawer';
 import { EditLeadInfoDrawer } from './edit-lead-info-drawer';
 import { ConvertLeadWizard } from './convert-lead-wizard';
 import { NurtureRecycleDrawer } from './nurture-recycle-drawer';
+import { LogActivityDrawer, LogActivityDrawerData } from './log-activity-drawer';
 import { TasTag } from '@talisoft/ui/tag';
 import { TimeagoPipe } from '@talisoft/ui/timeago';
 import { Menu, MenuItem, TasMenuTrigger } from '@talisoft/ui/menu';
@@ -44,6 +46,7 @@ import {
   intentOption,
   isConsentGap,
   leadStatusMeta,
+  missingAddressParts,
   originLabel,
 } from './lead-view.models';
 
@@ -100,13 +103,24 @@ interface ScoreFactor {
   impact: string;
 }
 
+/** Les dimensions que `LeadScoreCalculator` sérialise, en français. */
+const FACTOR_LABELS: Record<string, string> = {
+  profileCompleteness: 'Profil renseigné',
+  sourceQuality: 'Qualité de la source',
+  interactions: 'Échanges',
+  behaviour: 'Engagement',
+  declarativeCoherence: 'Cohérence déclarative',
+  location: 'Localisation',
+  address: 'Adresse',
+};
+
 function parseFactors(factorsJson: string | null | undefined): ScoreFactor[] {
   if (!factorsJson) return [];
   try {
     const parsed = JSON.parse(factorsJson);
     if (Array.isArray(parsed)) return parsed;
-    return Object.entries(parsed).map(([key, val]: [string, any]) => ({
-      label: key,
+    return Object.entries(parsed).filter(([key]) => key !== 'total').map(([key, val]: [string, any]) => ({
+      label: FACTOR_LABELS[key] ?? key,
       value: typeof val === 'object' ? (val.value ?? val.detail ?? JSON.stringify(val)) : String(val),
       impact: typeof val === 'object' ? (val.impact ?? '') : '',
     }));
@@ -115,10 +129,10 @@ function parseFactors(factorsJson: string | null | undefined): ScoreFactor[] {
   }
 }
 
-function scoreClasses(score: number): string {
-  if (score >= 70) return 'border-green-500 text-green-700';
-  if (score >= 40) return 'border-amber-500 text-amber-700';
-  return 'border-red-400 text-red-700';
+function scoreBarClass(score: number, threshold: number): string {
+  if (score >= threshold) return 'bg-green-600';
+  if (score >= 40) return 'bg-amber-500';
+  return 'bg-red-500';
 }
 
 @Component({
@@ -219,7 +233,11 @@ export class EditLeadNavigation implements OnDestroy {
       && lead.status !== 'Qualified' && lead.status !== 'Converted';
   });
 
-  public readonly scoreRing = computed(() => scoreClasses(this.lead()?.score ?? 0));
+  /** Le seuil de qualification du serveur ; 60, la valeur historique, s'il ne l'a pas envoyé. */
+  public readonly threshold = computed(() => this.lead()?.qualificationThreshold ?? 60);
+  public readonly scoreValue = computed(() => Math.max(0, Math.min(100, this.lead()?.score ?? 0)));
+  public readonly pointsToThreshold = computed(() => Math.max(0, this.threshold() - this.scoreValue()));
+  public readonly scoreBar = computed(() => scoreBarClass(this.scoreValue(), this.threshold()));
 
   // ——— Ce que les compteurs du menu et l'en-tête signalent ———
 
@@ -233,6 +251,18 @@ export class EditLeadNavigation implements OnDestroy {
     return this._duplicates().filter((d) => d.leadId && d.leadId !== id && !dismissed.has(d.leadId)).length;
   });
 
+  /** Les éléments de l'adresse encore vides : ce que l'onglet Identité propose de compléter. */
+  public readonly missingAddress = computed(() => {
+    const lead = this.lead();
+    return lead ? missingAddressParts(lead.address).length : 0;
+  });
+
+  /** Aucun échange noté : « 0 » sur Activités, tant que le lead est en cours. */
+  public readonly hasNoActivity = computed(() => {
+    const lead = this.lead();
+    return !!lead && !lead.lastActivityAt && this.canBeConverted();
+  });
+
   public readonly qualificationBadge = computed(() => {
     const done = this.lead()?.qualificationCompleteness ?? 0;
     if (this.isConverted()) return null;
@@ -243,6 +273,12 @@ export class EditLeadNavigation implements OnDestroy {
 
   public badgeFor(route: string): { text: string; tone: 'red' | 'amber' | 'slate' } | null {
     switch (route) {
+      case 'identite':
+        return this.missingAddress() > 0 && !this.isConverted()
+          ? { text: String(this.missingAddress()), tone: 'amber' }
+          : null;
+      case 'activites':
+        return this.hasNoActivity() ? { text: '0', tone: 'amber' } : null;
       case 'doublons':
         return this.duplicateCount() > 0 ? { text: String(this.duplicateCount()), tone: 'red' } : null;
       case 'consentement':
@@ -287,6 +323,12 @@ export class EditLeadNavigation implements OnDestroy {
     const status = this.lead()?.status;
     return status !== 'Converted' && status !== 'Lost' && status !== 'Disqualified' && status !== 'Archived';
   });
+
+  /**
+   * Un lead « Nouveau » n'a encore parlé à personne : l'action de l'en-tête est le premier
+   * contact, pas la conversion — on ne convertit pas un prospect qu'on n'a jamais eu au bout du fil.
+   */
+  public readonly awaitsFirstContact = computed(() => this.lead()?.status === 'New');
 
   /** Les statuts que le serveur accepte de rouvrir (Lead.Reopen). */
   public readonly canBeReopened = computed(() => {
@@ -366,6 +408,8 @@ export class EditLeadNavigation implements OnDestroy {
     this._leadsApiService.getLead(this.id()).pipe(catchError(() => EMPTY)).subscribe((lead) => {
       this._setLead(lead);
       this._loadNextAction(this.id());
+      // Un enrichissement de l'adresse ou un appel noté recalcule le score côté serveur.
+      this._loadScoreFactors(this.id());
     });
     this.compliance.reloadAfterWrite();
   }
@@ -451,6 +495,26 @@ export class EditLeadNavigation implements OnDestroy {
       this._snackbar.success('Lead réouvert', 'Le lead est de nouveau actif.');
       this.isReopening.set(false);
       this.reload();
+    });
+  }
+
+  /** « Premier contact » : le panneau d'activité ouvert sur un appel, dont l'issue fait avancer le statut. */
+  public openFirstContact(): void {
+    const lead = this.lead();
+    if (!lead) return;
+    const data: LogActivityDrawerData = {
+      leadId: this.id(),
+      leadName: displayName(lead),
+      initialType: LogActivityRequestTypeEnum.Call,
+    };
+    const ref = this._sideDrawerService.open(LogActivityDrawer, {
+      width: '100%',
+      height: '100%',
+      panelClass: 'side-drawer-panel',
+      data,
+    });
+    ref.closed.subscribe((result) => {
+      if (result) this.reload();
     });
   }
 

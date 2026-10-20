@@ -302,6 +302,7 @@ export * from './kyc-submit-response.interface';
 export * from './kyc-upload-response.interface';
 export * from './kyc-verification-dto.interface';
 export * from './language-factor.interface';
+export * from './lead-address-dto.interface';
 export * from './lead-completeness-dto.interface';
 export * from './lead-dto.interface';
 export * from './lead-fatca-dto.interface';

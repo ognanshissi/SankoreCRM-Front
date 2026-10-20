@@ -1,152 +1,299 @@
-@if (compliance.isLoading()) {
-  <div class="flex justify-center py-24">
-    <tas-spinner size="10" class="text-primary"></tas-spinner>
-  </div>
-} @else if (hasFailed()) {
-  <tas-card class="block">
-    <div class="p-10 flex flex-col items-center text-center gap-3" role="alert">
-      <tas-icon
-        iconName="feather:alert-triangle"
-        class="text-functional-error"
-        style="font-size:28px"
-      ></tas-icon>
-      <div>
-        <p class="text-sm font-medium text-slate-700">Dossier indisponible</p>
-        <p class="text-sm text-slate-500 mt-1">
-          L'identité du principal et la complétude n'ont pas pu être chargées.
-        </p>
-      </div>
-      <button
-        tas-outlined-button
-        color="primary"
-        type="button"
-        (click)="retry()"
-        [disabled]="isRetrying()"
-        [isLoading]="isRetrying()"
-      >
-        Réessayer
-      </button>
-    </div>
-  </tas-card>
-} @else {
-  <div class="pb-6 flex flex-col gap-4">
-    <converted-lead-notice></converted-lead-notice>
+<div class="pb-6 flex flex-col gap-4">
+  <converted-lead-notice></converted-lead-notice>
 
-    <completeness-gauge
-      [completeness]="compliance.completeness()"
-      (gapSelected)="goToGap($event)"
-    ></completeness-gauge>
-
-    <tas-card class="block" #identiteSection>
-      <div class="p-4 border-b border-slate-100">
-        <p class="font-semibold text-slate-800">Identité du principal</p>
+  @if (lead(); as l) {
+    <!-- En-tête : ce que l'adresse rapporte encore -->
+    <div>
+      <h2 class="text-xl font-bold text-slate-900">Identité de {{ name() }}</h2>
+      @if (missingParts().length > 0) {
         <p class="text-sm text-slate-500 mt-0.5">
-          Nom, naissance et adresse de la personne porteuse du dossier.
+          Compléter l'adresse rapporte {{ missingPoints() }} points{{ reachesThreshold() ? ' et lui fait atteindre le seuil de qualification' : '' }}.
+        </p>
+        <div class="mt-3 flex flex-wrap gap-2">
+          @for (part of missingParts(); track part.key) {
+            <button type="button"
+                    class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border border-dashed border-primary/40 bg-primary/5 text-xs font-medium text-primary hover:bg-primary/10"
+                    (click)="focusPart(part.key)">
+              <tas-icon iconName="feather:plus" style="font-size:11px"></tas-icon>
+              {{ part.label }} · <span class="tabular-nums">+{{ part.points }}</span>
+            </button>
+          }
+        </div>
+      } @else {
+        <p class="text-sm text-slate-500 mt-0.5 flex items-center gap-1.5">
+          <tas-icon iconName="feather:check-circle" class="text-green-600" style="font-size:13px"></tas-icon>
+          Adresse complète : le score en tient compte.
+        </p>
+      }
+    </div>
+
+    <!-- Nom saisi en libre-service : à faire confirmer -->
+    @if (nameToCheck()) {
+      <div class="rounded-xl border border-amber-200 bg-amber-50 p-4 flex items-start gap-3" role="status">
+        <tas-icon iconName="feather:alert-triangle" class="text-amber-600 shrink-0 mt-0.5" style="font-size:16px"></tas-icon>
+        <p class="flex-1 text-sm text-slate-700">
+          <span class="font-semibold text-amber-900">Point à vérifier :</span>
+          le nom a été saisi par {{ origin() }}, en majuscules et sans accents. Faites-le épeler au prospect
+          avant qu'il ne figure sur un contrat.
+        </p>
+        @if (canEdit()) {
+          <button tas-outlined-button color="primary" type="button" class="shrink-0 bg-white"
+                  [disabled]="isVerifyingName() || formSchema().submitting()"
+                  [isLoading]="isVerifyingName()"
+                  (click)="verifyName()">
+            C'est vérifié
+          </button>
+        }
+      </div>
+    }
+
+    @if (submitError(); as message) {
+      <div class="p-3 rounded-lg border border-functional-error/40 bg-functional-error/5" role="alert">
+        <p class="text-sm text-functional-error">{{ message }}</p>
+      </div>
+    }
+
+    @if (!hasUpdatePermission()) {
+      <div class="flex gap-3 p-3 rounded-lg bg-slate-50 border border-slate-200">
+        <tas-icon iconName="feather:lock" class="text-slate-400 shrink-0 mt-0.5" style="font-size:14px"></tas-icon>
+        <p class="text-sm text-slate-600">
+          Vous ne disposez pas du droit de modification des leads : cet onglet est en lecture seule.
         </p>
       </div>
+    }
 
-      <div class="p-4 flex flex-col gap-5">
-        @if (isPrincipalEmpty()) {
-          <div
-            class="flex gap-3 p-3 rounded-lg bg-slate-50 border border-slate-200"
-            aria-live="polite"
-          >
-            <tas-icon
-              iconName="feather:info"
-              class="text-slate-400 shrink-0 mt-0.5"
-              style="font-size:14px"
-            ></tas-icon>
-            <p class="text-sm text-slate-600">
-              Aucune information d'identité n'est encore renseignée pour le principal.
-              @if (canEdit()) {
-                Complétez la section ci-dessous : la jauge se met à jour à l'enregistrement.
+    <form [formRoot]="formSchema" class="flex flex-col gap-4">
+      <!-- État civil -->
+      <tas-card class="block">
+        <div class="p-5">
+          <p class="font-semibold text-slate-800">État civil</p>
+          <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <tas-form-field>
+              <tas-label>Prénom <span class="text-functional-error">*</span></tas-label>
+              <input tasInput type="text" autocomplete="off" [formField]="formSchema.identity.firstName" />
+              @if (formSchema.identity.firstName().touched() && formSchema.identity.firstName().invalid()) {
+                <tas-error>{{ formSchema.identity.firstName().errors()[0].message }}</tas-error>
               }
-            </p>
-          </div>
-        }
-
-        @if (canEdit()) {
-          @if (submitError(); as message) {
-            <div
-              class="p-3 rounded-lg border border-functional-error/40 bg-functional-error/5"
-              role="alert"
-            >
-              <p class="text-sm text-functional-error">{{ message }}</p>
-            </div>
-          }
-
-          <form [formRoot]="formSchema" class="flex flex-col gap-5">
-            <person-identity-fields
-              [field]="formSchema.identity"
-              [showAddress]="true"
-            ></person-identity-fields>
-
-            <div class="rounded-lg border border-slate-200 p-3">
-              <tas-form-field>
-                <tas-label>Activité d'origine</tas-label>
-                <tas-select
-                  [options]="activityOptions()"
-                  placeholder="Aucune activité rattachée"
-                  [formField]="formSchema.sourceActivityId"
-                ></tas-select>
-                @if (activities().length === 0) {
-                  <tas-hint>
-                    Aucune activité n'est enregistrée sur ce lead : rattachez l'enrichissement
-                    depuis l'onglet Activités après avoir journalisé l'appel ou la visite.
-                  </tas-hint>
-                } @else {
-                  <tas-hint>
-                    Rattachez cet enrichissement à l'appel ou à la visite qui l'a produit.
-                  </tas-hint>
+            </tas-form-field>
+            <tas-form-field>
+              <tas-label>Nom <span class="text-functional-error">*</span></tas-label>
+              <input tasInput type="text" autocomplete="off" [formField]="formSchema.identity.lastName" />
+              @if (formSchema.identity.lastName().touched() && formSchema.identity.lastName().invalid()) {
+                <tas-error>{{ formSchema.identity.lastName().errors()[0].message }}</tas-error>
+              }
+            </tas-form-field>
+            <tas-form-field>
+              <tas-label>Nom d'usage <span class="text-slate-400 font-normal">(facultatif)</span></tas-label>
+              <input tasInput type="text" autocomplete="off" [formField]="formSchema.identity.usageName" />
+              @if (formSchema.identity.usageName().touched() && formSchema.identity.usageName().invalid()) {
+                <tas-error>{{ formSchema.identity.usageName().errors()[0].message }}</tas-error>
+              }
+            </tas-form-field>
+            <tas-form-field>
+              <tas-label>
+                <span class="flex items-center justify-between gap-2">
+                  Date de naissance
+                  @if (age() !== null) {
+                    <span class="px-2 py-0.5 rounded-full bg-slate-100 text-[11px] font-semibold text-slate-600 tabular-nums">{{ age() }} ans</span>
+                  }
+                </span>
+              </tas-label>
+              <input tasInput type="date" [formField]="formSchema.identity.birthDate" />
+              @if (formSchema.identity.birthDate().touched() && formSchema.identity.birthDate().invalid()) {
+                <tas-error>{{ formSchema.identity.birthDate().errors()[0].message }}</tas-error>
+              }
+            </tas-form-field>
+            <div class="flex flex-col gap-1.5">
+              <span class="text-sm font-medium text-slate-700" id="identite-gender-label">Genre</span>
+              <div class="inline-flex w-fit rounded-lg border border-slate-200 bg-slate-50 p-0.5" role="radiogroup" aria-labelledby="identite-gender-label">
+                @for (choice of genderChoices; track choice.value) {
+                  <button type="button" role="radio"
+                          class="px-4 py-1.5 rounded-md text-sm transition-colors"
+                          [class]="model().identity.gender === choice.value ? 'bg-white shadow-sm font-semibold text-slate-900' : 'text-slate-600 hover:text-slate-900'"
+                          [attr.aria-checked]="model().identity.gender === choice.value"
+                          [disabled]="!canEdit()"
+                          (click)="setGender(choice.value)">
+                    {{ choice.label }}
+                  </button>
                 }
-              </tas-form-field>
-            </div>
-
-            @if (formSchema().touched() && formSchema().invalid()) {
-              <tas-error>
-                Certains champs sont invalides : corrigez-les avant d'enregistrer.
-              </tas-error>
-            }
-          </form>
-
-          <div class="flex items-center justify-end gap-2 pt-1 border-t border-slate-100">
-            <button
-              tas-raised-button
-              color="primary"
-              type="button"
-              class="mt-3"
-              (click)="handleSubmit()"
-              [disabled]="formSchema().invalid() || formSchema().submitting()"
-              [isLoading]="formSchema().submitting()"
-            >
-              Enregistrer l'identité
-            </button>
-          </div>
-        } @else {
-          @if (!hasUpdatePermission()) {
-            <div class="flex gap-3 p-3 rounded-lg bg-slate-50 border border-slate-200">
-              <tas-icon
-                iconName="feather:lock"
-                class="text-slate-400 shrink-0 mt-0.5"
-                style="font-size:14px"
-              ></tas-icon>
-              <p class="text-sm text-slate-600">
-                Vous ne disposez pas du droit de modification des leads : cette section est
-                en lecture seule.
-              </p>
-            </div>
-          }
-
-          <dl class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3">
-            @for (row of readOnlyRows(); track row.label) {
-              <div class="flex flex-col">
-                <dt class="text-xs font-semibold text-slate-400">{{ row.label }}</dt>
-                <dd class="text-sm text-slate-800 mt-0.5">{{ row.value }}</dd>
               </div>
+            </div>
+          </div>
+        </div>
+      </tas-card>
+
+      <!-- Où il habite -->
+      <tas-card class="block">
+        <div class="p-5">
+          <p class="font-semibold text-slate-800">Où il habite</p>
+          <p class="text-sm text-slate-500 mt-0.5">Utile pour l'agence la plus proche et la visite du logement.</p>
+
+          <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <tas-form-field>
+              <tas-label>
+                <span class="flex items-center justify-between gap-2">
+                  Pays
+                  <ng-container *ngTemplateOutlet="points; context: { $implicit: 'countryCode' }"></ng-container>
+                </span>
+              </tas-label>
+              <tas-select id="identite-countryCode" [options]="countries()" placeholder="Choisir un pays"
+                          [formField]="formSchema.identity.countryCode"></tas-select>
+              @if (suggestedCountry(); as suggestion) {
+                <tas-hint>
+                  Déduit de l'indicatif +{{ suggestion.dial }}.
+                  @if (canEdit()) {
+                    <button type="button" class="font-semibold text-primary hover:underline" (click)="acceptSuggestedCountry()">
+                      Confirmer {{ suggestion.label }}
+                    </button>
+                  }
+                </tas-hint>
+              }
+            </tas-form-field>
+            <tas-form-field>
+              <tas-label>
+                <span class="flex items-center justify-between gap-2">
+                  Ville ou commune
+                  <ng-container *ngTemplateOutlet="points; context: { $implicit: 'city' }"></ng-container>
+                </span>
+              </tas-label>
+              <input tasInput id="identite-city" type="text" autocomplete="off" placeholder="Ex. Abidjan, Yopougon"
+                     [formField]="formSchema.identity.city" />
+              @if (formSchema.identity.city().touched() && formSchema.identity.city().invalid()) {
+                <tas-error>{{ formSchema.identity.city().errors()[0].message }}</tas-error>
+              }
+            </tas-form-field>
+            <tas-form-field>
+              <tas-label>
+                <span class="flex items-center justify-between gap-2">
+                  Quartier
+                  <ng-container *ngTemplateOutlet="points; context: { $implicit: 'neighbourhood' }"></ng-container>
+                </span>
+              </tas-label>
+              <input tasInput id="identite-neighbourhood" type="text" autocomplete="off" placeholder="Ex. Cocody Angré"
+                     [formField]="formSchema.neighbourhood" />
+              @if (formSchema.neighbourhood().touched() && formSchema.neighbourhood().invalid()) {
+                <tas-error>{{ formSchema.neighbourhood().errors()[0].message }}</tas-error>
+              }
+            </tas-form-field>
+            <tas-form-field>
+              <tas-label>
+                <span class="flex items-center justify-between gap-2">
+                  Point de repère
+                  <ng-container *ngTemplateOutlet="points; context: { $implicit: 'landmark' }"></ng-container>
+                </span>
+              </tas-label>
+              <input tasInput id="identite-landmark" type="text" autocomplete="off" placeholder="Ex. derrière la pharmacie du marché"
+                     [formField]="formSchema.landmark" />
+              @if (formSchema.landmark().touched() && formSchema.landmark().invalid()) {
+                <tas-error>{{ formSchema.landmark().errors()[0].message }}</tas-error>
+              }
+            </tas-form-field>
+            <tas-form-field>
+              <tas-label>Rue et numéro <span class="text-slate-400 font-normal">(si connus)</span></tas-label>
+              <input tasInput type="text" autocomplete="off" [formField]="formSchema.identity.addressLine" />
+              @if (formSchema.identity.addressLine().touched() && formSchema.identity.addressLine().invalid()) {
+                <tas-error>{{ formSchema.identity.addressLine().errors()[0].message }}</tas-error>
+              }
+            </tas-form-field>
+            <tas-form-field>
+              <tas-label>Boîte postale <span class="text-slate-400 font-normal">(facultatif)</span></tas-label>
+              <input tasInput type="text" autocomplete="off" placeholder="Ex. 01 BP 1234" [formField]="formSchema.identity.postalCode" />
+              @if (formSchema.identity.postalCode().touched() && formSchema.identity.postalCode().invalid()) {
+                <tas-error>{{ formSchema.identity.postalCode().errors()[0].message }}</tas-error>
+              }
+            </tas-form-field>
+          </div>
+        </div>
+      </tas-card>
+    </form>
+
+    <!-- D'où viennent ces informations -->
+    <tas-card class="block">
+      <div class="p-5 flex items-start gap-3">
+        <span class="w-9 h-9 shrink-0 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center">
+          <tas-icon iconName="feather:info" style="font-size:15px"></tas-icon>
+        </span>
+        <div class="flex-1 min-w-0">
+          <p class="font-semibold text-slate-800">D'où viennent ces informations</p>
+          <p class="text-sm text-slate-600 mt-1">
+            {{ originSentence() }}
+            @if (confirmedBy(); as activity) {
+              Confirmées lors de l'échange suivant : <span class="font-medium text-slate-800">{{ activityLabel(activity) }}</span>.
+            } @else if (l.identitySourceActivityId) {
+              Confirmées lors d'un échange enregistré sur la fiche.
+            } @else {
+              Aucun appel ni visite ne les a encore confirmées.
             }
-          </dl>
-        }
+          </p>
+
+          @if (showAttach()) {
+            <div class="mt-3 rounded-lg border border-slate-200 p-3">
+              @if (activityOptions().length > 0) {
+                <form [formRoot]="attachSchema" class="flex flex-wrap items-end gap-3">
+                  <tas-form-field class="flex-1 min-w-56">
+                    <tas-label>Appel ou visite</tas-label>
+                    <tas-select [options]="activityOptions()" placeholder="Choisir l'échange" [formField]="attachSchema.activityId"></tas-select>
+                    @if (attachSchema.activityId().touched() && attachSchema.activityId().invalid()) {
+                      <tas-error>{{ attachSchema.activityId().errors()[0].message }}</tas-error>
+                    }
+                  </tas-form-field>
+                  <button tas-raised-button color="primary" type="button"
+                          [disabled]="attachSchema().invalid() || attachSchema().submitting()"
+                          [isLoading]="attachSchema().submitting()"
+                          (click)="attachSource()">
+                    Rattacher
+                  </button>
+                  <button tas-text-button type="button" (click)="showAttach.set(false)">Annuler</button>
+                </form>
+              } @else {
+                <p class="text-sm text-slate-600">
+                  Aucun appel ni visite n'est encore noté sur ce lead. Notez l'échange, puis rattachez-le.
+                </p>
+                <div class="mt-2 flex items-center gap-2">
+                  <button tas-outlined-button color="primary" type="button" (click)="logCall()">
+                    <tas-icon iconName="feather:phone" style="font-size:13px"></tas-icon>
+                    &nbsp;Noter l'appel
+                  </button>
+                  <button tas-text-button type="button" (click)="showAttach.set(false)">Annuler</button>
+                </div>
+              }
+            </div>
+          } @else if (canEdit()) {
+            <button tas-text-button color="primary" type="button" class="mt-2 -ml-2" (click)="showAttach.set(true)">
+              <tas-icon iconName="feather:link" style="font-size:13px"></tas-icon>
+              &nbsp;{{ l.identitySourceActivityId ? 'Rattacher à un autre échange' : 'Rattacher à un appel' }}
+            </button>
+          }
+        </div>
       </div>
     </tas-card>
-  </div>
-}
+
+    <!-- Enregistrer : n'apparaît que lorsqu'il y a quelque chose à enregistrer -->
+    @if (canEdit() && formSchema().dirty()) {
+      <div class="sticky bottom-0 z-10 rounded-xl border border-slate-200 bg-white/95 backdrop-blur px-4 py-3 shadow-sm flex items-center gap-3">
+        <p class="flex-1 text-sm text-slate-600">
+          Modifications non enregistrées
+          @if (formSchema().touched() && formSchema().invalid()) {
+            <span class="text-functional-error"> — certains champs sont à corriger.</span>
+          }
+        </p>
+        <button tas-text-button type="button" [disabled]="formSchema().submitting()" (click)="cancel()">Annuler</button>
+        <button tas-raised-button color="primary" type="button"
+                [disabled]="formSchema().invalid() || formSchema().submitting()"
+                [isLoading]="formSchema().submitting()"
+                (click)="handleSubmit()">
+          Enregistrer
+        </button>
+      </div>
+    }
+  }
+</div>
+
+<!-- « +8 pts » tant que le champ est vide, une coche une fois rempli -->
+<ng-template #points let-key>
+  @if (pointsFor(key); as part) {
+    <span class="text-[11px] font-semibold text-primary tabular-nums">+{{ part.points }} pts</span>
+  } @else {
+    <tas-icon iconName="feather:check" class="text-green-600" style="font-size:12px"></tas-icon>
+  }
+</ng-template>
