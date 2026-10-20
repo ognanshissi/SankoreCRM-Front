@@ -12,6 +12,7 @@
 import { LeadsPepStatusDto } from './leads-pep-status-dto.interface';
 import { LeadsPersonIdentityDto } from './leads-person-identity-dto.interface';
 import { LeadsHouseholdMemberDto } from './leads-household-member-dto.interface';
+import { HouseholdResourcesDto } from './household-resources-dto.interface';
 
 
 export interface LeadHouseholdDto { 
@@ -23,5 +24,6 @@ export interface LeadHouseholdDto {
     principalPep?: LeadsPepStatusDto;
     hasPepExposure?: boolean;
     members?: Array<LeadsHouseholdMemberDto> | null;
+    resources?: HouseholdResourcesDto;
 }
 

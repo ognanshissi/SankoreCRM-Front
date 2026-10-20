@@ -204,3 +204,39 @@ export function countryFromPhone(phone: string | null | undefined): { dial: stri
   const match = DIAL_CODES.find(([dial]) => digits.startsWith(dial));
   return match ? { dial: match[0], country: match[1] } : null;
 }
+
+// ——— Foyer : ce qu'il gagne et ce qu'il doit déjà ———
+
+/**
+ * « 450 000 », « 450000 », « 450 000 FCFA » → 450000 ; vide → null ; illisible ou négatif → NaN,
+ * que la validation du formulaire refuse.
+ */
+export function parseAmount(text: string | null | undefined): number | null {
+  const cleaned = (text ?? '').replace(/fcfa|xof/gi, '').replace(/[\s  ]/g, '').replace(',', '.');
+  if (!cleaned) return null;
+  if (!/^\d+(\.\d+)?$/.test(cleaned)) return Number.NaN;
+  return Number(cleaned);
+}
+
+/** « 450 000 » — l'affichage d'un montant dans un champ, sans unité. */
+export function amountText(value: number | null | undefined): string {
+  return value == null ? '' : AMOUNT.format(value);
+}
+
+export interface HouseholdBudget {
+  /** Ce qui reste chaque mois une fois le logement et les crédits payés. */
+  disposable: number;
+  /** Part des revenus déjà engagée, en pourcentage arrondi. */
+  commitmentPercent: number;
+}
+
+/** Null tant que les revenus ne sont pas connus : sans eux, ni reste ni part ne veulent rien dire. */
+export function householdBudget(
+  income: number | null,
+  housing: number | null,
+  otherDebts: number | null,
+): HouseholdBudget | null {
+  if (income == null || Number.isNaN(income) || income <= 0) return null;
+  const charges = (housing && !Number.isNaN(housing) ? housing : 0) + (otherDebts && !Number.isNaN(otherDebts) ? otherDebts : 0);
+  return { disposable: income - charges, commitmentPercent: Math.round((charges / income) * 100) };
+}

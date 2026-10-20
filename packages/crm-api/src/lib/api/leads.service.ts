@@ -135,6 +135,8 @@ import { RescheduleReminderRequest } from '../model/reschedule-reminder-request.
 // @ts-ignore
 import { ScoreHistoryDto } from '../model/score-history-dto.interface';
 // @ts-ignore
+import { SetHouseholdResourcesRequest } from '../model/set-household-resources-request.interface';
+// @ts-ignore
 import { SetIntentLevelRequest } from '../model/set-intent-level-request.interface';
 // @ts-ignore
 import { SetPepStatusRequest } from '../model/set-pep-status-request.interface';
@@ -4811,6 +4813,84 @@ export class LeadsApiService {
             {
                 context: localVarHttpContext,
                 body: setPepStatusRequest,
+                responseType: <any>responseType_,
+                withCredentials: this.configuration.withCredentials,
+                headers: localVarHeaders,
+                observe: observe,
+                reportProgress: reportProgress
+            }
+        );
+    }
+
+    /**
+     * Declare the household\&#39;s monthly income, housing cost and other loans
+     * @param leadId 
+     * @param setHouseholdResourcesRequest 
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     */
+    public setLeadHouseholdResources(leadId: string, setHouseholdResourcesRequest: SetHouseholdResourcesRequest, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<any>;
+    public setLeadHouseholdResources(leadId: string, setHouseholdResourcesRequest: SetHouseholdResourcesRequest, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<HttpResponse<any>>;
+    public setLeadHouseholdResources(leadId: string, setHouseholdResourcesRequest: SetHouseholdResourcesRequest, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<HttpEvent<any>>;
+    public setLeadHouseholdResources(leadId: string, setHouseholdResourcesRequest: SetHouseholdResourcesRequest, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<any> {
+        if (leadId === null || leadId === undefined) {
+            throw new Error('Required parameter leadId was null or undefined when calling setLeadHouseholdResources.');
+        }
+        if (setHouseholdResourcesRequest === null || setHouseholdResourcesRequest === undefined) {
+            throw new Error('Required parameter setHouseholdResourcesRequest was null or undefined when calling setLeadHouseholdResources.');
+        }
+
+        let localVarHeaders = this.defaultHeaders;
+
+        let localVarCredential: string | undefined;
+        // authentication (BearerToken) required
+        localVarCredential = this.configuration.lookupCredential('BearerToken');
+        if (localVarCredential) {
+            localVarHeaders = localVarHeaders.set('Authorization', 'Bearer ' + localVarCredential);
+        }
+
+        let localVarHttpHeaderAcceptSelected: string | undefined = options && options.httpHeaderAccept;
+        if (localVarHttpHeaderAcceptSelected === undefined) {
+            // to determine the Accept header
+            const httpHeaderAccepts: string[] = [
+            ];
+            localVarHttpHeaderAcceptSelected = this.configuration.selectHeaderAccept(httpHeaderAccepts);
+        }
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+
+        let localVarHttpContext: HttpContext | undefined = options && options.context;
+        if (localVarHttpContext === undefined) {
+            localVarHttpContext = new HttpContext();
+        }
+
+
+        // to determine the Content-Type header
+        const consumes: string[] = [
+            'application/json'
+        ];
+        const httpContentTypeSelected: string | undefined = this.configuration.selectHeaderContentType(consumes);
+        if (httpContentTypeSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Content-Type', httpContentTypeSelected);
+        }
+
+        let responseType_: 'text' | 'json' | 'blob' = 'json';
+        if (localVarHttpHeaderAcceptSelected) {
+            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+                responseType_ = 'text';
+            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+                responseType_ = 'json';
+            } else {
+                responseType_ = 'blob';
+            }
+        }
+
+        let localVarPath = `/api/v1/leads/${this.configuration.encodeParam({name: "leadId", value: leadId, in: "path", style: "simple", explode: false, dataType: "string", dataFormat: "uuid"})}/household/resources`;
+        return this.httpClient.request<any>('put', `${this.configuration.basePath}${localVarPath}`,
+            {
+                context: localVarHttpContext,
+                body: setHouseholdResourcesRequest,
                 responseType: <any>responseType_,
                 withCredentials: this.configuration.withCredentials,
                 headers: localVarHeaders,

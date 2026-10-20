@@ -83,6 +83,8 @@ export const PERMISSIONS = {
   LEAD_REPORT_VIEW: 'lead:report:view',
   LEAD_ACTIVITY_LOG: 'lead:activity:log',
   LEAD_CONSENT_RECORD: 'lead:consent:record',
+  /** Conjoint, enfants, statut PPE et ressources du foyer d'un lead. */
+  LEAD_HOUSEHOLD_MANAGE: 'lead:household:manage',
   LEAD_CONSENT_WITHDRAW: 'lead:consent:withdraw',
   LEAD_DUPLICATE_DISMISS: 'lead:duplicate:dismiss',
   LEAD_REMINDER_MANAGE: 'lead:reminder:manage',

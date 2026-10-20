@@ -5,15 +5,9 @@
 } @else if (compliance.loadFailed()) {
   <tas-card class="block">
     <div class="p-10 text-center">
-      <tas-icon
-        iconName="feather:alert-triangle"
-        class="text-functional-error"
-        style="font-size:28px"
-      ></tas-icon>
+      <tas-icon iconName="feather:alert-triangle" class="text-functional-error" style="font-size:28px"></tas-icon>
       <p class="text-sm font-medium text-slate-700 mt-2">Foyer indisponible</p>
-      <p class="text-sm text-slate-500 mt-1">
-        Le foyer de ce lead n'a pas pu être chargé.
-      </p>
+      <p class="text-sm text-slate-500 mt-1">Le foyer de ce lead n'a pas pu être chargé.</p>
       <div class="mt-4">
         <button tas-outlined-button color="primary" type="button" (click)="reload()">
           <tas-icon iconName="feather:refresh-cw" style="font-size:13px"></tas-icon>
@@ -24,117 +18,281 @@
   </tas-card>
 } @else {
   <div class="pb-6 flex flex-col gap-4">
-    <!-- Principal -->
+    <!-- En-tête : qui vit avec le prospect -->
     <tas-card class="block">
-      <div class="p-4 flex flex-col gap-3">
-        <div class="flex items-start justify-between gap-3 flex-wrap">
-          <div class="min-w-0">
-            <p class="text-xs uppercase tracking-wide text-slate-400">Principal</p>
-            <p class="text-sm font-medium text-slate-800 mt-0.5">
-              {{ compliance.principalLabel() }}
-            </p>
-            <p class="text-xs text-slate-500 mt-1">{{ principalAddressLabel() }}</p>
-          </div>
-
-          @if (pepEnabled()) {
-            <div class="flex items-center gap-2 flex-wrap">
-              @if (principalPep().isPep) {
-                <pep-exposure-badge [exposed]="true"></pep-exposure-badge>
-              } @else {
-                <tas-tag severity="neutral">Pas d'exposition PPE</tas-tag>
-              }
-              <button
-                tas-outlined-button
-                color="primary"
-                type="button"
-                [attr.aria-label]="'Statut PPE de ' + compliance.principalLabel()"
-                (click)="openPrincipalPep()"
-              >
-                <tas-icon iconName="feather:flag" style="font-size:13px"></tas-icon>
-                {{ canEditPep() ? 'Statut PPE' : 'Voir le statut PPE' }}
-              </button>
-            </div>
-          }
-        </div>
-
-        @if (pepEnabled() && principalPep().isPep && canReadPep()) {
-          <dl class="grid grid-cols-1 sm:grid-cols-4 gap-3 pt-3 border-t border-slate-100">
-            <div>
-              <dt class="text-xs text-slate-400">Fonction</dt>
-              <dd class="text-sm text-slate-700">{{ principalPep().function ?? '—' }}</dd>
-            </div>
-            <div>
-              <dt class="text-xs text-slate-400">Pays</dt>
-              <dd class="text-sm text-slate-700">{{ principalPep().countryCode ?? '—' }}</dd>
-            </div>
-            <div>
-              <dt class="text-xs text-slate-400">Fin de fonction</dt>
-              <dd class="text-sm text-slate-700">{{ principalPep().functionEndDate ?? '—' }}</dd>
-            </div>
-            <div>
-              <dt class="text-xs text-slate-400">Lien</dt>
-              <dd class="text-sm text-slate-700">{{ linkLabel(principalPep().link) }}</dd>
-            </div>
-          </dl>
-        } @else if (pepEnabled() && principalPep().isPep && !canReadPep()) {
-          <p class="flex items-center gap-2 text-xs text-slate-500 pt-3 border-t border-slate-100">
-            <tas-icon iconName="feather:lock" style="font-size:12px"></tas-icon>
-            Le détail de l'exposition PPE ne vous est pas accessible.
-          </p>
-        }
-      </div>
-    </tas-card>
-
-    <!-- Actions et limites de la ligne de produit -->
-    <tas-card class="block">
-      <div class="p-4 flex items-start justify-between gap-3 flex-wrap">
-        <div class="min-w-0">
-          <p class="text-sm font-medium text-slate-800">Membres du foyer</p>
-          <p class="text-xs text-slate-500 mt-1">{{ limitsLabel() }}</p>
+      <div class="p-5 flex items-start justify-between gap-4 flex-wrap">
+        <div class="min-w-0 flex-1">
+          <h2 class="text-xl font-bold text-slate-900">Foyer de {{ firstName() }}</h2>
+          <p class="text-sm text-slate-500 mt-1">{{ summary() }}</p>
           @if (!canEdit()) {
-            <p class="text-xs text-slate-500 mt-1">
+            <p class="text-xs text-slate-500 mt-2 flex items-center gap-1.5">
+              <tas-icon iconName="feather:lock" style="font-size:12px"></tas-icon>
               @if (readOnlyBecauseConverted()) {
                 Ce lead est converti : le foyer se modifie désormais depuis la fiche client.
               } @else {
-                Vous n'avez pas le droit de modifier ce lead.
+                Vous n'avez pas le droit de modifier le foyer de ce lead.
               }
             </p>
           }
         </div>
-
-        @if (canEdit()) {
-          <div class="flex items-center gap-2 flex-wrap">
-            @if (canAddSpouse()) {
-              <button tas-outlined-button color="primary" type="button" (click)="addSpouse()">
-                <tas-icon iconName="feather:heart" style="font-size:13px"></tas-icon>
-                Ajouter le conjoint
-              </button>
-            }
-            @if (childrenLimitReached()) {
-              <span class="text-xs text-slate-500">
-                Nombre maximal d'enfants atteint pour cette ligne de produit.
+        <div class="flex items-center gap-2 flex-wrap">
+          <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100 text-xs font-semibold text-slate-700">
+            <tas-icon iconName="feather:users" style="font-size:12px"></tas-icon>
+            {{ peopleCount() }} personne{{ peopleCount() > 1 ? 's' : '' }}
+          </span>
+          <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100 text-xs font-semibold text-slate-700">
+            <tas-icon iconName="feather:user" style="font-size:12px"></tas-icon>
+            {{ dependentsCount() }} à charge
+          </span>
+          @if (pepEnabled()) {
+            @if (compliance.hasPepExposure()) {
+              <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-50 text-xs font-semibold text-red-700">
+                <tas-icon iconName="feather:shield" style="font-size:12px"></tas-icon>
+                PPE dans le foyer
               </span>
             } @else {
-              <button tas-raised-button color="primary" type="button" (click)="addChild()">
-                <tas-icon iconName="feather:plus" style="font-size:13px"></tas-icon>
-                Ajouter un enfant
+              <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100 text-xs font-semibold text-slate-700">
+                <tas-icon iconName="feather:shield" style="font-size:12px"></tas-icon>
+                Aucune PPE
+              </span>
+            }
+          }
+        </div>
+      </div>
+    </tas-card>
+
+    <!-- Les personnes du foyer, puis ce qu'on peut y ajouter -->
+    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+      <!-- Principal -->
+      <div class="rounded-2xl border-2 border-primary bg-white p-5 flex flex-col gap-3">
+        <div class="flex items-center gap-3">
+          <span class="w-11 h-11 shrink-0 rounded-xl bg-primary/10 text-primary font-bold flex items-center justify-center">
+            {{ initials(principalName()) }}
+          </span>
+          <div class="min-w-0">
+            <p class="font-semibold text-slate-900 truncate">{{ principalName() }}</p>
+            <p class="text-xs text-slate-500">
+              @if (principalAge() !== null) { {{ principalAge() }} ans · }{{ principalRole() }}
+            </p>
+          </div>
+        </div>
+        <div class="flex flex-col gap-1.5 text-sm">
+          @if (pepEnabled()) {
+            @if (principalIsPep()) {
+              <p class="flex items-center gap-2 font-medium text-red-700">
+                <tas-icon iconName="feather:shield" style="font-size:13px"></tas-icon>
+                Exposé politiquement (PPE)
+              </p>
+            } @else {
+              <p class="flex items-center gap-2 font-medium text-green-700">
+                <tas-icon iconName="feather:shield" style="font-size:13px"></tas-icon>
+                Non exposé politiquement (PPE)
+              </p>
+            }
+          }
+          @if (principalAddressMissing()) {
+            <p class="flex items-center gap-2 font-medium text-red-700">
+              <tas-icon iconName="feather:map-pin" style="font-size:13px"></tas-icon>
+              Adresse à compléter
+            </p>
+          } @else {
+            <p class="flex items-center gap-2 text-slate-600">
+              <tas-icon iconName="feather:map-pin" class="text-slate-400" style="font-size:13px"></tas-icon>
+              {{ principalPlace() }}
+            </p>
+          }
+        </div>
+        <div class="mt-auto flex items-center gap-2 flex-wrap">
+          @if (principalAddressMissing() && canEditAddress()) {
+            <a routerLink="../identite" class="px-3 py-1.5 rounded-full bg-slate-100 text-sm font-semibold text-slate-800 hover:bg-slate-200">
+              Compléter l'adresse
+            </a>
+          }
+          @if (pepEnabled()) {
+            <button type="button" class="px-3 py-1.5 rounded-full text-sm font-semibold text-slate-700 hover:bg-slate-100"
+                    [attr.aria-label]="'Statut PPE de ' + principalName()"
+                    (click)="openPrincipalPep()">
+              {{ canEditPep() ? 'Statut PPE' : 'Voir le statut PPE' }}
+            </button>
+          }
+        </div>
+      </div>
+
+      <!-- Membres -->
+      @for (member of activeMembers(); track member.memberId) {
+        <div class="rounded-2xl border border-slate-200 bg-white p-5 flex flex-col gap-3">
+          <div class="flex items-center gap-3">
+            <span class="w-11 h-11 shrink-0 rounded-xl bg-slate-100 text-slate-600 font-bold flex items-center justify-center">
+              {{ initials(member.displayName) }}
+            </span>
+            <div class="min-w-0">
+              <p class="font-semibold text-slate-900 truncate">{{ member.displayName }}</p>
+              <p class="text-xs text-slate-500">{{ memberLine(member) }}</p>
+            </div>
+          </div>
+          <div class="flex flex-col gap-1.5 text-sm">
+            @if (pepEnabled()) {
+              @if (member.isPepExposed) {
+                <p class="flex items-center gap-2 font-medium text-red-700">
+                  <tas-icon iconName="feather:shield" style="font-size:13px"></tas-icon>
+                  Exposé politiquement (PPE)
+                </p>
+              } @else {
+                <p class="flex items-center gap-2 font-medium text-green-700">
+                  <tas-icon iconName="feather:shield" style="font-size:13px"></tas-icon>
+                  Non exposé politiquement (PPE)
+                </p>
+              }
+            }
+            <p class="flex items-center gap-2 text-slate-600">
+              <tas-icon iconName="feather:map-pin" class="text-slate-400" style="font-size:13px"></tas-icon>
+              {{ member.usesPrincipalAddress ? "À l'adresse du principal" : (member.city || 'Adresse propre') }}
+            </p>
+          </div>
+          <div class="mt-auto flex items-center gap-1 flex-wrap">
+            @if (canEdit()) {
+              <button type="button" class="px-3 py-1.5 rounded-full text-sm font-semibold text-slate-700 hover:bg-slate-100" (click)="editMember(member)">
+                Modifier
               </button>
             }
+            @if (pepEnabled()) {
+              <button type="button" class="px-3 py-1.5 rounded-full text-sm font-semibold text-slate-700 hover:bg-slate-100"
+                      [attr.aria-label]="'Statut PPE de ' + member.displayName"
+                      (click)="openMemberPep(member)">
+                {{ canEditPep() ? 'Statut PPE' : 'Voir le statut PPE' }}
+              </button>
+            }
+            @if (canEdit()) {
+              <button type="button" class="px-3 py-1.5 rounded-full text-sm font-semibold text-red-600 hover:bg-red-50"
+                      [attr.aria-label]="'Retirer ' + member.displayName + ' du foyer'"
+                      (click)="removeMember(member)">
+                Retirer
+              </button>
+            }
+          </div>
+        </div>
+      }
+
+      <!-- Ajouts -->
+      @if (canEdit() && canAddSpouse()) {
+        <button type="button"
+                class="rounded-2xl border-2 border-dashed border-slate-200 p-5 flex flex-col items-center justify-center gap-2 text-center hover:border-primary/40 hover:bg-white/60 min-h-44"
+                (click)="addSpouse()">
+          <span class="w-10 h-10 rounded-xl bg-white shadow-sm flex items-center justify-center text-slate-700">
+            <tas-icon iconName="feather:heart" style="font-size:16px"></tas-icon>
+          </span>
+          <span class="font-semibold text-slate-800">Ajouter le conjoint</span>
+          <span class="text-sm text-slate-500">Marié(e) ou pacsé(e)</span>
+        </button>
+      }
+      @if (canEdit()) {
+        @if (childrenLimitReached()) {
+          <div class="rounded-2xl border-2 border-dashed border-slate-200 p-5 flex flex-col items-center justify-center gap-2 text-center min-h-44">
+            <span class="font-semibold text-slate-500">Nombre maximal d'enfants atteint</span>
+            <span class="text-sm text-slate-400">La ligne de produit n'en autorise pas davantage.</span>
+          </div>
+        } @else {
+          <button type="button"
+                  class="rounded-2xl border-2 border-dashed border-slate-200 p-5 flex flex-col items-center justify-center gap-2 text-center hover:border-primary/40 hover:bg-white/60 min-h-44"
+                  (click)="addChild()">
+            <span class="w-10 h-10 rounded-xl bg-white shadow-sm flex items-center justify-center text-slate-700">
+              <tas-icon iconName="feather:plus" style="font-size:16px"></tas-icon>
+            </span>
+            <span class="font-semibold text-slate-800">Ajouter un enfant</span>
+            <span class="text-sm text-slate-500">{{ childLimitHint() }}</span>
+          </button>
+        }
+      }
+    </div>
+
+    <!-- Ressources du foyer -->
+    <tas-card class="block">
+      <div class="p-5">
+        <div class="flex items-center justify-between gap-3 flex-wrap">
+          <p class="font-semibold text-slate-800 flex items-center gap-2">
+            <tas-icon iconName="feather:credit-card" class="text-slate-500" style="font-size:16px"></tas-icon>
+            Ressources du foyer
+          </p>
+          <p class="text-sm text-slate-500">
+            Par mois, déclaré par le prospect
+            @if (resources()?.declaredAt; as declaredAt) { · le {{ formatDay(declaredAt, true) }} }
+          </p>
+        </div>
+
+        <form [formRoot]="resourcesForm" class="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+          <tas-form-field>
+            <tas-label>Revenus nets du foyer</tas-label>
+            <input tasInput type="text" inputmode="numeric" autocomplete="off" placeholder="0" [formField]="resourcesForm.monthlyIncome" />
+            <button tasSuffix type="button" tabindex="-1" aria-hidden="true" class="pr-3 text-sm text-slate-500 cursor-default">FCFA</button>
+            @if (resourcesForm.monthlyIncome().touched() && resourcesForm.monthlyIncome().invalid()) {
+              <tas-error>{{ resourcesForm.monthlyIncome().errors()[0].message }}</tas-error>
+            }
+          </tas-form-field>
+          <tas-form-field>
+            <tas-label>Loyer ou crédit logement</tas-label>
+            <input tasInput type="text" inputmode="numeric" autocomplete="off" placeholder="0" [formField]="resourcesForm.housingCost" />
+            <button tasSuffix type="button" tabindex="-1" aria-hidden="true" class="pr-3 text-sm text-slate-500 cursor-default">FCFA</button>
+            @if (resourcesForm.housingCost().touched() && resourcesForm.housingCost().invalid()) {
+              <tas-error>{{ resourcesForm.housingCost().errors()[0].message }}</tas-error>
+            }
+          </tas-form-field>
+          <tas-form-field>
+            <tas-label>Autres crédits en cours</tas-label>
+            <input tasInput type="text" inputmode="numeric" autocomplete="off" placeholder="0" [formField]="resourcesForm.otherDebts" />
+            <button tasSuffix type="button" tabindex="-1" aria-hidden="true" class="pr-3 text-sm text-slate-500 cursor-default">FCFA</button>
+            @if (resourcesForm.otherDebts().touched() && resourcesForm.otherDebts().invalid()) {
+              <tas-error>{{ resourcesForm.otherDebts().errors()[0].message }}</tas-error>
+            }
+          </tas-form-field>
+        </form>
+
+        <!-- L'estimation, recalculée à la frappe -->
+        <div class="mt-4 rounded-xl bg-slate-50 p-4 grid grid-cols-1 md:grid-cols-[auto_auto_1fr] gap-x-8 gap-y-3 items-center">
+          <div>
+            <p class="text-xs text-slate-500">Reste disponible chaque mois</p>
+            @if (budget(); as b) {
+              <p class="mt-1 text-base font-bold tabular-nums" [class]="b.disposable < 0 ? 'text-red-700' : 'text-slate-900'">
+                {{ formatAmount(b.disposable, 'XOF') }}
+              </p>
+            } @else {
+              <p class="mt-1 text-base font-bold text-slate-300" aria-label="Non calculé">—</p>
+            }
+          </div>
+          <div>
+            <p class="text-xs text-slate-500">Part des revenus déjà engagée</p>
+            @if (budget(); as b) {
+              <p class="mt-1 text-base font-bold tabular-nums" [class]="commitmentTone()">{{ b.commitmentPercent }} %</p>
+            } @else {
+              <p class="mt-1 text-base font-bold text-slate-300" aria-label="Non calculé">—</p>
+            }
+          </div>
+          <p class="text-sm text-slate-600">
+            @if (budget(); as b) {
+              @if (b.disposable < 0) {
+                Les charges déclarées dépassent les revenus : à revoir avec {{ firstName() }} avant toute proposition.
+              } @else {
+                Une fois le logement et les crédits payés, il reste {{ formatAmount(b.disposable, 'XOF') }} par mois au foyer.
+                C'est une estimation sur déclaration, avant la qualification.
+              }
+            } @else {
+              Renseignez les revenus pour estimer ce que {{ firstName() }} peut rembourser chaque mois, avant même la qualification.
+            }
+          </p>
+        </div>
+
+        @if (canEdit() && resourcesForm().dirty()) {
+          <div class="mt-4 pt-4 border-t border-slate-100 flex items-center justify-end gap-2">
+            <button tas-text-button type="button" [disabled]="resourcesForm().submitting()" (click)="cancelResources()">Annuler</button>
+            <button tas-raised-button color="primary" type="button"
+                    [disabled]="resourcesForm().invalid() || resourcesForm().submitting()"
+                    [isLoading]="resourcesForm().submitting()"
+                    (click)="saveResources()">
+              Enregistrer
+            </button>
           </div>
         }
       </div>
     </tas-card>
-
-    <household-members-list
-      [members]="activeMembers()"
-      [canEdit]="canEdit()"
-      [canReadPep]="canReadPep()"
-      emptyTitle="Aucun membre dans le foyer"
-      emptyMessage="Ajoutez le conjoint ou un enfant pour constituer le foyer du prospect."
-      (edit)="editMember($event)"
-      (remove)="removeMember($event)"
-      (editPep)="openMemberPep($event)"
-    ></household-members-list>
 
     <!-- Historique : les membres retirés restent consultables -->
     @if (removedMembers().length > 0) {

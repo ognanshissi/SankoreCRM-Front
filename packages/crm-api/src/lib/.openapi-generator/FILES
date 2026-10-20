@@ -328,6 +328,7 @@ model/holding-dto.interface.ts
 model/holding-specifics-dto.interface.ts
 model/hosted-form-config.interface.ts
 model/hosted-form-field.interface.ts
+model/household-resources-dto.interface.ts
 model/impersonate-user-request.interface.ts
 model/impersonation-started-dto.interface.ts
 model/import-job-created-result.interface.ts
@@ -605,6 +606,7 @@ model/set-agent-capacity-ceiling-request.interface.ts
 model/set-beneficiary-policy-request.interface.ts
 model/set-biometry-token-request.interface.ts
 model/set-connection-secret-request.interface.ts
+model/set-household-resources-request.interface.ts
 model/set-intent-level-request.interface.ts
 model/set-kyc-remote-policy-request.interface.ts
 model/set-legal-hold-request.interface.ts

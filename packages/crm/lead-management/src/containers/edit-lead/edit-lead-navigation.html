@@ -225,7 +225,9 @@
               </div>
               <div class="mt-1.5 flex items-center justify-between gap-2 text-[11px] text-slate-500">
                 <span>
-                  @if (pointsToThreshold() > 0) {
+                  @if (isUnqualified()) {
+                    Pas encore qualifié
+                  } @else if (pointsToThreshold() > 0) {
                     Encore <span class="font-semibold text-slate-700 tabular-nums">{{ pointsToThreshold() }}</span> points pour le seuil de qualification
                   } @else {
                     Seuil de qualification atteint
@@ -234,11 +236,6 @@
                 <span class="tabular-nums shrink-0">seuil {{ threshold() }}</span>
               </div>
             </button>
-            @if (isUnqualified()) {
-              <p class="mt-2 text-[11px] text-slate-500">
-                Pas encore qualifié : le score ne pèse que la source et les données saisies.
-              </p>
-            }
             @if (showFactors()) {
               <div id="score-factors-panel" class="mt-3 rounded-lg border border-slate-200 overflow-hidden" role="region" aria-label="Détail du score">
                 @for (factor of scoreFactors(); track factor.label) {

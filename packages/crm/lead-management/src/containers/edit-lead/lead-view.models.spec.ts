@@ -1,7 +1,7 @@
 import { LeadDto } from '@sankore/crm-api';
 import {
   ageOf, countryFromPhone, formatAmount, initials, intentOption, isConsentGap, missingAddressParts, nameNeedsCheck,
-  originLabel, originPhrase,
+  originLabel, originPhrase, householdBudget, parseAmount,
 } from './lead-view.models';
 
 describe('lead view models', () => {
@@ -60,5 +60,21 @@ describe('identity view models', () => {
     expect(countryFromPhone('+225 07 00 00 00 01')).toEqual({ dial: '225', country: 'CI' });
     expect(countryFromPhone('00221770000000')).toEqual({ dial: '221', country: 'SN' });
     expect(countryFromPhone('0700000001')).toBeNull();
+  });
+});
+
+describe('household budget', () => {
+  it('reads amounts the way agents type them', () => {
+    expect(parseAmount('450 000')).toBe(450000);
+    expect(parseAmount('450 000 FCFA')).toBe(450000);
+    expect(parseAmount('')).toBeNull();
+    expect(parseAmount('-5')).toBeNaN();
+    expect(parseAmount('beaucoup')).toBeNaN();
+  });
+
+  it('computes what is left each month and the share already committed', () => {
+    expect(householdBudget(450000, 120000, 60000)).toEqual({ disposable: 270000, commitmentPercent: 40 });
+    expect(householdBudget(450000, null, null)).toEqual({ disposable: 450000, commitmentPercent: 0 });
+    expect(householdBudget(null, 120000, 0)).toBeNull();
   });
 });

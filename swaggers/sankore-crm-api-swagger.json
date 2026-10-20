@@ -12928,6 +12928,53 @@
         }
       }
     },
+    "/api/v1/leads/{leadId}/household/resources": {
+      "put": {
+        "tags": [
+          "Leads"
+        ],
+        "summary": "Declare the household's monthly income, housing cost and other loans",
+        "operationId": "SetLeadHouseholdResources",
+        "parameters": [
+          {
+            "name": "leadId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetHouseholdResourcesRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "409": {
+            "description": "Conflict"
+          }
+        }
+      }
+    },
     "/api/v1/leads/{leadId}/pep": {
       "put": {
         "tags": [
@@ -33965,6 +34012,35 @@
         },
         "additionalProperties": false
       },
+      "HouseholdResourcesDto": {
+        "type": "object",
+        "properties": {
+          "monthlyIncome": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "housingCost": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "otherDebts": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "currency": {
+            "type": "string",
+            "nullable": true
+          },
+          "declaredAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false
+      },
       "ImpersonateUserRequest": {
         "type": "object",
         "properties": {
@@ -36392,6 +36468,9 @@
               "$ref": "#/components/schemas/LeadsHouseholdMemberDto"
             },
             "nullable": true
+          },
+          "resources": {
+            "$ref": "#/components/schemas/HouseholdResourcesDto"
           }
         },
         "additionalProperties": false
@@ -43680,6 +43759,36 @@
             "nullable": true
           },
           "expiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "SetHouseholdResourcesRequest": {
+        "type": "object",
+        "properties": {
+          "monthlyIncome": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "housingCost": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "otherDebts": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "currency": {
+            "type": "string",
+            "nullable": true
+          },
+          "expectedUpdatedAt": {
             "type": "string",
             "format": "date-time",
             "nullable": true
