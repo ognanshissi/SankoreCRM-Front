@@ -141,7 +141,7 @@ export class SettingsStatusService {
             title: 'Affectation des leads',
             detail: r.dispatch > 0 ? plural(r.dispatch, 'stratégie active', 'stratégies actives') : 'Aucune stratégie active',
             done: r.dispatch > 0,
-            link: '/settings/dispatch-rules',
+            link: '/leads/dispatching',
           });
         }
 

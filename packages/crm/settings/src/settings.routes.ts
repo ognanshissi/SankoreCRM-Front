@@ -287,9 +287,12 @@ const paneRoutes: Routes = [
     loadComponent: () => import('./containers/task-types/task-types'),
   },
   {
+    // La liste des règles est désormais l'écran Dispatching des leads, qui montre aussi ce que
+    // chacune a distribué. L'ancienne adresse y mène, pour les favoris et les liens envoyés ;
+    // la création et l'édition d'une règle restent ici.
     path: 'dispatch-rules',
-    canActivate: [hasPermissionGuard('lead:dispatching-rule:read')],
-    loadComponent: () => import('./containers/dispatch-rules/dispatch-rules'),
+    pathMatch: 'full' as const,
+    redirectTo: '/leads/dispatching',
   },
   {
     path: 'dispatch-rules/create',

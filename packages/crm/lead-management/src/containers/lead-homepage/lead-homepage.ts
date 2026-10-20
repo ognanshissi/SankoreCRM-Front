@@ -11,7 +11,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { catchError, debounceTime, EMPTY, map, Subject } from 'rxjs';
-import { CdkDragDrop, DragDropModule } from '@angular/cdk/drag-drop';
+import { CdkDragDrop, CdkDragStart, DragDropModule } from '@angular/cdk/drag-drop';
 import { Button } from '@talisoft/ui/button';
 import { TasIcon } from '@talisoft/ui/icon';
 import { TasCard } from '@talisoft/ui/card';
@@ -245,6 +245,25 @@ interface StatusTab {
     MenuItem,
     TasMenuTrigger,
   ],
+  // Les classes que la CDK pose pendant un glisser-déposer : sans elles, les cartes sautent d'un
+  // coup au lieu de s'écarter, et la carte en main n'a ni ombre ni relief.
+  styles: [`
+    .cdk-drop-list-dragging .cdk-drag:not(.cdk-drag-placeholder) {
+      transition: transform 200ms cubic-bezier(0, 0, 0.2, 1);
+    }
+    .cdk-drag-animating {
+      transition: transform 200ms cubic-bezier(0, 0, 0.2, 1);
+    }
+    .cdk-drag-preview {
+      box-shadow: 0 10px 25px -5px rgb(15 23 42 / 0.25);
+      transform: rotate(2deg);
+      cursor: grabbing;
+    }
+    /* La colonne survolée montre l'emplacement, pas « Aucun lead » à côté. */
+    .cdk-drop-list-dragging .lead-column-empty {
+      display: none;
+    }
+  `],
 })
 export class LeadHomepage implements OnInit {
   private readonly _permissions = inject(PermissionsService);
@@ -487,6 +506,13 @@ export class LeadHomepage implements OnInit {
   }
 
   // ——— Drag & Drop ———
+
+  /** Hauteur de la carte en main, que reprend l'emplacement pointillé (96 px avant le premier glisser). */
+  public readonly dragPlaceholderHeight = signal(96);
+
+  public onDragStarted(event: CdkDragStart<LeadDto>): void {
+    this.dragPlaceholderHeight.set(event.source.element.nativeElement.offsetHeight || 96);
+  }
 
   public onDrop(event: CdkDragDrop<PipelinePhase>): void {
     if (event.previousContainer === event.container) return;

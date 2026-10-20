@@ -159,6 +159,24 @@ export class DispatchRuleEditorPage implements OnInit {
   private readonly _initialPosition = signal(0);
   public readonly totalRules = computed(() => this.otherRules().length + 1);
 
+  /**
+   * L'ordre d'évaluation tel qu'il sera après l'enregistrement : les autres règles, et celle-ci à la
+   * position choisie. C'est ce que montre le champ « Priorité » — un rang parmi des règles nommées,
+   * plutôt qu'un nombre dont personne ne sait s'il est grand ou petit.
+   */
+  public readonly priorityPreview = computed(() => {
+    const entries = this.otherRules().map((r) => ({
+      key: r.id ?? '', name: r.name ?? 'Règle sans nom', isActive: !!r.isActive, self: false,
+    }));
+    entries.splice(this.position(), 0, {
+      key: SELF,
+      name: this.formSchema.name().value().trim() || (this.isEdit() ? 'Cette règle' : 'Nouvelle règle'),
+      isActive: this.isActive(),
+      self: true,
+    });
+    return entries;
+  });
+
   /** Première règle active placée avant celle-ci : c'est elle qui prend les leads sans source imposée. */
   public readonly activeRuleAbove = computed(
     () => this.otherRules().slice(0, this.position()).find((r) => r.isActive) ?? null,
@@ -219,8 +237,8 @@ export class DispatchRuleEditorPage implements OnInit {
       this._initialPosition.set(position);
 
       this._breadcrumbService.set([
-        { label: 'Paramétrage', link: ['/settings'] },
-        { label: 'Stratégies d\'affectation', link: ['/settings/dispatch-rules'] },
+        { label: 'Leads', link: ['/leads'] },
+        { label: 'Dispatching', link: ['/leads/dispatching'] },
         { label: rule?.name ?? 'Nouvelle règle' },
       ]);
       this.isLoading.set(false);
@@ -332,7 +350,7 @@ export class DispatchRuleEditorPage implements OnInit {
         ));
         if (!deactivated) {
           this._snackbar.error('Règle créée', 'Mais elle est restée active : désactivez-la depuis la liste.');
-          this._router.navigate(['/settings/dispatch-rules']);
+          this._router.navigate(['/leads/dispatching']);
           return;
         }
       }
@@ -342,7 +360,7 @@ export class DispatchRuleEditorPage implements OnInit {
       } else {
         this._snackbar.success('Règle enregistrée', this.isActive() ? 'Elle s\'applique aux prochains leads.' : 'Elle reste inactive.');
       }
-      this._router.navigate(['/settings/dispatch-rules']);
+      this._router.navigate(['/leads/dispatching']);
     });
   }
 
@@ -364,8 +382,12 @@ export class DispatchRuleEditorPage implements OnInit {
     const below = others[position]?.priority;
     if (above === undefined && below === undefined) return { self: 0, others: [] };
     if (above === undefined) return { self: below! + 1, others: [] };
-    if (below === undefined) return { self: above - 1, others: [] };
-    if (above - below >= 2) return { self: Math.floor((above + below) / 2), others: [] };
+    // Pas sous zéro : la liste affichait « Priorité −1 », et une priorité négative se lit comme une
+    // erreur. Sous une règle déjà à 0, on renumérote plutôt.
+    if (below === undefined && above >= 1) return { self: above - 1, others: [] };
+    if (above !== undefined && below !== undefined && above - below >= 2) {
+      return { self: Math.floor((above + below) / 2), others: [] };
+    }
 
     const ordered = others.map((r) => r.id ?? '');
     ordered.splice(position, 0, SELF);

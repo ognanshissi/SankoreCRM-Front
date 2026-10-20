@@ -5,7 +5,7 @@
     <!-- En-tête -->
     <div class="flex items-center justify-between gap-4">
       <div class="flex items-center gap-3 min-w-0">
-        <a [routerLink]="['/settings/dispatch-rules']" tas-button iconButton aria-label="Retour aux règles">
+        <a [routerLink]="['/leads/dispatching']" tas-button iconButton aria-label="Retour aux règles">
           <tas-icon iconName="feather:chevron-left"></tas-icon>
         </a>
         <div class="min-w-0">
@@ -45,29 +45,56 @@
               }
             </tas-form-field>
 
-            <div class="rounded-xl bg-slate-50 px-4 py-3 flex items-center gap-4">
-              <div class="flex-1 text-sm text-slate-700">
+            <!-- Priorité : le rang de la règle parmi les autres, réglable dès la création -->
+            <div class="flex flex-col gap-2" role="group" aria-labelledby="dispatch-priority-label">
+              <div>
+                <p id="dispatch-priority-label" class="text-sm font-medium text-slate-700">
+                  Priorité <span class="font-normal text-slate-500">· position {{ position() + 1 }} sur {{ totalRules() }}</span>
+                </p>
+                <p class="text-xs text-slate-500 mt-0.5">
+                  Les règles sont évaluées dans cet ordre, de haut en bas. Montez ou descendez celle-ci pour la placer.
+                </p>
+              </div>
+
+              <ol class="rounded-xl border border-slate-200 divide-y divide-slate-100 overflow-hidden">
+                @for (entry of priorityPreview(); track entry.key; let i = $index) {
+                  <li class="flex items-center gap-3 px-3 py-2" [class]="entry.self ? 'bg-primary/5' : 'bg-white'"
+                      [attr.aria-current]="entry.self ? 'true' : null">
+                    <span class="w-6 h-6 shrink-0 rounded-full text-xs font-semibold tabular-nums flex items-center justify-center"
+                          [class]="entry.self ? 'bg-primary text-white' : 'bg-slate-100 text-slate-600'">{{ i + 1 }}</span>
+                    <span class="flex-1 min-w-0 text-sm truncate" [class]="entry.self ? 'font-semibold text-primary' : 'text-slate-700'">
+                      {{ entry.name }}
+                    </span>
+                    <span class="text-xs shrink-0" [class]="entry.isActive ? 'text-green-700' : 'text-slate-400'">
+                      {{ entry.isActive ? 'Active' : 'Inactive' }}
+                    </span>
+                    @if (entry.self) {
+                      <div class="flex items-center gap-1 shrink-0">
+                        <button tas-outlined-button iconButton type="button" aria-label="Monter la règle d'un rang" [disabled]="position() === 0" (click)="move(-1)">
+                          <tas-icon iconName="feather:chevron-up" style="font-size:14px"></tas-icon>
+                        </button>
+                        <button tas-outlined-button iconButton type="button" aria-label="Descendre la règle d'un rang" [disabled]="position() === totalRules() - 1" (click)="move(1)">
+                          <tas-icon iconName="feather:chevron-down" style="font-size:14px"></tas-icon>
+                        </button>
+                      </div>
+                    }
+                  </li>
+                }
+              </ol>
+
+              <div class="rounded-xl bg-slate-50 px-4 py-3 text-sm text-slate-700">
                 @if (!activeRuleAbove()) {
                   <p>
-                    Évaluée en <strong>position {{ position() + 1 }}</strong> : c'est elle qui attribue
+                    En position {{ position() + 1 }}, c'est elle qui attribue
                     {{ isActive() ? '' : 'une fois activée ' }}tous les leads dont la source n'impose pas de règle.
                   </p>
                 } @else {
                   <p>
-                    Évaluée en <strong>position {{ position() + 1 }}</strong> : la règle active
-                    « {{ activeRuleAbove()!.name }} » passe avant et prend les leads sans source imposée.
+                    La règle active « {{ activeRuleAbove()!.name }} » passe avant et prend les leads sans source imposée.
                     Celle-ci ne traitera que les leads dont la source l'impose.
                   </p>
                 }
                 <p class="text-xs text-slate-500 mt-1">Une source de leads peut imposer sa propre règle depuis Paramétrage › Sources de leads.</p>
-              </div>
-              <div class="flex items-center gap-1.5 shrink-0">
-                <button tas-outlined-button iconButton type="button" aria-label="Monter la règle" [disabled]="position() === 0" (click)="move(-1)">
-                  <tas-icon iconName="feather:chevron-up" style="font-size:14px"></tas-icon>
-                </button>
-                <button tas-outlined-button iconButton type="button" aria-label="Descendre la règle" [disabled]="position() === totalRules() - 1" (click)="move(1)">
-                  <tas-icon iconName="feather:chevron-down" style="font-size:14px"></tas-icon>
-                </button>
               </div>
             </div>
           </div>
@@ -304,7 +331,7 @@
         @if (isEdit()) { L'interrupteur Active / Inactive agit immédiatement, sans attendre l'enregistrement. }
       </p>
       <div class="flex items-center gap-2">
-        <a [routerLink]="['/settings/dispatch-rules']" tas-text-button>Annuler</a>
+        <a [routerLink]="['/leads/dispatching']" tas-text-button>Annuler</a>
         <button
           tas-raised-button
           color="primary"

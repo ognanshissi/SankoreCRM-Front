@@ -408,6 +408,7 @@
               <div
                 cdkDrag
                 [cdkDragData]="lead"
+                (cdkDragStarted)="onDragStarted($any($event))"
                 class="bg-white rounded-lg border border-slate-200 shadow-sm p-3 cursor-grab active:cursor-grabbing hover:shadow transition-shadow focus:outline-none focus:ring-2 focus:ring-primary/40"
                 [attr.tabindex]="0"
                 role="button"
@@ -416,7 +417,16 @@
                 (keydown)="onCardKeydown($event, lead)"
                 (click)="navigateToLead(lead)"
               >
-                <div cdkDragPlaceholder class="bg-slate-50 border-2 border-dashed border-slate-300 rounded-lg h-24"></div>
+                <!--
+                  Sur un <ng-template>, et pas un <div> : la CDK ne reconnaît cdkDragPlaceholder que
+                  là. Posé sur un <div>, il était ignoré (la CDK gardait sa copie fantôme de la carte)
+                  et le <div> pointillé s'affichait en permanence dans chaque carte. Sa hauteur est
+                  celle de la carte déplacée, pour que la colonne ne saute pas.
+                -->
+                <ng-template cdkDragPlaceholder>
+                  <div class="lead-card-placeholder rounded-lg border-2 border-dashed border-primary/40 bg-primary/5"
+                       [style.height.px]="dragPlaceholderHeight()"></div>
+                </ng-template>
 
                 <div class="flex items-center gap-2">
                   <span class="w-7 h-7 rounded-full bg-slate-100 text-[10px] font-semibold text-slate-700 flex items-center justify-center shrink-0">{{ initials(lead) }}</span>
@@ -451,7 +461,7 @@
               </div>
             }
             @if (leadsOfPhase(phase.key).length === 0) {
-              <p class="text-xs text-slate-400 text-center py-4">Aucun lead</p>
+              <p class="lead-column-empty text-xs text-slate-400 text-center py-4">Aucun lead</p>
             }
           </div>
         </div>

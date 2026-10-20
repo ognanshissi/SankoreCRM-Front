@@ -49,7 +49,7 @@ export const SETTINGS_CATALOG: ReadonlyArray<SettingsGroup> = [
     tint: 'bg-[#e8eefb]',
     entries: [
       { id: 'workflows', title: 'Workflows', icon: 'feather:git-branch', link: '/settings/workflows', permission: 'workflow:read', description: 'Les étapes de validation d’un lead ou d’un contact.' },
-      { id: 'dispatch', title: 'Stratégies d’affectation', icon: 'feather:shuffle', link: '/settings/dispatch-rules', permission: 'lead:dispatching-rule:read', description: 'Qui reçoit quel lead, avec délais et escalade.' },
+      { id: 'dispatch', title: 'Stratégies d’affectation', icon: 'feather:shuffle', link: '/leads/dispatching', permission: 'lead:dispatching-rule:read', description: 'Qui reçoit quel lead, avec délais et escalade.' },
       { id: 'sources', title: 'Sources et campagnes', icon: 'feather:target', link: '/settings/lead-sources', permission: 'lead:source:read', description: 'Les canaux d’acquisition et leurs campagnes.' },
       { id: 'pipeline', title: 'Étapes du pipeline', icon: 'feather:list', link: '/settings/pipeline-stages', permission: 'lead:pipeline-stage:read', description: 'Les étapes du pipeline commercial, leur ordre et leur activation.' },
       { id: 'qualification', title: 'Formulaires de qualification', icon: 'feather:check-square', link: '/settings/qualification-templates', permission: 'lead:qualification-template:manage', description: 'Les questions posées par produit, et leurs règles conditionnelles.' },

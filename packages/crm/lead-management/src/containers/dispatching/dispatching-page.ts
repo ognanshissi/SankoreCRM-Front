@@ -7,10 +7,13 @@ import { Anchor, Button } from '@talisoft/ui/button';
 import { TasIcon } from '@talisoft/ui/icon';
 import { TasSpinner } from '@talisoft/ui/spinner';
 import { TableConfig, TasTable } from '@talisoft/ui/table';
+import { TasSwitch } from '@talisoft/ui/switch';
+import { SnackbarService } from '@talisoft/ui/snackbar';
 import {
   DispatchAgentDto,
   DispatchFeedItemDto,
   DispatchOverviewDto,
+  DispatchingRulesApiService,
   DispatchRuleOverviewDto,
   LeadDispatchingApiService,
 } from '@sankore/crm-api';
@@ -68,7 +71,7 @@ interface Insight {
  */
 @Component({
   templateUrl: './dispatching-page.html',
-  imports: [RouterLink, Anchor, Button, TasIcon, TasSpinner, TasTable],
+  imports: [RouterLink, Anchor, Button, TasIcon, TasSpinner, TasTable, TasSwitch],
 })
 export class DispatchingPage implements OnInit {
   private readonly _api = inject(LeadDispatchingApiService);
@@ -78,6 +81,8 @@ export class DispatchingPage implements OnInit {
   private readonly _destroyRef = inject(DestroyRef);
   private readonly _permissions = inject(PermissionsService);
   private readonly _reload$ = new Subject<void>();
+  private readonly _rulesApi = inject(DispatchingRulesApiService);
+  private readonly _snackbar = inject(SnackbarService);
 
   public readonly canManage = this._permissions.can('lead:dispatching-rule:manage');
 
@@ -191,7 +196,6 @@ export class DispatchingPage implements OnInit {
     () => this.agents().find((a) => a.agentId === this.agentFilter())?.name ?? '',
   );
 
-  public readonly ruleTableConfig = signal<TableConfig>({ property: 'key', pagination: { serverSide: false, pageIndex: 0, pageSize: 50, pageSizeOptions: [50] } });
   public readonly agentTableConfig = signal<TableConfig>({ property: 'agentId', pagination: { serverSide: false, pageIndex: 0, pageSize: 50, pageSizeOptions: [50] } });
   public readonly feedTableConfig = signal<TableConfig>({ property: 'assignmentId', pagination: { serverSide: false, pageIndex: 0, pageSize: 10, pageSizeOptions: [10] } });
 
@@ -266,6 +270,32 @@ export class DispatchingPage implements OnInit {
       case 'Inactive': return { label: 'Désactivée', tone: 'muted' };
       default: return { label: 'Hors règle', tone: 'muted' };
     }
+  }
+
+  /** La règle dont l'activation est en cours d'envoi. */
+  public readonly togglingRuleId = signal<string | null>(null);
+
+  /**
+   * Activer ou désactiver une règle, depuis cet écran qui remplace l'ancienne liste du paramétrage —
+   * c'est la seule action qu'elle offrait en plus de créer et modifier. Relu ensuite : l'activation
+   * change la règle qui s'applique par défaut, donc les statuts de toute la colonne.
+   */
+  public toggleActive(r: DispatchRuleOverviewDto, active: boolean): void {
+    if (!r.ruleId || !this.isEditable(r)) return;
+    this.togglingRuleId.set(r.ruleId);
+    (active ? this._rulesApi.activateDispatchingRule(r.ruleId) : this._rulesApi.deactivateDispatchingRule(r.ruleId)).pipe(
+      catchError(() => {
+        this._snackbar.error('Erreur', `Impossible de ${active ? 'activer' : 'désactiver'} la règle.`);
+        return EMPTY;
+      }),
+      finalize(() => this.togglingRuleId.set(null)),
+    ).subscribe(() => {
+      this._snackbar.success(
+        active ? 'Règle activée' : 'Règle désactivée',
+        active ? 'Elle peut recevoir les prochains leads.' : 'Elle ne reçoit plus de nouveaux leads.',
+      );
+      this.reload();
+    });
   }
 
   public isEditable(r: DispatchRuleOverviewDto | null): boolean {
