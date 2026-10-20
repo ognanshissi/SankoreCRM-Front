@@ -1,0 +1,282 @@
+<div class="pb-6 flex flex-col gap-4">
+  <converted-lead-notice></converted-lead-notice>
+
+  <!-- En-tête : le potentiel du lead -->
+  <tas-card class="block">
+    <div class="p-5 flex items-center gap-6 flex-wrap">
+      <div class="flex-1 min-w-48">
+        <h2 class="text-xl font-bold text-slate-900">Opportunités</h2>
+        <p class="text-sm text-slate-500 mt-0.5">
+          @if (openOpportunities().length === 0) {
+            Aucune opportunité ouverte
+          } @else {
+            {{ openOpportunities().length }} opportunité{{ openOpportunities().length > 1 ? 's' : '' }} ouverte{{ openOpportunities().length > 1 ? 's' : '' }}
+          }
+          @if (closedOpportunities().length > 0) {
+            · <button type="button" class="text-primary hover:underline" (click)="showClosed.set(!showClosed())">
+              {{ showClosed() ? 'masquer' : 'voir' }} les {{ closedOpportunities().length }} close{{ closedOpportunities().length > 1 ? 's' : '' }}
+            </button>
+          }
+        </p>
+      </div>
+      @if (openOpportunities().length > 0) {
+        <div>
+          <p class="text-xs text-slate-500">Montant total</p>
+          <p class="text-xl font-bold text-slate-900 tabular-nums">{{ formatAmount(totalAmount(), 'XOF') }}</p>
+        </div>
+        <div>
+          <p class="text-xs text-slate-500">Pondéré par la probabilité</p>
+          <p class="text-xl font-bold text-primary tabular-nums">{{ formatAmount(totalWeighted(), 'XOF') }}</p>
+        </div>
+      }
+      @if (canManage()) {
+        <button tas-outlined-button color="primary" type="button" class="rounded-full bg-white" (click)="openCreateDrawer()">
+          <tas-icon iconName="feather:plus" style="font-size:14px"></tas-icon>
+          &nbsp;Nouvelle opportunité
+        </button>
+      }
+    </div>
+  </tas-card>
+
+  <!-- Deux demandes différentes ? -->
+  @if (mismatch(); as m) {
+    @if (lead(); as l) {
+      <div class="rounded-2xl border border-orange-200 bg-orange-50/60 p-4 flex items-center gap-4 flex-wrap" role="status">
+        <tas-icon iconName="feather:alert-circle" class="text-red-600 shrink-0" style="font-size:16px"></tas-icon>
+        <p class="flex-1 min-w-64 text-sm text-slate-700">
+          <span class="font-semibold text-slate-900">Deux demandes différentes ?</span>
+          Le lead porte sur {{ leadProductLabel() }} de {{ formatAmount(l.desiredAmount?.amount, l.desiredAmount?.currency) }} ;
+          cette opportunité porte sur {{ formatAmount(m.estimatedAmount?.amount, m.estimatedAmount?.currency) }} pour « {{ m.title }} ».
+        </p>
+        <div class="flex items-center gap-2 flex-wrap">
+          @if (canAlignLead()) {
+            <button type="button"
+                    class="px-4 py-2 rounded-full bg-primary text-white text-sm font-semibold hover:opacity-90 disabled:opacity-60"
+                    [disabled]="busyId() === m.id"
+                    (click)="alignLead(m)">
+              C'est la même : mettre le lead à jour
+            </button>
+          }
+          @if (canManage()) {
+            <button type="button"
+                    class="px-4 py-2 rounded-full border border-orange-300 bg-white text-sm font-semibold text-orange-800 hover:bg-orange-50 disabled:opacity-60"
+                    [disabled]="busyId() === m.id"
+                    (click)="confirmSeparateNeed(m)">
+              Ce sont deux besoins
+            </button>
+          }
+        </div>
+      </div>
+    }
+  }
+
+  @if (isLoading()) {
+    <div class="flex justify-center py-16"><tas-spinner size="8" class="text-primary"></tas-spinner></div>
+  } @else if (loadFailed()) {
+    <tas-card class="block">
+      <div class="p-10 text-center" role="alert">
+        <p class="text-sm font-medium text-slate-700">Opportunités indisponibles</p>
+        <p class="text-sm text-slate-500 mt-1">La liste n'a pas pu être chargée.</p>
+        <button tas-outlined-button color="primary" type="button" class="mt-4" (click)="retry()">Réessayer</button>
+      </div>
+    </tas-card>
+  } @else if (visible().length === 0) {
+    <tas-card class="block">
+      <div class="py-14 flex flex-col items-center text-center">
+        <tas-icon iconName="feather:briefcase" class="text-slate-300 mb-2" style="font-size:32px"></tas-icon>
+        <p class="text-sm font-medium text-slate-600">Aucune opportunité ouverte</p>
+        <p class="text-sm text-slate-400 mt-1 max-w-sm">
+          Une opportunité suit ce que le prospect pourrait signer : son montant, son avancement et la prochaine action.
+        </p>
+      </div>
+    </tas-card>
+  } @else {
+    <tas-table [data]="visible()" identifierField="id" [config]="tableConfig" [hasCaption]="false">
+      <ng-template #body let-opp>
+        <tr>
+          <td class="p-0">
+            <div class="border-b border-slate-100 last:border-b-0" [class.opacity-75]="isClosed(opp)">
+              <!-- Titre, demande, montant -->
+              <div class="p-5 flex items-start gap-4 flex-wrap">
+                <span class="w-11 h-11 shrink-0 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
+                  <tas-icon iconName="feather:tool" style="font-size:18px"></tas-icon>
+                </span>
+                <div class="flex-1 min-w-56">
+                  <div class="flex items-center gap-2 flex-wrap">
+                    <p class="text-base font-bold text-slate-900">{{ opp.title }}</p>
+                    <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold"
+                          [class]="opp.stage === 'ClosedWon' ? 'bg-green-100 text-green-800' : opp.stage === 'ClosedLost' ? 'bg-red-100 text-red-700' : 'bg-indigo-50 text-indigo-700'">
+                      {{ stageLabel(opp.stage) }}
+                    </span>
+                  </div>
+                  @if (opp.description) {
+                    <p class="text-sm text-slate-600 mt-1">Demande du prospect : « {{ opp.description }} »</p>
+                  }
+                  <p class="text-xs text-slate-500 mt-1">
+                    Produit :
+                    @if (opp.product) {
+                      <span class="font-medium text-slate-700">{{ opp.product }}</span>
+                    } @else {
+                      <span class="font-semibold text-red-700">À préciser</span>
+                    }
+                    @if (ownerName(opp); as owner) { · suivie par {{ owner }} }
+                    · créée le {{ formatDay(opp.createdAt, true) }}
+                  </p>
+                  @if (opp.closeReason) {
+                    <p class="text-xs text-slate-500 mt-1">Motif : {{ opp.closeReason }}</p>
+                  }
+                </div>
+                <div class="text-right">
+                  @if (opp.estimatedAmount?.amount) {
+                    <p class="text-2xl font-bold text-slate-900 tabular-nums">{{ formatAmount(opp.estimatedAmount.amount, opp.estimatedAmount.currency) }}</p>
+                    @if (!isClosed(opp)) {
+                      <p class="text-sm text-slate-500">
+                        soit <span class="font-semibold text-primary tabular-nums">{{ formatAmount(weightedAmount(opp), opp.estimatedAmount.currency) }}</span>
+                        pondérés ({{ probabilityPercent(opp) }} %)
+                      </p>
+                    }
+                  } @else {
+                    <p class="text-sm font-semibold text-red-700">Montant à préciser</p>
+                  }
+                </div>
+              </div>
+
+              @if (!isClosed(opp)) {
+                <!-- Avancement -->
+                <div class="px-5 pb-5">
+                  <p class="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Avancement</p>
+                  <div class="mt-2 grid grid-cols-2 md:grid-cols-5 gap-2" role="radiogroup" [attr.aria-label]="'Étape de ' + opp.title">
+                    @for (stage of stages; track stage.value; let i = $index) {
+                      <button type="button" role="radio"
+                              class="rounded-xl border p-3 text-left transition-colors disabled:cursor-default"
+                              [class]="opp.stage === stage.value ? 'border-2 border-primary bg-primary/5' : 'border-slate-200 bg-white hover:border-primary/40'"
+                              [attr.aria-checked]="opp.stage === stage.value"
+                              [disabled]="!canManage() || busyId() === opp.id"
+                              (click)="moveTo(opp, stage)">
+                        <span class="block h-1 rounded-full" [class]="i <= stageIndex(opp) ? 'bg-primary' : 'bg-slate-100'"></span>
+                        <span class="mt-2 block text-sm font-semibold" [class]="opp.stage === stage.value ? 'text-primary' : 'text-slate-800'">{{ stage.label }}</span>
+                        <span class="block text-xs text-slate-500">{{ stage.hint }} · {{ stage.probability }} %</span>
+                      </button>
+                    }
+                  </div>
+                </div>
+
+                <!-- Clôture, probabilité, prochaine étape -->
+                <div class="px-5 py-4 border-t border-slate-100 grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div>
+                    <p class="text-xs text-slate-500">Clôture prévue</p>
+                    @if (isEditing(opp, 'closeDate')) {
+                      <form [formRoot]="closeDateForm" class="mt-1 flex items-end gap-2">
+                        <tas-form-field class="flex-1">
+                          <tas-label class="sr-only">Date de clôture prévue</tas-label>
+                          <input tasInput type="date" [formField]="closeDateForm.date" />
+                        </tas-form-field>
+                        <button tas-raised-button color="primary" type="button" [disabled]="closeDateForm().invalid() || closeDateForm().submitting()" (click)="saveCloseDate(opp)">OK</button>
+                        <button tas-text-button type="button" (click)="cancelEditor()">Annuler</button>
+                      </form>
+                    } @else {
+                      @if (opp.expectedCloseDate) {
+                        <p class="mt-1 font-semibold" [class]="closeDateWarning(opp) ? 'text-red-700' : 'text-slate-900'">{{ closeDateLabel(opp.expectedCloseDate) }}</p>
+                      } @else {
+                        <p class="mt-1 font-semibold text-red-700">Non définie</p>
+                      }
+                      @if (closeDateWarning(opp); as warning) {
+                        <p class="text-xs text-red-700 mt-1">{{ warning }}</p>
+                      }
+                      @if (canManage()) {
+                        <div class="mt-2 flex items-center gap-1.5 flex-wrap">
+                          <button type="button" class="px-2.5 py-1 rounded-full border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50" [disabled]="busyId() === opp.id" (click)="setCloseInMonths(opp, 1)">Dans 1 mois</button>
+                          <button type="button" class="px-2.5 py-1 rounded-full border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50" [disabled]="busyId() === opp.id" (click)="setCloseInMonths(opp, 3)">Dans 3 mois</button>
+                          <button type="button" class="px-2.5 py-1 rounded-full text-xs font-semibold text-primary hover:bg-primary/5" (click)="editCloseDate(opp)">Autre date</button>
+                        </div>
+                      }
+                    }
+                  </div>
+
+                  <div>
+                    <p class="text-xs text-slate-500">Probabilité de signature</p>
+                    <p class="mt-1 text-slate-900"><span class="font-semibold tabular-nums">{{ probabilityPercent(opp) }} %</span> · fixée par l'étape</p>
+                    <div class="mt-2 h-1.5 rounded-full bg-slate-100" role="meter" aria-label="Probabilité de signature" aria-valuemin="0" aria-valuemax="100" [attr.aria-valuenow]="probabilityPercent(opp)">
+                      <div class="h-1.5 rounded-full bg-primary" [style.width.%]="probabilityPercent(opp)"></div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <p class="text-xs text-slate-500">Prochaine étape</p>
+                    @if (isEditing(opp, 'nextStep')) {
+                      <form [formRoot]="nextStepForm" class="mt-1 flex flex-col gap-2">
+                        <tas-form-field>
+                          <tas-label class="sr-only">Action à mener</tas-label>
+                          <input tasInput type="text" placeholder="Ex. Planifier la visite du chantier" [formField]="nextStepForm.text" />
+                          @if (nextStepForm.text().touched() && nextStepForm.text().invalid()) {
+                            <tas-error>{{ nextStepForm.text().errors()[0].message }}</tas-error>
+                          }
+                        </tas-form-field>
+                        <tas-form-field>
+                          <tas-label class="sr-only">Échéance</tas-label>
+                          <input tasInput type="date" [formField]="nextStepForm.dueOn" />
+                        </tas-form-field>
+                        <div class="flex items-center gap-2">
+                          <button tas-raised-button color="primary" type="button" [disabled]="nextStepForm().invalid() || nextStepForm().submitting()" (click)="saveNextStep(opp)">Enregistrer</button>
+                          <button tas-text-button type="button" (click)="cancelEditor()">Annuler</button>
+                        </div>
+                      </form>
+                    } @else if (opp.nextStep) {
+                      <p class="mt-1 font-semibold text-slate-900">{{ opp.nextStep }}</p>
+                      @if (opp.nextStepDueOn) {
+                        <p class="text-xs text-slate-500 mt-0.5">pour le {{ formatDay(opp.nextStepDueOn, true) }}</p>
+                      }
+                      @if (canManage()) {
+                        <div class="mt-2 flex items-center gap-1.5">
+                          <button type="button" class="px-2.5 py-1 rounded-full bg-primary/10 text-xs font-semibold text-primary hover:bg-primary/15" [disabled]="busyId() === opp.id" (click)="clearNextStep(opp)">Fait</button>
+                          <button type="button" class="px-2.5 py-1 rounded-full text-xs font-semibold text-slate-600 hover:bg-slate-100" (click)="editNextStep(opp)">Modifier</button>
+                        </div>
+                      }
+                    } @else {
+                      <p class="mt-1 font-semibold text-red-700">Non définie</p>
+                      @if (canManage() && stageMetaOf(opp); as meta) {
+                        <div class="mt-2 flex items-center gap-1.5 flex-wrap">
+                          <button type="button" class="px-2.5 py-1 rounded-full bg-primary/10 text-xs font-semibold text-primary hover:bg-primary/15" [disabled]="busyId() === opp.id" (click)="useSuggestion(opp, meta.suggestion)">{{ meta.suggestion }}</button>
+                          <button type="button" class="px-2.5 py-1 rounded-full text-xs font-semibold text-slate-600 hover:bg-slate-100" (click)="editNextStep(opp)">Autre</button>
+                        </div>
+                      }
+                    }
+                  </div>
+                </div>
+
+                <!-- Pied : mise à jour, issue -->
+                <div class="px-5 py-3 border-t border-slate-100 bg-slate-50/70 flex items-center gap-3 flex-wrap">
+                  @if (isEditing(opp, 'lose')) {
+                    <form [formRoot]="loseForm" class="flex-1 flex items-end gap-2 flex-wrap">
+                      <tas-form-field class="flex-1 min-w-64">
+                        <tas-label>Pourquoi est-elle perdue ?</tas-label>
+                        <input tasInput type="text" placeholder="Ex. Financement obtenu ailleurs" [formField]="loseForm.reason" />
+                        @if (loseForm.reason().touched() && loseForm.reason().invalid()) {
+                          <tas-error>{{ loseForm.reason().errors()[0].message }}</tas-error>
+                        }
+                      </tas-form-field>
+                      <button tas-raised-button color="warn" type="button" [disabled]="loseForm().invalid() || loseForm().submitting()" [isLoading]="loseForm().submitting()" (click)="confirmLose(opp)">Marquer perdue</button>
+                      <button tas-text-button type="button" (click)="cancelEditor()">Annuler</button>
+                    </form>
+                  } @else {
+                    <p class="flex-1 text-sm text-slate-500">Dernière mise à jour le {{ formatDay(opp.updatedAt, true) }}.</p>
+                    @if (canManage()) {
+                      <button type="button" class="px-4 py-2 rounded-full border border-slate-200 bg-white text-sm font-semibold text-red-700 hover:bg-red-50" [disabled]="busyId() === opp.id" (click)="startLose(opp)">Marquer perdue</button>
+                      <button type="button" class="px-4 py-2 rounded-full bg-green-700 text-sm font-semibold text-white hover:opacity-90" [disabled]="busyId() === opp.id" (click)="markWon(opp)">Marquer gagnée</button>
+                    }
+                  }
+                </div>
+              } @else {
+                <div class="px-5 py-3 border-t border-slate-100 bg-slate-50/70">
+                  <p class="text-sm text-slate-500">
+                    {{ opp.stage === 'ClosedWon' ? 'Gagnée' : 'Perdue' }} le {{ formatDay(opp.closedAt ?? opp.updatedAt, true) }}.
+                  </p>
+                </div>
+              }
+            </div>
+          </td>
+        </tr>
+      </ng-template>
+    </tas-table>
+  }
+</div>

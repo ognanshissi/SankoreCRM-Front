@@ -32,6 +32,9 @@ export interface OpportunityDto {
     updatedAt?: string;
     closedAt?: string | null;
     closeReason?: string | null;
+    nextStep?: string | null;
+    nextStepDueOn?: string | null;
+    separateNeedConfirmedAt?: string | null;
 }
 export enum OpportunityDtoStageEnum {
     Prospecting = 'Prospecting',

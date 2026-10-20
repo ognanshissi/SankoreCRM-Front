@@ -19,5 +19,9 @@ export interface UpdateOpportunityRequest {
     expectedCloseDate?: string | null;
     ownerId?: string | null;
     expectedUpdatedAt?: string | null;
+    product?: string | null;
+    nextStep?: string | null;
+    nextStepDueOn?: string | null;
+    confirmSeparateNeed?: boolean;
 }
 

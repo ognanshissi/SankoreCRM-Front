@@ -1,0 +1,318 @@
+@if (isLoading()) {
+  <div class="flex justify-center py-24"><tas-spinner size="10" class="text-primary"></tas-spinner></div>
+} @else {
+  <div class="flex flex-col gap-5">
+    <!-- En-tête -->
+    <div class="flex items-center justify-between gap-4">
+      <div class="flex items-center gap-3 min-w-0">
+        <a [routerLink]="['/settings/dispatch-rules']" tas-button iconButton aria-label="Retour aux règles">
+          <tas-icon iconName="feather:chevron-left"></tas-icon>
+        </a>
+        <div class="min-w-0">
+          <p class="text-xs text-slate-500">Dispatching · règle n° {{ position() + 1 }} sur {{ totalRules() }}</p>
+          <h1 class="text-xl font-semibold text-slate-800 truncate">{{ formSchema.name().value() || 'Nouvelle règle' }}</h1>
+        </div>
+      </div>
+      <div class="flex items-center gap-2.5 shrink-0 rounded-full border border-slate-200 bg-white pl-3 pr-1.5 py-1">
+        <span class="text-sm font-medium" [class]="isActive() ? 'text-primary' : 'text-slate-500'">
+          {{ isActive() ? 'Active' : 'Inactive' }}
+        </span>
+        <tas-switch
+          [checked]="isActive()"
+          [isLoading]="isToggling()"
+          [disabled]="formSchema().submitting()"
+          [ariaLabel]="isActive() ? 'Désactiver la règle' : 'Activer la règle'"
+          (toggle)="toggleActive($event)"
+        ></tas-switch>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_22rem] gap-5 items-start">
+      <form [formRoot]="formSchema" class="flex flex-col gap-4 min-w-0">
+        <!-- 1. Quels leads -->
+        <tas-card class="block">
+          <div class="p-5 flex flex-col gap-4">
+            <h2 class="flex items-center gap-2.5 text-base font-semibold text-slate-800">
+              <span class="w-6 h-6 rounded-full bg-primary text-white text-xs flex items-center justify-center">1</span>
+              Quels leads cette règle prend-elle ?
+            </h2>
+
+            <tas-form-field>
+              <tas-label>Nom de la règle <span class="text-functional-error">*</span></tas-label>
+              <input tasInput type="text" placeholder="Ex : Score de compatibilité · crédits" [formField]="formSchema.name" />
+              @if (formSchema.name().touched() && formSchema.name().invalid()) {
+                <tas-error>{{ formSchema.name().errors()[0].message }}</tas-error>
+              }
+            </tas-form-field>
+
+            <div class="rounded-xl bg-slate-50 px-4 py-3 flex items-center gap-4">
+              <div class="flex-1 text-sm text-slate-700">
+                @if (!activeRuleAbove()) {
+                  <p>
+                    Évaluée en <strong>position {{ position() + 1 }}</strong> : c'est elle qui attribue
+                    {{ isActive() ? '' : 'une fois activée ' }}tous les leads dont la source n'impose pas de règle.
+                  </p>
+                } @else {
+                  <p>
+                    Évaluée en <strong>position {{ position() + 1 }}</strong> : la règle active
+                    « {{ activeRuleAbove()!.name }} » passe avant et prend les leads sans source imposée.
+                    Celle-ci ne traitera que les leads dont la source l'impose.
+                  </p>
+                }
+                <p class="text-xs text-slate-500 mt-1">Une source de leads peut imposer sa propre règle depuis Paramétrage › Sources de leads.</p>
+              </div>
+              <div class="flex items-center gap-1.5 shrink-0">
+                <button tas-outlined-button iconButton type="button" aria-label="Monter la règle" [disabled]="position() === 0" (click)="move(-1)">
+                  <tas-icon iconName="feather:chevron-up" style="font-size:14px"></tas-icon>
+                </button>
+                <button tas-outlined-button iconButton type="button" aria-label="Descendre la règle" [disabled]="position() === totalRules() - 1" (click)="move(1)">
+                  <tas-icon iconName="feather:chevron-down" style="font-size:14px"></tas-icon>
+                </button>
+              </div>
+            </div>
+          </div>
+        </tas-card>
+
+        <!-- 2. Comment choisir l'agent -->
+        <tas-card class="block">
+          <div class="p-5 flex flex-col gap-4">
+            <h2 class="flex items-center gap-2.5 text-base font-semibold text-slate-800">
+              <span class="w-6 h-6 rounded-full bg-primary text-white text-xs flex items-center justify-center">2</span>
+              Comment choisir l'agent ?
+            </h2>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5" role="radiogroup" aria-label="Méthode d'attribution">
+              @for (opt of strategies; track opt.key) {
+                @let selected = strategy() === opt.key;
+                <button
+                  type="button"
+                  role="radio"
+                  [attr.aria-checked]="selected"
+                  class="text-left p-3.5 rounded-xl border flex items-start gap-3 transition-all"
+                  [class]="selected
+                    ? 'border-primary ring-1 ring-primary bg-primary/5'
+                    : isEdit() ? 'border-slate-200 opacity-50 cursor-not-allowed' : 'border-slate-200 hover:border-slate-300'"
+                  [disabled]="isEdit() && !selected"
+                  (click)="selectStrategy(opt.key)"
+                >
+                  <span class="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
+                    [class]="selected ? 'bg-primary text-white' : 'bg-slate-100 text-slate-600'">
+                    <tas-icon [iconName]="opt.icon" style="font-size:16px"></tas-icon>
+                  </span>
+                  <span class="min-w-0">
+                    <span class="block text-sm font-semibold text-slate-800">{{ opt.label }}</span>
+                    <span class="block text-xs text-slate-500 mt-0.5">{{ opt.description }}</span>
+                  </span>
+                </button>
+              }
+            </div>
+            @if (isEdit()) {
+              <p class="text-xs text-slate-500 -mt-1">La méthode est fixée à la création. Pour en changer, créez une nouvelle règle.</p>
+            }
+
+            @if (showWeights()) {
+              <div class="rounded-xl bg-slate-50 p-4 flex flex-col gap-4">
+                <div class="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <p class="text-sm font-semibold text-slate-800">Ce qui compte le plus</p>
+                    <p class="text-xs text-slate-500">Les pourcentages se recalculent pour faire 100 %.</p>
+                  </div>
+                  <div class="flex flex-wrap gap-1.5">
+                    @for (preset of presets; track preset.label) {
+                      <button
+                        type="button"
+                        class="px-3 py-1 rounded-full border text-xs font-medium transition-colors"
+                        [class]="activePreset() === preset.label
+                          ? 'border-primary bg-primary text-white'
+                          : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'"
+                        (click)="applyPreset(preset)"
+                      >{{ preset.label }}</button>
+                    }
+                  </div>
+                </div>
+
+                <div class="flex flex-col gap-3">
+                  @for (c of criteria; track c.key) {
+                    <div class="grid grid-cols-[9rem_minmax(0,1fr)_3rem] items-center gap-4">
+                      <label [for]="'weight-' + c.key" class="flex items-start gap-2">
+                        <span class="w-2 h-2 rounded-sm mt-1.5 shrink-0" [class]="c.color"></span>
+                        <span>
+                          <span class="block text-sm font-semibold text-slate-800">{{ c.label }}</span>
+                          <span class="block text-xs text-slate-500 leading-tight">{{ c.hint }}</span>
+                        </span>
+                      </label>
+                      <input
+                        type="range"
+                        class="w-full accent-primary"
+                        [id]="'weight-' + c.key"
+                        [attr.aria-valuetext]="normalizedWeights()[c.key] + ' %'"
+                        [formField]="formSchema.weights[c.key]"
+                      />
+                      <span class="text-sm font-semibold text-slate-800 tabular-nums text-right">{{ normalizedWeights()[c.key] }} %</span>
+                    </div>
+                  }
+                </div>
+                @if (formSchema.weights().invalid()) {
+                  <p class="text-xs text-functional-error">{{ formSchema.weights().errors()[0].message }}</p>
+                }
+              </div>
+            }
+          </div>
+        </tas-card>
+
+        <!-- 3. Garde-fous -->
+        <tas-card class="block">
+          <div class="p-5 flex flex-col gap-3">
+            <h2 class="flex items-center gap-2.5 text-base font-semibold text-slate-800 mb-1">
+              <span class="w-6 h-6 rounded-full bg-primary text-white text-xs flex items-center justify-center">3</span>
+              Garde-fous
+            </h2>
+
+            <div class="rounded-xl border border-slate-200 px-4 py-3">
+              <div class="flex flex-wrap items-center gap-x-2.5 gap-y-2 text-sm text-slate-700">
+                <tas-icon iconName="feather:check-square" class="text-slate-500" style="font-size:15px"></tas-icon>
+                Pas plus de
+                <number-stepper [formField]="formSchema.maxTasksPerAgent" [step]="5" [format]="formatTasks" ariaLabel="le plafond de tâches ouvertes"></number-stepper>
+                tâches ouvertes par agent
+              </div>
+              <p class="text-xs text-slate-500 mt-1.5 ml-6">Au-delà, l'agent ne reçoit plus de leads. À 0 : pas de limite.</p>
+            </div>
+
+            <div class="rounded-xl border border-slate-200 px-4 py-3">
+              <div class="flex flex-wrap items-center gap-x-2.5 gap-y-2 text-sm text-slate-700">
+                <tas-icon iconName="feather:zap" class="text-slate-500" style="font-size:15px"></tas-icon>
+                Pas plus de
+                <number-stepper [formField]="formSchema.antiMonopolyThreshold" ariaLabel="le plafond de leads chauds"></number-stepper>
+                leads chauds en cours par agent
+              </div>
+              <p class="text-xs text-slate-500 mt-1.5 ml-6">Évite qu'un seul agent accapare les meilleurs prospects.</p>
+            </div>
+
+            <div class="rounded-xl border border-slate-200 px-4 py-3">
+              <div class="flex flex-wrap items-center gap-x-2.5 gap-y-2 text-sm text-slate-700">
+                <tas-icon iconName="feather:users" class="text-slate-500" style="font-size:15px"></tas-icon>
+                Un agent est considéré plein à
+                <number-stepper [formField]="formSchema.maxLeadsPerAgent" [step]="5" ariaLabel="la charge pleine"></number-stepper>
+                leads ouverts
+              </div>
+              <p class="text-xs text-slate-500 mt-1.5 ml-6">Plus il s'en approche, moins il gagne de points de disponibilité. Ce n'est pas un plafond strict.</p>
+            </div>
+
+            <div class="rounded-xl border border-slate-200 px-4 py-3">
+              <div class="flex flex-wrap items-center gap-x-2.5 gap-y-2 text-sm text-slate-700">
+                <tas-icon iconName="feather:clock" class="text-slate-500" style="font-size:15px"></tas-icon>
+                Premier contact sous
+                <number-stepper [formField]="formSchema.firstContactSlaMinutes" [step]="60" [format]="formatDuration" ariaLabel="le délai de premier contact"></number-stepper>
+                , sinon le lead remonte au responsable de l'agent
+              </div>
+            </div>
+          </div>
+        </tas-card>
+
+        <!-- 4. Agents concernés -->
+        <tas-card class="block">
+          <div class="p-5 flex flex-col gap-4">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+              <h2 class="flex items-center gap-2.5 text-base font-semibold text-slate-800">
+                <span class="w-6 h-6 rounded-full bg-primary text-white text-xs flex items-center justify-center">4</span>
+                Agents concernés
+              </h2>
+              <p class="text-sm text-slate-500 tabular-nums">
+                {{ includedAgentCount() }} agent{{ includedAgentCount() > 1 ? 's' : '' }} sur {{ eligibleAgentCount() }}
+                recevr{{ includedAgentCount() > 1 ? 'ont' : 'a' }} des leads
+              </p>
+            </div>
+
+            @if (agentRows().length === 0) {
+              <p class="text-sm text-slate-500 py-4 text-center">Aucun utilisateur trouvé.</p>
+            } @else {
+              <div class="flex flex-wrap items-center gap-3">
+                @if (agentRows().length > 10) {
+                  <input
+                    tasInput
+                    type="search"
+                    class="flex-1 min-w-48"
+                    placeholder="Rechercher un agent, un rôle, une agence…"
+                    aria-label="Rechercher un agent"
+                    [value]="agentSearch()"
+                    (input)="agentSearch.set($any($event.target).value)"
+                  />
+                }
+                <div class="flex items-center gap-3 text-xs font-medium">
+                  <button type="button" class="text-primary hover:underline" (click)="setAllAgents(true)">Tout cocher</button>
+                  <button type="button" class="text-primary hover:underline" (click)="setAllAgents(false)">Tout décocher</button>
+                </div>
+              </div>
+
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+                @for (agent of filteredAgentRows(); track agent.id) {
+                  @let included = !agent.blockedReason && !isExcluded(agent.id);
+                  <button
+                    type="button"
+                    role="checkbox"
+                    [attr.aria-checked]="included"
+                    [disabled]="!!agent.blockedReason"
+                    class="flex items-center gap-3 rounded-xl border px-3 py-2.5 text-left transition-colors"
+                    [class]="agent.blockedReason
+                      ? 'border-red-100 bg-red-50/50 cursor-not-allowed'
+                      : included ? 'border-slate-200 hover:border-slate-300' : 'border-slate-200 bg-slate-50 hover:border-slate-300'"
+                    (click)="toggleAgent(agent)"
+                  >
+                    <span
+                      class="w-5 h-5 rounded flex items-center justify-center shrink-0 border"
+                      [class]="included ? 'bg-primary border-primary text-white' : 'bg-white border-slate-300'"
+                    >
+                      @if (included) { <tas-icon iconName="feather:check" style="font-size:12px"></tas-icon> }
+                    </span>
+                    <span class="w-8 h-8 rounded-lg bg-slate-100 text-slate-600 text-[11px] font-bold flex items-center justify-center shrink-0">
+                      {{ agent.initials }}
+                    </span>
+                    <span class="min-w-0">
+                      <span class="block text-sm font-semibold truncate" [class]="included ? 'text-slate-800' : 'text-slate-500'">{{ agent.name }}</span>
+                      @if (agent.blockedReason) {
+                        <span class="block text-xs text-functional-error truncate">{{ agent.blockedReason }}</span>
+                      } @else {
+                        <span class="block text-xs text-slate-500 truncate">{{ agent.subtitle }}</span>
+                      }
+                    </span>
+                  </button>
+                } @empty {
+                  <p class="text-sm text-slate-500 py-2 md:col-span-2">Aucun agent ne correspond à « {{ agentSearch() }} ».</p>
+                }
+              </div>
+            }
+          </div>
+        </tas-card>
+      </form>
+
+      <aside class="xl:sticky xl:top-4">
+        <dispatch-rule-preview
+          [strategy]="strategy()"
+          [weights]="normalizedWeights()"
+          [maxLeadsPerAgent]="formSchema.maxLeadsPerAgent().value()"
+          [maxTasksPerAgent]="formSchema.maxTasksPerAgent().value()"
+          [antiMonopolyThreshold]="formSchema.antiMonopolyThreshold().value()"
+          [excludedAgentIds]="excludedAgentIds()"
+        ></dispatch-rule-preview>
+      </aside>
+    </div>
+
+    <!-- Barre d'actions -->
+    <div class="sticky bottom-0 z-10 -mx-1 px-4 py-3 rounded-t-xl border-t border-slate-200 bg-white/95 backdrop-blur flex flex-wrap items-center justify-between gap-3">
+      <p class="text-xs text-slate-500">
+        Les modifications s'appliquent aux prochains leads, pas à ceux déjà attribués.
+        @if (isEdit()) { L'interrupteur Active / Inactive agit immédiatement, sans attendre l'enregistrement. }
+      </p>
+      <div class="flex items-center gap-2">
+        <a [routerLink]="['/settings/dispatch-rules']" tas-text-button>Annuler</a>
+        <button
+          tas-raised-button
+          color="primary"
+          type="button"
+          [isLoading]="formSchema().submitting()"
+          (click)="handleSubmit()"
+        >{{ isEdit() ? 'Enregistrer' : (isActive() ? 'Créer et activer' : 'Créer la règle') }}</button>
+      </div>
+    </div>
+  </div>
+}

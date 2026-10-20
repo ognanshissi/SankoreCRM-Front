@@ -295,13 +295,13 @@ const paneRoutes: Routes = [
     path: 'dispatch-rules/create',
     canActivate: [hasPermissionGuard('lead:dispatching-rule:manage')],
     loadComponent: () =>
-      import('./containers/dispatch-rules/create-dispatch-rule'),
+      import('./containers/dispatch-rules/dispatch-rule-editor/dispatch-rule-editor'),
   },
   {
     path: 'dispatch-rules/:id/edit',
     canActivate: [hasPermissionGuard('lead:dispatching-rule:manage')],
     loadComponent: () =>
-      import('./containers/dispatch-rules/edit-dispatch-rule'),
+      import('./containers/dispatch-rules/dispatch-rule-editor/dispatch-rule-editor'),
   },
   {
     path: 'pipeline-stages',

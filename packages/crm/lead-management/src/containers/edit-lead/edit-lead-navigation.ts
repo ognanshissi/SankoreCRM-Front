@@ -1,5 +1,5 @@
 import { Component, computed, effect, inject, input, signal, OnDestroy } from '@angular/core';
-import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { NavigationEnd, Router, RouterLink, RouterOutlet } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { TasIcon } from '@talisoft/ui/icon';
 import { TasCard } from '@talisoft/ui/card';
@@ -35,7 +35,7 @@ import { LogActivityDrawer, LogActivityDrawerData } from './log-activity-drawer'
 import { TasTag } from '@talisoft/ui/tag';
 import { TimeagoPipe } from '@talisoft/ui/timeago';
 import { Menu, MenuItem, TasMenuTrigger } from '@talisoft/ui/menu';
-import { catchError, EMPTY, forkJoin, map, of } from 'rxjs';
+import { catchError, EMPTY, filter, forkJoin, map, of } from 'rxjs';
 import { LeadEditContext } from './lead-edit-context';
 import { LeadComplianceStore } from './lead-compliance-store';
 import { interestedProductLabel } from '../../components/interested-product';
@@ -58,8 +58,11 @@ interface LeadMenuItem {
 
 interface LeadMenuGroup {
   title: string;
+  icon: string;
   items: LeadMenuItem[];
 }
+
+type MenuBadge = { text: string; tone: 'red' | 'amber' | 'slate' };
 
 /**
  * Les onglets de la fiche, regroupés comme le parcours d'un agent : qui est le prospect, ce qui
@@ -68,6 +71,7 @@ interface LeadMenuGroup {
 const MENU: ReadonlyArray<LeadMenuGroup> = [
   {
     title: 'Le prospect',
+    icon: 'feather:user',
     items: [
       { label: 'Informations', icon: 'feather:user', route: 'informations' },
       { label: 'Identité', icon: 'feather:user-check', route: 'identite' },
@@ -77,15 +81,16 @@ const MENU: ReadonlyArray<LeadMenuGroup> = [
   },
   {
     title: 'Suivi',
+    icon: 'feather:activity',
     items: [
-      { label: 'Activités', icon: 'feather:activity', route: 'activites' },
-      { label: 'Rappels', icon: 'feather:bell', route: 'rappels' },
-      { label: 'Tâches', icon: 'feather:check-square', route: 'taches' },
-      { label: 'Chronologie', icon: 'feather:clock', route: 'timeline' },
+      // Une seule page, dont les quatre sous-pages (activités, rappels, tâches, chronologie) sont
+      // des onglets — voir `suivi/suivi.ts`.
+      { label: 'Suivi', icon: 'feather:activity', route: 'suivi' },
     ],
   },
   {
     title: 'Dossier',
+    icon: 'feather:folder',
     items: [
       { label: 'Qualification', icon: 'feather:list', route: 'qualification' },
       { label: 'Score', icon: 'feather:bar-chart-2', route: 'score' },
@@ -138,7 +143,6 @@ function scoreBarClass(score: number, threshold: number): string {
 @Component({
   imports: [
     RouterLink,
-    RouterLinkActive,
     RouterOutlet,
     TasIcon,
     TasCard,
@@ -154,18 +158,9 @@ function scoreBarClass(score: number, threshold: number): string {
     TasMenuTrigger,
   ],
   templateUrl: './edit-lead-navigation.html',
-  styles: [
-    `
-      .is-link-active {
-        background-color: rgb(var(--tas-color-primary));
-        color: white;
-        font-weight: 600;
-      }
-      .is-link-active tas-icon {
-        color: white;
-      }
-    `,
-  ],
+  // En bloc : la barre des rubriques est `sticky`, et un hôte en ligne (le défaut d'un composant)
+  // ne lui donnerait aucune hauteur à l'intérieur de laquelle rester collée.
+  host: { class: 'block' },
 })
 export class EditLeadNavigation implements OnDestroy {
   private readonly _permissions = inject(PermissionsService);
@@ -185,6 +180,45 @@ export class EditLeadNavigation implements OnDestroy {
   public readonly id = input.required<string>();
 
   public readonly menu = MENU;
+
+  /**
+   * La rubrique affichée, lue dans l'URL (`/leads/{id}/foyer` → `foyer`), et son groupe : c'est lui
+   * qui est ouvert dans la barre, si bien qu'un lien direct vers une rubrique ouvre le bon groupe.
+   */
+  private readonly _url = toSignal(
+    inject(Router).events.pipe(
+      filter((e): e is NavigationEnd => e instanceof NavigationEnd),
+      map((e) => e.urlAfterRedirects),
+    ),
+    { initialValue: inject(Router).url },
+  );
+  /** Le segment qui suit l'identifiant du lead : `suivi` pour `/leads/{id}/suivi/rappels`. */
+  public readonly activeRoute = computed(() => {
+    const segments = this._url().split(/[?#]/)[0].split('/').filter(Boolean);
+    const at = segments.indexOf(this.id());
+    return (at >= 0 ? segments[at + 1] : segments[segments.length - 1]) ?? '';
+  });
+  public readonly activeGroup = computed(
+    () => MENU.find((g) => g.items.some((i) => i.route === this.activeRoute())) ?? MENU[0],
+  );
+
+  /** La rubrique affichée, quand elle appartient à ce groupe — le bouton du groupe la nomme. */
+  public activeItem(group: LeadMenuGroup): LeadMenuItem | null {
+    return group.items.find((i) => i.route === this.activeRoute()) ?? null;
+  }
+
+  /**
+   * Le résumé d'un groupe : la somme de ses compteurs, dans le ton le plus grave. Un badge
+   * sans nombre (« À faire ») devient un point — on sait qu'il y a quelque chose, sans le détail.
+   */
+  public groupBadge(group: LeadMenuGroup): MenuBadge | null {
+    const badges = group.items.map((i) => this.badgeFor(i.route)).filter((b): b is MenuBadge => !!b);
+    if (badges.length === 0) return null;
+    const tone = badges.some((b) => b.tone === 'red') ? 'red' : badges.some((b) => b.tone === 'amber') ? 'amber' : 'slate';
+    const counts = badges.map((b) => Number(b.text)).filter((n) => Number.isFinite(n));
+    const total = counts.reduce((sum, n) => sum + n, 0);
+    return { text: total > 0 ? String(total) : '•', tone };
+  }
   public readonly formatDay = formatDay;
 
   public isLoading = signal(true);
@@ -271,13 +305,13 @@ export class EditLeadNavigation implements OnDestroy {
     return null;
   });
 
-  public badgeFor(route: string): { text: string; tone: 'red' | 'amber' | 'slate' } | null {
+  public badgeFor(route: string): MenuBadge | null {
     switch (route) {
       case 'identite':
         return this.missingAddress() > 0 && !this.isConverted()
           ? { text: String(this.missingAddress()), tone: 'amber' }
           : null;
-      case 'activites':
+      case 'suivi':
         return this.hasNoActivity() ? { text: '0', tone: 'amber' } : null;
       case 'doublons':
         return this.duplicateCount() > 0 ? { text: String(this.duplicateCount()), tone: 'red' } : null;

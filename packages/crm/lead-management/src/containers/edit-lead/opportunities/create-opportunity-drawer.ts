@@ -1,51 +1,68 @@
-import { Component, computed, inject, signal, DestroyRef } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { DIALOG_DATA, DialogRef } from '@angular/cdk/dialog';
-import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
-import { catchError, debounceTime, distinctUntilChanged, filter, map, of, switchMap, tap } from 'rxjs';
-import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
-import { TasIcon } from '@talisoft/ui/icon';
-import { TasSpinner } from '@talisoft/ui/spinner';
-import { TasTag, Severity } from '@talisoft/ui/tag';
+import { HttpErrorResponse } from '@angular/common/http';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { form, FormField, FormRoot, maxLength, required, submit, validate } from '@angular/forms/signals';
+import { catchError, EMPTY, firstValueFrom, map } from 'rxjs';
 import { Button } from '@talisoft/ui/button';
-import { TasFormField, TasLabel, TasError } from '@talisoft/ui/form-field';
+import { TasError, TasFormField, TasHint, TasLabel } from '@talisoft/ui/form-field';
 import { TasInput } from '@talisoft/ui/input';
 import { TasSelect } from '@talisoft/ui/select';
 import {
-  TasSideDrawer,
-  TasDrawerTitle,
-  TasDrawerContent,
   TasDrawerAction,
+  TasDrawerContent,
+  TasDrawerTitle,
+  TasSideDrawer,
 } from '@talisoft/ui/side-drawer';
-import { TasTitle } from '@talisoft/ui/title';
 import { SnackbarService } from '@talisoft/ui/snackbar';
-import { LeadsApiService, DuplicateMatchResult } from '@sankore/crm-api';
-import { DuplicateWarningBanner, AuthenticationService } from '@sankore/crm/common';
-import {
-  OpportunityDto,
-  OpportunityStore,
-  STAGE_OPTIONS,
-} from './opportunity.model';
+import { TasTitle } from '@talisoft/ui/title';
+import { FormFieldReferenceTargetEnum, LeadDto, OpportunitiesApiService } from '@sankore/crm-api';
+import { EntityFormReferences } from '@sankore/crm/common';
+import { amountText, parseAmount } from '../lead-view.models';
 
 export interface CreateOpportunityDrawerData {
-  leadId: string;
-  leadName: string;
+  lead: LeadDto;
 }
 
-const CURRENCY_OPTIONS = [
-  { label: 'XOF', value: 'XOF' },
-  { label: 'EUR', value: 'EUR' },
-  { label: 'USD', value: 'USD' },
-];
+/** Le produit vaut son LIBELLÉ : c'est ce que la clôture résout contre le catalogue. */
+class CreateOpportunityFormModel {
+  public title!: string;
+  public description!: string;
+  public product!: string;
+  public amount!: string;
+  public expectedCloseDate!: string;
 
+  public static fromLead(lead: LeadDto, productLabel: string): CreateOpportunityFormModel {
+    const m = new CreateOpportunityFormModel();
+    m.title = '';
+    // Ce que le prospect a dit, tel quel : c'est la « demande du prospect » de la carte.
+    m.description = lead.comment?.trim() ?? '';
+    m.product = productLabel;
+    m.amount = amountText(lead.desiredAmount?.amount);
+    m.expectedCloseDate = '';
+    return m;
+  }
+}
+
+/** Création d'une opportunité depuis la fiche lead. L'étape de départ est fixée par le serveur. */
 @Component({
   selector: 'create-opportunity-drawer',
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
-    FormsModule,
-    TasSideDrawer, TasDrawerTitle, TasDrawerContent, TasDrawerAction,
-    TasIcon, TasSpinner, TasTag, Button,
-    TasFormField, TasLabel, TasError, TasInput, TasSelect,
-    TasTitle, DuplicateWarningBanner,
+    FormRoot,
+    FormField,
+    TasSideDrawer,
+    TasDrawerTitle,
+    TasDrawerContent,
+    TasDrawerAction,
+    TasTitle,
+    Button,
+    TasFormField,
+    TasLabel,
+    TasError,
+    TasHint,
+    TasInput,
+    TasSelect,
   ],
   template: `
     <tas-side-drawer>
@@ -54,154 +71,60 @@ const CURRENCY_OPTIONS = [
       </tas-drawer-title>
 
       <tas-drawer-content>
-        <!-- Lead context -->
-        <div class="mb-4 p-3 rounded-lg bg-slate-50 border border-slate-200">
-          <p class="text-sm font-medium text-slate-800">Lead : {{ data.leadName }}</p>
-        </div>
-
-        <!-- Client search (reuses dedup from M13-002) -->
-        <div class="mb-4">
+        <form [formRoot]="formSchema" class="flex flex-col gap-4">
           <tas-form-field>
-            <tas-label>Recherche client existant</tas-label>
-            <input
-              tasInput
-              type="text"
-              placeholder="Téléphone ou nom du client..."
-              [ngModel]="clientSearch()"
-              (ngModelChange)="clientSearch.set($event)"
-            />
+            <tas-label>Titre <span class="text-functional-error">*</span></tas-label>
+            <input tasInput type="text" placeholder="Ex. Crédit pour un chantier à Daloa" [formField]="formSchema.title" />
+            @if (formSchema.title().touched() && formSchema.title().invalid()) {
+              <tas-error>{{ formSchema.title().errors()[0].message }}</tas-error>
+            }
           </tas-form-field>
-          @if (isCheckingDuplicates()) {
-            <div class="mt-1 flex items-center gap-1">
-              <tas-spinner size="3" class="text-primary"></tas-spinner>
-              <span class="text-xs text-slate-400">Recherche en cours…</span>
-            </div>
-          }
-          <duplicate-warning-banner
-            [duplicates]="duplicates()"
-            (viewDuplicate)="onViewDuplicate($event)"
-          ></duplicate-warning-banner>
-        </div>
 
-        <!-- Title -->
-        <tas-form-field>
-          <tas-label>Titre <span class="text-red-500">*</span></tas-label>
-          <input
-            tasInput
-            type="text"
-            placeholder="Ex : Prêt immobilier — M. Diallo"
-            [ngModel]="title()"
-            (ngModelChange)="title.set($event)"
-          />
-          @if (submitted() && !title().trim()) {
-            <tas-error>Le titre est obligatoire.</tas-error>
-          }
-        </tas-form-field>
-
-        <!-- Stage -->
-        <div class="mt-3">
           <tas-form-field>
-            <tas-label>Étape</tas-label>
-            <tas-select
-              [options]="stageOptions"
-              optionLabel="label"
-              optionValue="value"
-              placeholder="Sélectionnez une étape"
-              [ngModel]="stage()"
-              (ngModelChange)="stage.set($event)"
-            ></tas-select>
+            <tas-label>Demande du prospect</tas-label>
+            <textarea tasInput rows="3" placeholder="Ce que le prospect a demandé, avec ses mots" [formField]="formSchema.description"></textarea>
+            @if (formSchema.description().touched() && formSchema.description().invalid()) {
+              <tas-error>{{ formSchema.description().errors()[0].message }}</tas-error>
+            }
           </tas-form-field>
-        </div>
 
-        <!-- Amount + Currency -->
-        <div class="mt-3 grid grid-cols-3 gap-2">
-          <div class="col-span-2">
+          <tas-form-field>
+            <tas-label>Produit</tas-label>
+            <tas-select [options]="productOptions()" placeholder="À préciser" [formField]="formSchema.product"></tas-select>
+            <tas-hint>Laissez « À préciser » si le besoin n'est pas encore rattaché à un produit.</tas-hint>
+          </tas-form-field>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <tas-form-field>
-              <tas-label>Montant</tas-label>
-              <input
-                tasInput
-                type="number"
-                placeholder="Ex : 5000000"
-                min="0"
-                [ngModel]="amount()"
-                (ngModelChange)="amount.set($event)"
-              />
+              <tas-label>Montant estimé (FCFA)</tas-label>
+              <input tasInput type="text" inputmode="numeric" placeholder="Ex. 5 000 000" [formField]="formSchema.amount" />
+              @if (formSchema.amount().touched() && formSchema.amount().invalid()) {
+                <tas-error>{{ formSchema.amount().errors()[0].message }}</tas-error>
+              }
+            </tas-form-field>
+            <tas-form-field>
+              <tas-label>Clôture prévue</tas-label>
+              <input tasInput type="date" [formField]="formSchema.expectedCloseDate" />
             </tas-form-field>
           </div>
-          <tas-form-field>
-            <tas-label>Devise</tas-label>
-            <tas-select
-              [options]="currencyOptions"
-              optionLabel="label"
-              optionValue="value"
-              [ngModel]="currency()"
-              (ngModelChange)="currency.set($event)"
-            ></tas-select>
-          </tas-form-field>
-        </div>
 
-        <!-- Amount preview -->
-        @if (amount()) {
-          <div class="mt-2 p-2 rounded bg-slate-50 text-xs text-slate-600">
-            Montant : <span class="font-semibold">{{ formattedAmount() }}</span>
-          </div>
-        }
+          <p class="text-xs text-slate-500">
+            L'opportunité démarre en prospection, à 10 % : la probabilité suit ensuite l'étape.
+          </p>
 
-        <!-- Probability -->
-        <div class="mt-3">
-          <tas-form-field>
-            <tas-label>Probabilité (%)</tas-label>
-            <input
-              tasInput
-              type="number"
-              min="0"
-              max="100"
-              placeholder="Ex : 60"
-              [ngModel]="probability()"
-              (ngModelChange)="probability.set($event)"
-            />
-          </tas-form-field>
-        </div>
-
-        <!-- Expected close -->
-        <div class="mt-3">
-          <tas-form-field>
-            <tas-label>Date de clôture prévue</tas-label>
-            <input
-              tasInput
-              type="date"
-              [ngModel]="expectedCloseDate()"
-              (ngModelChange)="expectedCloseDate.set($event)"
-            />
-          </tas-form-field>
-        </div>
-
-        <!-- Description -->
-        <div class="mt-3">
-          <tas-form-field>
-            <tas-label>Description</tas-label>
-            <textarea
-              tasInput
-              rows="3"
-              placeholder="Détails de l'opportunité…"
-              [ngModel]="description()"
-              (ngModelChange)="description.set($event)"
-            ></textarea>
-          </tas-form-field>
-        </div>
+          @if (submitError(); as message) {
+            <p class="text-sm text-functional-error" role="alert">{{ message }}</p>
+          }
+        </form>
       </tas-drawer-content>
 
       <tas-drawer-action>
         <div class="space-x-4">
           <button tas-outlined-button type="button" (click)="close()">Annuler</button>
-          <button
-            tas-raised-button
-            color="primary"
-            type="button"
-            [disabled]="isSubmitting()"
-            (click)="submit()"
-          >
-            @if (isSubmitting()) { <tas-spinner size="3" class="text-white"></tas-spinner> }
+          <button tas-raised-button color="primary" type="button"
+                  [disabled]="formSchema().invalid() || formSchema().submitting()"
+                  [isLoading]="formSchema().submitting()"
+                  (click)="handleSubmit()">
             Créer l'opportunité
           </button>
         </div>
@@ -211,88 +134,76 @@ const CURRENCY_OPTIONS = [
 })
 export class CreateOpportunityDrawer {
   public readonly data: CreateOpportunityDrawerData = inject(DIALOG_DATA);
-  private readonly _dialogRef = inject(DialogRef<OpportunityDto | false>);
-  private readonly _leadsApi = inject(LeadsApiService);
-  private readonly _router = inject(Router);
+  private readonly _dialogRef = inject(DialogRef<string | false>);
+  private readonly _opportunitiesApi = inject(OpportunitiesApiService);
+  private readonly _references = inject(EntityFormReferences);
   private readonly _snackbar = inject(SnackbarService);
-  private readonly _destroyRef = inject(DestroyRef);
 
-  public readonly stageOptions = STAGE_OPTIONS;
-  public readonly currencyOptions = CURRENCY_OPTIONS;
+  private readonly _products = toSignal(this._references.options(FormFieldReferenceTargetEnum.Product), {
+    initialValue: [],
+  });
 
-  public title = signal('');
-  public description = signal('');
-  public stage = signal('Prospection');
-  public amount = signal<number | null>(null);
-  public currency = signal('XOF');
-  public probability = signal<number | null>(null);
-  public expectedCloseDate = signal('');
-  public isSubmitting = signal(false);
-  public submitted = signal(false);
+  public readonly productOptions = computed(() => [
+    { value: '', label: 'À préciser' },
+    ...this._products().map((p) => ({ value: p.label, label: p.label })),
+  ]);
 
-  // Dedup search
-  public clientSearch = signal('');
-  public duplicates = signal<DuplicateMatchResult[]>([]);
-  public isCheckingDuplicates = signal(false);
+  public readonly submitError = signal<string | null>(null);
 
-  public readonly formattedAmount = computed(() => {
-    const amt = this.amount();
-    const cur = this.currency();
-    if (!amt) return '';
-    try {
-      return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: cur || 'XOF' }).format(amt);
-    } catch {
-      return `${amt.toLocaleString('fr-FR')} ${cur}`;
-    }
+  public model = signal(CreateOpportunityFormModel.fromLead(this.data.lead, ''));
+
+  public formSchema = form(this.model, (schema) => {
+    required(schema.title, { message: 'Le titre est obligatoire' });
+    maxLength(schema.title, 200, { message: 'Le titre ne peut pas dépasser 200 caractères' });
+    maxLength(schema.description, 2000, { message: 'La demande ne peut pas dépasser 2 000 caractères' });
+    validate(schema.amount, (ctx) => {
+      const amount = parseAmount(ctx.value());
+      return amount !== null && (Number.isNaN(amount) || amount <= 0)
+        ? { kind: 'amount', message: 'Saisissez un montant positif, en chiffres' }
+        : null;
+    });
   });
 
   constructor() {
-    // Duplicate check on client search (same pattern as create-lead / M13-002)
-    toObservable(this.clientSearch).pipe(
-      takeUntilDestroyed(this._destroyRef),
-      map((q) => (q ?? '').replace(/[^0-9+a-zA-ZÀ-ÿ ]/g, '').trim()),
-      filter((q) => q.length >= 3),
-      debounceTime(400),
-      distinctUntilChanged(),
-      tap(() => this.isCheckingDuplicates.set(true)),
-      switchMap((q) => {
-        const isPhone = /^\+?\d/.test(q);
-        return this._leadsApi.findLeadDuplicates(
-          isPhone ? q : undefined,
-          undefined, undefined, undefined,
-          isPhone ? undefined : q,
-        ).pipe(catchError(() => of([] as DuplicateMatchResult[])));
-      }),
-    ).subscribe((results) => {
-      this.duplicates.set(results);
-      this.isCheckingDuplicates.set(false);
+    // Le lead porte le CODE du produit (`interestedProduct`) ; l'opportunité, son libellé. La
+    // correspondance n'est connue qu'une fois le catalogue chargé.
+    const code = this.data.lead.interestedProduct;
+    this._references.options(FormFieldReferenceTargetEnum.Product).subscribe((products) => {
+      const label = products.find((p) => p.value === code)?.label;
+      if (label && !this.formSchema.product().dirty()) this.formSchema.product().value.set(label);
     });
   }
 
-  public onViewDuplicate(leadId: string): void {
-    this._dialogRef.close(false);
-    this._router.navigate(['/leads', leadId]);
-  }
-
-  public submit(): void {
-    this.submitted.set(true);
-    if (!this.title().trim()) return;
-
-    this.isSubmitting.set(true);
-
-    const opp = OpportunityStore.create({
-      leadId: this.data.leadId,
-      title: this.title().trim(),
-      description: this.description().trim() || null,
-      value: this.amount() ? { amount: this.amount()!, currency: this.currency() || 'XOF' } : undefined,
-      probability: this.probability() ?? undefined,
-      stage: this.stage() as any,
-      expectedCloseDate: this.expectedCloseDate() || null,
+  public handleSubmit(): void {
+    this.submitError.set(null);
+    submit(this.formSchema, async (field) => {
+      const value = field().value();
+      const amount = parseAmount(value.amount);
+      const id = await firstValueFrom(
+        this._opportunitiesApi.createOpportunity({
+          leadId: this.data.lead.id!,
+          title: value.title.trim(),
+          product: value.product || null,
+          description: value.description.trim() || null,
+          estimatedAmount: amount,
+          estimatedCurrency: amount !== null ? 'XOF' : null,
+          expectedCloseDate: value.expectedCloseDate ? `${value.expectedCloseDate}T12:00:00Z` : null,
+          ownerId: this.data.lead.currentAssignedId ?? this.data.lead.ownerId ?? null,
+        }).pipe(
+          map((created) => created || null),
+          catchError((error: HttpErrorResponse) => {
+            const message = error.error?.detail ?? error.error?.title ?? "Impossible de créer l'opportunité.";
+            this.submitError.set(message);
+            this._snackbar.error('Erreur', message);
+            return EMPTY;
+          }),
+        ),
+        { defaultValue: null },
+      );
+      if (!id) return;
+      this._snackbar.success('Opportunité créée', `« ${value.title.trim()} » est ajoutée au lead.`);
+      this._dialogRef.close(id);
     });
-
-    this.isSubmitting.set(false);
-    this._snackbar.success('Opportunité créée', `« ${opp.title} » ajoutée.`);
-    this._dialogRef.close(opp);
   }
 
   public close(): void {

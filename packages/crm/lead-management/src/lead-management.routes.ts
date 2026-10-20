@@ -3,6 +3,7 @@ import LeadHomepage from './containers/lead-homepage/lead-homepage';
 import EditLeadNavigation from './containers/edit-lead/edit-lead-navigation';
 import { LeadEditContext } from './containers/edit-lead/lead-edit-context';
 import { LeadComplianceStore } from './containers/edit-lead/lead-compliance-store';
+import { leadIdFromAncestors } from './containers/edit-lead/suivi/lead-id.resolver';
 
 export const leadManagementRoutes = [
   {
@@ -74,28 +75,45 @@ export const leadManagementRoutes = [
         loadComponent: () => import('./containers/edit-lead/score'),
       },
       {
-        path: 'timeline',
-        loadComponent: () => import('./containers/edit-lead/timeline'),
+        // Activités, rappels, tâches et chronologie : une page, quatre onglets.
+        path: 'suivi',
+        loadComponent: () => import('./containers/edit-lead/suivi/suivi'),
+        children: [
+          { path: '', redirectTo: 'activites', pathMatch: 'full' as const },
+          {
+            path: 'activites',
+            resolve: { id: leadIdFromAncestors },
+            loadComponent: () => import('./containers/edit-lead/activites'),
+          },
+          {
+            path: 'rappels',
+            canActivate: [hasPermissionGuard('lead:reminder:manage')],
+            resolve: { id: leadIdFromAncestors },
+            loadComponent: () => import('./containers/edit-lead/reminders'),
+          },
+          {
+            path: 'taches',
+            canActivate: [hasPermissionGuard('lead:task:read')],
+            resolve: { id: leadIdFromAncestors },
+            loadComponent: () => import('./containers/edit-lead/taches'),
+          },
+          {
+            path: 'timeline',
+            resolve: { id: leadIdFromAncestors },
+            loadComponent: () => import('./containers/edit-lead/timeline'),
+          },
+        ],
       },
-      {
-        path: 'taches',
-        canActivate: [hasPermissionGuard('lead:task:read')],
-        loadComponent: () => import('./containers/edit-lead/taches'),
-      },
-      {
-        path: 'activites',
-        loadComponent: () => import('./containers/edit-lead/activites'),
-      },
+      // Les anciennes adresses mènent toujours quelque part : un lien envoyé ou un favori.
+      { path: 'activites', redirectTo: 'suivi/activites', pathMatch: 'full' as const },
+      { path: 'rappels', redirectTo: 'suivi/rappels', pathMatch: 'full' as const },
+      { path: 'taches', redirectTo: 'suivi/taches', pathMatch: 'full' as const },
+      { path: 'timeline', redirectTo: 'suivi/timeline', pathMatch: 'full' as const },
       {
         path: 'opportunites',
         canActivate: [hasPermissionGuard('lead:opportunity:read')],
         loadComponent: () =>
           import('./containers/edit-lead/opportunities/opportunities'),
-      },
-      {
-        path: 'rappels',
-        canActivate: [hasPermissionGuard('lead:reminder:manage')],
-        loadComponent: () => import('./containers/edit-lead/reminders'),
       },
       {
         path: 'doublons',

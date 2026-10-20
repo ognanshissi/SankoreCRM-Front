@@ -144,6 +144,77 @@
     }
   </div>
 
+  <!-- ═══════ Rubriques : en haut, collées au défilement ═══════ -->
+  <!--
+    Un menu déroulant par groupe du parcours ; un groupe d'une seule page (Suivi) est un lien
+    direct, la page portant ses propres onglets. Le groupe de la rubrique affichée est souligné et
+    nomme celle-ci, et chaque groupe résume ses alertes dans un badge : un menu fermé ne doit rien
+    cacher d'urgent. Collée en haut de la zone qui défile (le <main> de la mise en page).
+  -->
+  <nav class="sticky top-0 z-20 mb-5 rounded-2xl bg-white shadow-sm border border-slate-100 px-2" aria-label="Rubriques du lead">
+    <div class="flex flex-wrap items-center gap-1">
+      @for (group of menu; track group.title) {
+        @if (group.items.length === 1) {
+          <a class="flex items-center gap-2 px-4 py-3 text-sm whitespace-nowrap border-b-2"
+             [class]="activeGroup() === group ? 'border-primary text-primary font-semibold' : 'border-transparent text-slate-600 hover:text-slate-900'"
+             [attr.aria-current]="activeGroup() === group ? 'page' : null"
+             [routerLink]="group.items[0].route">
+            <tas-icon [iconName]="group.items[0].icon" style="font-size:14px"></tas-icon>
+            {{ group.items[0].label }}
+            @if (groupBadge(group); as badge) {
+              <span class="min-w-5 h-5 px-1.5 rounded-full text-[10px] font-semibold flex items-center justify-center"
+                    [class]="badge.tone === 'red' ? 'bg-red-100 text-red-700' : badge.tone === 'amber' ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-600'">
+                {{ badge.text }}
+              </span>
+            }
+          </a>
+        } @else {
+          <button type="button" TasMenuTrigger [panel]="groupMenu"
+                  class="flex items-center gap-2 px-4 py-3 text-sm whitespace-nowrap border-b-2"
+                  [class]="activeGroup() === group ? 'border-primary text-primary font-semibold' : 'border-transparent text-slate-600 hover:text-slate-900'"
+                  aria-haspopup="menu">
+            <tas-icon [iconName]="group.icon" style="font-size:14px"></tas-icon>
+            {{ group.title }}
+            @if (activeItem(group); as current) {
+              <span class="font-normal text-slate-500">· {{ current.label }}</span>
+            }
+            @if (groupBadge(group); as badge) {
+              <span class="min-w-5 h-5 px-1.5 rounded-full text-[10px] font-semibold flex items-center justify-center"
+                    [class]="badge.tone === 'red' ? 'bg-red-100 text-red-700' : badge.tone === 'amber' ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-600'">
+                {{ badge.text }}
+              </span>
+            }
+            <tas-icon iconName="feather:chevron-down" class="text-slate-400" style="font-size:12px"></tas-icon>
+          </button>
+
+          <ng-template #groupMenu>
+            <tas-menu>
+              @for (item of group.items; track item.route) {
+                <tas-menu-item>
+                  <!-- Le lien couvre tout l'élément (-mx-5 -my-2 annulent son padding) : un clic sur la
+                       marge fermerait le menu sans naviguer. -->
+                  <a class="-mx-5 -my-2 px-5 py-2 min-w-60 flex items-center gap-2 text-sm"
+                     [class]="item.route === activeRoute() ? 'text-primary font-semibold' : 'text-slate-700'"
+                     [attr.aria-current]="item.route === activeRoute() ? 'page' : null"
+                     [routerLink]="item.route">
+                    <tas-icon [iconName]="item.icon" [class]="item.route === activeRoute() ? 'text-primary' : 'text-slate-400'" style="font-size:14px"></tas-icon>
+                    <span class="flex-1">{{ item.label }}</span>
+                    @if (badgeFor(item.route); as badge) {
+                      <span class="min-w-5 h-5 px-1.5 rounded-full text-[10px] font-semibold flex items-center justify-center"
+                            [class]="badge.tone === 'red' ? 'bg-red-100 text-red-700' : badge.tone === 'amber' ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-600'">
+                        {{ badge.text }}
+                      </span>
+                    }
+                  </a>
+                </tas-menu-item>
+              }
+            </tas-menu>
+          </ng-template>
+        }
+      }
+    </div>
+  </nav>
+
   <!-- ═══════ Colonne de gauche + onglet ═══════ -->
   <div class="grid grid-cols-[19rem_minmax(0,1fr)] gap-5 items-start">
     <div class="flex flex-col gap-4">
@@ -300,32 +371,10 @@
           </div>
         </tas-card>
       }
-
-      <!-- Menu de la fiche, par étape du parcours -->
-      <tas-card class="block">
-        <nav class="p-2" aria-label="Rubriques du lead">
-          @for (group of menu; track group.title) {
-            <p class="px-3 pt-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-slate-500">{{ group.title }}</p>
-            @for (item of group.items; track item.route) {
-              <a class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-slate-700 hover:bg-slate-50"
-                 [routerLink]="item.route" routerLinkActive="is-link-active">
-                <tas-icon [iconName]="item.icon" class="text-slate-500" style="font-size:16px"></tas-icon>
-                <span class="flex-1">{{ item.label }}</span>
-                @if (badgeFor(item.route); as badge) {
-                  <span class="min-w-5 h-5 px-1.5 rounded-full text-[10px] font-semibold flex items-center justify-center"
-                        [class]="badge.tone === 'red' ? 'bg-red-100 text-red-700' : badge.tone === 'amber' ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-600'">
-                    {{ badge.text }}
-                  </span>
-                }
-              </a>
-            }
-          }
-        </nav>
-      </tas-card>
     </div>
 
-    <!-- Onglet -->
-    <div class="min-w-0 h-[calc(100vh_-_150px)] overflow-y-auto pr-1">
+    <!-- Onglet : c'est la page qui défile, pour que la barre des rubriques reste collée en haut -->
+    <div class="min-w-0">
       <router-outlet></router-outlet>
     </div>
   </div>

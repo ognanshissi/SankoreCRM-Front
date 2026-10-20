@@ -38733,6 +38733,20 @@
           "closeReason": {
             "type": "string",
             "nullable": true
+          },
+          "nextStep": {
+            "type": "string",
+            "nullable": true
+          },
+          "nextStepDueOn": {
+            "type": "string",
+            "format": "date",
+            "nullable": true
+          },
+          "separateNeedConfirmedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -47442,6 +47456,22 @@
             "type": "string",
             "format": "date-time",
             "nullable": true
+          },
+          "product": {
+            "type": "string",
+            "nullable": true
+          },
+          "nextStep": {
+            "type": "string",
+            "nullable": true
+          },
+          "nextStepDueOn": {
+            "type": "string",
+            "format": "date",
+            "nullable": true
+          },
+          "confirmSeparateNeed": {
+            "type": "boolean"
           }
         },
         "additionalProperties": false
