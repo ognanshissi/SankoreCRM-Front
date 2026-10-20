@@ -24,6 +24,7 @@ api/delivery-logs.service.ts
 api/dispatching-rules.service.ts
 api/distribution-credentials.service.ts
 api/email-templates.service.ts
+api/forms.service.ts
 api/health.service.ts
 api/holdings-endpoints.service.ts
 api/ingest.service.ts
@@ -299,6 +300,7 @@ model/duplicate-reason-dto.interface.ts
 model/embedded-script-settings.interface.ts
 model/end-sessions-result.interface.ts
 model/enrich-lead-request.interface.ts
+model/entity-form-dto.interface.ts
 model/escalate-complaint-request.interface.ts
 model/exchange-enrolment-token-request.interface.ts
 model/execution-monitor-dto.interface.ts
@@ -310,6 +312,10 @@ model/field-changed-dto.interface.ts
 model/field-mapping-rule.interface.ts
 model/forgot-password-request.interface.ts
 model/forgot-password-result.interface.ts
+model/form-condition.interface.ts
+model/form-field.interface.ts
+model/form-option.interface.ts
+model/form-section.interface.ts
 model/funnel-metrics-dto.interface.ts
 model/geography-factor.interface.ts
 model/google-contacts-import-request.interface.ts
@@ -575,6 +581,7 @@ model/run-dto.interface.ts
 model/run-kyc-verification-request.interface.ts
 model/run-kyc-verification-response.interface.ts
 model/sab-settings.interface.ts
+model/save-entity-form-request.interface.ts
 model/scheduled-pull-settings.interface.ts
 model/scoped-permission-dto.interface.ts
 model/score-history-dto.interface.ts

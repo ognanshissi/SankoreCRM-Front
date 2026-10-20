@@ -1,0 +1,235 @@
+<tas-side-drawer>
+  <tas-drawer-title>
+    <TasTitle class="text-lg">
+      {{ isNew ? 'Nouveau champ' : 'Modifier « ' + (original?.label ?? '') + ' »' }}
+    </TasTitle>
+  </tas-drawer-title>
+
+  <tas-drawer-content>
+    <form [formRoot]="formSchema" class="flex flex-col gap-5">
+
+      @if (isNative) {
+        <div class="rounded-lg border border-slate-200 bg-slate-50 p-4 flex gap-3">
+          <tas-icon iconName="feather:lock" iconSize="sm" class="text-slate-400 flex-shrink-0 mt-0.5"></tas-icon>
+          <div class="text-sm text-slate-600 flex flex-col gap-1">
+            <p>
+              Champ natif · <span class="font-medium">{{ fieldTypeLabel(original?.type) }}</span>
+              <span class="text-slate-400"> · {{ original?.key }}</span>
+            </p>
+            <p class="text-xs text-slate-500">
+              Son type et ses valeurs possibles appartiennent à l'application. Vous pouvez le renommer,
+              le déplacer et choisir où il apparaît.
+            </p>
+            @if (nativeCondition(); as condition) {
+              <p class="text-xs text-slate-500">Affiché seulement si {{ condition }}.</p>
+            }
+          </div>
+        </div>
+      }
+
+      <!-- Identité du champ -->
+      <tas-form-field>
+        <tas-label>Libellé <span class="text-functional-error">*</span></tas-label>
+        <input tasInput type="text" placeholder="Ex : Segment client" [formField]="formSchema.label" />
+        @if (formSchema.label().touched() && formSchema.label().invalid()) {
+          <tas-error>{{ formSchema.label().errors()[0].message }}</tas-error>
+        }
+      </tas-form-field>
+
+      @if (!isNative) {
+        <div class="grid grid-cols-2 gap-4">
+          @if (isDraft) {
+            <tas-form-field>
+              <tas-label>Type <span class="text-functional-error">*</span></tas-label>
+              <tas-select [options]="typeOptions" [formField]="formSchema.type"></tas-select>
+            </tas-form-field>
+          } @else {
+            <tas-form-field>
+              <tas-label>Type</tas-label>
+              <input tasInput type="text" [value]="fieldTypeLabel(original?.type)" disabled />
+              <tas-hint>Le type d'un champ enregistré ne change plus.</tas-hint>
+            </tas-form-field>
+          }
+
+          <tas-form-field>
+            <tas-label>Identifiant <span class="text-functional-error">*</span></tas-label>
+            <input tasInput type="text" class="font-mono text-xs" [formField]="formSchema.key" />
+            @if (formSchema.key().touched() && formSchema.key().invalid()) {
+              <tas-error>{{ formSchema.key().errors()[0].message }}</tas-error>
+            } @else {
+              <tas-hint>{{ isDraft ? 'Proposé d’après le libellé. Ne changera plus après enregistrement.' : 'Les valeurs sont stockées sous cet identifiant.' }}</tas-hint>
+            }
+          </tas-form-field>
+        </div>
+      }
+
+      <tas-form-field>
+        <tas-label>Section</tas-label>
+        <tas-select [options]="sectionOptions" [formField]="formSchema.sectionKey"></tas-select>
+      </tas-form-field>
+
+      <div class="grid grid-cols-2 gap-4">
+        <tas-form-field>
+          <tas-label>Texte d'aide</tas-label>
+          <input tasInput type="text" placeholder="Affiché sous le champ" [formField]="formSchema.helpText" />
+        </tas-form-field>
+        <tas-form-field>
+          <tas-label>Texte indicatif</tas-label>
+          <input tasInput type="text" placeholder="Affiché dans le champ vide" [formField]="formSchema.placeholder" />
+        </tas-form-field>
+      </div>
+
+      <!-- Où il apparaît -->
+      <div class="rounded-lg border border-slate-200 p-4 flex flex-col gap-3">
+        <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Affichage</p>
+        <tas-checkbox [formField]="formSchema.isRequired">Obligatoire</tas-checkbox>
+        <tas-checkbox [formField]="formSchema.quickAdd">Dans la création rapide</tas-checkbox>
+        @if (isNative) {
+          <tas-checkbox [formField]="formSchema.isHidden">Masquer ce champ (non utilisé par l'institution)</tas-checkbox>
+        } @else {
+          <tas-checkbox [formField]="formSchema.isSensitive">Donnée sensible (masquée dans les écrans et effacée à l'anonymisation)</tas-checkbox>
+        }
+        @if (isLocked) {
+          <p class="text-xs text-slate-500 flex items-center gap-1.5">
+            <tas-icon iconName="feather:lock" style="font-size:12px"></tas-icon>
+            L'application a besoin de ce champ pour créer l'enregistrement : il reste obligatoire et visible.
+          </p>
+        } @else if (formSchema.isRequired().value()) {
+          <p class="text-xs text-slate-500">Un champ obligatoire figure toujours dans la création rapide.</p>
+        }
+      </div>
+
+      <!-- Options d'un choix -->
+      @if (showOptions()) {
+        <div class="rounded-lg border border-slate-200 p-4 flex flex-col gap-3">
+          <div class="flex items-center justify-between">
+            <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Options</p>
+            <button tas-text-button type="button" (click)="addOption()">
+              <tas-icon iconName="feather:plus" style="font-size:14px"></tas-icon> &nbsp; Ajouter une option
+            </button>
+          </div>
+
+          @for (option of formSchema.options; track $index; let i = $index) {
+            <div class="grid grid-cols-[1fr_1fr_auto] gap-2 items-start">
+              <tas-form-field>
+                <input tasInput type="text" placeholder="Libellé affiché" [formField]="option.label" (blur)="fillOptionValue(i)" />
+              </tas-form-field>
+              <tas-form-field>
+                <input tasInput type="text" class="font-mono text-xs" placeholder="Valeur stockée" [formField]="option.value" />
+                @if (option.value().touched() && option.value().invalid()) {
+                  <tas-error>{{ option.value().errors()[0].message }}</tas-error>
+                }
+              </tas-form-field>
+              <button tas-button iconButton type="button" (click)="removeOption(i)" aria-label="Retirer l'option">
+                <tas-icon iconName="feather:trash-2" style="font-size:14px" class="text-slate-400"></tas-icon>
+              </button>
+            </div>
+          } @empty {
+            <p class="text-sm text-slate-400">Aucune option pour l'instant.</p>
+          }
+
+          @if (formSchema.options().invalid() && formSchema.options().errors().length) {
+            <p class="text-xs text-functional-error">{{ formSchema.options().errors()[0].message }}</p>
+          }
+          @if (!isDraft) {
+            <p class="text-xs text-slate-500">
+              Retirer une option n'efface pas les fiches qui la portent déjà : elles la gardent jusqu'à leur prochaine modification.
+            </p>
+          }
+        </div>
+      }
+
+      <!-- Limites -->
+      @if (showRange()) {
+        <div class="grid grid-cols-2 gap-4">
+          <tas-form-field>
+            <tas-label>Minimum</tas-label>
+            <input tasInput type="text" inputmode="decimal" class="tabular-nums" [formField]="formSchema.min" />
+            @if (formSchema.min().invalid()) {
+              <tas-error>{{ formSchema.min().errors()[0].message }}</tas-error>
+            }
+          </tas-form-field>
+          <tas-form-field>
+            <tas-label>Maximum</tas-label>
+            <input tasInput type="text" inputmode="decimal" class="tabular-nums" [formField]="formSchema.max" />
+            @if (formSchema.max().invalid()) {
+              <tas-error>{{ formSchema.max().errors()[0].message }}</tas-error>
+            }
+          </tas-form-field>
+        </div>
+      }
+
+      @if (showText()) {
+        <div class="grid grid-cols-2 gap-4">
+          <tas-form-field>
+            <tas-label>Longueur maximale</tas-label>
+            <input tasInput type="text" inputmode="numeric" class="tabular-nums" [formField]="formSchema.maxLength" />
+            @if (formSchema.maxLength().invalid()) {
+              <tas-error>{{ formSchema.maxLength().errors()[0].message }}</tas-error>
+            }
+          </tas-form-field>
+          <tas-form-field>
+            <tas-label>Format attendu</tas-label>
+            <input tasInput type="text" class="font-mono text-xs" placeholder="Ex : ^CI[0-9]{8}$" [formField]="formSchema.pattern" />
+            @if (formSchema.pattern().invalid()) {
+              <tas-error>{{ formSchema.pattern().errors()[0].message }}</tas-error>
+            } @else {
+              <tas-hint>Expression régulière, pour les connaisseurs.</tas-hint>
+            }
+          </tas-form-field>
+        </div>
+      }
+
+      @if (showDefault()) {
+        <tas-form-field>
+          <tas-label>Valeur par défaut</tas-label>
+          @switch (type()) {
+            @case ('SingleChoice') {
+              <tas-select
+                [options]="formSchema.options().value()"
+                optionLabel="label"
+                optionValue="value"
+                placeholder="Aucune"
+                [formField]="formSchema.defaultValue"
+              ></tas-select>
+            }
+            @case ('Boolean') {
+              <tas-select
+                [options]="[{ value: '', label: 'Aucune' }, { value: 'true', label: 'Oui' }, { value: 'false', label: 'Non' }]"
+                [formField]="formSchema.defaultValue"
+              ></tas-select>
+            }
+            @case ('Date') {
+              <input tasInput type="date" [formField]="formSchema.defaultValue" />
+            }
+            @default {
+              <input tasInput type="text" [formField]="formSchema.defaultValue" />
+            }
+          }
+          <tas-hint>Préremplie à la création, modifiable par l'agent.</tas-hint>
+        </tas-form-field>
+      }
+
+      <!-- Condition -->
+      @if (!isNative) {
+        <div class="rounded-lg border border-slate-200 p-4">
+          <form-condition-picker
+            [candidates]="conditionCandidates"
+            [fieldKey]="formSchema.conditionField().value()"
+            [values]="formSchema.conditionValues().value()"
+            (changed)="setCondition($event)"
+          ></form-condition-picker>
+        </div>
+      }
+    </form>
+  </tas-drawer-content>
+
+  <tas-drawer-action>
+    <button tas-outlined-button type="button" (click)="close()">
+      <tas-icon iconName="feather:x"></tas-icon> &nbsp; Annuler
+    </button>
+    <button tas-raised-button color="primary" type="button" (click)="handleSubmit()" [disabled]="formSchema().invalid()">
+      <tas-icon iconName="feather:check"></tas-icon> &nbsp; {{ isNew ? 'Ajouter le champ' : 'Appliquer' }}
+    </button>
+  </tas-drawer-action>
+</tas-side-drawer>

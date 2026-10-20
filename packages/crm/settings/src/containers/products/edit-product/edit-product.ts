@@ -18,7 +18,7 @@ import {
   required,
   submit,
 } from '@angular/forms/signals';
-import { catchError, firstValueFrom, map, of } from 'rxjs';
+import { catchError, EMPTY, firstValueFrom, map, of } from 'rxjs';
 import { Button } from '@talisoft/ui/button';
 import { TasIcon } from '@talisoft/ui/icon';
 import { Severity, TasTag } from '@talisoft/ui/tag';
@@ -30,8 +30,10 @@ import { ConfirmDialogService } from '@talisoft/ui/confirm-dialog';
 import { ProductDto, ProductsApiService } from '@sankore/crm-api';
 import {
   BreadcrumbService,
+  CustomFieldsCard,
   PermissionsService,
   productCategoryLabel,
+  WireValue,
 } from '@sankore/crm/common';
 import { ProductParametersEditor } from '../product-parameters-editor';
 import { QualificationTemplatesPanel } from '../qualification-templates-panel';
@@ -181,6 +183,7 @@ class CbsFormModel {
     QualificationTemplatesPanel,
     BeneficiaryPolicyEditor,
     KycRemotePolicyEditor,
+    CustomFieldsCard,
   ],
   templateUrl: './edit-product.html',
 })
@@ -430,6 +433,29 @@ export class EditProductPage {
       // paramètres, et un 204 ne dit pas ce qu'il a retenu.
       this._load(this.id());
     });
+  }
+
+  /**
+   * Le PUT remplace le nom, la description et les paramètres : on renvoie ceux de la fiche telle
+   * qu'elle a été chargée, pas ceux d'une saisie en cours dans le formulaire au-dessus — chaque
+   * bouton enregistre ce qu'il nomme. Le lien CBS, absent, est conservé par le serveur.
+   */
+  public readonly saveCustomFields = (customFields: Record<string, WireValue>) => {
+    const dto = this.product();
+    return this._productsApi.updateProduct(this.id(), {
+      name: dto?.name ?? null,
+      description: dto?.description ?? null,
+      parametersJson: dto?.parametersJson ?? null,
+      customFields,
+    });
+  };
+
+  /**
+   * Relit le produit seul, sans `_load` : celui-ci repart des valeurs du serveur pour TOUS les
+   * formulaires de l'écran, et effacerait un nom en cours de saisie au-dessus de la carte.
+   */
+  public reload(): void {
+    this._productsApi.getProduct(this.id()).pipe(catchError(() => EMPTY)).subscribe((dto) => this.product.set(dto));
   }
 
   public cancel(): void {

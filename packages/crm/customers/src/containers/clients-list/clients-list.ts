@@ -30,7 +30,7 @@ import {
   RevealSensitiveFieldRequestFieldEnum,
   UsersApiService,
 } from '@sankore/crm-api';
-import { BreadcrumbService, PermissionsService } from '@sankore/crm/common';
+import { BreadcrumbService, CustomFieldFilters, PermissionsService } from '@sankore/crm/common';
 import {
   CLIENT_STATUS_ORDER,
   CLIENT_TYPE_ORDER,
@@ -173,7 +173,8 @@ function initialsOf(name: string): string {
   selector: 'clients-list',
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './clients-list.html',
-  imports: [DatePipe, FormsModule, TasIcon, Button, TasSelect, TasTable, TimeagoPipe, TasFormField, NgClass],
+  imports: [
+    CustomFieldFilters,DatePipe, FormsModule, TasIcon, Button, TasSelect, TasTable, TimeagoPipe, TasFormField, NgClass],
 })
 export class ClientsListPage implements OnInit {
   private readonly _clientsApi = inject(ClientsApiService);
@@ -209,6 +210,8 @@ export class ClientsListPage implements OnInit {
   public filterAdvisor = signal<string | null>(null);
   public filterRisk = signal<string | null>(null);
   public filterPep = signal<string | null>(null);
+  /** Filtres sur les champs personnalisés, `clé:valeur` (formulaires dynamiques, lot 6). */
+  public filterCustom = signal<string[]>([]);
   public showMoreFilters = signal(false);
   public page = signal(1);
   public pageSize = signal(25);
@@ -282,11 +285,14 @@ export class ClientsListPage implements OnInit {
       this.filterAgency() !== null ||
       this.filterAdvisor() !== null ||
       this.filterRisk() !== null ||
-      this.filterPep() !== null,
+      this.filterPep() !== null ||
+      this.filterCustom().length > 0,
   );
 
   public readonly moreFiltersCount = computed(
-    () => [this.filterStatus(), this.filterRisk(), this.filterPep()].filter((v) => v !== null).length,
+    () =>
+      [this.filterStatus(), this.filterRisk(), this.filterPep()].filter((v) => v !== null).length +
+      this.filterCustom().length,
   );
 
   public readonly agencyFilterLabel = computed(() => {
@@ -418,6 +424,12 @@ export class ClientsListPage implements OnInit {
     this.filterAdvisor.set(null);
     this.filterRisk.set(null);
     this.filterPep.set(null);
+    this.filterCustom.set([]);
+    this._applyFilters();
+  }
+
+  public onCustomFiltersChange(filters: string[]): void {
+    this.filterCustom.set(filters);
     this._applyFilters();
   }
 
@@ -581,7 +593,10 @@ export class ClientsListPage implements OnInit {
     if (params['conseiller']) this.filterAdvisor.set(params['conseiller']);
     if (params['risque']) this.filterRisk.set(params['risque']);
     if (params['ppe'] === 'true' || params['ppe'] === 'false') this.filterPep.set(params['ppe']);
-    if (this.filterStatus() || this.filterRisk() || this.filterPep()) this.showMoreFilters.set(true);
+    this.filterCustom.set(this._route.snapshot.queryParamMap.getAll('cf'));
+    if (this.filterStatus() || this.filterRisk() || this.filterPep() || this.filterCustom().length) {
+      this.showMoreFilters.set(true);
+    }
 
     const page = Number(params['page']);
     if (Number.isInteger(page) && page > 0) this.page.set(page);
@@ -610,6 +625,8 @@ export class ClientsListPage implements OnInit {
         conseiller: this.filterAdvisor() || null,
         risque: this.filterRisk() || null,
         ppe: this.filterPep() || null,
+        // Répété dans l'URL (`cf=a:b&cf=c:d`), comme le serveur le lit.
+        cf: this.filterCustom().length ? this.filterCustom() : null,
         page: this.page() > 1 ? this.page() : null,
         taille: this.pageSize() !== 25 ? this.pageSize() : null,
       },
@@ -643,6 +660,7 @@ export class ClientsListPage implements OnInit {
       page: this._clientsApi.searchClients(
         clientNumber, phone, document, name, status, agency, advisor, type, undefined,
         this.page(), this.pageSize(), this.quick(), risk, pep,
+        this.filterCustom().length ? this.filterCustom() : undefined,
       ),
       // Les compteurs sont un confort : leur panne ne doit pas vider la liste.
       counts: this._clientsApi

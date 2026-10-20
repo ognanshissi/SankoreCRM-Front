@@ -262,5 +262,21 @@
 
     }
 
+    <!--
+      Champs personnalisés du tenant (formulaires dynamiques). Les valeurs sensibles arrivent déjà
+      retenues par le serveur ; « Afficher » passe par la révélation auditée, comme les champs natifs.
+    -->
+    <custom-fields-card
+      entity="Client"
+      title="Autres informations"
+      [values]="client.customFields"
+      [maskedKeys]="client.maskedCustomFieldKeys"
+      [context]="{ clientType: client.clientType }"
+      [canEdit]="canEdit()"
+      [save]="saveCustomFields"
+      [revealFn]="canReveal() ? revealCustomField : null"
+      (saved)="store.reload().subscribe()"
+    ></custom-fields-card>
+
   </div>
 }

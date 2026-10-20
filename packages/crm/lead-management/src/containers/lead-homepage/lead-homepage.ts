@@ -39,7 +39,7 @@ import { SystemCaptureDrawer } from './system-capture-drawer';
 import { interestedProductLabel } from '../../components/interested-product';
 import { CreateTaskDrawer } from '@sankore/crm/tasks';
 import { Severity, TasTag } from '@talisoft/ui/tag';
-import { AuthenticationService, PermissionsService } from '@sankore/crm/common';
+import { AuthenticationService, CustomFieldFilters, PermissionsService } from '@sankore/crm/common';
 
 function leadStatusMeta(status: string | null | undefined): { label: string; severity: Severity } {
   switch (status) {
@@ -229,6 +229,7 @@ interface StatusTab {
 @Component({
   templateUrl: './lead-homepage.html',
   imports: [
+    CustomFieldFilters,
     FormsModule,
     Button,
     TasIcon,
@@ -315,6 +316,8 @@ export class LeadHomepage implements OnInit {
   public filterSlaRisk = signal(false);
   /** File d'attente de dispatch : leads qu'aucun agent n'a pu prendre, relancés automatiquement. */
   public filterAwaitingDispatch = signal(false);
+  /** Filtres sur les champs personnalisés, `clé:valeur` (formulaires dynamiques, lot 6). */
+  public filterCustom = signal<string[]>([]);
   public agents = signal<Map<string, UserDto>>(new Map());
 
   public readonly agentOptions = computed(() =>
@@ -383,7 +386,7 @@ export class LeadHomepage implements OnInit {
   ];
 
   public hasActiveSecondaryFilters = computed(() =>
-    !!(this.filterLeadSourceId() || this.filterAgencyId() || this.filterIntent()),
+    !!(this.filterLeadSourceId() || this.filterAgencyId() || this.filterIntent() || this.filterCustom().length),
   );
 
   public tableConfig = signal<TableConfig>({
@@ -415,6 +418,7 @@ export class LeadHomepage implements OnInit {
     if (params['intent']) this.filterIntent.set(params['intent']);
     if (params['owner']) this.filterOwnerId.set(params['owner']);
     if (params['queue'] === '1') this.filterAwaitingDispatch.set(true);
+    this.filterCustom.set(this._route.snapshot.queryParamMap.getAll('cf'));
     if (params['view'] === 'list') this.viewMode.set('list');
 
     this.reloadCurrentPage();
@@ -700,6 +704,12 @@ export class LeadHomepage implements OnInit {
     this.filterLeadSourceId.set('');
     this.filterAgencyId.set('');
     this.filterIntent.set('');
+    this.filterCustom.set([]);
+    this._applyFilters();
+  }
+
+  public onCustomFiltersChange(filters: string[]): void {
+    this.filterCustom.set(filters);
     this._applyFilters();
   }
 
@@ -718,6 +728,8 @@ export class LeadHomepage implements OnInit {
         intent: this.filterIntent() || null,
         owner: this.filterOwnerId() || null,
         queue: this.filterAwaitingDispatch() ? '1' : null,
+        // Répété dans l'URL (`cf=a:b&cf=c:d`), comme le serveur le lit.
+        cf: this.filterCustom().length ? this.filterCustom() : null,
       },
       queryParamsHandling: 'merge',
       replaceUrl: true,
@@ -764,6 +776,7 @@ export class LeadHomepage implements OnInit {
         intent,
         leadSourceConfigId,
         awaitingDispatch,
+        this.filterCustom().length ? this.filterCustom() : undefined,
       )
       .subscribe({
         next: (result) => {

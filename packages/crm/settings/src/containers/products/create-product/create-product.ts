@@ -1,46 +1,38 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal, viewChild } from '@angular/core';
 import { DialogRef } from '@angular/cdk/dialog';
-import { form, FormField, FormRoot, required, submit } from '@angular/forms/signals';
-import { catchError, EMPTY, firstValueFrom } from 'rxjs';
+import { HttpErrorResponse } from '@angular/common/http';
+import { catchError, firstValueFrom, map, of } from 'rxjs';
 import { Button } from '@talisoft/ui/button';
 import { TasIcon } from '@talisoft/ui/icon';
+import { TasSpinner } from '@talisoft/ui/spinner';
+import { TasDrawerAction, TasDrawerContent, TasDrawerTitle, TasSideDrawer } from '@talisoft/ui/side-drawer';
 import {
-  TasDrawerAction,
-  TasDrawerContent,
-  TasDrawerTitle,
-  TasSideDrawer,
-} from '@talisoft/ui/side-drawer';
-import { TasFormField, TasLabel, TasError } from '@talisoft/ui/form-field';
-import { TasInput } from '@talisoft/ui/input';
-import { TasSelect } from '@talisoft/ui/select';
-import { TasDatePicker } from '@talisoft/ui/date-picker';
-import { ProductsApiService, CreateProductRequestCategoryEnum } from '@sankore/crm-api';
+  CreateProductRequestCategoryEnum,
+  EntityFormDto,
+  FormsApiService,
+  ProductsApiService,
+} from '@sankore/crm-api';
 import { SnackbarService } from '@talisoft/ui/snackbar';
+import {
+  asEnum,
+  EntityFormRenderer,
+  explainFormError,
+  formErrorDetail,
+} from '@sankore/crm/common';
 import { ProductParametersEditor } from '../product-parameters-editor';
-import { ProductConfigService } from '@sankore/crm/common';
 
-class CreateProductFormModel {
-  public name!: string;
-  public code!: string;
-  public description!: string;
-  public category!: string;
-  public effectiveFrom!: string;
-  public parametersJson!: string;
+/**
+ * Les champs natifs que `POST products` ne prend pas : le lien vers le système de gestion a son
+ * propre geste, sur la fiche. Les montrer à la création — si un tenant les cochait en création
+ * rapide — ferait saisir une valeur que personne n'enregistre.
+ */
+const NOT_ON_CREATE = ['businessProductId', 'businessPlatformName'];
 
-  public productConfig = inject(ProductConfigService)
-
-  public static instantiate(): CreateProductFormModel {
-    const m = new CreateProductFormModel();
-    m.name = '';
-    m.code = '';
-    m.description = '';
-    m.category = '';
-    m.effectiveFrom = '';
-    m.parametersJson = '';
-    return m;
-  }
-}
-
+/**
+ * Création d'un produit, pilotée par la mise en page du tenant (formulaires dynamiques, lot 5).
+ * Le moteur affiche les champs de la création rapide ; l'éditeur de paramètres, propre à la
+ * catégorie, reste sous le formulaire.
+ */
 @Component({
   selector: 'create-product',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -51,127 +43,43 @@ class CreateProductFormModel {
     TasDrawerAction,
     Button,
     TasIcon,
-    TasFormField,
-    TasLabel,
-    TasError,
-    TasInput,
-    TasSelect,
-    FormRoot,
-    FormField,
+    TasSpinner,
+    EntityFormRenderer,
     ProductParametersEditor,
-    TasDatePicker,
   ],
   template: `
     <tas-side-drawer>
       <tas-drawer-title>
         <p class="text-base font-semibold text-slate-800">Nouveau produit</p>
         <p class="text-xs text-slate-400 mt-0.5">
-          Les produits servent de spécialités pour les utilisateurs et les
-          territoires.
+          Les produits servent de spécialités pour les utilisateurs et les territoires.
         </p>
       </tas-drawer-title>
 
       <tas-drawer-content>
-        <form [formRoot]="formSchema" class="flex flex-col gap-5">
-          <tas-form-field>
-            <tas-label
-              >Nom <span class="text-functional-error">*</span></tas-label
-            >
-            <input
-              tasInput
-              type="text"
-              placeholder="ex: Assurance Vie"
-              [formField]="formSchema.name"
-            />
-            @if (formSchema.name().touched() && formSchema.name().invalid()) {
-              <tas-error>{{ formSchema.name().errors()[0].message }}</tas-error>
-            }
-          </tas-form-field>
+        @if (form(); as f) {
+          <entity-form-renderer [form]="f" mode="quick" [columns]="1" [exclude]="excluded" />
 
-          <tas-form-field>
-            <tas-label
-              >Code <span class="text-functional-error">*</span></tas-label
-            >
-            <input
-              tasInput
-              type="text"
-              placeholder="ex: ASS_VIE"
-              [formField]="formSchema.code"
-            />
-            <p class="text-xs text-slate-400 mt-1">
-              Identifiant technique unique. Ne pourra plus être modifié après
-              création.
-            </p>
-            @if (formSchema.code().touched() && formSchema.code().invalid()) {
-              <tas-error>{{ formSchema.code().errors()[0].message }}</tas-error>
-            }
-          </tas-form-field>
-
-          <tas-form-field>
-            <tas-label>Description</tas-label>
-            <input
-              tasInput
-              type="text"
-              placeholder="ex: Produits d'assurance vie et épargne"
-              [formField]="formSchema.description"
-            />
-          </tas-form-field>
-
-          <tas-form-field>
-            <tas-label
-              >Catégorie <span class="text-functional-error">*</span></tas-label
-            >
-            <tas-select
-              [options]="productConfig.categories"
-              optionLabel="label"
-              optionValue="value"
-              placeholder="Sélectionnez une catégorie"
-              [formField]="formSchema.category"
-            ></tas-select>
-            @if (
-              formSchema.category().touched() && formSchema.category().invalid()
-            ) {
-              <tas-error>{{
-                formSchema.category().errors()[0].message
-              }}</tas-error>
-            }
-          </tas-form-field>
-
-          <div>
-            <tas-form-field>
-              <tas-label>Date d'effet</tas-label>
-              <tas-date-picker
-                mode="date"
-                placeholder="Sélectionnez une date"
-                [formField]="formSchema.effectiveFrom"
-              ></tas-date-picker>
-            </tas-form-field>
-            <p class="text-xs text-slate-400 mt-1">
-              Date à partir de laquelle le produit est disponible.
-            </p>
+          <div class="mt-5">
+            <p class="text-sm font-semibold text-slate-700 mb-2">Paramètres du produit</p>
+            <product-parameters-editor
+              [category]="category()"
+              [initialJson]="''"
+              (parametersJsonChange)="parametersJson.set($event)"
+            ></product-parameters-editor>
           </div>
-        </form>
-
-        <!-- Parameters editor -->
-        <div class="mt-5">
-          <p class="text-sm font-semibold text-slate-700 mb-2">
-            Paramètres du produit
-          </p>
-          <product-parameters-editor
-            [category]="formSchema.category().value()"
-            [initialJson]="''"
-            (parametersJsonChange)="parametersJson.set($event)"
-          ></product-parameters-editor>
-        </div>
+        } @else if (loadFailed()) {
+          <div class="rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
+            Le formulaire n'a pas pu être chargé.
+            <button tas-text-button type="button" (click)="load()">Réessayer</button>
+          </div>
+        } @else {
+          <div class="flex justify-center py-16"><tas-spinner size="8" class="text-primary"></tas-spinner></div>
+        }
       </tas-drawer-content>
 
       <tas-drawer-action>
-        <button
-          tas-outlined-button
-          color="primary"
-          type="button"
-          (click)="close()"
-        >
+        <button tas-outlined-button color="primary" type="button" (click)="close()">
           <tas-icon iconName="feather:x" iconSize="sm"></tas-icon>
           Annuler
         </button>
@@ -180,8 +88,8 @@ class CreateProductFormModel {
           color="primary"
           type="button"
           (click)="handleSubmit()"
-          [disabled]="formSchema().invalid() || formSchema().submitting()"
-          [isLoading]="formSchema().submitting()"
+          [disabled]="!form() || submitting()"
+          [isLoading]="submitting()"
         >
           <tas-icon iconName="feather:plus" iconSize="sm"></tas-icon>
           Créer le produit
@@ -193,45 +101,85 @@ class CreateProductFormModel {
 export class CreateProductComponent {
   private readonly _dialogRef = inject(DialogRef);
   private readonly _productsApiService = inject(ProductsApiService);
+  private readonly _formsApi = inject(FormsApiService);
   private readonly _snackbarService = inject(SnackbarService);
-  public readonly productConfig = inject(ProductConfigService);
-  public model = signal(CreateProductFormModel.instantiate());
-  public parametersJson = signal('');
 
-  public formSchema = form(this.model, (schema) => {
-    required(schema.name, { message: 'Le nom du produit est obligatoire' });
-    required(schema.code, { message: 'Le code du produit est obligatoire' });
-    required(schema.category, { message: 'La catégorie est obligatoire' });
+  private readonly _renderer = viewChild(EntityFormRenderer);
+
+  public readonly excluded = NOT_ON_CREATE;
+  public readonly form = signal<EntityFormDto | null>(null);
+  public readonly loadFailed = signal(false);
+  public readonly submitting = signal(false);
+  public readonly parametersJson = signal('');
+
+  /** La catégorie choisie, qui décide des paramètres proposés en dessous. */
+  public readonly category = computed(() => {
+    const value = this._renderer()?.wireValues()['category'];
+    return typeof value === 'string' ? value : '';
   });
 
-  public handleSubmit(): void {
-    submit(this.formSchema, async (field) => {
-      const value = field()?.value();
-      const result = await firstValueFrom(
-        this._productsApiService
-          .createProduct({
-            name: value.name,
-            code: value.code,
-            description: value.description || null,
-            category: (value.category as any) || undefined,
-            effectiveFrom: value.effectiveFrom
-              ? new Date(value.effectiveFrom).toISOString()
-              : null,
-            parametersJson: this.parametersJson() || null,
-          })
-          .pipe(
-            catchError(() => {
-              this._snackbarService.error(
-                'Erreur',
-                'Impossible de créer le produit.',
-              );
-              return EMPTY;
-            }),
-          ),
-      );
-      this._snackbarService.success('Succès', 'Produit créé avec succès.');
-      this._dialogRef.close(result ?? true);
+  constructor() {
+    this.load();
+  }
+
+  public load(): void {
+    this.loadFailed.set(false);
+    this._formsApi.getEntityForm('Product').subscribe({
+      next: (form) => this.form.set(form),
+      error: () => this.loadFailed.set(true),
     });
+  }
+
+  public async handleSubmit(): Promise<void> {
+    const renderer = this._renderer();
+    if (!renderer || this.submitting()) return;
+
+    if (!renderer.valid()) {
+      renderer.markAllAsTouched();
+      return;
+    }
+
+    const v = renderer.wireValues();
+    const text = (key: string) => (typeof v[key] === 'string' ? (v[key] as string) : null);
+    const category = asEnum(CreateProductRequestCategoryEnum, v['category']);
+    if (!category) {
+      renderer.markAllAsTouched();
+      return;
+    }
+
+    this.submitting.set(true);
+    const id = await firstValueFrom(
+      this._productsApiService
+        .createProduct({
+          name: text('name'),
+          code: text('code'),
+          category,
+          description: text('description'),
+          // `yyyy-MM-dd`, ce qu'un DateOnly lit. L'ancien écran envoyait un instant ISO complet.
+          effectiveFrom: text('effectiveFrom'),
+          parametersJson: this.parametersJson() || null,
+          customFields: renderer.customFieldsPayload(),
+        })
+        .pipe(
+          map((created) => created ?? true),
+          catchError((err: HttpErrorResponse) => {
+            const detail = formErrorDetail(err);
+            this._snackbarService.error(
+              'Création impossible',
+              explainFormError(detail, this.form()) ??
+                (detail === 'PRODUCT_CODE_TAKEN' ? 'Ce code est déjà utilisé par un autre produit.' : 'Impossible de créer le produit.'),
+            );
+            // `of(null)` et non EMPTY : `firstValueFrom` d'un flux vide rejette. L'ancien écran
+            // annonçait le succès même après une erreur pour cette raison.
+            return of(null);
+          }),
+        ),
+    );
+    this.submitting.set(false);
+
+    if (!id) return;
+    this._snackbarService.success('Succès', 'Produit créé avec succès.');
+    this._dialogRef.close(id);
   }
 
   public close(): void {

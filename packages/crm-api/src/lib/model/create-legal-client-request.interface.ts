@@ -24,5 +24,6 @@ export interface CreateLegalClientRequest {
     phoneNumbers?: Array<string> | null;
     email?: string | null;
     preferredLanguage?: string | null;
+    customFields?: { [key: string]: any; } | null;
 }
 

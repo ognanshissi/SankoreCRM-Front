@@ -206,6 +206,21 @@
           </div>
         </section>
       </div>
+
+      <!--
+        Champs personnalisés du tenant (formulaires dynamiques). Son propre bouton, comme chaque
+        politique de ce volet : il n'enregistre que ces valeurs, pas le nom ni la description.
+      -->
+      <div class="mt-4">
+        <custom-fields-card
+          entity="Product"
+          [values]="dto.customFields"
+          [context]="{ category: dto.category }"
+          [canEdit]="canUpdate()"
+          [save]="saveCustomFields"
+          (saved)="reload()"
+        ></custom-fields-card>
+      </div>
     </div>
 
     <!-- ═══════ Volet : Paramètres ═══════ -->

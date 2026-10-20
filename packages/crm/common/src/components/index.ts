@@ -15,3 +15,13 @@ export * from './tenant-suspended/tenant-suspended';
 export * from './breadcrumb/breadcrumb.component';
 export * from './duplicate-warning-banner/duplicate-warning-banner';
 export * from './dynamic-form-renderer/dynamic-form-renderer';
+// Formulaires dynamiques des entités (lead, client, produit) — lot 3. Le précédent, au-dessus, rend
+// les questionnaires de qualification et reste en place pour eux.
+export * from './entity-form-renderer/entity-form-renderer';
+export * from './entity-form-renderer/entity-form-field-template.directive';
+export * from './entity-form-renderer/entity-form-references.service';
+export * from './entity-form-renderer/entity-form-values';
+export * from './entity-form-renderer/custom-fields-card';
+export * from './entity-form-renderer/entity-form-errors';
+export * from './entity-form-renderer/custom-field-filters';
+export * from './entity-form-renderer/custom-field-columns';

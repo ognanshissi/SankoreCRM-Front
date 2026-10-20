@@ -61,5 +61,6 @@ export interface LeadDto {
     leadSourceCode?: string | null;
     leadSourceLabel?: string | null;
     awaitingDispatchSince?: string | null;
+    customFields?: { [key: string]: any; } | null;
 }
 

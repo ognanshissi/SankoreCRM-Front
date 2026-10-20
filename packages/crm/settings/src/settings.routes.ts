@@ -120,6 +120,13 @@ const paneRoutes: Routes = [
     loadComponent: () =>
       import('./containers/products/edit-product/edit-product'),
   },
+  // Formulaires dynamiques (lot 2) : un onglet par entité, dans l'adresse pour qu'un lien mène au bon.
+  { path: 'forms', redirectTo: 'forms/Lead', pathMatch: 'full' },
+  {
+    path: 'forms/:entity',
+    canActivate: [hasPermissionGuard('form:manage')],
+    loadComponent: () => import('./containers/entity-forms/entity-forms'),
+  },
   {
     path: 'company',
     canActivate: [hasPermissionGuard('company:read')],

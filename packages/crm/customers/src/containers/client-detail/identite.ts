@@ -10,8 +10,9 @@ import { TasIcon } from '@talisoft/ui/icon';
 import { Severity, TasTag } from '@talisoft/ui/tag';
 import { Button } from '@talisoft/ui/button';
 import { SideDrawerService } from '@talisoft/ui/side-drawer';
-import { PermissionsService } from '@sankore/crm/common';
-import { RevealSensitiveFieldRequestFieldEnum } from '@sankore/crm-api';
+import { map } from 'rxjs';
+import { CustomFieldsCard, PermissionsService, WireValue } from '@sankore/crm/common';
+import { ClientsApiService, RevealSensitiveFieldRequestFieldEnum } from '@sankore/crm-api';
 import { ClientDetailStore } from '../../models/client-detail.store';
 import {
   genderLabel,
@@ -40,13 +41,15 @@ function todayISODate(): string {
   selector: 'client-identite',
   templateUrl: './identite.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [TasCard, TasIcon, TasTag, Button, SensitiveField],
+  imports: [TasCard, TasIcon, TasTag, Button, SensitiveField, CustomFieldsCard],
 })
 export class ClientIdentityPage {
   protected readonly store = inject(ClientDetailStore);
   private readonly _sideDrawer = inject(SideDrawerService);
   private readonly _injector = inject(Injector);
   private readonly _permissions = inject(PermissionsService);
+  private readonly _clientsApi = inject(ClientsApiService);
+  protected readonly canReveal = this._permissions.can('customers:reveal_sensitive');
 
   private readonly _canUpdate = this._permissions.can('customers:update');
   private readonly _canUpdateSensitive = this._permissions.can(
@@ -71,6 +74,24 @@ export class ClientIdentityPage {
   protected readonly canEditSensitive = computed(
     () => this._canUpdateSensitive() && !this.store.isReadOnly(),
   );
+
+  /**
+   * Seulement `customFields` à côté du jeton de version : le PATCH laisse inchangé tout champ absent,
+   * et `expectedVersion` refuse l'écriture si la fiche a bougé depuis son chargement.
+   */
+  protected readonly saveCustomFields = (customFields: Record<string, WireValue>) =>
+    this._clientsApi.updateClient(this.clientId(), {
+      expectedVersion: this.store.client()?.version ?? 0,
+      customFields,
+    });
+
+  protected readonly revealCustomField = (key: string) =>
+    this._clientsApi
+      .revealSensitiveField(this.clientId(), {
+        field: RevealSensitiveFieldRequestFieldEnum.CustomField,
+        customFieldKey: key,
+      })
+      .pipe(map((result) => result.value ?? ''));
 
   protected readonly genderLabel = genderLabel;
   protected readonly maritalStatusLabel = maritalStatusLabel;

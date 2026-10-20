@@ -1,7 +1,7 @@
 <div class="flex flex-col gap-4">
   <!-- Étapes -->
   <div class="flex flex-wrap items-center gap-2">
-    @for (step of steps; track step.key; let i = $index) {
+    @for (step of steps(); track step.key; let i = $index) {
       <div class="flex items-center gap-2">
         <button
           type="button"
@@ -32,7 +32,7 @@
             {{ step.label }}
           </span>
         </button>
-        @if (i < steps.length - 1) {
+        @if (i < steps().length - 1) {
           <span
             class="h-px w-6"
             [class]="stepIndex() > i ? 'bg-green-300' : 'bg-slate-200'"
@@ -58,286 +58,60 @@
   }
 
   <form [formRoot]="formSchema" class="flex flex-col gap-4">
-    <!-- ===== Étape 1 : Identification ===== -->
-    @if (currentStep() === 'identification') {
-      <tas-card class="block">
+    <!--
+      Les étapes de la mise en page « Client » (Paramètres › Formulaires), pour une personne morale.
+      Le moteur reste monté sur tout l'assistant pour garder la saisie ; il n'affiche que l'étape en
+      cours, et tout en lecture seule au récapitulatif.
+    -->
+    @if (form(); as f) {
+      <tas-card class="block" [hidden]="!showRenderer()">
         <div class="border-b border-slate-100 p-4">
-          <p class="text-sm font-semibold text-slate-700">Identification</p>
-          <p class="mt-0.5 text-xs text-slate-400">
-            Raison sociale, forme juridique et immatriculation de l'entreprise.
+          <p class="text-sm font-semibold text-slate-700">
+            {{ currentLayoutStep()?.label ?? 'Identification et coordonnées' }}
           </p>
         </div>
-        <div class="flex flex-col gap-4 p-4">
-          <tas-form-field>
-            <tas-label>
-              Agence de rattachement <span class="text-functional-error">*</span>
-            </tas-label>
-            <tas-select
-              [options]="agencyOptions()"
-              placeholder="Sélectionnez une agence"
-              [formField]="formSchema.identification.agencyId"
-            ></tas-select>
-            @if (
-              formSchema.identification.agencyId().touched() &&
-              formSchema.identification.agencyId().invalid()
-            ) {
-              <tas-error>
-                {{ formSchema.identification.agencyId().errors()[0].message }}
-              </tas-error>
-            }
-          </tas-form-field>
-
-          <tas-form-field>
-            <tas-label>
-              Raison sociale <span class="text-functional-error">*</span>
-            </tas-label>
-            <input
-              tasInput
-              type="text"
-              placeholder="Dénomination de l'entreprise"
-              [formField]="formSchema.identification.legalName"
-            />
-            @if (
-              formSchema.identification.legalName().touched() &&
-              formSchema.identification.legalName().invalid()
-            ) {
-              <tas-error>
-                {{ formSchema.identification.legalName().errors()[0].message }}
-              </tas-error>
-            }
-          </tas-form-field>
-
-          <div class="grid grid-cols-2 gap-3">
-            <tas-form-field>
-              <tas-label>
-                Forme juridique <span class="text-functional-error">*</span>
-              </tas-label>
-              <tas-select
-                [options]="legalFormOptions()"
-                placeholder="Sélectionnez une forme"
-                [formField]="formSchema.identification.legalFormCode"
-              ></tas-select>
-              @if (
-                formSchema.identification.legalFormCode().touched() &&
-                formSchema.identification.legalFormCode().invalid()
-              ) {
-                <tas-error>
-                  {{
-                    formSchema.identification.legalFormCode().errors()[0].message
-                  }}
-                </tas-error>
-              }
-            </tas-form-field>
-
-            <div>
-              <tas-date-picker
-                mode="date"
-                placeholder="Sélectionnez une date"
-                [formField]="formSchema.identification.incorporationDate">
-                Date de constitution <span class="text-functional-error">*</span>
-              </tas-date-picker>
-              @if (
-                formSchema.identification.incorporationDate().touched() &&
-                formSchema.identification.incorporationDate().invalid()
-              ) {
-                <tas-error>
-                  {{
-                    formSchema.identification.incorporationDate().errors()[0]
-                      .message
-                  }}
-                </tas-error>
-              }
-            </div>
-          </div>
-
-          <div class="grid grid-cols-2 gap-3">
-            <tas-form-field>
-              <tas-label>
-                Numéro d'immatriculation
-                <span class="text-functional-error">*</span>
-              </tas-label>
-              <input
-                tasInput
-                type="text"
-                placeholder="RCCM"
-                [formField]="formSchema.identification.registrationNumber"
-              />
-              @if (
-                formSchema.identification.registrationNumber().touched() &&
-                formSchema.identification.registrationNumber().invalid()
-              ) {
-                <tas-error>
-                  {{
-                    formSchema.identification.registrationNumber().errors()[0]
-                      .message
-                  }}
-                </tas-error>
-              }
-              <tas-hint>
-                Un numéro déjà enregistré bloque la création.
-              </tas-hint>
-            </tas-form-field>
-
-            <tas-form-field>
-              <tas-label>Numéro fiscal</tas-label>
-              <input
-                tasInput
-                type="text"
-                placeholder="Facultatif"
-                [formField]="formSchema.identification.taxIdNumber"
-              />
-            </tas-form-field>
-          </div>
+        <div class="p-4">
+          <entity-form-renderer
+            [form]="f"
+            mode="quick"
+            [prefill]="rendererPrefill()"
+            [exclude]="excluded()"
+            [readonly]="currentStep() === 'summary'"
+            [maskSensitive]="false"
+          >
+            <ng-template entityFormField="phoneNumbers" let-entry let-field="field" let-error="error">
+              <tas-form-field>
+                <tas-label>{{ field.label }} <span class="text-functional-error">*</span></tas-label>
+                <tas-input-phone defaultCountry="CI" [formField]="entry.text"></tas-input-phone>
+                @if (error) {
+                  <tas-error>{{ error }}</tas-error>
+                }
+              </tas-form-field>
+            </ng-template>
+            <ng-template entityFormField="secondaryPhoneNumber" let-entry let-field="field" let-error="error">
+              <tas-form-field>
+                <tas-label>{{ field.label }}@if (field.isRequired) {<span class="text-functional-error"> *</span>}</tas-label>
+                <tas-input-phone defaultCountry="CI" [formField]="entry.text"></tas-input-phone>
+                @if (error) {
+                  <tas-error>{{ error }}</tas-error>
+                }
+              </tas-form-field>
+            </ng-template>
+          </entity-form-renderer>
+          @if (currentLayoutStep()?.fieldKeys?.includes('registrationNumber')) {
+            <p class="text-xs text-slate-400 mt-3">Un numéro d'immatriculation déjà enregistré bloque la création.</p>
+          }
         </div>
       </tas-card>
-    }
-
-    <!-- ===== Étape 2 : Siège et contacts ===== -->
-    @if (currentStep() === 'headOffice') {
+    } @else if (loadFailed()) {
       <tas-card class="block">
-        <div class="border-b border-slate-100 p-4">
-          <p class="text-sm font-semibold text-slate-700">Siège et contacts</p>
-          <p class="mt-0.5 text-xs text-slate-400">
-            Adresse du siège social et coordonnées de l'entreprise.
-          </p>
-        </div>
-        <div class="flex flex-col gap-4 p-4">
-          <tas-form-field>
-            <tas-label>Rue</tas-label>
-            <input
-              tasInput
-              type="text"
-              placeholder="Quartier, rue, lot…"
-              [formField]="formSchema.headOffice.street"
-            />
-          </tas-form-field>
-
-          <div class="grid grid-cols-2 gap-3">
-            <tas-form-field>
-              <tas-label>
-                Ville <span class="text-functional-error">*</span>
-              </tas-label>
-              <input
-                tasInput
-                type="text"
-                placeholder="Ville"
-                [formField]="formSchema.headOffice.city"
-              />
-              @if (
-                formSchema.headOffice.city().touched() &&
-                formSchema.headOffice.city().invalid()
-              ) {
-                <tas-error>
-                  {{ formSchema.headOffice.city().errors()[0].message }}
-                </tas-error>
-              }
-            </tas-form-field>
-
-            <tas-form-field>
-              <tas-label>Région / District</tas-label>
-              <input
-                tasInput
-                type="text"
-                placeholder="Région"
-                [formField]="formSchema.headOffice.state"
-              />
-            </tas-form-field>
-          </div>
-
-          <div class="grid grid-cols-2 gap-3">
-            <tas-form-field>
-              <tas-label>
-                Pays <span class="text-functional-error">*</span>
-              </tas-label>
-              <tas-select
-                [options]="countryOptions"
-                placeholder="Sélectionnez un pays"
-                [formField]="formSchema.headOffice.country"
-              ></tas-select>
-              @if (
-                formSchema.headOffice.country().touched() &&
-                formSchema.headOffice.country().invalid()
-              ) {
-                <tas-error>
-                  {{ formSchema.headOffice.country().errors()[0].message }}
-                </tas-error>
-              }
-            </tas-form-field>
-
-            <tas-form-field>
-              <tas-label>Code postal</tas-label>
-              <input
-                tasInput
-                type="text"
-                placeholder="Code postal"
-                [formField]="formSchema.headOffice.zipCode"
-              />
-            </tas-form-field>
-          </div>
-
-          <div class="border-t border-slate-200 pt-4">
-            <p class="mb-3 text-sm font-medium text-slate-600">Contacts</p>
-            <div class="flex flex-col gap-3">
-              <div class="grid grid-cols-2 gap-3">
-                <tas-form-field>
-                  <tas-label>
-                    Téléphone principal
-                    <span class="text-functional-error">*</span>
-                  </tas-label>
-                  <tas-input-phone
-                    defaultCountry="CI"
-                    [formField]="formSchema.headOffice.phoneNumber"
-                  ></tas-input-phone>
-                  @if (
-                    formSchema.headOffice.phoneNumber().touched() &&
-                    formSchema.headOffice.phoneNumber().invalid()
-                  ) {
-                    <tas-error>
-                      {{ formSchema.headOffice.phoneNumber().errors()[0].message }}
-                    </tas-error>
-                  }
-                </tas-form-field>
-
-                <tas-form-field>
-                  <tas-label>Téléphone secondaire</tas-label>
-                  <tas-input-phone
-                    defaultCountry="CI"
-                    [formField]="formSchema.headOffice.secondaryPhoneNumber"
-                  ></tas-input-phone>
-                </tas-form-field>
-              </div>
-
-              <div class="grid grid-cols-2 gap-3">
-                <tas-form-field>
-                  <tas-label>E-mail</tas-label>
-                  <input
-                    tasInput
-                    type="email"
-                    placeholder="contact@entreprise.com"
-                    [formField]="formSchema.headOffice.email"
-                  />
-                  @if (
-                    formSchema.headOffice.email().touched() &&
-                    formSchema.headOffice.email().invalid()
-                  ) {
-                    <tas-error>
-                      {{ formSchema.headOffice.email().errors()[0].message }}
-                    </tas-error>
-                  }
-                </tas-form-field>
-
-                <tas-form-field>
-                  <tas-label>Langue préférée</tas-label>
-                  <tas-select
-                    [options]="languageOptions"
-                    [formField]="formSchema.headOffice.preferredLanguage"
-                  ></tas-select>
-                </tas-form-field>
-              </div>
-            </div>
-          </div>
+        <div class="p-6 text-sm text-slate-600">
+          Le formulaire n'a pas pu être chargé.
+          <button tas-text-button type="button" (click)="load()">Réessayer</button>
         </div>
       </tas-card>
+    } @else {
+      <div class="flex justify-center py-16"><tas-spinner size="8" class="text-primary"></tas-spinner></div>
     }
 
     <!-- ===== Étape 3 : Représentant légal ===== -->
@@ -670,49 +444,12 @@
     @if (currentStep() === 'summary') {
       <tas-card class="block">
         <div class="border-b border-slate-100 p-4">
-          <p class="text-sm font-semibold text-slate-700">Récapitulatif</p>
+          <p class="text-sm font-semibold text-slate-700">Représentant et bénéficiaires</p>
           <p class="mt-0.5 text-xs text-slate-400">
-            Relisez la fiche avant de créer le client.
+            Relisez la fiche avant de créer le client : l'identification et les coordonnées sont au-dessus.
           </p>
         </div>
         <div class="grid grid-cols-2 gap-x-6 gap-y-3 p-4 text-sm">
-          <div>
-            <p class="text-xs text-slate-400">Raison sociale</p>
-            <p class="font-medium text-slate-800">
-              {{ model().identification.legalName || '—' }}
-            </p>
-          </div>
-          <div>
-            <p class="text-xs text-slate-400">Forme juridique</p>
-            <p class="text-slate-700">
-              {{ model().identification.legalFormCode || '—' }}
-            </p>
-          </div>
-          <div>
-            <p class="text-xs text-slate-400">Immatriculation</p>
-            <p class="text-slate-700 tabular-nums">
-              {{ model().identification.registrationNumber || '—' }}
-            </p>
-          </div>
-          <div>
-            <p class="text-xs text-slate-400">Date de constitution</p>
-            <p class="text-slate-700 tabular-nums">
-              {{ model().identification.incorporationDate || '—' }}
-            </p>
-          </div>
-          <div>
-            <p class="text-xs text-slate-400">Siège</p>
-            <p class="text-slate-700">
-              {{ model().headOffice.city || '—' }},
-              {{ model().headOffice.country || '—' }}
-            </p>
-          </div>
-          <div>
-            <p class="text-xs text-slate-400">Téléphone</p>
-            <p class="text-slate-700 tabular-nums">
-              {{ model().headOffice.phoneNumber || '—' }}
-            </p>
-          </div>
           <div>
             <p class="text-xs text-slate-400">Représentant légal</p>
             <p class="text-slate-700">
@@ -801,8 +538,8 @@
           color="primary"
           type="button"
           (click)="handleSubmit()"
-          [disabled]="formSchema().invalid() || formSchema().submitting()"
-          [isLoading]="formSchema().submitting()"
+          [disabled]="!form() || submitting()"
+          [isLoading]="submitting()"
         >
           Créer le client
         </button>

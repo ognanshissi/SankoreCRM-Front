@@ -26,7 +26,7 @@ import {
   LeadsApiService,
   ValidateLeadImportResponse,
 } from '@sankore/crm-api';
-import { PermissionsService } from '@sankore/crm/common';
+import { CustomFieldColumns, PermissionsService } from '@sankore/crm/common';
 
 type Step =
   | 'source'
@@ -150,6 +150,7 @@ class GoogleSheetImportFormModel {
   selector: 'lead-import-wizard',
   templateUrl: './lead-import-wizard.html',
   imports: [
+    CustomFieldColumns,
     RouterLink,
     TasCard,
     TasSpinner,

@@ -125,6 +125,9 @@
                   [ngModel]="filterPep()" (ngModelChange)="onFilterChange('pep', $event)"></tas-select>
               </tas-form-field>
             </div>
+            <!-- Les champs personnalisés à choix du tenant, à la largeur des autres filtres. -->
+            <custom-field-filters class="[&>tas-form-field]:w-48" entity="Client"
+                                  [value]="filterCustom()" (valueChange)="onCustomFiltersChange($event)" />
           </div>
         }
 

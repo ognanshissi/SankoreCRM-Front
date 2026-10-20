@@ -13,10 +13,11 @@
 
 export interface RevealSensitiveFieldRequest { 
     /**
-     * One of: IdentityDocumentNumber, DateOfBirth, DeclaredIncome, Phone, Email, PostalAddress, RegistrationNumber, TaxIdNumber
+     * One of: IdentityDocumentNumber, DateOfBirth, DeclaredIncome, Phone, Email, PostalAddress, RegistrationNumber, TaxIdNumber, CustomField
      */
     field?: RevealSensitiveFieldRequestFieldEnum;
     contactPointId?: string | null;
+    customFieldKey?: string | null;
 }
 export enum RevealSensitiveFieldRequestFieldEnum {
     IdentityDocumentNumber = 'IdentityDocumentNumber',
@@ -26,7 +27,8 @@ export enum RevealSensitiveFieldRequestFieldEnum {
     Email = 'Email',
     PostalAddress = 'PostalAddress',
     RegistrationNumber = 'RegistrationNumber',
-    TaxIdNumber = 'TaxIdNumber'
+    TaxIdNumber = 'TaxIdNumber',
+    CustomField = 'CustomField'
 };
 
 

@@ -22,6 +22,7 @@ export interface UpdateClientRequest {
     declaredIncome?: number | null;
     declaredIncomeCurrency?: string | null;
     preferredLanguage?: string | null;
+    customFields?: { [key: string]: any; } | null;
 }
 export enum UpdateClientRequestMaritalStatusEnum {
     Single = 'Single',

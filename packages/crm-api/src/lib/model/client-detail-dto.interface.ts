@@ -63,5 +63,7 @@ export interface ClientDetailDto {
     version?: number;
     contactPoints?: Array<ClientContactPointDto> | null;
     statusHistory?: Array<ClientStatusHistorySummaryDto> | null;
+    customFields?: { [key: string]: any; } | null;
+    maskedCustomFieldKeys?: Array<string> | null;
 }
 

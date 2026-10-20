@@ -5,8 +5,8 @@ import {
   DestroyRef,
   inject,
   input,
-  OnInit,
   signal,
+  viewChild,
 } from '@angular/core';
 import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -14,7 +14,6 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { HttpErrorResponse } from '@angular/common/http';
 import {
   applyEach,
-  email,
   form,
   FormField,
   FormRoot,
@@ -44,7 +43,6 @@ import { SnackbarService } from '@talisoft/ui/snackbar';
 import { ConfirmDialogService } from '@talisoft/ui/confirm-dialog';
 import {
   AddRelationshipRequestTypeEnum,
-  AgenciesApiService,
   BeneficialOwnerInput,
   ClientRelationshipsApiService,
   ClientSearchItemDto,
@@ -52,10 +50,20 @@ import {
   CreateLegalClientRequest,
   CreateLegalClientResult,
   CreateLegalClientResultOutcomeEnum,
+  EntityFormDto,
+  FormsApiService,
   LegalEntitiesApiService,
-  LegalFormsApiService,
 } from '@sankore/crm-api';
-import { PermissionsService } from '@sankore/crm/common';
+import {
+  EntityFormFieldTemplate,
+  EntityFormRenderer,
+  explainFormError,
+  formErrorDetail,
+  formSteps,
+  FormStep,
+  PermissionsService,
+  WireValues,
+} from '@sankore/crm/common';
 import {
   CONTROL_TYPE_OPTIONS,
   controlTypeLabel,
@@ -76,12 +84,22 @@ import {
   trimOrNull,
 } from './create-client.utils';
 
-type LegalStepKey =
-  | 'identification'
-  | 'headOffice'
-  | 'representative'
-  | 'owners'
-  | 'summary';
+/** Les étapes propres à l'assistant ; les autres viennent de la mise en page (`layout:<section>`). */
+type FixedStepKey = 'representative' | 'owners' | 'summary';
+
+/** Le type est choisi avant l'assistant : il n'est pas une saisie, mais le contexte des conditions. */
+const CONTEXT: WireValues = { clientType: 'Legal' };
+const NOT_ASKED = ['clientType'];
+const LAYOUT_PREFIX = 'layout:';
+
+function text(values: WireValues, key: string): string {
+  const v = values[key];
+  return typeof v === 'string' ? v.trim() : '';
+}
+
+function textOrNull(values: WireValues, key: string): string | null {
+  return text(values, key) || null;
+}
 
 /**
  * Seuil de détention au-delà duquel un bénéficiaire suffit à identifier le
@@ -91,27 +109,6 @@ type LegalStepKey =
 export const BENEFICIAL_OWNER_THRESHOLD = 25;
 
 // ——— Modèle de formulaire ———
-
-export class LegalIdentificationSection {
-  public agencyId!: string;
-  public legalName!: string;
-  public legalFormCode!: string;
-  public registrationNumber!: string;
-  public taxIdNumber!: string;
-  public incorporationDate!: string;
-}
-
-export class LegalHeadOfficeSection {
-  public street!: string;
-  public city!: string;
-  public state!: string;
-  public country!: string;
-  public zipCode!: string;
-  public phoneNumber!: string;
-  public secondaryPhoneNumber!: string;
-  public email!: string;
-  public preferredLanguage!: string;
-}
 
 export class LegalRepresentativeSection {
   public fullName!: string;
@@ -156,35 +153,16 @@ export class BeneficialOwnerRow {
   }
 }
 
+/**
+ * Ce que la mise en page ne décrit pas : le représentant légal et les bénéficiaires effectifs,
+ * avec leurs règles d'ensemble. L'identification et le siège sont dans le moteur du formulaire.
+ */
 export class CreateLegalClientFormModel {
-  public identification!: LegalIdentificationSection;
-  public headOffice!: LegalHeadOfficeSection;
   public representative!: LegalRepresentativeSection;
   public owners!: BeneficialOwnerRow[];
 
   public static instantiate(): CreateLegalClientFormModel {
     const model = new CreateLegalClientFormModel();
-
-    const identification = new LegalIdentificationSection();
-    identification.agencyId = '';
-    identification.legalName = '';
-    identification.legalFormCode = '';
-    identification.registrationNumber = '';
-    identification.taxIdNumber = '';
-    identification.incorporationDate = '';
-    model.identification = identification;
-
-    const headOffice = new LegalHeadOfficeSection();
-    headOffice.street = '';
-    headOffice.city = '';
-    headOffice.state = '';
-    headOffice.country = 'CI';
-    headOffice.zipCode = '';
-    headOffice.phoneNumber = '';
-    headOffice.secondaryPhoneNumber = '';
-    headOffice.email = '';
-    headOffice.preferredLanguage = 'fr';
-    model.headOffice = headOffice;
 
     const representative = new LegalRepresentativeSection();
     representative.fullName = '';
@@ -219,20 +197,21 @@ export class CreateLegalClientFormModel {
     FormRoot,
     FormField,
     FormsModule,
+    EntityFormRenderer,
+    EntityFormFieldTemplate,
     DuplicateCheckBanner,
   ],
 })
-export class CreateLegalClient implements OnInit {
+export class CreateLegalClient {
   /** Saisie reprise de la liste des clients (`q` + `critere`). */
   public prefill = input<CreateClientPrefill | null>(null);
 
   private readonly _legalEntitiesApiService = inject(LegalEntitiesApiService);
-  private readonly _legalFormsApiService = inject(LegalFormsApiService);
+  private readonly _formsApi = inject(FormsApiService);
   private readonly _clientsApiService = inject(ClientsApiService);
   private readonly _relationshipsApiService = inject(
     ClientRelationshipsApiService,
   );
-  private readonly _agenciesApiService = inject(AgenciesApiService);
   private readonly _snackbarService = inject(SnackbarService);
   private readonly _confirmDialogService = inject(ConfirmDialogService);
   private readonly _router = inject(Router);
@@ -255,25 +234,64 @@ export class CreateLegalClient implements OnInit {
   public readonly controlTypeLabel = controlTypeLabel;
   public readonly threshold = BENEFICIAL_OWNER_THRESHOLD;
 
-  public readonly steps: { key: LegalStepKey; label: string }[] = [
-    { key: 'identification', label: 'Identification' },
-    { key: 'headOffice', label: 'Siège et contacts' },
+  // ——— Le formulaire du tenant (formulaires dynamiques, lot 5) ———
+
+  public readonly form = signal<EntityFormDto | null>(null);
+  public readonly loadFailed = signal(false);
+  public readonly submitting = signal(false);
+  private readonly _renderer = viewChild(EntityFormRenderer);
+
+  /** Les étapes de la mise en page « Client » pour une personne morale, puis celles de l'assistant. */
+  private readonly _layoutSteps = computed<FormStep[]>(() => {
+    const form = this.form();
+    return form ? formSteps(form, 'quick', CONTEXT, NOT_ASKED) : [];
+  });
+
+  public readonly steps = computed<{ key: string; label: string }[]>(() => [
+    ...this._layoutSteps().map((s) => ({ key: LAYOUT_PREFIX + s.key, label: s.label })),
     { key: 'representative', label: 'Représentant légal' },
     { key: 'owners', label: 'Bénéficiaires effectifs' },
     { key: 'summary', label: 'Récapitulatif' },
-  ];
+  ]);
 
   public stepIndex = signal(0);
-  public readonly currentStep = computed<LegalStepKey>(
-    () => this.steps[this.stepIndex()].key,
-  );
-  public readonly isLastStep = computed(
-    () => this.stepIndex() === this.steps.length - 1,
-  );
+  public readonly currentStep = computed<string>(() => this.steps()[this.stepIndex()]?.key ?? 'summary');
+  public readonly isLastStep = computed(() => this.stepIndex() === this.steps().length - 1);
   public stepBlocked = signal(false);
 
-  public agencyOptions = signal<{ label: string; value: string }[]>([]);
-  public legalFormOptions = signal<{ label: string; value: string }[]>([]);
+  /** L'étape de la mise en page en cours, ou null sur une étape propre à l'assistant. */
+  public readonly currentLayoutStep = computed(() => {
+    const key = this.currentStep();
+    return key.startsWith(LAYOUT_PREFIX)
+      ? this._layoutSteps().find((s) => LAYOUT_PREFIX + s.key === key) ?? null
+      : null;
+  });
+
+  /**
+   * Le moteur reste monté pendant tout l'assistant — c'est lui qui garde la saisie de
+   * l'identification pendant qu'on déclare le représentant. Il n'affiche que l'étape en cours,
+   * tout au récapitulatif (en lecture seule), et rien sur les étapes propres à l'assistant.
+   */
+  public readonly showRenderer = computed(() => !!this.currentLayoutStep() || this.currentStep() === 'summary');
+  public readonly excluded = computed(() => {
+    const all = (this.form()?.fields ?? []).map((f) => f.key ?? '');
+    if (this.currentStep() === 'summary') return NOT_ASKED;
+    const step = this.currentLayoutStep();
+    if (!step) return all;
+    const keep = new Set(step.fieldKeys);
+    return all.filter((k) => !keep.has(k));
+  });
+
+  /** Le type, et ce que la liste des clients a transmis — une saisie de départ, pas une fiche. */
+  public readonly rendererPrefill = computed<WireValues>(() => {
+    const prefill = this.prefill();
+    return {
+      ...CONTEXT,
+      ...(prefill?.name ? { legalName: prefill.name } : {}),
+      ...(prefill?.phoneNumber ? { phoneNumbers: prefill.phoneNumber } : {}),
+      ...(prefill?.documentNumber ? { registrationNumber: prefill.documentNumber } : {}),
+    };
+  });
 
   public blockingDuplicates = signal<DuplicateCandidateView[]>([]);
 
@@ -286,44 +304,6 @@ export class CreateLegalClient implements OnInit {
   public model = signal(CreateLegalClientFormModel.instantiate());
 
   public formSchema = form(this.model, (schema) => {
-    required(schema.identification.agencyId, {
-      message: "L'agence de rattachement est obligatoire",
-    });
-    required(schema.identification.legalName, {
-      message: 'La raison sociale est obligatoire',
-    });
-    required(schema.identification.legalFormCode, {
-      message: 'La forme juridique est obligatoire',
-    });
-    required(schema.identification.registrationNumber, {
-      message: "Le numéro d'immatriculation est obligatoire",
-    });
-    validate(schema.identification.incorporationDate, (ctx) => {
-      if (!ctx.value()) {
-        return {
-          kind: 'required',
-          message: 'La date de constitution est obligatoire',
-        };
-      }
-      return ctx.value() > new Date().toISOString().slice(0, 10)
-        ? {
-            kind: 'max',
-            message: 'La date de constitution ne peut pas être dans le futur',
-          }
-        : undefined;
-    });
-
-    required(schema.headOffice.city, {
-      message: 'La ville du siège est obligatoire',
-    });
-    required(schema.headOffice.country, {
-      message: 'Le pays du siège est obligatoire',
-    });
-    required(schema.headOffice.phoneNumber, {
-      message: 'Le téléphone du siège est obligatoire',
-    });
-    email(schema.headOffice.email, { message: 'Adresse e-mail invalide' });
-
     required(schema.representative.fullName, {
       message: 'Le nom du représentant légal est obligatoire',
     });
@@ -398,15 +378,22 @@ export class CreateLegalClient implements OnInit {
   });
 
   /** Lu par la page hôte avant de quitter l'assistant ou de changer de type de client. */
-  public readonly isDirty = computed(() => this.formSchema().dirty());
+  public readonly isDirty = computed(
+    () => this.formSchema().dirty() || (this._renderer()?.formSchema().dirty() ?? false),
+  );
 
-  public readonly stepInvalid = computed<Record<LegalStepKey, boolean>>(() => ({
-    identification: this.formSchema.identification().invalid(),
-    headOffice: this.formSchema.headOffice().invalid(),
-    representative: this.formSchema.representative().invalid(),
-    owners: this.formSchema.owners().invalid(),
-    summary: this.formSchema().invalid(),
-  }));
+  private _isStepInvalid(key: string): boolean {
+    const renderer = this._renderer();
+    if (key.startsWith(LAYOUT_PREFIX)) return !renderer || !renderer.valid();
+    switch (key as FixedStepKey) {
+      case 'representative':
+        return this.formSchema.representative().invalid();
+      case 'owners':
+        return this.formSchema.owners().invalid();
+      default:
+        return this.formSchema().invalid() || !renderer || !renderer.valid();
+    }
+  }
 
   public readonly ownerRows = computed(() => this.model().owners);
 
@@ -433,28 +420,8 @@ export class CreateLegalClient implements OnInit {
     this.formSchema.owners().errors(),
   );
 
-  /**
-   * Le pré-remplissage n'est pas une saisie : il passe par le modèle et non par
-   * les contrôles, pour que l'assistant ne se croie pas « modifié » d'entrée et
-   * ne réclame pas de confirmation à la sortie.
-   */
-  public ngOnInit(): void {
-    const prefill = this.prefill();
-    if (!prefill) return;
-
-    this.model.update((model) => {
-      if (prefill.name) model.identification.legalName = prefill.name;
-      if (prefill.phoneNumber) model.headOffice.phoneNumber = prefill.phoneNumber;
-      if (prefill.documentNumber) {
-        model.identification.registrationNumber = prefill.documentNumber;
-      }
-      return model;
-    });
-  }
-
   constructor() {
-    this._loadAgencies();
-    this._loadLegalForms();
+    this.load();
 
     this._search$
       .pipe(
@@ -485,19 +452,27 @@ export class CreateLegalClient implements OnInit {
       });
   }
 
+  public load(): void {
+    this.loadFailed.set(false);
+    this._formsApi.getEntityForm('Client').subscribe({
+      next: (form) => this.form.set(form),
+      error: () => this.loadFailed.set(true),
+    });
+  }
+
   // ——— Navigation entre étapes ———
 
   public next(): void {
     const key = this.currentStep();
     this._markStepTouched(key);
 
-    if (this.stepInvalid()[key]) {
+    if (this._isStepInvalid(key)) {
       this.stepBlocked.set(true);
       return;
     }
 
     this.stepBlocked.set(false);
-    this.stepIndex.update((index) => Math.min(index + 1, this.steps.length - 1));
+    this.stepIndex.update((index) => Math.min(index + 1, this.steps().length - 1));
   }
 
   public previous(): void {
@@ -511,14 +486,13 @@ export class CreateLegalClient implements OnInit {
     this.stepIndex.set(index);
   }
 
-  private _markStepTouched(key: LegalStepKey): void {
-    switch (key) {
-      case 'identification':
-        this.formSchema.identification().markAsTouched();
-        return;
-      case 'headOffice':
-        this.formSchema.headOffice().markAsTouched();
-        return;
+  private _markStepTouched(key: string): void {
+    const layout = this.currentLayoutStep();
+    if (layout) {
+      this._renderer()?.markTouched(layout.fieldKeys);
+      return;
+    }
+    switch (key as FixedStepKey) {
       case 'representative':
         this.formSchema.representative().markAsTouched();
         return;
@@ -527,6 +501,7 @@ export class CreateLegalClient implements OnInit {
         return;
       default:
         this.formSchema().markAsTouched();
+        this._renderer()?.markAllAsTouched();
         return;
     }
   }
@@ -579,52 +554,86 @@ export class CreateLegalClient implements OnInit {
   // ——— Soumission ———
 
   public handleSubmit(): void {
+    const renderer = this._renderer();
+    if (!renderer || this.submitting()) return;
+
+    // Au récapitulatif tout est rendu, donc tout est vérifié : une erreur ramène à son étape.
+    if (!renderer.valid()) {
+      const invalid = renderer.invalidKeys();
+      const index = this._layoutSteps().findIndex((s) => s.fieldKeys.some((k) => invalid.includes(k)));
+      if (index >= 0) {
+        this.stepIndex.set(index);
+        this.stepBlocked.set(true);
+        renderer.markTouched(this._layoutSteps()[index].fieldKeys);
+      }
+      return;
+    }
+
+    const v = renderer.wireValues();
+    const crossFieldError = this._crossFieldError(v);
+    if (crossFieldError) {
+      this._snackbarService.error('Vérifiez la saisie', crossFieldError);
+      return;
+    }
+
     submit(this.formSchema, async (field) => {
       const value = field().value();
+      const legalName = text(v, 'legalName');
       const request: CreateLegalClientRequest = {
-        agencyId: value.identification.agencyId,
-        legalName: trimOrNull(value.identification.legalName),
-        legalFormCode: trimOrNull(value.identification.legalFormCode),
-        registrationNumber: trimOrNull(value.identification.registrationNumber),
-        taxIdNumber: trimOrNull(value.identification.taxIdNumber),
-        incorporationDate: value.identification.incorporationDate,
-        headOfficeAddress: buildAddress(value.headOffice),
-        phoneNumbers: buildPhoneNumbers(
-          value.headOffice.phoneNumber,
-          value.headOffice.secondaryPhoneNumber,
-        ),
-        email: trimOrNull(value.headOffice.email),
-        preferredLanguage: trimOrNull(value.headOffice.preferredLanguage),
+        agencyId: text(v, 'agencyId'),
+        advisorUserId: textOrNull(v, 'advisorUserId'),
+        legalName: legalName || null,
+        legalFormCode: textOrNull(v, 'legalFormCode'),
+        registrationNumber: textOrNull(v, 'registrationNumber'),
+        taxIdNumber: textOrNull(v, 'taxIdNumber'),
+        incorporationDate: text(v, 'incorporationDate'),
+        headOfficeAddress: buildAddress({
+          street: text(v, 'address.street'),
+          city: text(v, 'address.city'),
+          state: text(v, 'address.state'),
+          country: text(v, 'address.country'),
+          zipCode: text(v, 'address.zipCode'),
+        }),
+        phoneNumbers: buildPhoneNumbers(text(v, 'phoneNumbers'), text(v, 'secondaryPhoneNumber')),
+        email: textOrNull(v, 'email'),
+        preferredLanguage: textOrNull(v, 'preferredLanguage'),
+        customFields: renderer.customFieldsPayload(),
       };
 
+      this.submitting.set(true);
       const result = await firstValueFrom(
         this._legalEntitiesApiService.createLegalClient(request).pipe(
           catchError((err: HttpErrorResponse) => {
             this._snackbarService.error(
               'Erreur',
-              serverMessage(
-                err,
-                "Impossible de créer le client, réessayez plus tard.",
-              ),
+              explainFormError(formErrorDetail(err), this.form()) ??
+                serverMessage(err, "Impossible de créer le client, réessayez plus tard."),
             );
             return of(null);
           }),
         ),
       );
 
-      if (!result) return undefined;
+      if (!result) {
+        this.submitting.set(false);
+        return undefined;
+      }
 
       const clientId = this._resolveCreation(result);
-      if (!clientId) return undefined;
+      if (!clientId) {
+        this.submitting.set(false);
+        return undefined;
+      }
 
       if (this.canDeclareBeneficialOwners()) {
         await this._declareOwners(clientId, value.owners);
       }
       await this._declareRepresentative(clientId, value.representative);
+      this.submitting.set(false);
 
       this._snackbarService.success(
         'Client créé',
-        `${value.identification.legalName} est créé — KYC initié, en attente de validation.`,
+        `${legalName || 'Le client'} est créé — KYC initié, en attente de validation.`,
       );
       // La fiche n'a pas à connaître ce paramètre : s'il est ignoré, seul le bandeau manque.
       this._router.navigate(['/customers', clientId], {
@@ -633,6 +642,20 @@ export class CreateLegalClient implements OnInit {
 
       return undefined;
     });
+  }
+
+  /**
+   * Ce que le moteur ne vérifie pas champ par champ : une date de constitution passée, et un siège
+   * localisable (le serveur exige une rue ou une ville). Dit avant l'envoi plutôt qu'en anglais après.
+   */
+  private _crossFieldError(v: WireValues): string | null {
+    const today = new Date().toISOString().slice(0, 10);
+    const incorporated = text(v, 'incorporationDate');
+    if (incorporated && incorporated > today) return 'La date de constitution ne peut pas être dans le futur.';
+    if (!text(v, 'address.street') && !text(v, 'address.city')) {
+      return 'Indiquez au moins la rue ou la ville du siège.';
+    }
+    return null;
   }
 
   private _resolveCreation(result: CreateLegalClientResult): string | null {
@@ -763,49 +786,5 @@ export class CreateLegalClient implements OnInit {
     this._router.navigate(['/customers']);
   }
 
-  private _loadAgencies(): void {
-    this._agenciesApiService
-      .listAgencies(false, 1, 200)
-      .pipe(
-        takeUntilDestroyed(this._destroyRef),
-        catchError(() => {
-          this._snackbarService.error(
-            'Erreur',
-            'Impossible de charger les agences.',
-          );
-          return of(null);
-        }),
-      )
-      .subscribe((result) => {
-        this.agencyOptions.set(
-          (result?.items ?? []).map((agency) => ({
-            label: agency.name ?? '',
-            value: agency.id ?? '',
-          })),
-        );
-      });
-  }
 
-  private _loadLegalForms(): void {
-    this._legalFormsApiService
-      .listLegalForms(false)
-      .pipe(
-        takeUntilDestroyed(this._destroyRef),
-        catchError(() => {
-          this._snackbarService.error(
-            'Erreur',
-            'Impossible de charger les formes juridiques.',
-          );
-          return of(null);
-        }),
-      )
-      .subscribe((forms) => {
-        this.legalFormOptions.set(
-          (forms ?? []).map((legalForm) => ({
-            label: legalForm.label ?? legalForm.code ?? '',
-            value: legalForm.code ?? '',
-          })),
-        );
-      });
-  }
 }

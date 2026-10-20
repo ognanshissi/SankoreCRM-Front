@@ -1,0 +1,305 @@
+<div class="pb-6">
+  <!-- En-tête -->
+  <div class="flex items-start justify-between gap-4 mb-5">
+    <div>
+      <h1 class="text-lg font-semibold text-slate-800">Formulaires</h1>
+      <p class="text-sm text-slate-500 mt-0.5">
+        Les champs des leads, des clients et des produits : leur ordre, leurs sections, ceux qui
+        apparaissent à la création, et vos champs personnalisés.
+      </p>
+    </div>
+    @if (canManage()) {
+      <div class="flex items-center gap-2 shrink-0">
+        @if (isDirty()) {
+          <button tas-outlined-button type="button" (click)="discard()" [disabled]="isSaving()">
+            Annuler les modifications
+          </button>
+        }
+        <button
+          tas-raised-button
+          color="primary"
+          type="button"
+          [disabled]="!isDirty() || isSaving()"
+          [isLoading]="isSaving()"
+          (click)="save()"
+        >
+          <tas-icon iconName="feather:save" style="font-size:14px"></tas-icon> &nbsp; Enregistrer
+        </button>
+      </div>
+    }
+  </div>
+
+  <!-- Entités -->
+  <div class="flex items-center justify-between gap-4 mb-4 flex-wrap">
+    <div class="inline-flex rounded-lg bg-slate-100 p-1">
+      @for (t of tabs; track t.key) {
+        <button
+          type="button"
+          class="px-4 py-1.5 rounded-md text-sm font-medium transition-colors"
+          [class]="t.key === entity() ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'"
+          (click)="selectEntity(t.key)"
+        >
+          {{ t.label }}
+        </button>
+      }
+    </div>
+
+    <div class="inline-flex rounded-lg border border-slate-200 p-0.5">
+      <button type="button" class="px-3 py-1 rounded-md text-xs font-medium"
+              [class]="mode() === 'edit' ? 'bg-primary/10 text-primary' : 'text-slate-500 hover:text-slate-700'"
+              (click)="mode.set('edit')">
+        <tas-icon iconName="feather:sliders" style="font-size:12px"></tas-icon> &nbsp; Configuration
+      </button>
+      <button type="button" class="px-3 py-1 rounded-md text-xs font-medium"
+              [class]="mode() === 'quick' ? 'bg-primary/10 text-primary' : 'text-slate-500 hover:text-slate-700'"
+              (click)="mode.set('quick')">
+        <tas-icon iconName="feather:zap" style="font-size:12px"></tas-icon> &nbsp; Aperçu création rapide
+      </button>
+      <button type="button" class="px-3 py-1 rounded-md text-xs font-medium"
+              [class]="mode() === 'full' ? 'bg-primary/10 text-primary' : 'text-slate-500 hover:text-slate-700'"
+              (click)="mode.set('full')">
+        <tas-icon iconName="feather:file-text" style="font-size:12px"></tas-icon> &nbsp; Aperçu fiche complète
+      </button>
+    </div>
+  </div>
+
+  @if (isLoading()) {
+    <div class="flex justify-center py-24">
+      <tas-spinner size="10" class="text-primary"></tas-spinner>
+    </div>
+  } @else if (loadError()) {
+    <tas-card class="block">
+      <div class="p-8 text-center">
+        <p class="text-sm text-slate-600">Le formulaire n'a pas pu être chargé.</p>
+        <button tas-outlined-button type="button" class="mt-3" (click)="discard()">Réessayer</button>
+      </div>
+    </tas-card>
+  } @else {
+    <!-- Résumé -->
+    <div class="flex items-center gap-4 text-xs text-slate-500 mb-4 flex-wrap">
+      <span class="tabular-nums"><span class="font-semibold text-slate-700">{{ counts().total }}</span> champs</span>
+      <span class="tabular-nums"><span class="font-semibold text-slate-700">{{ counts().custom }}</span> personnalisés</span>
+      <span class="tabular-nums"><span class="font-semibold text-slate-700">{{ counts().quick }}</span> en création rapide</span>
+      <span class="tabular-nums"><span class="font-semibold text-slate-700">{{ counts().required }}</span> obligatoires</span>
+      <span class="ml-auto">
+        @if (version() === 0) {
+          Formulaire par défaut, jamais modifié
+        } @else {
+          Version {{ version() }}
+        }
+        @if (isDirty()) {
+          <span class="text-warn font-medium"> · modifications non enregistrées</span>
+        }
+      </span>
+    </div>
+
+    @if (mode() === 'edit') {
+      <!-- ── Configuration ─────────────────────────────────────────── -->
+      @for (group of groups(); track group.key) {
+        @if (!group.section) {
+          <ng-container *ngTemplateOutlet="groupCard; context: { $implicit: group }"></ng-container>
+        }
+      }
+
+      <div cdkDropList (cdkDropListDropped)="onSectionDrop($event)" class="flex flex-col gap-4">
+        @for (group of groups(); track group.key) {
+          @if (group.section) {
+            <div cdkDrag [cdkDragDisabled]="!canManage()">
+              <ng-container *ngTemplateOutlet="groupCard; context: { $implicit: group }"></ng-container>
+            </div>
+          }
+        }
+      </div>
+
+      @if (canManage()) {
+        <button tas-outlined-button type="button" class="mt-4" (click)="openSection(null)">
+          <tas-icon iconName="feather:plus" style="font-size:14px"></tas-icon> &nbsp; Ajouter une section
+        </button>
+      }
+
+      @if (archived().length > 0) {
+        <div class="mt-6">
+          <button tas-text-button type="button" (click)="showArchived.set(!showArchived())">
+            <tas-icon [iconName]="showArchived() ? 'feather:chevron-down' : 'feather:chevron-right'" style="font-size:14px"></tas-icon>
+            &nbsp; {{ archived().length }} champ(s) archivé(s)
+          </button>
+          @if (showArchived()) {
+            <tas-card class="block mt-2">
+              <div class="divide-y divide-slate-100">
+                @for (field of archived(); track field.key) {
+                  <div class="flex items-center gap-3 px-4 py-2.5">
+                    <tas-icon [iconName]="fieldTypeIcon(field.type)" style="font-size:14px" class="text-slate-300"></tas-icon>
+                    <div class="flex-1 min-w-0">
+                      <p class="text-sm text-slate-500 truncate">{{ field.label }}</p>
+                      <p class="text-[11px] text-slate-400 font-mono">{{ field.key }}</p>
+                    </div>
+                    <span class="text-xs text-slate-400">Valeurs conservées</span>
+                    @if (canManage()) {
+                      <button tas-text-button type="button" (click)="restore(field)">Restaurer</button>
+                    }
+                  </div>
+                }
+              </div>
+            </tas-card>
+          }
+        </div>
+      }
+    } @else {
+      <!-- ── Aperçu ────────────────────────────────────────────────── -->
+      @if (kindOptions().length > 1) {
+        <div class="flex items-center gap-2 mb-4 flex-wrap">
+          <span class="text-xs text-slate-500">Aperçu pour :</span>
+          @for (k of kindOptions(); track k.value) {
+            <button
+              type="button"
+              class="px-3 py-1 rounded-full text-xs font-medium transition-colors"
+              [class]="previewKind() === k.value ? 'bg-primary/15 text-primary' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'"
+              (click)="previewKind.set(k.value)"
+            >
+              {{ k.label }}
+            </button>
+          }
+        </div>
+      }
+
+      <tas-card class="block max-w-3xl">
+        <div class="p-5 border-b border-slate-100 flex items-center gap-2">
+          <tas-icon [iconName]="mode() === 'quick' ? 'feather:zap' : 'feather:file-text'" style="font-size:16px" class="text-primary"></tas-icon>
+          <p class="text-sm font-semibold text-slate-700">
+            {{ mode() === 'quick' ? 'Création rapide' : 'Fiche complète' }} — {{ tab().label }}
+          </p>
+          <span class="ml-auto text-xs text-slate-400">Aperçu : vous pouvez saisir, rien n'est enregistré</span>
+        </div>
+        <div class="p-5">
+          <!-- Le moteur réel (lot 3), sur la mise en page en cours d'édition, enregistrée ou non. -->
+          <entity-form-renderer
+            [form]="previewForm()"
+            [mode]="previewMode()"
+            [values]="previewValues()"
+          ></entity-form-renderer>
+        </div>
+      </tas-card>
+    }
+  }
+</div>
+
+<!-- Une carte de groupe : une section, ou les champs hors section -->
+<ng-template #groupCard let-group>
+  <tas-card class="block mb-4">
+    <div class="flex items-center gap-3 px-4 py-3 border-b border-slate-100">
+      @if (group.section && canManage()) {
+        <span cdkDragHandle class="cursor-grab text-slate-300 hover:text-slate-500" aria-label="Déplacer la section">
+          <tas-icon iconName="feather:menu" style="font-size:14px"></tas-icon>
+        </span>
+      }
+      <div class="flex-1 min-w-0">
+        <div class="flex items-center gap-2 flex-wrap">
+          <p class="text-sm font-semibold text-slate-800">{{ group.section?.title ?? 'Général' }}</p>
+          @if (conditionLabel(group.section?.visibleWhen); as condition) {
+            <tas-tag severity="info">{{ condition }}</tas-tag>
+          }
+        </div>
+        @if (group.section?.description) {
+          <p class="text-xs text-slate-500 mt-0.5">{{ group.section.description }}</p>
+        } @else if (!group.section) {
+          <p class="text-xs text-slate-500 mt-0.5">Les champs hors section, affichés en tête du formulaire.</p>
+        }
+      </div>
+      @if (group.section) {
+        <label class="flex items-center gap-2 text-xs text-slate-500">
+          Titre en création rapide
+          <tas-switch
+            [checked]="!!group.section.quickAdd"
+            [disabled]="!canManage()"
+            (toggle)="toggleSectionTitle(group.section, $event)"
+          ></tas-switch>
+        </label>
+        @if (canManage()) {
+          <button tas-button iconButton type="button" (click)="openSection(group.section)" aria-label="Modifier la section">
+            <tas-icon iconName="feather:edit-2" style="font-size:14px" class="text-slate-400"></tas-icon>
+          </button>
+          <button tas-button iconButton type="button" (click)="removeSection(group.section)" aria-label="Supprimer la section">
+            <tas-icon iconName="feather:trash-2" style="font-size:14px" class="text-slate-400"></tas-icon>
+          </button>
+        }
+      }
+    </div>
+
+    <div
+      cdkDropList
+      [id]="dropListId(group.key)"
+      [cdkDropListData]="group.key"
+      [cdkDropListConnectedTo]="dropListIds()"
+      [cdkDropListDisabled]="!canManage()"
+      (cdkDropListDropped)="onFieldDrop($event)"
+      class="divide-y divide-slate-100 min-h-12"
+    >
+      @for (field of group.fields; track field.key) {
+        <div cdkDrag class="flex items-center gap-3 px-4 py-2.5 bg-white hover:bg-slate-50 transition-colors"
+             [class.opacity-60]="field.isHidden">
+          @if (canManage()) {
+            <span cdkDragHandle class="cursor-grab text-slate-300 hover:text-slate-500" aria-label="Déplacer le champ">
+              <tas-icon iconName="feather:more-vertical" style="font-size:14px"></tas-icon>
+            </span>
+          }
+          <span class="w-7 h-7 rounded-md bg-slate-100 flex items-center justify-center shrink-0" [title]="fieldTypeLabel(field.type)">
+            <tas-icon [iconName]="fieldTypeIcon(field.type)" style="font-size:13px" class="text-slate-500"></tas-icon>
+          </span>
+
+          <button type="button" class="flex-1 min-w-0 text-left" (click)="openField(field)" [disabled]="!canManage()">
+            <div class="flex items-center gap-2 flex-wrap">
+              <span class="text-sm text-slate-800 truncate">{{ field.label }}</span>
+              @if (field.isRequired) {
+                <span class="text-functional-error text-xs" title="Obligatoire">*</span>
+              }
+              @if (field.isRequiredLocked) {
+                <tas-icon iconName="feather:lock" style="font-size:11px" class="text-slate-400" title="Exigé par l'application"></tas-icon>
+              }
+              @if (!field.isNative) {
+                <tas-tag severity="primary">Personnalisé</tas-tag>
+              }
+              @if (field.isHidden) {
+                <tas-tag severity="neutral">Masqué</tas-tag>
+              }
+              @if (field.isSensitive) {
+                <tas-tag severity="warning">Sensible</tas-tag>
+              }
+              @if (conditionLabel(field.visibleWhen); as condition) {
+                <tas-tag severity="info">{{ condition }}</tas-tag>
+              }
+            </div>
+            <p class="text-[11px] text-slate-400">
+              {{ fieldTypeLabel(field.type) }} · <span class="font-mono">{{ field.key }}</span>
+            </p>
+          </button>
+
+          <label class="flex items-center gap-2 text-xs text-slate-500 shrink-0" [title]="field.isRequired ? 'Un champ obligatoire figure toujours dans la création rapide' : ''">
+            Création rapide
+            <tas-switch
+              [checked]="!!field.quickAdd"
+              [disabled]="!canManage() || !!field.isRequired || !!field.isHidden"
+              (toggle)="toggleQuickAdd(field, $event)"
+            ></tas-switch>
+          </label>
+
+          @if (canManage() && !field.isNative) {
+            <button tas-button iconButton type="button" (click)="removeOrArchive(field)"
+                    [attr.aria-label]="savedCustomKeys().includes(field.key ?? '') ? 'Archiver le champ' : 'Retirer le champ'">
+              <tas-icon [iconName]="savedCustomKeys().includes(field.key ?? '') ? 'feather:archive' : 'feather:trash-2'" style="font-size:14px" class="text-slate-400"></tas-icon>
+            </button>
+          }
+        </div>
+      } @empty {
+        <p class="px-4 py-4 text-xs text-slate-400 text-center">Aucun champ. Glissez-en un ici ou ajoutez-en un.</p>
+      }
+    </div>
+
+    @if (canManage()) {
+      <div class="px-4 py-2 border-t border-slate-100">
+        <button tas-text-button type="button" (click)="openField(null, group.key)">
+          <tas-icon iconName="feather:plus" style="font-size:14px"></tas-icon> &nbsp; Ajouter un champ
+        </button>
+      </div>
+    }
+  </tas-card>
+</ng-template>

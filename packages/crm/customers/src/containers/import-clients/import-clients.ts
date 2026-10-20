@@ -23,7 +23,7 @@ import {
   ClientRowValidationResult,
   ValidateClientImportResponse,
 } from '@sankore/crm-api';
-import { BreadcrumbService, PermissionsService } from '@sankore/crm/common';
+import { BreadcrumbService, CustomFieldColumns, PermissionsService } from '@sankore/crm/common';
 
 type Step = 'source' | 'upload' | 'google-config' | 'validating' | 'preview' | 'importing' | 'done';
 type Source = 'csv' | 'excel' | 'google-sheets';
@@ -110,6 +110,7 @@ class GoogleSheetImportFormModel {
   selector: 'import-clients-page',
   templateUrl: './import-clients.html',
   imports: [
+    CustomFieldColumns,
     TasCard,
     TasSpinner,
     TasIcon,

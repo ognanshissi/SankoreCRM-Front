@@ -1,0 +1,158 @@
+@for (group of groups(); track group.key) {
+  @if (appearance() === 'cards') {
+    <tas-card class="block mb-4">
+      @if (group.title) {
+        <div class="px-4 py-3 border-b border-slate-100">
+          <p class="text-sm font-semibold text-slate-800">{{ group.title }}</p>
+          @if (group.description) {
+            <p class="text-xs text-slate-500 mt-0.5">{{ group.description }}</p>
+          }
+        </div>
+      }
+      <div class="p-4">
+        <ng-container *ngTemplateOutlet="fieldsGrid; context: { $implicit: group }"></ng-container>
+      </div>
+    </tas-card>
+  } @else {
+    <div class="mb-6 last:mb-0">
+      @if (group.title) {
+        <p class="text-sm font-semibold text-slate-800">{{ group.title }}</p>
+        @if (group.description) {
+          <p class="text-xs text-slate-500 mt-0.5">{{ group.description }}</p>
+        }
+      }
+      <div [class.mt-3]="group.title">
+        <ng-container *ngTemplateOutlet="fieldsGrid; context: { $implicit: group }"></ng-container>
+      </div>
+    </div>
+  }
+} @empty {
+  <p class="text-sm text-slate-400">Aucun champ à afficher.</p>
+}
+
+<ng-template #fieldsGrid let-group>
+  <div class="grid gap-x-4 gap-y-4" [class.grid-cols-2]="columns() === 2">
+    @for (field of group.fields; track field.key) {
+      <div [class.col-span-2]="columns() === 2 && isWide(field)">
+        @if (readonly()) {
+          <!-- Lecture seule -->
+          <p class="text-xs text-slate-500">{{ field.label }}</p>
+          <p class="text-sm text-slate-800 mt-0.5 whitespace-pre-line" [class.tabular-nums]="field.type === Type.Money || field.type === Type.Integer || field.type === Type.Decimal || field.type === Type.Percent">
+            {{ display(field) }}
+            @if (isMasked(field) && revealable()) {
+              <button type="button" class="ml-2 text-xs text-primary hover:underline" (click)="reveal.emit(field.key ?? '')">Afficher</button>
+            }
+          </p>
+        } @else if (templateFor(field.key); as custom) {
+          <!-- Rendu fourni par l'écran hôte -->
+          <ng-container
+            *ngTemplateOutlet="custom; context: { $implicit: entry(field.key), field: field, error: errorOf(field.key) }"
+          ></ng-container>
+        } @else {
+          @switch (field.type) {
+            @case (Type.Boolean) {
+              <div class="pt-1">
+                <tas-checkbox [formField]="entry(field.key).flag" (valueChange)="entry(field.key)().markAsTouched()">
+                  {{ field.label }}
+                </tas-checkbox>
+                @if (field.helpText) {
+                  <p class="text-xs text-slate-400 mt-1 ml-6">{{ field.helpText }}</p>
+                }
+              </div>
+            }
+
+            @case (Type.MultiChoice) {
+              <div>
+                <p class="text-sm font-medium text-slate-700 mb-2">
+                  {{ field.label }}@if (field.isRequired) {<span class="text-functional-error"> *</span>}
+                </p>
+                <div class="flex flex-wrap gap-x-5 gap-y-2">
+                  @for (option of optionsOf(field); track option.value) {
+                    <tas-checkbox
+                      [checked]="entry(field.key).list().value().includes(option.value)"
+                      (valueChange)="toggleChoice(field.key, option.value, $event)"
+                    >
+                      {{ option.label }}
+                    </tas-checkbox>
+                  }
+                </div>
+                @if (errorOf(field.key); as error) {
+                  <p class="text-xs text-functional-error mt-1">{{ error }}</p>
+                } @else if (field.helpText) {
+                  <p class="text-xs text-slate-400 mt-1">{{ field.helpText }}</p>
+                }
+              </div>
+            }
+
+            @case (Type.Money) {
+              <tas-form-field>
+                <tas-label>{{ field.label }}@if (field.isRequired) {<span class="text-functional-error"> *</span>}</tas-label>
+                <div class="grid grid-cols-[1fr_7rem] gap-2">
+                  <input tasInput type="text" inputmode="decimal" class="tabular-nums"
+                         [placeholder]="placeholderOf(field)" [formField]="entry(field.key).text" />
+                  <tas-select [options]="currencies" [formField]="entry(field.key).currency"></tas-select>
+                </div>
+                @if (errorOf(field.key); as error) {
+                  <tas-error>{{ error }}</tas-error>
+                } @else if (field.helpText) {
+                  <tas-hint>{{ field.helpText }}</tas-hint>
+                }
+              </tas-form-field>
+            }
+
+            @default {
+              <tas-form-field>
+                <tas-label>{{ field.label }}@if (field.isRequired) {<span class="text-functional-error"> *</span>}</tas-label>
+                @switch (field.type) {
+                  @case (Type.LongText) {
+                    <textarea tasInput rows="3" [placeholder]="placeholderOf(field)" [formField]="entry(field.key).text"></textarea>
+                  }
+                  @case (Type.SingleChoice) {
+                    <tas-select [options]="optionsOf(field)" [placeholder]="placeholderOf(field, 'Sélectionnez')"
+                                [formField]="entry(field.key).text"></tas-select>
+                  }
+                  @case (Type.Reference) {
+                    <tas-select [options]="optionsOf(field)" [placeholder]="placeholderOf(field, 'Sélectionnez')"
+                                [formField]="entry(field.key).text"></tas-select>
+                  }
+                  @case (Type.Date) {
+                    <input tasInput type="date" [formField]="entry(field.key).text" />
+                  }
+                  @case (Type.DateTime) {
+                    <input tasInput type="datetime-local" [formField]="entry(field.key).text" />
+                  }
+                  @case (Type.Email) {
+                    <input tasInput type="email" [placeholder]="placeholderOf(field)" [formField]="entry(field.key).text" />
+                  }
+                  @case (Type.Phone) {
+                    <input tasInput type="tel" [placeholder]="placeholderOf(field)" [formField]="entry(field.key).text" />
+                  }
+                  @case (Type.Url) {
+                    <input tasInput type="url" [placeholder]="placeholderOf(field, 'https://')" [formField]="entry(field.key).text" />
+                  }
+                  @case (Type.Integer) {
+                    <input tasInput type="text" inputmode="numeric" class="tabular-nums" [placeholder]="placeholderOf(field)" [formField]="entry(field.key).text" />
+                  }
+                  @case (Type.Decimal) {
+                    <input tasInput type="text" inputmode="decimal" class="tabular-nums" [placeholder]="placeholderOf(field)" [formField]="entry(field.key).text" />
+                  }
+                  @case (Type.Percent) {
+                    <input tasInput type="text" inputmode="decimal" class="tabular-nums" [placeholder]="placeholderOf(field, '%')" [formField]="entry(field.key).text" />
+                  }
+                  @default {
+                    <input tasInput type="text" [placeholder]="placeholderOf(field)" [formField]="entry(field.key).text" />
+                  }
+                }
+                @if (errorOf(field.key); as error) {
+                  <tas-error>{{ error }}</tas-error>
+                } @else if (field.helpText) {
+                  <tas-hint>{{ field.helpText }}</tas-hint>
+                }
+              </tas-form-field>
+            }
+          }
+        }
+      </div>
+    }
+  </div>
+</ng-template>

@@ -5,170 +5,79 @@ import {
   DestroyRef,
   inject,
   input,
-  OnInit,
   signal,
+  viewChild,
 } from '@angular/core';
 import { Router } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { HttpErrorResponse } from '@angular/common/http';
-import {
-  email,
-  form,
-  FormField,
-  FormRoot,
-  required,
-  submit,
-  validate,
-} from '@angular/forms/signals';
+import { FormField } from '@angular/forms/signals';
 import { catchError, firstValueFrom, of } from 'rxjs';
 import { TasCard } from '@talisoft/ui/card';
 import { TasIcon } from '@talisoft/ui/icon';
 import { Button } from '@talisoft/ui/button';
-import { TasError, TasFormField, TasHint, TasLabel } from '@talisoft/ui/form-field';
+import { TasSpinner } from '@talisoft/ui/spinner';
+import { TasError, TasFormField, TasLabel } from '@talisoft/ui/form-field';
 import { TasInput } from '@talisoft/ui/input';
-import { TasSelect } from '@talisoft/ui/select';
 import { TasInputPhone } from '@talisoft/ui/input-phone';
-import { TasDatePicker } from '@talisoft/ui/date-picker';
 import { SnackbarService } from '@talisoft/ui/snackbar';
 import { ConfirmDialogService } from '@talisoft/ui/confirm-dialog';
 import {
-  AgenciesApiService,
   ClientsApiService,
   CreateClientResult,
   CreateClientResultOutcomeEnum,
   CreateIndividualClientRequest,
+  EntityFormDto,
+  FormsApiService,
 } from '@sankore/crm-api';
 import {
-  GENDER_OPTIONS,
-  genderLabel,
-  IDENTITY_DOCUMENT_OPTIONS,
-  identityDocumentLabel,
-  MARITAL_STATUS_OPTIONS,
-  maritalStatusLabel,
-} from '../../models/client-labels';
-import {
-  DuplicateCandidateView,
-  DuplicateCheckBanner,
-} from './duplicate-check-banner';
+  EntityFormFieldTemplate,
+  EntityFormRenderer,
+  explainFormError,
+  formErrorDetail,
+  formSteps,
+  FormStep,
+  WireValues,
+} from '@sankore/crm/common';
+import { DuplicateCandidateView, DuplicateCheckBanner } from './duplicate-check-banner';
 import {
   buildAddress,
   buildPhoneNumbers,
   CreateClientPrefill,
   candidatesFromHits,
   candidatesFromSearch,
-  COUNTRY_OPTIONS,
-  CURRENCY_OPTIONS,
-  LANGUAGE_OPTIONS,
   serverMessage,
-  toAmountOrNull,
   toGender,
   toIdentityDocumentType,
   toMaritalStatus,
-  trimOrNull,
 } from './create-client.utils';
 
-type IndividualStepKey =
-  | 'identity'
-  | 'document'
-  | 'contact'
-  | 'situation'
-  | 'summary';
+/** Le type est choisi avant l'assistant : il n'est pas une saisie, mais le contexte des conditions. */
+const CONTEXT: WireValues = { clientType: 'Individual' };
+const NOT_ASKED = ['clientType'];
+const SUMMARY_KEY = '__summary';
 
-// ——— Modèle de formulaire ———
-
-export class IndividualIdentitySection {
-  public agencyId!: string;
-  public firstName!: string;
-  public lastName!: string;
-  public maidenName!: string;
-  public gender!: string;
-  public dateOfBirth!: string;
-  public birthPlace!: string;
-  public nationality!: string;
+function text(values: WireValues, key: string): string {
+  const v = values[key];
+  return typeof v === 'string' ? v.trim() : '';
 }
 
-export class IndividualDocumentSection {
-  public identityDocumentType!: string;
-  public identityDocumentNumber!: string;
-  public issuedOn!: string;
-  public expiresOn!: string;
+function textOrNull(values: WireValues, key: string): string | null {
+  return text(values, key) || null;
 }
 
-export class IndividualContactSection {
-  public phoneNumber!: string;
-  public secondaryPhoneNumber!: string;
-  public email!: string;
-  public street!: string;
-  public city!: string;
-  public state!: string;
-  public country!: string;
-  public zipCode!: string;
-}
-
-export class IndividualSituationSection {
-  public profession!: string;
-  public employer!: string;
-  public declaredIncome!: string;
-  public declaredIncomeCurrency!: string;
-  public maritalStatus!: string;
-  public fatherName!: string;
-  public motherName!: string;
-  public preferredLanguage!: string;
-}
-
-export class CreateIndividualClientFormModel {
-  public identity!: IndividualIdentitySection;
-  public document!: IndividualDocumentSection;
-  public contact!: IndividualContactSection;
-  public situation!: IndividualSituationSection;
-
-  public static instantiate(): CreateIndividualClientFormModel {
-    const model = new CreateIndividualClientFormModel();
-
-    const identity = new IndividualIdentitySection();
-    identity.agencyId = '';
-    identity.firstName = '';
-    identity.lastName = '';
-    identity.maidenName = '';
-    identity.gender = '';
-    identity.dateOfBirth = '';
-    identity.birthPlace = '';
-    identity.nationality = 'CI';
-    model.identity = identity;
-
-    const document = new IndividualDocumentSection();
-    document.identityDocumentType = '';
-    document.identityDocumentNumber = '';
-    document.issuedOn = '';
-    document.expiresOn = '';
-    model.document = document;
-
-    const contact = new IndividualContactSection();
-    contact.phoneNumber = '';
-    contact.secondaryPhoneNumber = '';
-    contact.email = '';
-    contact.street = '';
-    contact.city = '';
-    contact.state = '';
-    contact.country = 'CI';
-    contact.zipCode = '';
-    model.contact = contact;
-
-    const situation = new IndividualSituationSection();
-    situation.profession = '';
-    situation.employer = '';
-    situation.declaredIncome = '';
-    situation.declaredIncomeCurrency = 'XOF';
-    situation.maritalStatus = '';
-    situation.fatherName = '';
-    situation.motherName = '';
-    situation.preferredLanguage = 'fr';
-    model.situation = situation;
-
-    return model;
-  }
-}
-
+/**
+ * Création d'une personne physique, pilotée par la mise en page « Client » du tenant (formulaires
+ * dynamiques, lot 5) : une étape par section de la création rapide, puis un récapitulatif.
+ *
+ * <p><b>Un seul moteur pour tout l'assistant.</b> À chaque étape, il ne rend que les champs de
+ * l'étape — c'est ce qui fait que « Suivant » ne valide qu'elle ; au récapitulatif, il rend tout en
+ * lecture seule, ce qui revérifie l'ensemble avant l'envoi. Les valeurs saisies traversent les
+ * étapes parce que c'est le même modèle.</p>
+ *
+ * <p>Ce qui n'est pas de la mise en page reste ici : la recherche de doublon au fil de la saisie
+ * (téléphone, pièce d'identité), les deux refus du serveur et le « ce n'est pas la même personne ».</p>
+ */
 @Component({
   selector: 'create-individual-client',
   templateUrl: './create-individual-client.html',
@@ -177,60 +86,80 @@ export class CreateIndividualClientFormModel {
     TasCard,
     TasIcon,
     Button,
+    TasSpinner,
     TasFormField,
     TasLabel,
     TasError,
-    TasHint,
     TasInput,
-    TasSelect,
     TasInputPhone,
-    TasDatePicker,
-    FormRoot,
     FormField,
+    EntityFormRenderer,
+    EntityFormFieldTemplate,
     DuplicateCheckBanner,
   ],
 })
-export class CreateIndividualClient implements OnInit {
+export class CreateIndividualClient {
   /** Saisie reprise de la liste des clients (`q` + `critere`). */
   public prefill = input<CreateClientPrefill | null>(null);
 
   private readonly _clientsApiService = inject(ClientsApiService);
-  private readonly _agenciesApiService = inject(AgenciesApiService);
+  private readonly _formsApi = inject(FormsApiService);
   private readonly _snackbarService = inject(SnackbarService);
   private readonly _confirmDialogService = inject(ConfirmDialogService);
   private readonly _router = inject(Router);
   private readonly _destroyRef = inject(DestroyRef);
 
-  public readonly genderOptions = GENDER_OPTIONS;
-  public readonly identityDocumentOptions = IDENTITY_DOCUMENT_OPTIONS;
-  public readonly maritalStatusOptions = MARITAL_STATUS_OPTIONS;
-  public readonly countryOptions = COUNTRY_OPTIONS;
-  public readonly currencyOptions = CURRENCY_OPTIONS;
-  public readonly languageOptions = LANGUAGE_OPTIONS;
+  private readonly _renderer = viewChild(EntityFormRenderer);
 
-  public readonly genderLabel = genderLabel;
-  public readonly identityDocumentLabel = identityDocumentLabel;
-  public readonly maritalStatusLabel = maritalStatusLabel;
+  public readonly form = signal<EntityFormDto | null>(null);
+  public readonly loadFailed = signal(false);
+  public readonly submitting = signal(false);
 
-  public readonly steps: { key: IndividualStepKey; label: string }[] = [
-    { key: 'identity', label: 'Identité' },
-    { key: 'document', label: 'Pièce déclarée' },
-    { key: 'contact', label: 'Coordonnées' },
-    { key: 'situation', label: 'Situation pro. et familiale' },
-    { key: 'summary', label: 'Récapitulatif' },
-  ];
+  // ——— Étapes ———
+
+  public readonly steps = computed<FormStep[]>(() => {
+    const form = this.form();
+    if (!form) return [];
+    return [...formSteps(form, 'quick', CONTEXT, NOT_ASKED), { key: SUMMARY_KEY, label: 'Récapitulatif', fieldKeys: [] }];
+  });
 
   public stepIndex = signal(0);
-  public readonly currentStep = computed<IndividualStepKey>(
-    () => this.steps[this.stepIndex()].key,
-  );
-  public readonly isLastStep = computed(
-    () => this.stepIndex() === this.steps.length - 1,
-  );
+  public readonly currentStep = computed<FormStep | null>(() => this.steps()[this.stepIndex()] ?? null);
+  public readonly isSummary = computed(() => this.currentStep()?.key === SUMMARY_KEY);
+  public readonly isLastStep = computed(() => this.stepIndex() === this.steps().length - 1);
   /** Passe à vrai quand « Suivant » a été refusé : le bandeau explique pourquoi on reste sur l'étape. */
   public stepBlocked = signal(false);
 
-  public agencyOptions = signal<{ label: string; value: string }[]>([]);
+  /** À chaque étape, tout ce qui n'en est pas ; au récapitulatif, rien — tout est revérifié. */
+  public readonly excluded = computed(() => {
+    const step = this.currentStep();
+    if (!step || this.isSummary()) return NOT_ASKED;
+    const keep = new Set(step.fieldKeys);
+    return (this.form()?.fields ?? []).map((f) => f.key ?? '').filter((k) => !keep.has(k));
+  });
+
+  /** Le type, et ce que la liste des clients a transmis — une saisie de départ, pas une fiche. */
+  public readonly rendererPrefill = computed<WireValues>(() => {
+    const prefill = this.prefill();
+    return {
+      ...CONTEXT,
+      // Le nom saisi dans la liste est libre : on le place entier dans le nom de famille plutôt que
+      // de deviner une découpe prénom / nom.
+      ...(prefill?.name ? { lastName: prefill.name } : {}),
+      ...(prefill?.phoneNumber ? { phoneNumbers: prefill.phoneNumber } : {}),
+      ...(prefill?.documentNumber ? { identityDocumentNumber: prefill.documentNumber } : {}),
+    };
+  });
+
+  /** Lu par la page hôte avant de quitter l'assistant ou de changer de type de client. */
+  public readonly isDirty = computed(() => this._renderer()?.formSchema().dirty() ?? false);
+
+  public readonly fullName = computed(() => {
+    const v = this._renderer()?.wireValues() ?? {};
+    return `${text(v, 'firstName')} ${text(v, 'lastName')}`.trim();
+  });
+
+  // ——— Doublons ———
 
   public phoneDuplicates = signal<DuplicateCandidateView[]>([]);
   public documentDuplicates = signal<DuplicateCandidateView[]>([]);
@@ -245,125 +174,33 @@ export class CreateIndividualClient implements OnInit {
   private _lastCheckedPhone = '';
   private _lastCheckedDocument = '';
 
-  public model = signal(CreateIndividualClientFormModel.instantiate());
-
-  public formSchema = form(this.model, (schema) => {
-    required(schema.identity.agencyId, {
-      message: "L'agence de rattachement est obligatoire",
-    });
-    required(schema.identity.firstName, {
-      message: 'Le prénom est obligatoire',
-    });
-    required(schema.identity.lastName, { message: 'Le nom est obligatoire' });
-    validate(schema.identity.gender, (ctx) =>
-      toGender(ctx.value())
-        ? undefined
-        : { kind: 'required', message: 'Choisissez le genre' },
-    );
-    validate(schema.identity.dateOfBirth, (ctx) => {
-      if (!ctx.value()) {
-        return {
-          kind: 'required',
-          message: 'La date de naissance est obligatoire',
-        };
-      }
-      return ctx.value() > new Date().toISOString().slice(0, 10)
-        ? {
-            kind: 'max',
-            message: 'La date de naissance ne peut pas être dans le futur',
-          }
-        : undefined;
-    });
-
-    validate(schema.document.identityDocumentType, (ctx) =>
-      toIdentityDocumentType(ctx.value())
-        ? undefined
-        : { kind: 'required', message: 'Choisissez le type de pièce' },
-    );
-    required(schema.document.identityDocumentNumber, {
-      message: 'Le numéro de la pièce est obligatoire',
-    });
-    validate(schema.document.expiresOn, (ctx) => {
-      const issuedOn = this.model().document.issuedOn;
-      if (!ctx.value() || !issuedOn) return undefined;
-      return ctx.value() < issuedOn
-        ? {
-            kind: 'min',
-            message: "L'expiration ne peut pas précéder la délivrance",
-          }
-        : undefined;
-    });
-
-    required(schema.contact.phoneNumber, {
-      message: 'Le numéro de téléphone est obligatoire',
-    });
-    email(schema.contact.email, { message: 'Adresse e-mail invalide' });
-
-    validate(schema.situation.declaredIncome, (ctx) => {
-      if (!ctx.value().trim()) return undefined;
-      const amount = Number(ctx.value());
-      return Number.isFinite(amount) && amount >= 0
-        ? undefined
-        : { kind: 'pattern', message: 'Saisissez un revenu valide' };
-    });
-  });
-
-  /** Lu par la page hôte avant de quitter l'assistant ou de changer de type de client. */
-  public readonly isDirty = computed(() => this.formSchema().dirty());
-
-  public readonly stepInvalid = computed<Record<IndividualStepKey, boolean>>(
-    () => ({
-      identity: this.formSchema.identity().invalid(),
-      document: this.formSchema.document().invalid(),
-      contact: this.formSchema.contact().invalid(),
-      situation: this.formSchema.situation().invalid(),
-      summary: this.formSchema().invalid(),
-    }),
-  );
-
-  public readonly fullName = computed(() => {
-    const identity = this.model().identity;
-    return `${identity.firstName} ${identity.lastName}`.trim();
-  });
-
   constructor() {
-    this._loadAgencies();
+    this.load();
   }
 
-  /**
-   * Le pré-remplissage n'est pas une saisie : il passe par le modèle et non par
-   * les contrôles, pour que l'assistant ne se croie pas « modifié » d'entrée et
-   * ne réclame pas de confirmation à la sortie.
-   */
-  public ngOnInit(): void {
-    const prefill = this.prefill();
-    if (!prefill) return;
-
-    this.model.update((model) => {
-      // Le nom saisi dans la liste est libre : on le place entier dans le nom de
-      // famille plutôt que de deviner une découpe prénom / nom.
-      if (prefill.name) model.identity.lastName = prefill.name;
-      if (prefill.phoneNumber) model.contact.phoneNumber = prefill.phoneNumber;
-      if (prefill.documentNumber) {
-        model.document.identityDocumentNumber = prefill.documentNumber;
-      }
-      return model;
+  public load(): void {
+    this.loadFailed.set(false);
+    this._formsApi.getEntityForm('Client').subscribe({
+      next: (form) => this.form.set(form),
+      error: () => this.loadFailed.set(true),
     });
   }
 
   // ——— Navigation entre étapes ———
 
   public next(): void {
-    const key = this.currentStep();
-    this._markStepTouched(key);
+    const renderer = this._renderer();
+    const step = this.currentStep();
+    if (!renderer || !step) return;
 
-    if (this.stepInvalid()[key]) {
+    renderer.markTouched(step.fieldKeys);
+    if (!renderer.valid()) {
       this.stepBlocked.set(true);
       return;
     }
 
     this.stepBlocked.set(false);
-    this.stepIndex.update((index) => Math.min(index + 1, this.steps.length - 1));
+    this.stepIndex.update((index) => Math.min(index + 1, this.steps().length - 1));
   }
 
   public previous(): void {
@@ -378,30 +215,10 @@ export class CreateIndividualClient implements OnInit {
     this.stepIndex.set(index);
   }
 
-  private _markStepTouched(key: IndividualStepKey): void {
-    switch (key) {
-      case 'identity':
-        this.formSchema.identity().markAsTouched();
-        return;
-      case 'document':
-        this.formSchema.document().markAsTouched();
-        return;
-      case 'contact':
-        this.formSchema.contact().markAsTouched();
-        return;
-      case 'situation':
-        this.formSchema.situation().markAsTouched();
-        return;
-      default:
-        this.formSchema().markAsTouched();
-        return;
-    }
-  }
-
   // ——— Contrôle de doublon au fil de la saisie ———
 
-  public checkPhoneDuplicates(): void {
-    const phone = this.model().contact.phoneNumber.replace(/\s+/g, '');
+  public checkPhoneDuplicates(raw: string): void {
+    const phone = (raw ?? '').replace(/\s+/g, '');
     if (phone.replace(/\D/g, '').length < 8) {
       this.phoneDuplicates.set([]);
       return;
@@ -411,31 +228,16 @@ export class CreateIndividualClient implements OnInit {
 
     this.isCheckingPhone.set(true);
     this._clientsApiService
-      .searchClients(
-        undefined,
-        phone,
-        undefined,
-        undefined,
-        undefined,
-        undefined,
-        undefined,
-        undefined,
-        undefined,
-        1,
-        5,
-      )
-      .pipe(
-        takeUntilDestroyed(this._destroyRef),
-        catchError(() => of(null)),
-      )
+      .searchClients(undefined, phone, undefined, undefined, undefined, undefined, undefined, undefined, undefined, 1, 5)
+      .pipe(takeUntilDestroyed(this._destroyRef), catchError(() => of(null)))
       .subscribe((result) => {
         this.isCheckingPhone.set(false);
         this.phoneDuplicates.set(candidatesFromSearch(result?.items));
       });
   }
 
-  public checkDocumentDuplicates(): void {
-    const documentNumber = this.model().document.identityDocumentNumber.trim();
+  public checkDocumentDuplicates(raw: string): void {
+    const documentNumber = (raw ?? '').trim();
     if (documentNumber.length < 4) {
       this.documentDuplicates.set([]);
       return;
@@ -445,23 +247,8 @@ export class CreateIndividualClient implements OnInit {
 
     this.isCheckingDocument.set(true);
     this._clientsApiService
-      .searchClients(
-        undefined,
-        undefined,
-        documentNumber,
-        undefined,
-        undefined,
-        undefined,
-        undefined,
-        undefined,
-        undefined,
-        1,
-        5,
-      )
-      .pipe(
-        takeUntilDestroyed(this._destroyRef),
-        catchError(() => of(null)),
-      )
+      .searchClients(undefined, undefined, documentNumber, undefined, undefined, undefined, undefined, undefined, undefined, 1, 5)
+      .pipe(takeUntilDestroyed(this._destroyRef), catchError(() => of(null)))
       .subscribe((result) => {
         this.isCheckingDocument.set(false);
         this.documentDuplicates.set(candidatesFromSearch(result?.items));
@@ -470,68 +257,107 @@ export class CreateIndividualClient implements OnInit {
 
   // ——— Soumission ———
 
-  public handleSubmit(): void {
-    submit(this.formSchema, async (field) => {
-      const value = field().value();
-      const request: CreateIndividualClientRequest = {
-        agencyId: value.identity.agencyId,
-        firstName: trimOrNull(value.identity.firstName),
-        lastName: trimOrNull(value.identity.lastName),
-        maidenName: trimOrNull(value.identity.maidenName),
-        gender: toGender(value.identity.gender),
-        dateOfBirth: value.identity.dateOfBirth,
-        birthPlace: trimOrNull(value.identity.birthPlace),
-        nationality: trimOrNull(value.identity.nationality),
-        maritalStatus: toMaritalStatus(value.situation.maritalStatus),
-        fatherName: trimOrNull(value.situation.fatherName),
-        motherName: trimOrNull(value.situation.motherName),
-        profession: trimOrNull(value.situation.profession),
-        employer: trimOrNull(value.situation.employer),
-        declaredIncome: toAmountOrNull(value.situation.declaredIncome),
-        declaredIncomeCurrency: trimOrNull(
-          value.situation.declaredIncomeCurrency,
-        ),
-        preferredLanguage: trimOrNull(value.situation.preferredLanguage),
-        identityDocumentType: toIdentityDocumentType(
-          value.document.identityDocumentType,
-        ),
-        identityDocumentNumber: trimOrNull(value.document.identityDocumentNumber),
-        identityDocumentIssuedOn: trimOrNull(value.document.issuedOn),
-        identityDocumentExpiresOn: trimOrNull(value.document.expiresOn),
-        phoneNumbers: buildPhoneNumbers(
-          value.contact.phoneNumber,
-          value.contact.secondaryPhoneNumber,
-        ),
-        email: trimOrNull(value.contact.email),
-        address: buildAddress(value.contact),
-        confirmNoDuplicate: this.confirmNoDuplicate(),
-      };
+  public async handleSubmit(): Promise<void> {
+    const renderer = this._renderer();
+    if (!renderer || this.submitting()) return;
 
-      const result = await firstValueFrom(
-        this._clientsApiService.createIndividualClient(request).pipe(
-          catchError((err: HttpErrorResponse) => {
-            this._snackbarService.error(
-              'Erreur',
-              serverMessage(
-                err,
-                "Impossible de créer le client, réessayez plus tard.",
-              ),
-            );
-            return of(null);
-          }),
-        ),
-      );
+    // Au récapitulatif tout est rendu, donc tout est vérifié : une erreur ramène à son étape.
+    if (!renderer.valid()) {
+      this._goToFirstInvalid(renderer.invalidKeys());
+      return;
+    }
 
-      if (result) this._handleResult(result);
-      return undefined;
-    });
+    const v = renderer.wireValues();
+    const crossFieldError = this._crossFieldError(v);
+    if (crossFieldError) {
+      this._snackbarService.error('Vérifiez la saisie', crossFieldError);
+      return;
+    }
+
+    const income = v['declaredIncome'];
+    const money = income && typeof income === 'object' && !Array.isArray(income) ? income : null;
+
+    const request: CreateIndividualClientRequest = {
+      agencyId: text(v, 'agencyId'),
+      advisorUserId: textOrNull(v, 'advisorUserId'),
+      firstName: textOrNull(v, 'firstName'),
+      lastName: textOrNull(v, 'lastName'),
+      maidenName: textOrNull(v, 'maidenName'),
+      gender: toGender(text(v, 'gender')),
+      dateOfBirth: text(v, 'dateOfBirth'),
+      birthPlace: textOrNull(v, 'birthPlace'),
+      nationality: textOrNull(v, 'nationality'),
+      maritalStatus: toMaritalStatus(text(v, 'maritalStatus')),
+      fatherName: textOrNull(v, 'fatherName'),
+      motherName: textOrNull(v, 'motherName'),
+      profession: textOrNull(v, 'profession'),
+      employer: textOrNull(v, 'employer'),
+      declaredIncome: money?.amount ?? null,
+      declaredIncomeCurrency: money?.currency ?? null,
+      preferredLanguage: textOrNull(v, 'preferredLanguage'),
+      identityDocumentType: toIdentityDocumentType(text(v, 'identityDocumentType')),
+      identityDocumentNumber: textOrNull(v, 'identityDocumentNumber'),
+      identityDocumentIssuedOn: textOrNull(v, 'identityDocumentIssuedOn'),
+      identityDocumentExpiresOn: textOrNull(v, 'identityDocumentExpiresOn'),
+      phoneNumbers: buildPhoneNumbers(text(v, 'phoneNumbers'), text(v, 'secondaryPhoneNumber')),
+      email: textOrNull(v, 'email'),
+      address: buildAddress({
+        street: text(v, 'address.street'),
+        city: text(v, 'address.city'),
+        state: text(v, 'address.state'),
+        country: text(v, 'address.country'),
+        zipCode: text(v, 'address.zipCode'),
+      }),
+      customFields: renderer.customFieldsPayload(),
+      confirmNoDuplicate: this.confirmNoDuplicate(),
+    };
+
+    this.submitting.set(true);
+    const result = await firstValueFrom(
+      this._clientsApiService.createIndividualClient(request).pipe(
+        catchError((err: HttpErrorResponse) => {
+          this._snackbarService.error(
+            'Erreur',
+            explainFormError(formErrorDetail(err), this.form()) ??
+              serverMessage(err, 'Impossible de créer le client, réessayez plus tard.'),
+          );
+          return of(null);
+        }),
+      ),
+    );
+    this.submitting.set(false);
+
+    if (result) this._handleResult(result);
   }
 
   /** « Ce n'est pas la même personne » : la commande repart avec `confirmNoDuplicate`. */
   public confirmNotSamePerson(): void {
     this.confirmNoDuplicate.set(true);
     this.warningDuplicates.set([]);
-    this.handleSubmit();
+    void this.handleSubmit();
+  }
+
+  /**
+   * Les deux règles qui portent sur deux dates à la fois : le moteur valide champ par champ, et le
+   * serveur les refuserait de toute façon — mais en anglais technique et après l'envoi.
+   */
+  private _crossFieldError(v: WireValues): string | null {
+    const today = new Date().toISOString().slice(0, 10);
+    const birth = text(v, 'dateOfBirth');
+    if (birth && birth > today) return 'La date de naissance ne peut pas être dans le futur.';
+    const issued = text(v, 'identityDocumentIssuedOn');
+    const expires = text(v, 'identityDocumentExpiresOn');
+    if (issued && expires && expires < issued) return "L'expiration de la pièce ne peut pas précéder sa délivrance.";
+    return null;
+  }
+
+  private _goToFirstInvalid(keys: string[]): void {
+    const index = this.steps().findIndex((s) => s.fieldKeys.some((k) => keys.includes(k)));
+    if (index >= 0) {
+      this.stepIndex.set(index);
+      this.stepBlocked.set(true);
+      this._renderer()?.markTouched(this.steps()[index].fieldKeys);
+    }
   }
 
   private _handleResult(result: CreateClientResult): void {
@@ -544,37 +370,26 @@ export class CreateIndividualClient implements OnInit {
           `${this.fullName() || 'Le client'} est créé — KYC initié, en attente de validation.`,
         );
         // La fiche n'a pas à connaître ce paramètre : s'il est ignoré, seul le bandeau manque.
-        this._router.navigate(['/customers', result.clientId], {
-          queryParams: { kyc: 'initie' },
-        });
+        this._router.navigate(['/customers', result.clientId], { queryParams: { kyc: 'initie' } });
         return;
       }
 
       case CreateClientResultOutcomeEnum.BlockedDuplicateIdentityDocument: {
         this.warningDuplicates.set([]);
         this.blockingDuplicates.set(candidatesFromHits(result.candidates));
-        this._snackbarService.error(
-          'Création bloquée',
-          'Cette pièce d’identité appartient déjà à un client existant.',
-        );
+        this._snackbarService.error('Création bloquée', 'Cette pièce d’identité appartient déjà à un client existant.');
         return;
       }
 
       case CreateClientResultOutcomeEnum.WarningPossibleDuplicatePhone: {
         this.blockingDuplicates.set([]);
         this.warningDuplicates.set(candidatesFromHits(result.candidates));
-        this._snackbarService.info(
-          'Doublon possible',
-          'Vérifiez les fiches proposées avant de confirmer la création.',
-        );
+        this._snackbarService.info('Doublon possible', 'Vérifiez les fiches proposées avant de confirmer la création.');
         return;
       }
 
       default:
-        this._snackbarService.error(
-          'Erreur',
-          "Réponse inattendue du serveur, le client n'a pas été créé.",
-        );
+        this._snackbarService.error('Erreur', "Réponse inattendue du serveur, le client n'a pas été créé.");
         return;
     }
   }
@@ -589,8 +404,7 @@ export class CreateIndividualClient implements OnInit {
 
     this._confirmDialogService.confirm({
       title: "Quitter l'assistant ?",
-      message:
-        'Les informations saisies seront perdues. Voulez-vous vraiment quitter ?',
+      message: 'Les informations saisies seront perdues. Voulez-vous vraiment quitter ?',
       closable: true,
       showCancelButton: true,
       icon: 'feather:alert-triangle',
@@ -602,28 +416,5 @@ export class CreateIndividualClient implements OnInit {
 
   private _leave(): void {
     this._router.navigate(['/customers']);
-  }
-
-  private _loadAgencies(): void {
-    this._agenciesApiService
-      .listAgencies(false, 1, 200)
-      .pipe(
-        takeUntilDestroyed(this._destroyRef),
-        catchError(() => {
-          this._snackbarService.error(
-            'Erreur',
-            'Impossible de charger les agences.',
-          );
-          return of(null);
-        }),
-      )
-      .subscribe((result) => {
-        this.agencyOptions.set(
-          (result?.items ?? []).map((agency) => ({
-            label: agency.name ?? '',
-            value: agency.id ?? '',
-          })),
-        );
-      });
   }
 }

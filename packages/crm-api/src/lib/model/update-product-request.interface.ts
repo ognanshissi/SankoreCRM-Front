@@ -17,5 +17,6 @@ export interface UpdateProductRequest {
     parametersJson?: string | null;
     businessProductId?: string | null;
     businessPlatformName?: string | null;
+    customFields?: { [key: string]: any; } | null;
 }
 

@@ -31,6 +31,7 @@ export interface UpdateLeadRequest {
     longitude?: number | null;
     preferredAgencyId?: string | null;
     expectedUpdatedAt?: string | null;
+    customFields?: { [key: string]: any; } | null;
 }
 export enum UpdateLeadRequestGenderEnum {
     Unknown = 'Unknown',

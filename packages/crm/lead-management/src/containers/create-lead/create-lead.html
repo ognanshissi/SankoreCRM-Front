@@ -6,290 +6,107 @@
   </tas-drawer-title>
 
   <tas-drawer-content>
-    <form [formRoot]="formSchema" class="flex flex-col gap-5">
-
-      <!-- Prospect type -->
-      @if (!isExistingCustomer()) {
-        <tas-form-field>
-          <tas-label>Type de prospect</tas-label>
-          <tas-select
-            [options]="prospectTypeOptions"
-            placeholder="Sélectionnez un type"
-            [formField]="formSchema.prospectType"
-          ></tas-select>
-        </tas-form-field>
-      }
-
-      <!-- Téléphone : clé de détection du doublon de lead et du client existant -->
-      <tas-form-field>
-        <tas-label>Téléphone <span class="text-functional-error">*</span></tas-label>
-        <tas-input-phone
-          defaultCountry="CI"
-          [formField]="formSchema.phoneNumber"
-        ></tas-input-phone>
-        @if (formSchema.phoneNumber().touched() && formSchema.phoneNumber().invalid()) {
-          <tas-error>{{ formSchema.phoneNumber().errors()[0].message }}</tas-error>
-        }
-      </tas-form-field>
-
-      <!-- Client existant (BNF-F-18) : aucun encart si aucune correspondance -->
-      <customer-match-banner
-        [matches]="customerMatches()"
-        [isLoading]="isCheckingCustomers()"
-        [loadFailed]="customerLookupFailed()"
-        [selectedCustomerId]="selectedCustomerId()"
-        [canAct]="true"
-        [canOpenCustomer]="canReadCustomers()"
-        (matchSelected)="retainCustomer($event)"
-        (reject)="rejectCustomers()"
-        (openCustomer)="viewCustomer($event)"
-      ></customer-match-banner>
-
-    
-      <duplicate-warning-banner
-        #duplicateBanner
-        [duplicates]="duplicates()"
-        [refusal]="refusal()"
-        [busy]="isResolvingDuplicate() || formSchema().submitting()"
-        (viewDuplicate)="viewDuplicate($event)"
-        (retainCustomerOf)="retainCustomerOfDuplicate($event)"
-        (createAnyway)="createLeadAnyway()"
-      ></duplicate-warning-banner>
-
+    @if (form(); as f) {
       <!--
-        Le refus de l'autre écriture : une demande déjà ouverte sur le même client et le même
-        produit. Ambre et non rouge — rien n'est cassé, c'est une question posée à l'agent, qui
-        tranche en consultant la fiche ou en insistant. Même forme que l'onglet « Demandes »,
-        d'où ce refus vient aussi.
+        La création rapide du tenant (Paramètres › Formulaires). Un client retenu la réduit aux
+        champs d'une demande : son identité et son agence viennent de sa fiche.
       -->
-      @if (demandDuplicateCount(); as existing) {
-        <div class="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm" role="alert">
-          <p class="font-medium text-amber-800">
-            Une demande semblable existe déjà
-            @if (existing > 0) {
-              ({{ existing }} demande{{ existing > 1 ? 's' : '' }})
-            }
-          </p>
-          <p class="text-amber-700 mt-1">
-            Rien n'a été créé. Vérifiez les demandes en cours du client avant d'insister.
-          </p>
-          <div class="flex flex-wrap items-center gap-3 mt-3">
-            <button
-              tas-outlined-button
-              color="primary"
-              type="button"
-              class="text-xs"
-              [disabled]="formSchema().submitting()"
-              (click)="createDemandAnyway()"
-            >
-              Créer quand même
-            </button>
-            @if (canReadCustomers() && retainedCustomer(); as client) {
-              <button
-                type="button"
-                class="text-amber-800 underline font-medium cursor-pointer text-xs"
-                (click)="viewCustomer(client.customerId)"
-              >
-                Voir la fiche du client
-              </button>
-            }
-          </div>
-        </div>
-      }
+      <entity-form-renderer [form]="f" mode="quick" [columns]="1" [exclude]="excluded()">
 
-      <!--
-        L'habilitation de l'endpoint des demandes, dite avant la saisie : sans elle l'agent
-        remplirait le formulaire pour récolter un 403 à l'envoi.
-      -->
-      @if (isExistingCustomer() && !canManageOpportunities()) {
-        <div class="flex items-start gap-2 rounded-lg border border-slate-200 bg-slate-50 p-3">
-          <tas-icon
-            iconName="feather:lock"
-            class="mt-0.5 shrink-0 text-slate-500"
-            style="font-size:14px"
-          ></tas-icon>
-          <p class="text-xs text-slate-600">
-            Enregistrer une demande pour un client existant demande une habilitation dédiée.
-            Choisissez « Nouveau prospect » ou faites-la créer depuis la fiche du client.
-          </p>
-        </div>
-      }
-
-      @if (!isExistingCustomer()) {
-        <!-- Identity -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <tas-form-field>
-            <tas-label>Prénom <span class="text-functional-error">*</span></tas-label>
-            <input
-              tasInput
-              type="text"
-              placeholder="Prénom"
-              [formField]="formSchema.firstName"
-            />
-            @if (formSchema.firstName().touched() && formSchema.firstName().invalid()) {
-              <tas-error>{{ formSchema.firstName().errors()[0].message }}</tas-error>
-            }
-          </tas-form-field>
-
-          <tas-form-field>
-            <tas-label>Nom <span class="text-functional-error">*</span></tas-label>
-            <input
-              tasInput
-              type="text"
-              placeholder="Nom de famille"
-              [formField]="formSchema.lastName"
-            />
-            @if (formSchema.lastName().touched() && formSchema.lastName().invalid()) {
-              <tas-error>{{ formSchema.lastName().errors()[0].message }}</tas-error>
-            }
-          </tas-form-field>
-        </div>
-
-        <tas-form-field>
-          <tas-label>E-mail</tas-label>
-          <input
-            tasInput
-            type="email"
-            placeholder="exemple@domaine.com"
-            [formField]="formSchema.email"
-          />
-          <tas-hint>Facultatif.</tas-hint>
-          @if (formSchema.email().touched() && formSchema.email().invalid()) {
-            <tas-error>{{ formSchema.email().errors()[0].message }}</tas-error>
-          }
-        </tas-form-field>
-
-        <tas-form-field>
-          <tas-label>Pièce d'identité</tas-label>
-          <input
-            tasInput
-            type="text"
-            placeholder="Numéro CNI / passeport"
-            [formField]="formSchema.nationalId"
-          />
-        </tas-form-field>
-
-        @if (isCompany()) {
-          <tas-form-field>
-            <tas-label>Nom de l'entreprise</tas-label>
-            <input
-              tasInput
-              type="text"
-              placeholder="Raison sociale"
-              [formField]="formSchema.companyName"
-            />
-          </tas-form-field>
-        }
-      }
-
-      <!-- Commercial interest -->
-      <div class="border-t border-gray-200 pt-4 mt-1">
-        <p class="text-sm font-medium text-slate-600 mb-3">
-          {{ isExistingCustomer() ? 'Demande' : 'Intérêt commercial' }}
-        </p>
-        <div class="flex flex-col gap-4">
-          @if (!isExistingCustomer()) {
+        <!--
+          Le téléphone garde son contrôle à indicatif, et les deux détections qu'il déclenche
+          s'affichent juste sous lui, où que la mise en page le place.
+        -->
+        <ng-template entityFormField="phoneNumber" let-entry let-field="field" let-error="error">
+          <div class="flex flex-col gap-4">
             <tas-form-field>
-              <tas-label>Source configurée</tas-label>
-              <tas-select
-                [options]="leadSourceOptions()"
-                optionLabel="label"
-                optionValue="value"
-                placeholder="Aucune"
-                [formField]="formSchema.leadSourceConfigId"
-              ></tas-select>
-            </tas-form-field>
-          }
-
-          <tas-form-field>
-            <tas-label>
-              Produit souhaité
-              @if (isExistingCustomer()) {
-                <span class="text-functional-error">*</span>
+              <tas-label>{{ field.label }} <span class="text-functional-error">*</span></tas-label>
+              <tas-input-phone defaultCountry="CI" [formField]="entry.text"></tas-input-phone>
+              @if (error) {
+                <tas-error>{{ error }}</tas-error>
               }
-            </tas-label>
-            <tas-select
-              [options]="productOptions()"
-              optionLabel="name"
-              optionValue="code"
-              placeholder="Produit souhaité"
-              [formField]="formSchema.interestedProduct"
-            ></tas-select>
-            @if (
-              formSchema.interestedProduct().touched()
-              && formSchema.interestedProduct().invalid()
-            ) {
-              <tas-error>{{ formSchema.interestedProduct().errors()[0].message }}</tas-error>
+            </tas-form-field>
+
+            <!-- Client existant (BNF-F-18) : aucun encart si aucune correspondance -->
+            <customer-match-banner
+              [matches]="customerMatches()"
+              [isLoading]="isCheckingCustomers()"
+              [loadFailed]="customerLookupFailed()"
+              [selectedCustomerId]="selectedCustomerId()"
+              [canAct]="true"
+              [canOpenCustomer]="canReadCustomers()"
+              (matchSelected)="retainCustomer($event)"
+              (reject)="rejectCustomers()"
+              (openCustomer)="viewCustomer($event)"
+            ></customer-match-banner>
+
+            <duplicate-warning-banner
+              #duplicateBanner
+              [duplicates]="duplicates()"
+              [refusal]="refusal()"
+              [busy]="isResolvingDuplicate() || submitting()"
+              (viewDuplicate)="viewDuplicate($event)"
+              (retainCustomerOf)="retainCustomerOfDuplicate($event)"
+              (createAnyway)="createLeadAnyway()"
+            ></duplicate-warning-banner>
+
+            <!--
+              Le refus de l'autre écriture : une demande déjà ouverte sur le même client et le même
+              produit. Ambre et non rouge — rien n'est cassé, c'est une question posée à l'agent.
+            -->
+            @if (demandDuplicateCount(); as existing) {
+              <div class="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm" role="alert">
+                <p class="font-medium text-amber-800">
+                  Une demande semblable existe déjà
+                  @if (existing > 0) {
+                    ({{ existing }} demande{{ existing > 1 ? 's' : '' }})
+                  }
+                </p>
+                <p class="text-amber-700 mt-1">
+                  Rien n'a été créé. Vérifiez les demandes en cours du client avant d'insister.
+                </p>
+                <div class="flex flex-wrap items-center gap-3 mt-3">
+                  <button tas-outlined-button color="primary" type="button" class="text-xs"
+                          [disabled]="submitting()" (click)="createDemandAnyway()">
+                    Créer quand même
+                  </button>
+                  @if (canReadCustomers() && retainedCustomer(); as client) {
+                    <button type="button" class="text-amber-800 underline font-medium cursor-pointer text-xs"
+                            (click)="viewCustomer(client.customerId)">
+                      Voir la fiche du client
+                    </button>
+                  }
+                </div>
+              </div>
             }
-          </tas-form-field>
 
-          <tas-form-field>
-            <tas-label>Canal</tas-label>
-            <tas-select
-              [options]="channelOptions"
-              placeholder="Sélectionnez un canal"
-              [formField]="formSchema.channel"
-            ></tas-select>
-          </tas-form-field>
-
-          <!--
-            Le montant vaut pour les deux parcours. Il était masqué pour un client existant parce
-            que la capture d'un lead rattaché ne le portait pas ; la demande créée sur la fiche,
-            elle, a un montant estimé et une devise — les cacher reviendrait à perdre à la saisie
-            ce que l'écran des demandes affiche ensuite en colonne.
-          -->
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <tas-form-field>
-              <tas-label>Montant souhaité</tas-label>
-              <input
-                tasInput
-                type="number"
-                placeholder="0"
-                [formField]="formSchema.desiredAmount"
-              />
-            </tas-form-field>
-
-            <tas-form-field>
-              <tas-label>Devise</tas-label>
-              <tas-select
-                [options]="currencyOptions"
-                [formField]="formSchema.desiredCurrency"
-              ></tas-select>
-            </tas-form-field>
+            <!-- L'habilitation de l'endpoint des demandes, dite avant la saisie plutôt qu'au 403. -->
+            @if (isExistingCustomer() && !canManageOpportunities()) {
+              <div class="flex items-start gap-2 rounded-lg border border-slate-200 bg-slate-50 p-3">
+                <tas-icon iconName="feather:lock" class="mt-0.5 shrink-0 text-slate-500" style="font-size:14px"></tas-icon>
+                <p class="text-xs text-slate-600">
+                  Enregistrer une demande pour un client existant demande une habilitation dédiée.
+                  Choisissez « Nouveau prospect » ou faites-la créer depuis la fiche du client.
+                </p>
+              </div>
+            }
           </div>
-        </div>
-      </div>
+        </ng-template>
+      </entity-form-renderer>
 
-      <!-- Assignment : l'agence du client retenu est reprise, pas ressaisie -->
-      @if (!isExistingCustomer()) {
-        <div class="border-t border-gray-200 pt-4 mt-1">
-          <p class="text-sm font-medium text-slate-600 mb-3">Affectation</p>
-          <tas-form-field>
-            <tas-label>Agence</tas-label>
-            <tas-select
-              [options]="agencies()"
-              placeholder="Sélectionnez une agence"
-              [formField]="formSchema.agencyId"
-            ></tas-select>
-          </tas-form-field>
-        </div>
-      } @else if (retainedCustomer()!.agencyLabel) {
-        <p class="text-xs text-slate-500">
+      @if (isExistingCustomer() && retainedCustomer()?.agencyLabel) {
+        <p class="text-xs text-slate-500 mt-4">
           La demande suivra la fiche du client, rattachée à {{ retainedCustomer()!.agencyLabel }}.
         </p>
       }
-
-      <tas-form-field>
-        <tas-label>Commentaire</tas-label>
-        <input
-          tasInput
-          type="text"
-          placeholder="Informations complémentaires…"
-          [formField]="formSchema.comment"
-        />
-      </tas-form-field>
-
-    </form>
+    } @else if (formLoadFailed()) {
+      <div class="rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
+        Le formulaire n'a pas pu être chargé.
+        <button tas-text-button type="button" (click)="loadForm()">Réessayer</button>
+      </div>
+    } @else {
+      <div class="flex justify-center py-16"><tas-spinner size="8" class="text-primary"></tas-spinner></div>
+    }
   </tas-drawer-content>
 
   <tas-drawer-action>
@@ -299,12 +116,8 @@
       color="primary"
       type="button"
       (click)="handleSubmit()"
-      [disabled]="
-        formSchema().invalid()
-        || formSchema().submitting()
-        || (isExistingCustomer() && !canManageOpportunities())
-      "
-      [isLoading]="formSchema().submitting()"
+      [disabled]="!form() || submitting() || (isExistingCustomer() && !canManageOpportunities())"
+      [isLoading]="submitting()"
     >
       {{ isExistingCustomer() ? 'Créer la demande' : 'Créer le lead' }}
     </button>

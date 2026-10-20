@@ -31,6 +31,7 @@ export interface ProductDto {
     beneficiaryPolicy?: BeneficiaryPolicy;
     allowMultipleHoldings?: boolean;
     kycRemotePolicy?: KycRemotePolicy;
+    customFields?: { [key: string]: any; } | null;
 }
 export enum ProductDtoCategoryEnum {
     Loan = 'Loan',

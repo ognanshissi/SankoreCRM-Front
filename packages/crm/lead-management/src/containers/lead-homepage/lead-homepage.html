@@ -162,6 +162,8 @@
           (ngModelChange)="onFilterChange('intent', $event)"
         ></tas-select>
       </tas-form-field>
+      <!-- Les champs personnalisés à choix du tenant, rangés dans la même grille. -->
+      <custom-field-filters entity="Lead" [value]="filterCustom()" (valueChange)="onCustomFiltersChange($event)" />
     </div>
 
     <div class="flex items-center justify-end gap-3 mt-3">

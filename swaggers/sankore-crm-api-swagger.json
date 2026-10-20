@@ -3383,6 +3383,16 @@
             "schema": {
               "type": "boolean"
             }
+          },
+          {
+            "name": "cf",
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
           }
         ],
         "responses": {
@@ -5200,6 +5210,99 @@
         "responses": {
           "200": {
             "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/forms/{entity}": {
+      "get": {
+        "tags": [
+          "Forms"
+        ],
+        "summary": "The tenant's form for a lead, a client or a product: sections, native and custom fields",
+        "operationId": "GetEntityForm",
+        "parameters": [
+          {
+            "name": "entity",
+            "in": "path",
+            "description": "One of: Lead, Client, Product",
+            "required": true,
+            "schema": {
+              "enum": [
+                "Lead",
+                "Client",
+                "Product"
+              ],
+              "type": "string",
+              "description": "One of: Lead, Client, Product"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EntityFormDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Forms"
+        ],
+        "summary": "Replace the layout of a form: sections, native field placement and custom fields",
+        "operationId": "SaveEntityForm",
+        "parameters": [
+          {
+            "name": "entity",
+            "in": "path",
+            "description": "One of: Lead, Client, Product",
+            "required": true,
+            "schema": {
+              "enum": [
+                "Lead",
+                "Client",
+                "Product"
+              ],
+              "type": "string",
+              "description": "One of: Lead, Client, Product"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveEntityFormRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EntityFormDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "409": {
+            "description": "Conflict"
           }
         }
       }
@@ -11527,6 +11630,16 @@
             "in": "query",
             "schema": {
               "type": "boolean"
+            }
+          },
+          {
+            "name": "cf",
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
             }
           }
         ],
@@ -27258,6 +27371,11 @@
               "$ref": "#/components/schemas/CaptureQuestionnaire"
             },
             "nullable": true
+          },
+          "customFields": {
+            "type": "object",
+            "additionalProperties": { },
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -27773,6 +27891,18 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/ClientStatusHistorySummaryDto"
+            },
+            "nullable": true
+          },
+          "customFields": {
+            "type": "object",
+            "additionalProperties": { },
+            "nullable": true
+          },
+          "maskedCustomFieldKeys": {
+            "type": "array",
+            "items": {
+              "type": "string"
             },
             "nullable": true
           }
@@ -29821,6 +29951,11 @@
           },
           "confirmNoDuplicate": {
             "type": "boolean"
+          },
+          "customFields": {
+            "type": "object",
+            "additionalProperties": { },
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -30031,6 +30166,11 @@
           },
           "preferredLanguage": {
             "type": "string",
+            "nullable": true
+          },
+          "customFields": {
+            "type": "object",
+            "additionalProperties": { },
             "nullable": true
           }
         },
@@ -30312,6 +30452,11 @@
           "effectiveFrom": {
             "type": "string",
             "format": "date",
+            "nullable": true
+          },
+          "customFields": {
+            "type": "object",
+            "additionalProperties": { },
             "nullable": true
           }
         },
@@ -32678,6 +32823,39 @@
         },
         "additionalProperties": false
       },
+      "EntityFormDto": {
+        "type": "object",
+        "properties": {
+          "entity": {
+            "enum": [
+              "Lead",
+              "Client",
+              "Product"
+            ],
+            "type": "string",
+            "description": "One of: Lead, Client, Product"
+          },
+          "version": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "sections": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FormSection"
+            },
+            "nullable": true
+          },
+          "fields": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FormField"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "EscalateComplaintRequest": {
         "type": "object",
         "properties": {
@@ -33040,6 +33218,185 @@
           "message": {
             "type": "string",
             "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "FormCondition": {
+        "type": "object",
+        "properties": {
+          "fieldKey": {
+            "type": "string",
+            "nullable": true
+          },
+          "values": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "FormField": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string",
+            "nullable": true
+          },
+          "type": {
+            "enum": [
+              "Text",
+              "LongText",
+              "Integer",
+              "Decimal",
+              "Money",
+              "Percent",
+              "Date",
+              "DateTime",
+              "Boolean",
+              "SingleChoice",
+              "MultiChoice",
+              "Email",
+              "Phone",
+              "Url",
+              "Reference"
+            ],
+            "type": "string",
+            "description": "One of: Text, LongText, Integer, Decimal, Money, Percent, Date, DateTime, Boolean, SingleChoice, MultiChoice, Email, Phone, Url, Reference"
+          },
+          "label": {
+            "type": "string",
+            "nullable": true
+          },
+          "order": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "sectionKey": {
+            "type": "string",
+            "nullable": true
+          },
+          "quickAdd": {
+            "type": "boolean"
+          },
+          "isRequired": {
+            "type": "boolean"
+          },
+          "isHidden": {
+            "type": "boolean"
+          },
+          "isArchived": {
+            "type": "boolean"
+          },
+          "helpText": {
+            "type": "string",
+            "nullable": true
+          },
+          "placeholder": {
+            "type": "string",
+            "nullable": true
+          },
+          "options": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FormOption"
+            },
+            "nullable": true
+          },
+          "min": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "max": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "maxLength": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "pattern": {
+            "type": "string",
+            "nullable": true
+          },
+          "defaultValue": {
+            "type": "string",
+            "nullable": true
+          },
+          "isSensitive": {
+            "type": "boolean"
+          },
+          "visibleWhen": {
+            "$ref": "#/components/schemas/FormCondition"
+          },
+          "referenceTarget": {
+            "enum": [
+              "Agency",
+              "User",
+              "Product",
+              "LeadSource",
+              "LegalForm",
+              "Country",
+              "Currency",
+              "Language"
+            ],
+            "type": "string",
+            "description": "One of: Agency, User, Product, LeadSource, LegalForm, Country, Currency, Language",
+            "nullable": true
+          },
+          "isNative": {
+            "type": "boolean"
+          },
+          "isRequiredLocked": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "FormOption": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "type": "string",
+            "nullable": true
+          },
+          "label": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "FormSection": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string",
+            "nullable": true
+          },
+          "title": {
+            "type": "string",
+            "nullable": true
+          },
+          "order": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "quickAdd": {
+            "type": "boolean"
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "visibleWhen": {
+            "$ref": "#/components/schemas/FormCondition"
           }
         },
         "additionalProperties": false
@@ -35894,6 +36251,11 @@
           "awaitingDispatchSince": {
             "type": "string",
             "format": "date-time",
+            "nullable": true
+          },
+          "customFields": {
+            "type": "object",
+            "additionalProperties": { },
             "nullable": true
           }
         },
@@ -39823,6 +40185,11 @@
           },
           "kycRemotePolicy": {
             "$ref": "#/components/schemas/KycRemotePolicy"
+          },
+          "customFields": {
+            "type": "object",
+            "additionalProperties": { },
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -41885,14 +42252,19 @@
               "Email",
               "PostalAddress",
               "RegistrationNumber",
-              "TaxIdNumber"
+              "TaxIdNumber",
+              "CustomField"
             ],
             "type": "string",
-            "description": "One of: IdentityDocumentNumber, DateOfBirth, DeclaredIncome, Phone, Email, PostalAddress, RegistrationNumber, TaxIdNumber"
+            "description": "One of: IdentityDocumentNumber, DateOfBirth, DeclaredIncome, Phone, Email, PostalAddress, RegistrationNumber, TaxIdNumber, CustomField"
           },
           "contactPointId": {
             "type": "string",
             "format": "uuid",
+            "nullable": true
+          },
+          "customFieldKey": {
+            "type": "string",
             "nullable": true
           }
         },
@@ -42509,6 +42881,30 @@
             ],
             "type": "string",
             "description": "Discriminator. Must be \"Sab\" for these settings."
+          }
+        },
+        "additionalProperties": false
+      },
+      "SaveEntityFormRequest": {
+        "type": "object",
+        "properties": {
+          "expectedVersion": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "sections": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FormSection"
+            },
+            "nullable": true
+          },
+          "fields": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FormField"
+            },
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -46252,6 +46648,11 @@
           "preferredLanguage": {
             "type": "string",
             "nullable": true
+          },
+          "customFields": {
+            "type": "object",
+            "additionalProperties": { },
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -46612,6 +47013,11 @@
             "type": "string",
             "format": "date-time",
             "nullable": true
+          },
+          "customFields": {
+            "type": "object",
+            "additionalProperties": { },
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -46943,6 +47349,11 @@
           },
           "businessPlatformName": {
             "type": "string",
+            "nullable": true
+          },
+          "customFields": {
+            "type": "object",
+            "additionalProperties": { },
             "nullable": true
           }
         },

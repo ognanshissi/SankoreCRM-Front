@@ -13,24 +13,42 @@ export interface LeadTargetField {
   requiredGroup?: string;
 }
 
+/**
+ * Les champs du lead qu'une correspondance peut renseigner : ceux que l'ingestion reprend
+ * réellement (`InboundLeadFactory.CapturedFields` côté serveur), avec leur nom exact.
+ *
+ * L'ancienne liste proposait `city`, `address`, `company`, `jobTitle`, `productCode`, `message`,
+ * `consentGiven` et `utm_source` : le serveur ne connaît aucun de ces noms et refusait toute
+ * correspondance qui en choisissait un (« Unknown target field »). Les champs personnalisés du
+ * formulaire Lead s'y ajoutent à l'écran, sous `custom.<clé>`.
+ */
 export const LEAD_TARGET_FIELDS: LeadTargetField[] = [
-  { key: 'fullName',        label: 'Nom complet',        required: false, requiredGroup: 'identity' },
-  { key: 'firstName',       label: 'Prénom',             required: false, requiredGroup: 'identity' },
-  { key: 'lastName',        label: 'Nom',                required: false, requiredGroup: 'identity' },
-  { key: 'phoneNumber',     label: 'Téléphone',          required: true },
-  { key: 'email',           label: 'E-mail',             required: false },
-  { key: 'city',            label: 'Ville',              required: false },
-  { key: 'address',         label: 'Adresse',            required: false },
-  { key: 'company',         label: 'Entreprise',         required: false },
-  { key: 'jobTitle',        label: 'Fonction',           required: false },
-  { key: 'productCode',     label: 'Code produit',       required: false },
-  { key: 'message',         label: 'Message',            required: false },
-  { key: 'externalId',      label: 'ID externe',         required: false },
-  { key: 'consentGiven',    label: 'Consentement',       required: false },
-  { key: 'utm_source',      label: 'UTM Source',         required: false },
-  { key: 'utm_medium',      label: 'UTM Medium',         required: false },
-  { key: 'utm_campaign',    label: 'UTM Campaign',       required: false },
+  { key: 'fullName',          label: 'Nom complet',             required: false, requiredGroup: 'identity' },
+  { key: 'firstName',         label: 'Prénom',                  required: false, requiredGroup: 'identity' },
+  { key: 'lastName',          label: 'Nom',                     required: false, requiredGroup: 'identity' },
+  { key: 'phoneNumber',       label: 'Téléphone',               required: true },
+  { key: 'email',             label: 'E-mail',                  required: false },
+  { key: 'interestedProduct', label: 'Produit d\'intérêt',       required: false },
+  { key: 'preferredLanguage', label: 'Langue préférée',         required: false },
+  { key: 'nationalId',        label: 'N° de pièce d\'identité', required: false },
+  { key: 'customerReference', label: 'Référence client',        required: false },
+  { key: 'comment',           label: 'Commentaire / message',   required: false },
+  { key: 'campaign',          label: 'Campagne',                required: false },
+  { key: 'externalReference', label: 'Référence externe',       required: false },
+  { key: 'externalId',        label: 'ID externe',              required: false },
+  { key: 'utmSource',         label: 'UTM source',              required: false },
+  { key: 'utmMedium',         label: 'UTM medium',              required: false },
+  { key: 'utmCampaign',       label: 'UTM campagne',            required: false },
+  { key: 'utmContent',        label: 'UTM contenu',             required: false },
+  { key: 'utmTerm',           label: 'UTM terme',               required: false },
+  { key: 'landingPage',       label: 'Page d\'arrivée',         required: false },
+  { key: 'referrer',          label: 'Provenance',              required: false },
+  { key: 'latitude',          label: 'Latitude',                required: false },
+  { key: 'longitude',         label: 'Longitude',               required: false },
 ];
+
+/** Le préfixe des champs personnalisés comme cible de correspondance ou colonne d'import. */
+export const CUSTOM_TARGET_PREFIX = 'custom.';
 
 // ——— Transformations ———
 

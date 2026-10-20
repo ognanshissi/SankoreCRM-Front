@@ -4,10 +4,10 @@ import { catchError, EMPTY } from 'rxjs';
 import { LeadSourcesService } from '../lead-sources.service';
 import {
   MappingRule, MapEntry,
-  LEAD_TARGET_FIELDS, TRANSFORMATION_OPTIONS, E164_COUNTRY_OPTIONS,
+  CUSTOM_TARGET_PREFIX, LEAD_TARGET_FIELDS, LeadTargetField, TRANSFORMATION_OPTIONS, E164_COUNTRY_OPTIONS,
   emptyRule, missingRequiredFields, isRequiredTargetField, uid,
 } from '../field-mapping.types';
-import { PreviewMappingResult } from '@sankore/crm-api';
+import { FormsApiService, PreviewMappingResult } from '@sankore/crm-api';
 import { TasCard } from '@talisoft/ui/card';
 import { TasIcon } from '@talisoft/ui/icon';
 import { TasTag } from '@talisoft/ui/tag';
@@ -69,7 +69,16 @@ export class FieldMappingEditor implements OnInit {
   public previewResult = signal<PreviewMappingResult | null>(null);
 
   // Options
-  public readonly targetFieldOptions = LEAD_TARGET_FIELDS;
+  private readonly _formsApi = inject(FormsApiService);
+
+  /**
+   * Les champs personnalisés du formulaire Lead (formulaires dynamiques, lot 6), ciblés sous
+   * `custom.<clé>`. Une valeur que le formulaire refuse est écartée à l'ingestion, sans faire perdre
+   * le prospect. Sans formulaire chargé, la liste se réduit aux champs natifs.
+   */
+  private readonly _customTargets = signal<LeadTargetField[]>([]);
+  public readonly targetFieldOptions = computed<LeadTargetField[]>(() => [...LEAD_TARGET_FIELDS, ...this._customTargets()]);
+
   public readonly transformationOptions = TRANSFORMATION_OPTIONS;
   public readonly e164Countries = E164_COUNTRY_OPTIONS;
 
@@ -108,6 +117,10 @@ export class FieldMappingEditor implements OnInit {
     if (initial.length > 0) {
       this.rules.set(initial.map((r) => ({ ...r, _uid: uid() })));
     }
+  }
+
+  constructor() {
+    this._loadCustomTargets();
   }
 
   // ——— Rule CRUD ———
@@ -221,6 +234,17 @@ export class FieldMappingEditor implements OnInit {
     this.isSaving.set(true);
     this.saved.emit(this.rules());
   }
-}
 
-export default FieldMappingEditor;
+  private _loadCustomTargets(): void {
+    this._formsApi
+      .getEntityForm('Lead')
+      .pipe(catchError(() => EMPTY))
+      .subscribe((form) =>
+        this._customTargets.set(
+          (form.fields ?? [])
+            .filter((f) => !f.isNative && !f.isArchived)
+            .map((f) => ({ key: CUSTOM_TARGET_PREFIX + f.key, label: `${f.label} (personnalisé)`, required: false })),
+        ),
+      );
+  }
+}

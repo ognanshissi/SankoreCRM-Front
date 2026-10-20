@@ -29,8 +29,10 @@ import { interestedProductLabel } from '../../components/interested-product';
 import { ConvertedLeadNotice } from './converted-lead-notice';
 import {
   AuthenticationService,
+  CustomFieldsCard,
   PERMISSIONS,
   PermissionsService,
+  WireValue,
 } from '@sankore/crm/common';
 import { SideDrawerService } from '@talisoft/ui/side-drawer';
 import { EditLeadInfoDrawer, genderLabel } from './edit-lead-info-drawer';
@@ -106,7 +108,7 @@ function intentLabel(level: string | null | undefined): string {
 
 @Component({
   selector: 'lead-informations',
-  imports: [FormsModule, DecimalPipe, TasCard, TasSpinner, TasIcon, TasTag, TasInput, TasFormField, Button, TimeagoPipe, ConvertedLeadNotice, CustomerMatchBanner],
+  imports: [FormsModule, DecimalPipe, TasCard, TasSpinner, TasIcon, TasTag, TasInput, TasFormField, Button, TimeagoPipe, ConvertedLeadNotice, CustomerMatchBanner, CustomFieldsCard],
   template: `
     @if (isLoading()) {
       <div class="flex justify-center py-24">
@@ -354,6 +356,16 @@ function intentLabel(level: string | null | undefined): string {
           </div>
         </tas-card>
 
+        <!-- Champs personnalisés du tenant (formulaires dynamiques) -->
+        <custom-fields-card
+          entity="Lead"
+          [values]="lead()!.customFields"
+          [context]="{ prospectType: lead()!.prospectType }"
+          [canEdit]="canUpdate()"
+          [save]="saveCustomFields"
+          (saved)="reloadLead()"
+        ></custom-fields-card>
+
         <!-- Tags -->
         <tas-card>
           <div class="p-4">
@@ -516,6 +528,23 @@ export class LeadInformationsPage {
     });
 
     this._loadAgencyNames();
+  }
+
+  /**
+   * Envoie seulement les champs personnalisés : tout autre champ du PATCH laissé absent reste tel
+   * quel au serveur. `expectedUpdatedAt` refuse l'enregistrement si quelqu'un a modifié le lead
+   * depuis qu'il a été chargé.
+   */
+  public readonly saveCustomFields = (customFields: Record<string, WireValue>) =>
+    this._leadsApiService.updateLead(this.id(), {
+      customFields,
+      expectedUpdatedAt: this.lead()?.updatedAt ?? null,
+    });
+
+  public reloadLead(): void {
+    this._leadsApiService.getLead(this.id()).pipe(
+      catchError(() => EMPTY),
+    ).subscribe((lead) => this.lead.set(lead));
   }
 
   public openCustomer(customerId: string): void {

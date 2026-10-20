@@ -11,7 +11,7 @@ import {
 import { DialogRef } from '@angular/cdk/dialog';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Router } from '@angular/router';
-import { email, form, FormField, FormRoot, required, submit } from '@angular/forms/signals';
+import { FormField } from '@angular/forms/signals';
 import {
   catchError,
   combineLatest,
@@ -36,14 +36,14 @@ import {
 } from '@talisoft/ui/side-drawer';
 import { Button } from '@talisoft/ui/button';
 import { TasIcon } from '@talisoft/ui/icon';
-import { TasFormField, TasError, TasHint, TasLabel } from '@talisoft/ui/form-field';
-import { TasInput } from '@talisoft/ui/input';
-import { TasSelect } from '@talisoft/ui/select';
+import { TasFormField, TasError, TasLabel } from '@talisoft/ui/form-field';
 import { TasInputPhone } from '@talisoft/ui/input-phone';
+import { TasSpinner } from '@talisoft/ui/spinner';
 import {
   AgenciesApiService,
   CaptureLeadRequest,
   CaptureLeadRequestChannelEnum,
+  CaptureLeadRequestGenderEnum,
   CaptureLeadRequestProspectTypeEnum,
   CaptureLeadRequestSourceEnum,
   CaptureLeadResult,
@@ -51,21 +51,26 @@ import {
   ClientsApiService,
   DuplicateMatchResult,
   DuplicateMatchResultStatusEnum,
+  EntityFormDto,
+  FormsApiService,
   HoldingDto,
-  LeadSourceListDtoStatusEnum,
-  LeadSourcesApiService,
   LeadsApiService,
   OpportunitiesApiService,
   OpportunityDto,
   ProductHoldingsApiService,
-  ProductsApiService,
 } from '@sankore/crm-api';
 import { SnackbarService } from '@talisoft/ui/snackbar';
 import {
+  asEnum,
   DuplicateRefusal,
   DuplicateWarningBanner,
+  EntityFormFieldTemplate,
+  EntityFormRenderer,
+  explainFormError,
+  formErrorDetail,
   PERMISSIONS,
   PermissionsService,
+  WireValues,
 } from '@sankore/crm/common';
 import {
   CustomerMatchBanner,
@@ -73,47 +78,23 @@ import {
   customerMatchViewFromClient,
 } from '../edit-lead/customer-match-banner';
 
-export class CreateLeadFormModel {
-  public firstName!: string;
-  public lastName!: string;
-  public phoneNumber!: string;
-  public email!: string;
-  public nationalId!: string;
-  public prospectType!: CaptureLeadRequestProspectTypeEnum;
-  public companyName!: string;
-  public source!: CaptureLeadRequestSourceEnum;
-  /**
-   * Source **configurée** d'où vient le lead (`leadSourceConfigId`). Facultatif : un lead saisi au
-   * guichet peut n'être rattaché à aucune source paramétrée. Chaîne vide = aucune.
-   */
-  public leadSourceConfigId!: string;
-  public interestedProduct!: string;
-  public desiredAmount!: string;
-  public desiredCurrency!: string;
-  public agencyId!: string;
-  /** Canal d'entrée de la demande (BNF-F-18 : produit, canal, commentaire). */
-  public channel!: string;
-  public comment!: string;
+/**
+ * Les champs d'une DEMANDE pour un client existant : l'identité, l'origine et l'affectation
+ * viennent de sa fiche et ne sont pas ressaisies, et les champs personnalisés du lead ne
+ * s'appliquent pas à une opportunité. Tout le reste de la mise en page est masqué dans ce cas.
+ */
+const DEMAND_FIELDS = ['phoneNumber', 'interestedProduct', 'desiredAmount', 'channel', 'comment'];
 
-  public static instantiate(): CreateLeadFormModel {
-    const m = new CreateLeadFormModel();
-    m.firstName = '';
-    m.lastName = '';
-    m.phoneNumber = '';
-    m.email = '';
-    m.nationalId = '';
-    m.prospectType = CaptureLeadRequestProspectTypeEnum.Individual;
-    m.companyName = '';
-    m.source = CaptureLeadRequestSourceEnum.Agency;
-    m.leadSourceConfigId = '';
-    m.interestedProduct = '';
-    m.desiredAmount = '';
-    m.desiredCurrency = 'XOF';
-    m.agencyId = '';
-    m.channel = CaptureLeadRequestChannelEnum.Agency;
-    m.comment = '';
-    return m;
-  }
+/** Une valeur texte du formulaire, ou null. */
+function text(values: WireValues, key: string): string | null {
+  const v = values[key];
+  return typeof v === 'string' && v.trim() ? v.trim() : null;
+}
+
+/** Un montant du formulaire (`{ amount, currency }`), ou null. */
+function money(values: WireValues, key: string): { amount: number; currency: string } | null {
+  const v = values[key];
+  return v && typeof v === 'object' && !Array.isArray(v) ? v : null;
 }
 
 /**
@@ -222,7 +203,10 @@ function duplicateRefusalText(duplicates: DuplicateMatchResult[]): [string, stri
  * masquer derrière « réessayez plus tard » est exactement ce qui coûte une heure, puisque
  * réessayer ne change rien à une validation refusée.
  */
-function captureErrorMessage(error: HttpErrorResponse): string {
+function captureErrorMessage(error: HttpErrorResponse, form: EntityFormDto | null): string {
+  const explained = explainFormError(formErrorDetail(error), form);
+  if (explained) return explained;
+
   const detail = error.error?.detail ?? error.error?.title;
   if (typeof detail === 'string' && detail.trim().length > 0) return detail;
 
@@ -252,13 +236,12 @@ interface CustomerMatchRaw {
     TasFormField,
     TasLabel,
     TasError,
-    TasHint,
     TasIcon,
-    TasInput,
-    TasSelect,
     TasInputPhone,
-    FormRoot,
+    TasSpinner,
     FormField,
+    EntityFormRenderer,
+    EntityFormFieldTemplate,
     DuplicateWarningBanner,
     CustomerMatchBanner,
   ],
@@ -269,9 +252,8 @@ export class CreateLeadComponent {
   private readonly _destroyRef = inject(DestroyRef);
   private readonly _leadsApiService = inject(LeadsApiService);
   private readonly _agenciesApiService = inject(AgenciesApiService);
-  private readonly _leadSourcesApiService = inject(LeadSourcesApiService);
   private readonly _snackbarService = inject(SnackbarService);
-  private readonly _productSpecialitiesService = inject(ProductsApiService);
+  private readonly _formsApi = inject(FormsApiService);
   private readonly _clientsApiService = inject(ClientsApiService);
   private readonly _holdingsApiService = inject(ProductHoldingsApiService);
   private readonly _opportunitiesApiService = inject(OpportunitiesApiService);
@@ -330,33 +312,29 @@ export class CreateLeadComponent {
   private readonly _retainedFromDuplicate = signal<CustomerMatchView | null>(null);
   public isCheckingDuplicates = signal(false);
 
-  public readonly prospectTypeOptions = PROSPECT_TYPE_OPTIONS;
-  public readonly channelOptions = CHANNEL_OPTIONS;
+  // ——— Le formulaire du tenant (formulaires dynamiques, lot 5) ———
 
-  /**
-   * Sources configurées proposées à la saisie, depuis Paramétrage › Sources & Campagnes.
-   *
-   * Les sources **archivées sont exclues** : on consulte l'historique d'une source archivée, on ne
-   * lui attribue pas un lead créé aujourd'hui. C'est l'inverse du filtre de la liste des leads, qui
-   * les garde pour ne pas rendre leurs leads introuvables.
-   */
-  public leadSourceOptions = signal<{ label: string; value: string }[]>([
-    { label: 'Aucune', value: '' },
-  ]);
-  public readonly currencyOptions = CURRENCY_OPTIONS;
+  /** La mise en page « Lead » du tenant ; la création rapide en affiche les champs cochés. */
+  public readonly form = signal<EntityFormDto | null>(null);
+  public readonly formLoadFailed = signal(false);
+  public readonly submitting = signal(false);
+
+  private readonly _renderer = viewChild(EntityFormRenderer);
+  private readonly _values = computed<WireValues>(() => this._renderer()?.wireValues() ?? {});
+
+  /** Ce que les détections lisent : le téléphone, l'e-mail, le produit demandé. */
+  public readonly phone = computed(() => text(this._values(), 'phoneNumber') ?? '');
+  public readonly email = computed(() => text(this._values(), 'email') ?? '');
+  public readonly product = computed(() => text(this._values(), 'interestedProduct') ?? '');
+
+  /** Un client retenu réduit le formulaire à la demande ; sinon tout ce que la mise en page propose. */
+  public readonly excluded = computed(() =>
+    this.isExistingCustomer()
+      ? (this.form()?.fields ?? []).map((f) => f.key ?? '').filter((k) => !DEMAND_FIELDS.includes(k))
+      : [],
+  );
 
   public agencies = signal<{ label: string; value: string }[]>([]);
-  public model = signal(CreateLeadFormModel.instantiate());
-  public productOptions = toSignal(
-    this._productSpecialitiesService.listProducts().pipe(
-      map((products) =>
-        products.map((product) => ({
-          name: product.name,
-          code: product.code,
-        })),
-      ),
-    ),
-  );
 
   // ——— Détection d'un client existant (BNF-F-18) ———
 
@@ -375,37 +353,6 @@ export class CreateLeadComponent {
    */
   private readonly _customerRejected = signal(false);
 
-  public formSchema = form(this.model, (schema) => {
-    // Le `when` ne dépend que de `selectedCustomerId` : quand un client existant est
-    // retenu, les champs d'identité sont masqués et ne doivent plus bloquer la
-    // soumission — l'identité vient de la fiche client, elle n'est pas ressaisie.
-    required(schema.firstName, {
-      message: 'Le prénom est obligatoire',
-      when: () => this.selectedCustomerId() === null,
-    });
-    required(schema.lastName, {
-      message: 'Le nom est obligatoire',
-      when: () => this.selectedCustomerId() === null,
-    });
-    // Obligatoire pour une demande seulement : `POST opportunities/for-customer` refuse un
-    // `product` vide (422), et sur un lead le produit d'intérêt reste une information qu'un
-    // agent complète à la qualification.
-    required(schema.interestedProduct, {
-      message: 'Le produit demandé est obligatoire pour un client existant',
-      when: () => this.selectedCustomerId() !== null,
-    });
-
-    required(schema.phoneNumber, {
-      message: 'Le numéro de téléphone est obligatoire',
-    });
-    // Facultatif, mais validé au format dès qu'il est renseigné (BNF-F-01).
-    email(schema.email, { message: 'Adresse e-mail invalide' });
-  });
-
-  public isCompany = computed(
-    () => this.formSchema.prospectType().value() === CaptureLeadRequestProspectTypeEnum.Corporate,
-  );
-
   private readonly _agencyNames = computed(() => {
     const index: Record<string, string> = {};
     for (const a of this.agencies()) index[a.value] = a.label;
@@ -419,7 +366,7 @@ export class CreateLeadComponent {
   public readonly customerMatches = computed<CustomerMatchView[]>(() => {
     const raws = this._matchRaw();
     const names = this._agencyNames();
-    const product = this.formSchema.interestedProduct().value();
+    const product = this.product();
     // `searchClients` fait une égalité sur l'index aveugle du téléphone : un résultat
     // unique est donc une correspondance exacte, plusieurs résultats une ambiguïté qui
     // demande un choix explicite.
@@ -450,10 +397,18 @@ export class CreateLeadComponent {
   public readonly isExistingCustomer = computed(() => this.retainedCustomer() !== null);
 
   constructor() {
+    this.loadForm();
     this._loadAgencies();
-    this._loadLeadSources();
     this._watchLeadDuplicates();
     this._watchCustomerMatches();
+  }
+
+  public loadForm(): void {
+    this.formLoadFailed.set(false);
+    this._formsApi.getEntityForm('Lead').subscribe({
+      next: (form) => this.form.set(form),
+      error: () => this.formLoadFailed.set(true),
+    });
   }
 
   /**
@@ -470,24 +425,32 @@ export class CreateLeadComponent {
    * la bonne : même client + même produit + demande encore ouverte, au lieu de « quelqu'un qui
    * ressemble à cette personne existe déjà ».
    */
-  public handleSubmit(): void {
-    submit(this.formSchema, async (field) => {
-      const value = field()?.value();
-      if (!value) return;
+  public async handleSubmit(): Promise<void> {
+    const renderer = this._renderer();
+    if (!renderer || this.submitting()) return;
 
-      // Les refus de la tentative précédente : le bandeau et l'encart doivent parler de CET
-      // envoi, et une réponse qui reste affichée pendant que la requête repart se lit comme une
-      // réponse déjà rendue. L'accusé de doublon, lui, survit — c'est lui qui porte le
-      // « créer quand même » jusqu'au serveur.
-      this.refusal.set(null);
-      this.demandDuplicateCount.set(null);
+    if (!renderer.valid()) {
+      renderer.markAllAsTouched();
+      return;
+    }
 
-      const customer = this.retainedCustomer();
+    // Les refus de la tentative précédente : le bandeau et l'encart doivent parler de CET
+    // envoi, et une réponse qui reste affichée pendant que la requête repart se lit comme une
+    // réponse déjà rendue. L'accusé de doublon, lui, survit — c'est lui qui porte le
+    // « créer quand même » jusqu'au serveur.
+    this.refusal.set(null);
+    this.demandDuplicateCount.set(null);
 
+    const customer = this.retainedCustomer();
+
+    this.submitting.set(true);
+    try {
       await (customer
-        ? this._createDemandForCustomer(value, customer)
-        : this._captureLead(value));
-    });
+        ? this._createDemandForCustomer(renderer.wireValues(), customer)
+        : this._captureLead(renderer));
+    } finally {
+      this.submitting.set(false);
+    }
   }
 
   /** « Créer quand même » sur une demande en double : l'agent a vu les demandes existantes. */
@@ -550,7 +513,7 @@ export class CreateLeadComponent {
       customerMatchViewFromClient(client, {
         isExact: true,
         matchedOn: ['Phone'],
-        requestedProductCode: this.formSchema.interestedProduct().value(),
+        requestedProductCode: this.product(),
       }),
     );
 
@@ -569,12 +532,11 @@ export class CreateLeadComponent {
    * pendant qu'un toast disait le contraire. Il n'y a plus de demi-état possible.
    */
   private async _createDemandForCustomer(
-    value: CreateLeadFormModel,
+    values: WireValues,
     customer: CustomerMatchView,
   ): Promise<void> {
-    const product = value.interestedProduct.trim();
-    const amount = Number(value.desiredAmount.replace(',', '.'));
-    const hasAmount = value.desiredAmount.trim().length > 0 && !Number.isNaN(amount);
+    const product = text(values, 'interestedProduct') ?? '';
+    const amount = money(values, 'desiredAmount');
 
     const result = await firstValueFrom(
       this._opportunitiesApiService
@@ -582,18 +544,18 @@ export class CreateLeadComponent {
           customerEntityId: customer.customerId,
           title: `Demande — ${product}`,
           product,
-          description: value.comment.trim() || null,
+          description: text(values, 'comment'),
           // Le conseiller de la fiche, comme le fait l'onglet « Demandes » : sans titulaire, la
           // demande arrive sans agent assigné, qui est l'une des colonnes de cette liste.
           ownerId: customer.advisorUserId,
-          estimatedAmount: hasAmount ? amount : null,
-          estimatedCurrency: hasAmount ? value.desiredCurrency.trim() || null : null,
-          customerPhone: value.phoneNumber || null,
+          estimatedAmount: amount?.amount ?? null,
+          estimatedCurrency: amount?.currency ?? null,
+          customerPhone: text(values, 'phoneNumber'),
           force: this._demandDuplicateAcknowledged(),
         })
         .pipe(
           catchError((error: HttpErrorResponse) => {
-            this._snackbarService.error('Erreur', captureErrorMessage(error));
+            this._snackbarService.error('Erreur', captureErrorMessage(error, this.form()));
             return of(null);
           }),
         ),
@@ -622,23 +584,41 @@ export class CreateLeadComponent {
   }
 
   /** La capture d'un prospect neuf — le chemin d'origine, inchangé dans son principe. */
-  private async _captureLead(value: CreateLeadFormModel): Promise<void> {
+  private async _captureLead(renderer: EntityFormRenderer): Promise<void> {
+    const v = renderer.wireValues();
+    // Un champ masqué par sa condition n'est pas envoyé : un nom d'entreprise saisi puis rendu
+    // invisible en repassant le type à « Particulier » n'appartient plus à ce lead.
+    const shown = (key: string) => (renderer.isVisible(key) ? text(v, key) : null);
+    const amount = money(v, 'desiredAmount');
+
     const request: CaptureLeadRequest = {
-      firstName: value.firstName || null,
-      lastName: value.lastName || null,
-      phoneNumber: value.phoneNumber || null,
-      email: value.email || null,
-      nationalId: value.nationalId || null,
-      prospectType: value.prospectType,
-      companyName: this.isCompany() ? value.companyName || null : null,
-      source: value.source,
-      channel: (value.channel || null) as CaptureLeadRequestChannelEnum | null,
-      leadSourceConfigId: value.leadSourceConfigId || null,
-      interestedProduct: value.interestedProduct || null,
-      desiredAmount: value.desiredAmount ? Number(value.desiredAmount) : null,
-      desiredCurrency: value.desiredCurrency || null,
-      agencyId: value.agencyId || null,
-      comment: value.comment || null,
+      prospectType: asEnum(CaptureLeadRequestProspectTypeEnum, v['prospectType']) ?? CaptureLeadRequestProspectTypeEnum.Individual,
+      firstName: shown('firstName'),
+      lastName: shown('lastName'),
+      gender: asEnum(CaptureLeadRequestGenderEnum, v['gender']) ?? null,
+      dateOfBirth: shown('dateOfBirth'),
+      nationalId: shown('nationalId'),
+      companyName: shown('companyName'),
+      companyEmail: shown('companyEmail'),
+      companyPhone: shown('companyPhone'),
+      website: shown('website'),
+      phoneNumber: text(v, 'phoneNumber'),
+      email: shown('email'),
+      preferredLanguage: text(v, 'preferredLanguage') ?? 'fr',
+      interestedProduct: text(v, 'interestedProduct'),
+      desiredAmount: amount?.amount ?? null,
+      desiredCurrency: amount?.currency ?? null,
+      comment: shown('comment'),
+      source: asEnum(CaptureLeadRequestSourceEnum, v['source']) ?? CaptureLeadRequestSourceEnum.Agency,
+      leadSourceConfigId: shown('leadSourceConfigId'),
+      channel: asEnum(CaptureLeadRequestChannelEnum, v['channel']) ?? null,
+      campaign: shown('campaign'),
+      externalReference: shown('externalReference'),
+      customerReference: shown('customerReference'),
+      agencyId: shown('agencyId'),
+      preferredAgencyId: shown('preferredAgencyId'),
+      ownerId: shown('ownerId'),
+      customFields: renderer.customFieldsPayload(),
       force: this._leadDuplicateAcknowledged(),
     };
 
@@ -654,7 +634,7 @@ export class CreateLeadComponent {
           const refusal = duplicateRefusalBody(error);
           if (refusal) return of(refusal);
 
-          this._snackbarService.error('Erreur', captureErrorMessage(error));
+          this._snackbarService.error('Erreur', captureErrorMessage(error, this.form()));
 
           // `of(null)` et non `EMPTY` : `firstValueFrom` d'un flux vide ne vaut pas
           // `undefined`, il **rejette** avec `EmptyError` — et cette promesse-là est celle
@@ -741,8 +721,8 @@ export class CreateLeadComponent {
 
   /** Doublons de **lead** sur téléphone ou e-mail (BNF-F-01). */
   private _watchLeadDuplicates(): void {
-    const phone$ = toObservable(computed(() => this.formSchema.phoneNumber().value()));
-    const email$ = toObservable(computed(() => this.formSchema.email().value()));
+    const phone$ = toObservable(this.phone);
+    const email$ = toObservable(this.email);
 
     combineLatest([phone$, email$])
       .pipe(
@@ -789,7 +769,7 @@ export class CreateLeadComponent {
    * `GET /clients` : la détection par e-mail n'est pas réalisable côté client.
    */
   private _watchCustomerMatches(): void {
-    toObservable(computed(() => this.formSchema.phoneNumber().value()))
+    toObservable(this.phone)
       .pipe(
         takeUntilDestroyed(this._destroyRef),
         map((phone) => (phone ?? '').replace(/[^0-9+]/g, '')),
@@ -879,28 +859,6 @@ export class CreateLeadComponent {
         }).pipe(map(({ holdings, opportunities }) => ({ client, holdings, opportunities }))),
       ),
     );
-  }
-
-  private _loadLeadSources(): void {
-    this._leadSourcesApiService
-      .listLeadSources(undefined, undefined, undefined, undefined, 1, 200)
-      .pipe(
-        map((res) => [
-          { label: 'Aucune', value: '' },
-          ...(res.items ?? [])
-            .filter((source) => source.status !== LeadSourceListDtoStatusEnum.Archived)
-            .map((source) => ({
-              label: source.label?.trim() || source.code?.trim() || 'Source sans nom',
-              value: source.id ?? '',
-            })),
-        ]),
-        catchError(() => {
-          // Le champ est facultatif : son indisponibilité ne doit pas empêcher de créer un lead.
-          // La liste reste réduite à « Aucune », le reste du formulaire fonctionne.
-          return EMPTY;
-        }),
-      )
-      .subscribe((options) => this.leadSourceOptions.set(options));
   }
 
   private _loadAgencies(): void {

@@ -21,6 +21,7 @@ export interface CreateProductRequest {
     description?: string | null;
     parametersJson?: string | null;
     effectiveFrom?: string | null;
+    customFields?: { [key: string]: any; } | null;
 }
 export enum CreateProductRequestCategoryEnum {
     Loan = 'Loan',

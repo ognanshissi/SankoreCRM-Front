@@ -52,6 +52,7 @@ export const PERMISSIONS = {
   PRODUCT_CREATE: 'product:create',
   PRODUCT_UPDATE: 'product:update',
   PRODUCT_DELETE: 'product:delete',
+  FORM_MANAGE: 'form:manage',
 
   AUDIT_READ: 'audit:read',
 

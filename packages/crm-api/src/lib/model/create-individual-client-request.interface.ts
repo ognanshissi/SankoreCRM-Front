@@ -47,6 +47,7 @@ export interface CreateIndividualClientRequest {
     email?: string | null;
     address?: PostalAddressInput;
     confirmNoDuplicate?: boolean;
+    customFields?: { [key: string]: any; } | null;
 }
 export enum CreateIndividualClientRequestGenderEnum {
     Male = 'Male',

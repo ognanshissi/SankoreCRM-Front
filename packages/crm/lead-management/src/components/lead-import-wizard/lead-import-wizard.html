@@ -76,6 +76,9 @@
         (valueChange)="onFileChanged($event)"
       ></tas-file-uploader>
 
+      <!-- Les colonnes `custom.<clé>` que le fichier peut porter (formulaires dynamiques). -->
+      <custom-field-columns entity="Lead" />
+
       <div class="flex justify-end mt-4 gap-2">
         <button tas-outlined-button type="button" (click)="backToSource()">Retour</button>
         <button tas-raised-button color="primary" type="button" [disabled]="!rawFile()" (click)="validateFile()">
