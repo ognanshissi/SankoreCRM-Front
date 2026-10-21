@@ -66,15 +66,11 @@ ENV PORT=4000
 # les domaines publics séparés par des virgules (`-e NG_ALLOWED_HOSTS=admin.example.com`).
 ENV NG_ALLOWED_HOSTS=localhost
 
-# Pas de NG_API_URL ici, contrairement à l'image `crm` : apps/admin/src/server.ts n'expose
-# pas d'endpoint `/config.json` et l'application ne lit aucune URL d'API (routes vides,
-# aucun `basePath` fourni à @sankore/crm-admin-api). Déclarer la variable laisserait croire
-# qu'elle atteint le navigateur alors qu'elle ne serait lue par personne.
-#
-# Le jour où l'admin appellera l'API : reprendre le bloc `app.get('/config.json', …)` de
-# apps/crm/src/server.ts — c'est le seul chemin par lequel une variable du conteneur
-# atteint un bundle client, qui est statique et n'a pas accès à process.env — puis ajouter
-# la variable ici et dans docker-compose.yml.
+# Pas de NG_API_URL ici, contrairement à l'image `crm`, et c'est voulu : l'admin ne lit pas de
+# `/config.json`. L'URL de l'API d'administration est COMPILÉE depuis
+# apps/admin/src/environments/environment.prod.ts — changer de domaine d'API veut dire modifier
+# ce fichier et reconstruire l'image. Déclarer la variable laisserait croire qu'elle atteint le
+# navigateur alors que personne ne la lirait.
 
 # Derrière un reverse proxy qui termine TLS, décommenter pour que le rendu voie le schéma et
 # l'hôte d'origine : ENV NG_TRUST_PROXY_HEADERS=x-forwarded-proto,x-forwarded-host
