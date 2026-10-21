@@ -70,7 +70,9 @@ ENV NG_ALLOWED_HOSTS=localhost
 # `/config.json`. L'URL de l'API d'administration est COMPILÉE depuis
 # apps/admin/src/environments/environment.prod.ts — changer de domaine d'API veut dire modifier
 # ce fichier et reconstruire l'image. Déclarer la variable laisserait croire qu'elle atteint le
-# navigateur alors que personne ne la lirait.
+# navigateur alors que personne ne la lirait. (`apps/admin/dev/config.json` existe, mais pour
+# `nx serve admin` seulement : il n'est copié que par la configuration `development`, et le code
+# ne le lit que si `environment.production` est faux.)
 
 # Derrière un reverse proxy qui termine TLS, décommenter pour que le rendu voie le schéma et
 # l'hôte d'origine : ENV NG_TRUST_PROXY_HEADERS=x-forwarded-proto,x-forwarded-host
