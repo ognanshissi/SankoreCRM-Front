@@ -312,13 +312,14 @@
         <th>Température</th>
         <th>Statut</th>
         <th>Capturé</th>
+        <th class="w-10"><span class="sr-only">Ouvrir la fiche</span></th>
       </tr>
     </ng-template>
 
     <ng-template #body let-item>
       <tr class="cursor-pointer hover:bg-slate-50 transition-colors"
         [class]="selectedLeadIds().has(item.id) ? 'bg-primary/5' : ''"
-        (click)="navigateToLead(item)">
+        (click)="openQuickView(item, $event)">
         <td class="py-3 w-10" (click)="$event.stopPropagation()">
           <input type="checkbox" class="form-checkbox accent-primary cursor-pointer"
             [checked]="selectedLeadIds().has(item.id)"
@@ -376,6 +377,18 @@
           }
         </td>
         <td class="text-sm text-slate-500">{{ item.capturedAt | dateTimeAgo }}</td>
+        <td class="w-10 text-right">
+          <!-- Un vrai lien : clic du milieu et « ouvrir dans un nouvel onglet » fonctionnent. -->
+          <a
+            [routerLink]="['/leads', item.id]"
+            class="inline-flex items-center justify-center w-8 h-8 rounded-md text-slate-400 hover:text-primary hover:bg-slate-100"
+            title="Ouvrir la fiche complète"
+            aria-label="Ouvrir la fiche complète"
+            (click)="$event.stopPropagation()"
+          >
+            <tas-icon iconName="feather:external-link" style="font-size:14px"></tas-icon>
+          </a>
+        </td>
       </tr>
     </ng-template>
   </tas-table>
@@ -416,10 +429,10 @@
                 class="bg-white rounded-lg border border-slate-200 shadow-sm p-3 cursor-grab active:cursor-grabbing hover:shadow transition-shadow focus:outline-none focus:ring-2 focus:ring-primary/40"
                 [attr.tabindex]="0"
                 role="button"
-                [attr.aria-label]="displayName(lead) + ' — ' + phase.label + '. Flèches gauche/droite pour déplacer.'"
+                [attr.aria-label]="displayName(lead) + ' — ' + phase.label + '. Entrée pour l’aperçu, flèches gauche/droite pour déplacer.'"
                 aria-roledescription="carte de lead déplaçable"
                 (keydown)="onCardKeydown($event, lead)"
-                (click)="navigateToLead(lead)"
+                (click)="openQuickView(lead, $event)"
               >
                 <!--
                   Sur un <ng-template>, et pas un <div> : la CDK ne reconnaît cdkDragPlaceholder que
@@ -435,6 +448,18 @@
                 <div class="flex items-center gap-2">
                   <span class="w-7 h-7 rounded-full bg-slate-100 text-[10px] font-semibold text-slate-700 flex items-center justify-center shrink-0">{{ initials(lead) }}</span>
                   <p class="text-sm font-semibold text-slate-800 truncate">{{ displayName(lead) }}</p>
+                  <!-- `mousedown` arrêté : sans ça, la CDK prend le clic sur le lien pour le début d'un glisser. -->
+                  <a
+                    [routerLink]="['/leads', lead.id]"
+                    class="ml-auto shrink-0 inline-flex items-center justify-center w-6 h-6 rounded text-slate-300 hover:text-primary hover:bg-slate-100"
+                    title="Ouvrir la fiche complète"
+                    aria-label="Ouvrir la fiche complète"
+                    (mousedown)="$event.stopPropagation()"
+                    (click)="$event.stopPropagation()"
+                    (keydown)="$event.stopPropagation()"
+                  >
+                    <tas-icon iconName="feather:external-link" style="font-size:12px"></tas-icon>
+                  </a>
                 </div>
 
                 @if (productLabel(lead); as product) {

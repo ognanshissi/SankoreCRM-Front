@@ -1,4 +1,4 @@
-import { LeadDto, SetIntentLevelRequestIntentLevelEnum } from '@sankore/crm-api';
+import { ActivityDtoTypeEnum, LeadDto, SetIntentLevelRequestIntentLevelEnum } from '@sankore/crm-api';
 import { Severity } from '@talisoft/ui/tag';
 
 /**
@@ -118,6 +118,21 @@ export function prospectTypeLabel(type: string | null | undefined): string {
 /** Les codes de la jauge de complétude qui désignent un consentement à recueillir. */
 export function isConsentGap(code: string | null | undefined): boolean {
   return (code ?? '').includes('CONSENT');
+}
+
+/** Icône, libellé et teinte d'un type d'activité — l'onglet Activités et l'aperçu du lead. */
+export function activityTypeMeta(type: ActivityDtoTypeEnum | undefined): { icon: string; label: string; severity: Severity } {
+  switch (type) {
+    case ActivityDtoTypeEnum.Call:     return { icon: 'feather:phone',        label: 'Appel',     severity: 'info' };
+    case ActivityDtoTypeEnum.Meeting:  return { icon: 'feather:users',        label: 'Réunion',   severity: 'warning' };
+    case ActivityDtoTypeEnum.Email:    return { icon: 'feather:mail',         label: 'E-mail',    severity: 'info' };
+    case ActivityDtoTypeEnum.Visit:    return { icon: 'feather:map-pin',      label: 'Visite',    severity: 'success' };
+    case ActivityDtoTypeEnum.Note:     return { icon: 'feather:file-text',    label: 'Note',      severity: 'neutral' };
+    case ActivityDtoTypeEnum.Sms:      return { icon: 'feather:message-square', label: 'SMS',     severity: 'info' };
+    case ActivityDtoTypeEnum.WhatsApp: return { icon: 'feather:message-circle', label: 'WhatsApp', severity: 'success' };
+    case ActivityDtoTypeEnum.Task:     return { icon: 'feather:check-square', label: 'Tâche',     severity: 'warning' };
+    default:                           return { icon: 'feather:circle',       label: 'Autre',     severity: 'neutral' };
+  }
 }
 
 const AMOUNT = new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 });

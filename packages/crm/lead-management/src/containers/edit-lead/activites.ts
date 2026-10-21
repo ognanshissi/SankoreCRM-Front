@@ -3,31 +3,18 @@ import { catchError, EMPTY } from 'rxjs';
 import { TasCard } from '@talisoft/ui/card';
 import { TasSpinner } from '@talisoft/ui/spinner';
 import { TasIcon } from '@talisoft/ui/icon';
-import { TasTag, Severity } from '@talisoft/ui/tag';
+import { TasTag } from '@talisoft/ui/tag';
 import { TimeagoPipe } from '@talisoft/ui/timeago';
 import { Button } from '@talisoft/ui/button';
 import { SideDrawerService } from '@talisoft/ui/side-drawer';
 import { LeadsApiService, ActivityDto, ActivityDtoTypeEnum } from '@sankore/crm-api';
+import { activityTypeMeta } from './lead-view.models';
 import { LogActivityDrawer } from './log-activity-drawer';
 import { PermissionsService } from '@sankore/crm/common';
 import { LeadEditContext } from './lead-edit-context';
 // eslint-disable-next-line @nx/enforce-module-boundaries
 import { CallHistory } from '@sankore/crm/telephony';
 import { ConvertedLeadNotice } from './converted-lead-notice';
-
-function activityTypeMeta(type: ActivityDtoTypeEnum | undefined): { icon: string; label: string; severity: Severity } {
-  switch (type) {
-    case ActivityDtoTypeEnum.Call:     return { icon: 'feather:phone',        label: 'Appel',     severity: 'info' };
-    case ActivityDtoTypeEnum.Meeting:  return { icon: 'feather:users',        label: 'Réunion',   severity: 'warning' };
-    case ActivityDtoTypeEnum.Email:    return { icon: 'feather:mail',         label: 'E-mail',    severity: 'info' };
-    case ActivityDtoTypeEnum.Visit:    return { icon: 'feather:map-pin',      label: 'Visite',    severity: 'success' };
-    case ActivityDtoTypeEnum.Note:     return { icon: 'feather:file-text',    label: 'Note',      severity: 'neutral' };
-    case ActivityDtoTypeEnum.Sms:      return { icon: 'feather:message-square', label: 'SMS',     severity: 'info' };
-    case ActivityDtoTypeEnum.WhatsApp: return { icon: 'feather:message-circle', label: 'WhatsApp', severity: 'success' };
-    case ActivityDtoTypeEnum.Task:     return { icon: 'feather:check-square', label: 'Tâche',     severity: 'warning' };
-    default:                           return { icon: 'feather:circle',       label: 'Autre',     severity: 'neutral' };
-  }
-}
 
 @Component({
   selector: 'lead-activites',

@@ -1,0 +1,174 @@
+<tas-side-drawer width="660px">
+  <tas-drawer-title>
+    <tas-title>Aperçu du lead</tas-title>
+  </tas-drawer-title>
+
+  <tas-drawer-content>
+    <!-- Identité -->
+    <div class="flex items-start gap-3">
+      <div class="w-11 h-11 rounded-full flex items-center justify-center text-sm font-semibold shrink-0 select-none bg-teal-50 text-teal-800">
+        {{ initials }}
+      </div>
+      <div class="min-w-0 flex-1">
+        <p class="text-base font-semibold text-slate-800 leading-tight truncate">{{ name }}</p>
+        <p class="text-xs text-slate-500 mt-0.5">
+          {{ prospectType }}@if (lead.companyName) { · {{ lead.companyName }} }
+        </p>
+        <div class="flex flex-wrap items-center gap-1.5 mt-2">
+          <tas-tag [severity]="status.severity">{{ status.label }}</tas-tag>
+          @if (data.phaseLabel) {
+            <span class="px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 text-xs font-medium">{{ data.phaseLabel }}</span>
+          }
+          <span class="inline-flex items-center gap-1 text-xs font-medium text-slate-600">
+            <span class="w-1.5 h-1.5 rounded-full" [class]="intent.dot"></span>
+            {{ intent.label }}
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Contact -->
+    <div class="mt-4 flex flex-wrap gap-2">
+      @if (lead.phoneNumber) {
+        <a tas-outlined-button class="text-xs" [href]="'tel:' + lead.phoneNumber">
+          <tas-icon iconName="feather:phone" style="font-size:12px"></tas-icon>
+          <span class="tabular-nums">{{ lead.phoneNumber }}</span>
+        </a>
+      }
+      @if (lead.email) {
+        <a tas-outlined-button class="text-xs max-w-full" [href]="'mailto:' + lead.email">
+          <tas-icon iconName="feather:mail" style="font-size:12px"></tas-icon>
+          <span class="truncate">{{ lead.email }}</span>
+        </a>
+      }
+    </div>
+
+    @if (isAwaitingDispatch) {
+      <div class="mt-4 p-3 rounded-lg bg-amber-50 border border-amber-200 text-xs text-amber-800">
+        En file d'attente depuis {{ lead.awaitingDispatchSince | dateTimeAgo }} : aucun agent n'a pu le prendre,
+        il partira seul dès qu'un agent sera disponible.
+      </div>
+    }
+
+    <!-- Prochaine étape -->
+    <div class="mt-5">
+      <p class="text-xs font-medium text-slate-400 uppercase tracking-wide mb-1.5">Prochaine étape</p>
+      <div class="p-3 rounded-lg border border-slate-200">
+        <lead-next-step [step]="lead.nextStep"></lead-next-step>
+      </div>
+      @if (data.sla; as sla) {
+        <span class="inline-flex mt-2 px-2 py-0.5 rounded-md text-xs font-medium"
+          [class]="sla.tone === 'breach' ? 'bg-red-50 text-red-700' : sla.tone === 'warning' ? 'bg-amber-100 text-amber-800' : 'bg-green-50 text-green-700'">
+          {{ sla.label }}
+        </span>
+      }
+    </div>
+
+    <!-- Intérêt et score -->
+    <div class="mt-5">
+      <p class="text-xs font-medium text-slate-400 uppercase tracking-wide mb-1.5">Intérêt</p>
+      <dl class="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
+        <div>
+          <dt class="text-xs text-slate-400">Produit</dt>
+          <dd class="text-slate-700 truncate" [title]="product ?? ''">{{ product ?? '—' }}</dd>
+        </div>
+        <div>
+          <dt class="text-xs text-slate-400">Montant souhaité</dt>
+          <dd class="text-slate-700 tabular-nums">{{ amount || '—' }}</dd>
+        </div>
+        <div class="col-span-2">
+          <dt class="text-xs text-slate-400 flex items-center justify-between">
+            <span>Score</span>
+            <span class="tabular-nums text-slate-700 font-medium">{{ score }}<span class="text-slate-400 font-normal">/100</span></span>
+          </dt>
+          <dd class="mt-1 h-1.5 rounded-full bg-slate-100" role="progressbar"
+              aria-label="Score du lead" aria-valuemin="0" aria-valuemax="100" [attr.aria-valuenow]="score">
+            <div class="h-1.5 rounded-full" [class]="scoreBar" [style.width.%]="score"></div>
+          </dd>
+        </div>
+      </dl>
+    </div>
+
+    <!-- Suivi -->
+    <div class="mt-5">
+      <p class="text-xs font-medium text-slate-400 uppercase tracking-wide mb-1.5">Suivi</p>
+      <dl class="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
+        <div>
+          <dt class="text-xs text-slate-400">Agent</dt>
+          <dd class="text-slate-700 truncate">{{ data.agentName || 'Non affecté' }}</dd>
+        </div>
+        <div>
+          <dt class="text-xs text-slate-400">Agence</dt>
+          <dd class="text-slate-700 truncate">{{ data.agencyName || '—' }}</dd>
+        </div>
+        <div>
+          <dt class="text-xs text-slate-400">Origine</dt>
+          <dd class="text-slate-700 truncate">{{ origin }}</dd>
+        </div>
+        <div>
+          <dt class="text-xs text-slate-400">Capturé</dt>
+          <dd class="text-slate-700">{{ lead.capturedAt | dateTimeAgo }}</dd>
+        </div>
+        @if (place) {
+          <div class="col-span-2">
+            <dt class="text-xs text-slate-400">Localisation</dt>
+            <dd class="text-slate-700 truncate">{{ place }}</dd>
+          </div>
+        }
+      </dl>
+    </div>
+
+    @if (lead.comment) {
+      <div class="mt-5">
+        <p class="text-xs font-medium text-slate-400 uppercase tracking-wide mb-1.5">Commentaire</p>
+        <p class="text-sm text-slate-600 whitespace-pre-line line-clamp-4">{{ lead.comment }}</p>
+      </div>
+    }
+
+    <!-- Dernières activités -->
+    <div class="mt-5">
+      <div class="flex items-center justify-between mb-1.5">
+        <p class="text-xs font-medium text-slate-400 uppercase tracking-wide">Dernières activités</p>
+        @if (hasActivities()) {
+          <button type="button" class="text-xs text-primary hover:underline" (click)="openRecord('suivi', 'activites')">
+            Tout voir
+          </button>
+        }
+      </div>
+      @if (isLoadingActivities()) {
+        <div class="flex justify-center py-4">
+          <tas-spinner size="5" class="text-primary"></tas-spinner>
+        </div>
+      } @else if (!hasActivities()) {
+        <p class="text-sm text-slate-400 py-2">Aucune activité enregistrée</p>
+      } @else {
+        <div class="divide-y divide-slate-100 rounded-lg border border-slate-200">
+          @for (activity of activities(); track activity.id) {
+            <div class="flex items-start gap-2.5 p-3">
+              <tas-icon [iconName]="typeMeta(activity.type).icon" class="text-slate-400 mt-0.5" style="font-size:13px"></tas-icon>
+              <div class="min-w-0 flex-1">
+                <p class="text-sm text-slate-700 truncate">
+                  {{ activity.subject || typeMeta(activity.type).label }}
+                </p>
+                @if (activity.notes) {
+                  <p class="text-xs text-slate-500 line-clamp-2 mt-0.5">{{ activity.notes }}</p>
+                }
+              </div>
+              <span class="text-xs text-slate-400 whitespace-nowrap">{{ activity.performedAt | dateTimeAgo }}</span>
+            </div>
+          }
+        </div>
+      }
+    </div>
+  </tas-drawer-content>
+
+  <tas-drawer-action>
+    <div class="flex justify-end gap-3">
+      <button tas-outlined-button type="button" (click)="close()">Fermer</button>
+      <button tas-raised-button color="primary" type="button" (click)="openRecord()">
+        Ouvrir la fiche
+        <tas-icon iconName="feather:arrow-right" style="font-size:14px"></tas-icon>
+      </button>
+    </div>
+  </tas-drawer-action>
+</tas-side-drawer>

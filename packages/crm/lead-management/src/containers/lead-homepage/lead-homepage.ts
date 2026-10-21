@@ -8,7 +8,7 @@ import {
   Signal,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { catchError, debounceTime, EMPTY, map, Subject } from 'rxjs';
 import { CdkDragDrop, CdkDragStart, DragDropModule } from '@angular/cdk/drag-drop';
@@ -36,6 +36,7 @@ import { Menu, MenuItem, TasMenuTrigger } from '@talisoft/ui/menu';
 import { CreateLeadComponent } from '../create-lead/create-lead';
 import { ImportLeadsComponent } from '../import-leads/import-leads';
 import { SystemCaptureDrawer } from './system-capture-drawer';
+import { LeadQuickViewData, LeadQuickViewDrawer } from './lead-quick-view-drawer';
 import { interestedProductLabel } from '../../components/interested-product';
 import { LeadNextStep } from '../../components/lead-next-step';
 import { CreateTaskDrawer } from '@sankore/crm/tasks';
@@ -243,6 +244,7 @@ interface StatusTab {
     Menu,
     MenuItem,
     TasMenuTrigger,
+    RouterLink,
   ],
   // Les classes que la CDK pose pendant un glisser-déposer : sans elles, les cartes sautent d'un
   // coup au lieu de s'écarter, et la carte en main n'a ni ombre ni relief.
@@ -540,7 +542,7 @@ export class LeadHomepage implements OnInit {
       target = PIPELINE_PHASES[idx - 1];
     } else if (event.key === 'Enter' || event.key === ' ') {
       event.preventDefault();
-      this.navigateToLead(lead);
+      this.openQuickView(lead);
       return;
     } else {
       return;
@@ -838,8 +840,29 @@ export class LeadHomepage implements OnInit {
     return ((first[0] ?? '') + (last[0] ?? '')).toUpperCase() || '?';
   }
 
-  public navigateToLead(lead: LeadDto): void {
-    this._router.navigate(['/leads', lead.id]);
+  /**
+   * Un clic sur un lead ouvre son aperçu, sans quitter la liste ni perdre filtres et défilement.
+   * Ctrl/⌘ + clic ouvre directement la fiche complète dans un nouvel onglet, comme sur un lien.
+   */
+  public openQuickView(lead: LeadDto, event?: MouseEvent): void {
+    if (event && (event.ctrlKey || event.metaKey)) {
+      window.open(this._router.serializeUrl(this._router.createUrlTree(['/leads', lead.id])), '_blank');
+      return;
+    }
+
+    const phase = phaseOf(lead);
+    this._sideDrawerService.open<void, LeadQuickViewData, LeadQuickViewDrawer>(LeadQuickViewDrawer, {
+      width: '100%',
+      height: '100%',
+      panelClass: 'side-drawer-panel',
+      data: {
+        lead,
+        phaseLabel: PIPELINE_PHASES.find((p) => p.key === phase)?.label ?? null,
+        agentName: this.agents().get(assigneeId(lead) ?? '')?.fullName?.trim() ?? '',
+        agencyName: this.agencyName(lead.agencyId),
+        sla: phase === 'converted' ? null : this.cardSla(lead),
+      },
+    });
   }
 
   public prospectTypeLabel(type: number | null | undefined): string {
