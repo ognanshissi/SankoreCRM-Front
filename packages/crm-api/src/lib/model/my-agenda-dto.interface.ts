@@ -10,6 +10,7 @@
  * Do not edit the class manually.
  */
 import { AgendaAlertDto } from './agenda-alert-dto.interface';
+import { AgendaAppointmentDto } from './agenda-appointment-dto.interface';
 import { AgendaReminderDto } from './agenda-reminder-dto.interface';
 import { AgendaActivityDto } from './agenda-activity-dto.interface';
 
@@ -20,5 +21,6 @@ export interface MyAgendaDto {
     reminders?: Array<AgendaReminderDto> | null;
     activities?: Array<AgendaActivityDto> | null;
     alerts?: Array<AgendaAlertDto> | null;
+    appointments?: Array<AgendaAppointmentDto> | null;
 }
 

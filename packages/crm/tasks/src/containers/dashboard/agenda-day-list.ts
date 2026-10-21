@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, inject, input, output, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { catchError, EMPTY, finalize } from 'rxjs';
-import { LeadDto, LeadsApiService } from '@sankore/crm-api';
+import { AgendaAppointmentDto, LeadDto, LeadsApiService } from '@sankore/crm-api';
 import { PermissionsService } from '@sankore/crm/common';
 import { TasIcon } from '@talisoft/ui/icon';
 import { SnackbarService } from '@talisoft/ui/snackbar';
@@ -11,7 +11,8 @@ import { DayGroup } from './my-day-meta';
 
 /**
  * Rappels ou rendez-vous de « Ma journée », une carte par jour comme les tâches. Un rappel se
- * clôt d'ici ; un rendez-vous se travaille sur la fiche du lead, où il a été enregistré.
+ * clôt d'ici ; un rendez-vous planifié s'ouvre dans son détail ; une activité planifiée se
+ * travaille sur la fiche du lead, où elle a été enregistrée.
  */
 @Component({
   selector: 'my-day-agenda-list',
@@ -37,7 +38,7 @@ import { DayGroup } from './my-day-meta';
               @for (item of group.items; track item.key) {
                 @let at = when(item.at, now(), item.isOverdue);
                 <li class="flex items-center gap-3 px-4 py-2.5 cursor-pointer transition-colors hover:bg-slate-50"
-                  tabindex="0" (click)="openLead(item)" (keydown.enter)="openLead(item)">
+                  tabindex="0" (click)="openItem(item)" (keydown.enter)="openItem(item)">
                   <span class="flex size-8 shrink-0 items-center justify-center rounded-lg" [class]="item.type.tone" aria-hidden="true">
                     <tas-icon [iconName]="item.type.icon" style="font-size:14px"></tas-icon>
                   </span>
@@ -52,7 +53,16 @@ import { DayGroup } from './my-day-meta';
                   <span class="shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium tabular-nums" [title]="at.fullDate"
                     [class]="at.tone === 'overdue' ? 'bg-red-50 text-red-700' : 'bg-slate-100 text-slate-700'">{{ timeLabel(item) }}</span>
                   <div class="flex shrink-0 items-center gap-1.5" (click)="$event.stopPropagation()">
-                    <my-day-contact [leadId]="item.leadId" [phone]="phoneOf(item)" [name]="item.leadName"></my-day-contact>
+                    @if (item.appointment?.meetingUrl) {
+                      <a [href]="item.appointment!.meetingUrl" target="_blank" rel="noopener"
+                        class="inline-flex h-9 items-center gap-1.5 rounded-full bg-sky-50 px-3 text-xs font-semibold text-sky-800 hover:bg-sky-100"
+                        [attr.aria-label]="'Rejoindre : ' + item.title">
+                        <tas-icon iconName="feather:video" style="font-size:13px"></tas-icon> Rejoindre
+                      </a>
+                    }
+                    @if (item.leadId) {
+                      <my-day-contact [leadId]="item.leadId" [phone]="phoneOf(item)" [name]="item.leadName"></my-day-contact>
+                    }
                     @if (item.kind === 'reminder' && canManageReminders()) {
                       <button type="button"
                         class="inline-flex size-9 items-center justify-center rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200 disabled:opacity-50"
@@ -92,6 +102,8 @@ export class AgendaDayList {
 
   /** Un rappel a été clos d'ici : l'écran recharge l'agenda et les compteurs. */
   public readonly changed = output<void>();
+  /** Un rendez-vous s'ouvre dans son drawer de détail, que l'écran possède. */
+  public readonly openAppointment = output<AgendaAppointmentDto>();
 
   public readonly actingKey = signal<string | null>(null);
   public readonly when = agendaWhen;
@@ -103,15 +115,19 @@ export class AgendaDayList {
   }
 
   public phoneOf(item: AgendaEntry): string | null {
-    return this.leads().get(item.leadId)?.phoneNumber ?? null;
+    return (item.leadId && this.leads().get(item.leadId)?.phoneNumber) || null;
   }
 
-  public openLead(item: AgendaEntry): void {
-    this._router.navigate(['/leads', item.leadId, 'suivi', item.kind === 'reminder' ? 'rappels' : 'activites']);
+  public openItem(item: AgendaEntry): void {
+    if (item.appointment) {
+      this.openAppointment.emit(item.appointment);
+      return;
+    }
+    if (item.leadId) this._router.navigate(['/leads', item.leadId, 'suivi', item.kind === 'reminder' ? 'rappels' : 'activites']);
   }
 
   public resolve(item: AgendaEntry, done: boolean): void {
-    if (item.kind !== 'reminder') return;
+    if (item.kind !== 'reminder' || !item.leadId) return;
     this.actingKey.set(item.key);
     const request$ = done
       ? this._leadsApi.completeLeadReminder(item.leadId, item.id)

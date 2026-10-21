@@ -5,10 +5,12 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { catchError, EMPTY, finalize, forkJoin, map, of } from 'rxjs';
 import { TasSelect } from '@talisoft/ui/select';
 import { TasIcon } from '@talisoft/ui/icon';
+import { Button } from '@talisoft/ui/button';
 import { SideDrawerService } from '@talisoft/ui/side-drawer';
 import { SnackbarService } from '@talisoft/ui/snackbar';
 import { ConfirmDialogService } from '@talisoft/ui/confirm-dialog';
 import {
+  AgendaAppointmentDto,
   AgenciesApiService,
   CrmTaskDto,
   CrmTaskDtoStatusEnum,
@@ -19,7 +21,7 @@ import {
   UserDto,
   UsersApiService,
 } from '@sankore/crm-api';
-import { AuthenticationService, BreadcrumbService } from '@sankore/crm/common';
+import { AuthenticationService, BreadcrumbService, PermissionsService } from '@sankore/crm/common';
 import { leadDisplayName } from './task-meta';
 import { ReassignTaskDrawer, ReassignTaskDrawerData } from './reassign-task-drawer';
 import { ApprovalItem, MyApprovalsService } from './my-approvals.service';
@@ -43,6 +45,8 @@ import { PromisedReminders } from './promised-reminders';
 import { TaskDayList } from './task-day-list';
 import { AgendaDayList } from './agenda-day-list';
 import { TaskWorkDrawer, TaskWorkDrawerData, TaskWorkDrawerResult } from './task-work-drawer';
+import { CreateAppointmentDrawer, CreateAppointmentDrawerData } from './create-appointment-drawer';
+import { AppointmentDetailDrawer, AppointmentDetailDrawerData, AppointmentDetailDrawerResult } from './appointment-detail-drawer';
 
 type MyDayView = 'todo' | 'overdue' | 'reminders' | 'meetings' | 'approvals' | 'done';
 type TaskScope = 'mine' | 'team';
@@ -93,6 +97,7 @@ function isOpen(task: CrmTaskDto): boolean {
     FormsModule,
     TasSelect,
     TasIcon,
+    Button,
     ApprovalsList,
     MyDayCalendar,
     PromisedReminders,
@@ -113,6 +118,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
   private readonly _usersApi = inject(UsersApiService);
   private readonly _breadcrumbService = inject(BreadcrumbService);
   private readonly _approvalsService = inject(MyApprovalsService);
+  private readonly _permissions = inject(PermissionsService);
+
+  /** Planifier un rendez-vous, c'est consigner une interaction à venir : le droit de l'activité. */
+  public readonly canScheduleAppointment = this._permissions.can('lead:activity:log');
 
   public now = signal(Date.now());
   private _tickTimer: ReturnType<typeof setInterval> | null = null;
@@ -178,10 +187,13 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   public readonly entries = computed(() => agendaEntries(this.agenda()));
   public readonly reminders = computed(() => this.entries().filter((e) => e.kind === 'reminder'));
-  /** Les rendez-vous à venir : un rendez-vous passé n'a pas de statut « fait », il quitte la liste. */
+  /**
+   * Les rendez-vous à venir : ceux planifiés d'ici, et les activités enregistrées avec une date
+   * prévue. Un rendez-vous passé n'a pas de statut « fait », il quitte la liste.
+   */
   public readonly meetings = computed(() => {
     const today = startOfDay(new Date(this.now())).getTime();
-    return this.entries().filter((e) => e.kind === 'activity' && new Date(e.at).getTime() >= today);
+    return this.entries().filter((e) => e.kind !== 'reminder' && new Date(e.at).getTime() >= today);
   });
 
   // ——— Tâches ———
@@ -251,7 +263,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.openTasks().forEach((t) => mark(t.dueAt, 'tasks'));
     if (this.scope() === 'mine') {
       this.reminders().forEach((e) => mark(e.at, 'reminders'));
-      this.entries().filter((e) => e.kind === 'activity').forEach((e) => mark(e.at, 'meetings'));
+      this.entries().filter((e) => e.kind !== 'reminder').forEach((e) => mark(e.at, 'meetings'));
     }
     return map;
   });
@@ -314,6 +326,34 @@ export class DashboardComponent implements OnInit, OnDestroy {
   public onMonthChange(month: Date): void {
     this.calendarMonth.set(month);
     this.loadAgenda();
+  }
+
+  // ——— Rendez-vous ———
+
+  public openCreateAppointment(): void {
+    const ref = this._sideDrawer.open<string, CreateAppointmentDrawerData, CreateAppointmentDrawer>(CreateAppointmentDrawer, {
+      width: '100%',
+      height: '100%',
+      panelClass: 'side-drawer-panel',
+      data: { day: this.selectedDay() },
+    });
+    ref.closed.subscribe((id) => {
+      if (!id) return;
+      // On montre ce qu'on vient de créer.
+      this.view.set('meetings');
+      this.loadAgenda();
+    });
+  }
+
+  public openAppointment(appointment: AgendaAppointmentDto): void {
+    const ref = this._sideDrawer.open<AppointmentDetailDrawerResult, AppointmentDetailDrawerData, AppointmentDetailDrawer>(
+      AppointmentDetailDrawer,
+      { width: '100%', height: '100%', panelClass: 'side-drawer-panel', data: { appointment } },
+    );
+    ref.closed.subscribe((result) => {
+      if (result?.action === 'cancelled') this.loadAgenda();
+      if (result?.action === 'open') this._router.navigate(result.route);
+    });
   }
 
   // ——— Actions sur les tâches ———
@@ -454,7 +494,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
       .subscribe((agenda) => {
         this.agenda.set(agenda);
         this.isAgendaLoading.set(false);
-        this._loadLeads([...(agenda.reminders ?? []), ...(agenda.activities ?? [])].map((e) => e.leadId));
+        this._loadLeads([...(agenda.reminders ?? []), ...(agenda.activities ?? []), ...(agenda.appointments ?? [])].map((e) => e.leadId));
       });
   }
 

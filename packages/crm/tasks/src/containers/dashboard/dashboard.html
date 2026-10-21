@@ -15,6 +15,13 @@
     }
   </div>
 
+  <div class="flex flex-wrap items-center gap-2">
+    @if (canScheduleAppointment()) {
+      <button tas-raised-button color="primary" type="button" (click)="openCreateAppointment()">
+        <tas-icon iconName="feather:calendar" style="font-size:14px"></tas-icon>
+        Nouveau rendez-vous
+      </button>
+    }
   @if (isSupervisor()) {
     <div class="flex flex-wrap items-center gap-2">
       @if (scope() === 'team') {
@@ -40,6 +47,7 @@
       </div>
     </div>
   }
+  </div>
 </div>
 
 <div class="grid grid-cols-1 items-start gap-5 lg:grid-cols-[290px_minmax(0,1fr)]">
@@ -126,8 +134,9 @@
             [leads]="leads()"
             [now]="now()"
             emptyTitle="Aucun rendez-vous à venir"
-            emptyText="Les rendez-vous, visites et appels enregistrés avec une date prévue apparaîtront ici."
+            emptyText="Créez-en un avec « Nouveau rendez-vous » ; les visites et appels enregistrés avec une date prévue apparaissent aussi ici."
             (changed)="loadAgenda()"
+            (openAppointment)="openAppointment($event)"
           ></my-day-agenda-list>
         }
       }

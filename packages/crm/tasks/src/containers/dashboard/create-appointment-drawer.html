@@ -1,0 +1,162 @@
+<tas-side-drawer width="600px">
+  <tas-drawer-title>
+    <tas-title>Nouveau rendez-vous</tas-title>
+  </tas-drawer-title>
+
+  <tas-drawer-content>
+    <form [formRoot]="formSchema" class="flex flex-col gap-5">
+      <tas-form-field>
+        <tas-label>Objet <span class="text-functional-error">*</span></tas-label>
+        <input tasInput type="text" placeholder="Point sur le dossier, réunion d’agence…" [formField]="formSchema.title" />
+        @if (formSchema.title().touched() && formSchema.title().invalid()) {
+          <tas-error>{{ formSchema.title().errors()[0].message }}</tas-error>
+        }
+      </tas-form-field>
+
+      <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <tas-form-field>
+          <tas-label>Date <span class="text-functional-error">*</span></tas-label>
+          <input tasInput type="date" [min]="minDate" [formField]="formSchema.date" />
+          @if (formSchema.date().touched() && formSchema.date().invalid()) {
+            <tas-error>{{ formSchema.date().errors()[0].message }}</tas-error>
+          }
+        </tas-form-field>
+        <tas-form-field>
+          <tas-label>Heure <span class="text-functional-error">*</span></tas-label>
+          <input tasInput type="time" step="300" [formField]="formSchema.time" />
+          @if (formSchema.time().touched() && formSchema.time().invalid()) {
+            <tas-error>{{ formSchema.time().errors()[0].message }}</tas-error>
+          }
+        </tas-form-field>
+        <tas-form-field>
+          <tas-label>Durée</tas-label>
+          <tas-select [options]="durationOptions" [formField]="formSchema.duration"></tas-select>
+        </tas-form-field>
+      </div>
+
+      <!-- Format -->
+      <div>
+        <p class="mb-2 text-sm font-medium text-slate-700">Format</p>
+        <div role="group" aria-label="Format du rendez-vous" class="inline-flex gap-1 rounded-full bg-slate-100 p-1">
+          <button type="button" class="inline-flex items-center gap-1.5 rounded-full px-4 py-1.5 text-sm font-semibold transition-colors"
+            [class]="mode() === 'InPerson' ? 'bg-white text-primary shadow-xs' : 'text-slate-600 hover:text-slate-900'"
+            [attr.aria-pressed]="mode() === 'InPerson'" (click)="setMode('InPerson')">
+            <tas-icon iconName="feather:map-pin" style="font-size:13px"></tas-icon> Présentiel
+          </button>
+          <button type="button" class="inline-flex items-center gap-1.5 rounded-full px-4 py-1.5 text-sm font-semibold transition-colors"
+            [class]="mode() === 'Online' ? 'bg-white text-primary shadow-xs' : 'text-slate-600 hover:text-slate-900'"
+            [attr.aria-pressed]="mode() === 'Online'" (click)="setMode('Online')">
+            <tas-icon iconName="feather:video" style="font-size:13px"></tas-icon> En ligne
+          </button>
+        </div>
+      </div>
+
+      @if (mode() === 'Online') {
+        <tas-form-field>
+          <tas-label>Lien de la réunion <span class="text-functional-error">*</span></tas-label>
+          <input tasInput type="url" placeholder="https://zoom.us/j/… ou https://teams.microsoft.com/…" [formField]="formSchema.meetingUrl" />
+          @if (formSchema.meetingUrl().touched() && formSchema.meetingUrl().invalid()) {
+            <tas-error>{{ formSchema.meetingUrl().errors()[0].message }}</tas-error>
+          } @else if (provider()) {
+            <tas-hint>Réunion {{ provider() }}</tas-hint>
+          } @else {
+            <tas-hint>Créez la réunion dans Zoom ou Teams, puis collez ici son lien d’invitation.</tas-hint>
+          }
+        </tas-form-field>
+      } @else {
+        <tas-form-field>
+          <tas-label>Lieu</tas-label>
+          <input tasInput type="text" placeholder="Agence, adresse du client…" [formField]="formSchema.location" />
+        </tas-form-field>
+      }
+
+      <!-- Avec qui -->
+      <div>
+        <p class="mb-2 text-sm font-medium text-slate-700">Concerne</p>
+        <div role="group" aria-label="Le rendez-vous concerne" class="inline-flex gap-1 rounded-full bg-slate-100 p-1">
+          @for (opt of subjectOptions; track opt.value) {
+            <button type="button" class="rounded-full px-4 py-1.5 text-sm font-semibold transition-colors"
+              [class]="subjectType() === opt.value ? 'bg-white text-primary shadow-xs' : 'text-slate-600 hover:text-slate-900'"
+              [attr.aria-pressed]="subjectType() === opt.value" (click)="setSubjectType(opt.value)">{{ opt.label }}</button>
+          }
+        </div>
+
+        @if (subjectType() !== 'none') {
+          <div class="mt-3 flex flex-col gap-3">
+            @if (subjectLabel()) {
+              <div class="flex items-center justify-between rounded-lg border border-primary/40 bg-primary/5 p-3">
+                <div class="text-sm">
+                  <p class="font-medium text-slate-700">{{ subjectLabel() }}</p>
+                  <p class="text-xs text-slate-500">{{ subjectType() === 'lead' ? 'Lead retenu' : 'Client retenu' }}</p>
+                </div>
+                <button tas-text-button color="warn" type="button" (click)="clearSubject()">Retirer</button>
+              </div>
+            } @else {
+              <tas-form-field>
+                <tas-label>{{ subjectType() === 'lead' ? 'Rechercher un lead' : 'Rechercher un client' }}</tas-label>
+                <input tasInput type="search" placeholder="Nom, téléphone…"
+                  [ngModel]="searchTerm()" (ngModelChange)="onSearchTermChange($event)" [ngModelOptions]="{ standalone: true }" />
+                <tas-hint>Tapez au moins deux caractères.</tas-hint>
+              </tas-form-field>
+
+              @if (isSearching()) {
+                <div class="flex justify-center py-3"><tas-spinner size="6" class="text-primary"></tas-spinner></div>
+              } @else if (results().length > 0) {
+                <ul class="divide-y divide-slate-100 rounded-lg border border-slate-200">
+                  @for (candidate of results(); track candidate.id) {
+                    <li>
+                      <button type="button" class="flex w-full items-center justify-between p-3 text-left hover:bg-slate-50" (click)="selectSubject(candidate)">
+                        <span class="text-sm">
+                          <span class="block font-medium text-slate-700">{{ candidate.label }}</span>
+                          @if (candidate.detail) { <span class="block text-xs text-slate-500">{{ candidate.detail }}</span> }
+                        </span>
+                        <tas-icon iconName="feather:plus" style="font-size:14px"></tas-icon>
+                      </button>
+                    </li>
+                  }
+                </ul>
+              } @else if (hasSearched() && searchTerm().trim().length >= 2) {
+                <p class="text-sm text-slate-500">Aucun résultat pour cette recherche.</p>
+              }
+            }
+
+            @if (formSchema.subjectId().touched() && formSchema.subjectId().invalid()) {
+              <p class="text-xs text-functional-error">{{ formSchema.subjectId().errors()[0].message }}</p>
+            }
+          </div>
+        }
+      </div>
+
+      <tas-form-field>
+        <tas-label>Participants</tas-label>
+        <tas-multi-select
+          [options]="userOptions()"
+          [placeholder]="isLoadingUsers() ? 'Chargement des collègues…' : 'Agents, managers…'"
+          [formField]="formSchema.participantIds"
+        ></tas-multi-select>
+        <tas-hint>Chaque participant reçoit l’invitation par e-mail et retrouve le rendez-vous dans sa journée.</tas-hint>
+      </tas-form-field>
+
+      <tas-form-field>
+        <tas-label>Détails</tas-label>
+        <textarea tasInput rows="3" placeholder="Ordre du jour, pièces à apporter…" [formField]="formSchema.description"></textarea>
+      </tas-form-field>
+
+      @if (submitError()) {
+        <p class="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{{ submitError() }}</p>
+      }
+    </form>
+  </tas-drawer-content>
+
+  <tas-drawer-action>
+    <div class="flex justify-end gap-3">
+      <button tas-outlined-button type="button" (click)="close()">Annuler</button>
+      <button tas-raised-button color="primary" type="button"
+        [disabled]="formSchema().submitting()"
+        [isLoading]="formSchema().submitting()"
+        (click)="handleSubmit()">
+        Créer le rendez-vous
+      </button>
+    </div>
+  </tas-drawer-action>
+</tas-side-drawer>

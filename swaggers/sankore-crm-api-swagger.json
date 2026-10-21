@@ -506,6 +506,83 @@
         }
       }
     },
+    "/api/v1/leads/appointments": {
+      "post": {
+        "tags": [
+          "Appointments"
+        ],
+        "operationId": "ScheduleAppointment",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScheduleAppointmentRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "422": {
+            "description": "Unprocessable Entity"
+          }
+        }
+      }
+    },
+    "/api/v1/leads/appointments/{appointmentId}/cancel": {
+      "post": {
+        "tags": [
+          "Appointments"
+        ],
+        "operationId": "CancelAppointment",
+        "parameters": [
+          {
+            "name": "appointmentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CancelAppointmentRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "422": {
+            "description": "Unprocessable Entity"
+          }
+        }
+      }
+    },
     "/api/v1/audit/entries": {
       "get": {
         "tags": [
@@ -25936,6 +26013,113 @@
         },
         "additionalProperties": false
       },
+      "AgendaAppointmentDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string",
+            "nullable": true
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "startAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "durationMinutes": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "timeZone": {
+            "type": "string",
+            "nullable": true
+          },
+          "mode": {
+            "enum": [
+              "InPerson",
+              "Online"
+            ],
+            "type": "string",
+            "description": "One of: InPerson, Online"
+          },
+          "meetingProvider": {
+            "enum": [
+              "Zoom",
+              "Teams",
+              "GoogleMeet",
+              "Other"
+            ],
+            "type": "string",
+            "description": "One of: Zoom, Teams, GoogleMeet, Other",
+            "nullable": true
+          },
+          "meetingUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "location": {
+            "type": "string",
+            "nullable": true
+          },
+          "leadId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "leadName": {
+            "type": "string",
+            "nullable": true
+          },
+          "clientId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "clientName": {
+            "type": "string",
+            "nullable": true
+          },
+          "organizerId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "organizerName": {
+            "type": "string",
+            "nullable": true
+          },
+          "isOrganizer": {
+            "type": "boolean"
+          },
+          "participants": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AgendaParticipantDto"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "AgendaParticipantDto": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "fullName": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "AgendaReminderDto": {
         "type": "object",
         "properties": {
@@ -27344,6 +27528,16 @@
           "displayOrder": {
             "type": "integer",
             "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "CancelAppointmentRequest": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -38610,6 +38804,13 @@
               "$ref": "#/components/schemas/AgendaAlertDto"
             },
             "nullable": true
+          },
+          "appointments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AgendaAppointmentDto"
+            },
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -43447,6 +43648,66 @@
             "items": {
               "$ref": "#/components/schemas/FormField"
             },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ScheduleAppointmentRequest": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "nullable": true
+          },
+          "startAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "durationMinutes": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "timeZone": {
+            "type": "string",
+            "nullable": true
+          },
+          "mode": {
+            "enum": [
+              "InPerson",
+              "Online"
+            ],
+            "type": "string",
+            "description": "One of: InPerson, Online"
+          },
+          "location": {
+            "type": "string",
+            "nullable": true
+          },
+          "meetingUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "leadId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "clientId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "participantIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "nullable": true
+          },
+          "description": {
+            "type": "string",
             "nullable": true
           }
         },

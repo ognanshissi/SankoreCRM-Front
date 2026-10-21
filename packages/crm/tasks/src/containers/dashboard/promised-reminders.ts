@@ -38,7 +38,7 @@ import { promisedLabel } from './my-day-meta';
                   <p class="truncate text-sm font-semibold text-slate-900">{{ r.leadName }}</p>
                   <p class="truncate text-xs text-red-700" [title]="r.title">{{ promised(r.at, now()) }}</p>
                 </div>
-                <my-day-contact [leadId]="r.leadId" [phone]="phoneOf(r)" [name]="r.leadName" variant="solid" [showWhatsapp]="false"></my-day-contact>
+                <my-day-contact [leadId]="r.leadId!" [phone]="phoneOf(r)" [name]="r.leadName" variant="solid" [showWhatsapp]="false"></my-day-contact>
               </div>
             </li>
           }
@@ -58,7 +58,7 @@ export class PromisedReminders {
   public readonly promised = promisedLabel;
 
   public phoneOf(entry: AgendaEntry): string | null {
-    return this.leads().get(entry.leadId)?.phoneNumber ?? null;
+    return (entry.leadId && this.leads().get(entry.leadId)?.phoneNumber) || null;
   }
 
   public open(entry: AgendaEntry): void {

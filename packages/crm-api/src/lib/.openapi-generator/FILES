@@ -3,6 +3,7 @@ README.md
 api.module.ts
 api/agencies.service.ts
 api/api.ts
+api/appointments.service.ts
 api/audit.service.ts
 api/auth.service.ts
 api/bootstrap.service.ts
@@ -102,6 +103,8 @@ model/agency-factor.interface.ts
 model/agency-tree-node-dto.interface.ts
 model/agenda-activity-dto.interface.ts
 model/agenda-alert-dto.interface.ts
+model/agenda-appointment-dto.interface.ts
+model/agenda-participant-dto.interface.ts
 model/agenda-reminder-dto.interface.ts
 model/agent-comparison-dto.interface.ts
 model/agent-performance-dto.interface.ts
@@ -150,6 +153,7 @@ model/call-log-page.interface.ts
 model/call-log-row.interface.ts
 model/call-log-stats.interface.ts
 model/call-outcome-dto.interface.ts
+model/cancel-appointment-request.interface.ts
 model/cancel-integration-command-request.interface.ts
 model/cancel-integration-command-result.interface.ts
 model/capture-answer.interface.ts
@@ -591,6 +595,7 @@ model/run-kyc-verification-request.interface.ts
 model/run-kyc-verification-response.interface.ts
 model/sab-settings.interface.ts
 model/save-entity-form-request.interface.ts
+model/schedule-appointment-request.interface.ts
 model/scheduled-pull-settings.interface.ts
 model/scoped-permission-dto.interface.ts
 model/score-history-dto.interface.ts
