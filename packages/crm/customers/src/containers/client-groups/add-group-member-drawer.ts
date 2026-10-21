@@ -41,6 +41,7 @@ import {
   clientTypeLabel,
   isArchivedStatus,
   isMergedStatus,
+  isKycApproved,
   kycStatusLabel,
 } from '../../models/client-labels';
 import { OFFICE_ROLE_OPTIONS, officeRoleToParam } from './group-labels';
@@ -280,10 +281,9 @@ export class AddGroupMemberDrawer {
     if (this.data.agencyId && client.agencyId && client.agencyId !== this.data.agencyId) {
       return "Rattaché à une autre agence que le groupe";
     }
-    // `kycStatus` revient tantôt nommé, tantôt sous forme d'index (précédent
-    // `LeadDto.gender`, qui vaut '1') : les deux formes de « Validated » comptent.
-    const kyc = String(client.kycStatus ?? '');
-    if (kyc !== 'Validated' && kyc !== '2') {
+    // Le serveur envoie `Approved` : comparé à « Validated » ou « 2 », tout client au KYC
+    // validé était refusé. `isKycApproved` accepte le nom, l'index et l'ancien alias.
+    if (!isKycApproved(client.kycStatus)) {
       return `KYC non validé (${kycStatusLabel(client.kycStatus)})`;
     }
     return null;

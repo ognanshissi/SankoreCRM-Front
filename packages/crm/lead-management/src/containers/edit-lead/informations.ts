@@ -149,6 +149,7 @@ export class LeadInformationsPage {
   });
 
   public readonly lead = this._leadEditContext.lead;
+  public readonly isConverted = this._leadEditContext.isConverted;
   public readonly isLoading = computed(() => !this._leadEditContext.isKnown());
 
   public readonly productLabel = computed(() => interestedProductLabel(this.lead()?.interestedProduct));

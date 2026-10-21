@@ -115,21 +115,38 @@ export function isKycRejectedStatus(value: RawEnum): boolean {
 
 // ——— Statut KYC ———
 
-export const KYC_STATUS_ORDER = ['NotStarted', 'Pending', 'Validated', 'Rejected', 'Expired'];
+/**
+ * L'ordre et les noms de `Sankore.Modules.Kyc.PublicApi.KycStatus`, que la fiche client porte.
+ * Ce référentiel connaissait `Validated` au lieu d'`Approved` et ignorait `InProgress` : un KYC
+ * validé ou en cours s'affichait en anglais brut, et l'index 2 désignait le mauvais statut.
+ * `Validated` reste en alias de lecture pour les valeurs déjà enregistrées ailleurs sous ce nom.
+ */
+export const KYC_STATUS_ORDER = ['NotStarted', 'Pending', 'InProgress', 'Approved', 'Rejected', 'Expired'];
 const KYC_STATUS_LABELS: Record<string, string> = {
   NotStarted: 'Non démarré',
   Pending: 'En attente',
+  InProgress: 'En cours',
+  Approved: 'Validé',
   Validated: 'Validé',
   Rejected: 'Rejeté',
   Expired: 'Expiré',
 };
+function kycCanonical(value: RawEnum): string | null {
+  return value === 'Validated' ? 'Approved' : canonical(value, KYC_STATUS_ORDER);
+}
 export function kycStatusLabel(value: RawEnum): string {
-  return label(value, KYC_STATUS_LABELS, KYC_STATUS_ORDER);
+  if (value === null || value === undefined || value === '') return '—';
+  const name = kycCanonical(value);
+  return name ? (KYC_STATUS_LABELS[name] ?? String(value)) : String(value);
+}
+export function isKycApproved(value: RawEnum): boolean {
+  return kycCanonical(value) === 'Approved';
 }
 export function kycStatusSeverity(value: RawEnum): Severity {
-  switch (canonical(value, KYC_STATUS_ORDER)) {
-    case 'Validated': return 'success';
-    case 'Pending':   return 'warning';
+  switch (kycCanonical(value)) {
+    case 'Approved':   return 'success';
+    case 'Pending':    return 'warning';
+    case 'InProgress': return 'warning';
     case 'Rejected':  return 'error';
     case 'Expired':   return 'error';
     default:          return 'neutral';

@@ -11,6 +11,8 @@
       [matches]="customerMatches()"
       [isLoading]="isLoadingMatches()"
       [loadFailed]="matchesFailed()"
+      [converted]="isConverted()"
+      [convertedCustomerId]="l.convertedToCustomerId ?? null"
       [fatcaEnabled]="fatcaEnabled()"
       [fatcaStatus]="fatcaStatus()"
       [canAct]="canLinkCustomer()"

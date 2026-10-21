@@ -4,7 +4,6 @@ import { TasIcon } from '@talisoft/ui/icon';
 import { Severity, TasTag } from '@talisoft/ui/tag';
 import { TasSpinner } from '@talisoft/ui/spinner';
 import { Button } from '@talisoft/ui/button';
-import { TableConfig, TasTable } from '@talisoft/ui/table';
 import { FatcaStatusBadge, holdingStatusLabel } from '@sankore/crm/common';
 import {
   ClientSearchItemDto,
@@ -224,14 +223,17 @@ export function customerMatchViewFromClient(
  * (la création retient un client en mémoire, la fiche appelle `attachLeadToCustomer`),
  * et c'est la seule chose qui diffère réellement entre les deux moments.
  *
- * La liste des candidats passe par `tas-table` même si le rendu est en cartes : on garde
- * ainsi l'état de chargement et l'état vide du composant du kit, et le rendu à 360 px
- * (cellule carte en `sm:hidden`, colonnes au-delà) sans refaire une pile de `div`.
+ * Les candidats ne passent **pas** par `tas-table` : exception voulue par le propriétaire
+ * du projet. C'est un aperçu d'une à quelques fiches, sans pagination ni recherche, et la
+ * table y ajoutait un paginateur et des en-têtes de colonnes pour une seule ligne.
+ *
+ * Sur un lead converti, il n'y a plus rien à rattacher ni à détacher : le bandeau se réduit
+ * au client issu de la conversion — sa référence et son statut KYC, sans action.
  */
 @Component({
   selector: 'customer-match-banner',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [TasCard, TasIcon, TasTag, TasSpinner, Button, TasTable, FatcaStatusBadge],
+  imports: [TasCard, TasIcon, TasTag, TasSpinner, Button, FatcaStatusBadge],
   template: `
     @if (isLoading()) {
       <div
@@ -254,6 +256,42 @@ export function customerMatchViewFromClient(
           le rattachement restera possible depuis la fiche lead.
         </p>
       </div>
+    } @else if (converted()) {
+      <!-- ===== Lead converti : le client issu de la conversion, en lecture seule ===== -->
+      @if (convertedClient(); as c) {
+        <tas-card class="block">
+          <div class="p-4 border-l-4 border-green-500">
+            <div class="flex items-center gap-2 flex-wrap">
+              <tas-icon
+                iconName="feather:user-check"
+                class="text-green-600"
+                style="font-size:14px"
+              ></tas-icon>
+              <p class="text-sm font-semibold text-slate-800">Client</p>
+              <tas-tag severity="success">Converti</tas-tag>
+            </div>
+            <p class="text-sm font-medium text-slate-800 mt-2 truncate">{{ c.displayName }}</p>
+            @if (c.agencyLabel) {
+              <p class="text-xs text-slate-500 mt-0.5">{{ c.agencyLabel }}</p>
+            }
+
+            <dl class="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <dt class="text-xs text-slate-400">Référence client</dt>
+                <dd class="text-sm font-medium text-slate-800 tabular-nums mt-0.5">
+                  {{ c.clientNumber ?? '—' }}
+                </dd>
+              </div>
+              <div>
+                <dt class="text-xs text-slate-400">Statut KYC</dt>
+                <dd class="mt-0.5">
+                  <tas-tag [severity]="kycSeverity(c.kycStatus)">{{ kycLabel(c.kycStatus) }}</tas-tag>
+                </dd>
+              </div>
+            </dl>
+          </div>
+        </tas-card>
+      }
     } @else if (linked()) {
       <!-- ===== Bandeau « Client existant » : le lead est rattaché (BNF-F-19) ===== -->
       <tas-card class="block">
@@ -391,190 +429,98 @@ export function customerMatchViewFromClient(
             </div>
           </div>
 
-          <div class="mt-3">
-            <tas-table
-              [data]="candidates()"
-              identifierField="customerId"
-              [config]="tableConfig"
-            >
-              <ng-template #header>
-                <tr>
-                  <th class="hidden sm:table-cell">Client</th>
-                  <th class="hidden sm:table-cell">Agence</th>
-                  <th class="hidden sm:table-cell">KYC</th>
-                  <th class="hidden sm:table-cell">Produits détenus</th>
-                  <th class="hidden sm:table-cell"></th>
-                </tr>
-              </ng-template>
-
-              <ng-template #body let-item>
-                <tr [class]="item.customerId === selectedCustomerId() ? 'bg-primary/5' : ''">
-                  <!-- Carte, sous 640 px -->
-                  <td class="sm:hidden" [attr.colspan]="5">
-                    <div class="p-3 flex flex-col gap-2">
-                      <div class="flex items-start justify-between gap-2">
-                        <div class="min-w-0">
-                          <p class="text-sm font-medium text-slate-800 truncate">
-                            {{ item.displayName }}
-                          </p>
-                          <p class="text-xs text-slate-500">
-                            @if (item.clientNumber) {
-                              <span class="tabular-nums">N° {{ item.clientNumber }}</span>
-                            }
-                            @if (item.agencyLabel) { · {{ item.agencyLabel }} }
-                          </p>
-                        </div>
-                        @if (item.customerId === selectedCustomerId()) {
-                          <tas-tag severity="success">Retenu</tas-tag>
-                        }
-                      </div>
-
-                      <span class="inline-flex items-center gap-1.5">
-                        <span class="text-xs text-slate-400">KYC</span>
-                        <tas-tag [severity]="kycSeverity(item.kycStatus)">
-                          {{ kycLabel(item.kycStatus) }}
-                        </tas-tag>
-                      </span>
-
-                      @if (item.matchedOnLabels.length > 0) {
-                        <p class="text-xs text-slate-400">
-                          Correspond sur : {{ item.matchedOnLabels.join(', ') }}
-                        </p>
-                      }
-
-                      @if (item.products && item.products.length > 0) {
-                        <div class="flex flex-wrap gap-1.5">
-                          @for (p of item.products; track p.holdingId) {
-                            <span
-                              class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-100 text-xs text-slate-600"
-                            >
-                              {{ p.label }}
-                              <span class="text-slate-400">— {{ p.statusLabel }}</span>
-                            </span>
-                          }
-                        </div>
-                      } @else if (item.products) {
-                        <p class="text-xs text-slate-400">Aucun produit détenu</p>
-                      }
-
-                      @for (conflict of item.conflicts; track conflict) {
-                        <p class="text-xs text-amber-700 flex items-start gap-1.5">
-                          <tas-icon
-                            iconName="feather:alert-triangle"
-                            class="text-amber-600 shrink-0 mt-0.5"
-                            style="font-size:12px"
-                          ></tas-icon>
-                          {{ conflict }}
-                        </p>
-                      }
-
-                      <div class="flex flex-wrap items-center gap-2 pt-1">
-                        @if (canAct()) {
-                          <button
-                            tas-outlined-button
-                            color="primary"
-                            type="button"
-                            class="text-xs"
-                            [disabled]="item.customerId === selectedCustomerId()"
-                            (click)="matchSelected.emit(item)"
-                          >
-                            {{ selectLabel() }}
-                          </button>
-                        }
-                        @if (canOpenCustomer()) {
-                          <button
-                            tas-text-button
-                            color="primary"
-                            type="button"
-                            class="text-xs"
-                            (click)="openCustomer.emit(item.customerId)"
-                          >
-                            Fiche client
-                          </button>
-                        }
-                      </div>
-                    </div>
-                  </td>
-
-                  <!-- Colonnes, à partir de 640 px -->
-                  <td class="hidden sm:table-cell py-3">
-                    <div class="flex items-center gap-2 flex-wrap">
-                      <span class="text-sm font-medium text-slate-800">{{ item.displayName }}</span>
-                      @if (item.customerId === selectedCustomerId()) {
-                        <tas-tag severity="success">Retenu</tas-tag>
-                      }
-                    </div>
+          <ul class="mt-3 divide-y divide-slate-100 rounded-lg border border-slate-200">
+            @for (item of candidates(); track item.customerId) {
+              <li
+                class="p-3 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"
+                [class]="item.customerId === selectedCustomerId() ? 'bg-primary/5' : ''"
+              >
+                <div class="min-w-0 flex flex-col gap-1">
+                  <div class="flex items-center gap-2 flex-wrap">
+                    <span class="text-sm font-medium text-slate-800">{{ item.displayName }}</span>
+                    @if (item.customerId === selectedCustomerId()) {
+                      <tas-tag severity="success">Retenu</tas-tag>
+                    }
+                  </div>
+                  <p class="text-xs text-slate-500">
                     @if (item.clientNumber) {
-                      <p class="text-xs text-slate-400 tabular-nums">N° {{ item.clientNumber }}</p>
+                      <span class="tabular-nums">N° {{ item.clientNumber }}</span>
                     }
-                    @if (item.matchedOnLabels.length > 0) {
-                      <p class="text-xs text-slate-400">
-                        Correspond sur : {{ item.matchedOnLabels.join(', ') }}
-                      </p>
-                    }
-                  </td>
+                    @if (item.agencyLabel) { · {{ item.agencyLabel }} }
+                    @if (item.statusLabel) { · {{ item.statusLabel }} }
+                  </p>
+                  @if (item.matchedOnLabels.length > 0) {
+                    <p class="text-xs text-slate-400">
+                      Correspond sur : {{ item.matchedOnLabels.join(', ') }}
+                    </p>
+                  }
 
-                  <td class="hidden sm:table-cell">
-                    <span class="text-sm text-slate-700">{{ item.agencyLabel ?? '—' }}</span>
-                    @if (item.statusLabel) {
-                      <span class="block text-xs text-slate-400">{{ item.statusLabel }}</span>
-                    }
-                  </td>
+                  @if (item.products && item.products.length > 0) {
+                    <div class="flex flex-wrap gap-1.5 mt-1">
+                      @for (p of item.products; track p.holdingId) {
+                        <span
+                          class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-100 text-xs text-slate-600"
+                        >
+                          {{ p.label }} <span class="text-slate-400">— {{ p.statusLabel }}</span>
+                        </span>
+                      }
+                    </div>
+                  } @else if (item.products) {
+                    <p class="text-xs text-slate-400">Aucun produit détenu</p>
+                  }
 
-                  <td class="hidden sm:table-cell">
+                  @for (conflict of item.conflicts; track conflict) {
+                    <p class="text-xs text-amber-700 flex items-start gap-1.5">
+                      <tas-icon
+                        iconName="feather:alert-triangle"
+                        class="text-amber-600 shrink-0 mt-0.5"
+                        style="font-size:12px"
+                      ></tas-icon>
+                      {{ conflict }}
+                    </p>
+                  }
+                </div>
+
+                <div class="flex flex-col items-start sm:items-end gap-2 shrink-0">
+                  <!-- Un libellé accompagne toujours le badge : la couleur ne porte
+                       jamais seule l'information (WCAG 2.1 AA). -->
+                  <span class="inline-flex items-center gap-1.5">
+                    <span class="text-xs text-slate-400">KYC</span>
                     <tas-tag [severity]="kycSeverity(item.kycStatus)">
                       {{ kycLabel(item.kycStatus) }}
                     </tas-tag>
-                  </td>
-
-                  <td class="hidden sm:table-cell">
-                    @if (item.products && item.products.length > 0) {
-                      <ul class="flex flex-col gap-0.5">
-                        @for (p of item.products; track p.holdingId) {
-                          <li class="text-xs text-slate-600">
-                            {{ p.label }} <span class="text-slate-400">— {{ p.statusLabel }}</span>
-                          </li>
-                        }
-                      </ul>
-                    } @else {
-                      <span class="text-sm text-slate-400">—</span>
+                  </span>
+                  <div class="flex flex-wrap items-center gap-2">
+                    @if (canAct()) {
+                      <button
+                        tas-outlined-button
+                        color="primary"
+                        type="button"
+                        class="text-xs"
+                        [disabled]="item.customerId === selectedCustomerId()"
+                        (click)="matchSelected.emit(item)"
+                      >
+                        {{ selectLabel() }}
+                      </button>
                     }
-                    @for (conflict of item.conflicts; track conflict) {
-                      <p class="text-xs text-amber-700 mt-1">{{ conflict }}</p>
+                    @if (canOpenCustomer()) {
+                      <button
+                        tas-text-button
+                        color="primary"
+                        type="button"
+                        class="text-xs"
+                        [attr.aria-label]="'Ouvrir la fiche de ' + item.displayName"
+                        (click)="openCustomer.emit(item.customerId)"
+                      >
+                        <tas-icon iconName="feather:external-link" style="font-size:12px"></tas-icon>
+                        Fiche client
+                      </button>
                     }
-                  </td>
-
-                  <td class="hidden sm:table-cell text-right">
-                    <div class="flex items-center justify-end gap-1.5">
-                      @if (canAct()) {
-                        <button
-                          tas-outlined-button
-                          color="primary"
-                          type="button"
-                          class="text-xs"
-                          [disabled]="item.customerId === selectedCustomerId()"
-                          (click)="matchSelected.emit(item)"
-                        >
-                          {{ selectLabel() }}
-                        </button>
-                      }
-                      @if (canOpenCustomer()) {
-                        <button
-                          tas-button
-                          iconButton
-                          type="button"
-                          [attr.aria-label]="'Ouvrir la fiche de ' + item.displayName"
-                          (click)="openCustomer.emit(item.customerId)"
-                        >
-                          <tas-icon iconName="feather:external-link" style="font-size:13px"></tas-icon>
-                        </button>
-                      }
-                    </div>
-                  </td>
-                </tr>
-              </ng-template>
-            </tas-table>
-          </div>
+                  </div>
+                </div>
+              </li>
+            }
+          </ul>
 
           <div class="mt-3 flex flex-wrap items-center gap-2">
             @if (canAct() && showRejectAction()) {
@@ -602,6 +548,11 @@ export class CustomerMatchBanner {
   /** L'appel de correspondance a échoué : on le dit, sans bloquer le parcours. */
   public readonly loadFailed = input(false);
   public readonly selectedCustomerId = input<string | null>(null);
+
+  /** Lead converti : le bandeau ne montre plus que le client issu de la conversion. */
+  public readonly converted = input(false);
+  /** `LeadDto.convertedToCustomerId`, pour retrouver ce client parmi les correspondances. */
+  public readonly convertedCustomerId = input<string | null>(null);
 
   /** Statut FATCA du principal, tel que le porte `LeadComplianceStore` (BNF-F-19). */
   public readonly fatcaStatus = input<string | null>(null);
@@ -640,6 +591,16 @@ export class CustomerMatchBanner {
   public readonly candidates = computed(() => this.matches().filter((m) => !m.alreadyLinked));
 
   /**
+   * Le client issu de la conversion. Il revient parmi les correspondances (le lead et la fiche
+   * créée partagent téléphone, e-mail et pièce) ; à défaut, le client auquel le lead était déjà
+   * rattaché avant de convertir. Rien sinon : l'avis de conversion porte déjà le lien vers la fiche.
+   */
+  public readonly convertedClient = computed(() => {
+    const id = this.convertedCustomerId();
+    return (id ? this.matches().find((m) => m.customerId === id) : undefined) ?? this.linked();
+  });
+
+  /**
    * Correspondance exacte **et** unique : c'est le seul cas où le rattachement est
    * proposé par défaut. Dès qu'il y a plusieurs candidats, le choix doit rester
    * explicite — c'est la différence que BNF-F-18 demande de faire voir.
@@ -648,20 +609,6 @@ export class CustomerMatchBanner {
     const list = this.candidates();
     return list.length === 1 && list[0].isExact;
   });
-
-  /**
-   * Pagination côté client : les correspondances arrivent entières (tableau non paginé
-   * au contrat), et une liste de candidats tient par construction sur un écran.
-   */
-  public readonly tableConfig: TableConfig = {
-    property: 'matches',
-    pagination: {
-      serverSide: false,
-      pageIndex: 0,
-      pageSize: 20,
-      pageSizeOptions: [20],
-    },
-  };
 
   public kycLabel(status: string | null): string {
     return kycStatusLabel(status);
