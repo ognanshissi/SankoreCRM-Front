@@ -5802,15 +5802,16 @@
           {
             "name": "family",
             "in": "query",
-            "description": "One of: CoreBanking, Insurance, Telephony",
+            "description": "One of: CoreBanking, Insurance, Telephony, Messaging",
             "schema": {
               "enum": [
                 "CoreBanking",
                 "Insurance",
-                "Telephony"
+                "Telephony",
+                "Messaging"
               ],
               "type": "string",
-              "description": "One of: CoreBanking, Insurance, Telephony"
+              "description": "One of: CoreBanking, Insurance, Telephony, Messaging"
             }
           },
           {
@@ -16727,6 +16728,84 @@
         }
       }
     },
+    "/api/v1/my-notifications": {
+      "get": {
+        "tags": [
+          "Notifications"
+        ],
+        "summary": "The signed-in user's notifications, newest first, with the unread count",
+        "operationId": "ListMyNotifications",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "unreadOnly",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyNotificationsDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/my-notifications/{id}/read": {
+      "post": {
+        "tags": [
+          "Notifications"
+        ],
+        "operationId": "MarkMyNotificationRead",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/api/v1/my-notifications/read-all": {
+      "post": {
+        "tags": [
+          "Notifications"
+        ],
+        "operationId": "MarkAllMyNotificationsRead",
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        }
+      }
+    },
     "/api/v1/leads/nurturing-sequences": {
       "get": {
         "tags": [
@@ -23195,6 +23274,1122 @@
         }
       }
     },
+    "/integration/webhooks/whatsapp/{provider}": {
+      "post": {
+        "tags": [
+          "WhatsApp"
+        ],
+        "operationId": "WhatsAppWebhook",
+        "parameters": [
+          {
+            "name": "provider",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/v1/leads/{leadId}/whatsapp": {
+      "get": {
+        "tags": [
+          "WhatsApp"
+        ],
+        "summary": "The lead's WhatsApp state: consent, number, channel, conversation, and why sending is blocked",
+        "operationId": "GetLeadWhatsApp",
+        "parameters": [
+          {
+            "name": "leadId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WhatsAppPanelDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/api/v1/leads/{leadId}/whatsapp/messages": {
+      "get": {
+        "tags": [
+          "WhatsApp"
+        ],
+        "summary": "The lead's WhatsApp thread, newest first; pass nextBefore back as `before` for older messages",
+        "operationId": "ListLeadWhatsAppMessages",
+        "parameters": [
+          {
+            "name": "leadId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "before",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WhatsAppMessagePageDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/api/v1/leads/{leadId}/whatsapp/read": {
+      "post": {
+        "tags": [
+          "WhatsApp"
+        ],
+        "operationId": "MarkLeadWhatsAppRead",
+        "parameters": [
+          {
+            "name": "leadId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        }
+      }
+    },
+    "/api/v1/leads/{leadId}/whatsapp/messages/{messageId}/media": {
+      "get": {
+        "tags": [
+          "WhatsApp"
+        ],
+        "operationId": "GetLeadWhatsAppMedia",
+        "parameters": [
+          {
+            "name": "leadId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "messageId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "$ref": "#/components/schemas/Void"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/api/v1/leads/{leadId}/whatsapp/compose": {
+      "get": {
+        "tags": [
+          "WhatsApp"
+        ],
+        "summary": "The approved templates for this lead's product, with their variables pre-filled from the lead",
+        "operationId": "ComposeLeadWhatsApp",
+        "parameters": [
+          {
+            "name": "leadId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/WhatsAppComposeTemplateDto"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/api/v1/leads/{leadId}/whatsapp/send-template": {
+      "post": {
+        "tags": [
+          "WhatsApp"
+        ],
+        "summary": "Queues an approved template for the lead; the provider is called out of band",
+        "description": "Refused with 422 and one of: WHATSAPP_LEAD_CLOSED, WHATSAPP_CONSENT_MISSING, WHATSAPP_CONSENT_REVOKED, WHATSAPP_PHONE_INVALID, WHATSAPP_CHANNEL_INACTIVE, WHATSAPP_TEMPLATE_COOLDOWN (another template less than 24 h ago without an answer — WhatsApp.Send.Force lifts it), WHATSAPP_TEMPLATE_NOT_FOUND, WHATSAPP_TEMPLATE_NOT_APPROVED, WHATSAPP_TEMPLATE_NOT_FOR_PRODUCT, WHATSAPP_VARIABLES_INVALID. The message is then Queued; its status follows on the thread. Requires permission: WhatsApp.Send.",
+        "operationId": "SendLeadWhatsAppTemplate",
+        "parameters": [
+          {
+            "name": "leadId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SendWhatsAppTemplateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SendWhatsAppTemplateResult"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "422": {
+            "description": "Unprocessable Entity"
+          }
+        }
+      }
+    },
+    "/api/v1/leads/{leadId}/whatsapp/conversations/{conversationId}/takeover": {
+      "post": {
+        "tags": [
+          "WhatsApp"
+        ],
+        "summary": "Takes the conversation over: the caller becomes its only holder and its takeover SLA stops",
+        "operationId": "TakeOverLeadWhatsApp",
+        "parameters": [
+          {
+            "name": "leadId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "conversationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "422": {
+            "description": "Unprocessable Entity"
+          }
+        }
+      }
+    },
+    "/api/v1/leads/{leadId}/whatsapp/conversations/{conversationId}/messages": {
+      "post": {
+        "tags": [
+          "WhatsApp"
+        ],
+        "summary": "Queues a free text message — holder only, inside the 24-hour window",
+        "description": "Refused with 422: WHATSAPP_NOT_HOLDER, WHATSAPP_WINDOW_CLOSED, WHATSAPP_CONSENT_REVOKED, WHATSAPP_TEXT_INVALID. Requires permission: WhatsApp.Reply.",
+        "operationId": "SendLeadWhatsAppText",
+        "parameters": [
+          {
+            "name": "leadId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "conversationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SendWhatsAppTextRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity"
+          }
+        }
+      }
+    },
+    "/api/v1/leads/{leadId}/whatsapp/conversations/{conversationId}/media": {
+      "post": {
+        "tags": [
+          "WhatsApp"
+        ],
+        "summary": "Sends an image (JPEG, PNG, 5 MB) or a PDF (10 MB) — holder only, inside the window",
+        "operationId": "SendLeadWhatsAppMedia",
+        "parameters": [
+          {
+            "name": "leadId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "conversationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "allOf": [
+                  {
+                    "required": [
+                      "file"
+                    ],
+                    "type": "object",
+                    "properties": {
+                      "file": {
+                        "type": "string",
+                        "format": "binary"
+                      }
+                    }
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "caption": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                ]
+              },
+              "encoding": {
+                "file": {
+                  "style": "form"
+                },
+                "caption": {
+                  "style": "form"
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SendWhatsAppMediaResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity"
+          }
+        }
+      }
+    },
+    "/api/v1/leads/{leadId}/whatsapp/conversations/{conversationId}/return-to-bot": {
+      "post": {
+        "tags": [
+          "WhatsApp"
+        ],
+        "operationId": "ReturnLeadWhatsAppToBot",
+        "parameters": [
+          {
+            "name": "leadId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "conversationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "422": {
+            "description": "Unprocessable Entity"
+          }
+        }
+      }
+    },
+    "/api/v1/leads/{leadId}/whatsapp/conversations/{conversationId}/close": {
+      "post": {
+        "tags": [
+          "WhatsApp"
+        ],
+        "summary": "Closes the conversation with a reason; the customer's next message reopens it",
+        "operationId": "CloseLeadWhatsApp",
+        "parameters": [
+          {
+            "name": "leadId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "conversationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CloseWhatsAppConversationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "422": {
+            "description": "Unprocessable Entity"
+          }
+        }
+      }
+    },
+    "/api/v1/leads/{leadId}/whatsapp/conversations/{conversationId}/reassign": {
+      "post": {
+        "tags": [
+          "WhatsApp"
+        ],
+        "summary": "Hands the conversation to an agent of the supervisor's team",
+        "operationId": "ReassignLeadWhatsApp",
+        "parameters": [
+          {
+            "name": "leadId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "conversationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReassignWhatsAppConversationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "422": {
+            "description": "Unprocessable Entity"
+          }
+        }
+      }
+    },
+    "/api/v1/leads/whatsapp/conversations": {
+      "get": {
+        "tags": [
+          "WhatsApp"
+        ],
+        "summary": "The caller's WhatsApp queue, by tab, sorted by urgency, within their perimeter",
+        "operationId": "ListWhatsAppConversations",
+        "parameters": [
+          {
+            "name": "tab",
+            "in": "query",
+            "description": "One of: ToHandle, Bot, Human, AwaitingReply, Closed",
+            "schema": {
+              "enum": [
+                "ToHandle",
+                "Bot",
+                "Human",
+                "AwaitingReply",
+                "Closed"
+              ],
+              "type": "string",
+              "description": "One of: ToHandle, Bot, Human, AwaitingReply, Closed"
+            }
+          },
+          {
+            "name": "agentId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "productLineId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "unreadOnly",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WhatsAppInboxDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        }
+      }
+    },
+    "/api/v1/leads/whatsapp/templates": {
+      "get": {
+        "tags": [
+          "WhatsApp"
+        ],
+        "operationId": "ListWhatsAppTemplates",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/WhatsAppTemplateDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/leads/whatsapp/templates/sync": {
+      "post": {
+        "tags": [
+          "WhatsApp"
+        ],
+        "summary": "Reads every active number's template catalogue from the provider now",
+        "operationId": "SyncWhatsAppTemplates",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WhatsAppTemplateSyncResult"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/leads/whatsapp/templates/{templateId}": {
+      "put": {
+        "tags": [
+          "WhatsApp"
+        ],
+        "summary": "Sets the products a template is offered for and the lead field behind each variable",
+        "operationId": "ConfigureWhatsAppTemplate",
+        "parameters": [
+          {
+            "name": "templateId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfigureWhatsAppTemplateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WhatsAppTemplateDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "422": {
+            "description": "Unprocessable Entity"
+          }
+        }
+      }
+    },
+    "/api/v1/integration/messaging/channels": {
+      "get": {
+        "tags": [
+          "WhatsApp"
+        ],
+        "summary": "The institution's WhatsApp numbers, with their status and credential hints",
+        "operationId": "ListWhatsAppChannels",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/WhatsAppChannelDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "WhatsApp"
+        ],
+        "summary": "Registers a WhatsApp number (inactive until tested and activated)",
+        "description": "Creates the number's connection in the Messaging family. It starts inactive: save its 360dialog API key, test it, then activate it. `simulated: true` creates an in-memory number instead, in Development only. A phone-number id already active elsewhere answers 409 MESSAGING_NUMBER_ALREADY_CONNECTED at activation. Requires permission: WhatsApp.Config.",
+        "operationId": "CreateWhatsAppChannel",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveWhatsAppChannelRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/integration/messaging/channels/{id}": {
+      "put": {
+        "tags": [
+          "WhatsApp"
+        ],
+        "operationId": "UpdateWhatsAppChannel",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveWhatsAppChannelRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "409": {
+            "description": "Conflict"
+          }
+        }
+      }
+    },
+    "/api/v1/integration/messaging/channels/{id}/api-key": {
+      "put": {
+        "tags": [
+          "WhatsApp"
+        ],
+        "summary": "Stores the number's 360dialog API key in the vault. Never returned.",
+        "operationId": "SetWhatsAppChannelApiKey",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetWhatsAppApiKeyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/api/v1/integration/messaging/channels/{id}/check": {
+      "post": {
+        "tags": [
+          "WhatsApp"
+        ],
+        "summary": "Tests the connection with 360dialog and records the verdict",
+        "operationId": "CheckWhatsAppChannel",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectionHealthDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/api/v1/integration/messaging/channels/{id}/activate": {
+      "post": {
+        "tags": [
+          "WhatsApp"
+        ],
+        "operationId": "ActivateWhatsAppChannel",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "409": {
+            "description": "Conflict"
+          },
+          "422": {
+            "description": "Unprocessable Entity"
+          }
+        }
+      }
+    },
+    "/api/v1/integration/messaging/channels/{id}/deactivate": {
+      "post": {
+        "tags": [
+          "WhatsApp"
+        ],
+        "operationId": "DeactivateWhatsAppChannel",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/api/v1/integration/messaging/channels/{id}/webhook": {
+      "post": {
+        "tags": [
+          "WhatsApp"
+        ],
+        "summary": "Generates the webhook token and points 360dialog's webhook at this platform",
+        "description": "Generates a fresh webhook token, stores it in the vault, and asks 360dialog to deliver to this platform's WhatsApp webhook with the token as the X-Sankore-Webhook-Token header. Running it again rotates the token. The URL is built from Integration:Messaging:PublicBaseUrl when configured, otherwise from the address this request was made to. Requires permission: WhatsApp.Config.",
+        "operationId": "ConfigureWhatsAppWebhook",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfigureWhatsAppWebhookResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "422": {
+            "description": "Unprocessable Entity"
+          }
+        }
+      }
+    },
+    "/api/v1/integration/messaging/channels/{id}/simulate/inbound": {
+      "post": {
+        "tags": [
+          "WhatsApp"
+        ],
+        "summary": "DEVELOPMENT ONLY — a customer writes to this number",
+        "description": "Builds a Cloud API delivery for one text message and runs the REAL webhook path: token verification, storage, the processing job, the attachment to a lead. Answers 404 outside Development.",
+        "operationId": "SimulateWhatsAppInbound",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SimulateWhatsAppInboundRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Accepted"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/api/v1/integration/messaging/channels/{id}/simulate/status": {
+      "post": {
+        "tags": [
+          "WhatsApp"
+        ],
+        "summary": "DEVELOPMENT ONLY — the provider reports a delivery status",
+        "operationId": "SimulateWhatsAppStatus",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SimulateWhatsAppStatusRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Accepted"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
     "/api/v1/workflow/analytics/templates/{templateId}/stats": {
       "get": {
         "tags": [
@@ -26387,6 +27582,9 @@
             "type": "string",
             "format": "date-time",
             "nullable": true
+          },
+          "notificationSound": {
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -26504,10 +27702,11 @@
               "PerfectVision",
               "Orass",
               "Ringover",
-              "Fake"
+              "Fake",
+              "Dialog360"
             ],
             "type": "string",
-            "description": "One of: Temenos, Amplitude, Sab, PerfectVision, Orass, Ringover, Fake",
+            "description": "One of: Temenos, Amplitude, Sab, PerfectVision, Orass, Ringover, Fake, Dialog360",
             "readOnly": true
           },
           "amplitudeVersion": {
@@ -29075,6 +30274,16 @@
         },
         "additionalProperties": false
       },
+      "CloseWhatsAppConversationRequest": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "CompanyInfoDto": {
         "type": "object",
         "properties": {
@@ -29479,6 +30688,37 @@
         },
         "additionalProperties": false
       },
+      "ConfigureWhatsAppTemplateRequest": {
+        "type": "object",
+        "properties": {
+          "productLineIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "nullable": true
+          },
+          "variableMappings": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WhatsAppVariableMappingDto"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ConfigureWhatsAppWebhookResponse": {
+        "type": "object",
+        "properties": {
+          "webhookUrl": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "ConnectionDetailDto": {
         "type": "object",
         "properties": {
@@ -29490,10 +30730,11 @@
             "enum": [
               "CoreBanking",
               "Insurance",
-              "Telephony"
+              "Telephony",
+              "Messaging"
             ],
             "type": "string",
-            "description": "One of: CoreBanking, Insurance, Telephony"
+            "description": "One of: CoreBanking, Insurance, Telephony, Messaging"
           },
           "kind": {
             "enum": [
@@ -29503,10 +30744,11 @@
               "PerfectVision",
               "Orass",
               "Ringover",
-              "Fake"
+              "Fake",
+              "Dialog360"
             ],
             "type": "string",
-            "description": "One of: Temenos, Amplitude, Sab, PerfectVision, Orass, Ringover, Fake"
+            "description": "One of: Temenos, Amplitude, Sab, PerfectVision, Orass, Ringover, Fake, Dialog360"
           },
           "mode": {
             "enum": [
@@ -29605,10 +30847,11 @@
             "enum": [
               "CoreBanking",
               "Insurance",
-              "Telephony"
+              "Telephony",
+              "Messaging"
             ],
             "type": "string",
-            "description": "One of: CoreBanking, Insurance, Telephony"
+            "description": "One of: CoreBanking, Insurance, Telephony, Messaging"
           },
           "kind": {
             "enum": [
@@ -29618,10 +30861,11 @@
               "PerfectVision",
               "Orass",
               "Ringover",
-              "Fake"
+              "Fake",
+              "Dialog360"
             ],
             "type": "string",
-            "description": "One of: Temenos, Amplitude, Sab, PerfectVision, Orass, Ringover, Fake"
+            "description": "One of: Temenos, Amplitude, Sab, PerfectVision, Orass, Ringover, Fake, Dialog360"
           },
           "mode": {
             "enum": [
@@ -29703,6 +30947,9 @@
           },
           {
             "$ref": "#/components/schemas/FakeSettings"
+          },
+          {
+            "$ref": "#/components/schemas/Dialog360Settings"
           }
         ],
         "description": "Per-kind connection coordinates. The \"$kind\" discriminator is REQUIRED and names the connection kind; it is matched case-insensitively and must agree with the row's own \"kind\". Never carries a credential — only a vault reference.",
@@ -29715,7 +30962,8 @@
             "PerfectVision": "#/components/schemas/PerfectVisionSettings",
             "Orass": "#/components/schemas/OrassSettings",
             "Ringover": "#/components/schemas/RingoverSettings",
-            "Fake": "#/components/schemas/FakeSettings"
+            "Fake": "#/components/schemas/FakeSettings",
+            "Dialog360": "#/components/schemas/Dialog360Settings"
           }
         }
       },
@@ -29741,6 +30989,10 @@
             "nullable": true
           },
           "providerContractRef": {
+            "type": "string",
+            "nullable": true
+          },
+          "whatsAppConsentFieldPath": {
             "type": "string",
             "nullable": true
           }
@@ -30117,10 +31369,11 @@
             "enum": [
               "CoreBanking",
               "Insurance",
-              "Telephony"
+              "Telephony",
+              "Messaging"
             ],
             "type": "string",
-            "description": "One of: CoreBanking, Insurance, Telephony"
+            "description": "One of: CoreBanking, Insurance, Telephony, Messaging"
           },
           "kind": {
             "enum": [
@@ -30130,10 +31383,11 @@
               "PerfectVision",
               "Orass",
               "Ringover",
-              "Fake"
+              "Fake",
+              "Dialog360"
             ],
             "type": "string",
-            "description": "One of: Temenos, Amplitude, Sab, PerfectVision, Orass, Ringover, Fake"
+            "description": "One of: Temenos, Amplitude, Sab, PerfectVision, Orass, Ringover, Fake, Dialog360"
           },
           "mode": {
             "enum": [
@@ -32303,6 +33557,113 @@
         },
         "additionalProperties": false
       },
+      "Dialog360Settings": {
+        "required": [
+          "$kind"
+        ],
+        "type": "object",
+        "properties": {
+          "schemaVersion": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "rateLimitPerMinute": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "circuitBreakerFailureThreshold": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "circuitBreakerBreakSeconds": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "timeoutSeconds": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "syncIntervalMinutes": {
+            "type": "object",
+            "properties": {
+              "Customers": {
+                "type": "integer",
+                "format": "int32"
+              },
+              "Accounts": {
+                "type": "integer",
+                "format": "int32"
+              },
+              "Transactions": {
+                "type": "integer",
+                "format": "int32"
+              },
+              "Loans": {
+                "type": "integer",
+                "format": "int32"
+              },
+              "Policies": {
+                "type": "integer",
+                "format": "int32"
+              },
+              "Claims": {
+                "type": "integer",
+                "format": "int32"
+              },
+              "Calls": {
+                "type": "integer",
+                "format": "int32"
+              }
+            },
+            "additionalProperties": false,
+            "nullable": true
+          },
+          "expectedKind": {
+            "enum": [
+              "Temenos",
+              "Amplitude",
+              "Sab",
+              "PerfectVision",
+              "Orass",
+              "Ringover",
+              "Fake",
+              "Dialog360"
+            ],
+            "type": "string",
+            "description": "One of: Temenos, Amplitude, Sab, PerfectVision, Orass, Ringover, Fake, Dialog360",
+            "readOnly": true
+          },
+          "phoneNumberId": {
+            "type": "string",
+            "nullable": true
+          },
+          "wabaId": {
+            "type": "string",
+            "nullable": true
+          },
+          "displayPhoneNumber": {
+            "type": "string",
+            "nullable": true
+          },
+          "agencyId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "apiBaseUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "$kind": {
+            "enum": [
+              "Dialog360"
+            ],
+            "type": "string",
+            "description": "Discriminator. Must be \"Dialog360\" for these settings."
+          }
+        },
+        "additionalProperties": false
+      },
       "DismissDuplicateRequest": {
         "type": "object",
         "properties": {
@@ -33493,22 +34854,28 @@
               "PerfectVision",
               "Orass",
               "Ringover",
-              "Fake"
+              "Fake",
+              "Dialog360"
             ],
             "type": "string",
-            "description": "One of: Temenos, Amplitude, Sab, PerfectVision, Orass, Ringover, Fake",
+            "description": "One of: Temenos, Amplitude, Sab, PerfectVision, Orass, Ringover, Fake, Dialog360",
             "readOnly": true
           },
           "family": {
             "enum": [
               "CoreBanking",
               "Insurance",
-              "Telephony"
+              "Telephony",
+              "Messaging"
             ],
             "type": "string",
-            "description": "One of: CoreBanking, Insurance, Telephony"
+            "description": "One of: CoreBanking, Insurance, Telephony, Messaging"
           },
           "forcedErrorCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "phoneNumberId": {
             "type": "string",
             "nullable": true
           },
@@ -34379,6 +35746,10 @@
             "type": "string",
             "nullable": true
           },
+          "whatsAppConsentText": {
+            "type": "string",
+            "nullable": true
+          },
           "submitLabel": {
             "type": "string",
             "nullable": true
@@ -34465,6 +35836,43 @@
           }
         },
         "additionalProperties": false
+      },
+      "HttpValidationProblemDetails": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "nullable": true
+          },
+          "title": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "detail": {
+            "type": "string",
+            "nullable": true
+          },
+          "instance": {
+            "type": "string",
+            "nullable": true
+          },
+          "errors": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": { }
       },
       "ImpersonateUserRequest": {
         "type": "object",
@@ -34615,10 +36023,11 @@
               "PerfectVision",
               "Orass",
               "Ringover",
-              "Fake"
+              "Fake",
+              "Dialog360"
             ],
             "type": "string",
-            "description": "One of: Temenos, Amplitude, Sab, PerfectVision, Orass, Ringover, Fake"
+            "description": "One of: Temenos, Amplitude, Sab, PerfectVision, Orass, Ringover, Fake, Dialog360"
           },
           "insurerProductCode": {
             "type": "string",
@@ -38837,6 +40246,58 @@
         },
         "additionalProperties": false
       },
+      "MyNotificationDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "category": {
+            "type": "string",
+            "nullable": true
+          },
+          "title": {
+            "type": "string",
+            "nullable": true
+          },
+          "body": {
+            "type": "string",
+            "nullable": true
+          },
+          "link": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "readAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "MyNotificationsDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MyNotificationDto"
+            },
+            "nullable": true
+          },
+          "unreadCount": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
       "MyPerformanceDto": {
         "type": "object",
         "properties": {
@@ -39430,10 +40891,11 @@
               "PerfectVision",
               "Orass",
               "Ringover",
-              "Fake"
+              "Fake",
+              "Dialog360"
             ],
             "type": "string",
-            "description": "One of: Temenos, Amplitude, Sab, PerfectVision, Orass, Ringover, Fake",
+            "description": "One of: Temenos, Amplitude, Sab, PerfectVision, Orass, Ringover, Fake, Dialog360",
             "readOnly": true
           },
           "baseUrl": {
@@ -40455,10 +41917,11 @@
               "PerfectVision",
               "Orass",
               "Ringover",
-              "Fake"
+              "Fake",
+              "Dialog360"
             ],
             "type": "string",
-            "description": "One of: Temenos, Amplitude, Sab, PerfectVision, Orass, Ringover, Fake",
+            "description": "One of: Temenos, Amplitude, Sab, PerfectVision, Orass, Ringover, Fake, Dialog360",
             "readOnly": true
           },
           "balanceViewName": {
@@ -41642,6 +43105,16 @@
         },
         "additionalProperties": false
       },
+      "ReassignWhatsAppConversationRequest": {
+        "type": "object",
+        "properties": {
+          "agentId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "additionalProperties": false
+      },
       "RecalculateLeadScoreResult": {
         "type": "object",
         "properties": {
@@ -41924,10 +43397,11 @@
               "ProfilingAndAnalytics",
               "LocationTracking",
               "HealthData",
-              "CreditBureauCheck"
+              "CreditBureauCheck",
+              "WhatsAppContact"
             ],
             "type": "string",
-            "description": "One of: Marketing, DataProcessing, EmailContact, SmsContact, PhoneContact, ThirdPartySharing, ProfilingAndAnalytics, LocationTracking, HealthData, CreditBureauCheck"
+            "description": "One of: Marketing, DataProcessing, EmailContact, SmsContact, PhoneContact, ThirdPartySharing, ProfilingAndAnalytics, LocationTracking, HealthData, CreditBureauCheck, WhatsAppContact"
           },
           "channel": {
             "enum": [
@@ -41938,10 +43412,11 @@
               "InPerson",
               "Paper",
               "Import",
-              "Other"
+              "Other",
+              "WhatsApp"
             ],
             "type": "string",
-            "description": "One of: WebForm, Email, Sms, Phone, InPerson, Paper, Import, Other"
+            "description": "One of: WebForm, Email, Sms, Phone, InPerson, Paper, Import, Other, WhatsApp"
           },
           "proofReference": {
             "type": "string",
@@ -43163,10 +44638,11 @@
               "PerfectVision",
               "Orass",
               "Ringover",
-              "Fake"
+              "Fake",
+              "Dialog360"
             ],
             "type": "string",
-            "description": "One of: Temenos, Amplitude, Sab, PerfectVision, Orass, Ringover, Fake",
+            "description": "One of: Temenos, Amplitude, Sab, PerfectVision, Orass, Ringover, Fake, Dialog360",
             "readOnly": true
           },
           "apiHost": {
@@ -43601,10 +45077,11 @@
               "PerfectVision",
               "Orass",
               "Ringover",
-              "Fake"
+              "Fake",
+              "Dialog360"
             ],
             "type": "string",
-            "description": "One of: Temenos, Amplitude, Sab, PerfectVision, Orass, Ringover, Fake",
+            "description": "One of: Temenos, Amplitude, Sab, PerfectVision, Orass, Ringover, Fake, Dialog360",
             "readOnly": true
           },
           "baseUrl": {
@@ -43649,6 +45126,45 @@
               "$ref": "#/components/schemas/FormField"
             },
             "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "SaveWhatsAppChannelRequest": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "phoneNumberId": {
+            "type": "string",
+            "nullable": true
+          },
+          "wabaId": {
+            "type": "string",
+            "nullable": true
+          },
+          "displayPhoneNumber": {
+            "type": "string",
+            "nullable": true
+          },
+          "agencyId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "apiBaseUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "expectedVersion": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "simulated": {
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -44278,6 +45794,65 @@
         },
         "additionalProperties": false
       },
+      "SendWhatsAppMediaResult": {
+        "type": "object",
+        "properties": {
+          "messageId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "type": "string",
+            "nullable": true
+          },
+          "errorCode": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "SendWhatsAppTemplateRequest": {
+        "type": "object",
+        "properties": {
+          "templateId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "variables": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "SendWhatsAppTemplateResult": {
+        "type": "object",
+        "properties": {
+          "conversationId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "messageId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "additionalProperties": false
+      },
+      "SendWhatsAppTextRequest": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "ServerWebhookSettings": {
         "required": [
           "$mode"
@@ -44634,6 +46209,16 @@
         },
         "additionalProperties": false
       },
+      "SetWhatsAppApiKeyRequest": {
+        "type": "object",
+        "properties": {
+          "apiKey": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "SignHoldingRequest": {
         "type": "object",
         "properties": {
@@ -44718,6 +46303,38 @@
           },
           "accepted": {
             "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "SimulateWhatsAppInboundRequest": {
+        "type": "object",
+        "properties": {
+          "fromE164": {
+            "type": "string",
+            "nullable": true
+          },
+          "text": {
+            "type": "string",
+            "nullable": true
+          },
+          "profileName": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "SimulateWhatsAppStatusRequest": {
+        "type": "object",
+        "properties": {
+          "providerMessageId": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -46844,10 +48461,11 @@
               "PerfectVision",
               "Orass",
               "Ringover",
-              "Fake"
+              "Fake",
+              "Dialog360"
             ],
             "type": "string",
-            "description": "One of: Temenos, Amplitude, Sab, PerfectVision, Orass, Ringover, Fake",
+            "description": "One of: Temenos, Amplitude, Sab, PerfectVision, Orass, Ringover, Fake, Dialog360",
             "readOnly": true
           },
           "baseUrl": {
@@ -48011,6 +49629,10 @@
             "items": {
               "type": "string"
             },
+            "nullable": true
+          },
+          "notificationSound": {
+            "type": "boolean",
             "nullable": true
           }
         },
@@ -49269,6 +50891,10 @@
             "type": "string",
             "nullable": true
           },
+          "whatsAppConsentText": {
+            "type": "string",
+            "nullable": true
+          },
           "theme": {
             "type": "string",
             "nullable": true
@@ -49314,6 +50940,664 @@
           "conversions": {
             "type": "integer",
             "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "WhatsAppChannelDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "kind": {
+            "type": "string",
+            "nullable": true
+          },
+          "simulated": {
+            "type": "boolean"
+          },
+          "phoneNumberId": {
+            "type": "string",
+            "nullable": true
+          },
+          "wabaId": {
+            "type": "string",
+            "nullable": true
+          },
+          "displayPhoneNumber": {
+            "type": "string",
+            "nullable": true
+          },
+          "agencyId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "apiBaseUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "status": {
+            "type": "string",
+            "nullable": true
+          },
+          "lastHealthAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "lastHealthStatus": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "lastHealthDetail": {
+            "type": "string",
+            "nullable": true
+          },
+          "hasApiKey": {
+            "type": "boolean"
+          },
+          "apiKeyHint": {
+            "type": "string",
+            "nullable": true
+          },
+          "hasWebhookToken": {
+            "type": "boolean"
+          },
+          "version": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "WhatsAppChannelSummaryDto": {
+        "type": "object",
+        "properties": {
+          "connectionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "displayPhoneNumber": {
+            "type": "string",
+            "nullable": true
+          },
+          "isActive": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "WhatsAppComposeTemplateDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "language": {
+            "type": "string",
+            "nullable": true
+          },
+          "category": {
+            "type": "string",
+            "nullable": true
+          },
+          "headerText": {
+            "type": "string",
+            "nullable": true
+          },
+          "bodyText": {
+            "type": "string",
+            "nullable": true
+          },
+          "footerText": {
+            "type": "string",
+            "nullable": true
+          },
+          "buttons": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "variables": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WhatsAppComposeVariableDto"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "WhatsAppComposeVariableDto": {
+        "type": "object",
+        "properties": {
+          "index": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "field": {
+            "type": "string",
+            "nullable": true
+          },
+          "value": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "WhatsAppConversationSummaryDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "type": "string",
+            "nullable": true
+          },
+          "windowExpiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "lastInboundAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "lastTemplateSentAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "nextTemplateAllowedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "unreadCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "ambiguousMatch": {
+            "type": "boolean"
+          },
+          "contactName": {
+            "type": "string",
+            "nullable": true
+          },
+          "ownerUserId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "ownerName": {
+            "type": "string",
+            "nullable": true
+          },
+          "targetAgentId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "targetAgentName": {
+            "type": "string",
+            "nullable": true
+          },
+          "pendingSince": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "takeoverDeadline": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "takeoverBreached": {
+            "type": "boolean"
+          },
+          "escalationReason": {
+            "type": "string",
+            "nullable": true
+          },
+          "escalationSummary": {
+            "type": "string",
+            "nullable": true
+          },
+          "closeReason": {
+            "type": "string",
+            "nullable": true
+          },
+          "isHolder": {
+            "type": "boolean"
+          },
+          "canReply": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "WhatsAppInboxDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WhatsAppInboxItemDto"
+            },
+            "nullable": true
+          },
+          "counts": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "nullable": true
+          },
+          "unreadConversations": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "nextCursor": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "WhatsAppInboxItemDto": {
+        "type": "object",
+        "properties": {
+          "conversationId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "leadId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "clientId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "product": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "nullable": true
+          },
+          "ownerUserId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "ownerName": {
+            "type": "string",
+            "nullable": true
+          },
+          "targetAgentId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "targetAgentName": {
+            "type": "string",
+            "nullable": true
+          },
+          "unreadCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "preview": {
+            "type": "string",
+            "nullable": true
+          },
+          "previewDirection": {
+            "type": "string",
+            "nullable": true
+          },
+          "lastMessageAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "windowExpiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "takeoverDeadline": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "takeoverBreached": {
+            "type": "boolean"
+          },
+          "ambiguousMatch": {
+            "type": "boolean"
+          },
+          "route": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "WhatsAppMessageDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "conversationId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "direction": {
+            "type": "string",
+            "nullable": true
+          },
+          "author": {
+            "type": "string",
+            "nullable": true
+          },
+          "authorUserId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "authorName": {
+            "type": "string",
+            "nullable": true
+          },
+          "kind": {
+            "type": "string",
+            "nullable": true
+          },
+          "body": {
+            "type": "string",
+            "nullable": true
+          },
+          "templateName": {
+            "type": "string",
+            "nullable": true
+          },
+          "hasMedia": {
+            "type": "boolean"
+          },
+          "mediaMimeType": {
+            "type": "string",
+            "nullable": true
+          },
+          "mediaFileName": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "nullable": true
+          },
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "sentAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "deliveredAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "readAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "failedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "errorCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "errorDetail": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "WhatsAppMessagePageDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WhatsAppMessageDto"
+            },
+            "nullable": true
+          },
+          "nextBefore": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "WhatsAppPanelDto": {
+        "type": "object",
+        "properties": {
+          "consentState": {
+            "type": "string",
+            "nullable": true
+          },
+          "consentAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "consentChannel": {
+            "type": "string",
+            "nullable": true
+          },
+          "consentProof": {
+            "type": "string",
+            "nullable": true
+          },
+          "maskedPhone": {
+            "type": "string",
+            "nullable": true
+          },
+          "channel": {
+            "$ref": "#/components/schemas/WhatsAppChannelSummaryDto"
+          },
+          "canSend": {
+            "type": "boolean"
+          },
+          "blockers": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "mayForce": {
+            "type": "boolean"
+          },
+          "conversation": {
+            "$ref": "#/components/schemas/WhatsAppConversationSummaryDto"
+          },
+          "mayReply": {
+            "type": "boolean"
+          },
+          "maySupervise": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "WhatsAppTemplateDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "connectionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "channelDisplayPhoneNumber": {
+            "type": "string",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "language": {
+            "type": "string",
+            "nullable": true
+          },
+          "category": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "nullable": true
+          },
+          "isAvailable": {
+            "type": "boolean"
+          },
+          "headerText": {
+            "type": "string",
+            "nullable": true
+          },
+          "bodyText": {
+            "type": "string",
+            "nullable": true
+          },
+          "footerText": {
+            "type": "string",
+            "nullable": true
+          },
+          "buttons": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "variableCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "productLineIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "nullable": true
+          },
+          "variableMappings": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WhatsAppVariableMappingDto"
+            },
+            "nullable": true
+          },
+          "syncedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false
+      },
+      "WhatsAppTemplateSyncResult": {
+        "type": "object",
+        "properties": {
+          "channels": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "added": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "updated": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "unavailable": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "failed": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "WhatsAppVariableMappingDto": {
+        "type": "object",
+        "properties": {
+          "index": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "field": {
+            "enum": [
+              "LeadFirstName",
+              "LeadLastName",
+              "LeadFullName",
+              "InterestedProduct",
+              "AgentFirstName",
+              "AgentFullName"
+            ],
+            "type": "string",
+            "description": "One of: LeadFirstName, LeadLastName, LeadFullName, InterestedProduct, AgentFirstName, AgentFullName"
           }
         },
         "additionalProperties": false

@@ -34,6 +34,7 @@ import {
 } from '@sankore/crm/common';
 // eslint-disable-next-line @nx/enforce-module-boundaries
 import { CallButton } from '@sankore/crm/telephony';
+import { WhatsAppContactButton } from './whatsapp/whatsapp-contact-button';
 import { LeadEditContext } from './lead-edit-context';
 import { LeadComplianceStore } from './lead-compliance-store';
 import { interestedProductLabel } from '../../components/interested-product';
@@ -112,6 +113,7 @@ function maskDocument(value: string): string {
     CustomerMatchBanner,
     CustomFieldsCard,
     CallButton,
+    WhatsAppContactButton,
   ],
 })
 export class LeadInformationsPage {

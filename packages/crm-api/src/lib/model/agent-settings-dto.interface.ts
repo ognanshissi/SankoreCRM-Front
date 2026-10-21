@@ -30,5 +30,6 @@ export interface AgentSettingsDto {
     managerName?: string | null;
     delegations?: Array<DelegationDto> | null;
     updatedAt?: string | null;
+    notificationSound?: boolean;
 }
 

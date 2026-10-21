@@ -426,6 +426,8 @@
                   </button>
                 }
               </div>
+              <!-- WA-FE-03/04 : consentement WhatsApp et envoi d'un template. Masqué sans WhatsApp.Send. -->
+              <lead-whatsapp-contact [leadId]="id()" [leadName]="firstName()"></lead-whatsapp-contact>
             }
             @if (l.email) {
               <div class="mt-2 rounded-xl bg-slate-50 p-3 flex items-center gap-2">

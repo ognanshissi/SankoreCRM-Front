@@ -3,7 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { TasCard } from '@talisoft/ui/card';
 import { TasIcon } from '@talisoft/ui/icon';
 import { Button } from '@talisoft/ui/button';
-import { TasFormField, TasLabel } from '@talisoft/ui/form-field';
+import { TasFormField, TasHint, TasLabel } from '@talisoft/ui/form-field';
 import { TasInput } from '@talisoft/ui/input';
 import { TasSelect } from '@talisoft/ui/select';
 import { TasSwitch } from '@talisoft/ui/switch';
@@ -29,6 +29,7 @@ import {
   imports: [
     FormsModule, TasCard, TasIcon, Button,
     TasFormField, TasLabel, TasInput, TasSelect, TasSwitch,
+    TasHint,
   ],
   templateUrl: 'hosted-form-editor.html',
 })

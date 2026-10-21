@@ -29,6 +29,13 @@ export const leadManagementRoutes = [
     loadComponent: () => import('./containers/analytics/analytics-dashboard'),
   },
   {
+    // WA-FE-09 — l'inbox WhatsApp. Avant `:id`, comme « import ».
+    path: 'whatsapp',
+    canActivate: [hasPermissionGuard('WhatsApp.Send', 'WhatsApp.Reply', 'WhatsApp.Supervise')],
+    title: 'WhatsApp',
+    loadComponent: () => import('./containers/whatsapp-inbox/whatsapp-inbox-page'),
+  },
+  {
     // Avant `:id`, sinon le joker capturerait « import » comme identifiant de lead.
     path: 'import',
     canActivate: [hasPermissionGuard('lead:import')],
@@ -101,6 +108,14 @@ export const leadManagementRoutes = [
             path: 'timeline',
             resolve: { id: leadIdFromAncestors },
             loadComponent: () => import('./containers/edit-lead/timeline'),
+          },
+          {
+            // WA-FE-05 : le fil WhatsApp. Lire un fil demande d'envoyer ou de superviser ; le
+            // serveur ajoute la règle de propriété du lead.
+            path: 'whatsapp',
+            canActivate: [hasPermissionGuard('WhatsApp.Send', 'WhatsApp.Supervise')],
+            resolve: { id: leadIdFromAncestors },
+            loadComponent: () => import('./containers/edit-lead/whatsapp/whatsapp-conversation'),
           },
         ],
       },

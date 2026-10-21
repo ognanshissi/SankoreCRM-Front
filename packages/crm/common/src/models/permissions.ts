@@ -264,6 +264,17 @@ export const PERMISSIONS = {
   TELEPHONY_STATS_VIEW: 'Telephony.Stats.View',
   TELEPHONY_SETTINGS_MANAGE: 'Telephony.Settings.Manage',
 
+  // WhatsApp (lot 1) — même graphie que la téléphonie, comme la spécification les tabule.
+  // Send : envoyer un template et lire le fil d'un lead de son périmètre ; Send.Force : renvoyer
+  // avant 24 h sans réponse ; Supervise : lire les conversations de ses agences ; Config : numéro
+  // et templates.
+  WHATSAPP_SEND: 'WhatsApp.Send',
+  WHATSAPP_SEND_FORCE: 'WhatsApp.Send.Force',
+  // Répondre en message libre (texte, image, PDF) dans une conversation qu'on a prise en main.
+  WHATSAPP_REPLY: 'WhatsApp.Reply',
+  WHATSAPP_SUPERVISE: 'WhatsApp.Supervise',
+  WHATSAPP_CONFIG: 'WhatsApp.Config',
+
   // Volontairement en minuscules à deux-points, contrairement à ses voisines de ce
   // bloc : c'est la chaîne exacte que les endpoints de la politique d'enregistrement
   // accordent (`RecordingPolicySlices` et `RecordingAccessEndpoints` disent

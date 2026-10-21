@@ -16,6 +16,7 @@ export interface HostedFormConfig {
     fields?: Array<HostedFormField> | null;
     consentText?: string | null;
     consentVersion?: string | null;
+    whatsAppConsentText?: string | null;
     submitLabel?: string | null;
     accentColor?: string | null;
     fontFamily?: string | null;

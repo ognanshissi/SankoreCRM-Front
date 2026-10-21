@@ -15,7 +15,7 @@ import { Severity } from '@talisoft/ui/tag';
 
 // ——— Connexions ———
 
-export type ConnectionFamily = 'CoreBanking' | 'Insurance' | 'Telephony';
+export type ConnectionFamily = 'CoreBanking' | 'Insurance' | 'Telephony' | 'Messaging';
 export type ConnectionKind =
   | 'Temenos'
   | 'Amplitude'
@@ -23,7 +23,8 @@ export type ConnectionKind =
   | 'PerfectVision'
   | 'Orass'
   | 'Ringover'
-  | 'Fake';
+  | 'Fake'
+  | 'Dialog360';
 export type ConnectionMode = 'Api' | 'Batch' | 'Relay';
 
 export const CONNECTION_FAMILIES: ReadonlyArray<{
@@ -53,6 +54,7 @@ export const CONNECTION_FAMILY_LABELS: Record<ConnectionFamily, string> = {
   CoreBanking: 'Core banking',
   Insurance: 'Assurance',
   Telephony: 'Téléphonie',
+  Messaging: 'WhatsApp',
 };
 
 /**
@@ -89,6 +91,10 @@ export const CONNECTION_KINDS_BY_FAMILY: Record<
     { value: 'Ringover', label: 'Ringover', description: 'Standard téléphonique cloud' },
     { value: 'Fake', label: 'Simulateur (recette)', description: 'Pour la recette, sans appels réels' },
   ],
+  // Vide exprès : un numéro WhatsApp se connecte depuis Paramètres › WhatsApp Business, qui pose
+  // sa clé, son webhook et son test dans l'ordre. La famille n'est pas proposée à la création ici
+  // (absente de CONNECTION_FAMILIES) ; elle n'apparaît que pour lister les connexions existantes.
+  Messaging: [],
 };
 
 /**
@@ -159,6 +165,8 @@ export const CONNECTION_KIND_FIELDS: Record<
     },
   ],
   Fake: [],
+  // Les coordonnées d'un numéro se saisissent sur l'écran WhatsApp, pas ici.
+  Dialog360: [],
 };
 
 export const CONNECTION_KIND_LABELS: Record<ConnectionKind, string> = {
@@ -169,6 +177,7 @@ export const CONNECTION_KIND_LABELS: Record<ConnectionKind, string> = {
   Orass: 'ORASS®Suite',
   Ringover: 'Ringover',
   Fake: 'Simulateur (recette)',
+  Dialog360: '360dialog',
 };
 
 export const CONNECTION_MODES: ReadonlyArray<{

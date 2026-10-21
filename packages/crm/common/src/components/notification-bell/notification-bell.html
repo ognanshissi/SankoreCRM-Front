@@ -1,0 +1,80 @@
+<button
+  tas-button
+  iconButton
+  type="button"
+  class="relative"
+  [cdkMenuTriggerFor]="panel"
+  (cdkMenuOpened)="onOpened()"
+  [attr.aria-label]="ariaLabel()"
+  [title]="ariaLabel()"
+>
+  <tas-icon iconName="feather:bell" style="font-size:18px" class="text-slate-600"></tas-icon>
+  @if (unreadCount() > 0) {
+    <span
+      aria-hidden="true"
+      class="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-red-600 text-white text-[10px] font-semibold leading-[18px] text-center tabular-nums"
+    >{{ badgeLabel() }}</span>
+  }
+</button>
+
+<ng-template #panel>
+  <tas-menu class="w-[380px] max-w-[calc(100vw-32px)] !py-0 overflow-hidden">
+    <div class="flex items-center justify-between gap-3 px-4 py-3 border-b border-slate-100">
+      <p class="text-sm font-semibold text-slate-800">
+        Notifications
+        @if (unreadCount() > 0) {
+          <span class="ml-1 text-xs font-medium text-slate-500 tabular-nums">({{ badgeLabel() }})</span>
+        }
+      </p>
+      @if (unreadCount() > 0) {
+        <button
+          type="button"
+          cdkMenuItem
+          class="text-xs font-medium text-primary hover:underline focus:underline outline-none"
+          (cdkMenuItemTriggered)="markAllRead()"
+        >
+          Tout marquer comme lu
+        </button>
+      }
+    </div>
+
+    <div class="max-h-[420px] overflow-y-auto divide-y divide-slate-100">
+      @for (notification of items(); track notification.id) {
+        @let unread = !notification.readAt;
+        @let v = visual(notification);
+        <button
+          type="button"
+          cdkMenuItem
+          class="w-full flex items-start gap-3 px-4 py-3 text-left outline-none hover:bg-slate-50 focus:bg-slate-50"
+          [class.bg-blue-50/40]="unread"
+          (cdkMenuItemTriggered)="open(notification)"
+        >
+          <span class="shrink-0 w-8 h-8 rounded-full flex items-center justify-center" [class]="v.tone">
+            <tas-icon [iconName]="v.icon" style="font-size:14px"></tas-icon>
+          </span>
+          <span class="flex-1 min-w-0">
+            <span class="block text-sm text-slate-800 truncate" [class.font-semibold]="unread">
+              {{ notification.title || 'Notification' }}
+            </span>
+            @if (notification.body) {
+              <span class="block text-xs text-slate-600 mt-0.5 line-clamp-2">{{ notification.body }}</span>
+            }
+            <span class="block text-[11px] text-slate-400 mt-1">{{ notification.createdAt | dateTimeAgo }}</span>
+          </span>
+          @if (unread) {
+            <span class="shrink-0 mt-1.5 w-2 h-2 rounded-full bg-primary" aria-label="Non lue"></span>
+          }
+        </button>
+      } @empty {
+        <div class="px-4 py-8 flex flex-col items-center gap-2 text-center">
+          @if (isLoading()) {
+            <tas-spinner size="10" class="text-primary"></tas-spinner>
+          } @else {
+            <tas-icon iconName="feather:bell-off" style="font-size:20px" class="text-slate-300"></tas-icon>
+            <p class="text-sm text-slate-500">Aucune notification</p>
+          }
+        </div>
+      }
+    </div>
+  </tas-menu>
+</ng-template>

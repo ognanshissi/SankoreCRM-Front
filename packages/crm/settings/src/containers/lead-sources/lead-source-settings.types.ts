@@ -34,6 +34,12 @@ export interface ConsentConfig {
   consentFieldPath: string;
   consentTextVersion: string;
   providerContractRef: string;
+  /**
+   * JSONPath du consentement WhatsApp dans le payload d'un webhook ou d'une source tirée (WA-BE-05).
+   * Vide : la source ne porte pas d'opt-in WhatsApp. Le script embarqué n'en a pas besoin : le
+   * SDK 1.3.0 envoie sa case lui-même.
+   */
+  whatsAppConsentFieldPath: string;
 }
 
 export function emptyConsentConfig(): ConsentConfig {
@@ -42,6 +48,7 @@ export function emptyConsentConfig(): ConsentConfig {
     consentFieldPath: '',
     consentTextVersion: '',
     providerContractRef: '',
+    whatsAppConsentFieldPath: '',
   };
 }
 
@@ -197,6 +204,8 @@ export interface HostedFormConfig {
   fields: HostedFormField[];
   consentText: string;
   consentVersion: string;
+  /** Libellé de la case WhatsApp facultative (SDK 1.3.0) ; vide, pas de case. */
+  whatsAppConsentText: string;
   submitLabel: string;
   /** Couleur d'accent, exposee au site hote via une variable CSS. */
   accentColor: string;
@@ -247,6 +256,7 @@ export function defaultHostedFormConfig(): HostedFormConfig {
     consentText:
       "J'accepte d'être contacté(e) au sujet de ma demande.",
     consentVersion: 'v1',
+    whatsAppConsentText: '',
     submitLabel: 'Envoyer ma demande',
     accentColor: '#2563eb',
     fontFamily: 'inherit',

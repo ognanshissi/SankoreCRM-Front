@@ -29,6 +29,13 @@ WORKDIR /workspace
 # certains runners en le laissant orphelin.
 ENV NX_DAEMON=false
 
+# Un seul worker Angular au lieu d'un par cœur vu par le conteneur (souvent tous ceux de
+# l'hôte). Mesuré sur `admin:build:production` dans un conteneur à mémoire bornée : sans ce
+# réglage il faut ~2 Go, avec lui 1,5 Go suffisent. En dessous, le noyau tue le processus juste
+# après « ❯ Building... », sans le moindre message — c'est ce qu'on voyait sur Dokploy, où le
+# build partage la RAM du serveur avec les conteneurs en service.
+ENV NG_BUILD_MAX_WORKERS=1
+
 COPY --from=deps /workspace/node_modules ./node_modules
 COPY . .
 

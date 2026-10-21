@@ -20,7 +20,7 @@ import {
   UsersApiService,
   WorkingDayDtoDayEnum,
 } from '@sankore/crm-api';
-import { AuthenticationService } from '@sankore/crm/common';
+import { AuthenticationService, NotificationCenterService } from '@sankore/crm/common';
 import { AccountHeaderState, AgentAvailabilityCode } from './account-navigation';
 
 const AVAILABILITY_OPTIONS: { value: AgentAvailabilityCode; label: string; hint: string }[] = [
@@ -63,6 +63,7 @@ class AgentSettingsFormModel {
   public maxActiveLeads!: number;
   public languages!: string[];
   public preferences!: PreferenceRow[];
+  public notificationSound!: boolean;
 
   public static fromDto(dto: AgentSettingsDto): AgentSettingsFormModel {
     const m = new AgentSettingsFormModel();
@@ -84,6 +85,7 @@ class AgentSettingsFormModel {
       email: !!p.email,
       sms: !!p.sms,
     }));
+    m.notificationSound = dto.notificationSound ?? true;
     return m;
   }
 }
@@ -122,6 +124,7 @@ export class AccountAgentSettings implements OnInit {
   private readonly _auth = inject(AuthenticationService);
   private readonly _snackbar = inject(SnackbarService);
   private readonly _header = inject(AccountHeaderState);
+  private readonly _notificationCenter = inject(NotificationCenterService);
 
   public readonly availabilityOptions = AVAILABILITY_OPTIONS;
   public readonly dayLabels = DAY_LABELS;
@@ -218,6 +221,10 @@ export class AccountAgentSettings implements OnInit {
     }));
   }
 
+  public setNotificationSound(enabled: boolean): void {
+    this.model.update((m) => ({ ...m, notificationSound: enabled }));
+  }
+
   public cancel(): void {
     const dto = this.dto();
     if (dto) this.model.set(AgentSettingsFormModel.fromDto(dto));
@@ -249,6 +256,7 @@ export class AccountAgentSettings implements OnInit {
         maxActiveLeads: value.maxActiveLeads,
         notificationPreferences: value.preferences,
         spokenLanguages: value.languages,
+        notificationSound: value.notificationSound,
       };
 
       const ok = await firstValueFrom(
@@ -261,6 +269,10 @@ export class AccountAgentSettings implements OnInit {
         ),
       );
       if (!ok) return;
+
+      // La cloche ne relit la préférence qu'à l'ouverture de session : on lui transmet la
+      // nouvelle valeur pour qu'elle s'applique dès la prochaine notification.
+      this._notificationCenter.setSoundEnabled(value.notificationSound);
 
       this._snackbar.success(
         'Paramétrage enregistré',

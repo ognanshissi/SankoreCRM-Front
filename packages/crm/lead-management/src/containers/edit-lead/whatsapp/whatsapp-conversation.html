@@ -1,0 +1,249 @@
+@if (isLoading() && !panel()) {
+  <div class="flex justify-center py-16"><tas-spinner size="10" class="text-primary"></tas-spinner></div>
+} @else if (loadFailed() && !panel()) {
+  <div class="rounded-2xl border border-slate-100 bg-white px-5 py-12 text-center shadow-sm">
+    <p class="text-sm font-medium text-slate-700">Le fil WhatsApp n’a pas pu être chargé.</p>
+    <button tas-outlined-button type="button" class="mt-3" (click)="retry()">Réessayer</button>
+  </div>
+} @else {
+  <section class="flex flex-col overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm" aria-label="Conversation WhatsApp">
+    <!-- Bandeau d'état (WA-FE-06) -->
+    <header class="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-slate-100 px-4 py-3">
+      <div class="min-w-0 flex-1">
+        <p class="flex items-center gap-2 text-sm font-semibold text-slate-900">
+          <tas-icon iconName="feather:message-circle" class="text-emerald-600" style="font-size:15px"></tas-icon>
+          {{ conversation()?.contactName || name() }}
+          @if (panel()?.maskedPhone) {
+            <span class="text-xs font-normal text-slate-500 tabular-nums">{{ panel()!.maskedPhone }}</span>
+          }
+        </p>
+        <div class="mt-1 flex flex-wrap items-center gap-2">
+          @if (panel(); as p) {
+            <lead-whatsapp-consent-badge [consentState]="p.consentState ?? 'Unknown'" [consentAt]="p.consentAt"
+                                         [consentChannel]="p.consentChannel"></lead-whatsapp-consent-badge>
+          }
+          @if (status(); as s) {
+            <span class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold" [class]="s.tone">
+              <tas-icon [iconName]="s.icon" style="font-size:11px"></tas-icon>{{ s.label }}
+            </span>
+          }
+          @if (panel()?.channel?.displayPhoneNumber) {
+            <span class="text-xs text-slate-500">via {{ panel()!.channel!.displayPhoneNumber }}</span>
+          }
+        </div>
+      </div>
+
+      @if (conversation()) {
+        @if (takeover(); as t) {
+          <p class="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold"
+             [class]="t.late ? 'bg-red-50 text-red-700' : 'bg-amber-50 text-amber-800'" role="status">
+            <tas-icon iconName="feather:clock" style="font-size:12px"></tas-icon>{{ t.label }}
+          </p>
+        }
+        @let w = window();
+        <p class="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium"
+           [class]="w.tone === 'open' ? 'bg-emerald-50 text-emerald-800'
+             : w.tone === 'closing' ? 'bg-amber-50 text-amber-800'
+             : 'bg-slate-100 text-slate-600'"
+           role="status">
+          <tas-icon [iconName]="w.tone === 'closing' ? 'feather:alert-triangle' : 'feather:clock'" style="font-size:12px"></tas-icon>
+          {{ w.label }}
+        </p>
+      }
+    </header>
+
+    @if (holderLine() || escalationLabel()) {
+      <div class="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-slate-100 bg-slate-50/60 px-4 py-2">
+        <p class="flex-1 text-xs text-slate-700">
+          @if (holderLine()) { <span class="font-semibold">{{ holderLine() }}</span> }
+          @if (conversation()?.status === 'PendingHuman' && escalationLabel()) {
+            <span class="text-slate-500"> · {{ escalationLabel() }}</span>
+          }
+        </p>
+        <div class="flex flex-wrap items-center gap-2">
+          @if (canTakeOver()) {
+            <button tas-raised-button color="primary" type="button" [disabled]="acting()" (click)="takeOver()">
+              <tas-icon iconName="feather:user-check" style="font-size:13px"></tas-icon>
+              Prendre la main
+            </button>
+          }
+          @if (conversation()?.isHolder) {
+            <button tas-outlined-button type="button" [disabled]="acting()" (click)="returnToBot()">Rendre au bot</button>
+          }
+          @if ((conversation()?.isHolder || canSupervise()) && conversation()?.status !== 'Closed') {
+            <button tas-outlined-button type="button" [disabled]="acting()" (click)="startClose()">Clôturer</button>
+          }
+          @if (canSupervise() && conversation()?.status !== 'Closed') {
+            <button tas-text-button type="button" [disabled]="acting()" (click)="reassign()">Réassigner</button>
+          }
+        </div>
+      </div>
+    }
+
+    @if (conversation()?.status === 'PendingHuman' && conversation()?.escalationSummary) {
+      <!-- WA-FE-12 : ce que le bot a compris, en tête du fil (rempli par le bot du lot 3). -->
+      <div class="border-b border-sky-100 bg-sky-50 px-4 py-2 text-xs text-sky-900">
+        <span class="font-semibold">Résumé :</span> {{ conversation()!.escalationSummary }}
+      </div>
+    }
+
+    @if (closing()) {
+      <form [formRoot]="closeForm" class="flex flex-wrap items-end gap-3 border-b border-red-100 bg-red-50/50 px-4 py-3">
+        <tas-form-field class="min-w-64 flex-1">
+          <tas-label>Motif de la clôture <span class="text-functional-error">*</span></tas-label>
+          <input tasInput type="text" placeholder="Ex. : demande traitée, rendez-vous pris…" [formField]="closeForm.reason" />
+          @if (closeForm.reason().touched() && closeForm.reason().invalid()) {
+            <tas-error>{{ closeForm.reason().errors()[0].message }}</tas-error>
+          }
+        </tas-form-field>
+        <button tas-text-button type="button" (click)="closing.set(false)">Annuler</button>
+        <button tas-raised-button color="warn" type="button"
+                [disabled]="closeForm().invalid() || closeForm().submitting()" [isLoading]="closeForm().submitting()"
+                (click)="confirmClose()">Clôturer</button>
+      </form>
+    }
+
+    @if (conversation()?.ambiguousMatch) {
+      <p class="flex items-center gap-2 border-b border-amber-100 bg-amber-50 px-4 py-2 text-xs text-amber-900">
+        <tas-icon iconName="feather:users" style="font-size:12px"></tas-icon>
+        Ce numéro correspond à plusieurs fiches : la conversation a été rattachée à celle-ci, la plus récente. Vérifiez qu’il s’agit bien de {{ name() }}.
+      </p>
+    }
+
+    @if (!realtime.connected() && conversation()) {
+      <p class="border-b border-slate-100 bg-slate-50 px-4 py-1.5 text-[11px] text-slate-500">
+        Mise à jour en direct indisponible : le fil se relit toutes les 30 secondes.
+      </p>
+    }
+
+    <!-- Fil (WA-FE-05) -->
+    @if (messages().length === 0) {
+      <div class="px-5 py-14 text-center">
+        <p class="text-sm font-medium text-slate-700">Aucun échange WhatsApp avec {{ name() }}</p>
+        <p class="mx-auto mt-1 max-w-md text-sm text-slate-500">
+          Le premier message de l’institution est toujours un template approuvé par Meta. Ses réponses
+          s’afficheront ici, en direct.
+        </p>
+      </div>
+    } @else {
+      <div #scroller class="flex max-h-[60vh] min-h-72 flex-col gap-3 overflow-y-auto bg-[#efeae2] px-4 py-4"
+           (scroll)="onScroll($event)" aria-live="polite">
+        @if (nextBefore()) {
+          <button type="button" class="self-center rounded-full bg-white/80 px-3 py-1 text-xs font-medium text-slate-600 shadow-sm hover:bg-white"
+                  [disabled]="isLoadingOlder()" (click)="loadOlder()">
+            {{ isLoadingOlder() ? 'Chargement…' : 'Messages précédents' }}
+          </button>
+        }
+
+        @for (day of days(); track day.key) {
+          <p class="self-center rounded-lg bg-white/90 px-3 py-0.5 text-[11px] font-medium text-slate-600 shadow-sm">{{ day.label }}</p>
+
+          @for (m of day.messages; track m.id) {
+            @let out = isOutbound(m);
+            @let st = statusIcon(m);
+            <div class="flex flex-col" [class]="out ? 'items-end' : 'items-start'">
+              <div class="max-w-[80%] rounded-xl px-3 py-2 text-sm text-slate-900 shadow-sm"
+                   [class]="out
+                     ? (m.author === 'Bot' ? 'rounded-tr-sm bg-sky-100' : 'rounded-tr-sm bg-[#d9fdd3]')
+                     : 'rounded-tl-sm bg-white'">
+                @if (out) {
+                  <p class="mb-0.5 flex items-center gap-1 text-[11px] font-semibold"
+                     [class]="m.author === 'Bot' ? 'text-sky-800' : 'text-emerald-800'">
+                    {{ authorLabel(m) }}
+                    @if (m.kind === 'Template') {
+                      <span class="rounded bg-white/70 px-1 font-medium text-slate-600">Template · {{ m.templateName }}</span>
+                    }
+                  </p>
+                }
+
+                @if (isImage(m)) {
+                  @if (images()[m.id!]; as src) {
+                    <img [src]="src" alt="Image envoyée par le client" class="mb-1 max-h-64 rounded-lg object-contain" />
+                  } @else {
+                    <p class="mb-1 flex items-center gap-1 text-xs text-slate-500">
+                      <tas-icon iconName="feather:image" style="font-size:12px"></tas-icon> Image en cours de chargement…
+                    </p>
+                  }
+                } @else if (m.hasMedia) {
+                  <button type="button" class="mb-1 flex items-center gap-2 rounded-lg bg-slate-100 px-3 py-2 text-left text-xs font-medium text-slate-700 hover:bg-slate-200"
+                          (click)="download(m)">
+                    <tas-icon iconName="feather:paperclip" style="font-size:13px"></tas-icon>
+                    <span class="truncate">{{ mediaLabel(m) }}</span>
+                    <tas-icon iconName="feather:download" style="font-size:13px"></tas-icon>
+                  </button>
+                }
+
+                @if (m.body) {
+                  <p class="whitespace-pre-line break-words">{{ m.body }}</p>
+                } @else if (placeholder(m); as text) {
+                  <p class="italic text-slate-500">{{ text }}</p>
+                }
+
+                <p class="mt-0.5 flex items-center justify-end gap-1 text-[10px] text-slate-500 tabular-nums">
+                  {{ time(m) }}
+                  @if (out && st) {
+                    <tas-icon [iconName]="st.icon" [class]="st.tone" style="font-size:11px" [attr.title]="st.label" [attr.aria-label]="st.label"></tas-icon>
+                  }
+                </p>
+              </div>
+              @if (m.status === 'Failed') {
+                <p class="mt-1 max-w-[80%] text-right text-[11px] text-red-700" role="alert">
+                  {{ failure(m) }}@if (m.errorDetail) { <span class="text-red-600/80"> · {{ m.errorDetail }}</span>}
+                </p>
+              }
+            </div>
+          }
+        }
+      </div>
+    }
+
+    <!-- Zone d'action (WA-FE-07) -->
+    <footer class="border-t border-slate-100 px-4 py-3">
+      @if (conversation()?.canReply) {
+        <form [formRoot]="composer" class="flex items-end gap-2">
+          <input #fileInput type="file" class="hidden" accept="image/jpeg,image/png,application/pdf" (change)="onFile($event)" />
+          <button type="button" class="inline-flex size-10 shrink-0 items-center justify-center rounded-full text-slate-500 hover:bg-slate-100 disabled:opacity-50"
+                  title="Joindre une image ou un PDF" aria-label="Joindre une image ou un PDF"
+                  [disabled]="isUploading()" (click)="pickFile()">
+            @if (isUploading()) {
+              <tas-spinner size="5" class="text-primary"></tas-spinner>
+            } @else {
+              <tas-icon iconName="feather:paperclip" style="font-size:16px"></tas-icon>
+            }
+          </button>
+          <textarea rows="2" class="min-h-10 flex-1 resize-y rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-primary focus:outline-none"
+                    placeholder="Votre réponse… (Ctrl+Entrée pour envoyer ; le texte sert de légende à une pièce jointe)"
+                    aria-label="Votre réponse" [formField]="composer.text" (keydown)="onComposerKeydown($event)"></textarea>
+          <button tas-raised-button color="primary" type="button"
+                  [disabled]="composer().invalid() || composer().submitting()" [isLoading]="composer().submitting()"
+                  (click)="sendText()">
+            <tas-icon iconName="feather:send" style="font-size:14px"></tas-icon>
+            Envoyer
+          </button>
+        </form>
+      } @else {
+        <div class="flex flex-wrap items-center gap-3">
+          <p class="flex-1 text-xs text-slate-500">
+            @if (conversation()?.isHolder && window().tone === 'expired') {
+              La fenêtre de 24 h est fermée : relancez le client par un template.
+            } @else if (conversation() && !conversation()!.isHolder && conversation()!.status === 'Human') {
+              {{ conversation()!.ownerName ?? 'Un autre agent' }} a la main sur cette conversation.
+            } @else if (canTakeOver()) {
+              Prenez la main pour répondre librement au client.
+            } @else if (blockers().length > 0) {
+              {{ blockers().join(' ') }}
+            } @else {
+              Relancez le client par un template approuvé.
+            }
+          </p>
+          @if (canSend()) {
+            <button tas-outlined-button type="button" [disabled]="!panel()?.canSend" (click)="sendTemplate()">
+              <tas-icon iconName="feather:file-text" style="font-size:14px"></tas-icon>
+              Envoyer un template
+            </button>
+          }
+        </div>
+      }
+    </footer>
+  </section>
+}

@@ -19,6 +19,7 @@ export interface ConsentConfig {
     consentFieldPath?: string | null;
     consentTextVersion?: string | null;
     providerContractRef?: string | null;
+    whatsAppConsentFieldPath?: string | null;
 }
 export enum ConsentConfigPolicyEnum {
     None = 'None',

@@ -16,6 +16,7 @@ export interface WebFormResponse {
     fields?: Array<WebFormFieldDto> | null;
     consentText?: string | null;
     consentVersion?: string | null;
+    whatsAppConsentText?: string | null;
     theme?: string | null;
     submitLabel?: string | null;
     captchaProvider?: string | null;

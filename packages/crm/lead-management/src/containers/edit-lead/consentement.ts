@@ -68,6 +68,14 @@ const MAIN_PURPOSES: ReadonlyArray<ConsentPurpose> = [
     icon: 'feather:message-circle',
     describe: () => 'Recevoir des offres par SMS, e-mail, WhatsApp ou téléphone.',
   },
+  {
+    // Exigé par Meta avant tout premier message de l'institution : sans lui, le bouton
+    // « Contacter via WhatsApp » reste désactivé.
+    type: RecordConsentRequestTypeEnum.WhatsAppContact,
+    title: 'Contact par WhatsApp',
+    icon: 'feather:message-square',
+    describe: () => 'Recevoir les messages de l’institution sur WhatsApp, au sujet de sa demande.',
+  },
 ];
 
 const OTHER_PURPOSES: ReadonlyArray<ConsentPurpose> = [
@@ -101,6 +109,7 @@ const CHANNELS: ReadonlyArray<ChannelOption> = [
 
 const CHANNEL_LABELS: Record<string, string> = {
   ...Object.fromEntries(CHANNELS.map((c) => [c.value, c.label])),
+  WhatsApp: 'Message WhatsApp entrant',
   Email: 'E-mail',
   Import: 'Import',
   Other: 'Autre',
@@ -290,6 +299,18 @@ export class LeadConsentementPage {
       .slice(0, 5),
   );
 
+  /** Le recueil ouvert est celui de WhatsApp : le motif y est toujours exigé (WA-BE-05). */
+  public readonly isWhatsAppCollect = computed(() => this.collecting() === RecordConsentRequestTypeEnum.WhatsAppContact);
+
+  /**
+   * WhatsApp retiré ou refusé : un nouvel accord demande une NOUVELLE preuve, l'appel où il a de
+   * nouveau accepté — un clic ne doit pas pouvoir défaire un « STOP ». Le serveur le refuse aussi.
+   */
+  public readonly whatsAppRevoked = computed(() => {
+    const latest = this._latestByType().get(RecordConsentRequestTypeEnum.WhatsAppContact);
+    return !!latest && latest.status !== 'Active';
+  });
+
   public collectModel = signal(CollectFormModel.instantiate(''));
   public collectForm = form(this.collectModel, (schema) => {
     required(schema.channel, { message: 'Choisissez comment il l’a donnée' });
@@ -298,7 +319,15 @@ export class LeadConsentementPage {
     validate(schema.proofReference, (ctx) => {
       const decision = ctx.valueOf(schema.decision);
       const activity = ctx.valueOf(schema.proofActivityId);
-      return decision === 'accept' && !activity && !ctx.value().trim()
+      if (decision !== 'accept') return null;
+      if (this.isWhatsAppCollect()) {
+        if (this.whatsAppRevoked() && !activity)
+          return { kind: 'proof', message: 'Il avait retiré son accord : rattachez l’appel où il a de nouveau accepté' };
+        if (!ctx.value().trim())
+          return { kind: 'proof', message: 'Indiquez le motif : c’est la preuve que Meta exige' };
+        return null;
+      }
+      return !activity && !ctx.value().trim()
         ? { kind: 'proof', message: 'Indiquez la preuve de l’accord' }
         : null;
     });
@@ -535,6 +564,10 @@ export class LeadConsentementPage {
         return 'Un refus ne se retire pas : recueillez à nouveau sa réponse.';
       case 'LEAD_ACTIVITY_NOT_FOUND':
         return 'L’appel choisi comme preuve n’appartient pas à ce lead.';
+      case 'WHATSAPP_CONSENT_REASON_REQUIRED':
+        return 'Indiquez le motif du consentement WhatsApp.';
+      case 'WHATSAPP_CONSENT_NEW_PROOF_REQUIRED':
+        return 'Il avait retiré son accord WhatsApp : rattachez l’appel où il a de nouveau accepté.';
     }
     if (error.status === 403) return 'Vous n’avez pas le droit d’enregistrer ce consentement.';
     const validation = error.error?.errors as Record<string, string[]> | undefined;

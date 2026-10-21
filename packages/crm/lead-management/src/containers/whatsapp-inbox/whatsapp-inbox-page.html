@@ -1,0 +1,110 @@
+<div class="mb-5 flex flex-wrap items-start justify-between gap-4">
+  <div>
+    <h1 class="text-2xl font-bold text-slate-900">WhatsApp</h1>
+    <p class="mt-1 text-sm text-slate-600">
+      Les conversations à traiter en premier sont en haut : celles dont le délai de prise en charge expire le plus tôt.
+      @if (unreadConversations() > 0) {
+        <span class="font-semibold text-primary"> · {{ unreadConversations() }} non lue{{ unreadConversations() > 1 ? 's' : '' }}</span>
+      }
+    </p>
+  </div>
+  @if (!realtime.connected()) {
+    <p class="rounded-lg bg-slate-100 px-3 py-1.5 text-xs text-slate-600">Mise à jour en direct indisponible : la liste se relit toutes les 30 s.</p>
+  }
+</div>
+
+<div class="mb-4 flex flex-wrap items-center gap-3">
+  <div role="tablist" aria-label="Files WhatsApp" class="flex flex-wrap gap-1 rounded-full bg-slate-200/60 p-1">
+    @for (t of tabs; track t.value) {
+      @let active = tab() === t.value;
+      <button type="button" role="tab" [attr.aria-selected]="active"
+              class="inline-flex min-h-9 items-center gap-2 rounded-full px-4 text-sm font-semibold transition-colors"
+              [class]="active ? 'bg-white text-primary shadow-xs' : 'text-slate-700 hover:text-slate-900'"
+              (click)="setTab(t.value)">
+        {{ t.label }}
+        <span class="min-w-6 rounded-full px-1.5 text-center text-xs tabular-nums"
+              [class]="t.value === 'ToHandle' && (counts()[t.value] ?? 0) > 0 ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-600'">
+          {{ counts()[t.value] ?? 0 }}
+        </span>
+      </button>
+    }
+  </div>
+
+  <label class="ml-auto inline-flex cursor-pointer items-center gap-2 text-sm text-slate-700">
+    <input type="checkbox" [checked]="unreadOnly()" (change)="toggleUnread()" />
+    Non lues seulement
+  </label>
+
+  @if (isSupervisor()) {
+    <div class="w-52">
+      <tas-select [options]="agentOptions()" [ngModel]="agentFilter()" (ngModelChange)="setAgent($event)"
+                  placeholder="Tous les agents" aria-label="Agent"></tas-select>
+    </div>
+    <div class="w-52">
+      <tas-select [options]="productOptions()" [ngModel]="productFilter()" (ngModelChange)="setProduct($event)"
+                  placeholder="Tous les produits" aria-label="Produit"></tas-select>
+    </div>
+  }
+</div>
+
+<tas-table [data]="items()" [config]="tableConfig()" [isLoading]="isLoading()" identifierField="conversationId">
+  <ng-template #body let-item>
+    @let status = statusOf(item.status);
+    @let urg = urgency(item);
+    <tr class="cursor-pointer transition-colors hover:bg-slate-50" (click)="open(item)">
+      <td colspan="1" class="py-3">
+        <div class="flex items-start gap-3">
+          <span class="flex size-10 shrink-0 items-center justify-center rounded-full bg-emerald-50 text-emerald-700" aria-hidden="true">
+            <tas-icon iconName="feather:message-circle" style="font-size:16px"></tas-icon>
+          </span>
+          <div class="min-w-0 flex-1">
+            <div class="flex flex-wrap items-center gap-2">
+              <p class="text-sm font-semibold text-slate-900" [class.font-bold]="item.unreadCount > 0">{{ item.name }}</p>
+              @if (item.product) { <span class="text-xs text-slate-500">{{ item.product }}</span> }
+              <span class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold" [class]="status.tone">
+                <tas-icon [iconName]="status.icon" style="font-size:11px"></tas-icon>{{ status.label }}
+              </span>
+              @if (!item.leadId) {
+                <span class="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600">Sans fiche lead</span>
+              }
+              @if (item.ambiguousMatch) {
+                <span class="rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-800" title="Ce numéro correspond à plusieurs fiches">À vérifier</span>
+              }
+            </div>
+            @if (item.preview) {
+              <p class="mt-0.5 truncate text-sm text-slate-600">
+                @if (item.previewDirection === 'Outbound') { <span class="text-slate-400">Vous : </span> }{{ item.preview }}
+              </p>
+            }
+            <p class="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+              @if (who(item); as w) { <span>{{ w }}</span> }
+              <span>{{ item.lastMessageAt | dateTimeAgo }}</span>
+            </p>
+          </div>
+          <div class="flex shrink-0 flex-col items-end gap-1.5">
+            @if (item.unreadCount > 0) {
+              <span class="min-w-6 rounded-full bg-primary px-1.5 text-center text-xs font-semibold text-white tabular-nums"
+                    [attr.aria-label]="item.unreadCount + ' message(s) non lu(s)'">{{ item.unreadCount }}</span>
+            }
+            @if (urg; as u) {
+              <span class="rounded-full px-2 py-0.5 text-[11px] font-semibold" [class]="u.tone">{{ u.label }}</span>
+            }
+          </div>
+        </div>
+      </td>
+    </tr>
+  </ng-template>
+</tas-table>
+
+@if (!isLoading() && items().length === 0) {
+  <div class="mt-2 rounded-2xl border border-dashed border-slate-300 px-5 py-10 text-center">
+    <p class="text-sm font-medium text-slate-700">Aucune conversation dans cette file</p>
+    <p class="mt-1 text-sm text-slate-500">Les messages WhatsApp des clients de votre périmètre apparaîtront ici.</p>
+  </div>
+}
+
+@if (nextCursor()) {
+  <div class="mt-3 flex justify-center">
+    <button tas-outlined-button type="button" [disabled]="isLoadingMore()" [isLoading]="isLoadingMore()" (click)="loadMore()">Afficher plus</button>
+  </div>
+}

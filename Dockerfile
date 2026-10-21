@@ -29,6 +29,11 @@ WORKDIR /workspace
 # sur certains runners en le laissant orphelin.
 ENV NX_DAEMON=false
 
+# Un seul worker Angular au lieu d'un par cœur vu par le conteneur : c'est ce qui fait tenir le
+# build dans la RAM d'un petit serveur. Sans lui, un manque de mémoire tue le processus juste
+# après « ❯ Building... », sans message. Voir admin.Dockerfile pour les mesures.
+ENV NG_BUILD_MAX_WORKERS=1
+
 COPY --from=deps /workspace/node_modules ./node_modules
 COPY . .
 

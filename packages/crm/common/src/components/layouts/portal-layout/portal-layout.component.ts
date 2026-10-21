@@ -20,6 +20,7 @@ import { TenantContextResponse } from '@sankore/crm-api';
 // fermait un cycle d'imports qui empêchait des modules de s'évaluer : voir l'en-tête de
 // `telephony-top-bar-state.ts`.
 import { TelephonyStatusPill } from './telephony-status-pill';
+import { NotificationBell } from '../../notification-bell/notification-bell';
 
 @Component({
   selector: 'common-portal-layout',
@@ -41,6 +42,7 @@ import { TelephonyStatusPill } from './telephony-status-pill';
     MenuItem,
     TasMenuTrigger,
     TelephonyStatusPill,
+    NotificationBell,
   ],
 })
 export class PortalLayoutComponent implements OnInit {
@@ -101,6 +103,17 @@ export class PortalLayoutComponent implements OnInit {
         type: 'basic',
         link: '/leads',
       },
+      ...(this._permissions.has('WhatsApp.Send', 'WhatsApp.Reply', 'WhatsApp.Supervise')
+        ? [
+            {
+              id: 'whatsapp',
+              icon: 'feather:message-circle',
+              title: 'WhatsApp',
+              type: 'basic' as const,
+              link: '/leads/whatsapp',
+            },
+          ]
+        : []),
       ...(this._permissions.has('lead:dispatching-rule:read')
         ? [
             {

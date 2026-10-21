@@ -153,10 +153,11 @@
                   </button>
                 </div>
               }
-              @if (!collectModel().proofActivityId) {
+              @if (!collectModel().proofActivityId || isWhatsAppCollect()) {
                 <tas-form-field class="mt-2">
-                  <tas-label class="sr-only">Référence de la preuve</tas-label>
-                  <input tasInput type="text" [attr.placeholder]="selectedChannel()?.proofHint ?? 'Référence de la preuve'"
+                  <tas-label class="sr-only">{{ isWhatsAppCollect() ? 'Motif' : 'Référence de la preuve' }}</tas-label>
+                  <input tasInput type="text"
+                         [attr.placeholder]="isWhatsAppCollect() ? 'Motif : quand et comment il a accepté d’être contacté sur WhatsApp' : (selectedChannel()?.proofHint ?? 'Référence de la preuve')"
                          [formField]="collectForm.proofReference" />
                   @if (collectForm.proofReference().touched() && collectForm.proofReference().invalid()) {
                     <tas-error>{{ collectForm.proofReference().errors()[0].message }}</tas-error>

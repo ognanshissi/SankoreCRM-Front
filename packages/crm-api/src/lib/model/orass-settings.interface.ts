@@ -31,7 +31,7 @@ export interface OrassSettings {
     retentionDays?: number;
     ackTimeoutHours?: number;
     /**
-     * One of: Temenos, Amplitude, Sab, PerfectVision, Orass, Ringover, Fake
+     * One of: Temenos, Amplitude, Sab, PerfectVision, Orass, Ringover, Fake, Dialog360
      */
     readonly expectedKind?: OrassSettingsExpectedKindEnum;
     baseUrl?: string | null;
@@ -53,7 +53,8 @@ export enum OrassSettingsExpectedKindEnum {
     PerfectVision = 'PerfectVision',
     Orass = 'Orass',
     Ringover = 'Ringover',
-    Fake = 'Fake'
+    Fake = 'Fake',
+    Dialog360 = 'Dialog360'
 };
 export enum OrassSettingsBranchEnum {
     Iard = 'Iard',

@@ -69,6 +69,7 @@ const FAMILY_ENUM: Record<ConnectionFamily, CreateConnectionRequestFamilyEnum> =
   CoreBanking: CreateConnectionRequestFamilyEnum.CoreBanking,
   Insurance: CreateConnectionRequestFamilyEnum.Insurance,
   Telephony: CreateConnectionRequestFamilyEnum.Telephony,
+  Messaging: CreateConnectionRequestFamilyEnum.Messaging,
 };
 
 const KIND_ENUM: Record<ConnectionKind, CreateConnectionRequestKindEnum> = {
@@ -79,6 +80,7 @@ const KIND_ENUM: Record<ConnectionKind, CreateConnectionRequestKindEnum> = {
   Orass: CreateConnectionRequestKindEnum.Orass,
   Ringover: CreateConnectionRequestKindEnum.Ringover,
   Fake: CreateConnectionRequestKindEnum.Fake,
+  Dialog360: CreateConnectionRequestKindEnum.Dialog360,
 };
 
 const MODE_ENUM: Record<ConnectionMode, CreateConnectionRequestModeEnum> = {
@@ -91,6 +93,7 @@ const FAMILY_STYLE: Record<ConnectionFamily, { icon: string; tile: string }> = {
   CoreBanking: { icon: 'feather:database', tile: 'bg-primary/10 text-primary' },
   Insurance: { icon: 'feather:shield', tile: 'bg-blue-50 text-blue-800' },
   Telephony: { icon: 'feather:phone', tile: 'bg-amber-50 text-amber-800' },
+  Messaging: { icon: 'feather:message-circle', tile: 'bg-emerald-50 text-emerald-800' },
 };
 
 /** Nom proposé tant que l'utilisateur n'a pas écrit le sien. */

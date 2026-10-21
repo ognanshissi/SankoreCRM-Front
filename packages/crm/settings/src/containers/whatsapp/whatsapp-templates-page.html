@@ -1,0 +1,146 @@
+<div class="pb-6 flex flex-col gap-4">
+  <!-- En-tête -->
+  <div class="flex flex-wrap items-start justify-between gap-3">
+    <div class="max-w-2xl">
+      <div class="flex items-center gap-2.5">
+        <h1 class="text-lg font-semibold text-slate-800">Templates WhatsApp</h1>
+        @if (templates().length > 0) {
+          <span class="px-2 py-0.5 rounded-md bg-slate-100 text-slate-500 text-xs font-medium tabular-nums">
+            {{ filteredTemplates().length }}
+          </span>
+        }
+      </div>
+      <p class="text-sm text-slate-500 mt-0.5">
+        Les modèles de message validés par Meta pour vos numéros. Paramétrez pour quels produits
+        chacun est proposé et quel champ du lead remplit ses variables.
+      </p>
+    </div>
+    <div class="flex items-center gap-2">
+      <a tas-outlined-button color="primary" routerLink="/settings/whatsapp">
+        <tas-icon iconName="feather:phone" style="font-size:14px"></tas-icon>
+        Numéros WhatsApp
+      </a>
+      <button
+        tas-raised-button
+        color="primary"
+        type="button"
+        [disabled]="isSyncing()"
+        [isLoading]="isSyncing()"
+        (click)="synchronize()"
+      >
+        <tas-icon iconName="feather:refresh-cw" style="font-size:14px"></tas-icon>
+        Synchroniser
+      </button>
+    </div>
+  </div>
+
+  <div class="flex gap-3 p-3 rounded-lg bg-slate-50 border border-slate-200">
+    <tas-icon iconName="feather:info" class="text-primary shrink-0 mt-0.5" style="font-size:14px"></tas-icon>
+    <p class="text-sm text-slate-600">
+      Seuls les templates <strong>Approuvés</strong> sont proposés aux agents. L’approbation est
+      décidée par Meta : un template créé ou modifié dans le hub 360dialog apparaît ici après une
+      synchronisation, avec le statut que Meta lui a donné.
+    </p>
+  </div>
+
+  <!-- Filtres -->
+  <tas-card class="block">
+    <div class="p-4">
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
+        <tas-form-field class="md:col-span-2">
+          <tas-label>Rechercher</tas-label>
+          <input
+            tasInput
+            type="text"
+            placeholder="Nom du template, numéro ou langue…"
+            [ngModel]="filterQuery()"
+            (ngModelChange)="onSearchChange($event)"
+          />
+        </tas-form-field>
+        <tas-form-field>
+          <tas-label>Statut Meta</tas-label>
+          <tas-select
+            [options]="statusOptions"
+            optionLabel="label"
+            optionValue="value"
+            placeholder="Tous les statuts"
+            [ngModel]="filterStatus()"
+            (ngModelChange)="onStatusChange($event)"
+          ></tas-select>
+        </tas-form-field>
+        <div>
+          <button tas-outlined-button color="primary" type="button" (click)="reload()">
+            <tas-icon iconName="feather:rotate-cw" style="font-size:14px"></tas-icon>
+            Rafraîchir
+          </button>
+        </div>
+      </div>
+    </div>
+  </tas-card>
+
+  @if (loadError(); as error) {
+    <tas-card class="block">
+      <div class="flex flex-col items-center py-16 text-center">
+        <tas-icon iconName="feather:alert-triangle" class="text-functional-error mb-2" style="font-size:24px"></tas-icon>
+        <p class="text-sm text-slate-600">{{ error }}</p>
+        <button tas-outlined-button type="button" class="mt-3" (click)="reload()">Réessayer</button>
+      </div>
+    </tas-card>
+  } @else if (!isLoading() && templates().length === 0) {
+    <tas-card class="block">
+      <div class="flex flex-col items-center py-16 text-center px-4">
+        <div class="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-3">
+          <tas-icon iconName="feather:file-text" class="text-primary" style="font-size:20px"></tas-icon>
+        </div>
+        <p class="text-sm font-semibold text-slate-700">Aucun template synchronisé</p>
+        <p class="text-sm text-slate-500 mt-1 max-w-md">
+          Lancez une synchronisation pour relire les templates de vos numéros actifs chez 360dialog.
+        </p>
+      </div>
+    </tas-card>
+  } @else {
+    <tas-table
+      [data]="filteredTemplates()"
+      identifierField="id"
+      [config]="tableConfig()"
+      [isLoading]="isLoading()"
+      [hasCaption]="false"
+    >
+      <ng-template #header>
+        <tr>
+          <th>Nom</th>
+          <th>Langue</th>
+          <th>Catégorie</th>
+          <th>Statut Meta</th>
+          <th>Numéro</th>
+          <th>Produits</th>
+          <th>Synchronisé le</th>
+        </tr>
+      </ng-template>
+
+      <ng-template #body let-item>
+        <tr class="cursor-pointer hover:bg-slate-50 transition-colors" (click)="openTemplate(item)">
+          <td class="py-3">
+            <div class="font-medium text-slate-800 font-mono text-sm">{{ item.name }}</div>
+            <div class="text-xs text-slate-400 mt-0.5 tabular-nums">
+              {{ item.variableCount ?? 0 }} variable(s)
+            </div>
+          </td>
+          <td class="text-sm text-slate-600">{{ item.language || '—' }}</td>
+          <td class="text-sm text-slate-600">{{ categoryLabel(item.category) }}</td>
+          <td>
+            <div class="flex items-center gap-1 flex-wrap">
+              <tas-tag [severity]="statusOf(item).severity">{{ statusOf(item).label }}</tas-tag>
+              @if (item.isAvailable === false) {
+                <tas-tag severity="neutral">Retiré</tas-tag>
+              }
+            </div>
+          </td>
+          <td class="text-sm text-slate-600 tabular-nums">{{ item.channelDisplayPhoneNumber || '—' }}</td>
+          <td class="text-sm text-slate-600 max-w-60 truncate" [title]="productsLabel(item)">{{ productsLabel(item) }}</td>
+          <td class="text-sm text-slate-500 tabular-nums">{{ item.syncedAt | date: 'dd/MM/yyyy HH:mm' }}</td>
+        </tr>
+      </ng-template>
+    </tas-table>
+  }
+</div>

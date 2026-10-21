@@ -45,6 +45,7 @@ api/leads.service.ts
 api/legal-entities.service.ts
 api/legal-forms.service.ts
 api/notification-settings.service.ts
+api/notifications.service.ts
 api/nurturing-sequences.service.ts
 api/object-storage.service.ts
 api/opportunities.service.ts
@@ -68,6 +69,7 @@ api/territories.service.ts
 api/user-import.service.ts
 api/users.service.ts
 api/webhooks.service.ts
+api/whats-app.service.ts
 api/workflow-analytics.service.ts
 api/workflow-instances.service.ts
 api/workflow-tasks.service.ts
@@ -190,6 +192,7 @@ model/close-holding-request.interface.ts
 model/close-lead-request.interface.ts
 model/close-opportunity-request.interface.ts
 model/close-opportunity-response.interface.ts
+model/close-whats-app-conversation-request.interface.ts
 model/company-info-dto.interface.ts
 model/company-logo-response.interface.ts
 model/compatibility-factors.interface.ts
@@ -199,6 +202,8 @@ model/complete-task-request.interface.ts
 model/completed-task-dto.interface.ts
 model/completeness-gap.interface.ts
 model/compliance-settings-response.interface.ts
+model/configure-whats-app-template-request.interface.ts
+model/configure-whats-app-webhook-response.interface.ts
 model/connection-detail-dto.interface.ts
 model/connection-health-dto.interface.ts
 model/connection-list-dto.interface.ts
@@ -279,6 +284,7 @@ model/designation-input.interface.ts
 model/designation-role-definition.interface.ts
 model/designation-role-input.interface.ts
 model/detach-lead-from-customer-request.interface.ts
+model/dialog360-settings.interface.ts
 model/dismiss-duplicate-request.interface.ts
 model/dismiss-missed-call-request.interface.ts
 model/dismiss-profile-notice-request.interface.ts
@@ -336,6 +342,7 @@ model/holding-specifics-dto.interface.ts
 model/hosted-form-config.interface.ts
 model/hosted-form-field.interface.ts
 model/household-resources-dto.interface.ts
+model/http-validation-problem-details.interface.ts
 model/impersonate-user-request.interface.ts
 model/impersonation-started-dto.interface.ts
 model/import-job-created-result.interface.ts
@@ -454,6 +461,8 @@ model/money.interface.ts
 model/move-agency-request.interface.ts
 model/my-agenda-dto.interface.ts
 model/my-kyc-access-dto.interface.ts
+model/my-notification-dto.interface.ts
+model/my-notifications-dto.interface.ts
 model/my-performance-dto.interface.ts
 model/my-profile-dto.interface.ts
 model/my-step-dto.interface.ts
@@ -524,6 +533,7 @@ model/quote-insurance-product-request.interface.ts
 model/raise-kyc-review-request.interface.ts
 model/raise-kyc-review-result.interface.ts
 model/reassign-task-request.interface.ts
+model/reassign-whats-app-conversation-request.interface.ts
 model/recalculate-lead-score-result.interface.ts
 model/recompute-telephony-stats-request.interface.ts
 model/reconciliation-gap-page.interface.ts
@@ -595,6 +605,7 @@ model/run-kyc-verification-request.interface.ts
 model/run-kyc-verification-response.interface.ts
 model/sab-settings.interface.ts
 model/save-entity-form-request.interface.ts
+model/save-whats-app-channel-request.interface.ts
 model/schedule-appointment-request.interface.ts
 model/scheduled-pull-settings.interface.ts
 model/scoped-permission-dto.interface.ts
@@ -613,6 +624,10 @@ model/segment-rule-dto.interface.ts
 model/segment-rules-dto.interface.ts
 model/send-snippet-request.interface.ts
 model/send-test-email-request.interface.ts
+model/send-whats-app-media-result.interface.ts
+model/send-whats-app-template-request.interface.ts
+model/send-whats-app-template-result.interface.ts
+model/send-whats-app-text-request.interface.ts
 model/server-webhook-settings.interface.ts
 model/set-agent-capacity-ceiling-request.interface.ts
 model/set-beneficiary-policy-request.interface.ts
@@ -629,11 +644,14 @@ model/set-recording-policy-request.interface.ts
 model/set-secret-request.interface.ts
 model/set-sms-monthly-quota-command.interface.ts
 model/set-telephony-caller-number-request.interface.ts
+model/set-whats-app-api-key-request.interface.ts
 model/sign-holding-request.interface.ts
 model/simulate-dispatch-request.interface.ts
 model/simulate-dispatch-result.interface.ts
 model/simulate-telephony-webhook-request.interface.ts
 model/simulate-telephony-webhook-response.interface.ts
+model/simulate-whats-app-inbound-request.interface.ts
+model/simulate-whats-app-status-request.interface.ts
 model/simulated-candidate-dto.interface.ts
 model/sla-breach-dto.interface.ts
 model/sla-config-dto.interface.ts
@@ -762,6 +780,19 @@ model/verify-token-response.interface.ts
 model/web-form-field-dto.interface.ts
 model/web-form-response.interface.ts
 model/weekly-conversions-dto.interface.ts
+model/whats-app-channel-dto.interface.ts
+model/whats-app-channel-summary-dto.interface.ts
+model/whats-app-compose-template-dto.interface.ts
+model/whats-app-compose-variable-dto.interface.ts
+model/whats-app-conversation-summary-dto.interface.ts
+model/whats-app-inbox-dto.interface.ts
+model/whats-app-inbox-item-dto.interface.ts
+model/whats-app-message-dto.interface.ts
+model/whats-app-message-page-dto.interface.ts
+model/whats-app-panel-dto.interface.ts
+model/whats-app-template-dto.interface.ts
+model/whats-app-template-sync-result.interface.ts
+model/whats-app-variable-mapping-dto.interface.ts
 model/withdraw-consent-request.interface.ts
 model/workflow-audit-entry-dto.interface.ts
 model/workflow-instance-dto.interface.ts

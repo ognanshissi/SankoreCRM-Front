@@ -122,6 +122,37 @@
     </tas-card>
   }
 
+  <!-- WhatsApp opt-in (WA-BE-05) -->
+  <tas-card class="block">
+    <div class="p-4 border-b border-slate-100">
+      <p class="text-sm font-semibold text-slate-700 flex items-center gap-2">
+        <tas-icon iconName="feather:message-circle" class="text-slate-400" style="font-size:14px"></tas-icon>
+        Consentement WhatsApp
+      </p>
+    </div>
+    <div class="p-4">
+      @if (isEmbeddedScript()) {
+        <p class="text-xs text-slate-600">
+          Le SDK 1.3.0 envoie la case WhatsApp lui-même : configurez son libellé dans l’onglet du
+          formulaire hébergé, ou ajoutez à votre propre formulaire une case nommée
+          <code>whatsapp_consent</code>. Cochée, elle enregistre le consentement WhatsApp du lead.
+        </p>
+      } @else {
+        <tas-form-field>
+          <tas-label>Champ du consentement WhatsApp</tas-label>
+          <input tasInput type="text" placeholder="$.consents.whatsapp"
+                 [ngModel]="config().whatsAppConsentFieldPath"
+                 (ngModelChange)="updateField('whatsAppConsentFieldPath', $event)"
+                 [disabled]="readonly()" />
+          <tas-hint class="text-slate-400 mt-1">
+            Facultatif. Chemin JSONPath de l’opt-in WhatsApp dans le payload reçu ; une valeur vraie
+            (<code>true</code>, <code>1</code>, <code>oui</code>) enregistre le consentement WhatsApp du lead.
+          </tas-hint>
+        </tas-form-field>
+      }
+    </div>
+  </tas-card>
+
   <!-- Activation check -->
   @if (!readonly() && !canActivate()) {
     <div class="p-3 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2">

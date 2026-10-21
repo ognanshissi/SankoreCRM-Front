@@ -20,7 +20,7 @@ export interface SabSettings {
     timeoutSeconds?: number;
     syncIntervalMinutes?: AmplitudeSettingsSyncIntervalMinutes | null;
     /**
-     * One of: Temenos, Amplitude, Sab, PerfectVision, Orass, Ringover, Fake
+     * One of: Temenos, Amplitude, Sab, PerfectVision, Orass, Ringover, Fake, Dialog360
      */
     readonly expectedKind?: SabSettingsExpectedKindEnum;
     baseUrl?: string | null;
@@ -38,7 +38,8 @@ export enum SabSettingsExpectedKindEnum {
     PerfectVision = 'PerfectVision',
     Orass = 'Orass',
     Ringover = 'Ringover',
-    Fake = 'Fake'
+    Fake = 'Fake',
+    Dialog360 = 'Dialog360'
 };
 export enum SabSettingsKindEnum {
     Sab = 'Sab'

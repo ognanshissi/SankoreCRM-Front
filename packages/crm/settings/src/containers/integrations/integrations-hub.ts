@@ -47,8 +47,9 @@ const INTEGRATIONS: Integration[] = [
     description: 'Envoyer des messages et notifications via WhatsApp Business API.',
     icon: 'feather:message-circle',
     category: 'communication',
-    status: 'coming_soon',
-    link: null,
+    status: 'available',
+    link: '/settings/whatsapp',
+    permission: 'WhatsApp.Config',
   },
   {
     id: 'telephony',

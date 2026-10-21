@@ -25,3 +25,8 @@ export * from './entity-form-renderer/custom-fields-card';
 export * from './entity-form-renderer/entity-form-errors';
 export * from './entity-form-renderer/custom-field-filters';
 export * from './entity-form-renderer/custom-field-columns';
+// Cloche des notifications in-app (WA-FE-10). Le service est exporté pour que « Paramétrage
+// agent » puisse lui transmettre la préférence de son après un enregistrement.
+export * from './notification-bell/notification-bell';
+export * from './notification-bell/notification-center.service';
+export * from './notification-bell/notification-sound';

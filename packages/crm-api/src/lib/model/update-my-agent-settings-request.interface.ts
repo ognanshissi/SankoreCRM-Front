@@ -21,5 +21,6 @@ export interface UpdateMyAgentSettingsRequest {
     maxActiveLeads?: number | null;
     notificationPreferences?: Array<NotificationPreferenceDto> | null;
     spokenLanguages?: Array<string> | null;
+    notificationSound?: boolean | null;
 }
 

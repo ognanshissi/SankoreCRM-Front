@@ -20,14 +20,15 @@ export interface FakeSettings {
     timeoutSeconds?: number;
     syncIntervalMinutes?: AmplitudeSettingsSyncIntervalMinutes | null;
     /**
-     * One of: Temenos, Amplitude, Sab, PerfectVision, Orass, Ringover, Fake
+     * One of: Temenos, Amplitude, Sab, PerfectVision, Orass, Ringover, Fake, Dialog360
      */
     readonly expectedKind?: FakeSettingsExpectedKindEnum;
     /**
-     * One of: CoreBanking, Insurance, Telephony
+     * One of: CoreBanking, Insurance, Telephony, Messaging
      */
     family?: FakeSettingsFamilyEnum;
     forcedErrorCode?: string | null;
+    phoneNumberId?: string | null;
     /**
      * One of: Transient, Functional, Technical
      */
@@ -44,12 +45,14 @@ export enum FakeSettingsExpectedKindEnum {
     PerfectVision = 'PerfectVision',
     Orass = 'Orass',
     Ringover = 'Ringover',
-    Fake = 'Fake'
+    Fake = 'Fake',
+    Dialog360 = 'Dialog360'
 };
 export enum FakeSettingsFamilyEnum {
     CoreBanking = 'CoreBanking',
     Insurance = 'Insurance',
-    Telephony = 'Telephony'
+    Telephony = 'Telephony',
+    Messaging = 'Messaging'
 };
 export enum FakeSettingsForcedErrorFamilyEnum {
     Transient = 'Transient',

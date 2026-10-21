@@ -207,6 +207,15 @@
               }
             </tbody>
           </table>
+
+          <div class="mt-5 pt-5 border-t border-slate-200 flex items-start gap-3">
+            <tas-switch [checked]="model().notificationSound" ariaLabel="Son des notifications"
+              (toggle)="setNotificationSound($event)"></tas-switch>
+            <div>
+              <p class="text-sm font-semibold text-slate-800">Son des notifications</p>
+              <p class="text-xs text-slate-500 mt-0.5">Un son court accompagne chaque nouvelle notification de la cloche.</p>
+            </div>
+          </div>
         </section>
 
         <!-- Délégations -->

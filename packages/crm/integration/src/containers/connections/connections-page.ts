@@ -61,6 +61,7 @@ const FAMILY_TILE: Record<ConnectionFamily, string> = {
   CoreBanking: 'bg-primary/10 text-primary',
   Insurance: 'bg-blue-50 text-blue-800',
   Telephony: 'bg-amber-50 text-amber-800',
+  Messaging: 'bg-emerald-50 text-emerald-800',
 };
 
 export interface ConnectionRow {

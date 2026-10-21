@@ -94,7 +94,8 @@ export const SETTINGS_CATALOG: ReadonlyArray<SettingsGroup> = [
       { id: 'email-provider', title: 'E-mail', icon: 'feather:mail', link: '/settings/notifications', permission: ['notification:settings:read', 'notification:outbox:read'], description: 'Fournisseur d’envoi, expéditeur, quota et journal de livraison.' },
       { id: 'sms-provider', title: 'SMS', icon: 'feather:message-square', link: '/settings/notifications/sms', permission: 'notification:settings:read', description: 'Fournisseur SMS, expéditeur et allocation mensuelle.' },
       { id: 'email-templates', title: 'Modèles d’e-mail', icon: 'feather:file-text', link: '/settings/email-templates', permission: 'notification:template:read', description: 'Les modèles transactionnels et marketing.' },
-      { id: 'whatsapp', title: 'WhatsApp Business', icon: 'feather:message-circle', description: 'Votre compte WhatsApp entreprise.' },
+      { id: 'whatsapp', title: 'WhatsApp Business', icon: 'feather:message-circle', link: '/settings/whatsapp', permission: 'WhatsApp.Config', description: 'Les numéros WhatsApp de l’institution, leur clé 360dialog et leur webhook.' },
+      { id: 'whatsapp-templates', title: 'Templates WhatsApp', icon: 'feather:file-text', link: '/settings/whatsapp/templates', permission: 'WhatsApp.Config', description: 'Les modèles approuvés par Meta, leurs produits et leurs variables.' },
     ],
   },
   {

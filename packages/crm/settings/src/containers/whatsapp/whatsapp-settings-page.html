@@ -1,0 +1,294 @@
+<div class="pb-6 flex flex-col gap-4">
+  <!-- En-tête -->
+  <div class="flex flex-wrap items-start justify-between gap-3">
+    <div class="max-w-2xl">
+      <div class="flex items-center gap-2.5">
+        <h1 class="text-lg font-semibold text-slate-800">WhatsApp Business</h1>
+        @if (channels().length > 0) {
+          <span class="px-2 py-0.5 rounded-md bg-slate-100 text-slate-500 text-xs font-medium tabular-nums">
+            {{ channels().length }}
+          </span>
+        }
+      </div>
+      <p class="text-sm text-slate-500 mt-0.5">
+        Les numéros WhatsApp de l’institution, reliés via 360dialog. Les agents écrivent aux leads
+        depuis ces numéros, et les réponses des clients arrivent dans le CRM.
+      </p>
+    </div>
+    <div class="flex items-center gap-2">
+      <a tas-outlined-button color="primary" routerLink="/settings/whatsapp/templates">
+        <tas-icon iconName="feather:file-text" style="font-size:14px"></tas-icon>
+        Templates WhatsApp
+      </a>
+      <button tas-raised-button color="primary" type="button" (click)="openCreate()">
+        <tas-icon iconName="feather:plus" style="font-size:14px"></tas-icon>
+        Connecter un numéro
+      </button>
+    </div>
+  </div>
+
+  <!-- Marche à suivre -->
+  <tas-card class="block">
+    <div class="p-4">
+      <p class="text-sm font-semibold text-slate-700 mb-2">Mise en service d’un numéro</p>
+      <ol class="grid grid-cols-1 md:grid-cols-5 gap-3 text-xs text-slate-600">
+        <li class="flex gap-2">
+          <span class="w-5 h-5 shrink-0 rounded-full bg-primary/10 text-primary font-semibold flex items-center justify-center tabular-nums">1</span>
+          <span>Enregistrer le numéro (identifiants du hub 360dialog).</span>
+        </li>
+        <li class="flex gap-2">
+          <span class="w-5 h-5 shrink-0 rounded-full bg-primary/10 text-primary font-semibold flex items-center justify-center tabular-nums">2</span>
+          <span>Coller la clé API 360dialog.</span>
+        </li>
+        <li class="flex gap-2">
+          <span class="w-5 h-5 shrink-0 rounded-full bg-primary/10 text-primary font-semibold flex items-center justify-center tabular-nums">3</span>
+          <span>Configurer le webhook, pour recevoir les réponses.</span>
+        </li>
+        <li class="flex gap-2">
+          <span class="w-5 h-5 shrink-0 rounded-full bg-primary/10 text-primary font-semibold flex items-center justify-center tabular-nums">4</span>
+          <span>Tester la connexion.</span>
+        </li>
+        <li class="flex gap-2">
+          <span class="w-5 h-5 shrink-0 rounded-full bg-primary/10 text-primary font-semibold flex items-center justify-center tabular-nums">5</span>
+          <span>Activer : le numéro devient utilisable par les agents.</span>
+        </li>
+      </ol>
+    </div>
+  </tas-card>
+
+  @if (loadError(); as error) {
+    <tas-card class="block">
+      <div class="flex flex-col items-center py-16 text-center">
+        <tas-icon iconName="feather:alert-triangle" class="text-functional-error mb-2" style="font-size:24px"></tas-icon>
+        <p class="text-sm text-slate-600">{{ error }}</p>
+        <button tas-outlined-button type="button" class="mt-3" (click)="reload()">Réessayer</button>
+      </div>
+    </tas-card>
+  } @else if (!isLoading() && channels().length === 0) {
+    <tas-card class="block">
+      <div class="flex flex-col items-center py-16 text-center px-4">
+        <div class="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-3">
+          <tas-icon iconName="feather:message-circle" class="text-primary" style="font-size:20px"></tas-icon>
+        </div>
+        <p class="text-sm font-semibold text-slate-700">Aucun numéro WhatsApp connecté</p>
+        <p class="text-sm text-slate-500 mt-1 max-w-md">
+          Connectez le numéro WhatsApp Business de l’institution pour que les agents puissent
+          écrire aux leads et recevoir leurs réponses.
+        </p>
+        <button tas-raised-button color="primary" type="button" class="mt-4" (click)="openCreate()">
+          <tas-icon iconName="feather:plus" style="font-size:14px"></tas-icon>
+          Connecter un numéro
+        </button>
+      </div>
+    </tas-card>
+  } @else {
+    <tas-table
+      [data]="channels()"
+      identifierField="id"
+      [config]="tableConfig()"
+      [isLoading]="isLoading()"
+      [hasCaption]="false"
+    >
+      <ng-template #body let-channel>
+        <tr>
+          <td class="p-3">
+            <div class="rounded-lg border border-slate-200 bg-white">
+              <!-- Identité et statut -->
+              <div class="p-4 flex flex-wrap items-start justify-between gap-3">
+                <div class="flex items-start gap-3 min-w-0">
+                  <div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                    <tas-icon iconName="feather:message-circle" class="text-primary" style="font-size:18px"></tas-icon>
+                  </div>
+                  <div class="min-w-0">
+                    <p class="text-xl font-semibold text-slate-800 tabular-nums leading-tight">
+                      {{ channel.displayPhoneNumber || 'Numéro non renseigné' }}
+                    </p>
+                    <p class="text-sm text-slate-500 mt-0.5 truncate">{{ channel.name }}</p>
+                  </div>
+                </div>
+                <div class="flex items-center gap-2">
+                  @if (channel.simulated) {
+                    <tas-tag severity="info">Simulé (développement)</tas-tag>
+                  }
+                  <tas-tag [severity]="statusOf(channel).severity">{{ statusOf(channel).label }}</tas-tag>
+                </div>
+              </div>
+
+              @if (channel.status === 'Error' && healthDetail(channel)) {
+                <div class="px-4 pb-3">
+                  <div class="flex gap-2 p-3 rounded-lg bg-red-50 border border-red-200">
+                    <tas-icon iconName="feather:alert-circle" class="text-functional-error shrink-0 mt-0.5" style="font-size:14px"></tas-icon>
+                    <p class="text-sm text-slate-700">{{ healthDetail(channel) }}</p>
+                  </div>
+                </div>
+              }
+
+              <!-- Détails -->
+              <dl class="px-4 pb-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-3 text-sm">
+                <div>
+                  <dt class="text-xs text-slate-400">Fournisseur</dt>
+                  <dd class="text-slate-700 mt-0.5">{{ channel.simulated ? 'Simulé (développement)' : '360dialog' }}</dd>
+                </div>
+                <div>
+                  <dt class="text-xs text-slate-400">Agence</dt>
+                  <dd class="text-slate-700 mt-0.5">{{ agencyLabel(channel) }}</dd>
+                </div>
+                @if (!channel.simulated) {
+                  <div>
+                    <dt class="text-xs text-slate-400">Clé API</dt>
+                    <dd class="text-slate-700 mt-0.5 flex items-center gap-2 flex-wrap">
+                      @if (channel.hasApiKey) {
+                        <span>Enregistrée</span>
+                        @if (channel.apiKeyHint) {
+                          <span class="font-mono text-xs text-slate-500">({{ channel.apiKeyHint }})</span>
+                        }
+                      } @else {
+                        <span class="text-orange-700">Non renseignée</span>
+                      }
+                      @if (editingKeyId() !== channel.id) {
+                        <button tas-text-button color="primary" type="button" class="text-xs" (click)="startKeyEdit(channel)">
+                          {{ channel.hasApiKey ? 'Modifier' : 'Renseigner' }}
+                        </button>
+                      }
+                    </dd>
+                  </div>
+                }
+                <div>
+                  <dt class="text-xs text-slate-400">Webhook</dt>
+                  <dd class="mt-0.5">
+                    @if (channel.hasWebhookToken) {
+                      <span class="text-slate-700">Configuré</span>
+                    } @else {
+                      <span class="text-orange-700">À configurer</span>
+                    }
+                  </dd>
+                </div>
+                <div>
+                  <dt class="text-xs text-slate-400">Dernier test</dt>
+                  <dd class="text-slate-700 mt-0.5 tabular-nums">
+                    @if (channel.lastHealthAt) {
+                      {{ channel.lastHealthAt | date: 'dd/MM/yyyy HH:mm' }}
+                      — {{ channel.lastHealthStatus ? 'réussi' : 'échoué' }}
+                    } @else {
+                      Jamais testé
+                    }
+                  </dd>
+                </div>
+                <div>
+                  <dt class="text-xs text-slate-400">Phone number ID</dt>
+                  <dd class="text-slate-700 mt-0.5 font-mono text-xs">{{ channel.phoneNumberId || '—' }}</dd>
+                </div>
+              </dl>
+
+              @if (webhookUrls()[channel.id]; as url) {
+                <div class="px-4 pb-4">
+                  <div class="p-3 rounded-lg bg-slate-50 border border-slate-200">
+                    <p class="text-xs text-slate-500">360dialog livre désormais les messages à :</p>
+                    <p class="text-xs font-mono text-slate-700 break-all mt-1">{{ url }}</p>
+                  </div>
+                </div>
+              }
+
+              <!-- Saisie de la clé API : jamais pré-remplie, jamais réaffichée -->
+              @if (editingKeyId() === channel.id) {
+                <form [formRoot]="keyForm" class="mx-4 mb-4 p-4 rounded-lg bg-slate-50 border border-slate-200 flex flex-col gap-3">
+                  <tas-form-field>
+                    <tas-label>{{ channel.hasApiKey ? 'Nouvelle clé API 360dialog' : 'Clé API 360dialog' }} <span class="text-functional-error">*</span></tas-label>
+                    <input tasInput type="password" autocomplete="new-password" [formField]="keyForm.apiKey" />
+                    @if (keyForm.apiKey().touched() && keyForm.apiKey().invalid()) {
+                      <tas-error>{{ keyForm.apiKey().errors()[0].message }}</tas-error>
+                    } @else {
+                      <tas-hint>
+                        Générée dans le hub 360dialog pour ce numéro. Stockée chiffrée dans le coffre,
+                        elle n’est plus jamais affichée ensuite.
+                      </tas-hint>
+                    }
+                  </tas-form-field>
+                  <div class="flex justify-end gap-2">
+                    <button tas-text-button type="button" (click)="cancelKeyEdit()">Annuler</button>
+                    <button
+                      tas-raised-button
+                      color="primary"
+                      type="button"
+                      (click)="saveKey(channel)"
+                      [disabled]="keyForm().invalid() || keyForm().submitting()"
+                      [isLoading]="keyForm().submitting()"
+                    >
+                      Enregistrer la clé
+                    </button>
+                  </div>
+                </form>
+              }
+
+              <!-- Actions -->
+              <div class="px-4 py-3 border-t border-slate-100 flex flex-wrap items-center gap-2">
+                <button
+                  tas-outlined-button
+                  color="primary"
+                  type="button"
+                  [disabled]="isBusy(channel)"
+                  [isLoading]="isBusy(channel, 'test')"
+                  (click)="testConnection(channel)"
+                >
+                  <tas-icon iconName="feather:activity" style="font-size:14px"></tas-icon>
+                  Tester la connexion
+                </button>
+
+                <button
+                  tas-outlined-button
+                  color="primary"
+                  type="button"
+                  [disabled]="isBusy(channel)"
+                  [isLoading]="isBusy(channel, 'webhook')"
+                  (click)="confirmWebhook(channel)"
+                >
+                  <tas-icon iconName="feather:link" style="font-size:14px"></tas-icon>
+                  {{ channel.hasWebhookToken ? 'Reconfigurer le webhook' : 'Configurer le webhook' }}
+                </button>
+
+                <button tas-text-button color="primary" type="button" [disabled]="isBusy(channel)" (click)="openEdit(channel)">
+                  <tas-icon iconName="feather:edit-2" style="font-size:14px"></tas-icon>
+                  Modifier
+                </button>
+
+                @if (channel.simulated) {
+                  <button tas-text-button color="primary" type="button" (click)="openSimulateInbound(channel)">
+                    <tas-icon iconName="feather:message-square" style="font-size:14px"></tas-icon>
+                    Simuler un message entrant
+                  </button>
+                }
+
+                <span class="flex-1"></span>
+
+                @if (channel.isActive) {
+                  <button
+                    tas-outlined-button
+                    color="warn"
+                    type="button"
+                    [disabled]="isBusy(channel)"
+                    [isLoading]="isBusy(channel, 'toggle')"
+                    (click)="confirmDeactivate(channel)"
+                  >
+                    Désactiver
+                  </button>
+                } @else {
+                  <button
+                    tas-raised-button
+                    color="primary"
+                    type="button"
+                    [disabled]="isBusy(channel)"
+                    [isLoading]="isBusy(channel, 'toggle')"
+                    (click)="activate(channel)"
+                  >
+                    <tas-icon iconName="feather:power" style="font-size:14px"></tas-icon>
+                    Activer
+                  </button>
+                }
+              </div>
+            </div>
+          </td>
+        </tr>
+      </ng-template>
+    </tas-table>
+  }
+</div>

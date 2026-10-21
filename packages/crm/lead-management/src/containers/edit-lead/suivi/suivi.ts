@@ -17,6 +17,7 @@ const TABS: ReadonlyArray<SuiviTab> = [
   { label: 'Rappels', icon: 'feather:bell', route: 'rappels', permission: 'lead:reminder:manage' },
   { label: 'Tâches', icon: 'feather:check-square', route: 'taches', permission: 'lead:task:read' },
   { label: 'Chronologie', icon: 'feather:clock', route: 'timeline' },
+  { label: 'WhatsApp', icon: 'feather:message-circle', route: 'whatsapp', permission: 'WhatsApp.Send' },
 ];
 
 /** Page « Suivi » de la fiche lead : les activités, rappels, tâches et la chronologie, en onglets. */
@@ -57,11 +58,13 @@ export class LeadSuivi {
 
   private readonly _canReminders = this._permissions.can('lead:reminder:manage');
   private readonly _canTasks = this._permissions.can('lead:task:read');
+  private readonly _canWhatsApp = this._permissions.can('WhatsApp.Send', 'WhatsApp.Supervise');
 
   public readonly tabs = computed(() =>
     TABS.filter((tab) =>
       tab.permission === 'lead:reminder:manage' ? this._canReminders()
         : tab.permission === 'lead:task:read' ? this._canTasks()
+        : tab.permission === 'WhatsApp.Send' ? this._canWhatsApp()
         : true,
     ),
   );

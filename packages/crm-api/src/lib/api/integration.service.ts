@@ -3266,17 +3266,17 @@ export class IntegrationApiService {
     /**
      * List the external systems this tenant integrates with
      * The current tenant\&#39;s connections, active ones first. Filter by family (CoreBanking | Insurance) and by activity. The settings object is NOT in the list — ask for one connection to get it — and no credential appears in either: the values live in the vault and only a masked hint is ever readable, through GET connections/{connectionId}/secrets. Requires permission: Integration.Connection.View.
-     * @param family One of: CoreBanking, Insurance, Telephony
+     * @param family One of: CoreBanking, Insurance, Telephony, Messaging
      * @param isActive 
      * @param page 
      * @param pageSize 
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      */
-    public listIntegrationConnections(family?: 'CoreBanking' | 'Insurance' | 'Telephony', isActive?: boolean, page?: number, pageSize?: number, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<PagedResultOfConnectionListDto>;
-    public listIntegrationConnections(family?: 'CoreBanking' | 'Insurance' | 'Telephony', isActive?: boolean, page?: number, pageSize?: number, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<PagedResultOfConnectionListDto>>;
-    public listIntegrationConnections(family?: 'CoreBanking' | 'Insurance' | 'Telephony', isActive?: boolean, page?: number, pageSize?: number, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<PagedResultOfConnectionListDto>>;
-    public listIntegrationConnections(family?: 'CoreBanking' | 'Insurance' | 'Telephony', isActive?: boolean, page?: number, pageSize?: number, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
+    public listIntegrationConnections(family?: 'CoreBanking' | 'Insurance' | 'Telephony' | 'Messaging', isActive?: boolean, page?: number, pageSize?: number, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<PagedResultOfConnectionListDto>;
+    public listIntegrationConnections(family?: 'CoreBanking' | 'Insurance' | 'Telephony' | 'Messaging', isActive?: boolean, page?: number, pageSize?: number, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<PagedResultOfConnectionListDto>>;
+    public listIntegrationConnections(family?: 'CoreBanking' | 'Insurance' | 'Telephony' | 'Messaging', isActive?: boolean, page?: number, pageSize?: number, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<PagedResultOfConnectionListDto>>;
+    public listIntegrationConnections(family?: 'CoreBanking' | 'Insurance' | 'Telephony' | 'Messaging', isActive?: boolean, page?: number, pageSize?: number, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
 
         let localVarQueryParameters = new HttpParams({encoder: this.encoder});
         if (family !== undefined && family !== null) {

@@ -357,6 +357,16 @@ const paneRoutes: Routes = [
       import('./containers/email-templates/edit-email-template'),
   },
   {
+    path: 'whatsapp',
+    canActivate: [hasPermissionGuard('WhatsApp.Config')],
+    loadComponent: () => import('./containers/whatsapp/whatsapp-settings-page'),
+  },
+  {
+    path: 'whatsapp/templates',
+    canActivate: [hasPermissionGuard('WhatsApp.Config')],
+    loadComponent: () => import('./containers/whatsapp/whatsapp-templates-page'),
+  },
+  {
     path: 'integrations',
     canActivate: [hasPermissionGuard('lead:source:read')],
     loadComponent: () => import('./containers/integrations/integrations-hub'),

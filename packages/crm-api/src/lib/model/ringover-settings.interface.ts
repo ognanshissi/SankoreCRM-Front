@@ -20,7 +20,7 @@ export interface RingoverSettings {
     timeoutSeconds?: number;
     syncIntervalMinutes?: AmplitudeSettingsSyncIntervalMinutes | null;
     /**
-     * One of: Temenos, Amplitude, Sab, PerfectVision, Orass, Ringover, Fake
+     * One of: Temenos, Amplitude, Sab, PerfectVision, Orass, Ringover, Fake, Dialog360
      */
     readonly expectedKind?: RingoverSettingsExpectedKindEnum;
     apiHost?: string | null;
@@ -37,7 +37,8 @@ export enum RingoverSettingsExpectedKindEnum {
     PerfectVision = 'PerfectVision',
     Orass = 'Orass',
     Ringover = 'Ringover',
-    Fake = 'Fake'
+    Fake = 'Fake',
+    Dialog360 = 'Dialog360'
 };
 export enum RingoverSettingsKindEnum {
     Ringover = 'Ringover'
