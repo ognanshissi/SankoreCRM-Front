@@ -367,6 +367,16 @@ const paneRoutes: Routes = [
     loadComponent: () => import('./containers/whatsapp/whatsapp-templates-page'),
   },
   {
+    path: 'whatsapp/bot',
+    canActivate: [hasPermissionGuard('WhatsApp.Bot.Config')],
+    loadComponent: () => import('./containers/whatsapp/bot/whatsapp-bot-page'),
+  },
+  {
+    path: 'whatsapp/bot/:key',
+    canActivate: [hasPermissionGuard('WhatsApp.Bot.Config')],
+    loadComponent: () => import('./containers/whatsapp/bot/whatsapp-bot-profile-page'),
+  },
+  {
     path: 'integrations',
     canActivate: [hasPermissionGuard('lead:source:read')],
     loadComponent: () => import('./containers/integrations/integrations-hub'),

@@ -23944,6 +23944,223 @@
         }
       }
     },
+    "/api/v1/leads/whatsapp/conversations/{conversationId}": {
+      "get": {
+        "tags": [
+          "WhatsApp"
+        ],
+        "summary": "One conversation of the caller's perimeter — the way to open one filed on no lead",
+        "operationId": "GetWhatsAppConversation",
+        "parameters": [
+          {
+            "name": "conversationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WhatsAppConversationDetailDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/api/v1/leads/whatsapp/conversations/{conversationId}/messages": {
+      "get": {
+        "tags": [
+          "WhatsApp"
+        ],
+        "summary": "A conversation's messages, newest first; pass nextBefore back as `before` for older ones",
+        "operationId": "ListWhatsAppConversationMessages",
+        "parameters": [
+          {
+            "name": "conversationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "before",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WhatsAppMessagePageDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/api/v1/leads/whatsapp/conversations/{conversationId}/messages/{messageId}/media": {
+      "get": {
+        "tags": [
+          "WhatsApp"
+        ],
+        "operationId": "GetWhatsAppConversationMedia",
+        "parameters": [
+          {
+            "name": "conversationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "messageId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "410": {
+            "description": "Gone"
+          }
+        }
+      }
+    },
+    "/api/v1/leads/whatsapp/conversations/{conversationId}/attach": {
+      "post": {
+        "tags": [
+          "WhatsApp"
+        ],
+        "summary": "Files a conversation that is on no lead on a lead the caller may work",
+        "operationId": "AttachWhatsAppConversation",
+        "parameters": [
+          {
+            "name": "conversationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AttachWhatsAppConversationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "409": {
+            "description": "Conflict"
+          }
+        }
+      }
+    },
+    "/api/v1/leads/whatsapp/metrics": {
+      "get": {
+        "tags": [
+          "WhatsApp"
+        ],
+        "summary": "Template response rate, escalations, takeover delay, bot resolution and estimated cost, over a period (default: the last 30 days)",
+        "operationId": "GetWhatsAppMetrics",
+        "parameters": [
+          {
+            "name": "from",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WhatsAppMetricsDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request"
+          }
+        }
+      }
+    },
     "/api/v1/leads/whatsapp/templates": {
       "get": {
         "tags": [
@@ -24032,6 +24249,179 @@
           },
           "422": {
             "description": "Unprocessable Entity"
+          }
+        }
+      }
+    },
+    "/api/v1/leads/whatsapp/bot": {
+      "get": {
+        "tags": [
+          "WhatsApp"
+        ],
+        "summary": "The WhatsApp bot: the institution's switch, the model, and every product's profile",
+        "operationId": "GetWhatsAppBotOverview",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WhatsAppBotOverviewDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/leads/whatsapp/bot/enabled": {
+      "put": {
+        "tags": [
+          "WhatsApp"
+        ],
+        "summary": "Switches the WhatsApp bot on or off for the institution",
+        "operationId": "SetWhatsAppBotEnabled",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetWhatsAppBotEnabledRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        }
+      }
+    },
+    "/api/v1/leads/whatsapp/bot/profiles/{key}": {
+      "get": {
+        "tags": [
+          "WhatsApp"
+        ],
+        "summary": "A product's bot profile (or `general`): the current version and the history of every save",
+        "operationId": "GetWhatsAppBotProfile",
+        "parameters": [
+          {
+            "name": "key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WhatsAppBotProfileDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "WhatsApp"
+        ],
+        "summary": "Saves a bot profile as a new version; refused with 409 when it changed since it was read",
+        "operationId": "SaveWhatsAppBotProfile",
+        "parameters": [
+          {
+            "name": "key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveWhatsAppBotProfileRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WhatsAppBotProfileDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "409": {
+            "description": "Conflict"
+          },
+          "422": {
+            "description": "Unprocessable Entity"
+          }
+        }
+      }
+    },
+    "/api/v1/leads/whatsapp/bot/profiles/{key}/versions/{version}": {
+      "get": {
+        "tags": [
+          "WhatsApp"
+        ],
+        "summary": "One past version of a bot profile, as it was saved",
+        "operationId": "GetWhatsAppBotProfileVersion",
+        "parameters": [
+          {
+            "name": "key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "version",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WhatsAppBotProfileDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
           }
         }
       }
@@ -28052,6 +28442,16 @@
             "type": "string",
             "format": "date-time",
             "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "AttachWhatsAppConversationRequest": {
+        "type": "object",
+        "properties": {
+          "leadId": {
+            "type": "string",
+            "format": "uuid"
           }
         },
         "additionalProperties": false
@@ -45130,6 +45530,71 @@
         },
         "additionalProperties": false
       },
+      "SaveWhatsAppBotProfileRequest": {
+        "type": "object",
+        "properties": {
+          "expectedVersion": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "isEnabled": {
+            "type": "boolean"
+          },
+          "welcomeMessage": {
+            "type": "string",
+            "nullable": true
+          },
+          "outOfHoursMessage": {
+            "type": "string",
+            "nullable": true
+          },
+          "instructions": {
+            "type": "string",
+            "nullable": true
+          },
+          "faq": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WhatsAppBotFaqEntryDto"
+            },
+            "nullable": true
+          },
+          "fieldsToCollect": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "agentHours": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WhatsAppBotOpeningSlotDto"
+            },
+            "nullable": true
+          },
+          "timeZoneId": {
+            "type": "string",
+            "nullable": true
+          },
+          "escalationKeywords": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "maxTurnsWithoutAnswer": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "windowExpiryThresholdMinutes": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
       "SaveWhatsAppChannelRequest": {
         "type": "object",
         "properties": {
@@ -46215,6 +46680,15 @@
           "apiKey": {
             "type": "string",
             "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "SetWhatsAppBotEnabledRequest": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -50944,6 +51418,264 @@
         },
         "additionalProperties": false
       },
+      "WhatsAppBotCollectedFieldDto": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "nullable": true
+          },
+          "label": {
+            "type": "string",
+            "nullable": true
+          },
+          "value": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "WhatsAppBotFaqEntryDto": {
+        "type": "object",
+        "properties": {
+          "question": {
+            "type": "string",
+            "nullable": true
+          },
+          "answer": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "WhatsAppBotFieldDto": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "nullable": true
+          },
+          "label": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "WhatsAppBotOpeningSlotDto": {
+        "type": "object",
+        "properties": {
+          "day": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "start": {
+            "type": "string",
+            "nullable": true
+          },
+          "end": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "WhatsAppBotOverviewDto": {
+        "type": "object",
+        "properties": {
+          "tenantEnabled": {
+            "type": "boolean"
+          },
+          "modelAvailable": {
+            "type": "boolean"
+          },
+          "provider": {
+            "type": "string",
+            "nullable": true
+          },
+          "modelName": {
+            "type": "string",
+            "nullable": true
+          },
+          "profiles": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WhatsAppBotProfileRowDto"
+            },
+            "nullable": true
+          },
+          "availableFields": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WhatsAppBotFieldDto"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "WhatsAppBotProfileDto": {
+        "type": "object",
+        "properties": {
+          "productLineId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "version": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "isEnabled": {
+            "type": "boolean"
+          },
+          "welcomeMessage": {
+            "type": "string",
+            "nullable": true
+          },
+          "outOfHoursMessage": {
+            "type": "string",
+            "nullable": true
+          },
+          "instructions": {
+            "type": "string",
+            "nullable": true
+          },
+          "faq": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WhatsAppBotFaqEntryDto"
+            },
+            "nullable": true
+          },
+          "fieldsToCollect": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "agentHours": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WhatsAppBotOpeningSlotDto"
+            },
+            "nullable": true
+          },
+          "timeZoneId": {
+            "type": "string",
+            "nullable": true
+          },
+          "escalationKeywords": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "maxTurnsWithoutAnswer": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "windowExpiryThresholdMinutes": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "createdByName": {
+            "type": "string",
+            "nullable": true
+          },
+          "history": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WhatsAppBotVersionDto"
+            },
+            "nullable": true
+          },
+          "availableFields": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WhatsAppBotFieldDto"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "WhatsAppBotProfileRowDto": {
+        "type": "object",
+        "properties": {
+          "productLineId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "category": {
+            "type": "string",
+            "nullable": true
+          },
+          "productActive": {
+            "type": "boolean"
+          },
+          "version": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "isEnabled": {
+            "type": "boolean"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "updatedByName": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "WhatsAppBotVersionDto": {
+        "type": "object",
+        "properties": {
+          "version": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "isEnabled": {
+            "type": "boolean"
+          },
+          "createdBy": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "createdByName": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false
+      },
       "WhatsAppChannelDto": {
         "type": "object",
         "properties": {
@@ -51103,6 +51835,94 @@
         },
         "additionalProperties": false
       },
+      "WhatsAppConversationDetailDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "leadId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "clientId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "maskedPhone": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "nullable": true
+          },
+          "ownerUserId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "ownerName": {
+            "type": "string",
+            "nullable": true
+          },
+          "targetAgentId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "targetAgentName": {
+            "type": "string",
+            "nullable": true
+          },
+          "windowExpiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "lastMessageAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "unreadCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "ambiguousMatch": {
+            "type": "boolean"
+          },
+          "escalationReason": {
+            "type": "string",
+            "nullable": true
+          },
+          "escalationReasonLabel": {
+            "type": "string",
+            "nullable": true
+          },
+          "escalationSummary": {
+            "type": "string",
+            "nullable": true
+          },
+          "anonymized": {
+            "type": "boolean"
+          },
+          "route": {
+            "type": "string",
+            "nullable": true
+          },
+          "canAttach": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
       "WhatsAppConversationSummaryDto": {
         "type": "object",
         "properties": {
@@ -51193,6 +52013,21 @@
           },
           "canReply": {
             "type": "boolean"
+          },
+          "escalationReasonLabel": {
+            "type": "string",
+            "nullable": true
+          },
+          "botCollectedFields": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WhatsAppBotCollectedFieldDto"
+            },
+            "nullable": true
+          },
+          "maskedPhone": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -51398,6 +52233,9 @@
           "errorDetail": {
             "type": "string",
             "nullable": true
+          },
+          "mediaPurged": {
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -51415,6 +52253,147 @@
           "nextBefore": {
             "type": "string",
             "format": "date-time",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "WhatsAppMetricCostDto": {
+        "type": "object",
+        "properties": {
+          "category": {
+            "type": "string",
+            "nullable": true
+          },
+          "messages": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "unitPrice": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "estimatedCost": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "WhatsAppMetricReasonDto": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "nullable": true
+          },
+          "label": {
+            "type": "string",
+            "nullable": true
+          },
+          "count": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "WhatsAppMetricsDto": {
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "to": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "conversationsWithInbound": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "templatesSent": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "templatesAnswered": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "templateResponseRate": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "escalations": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "escalationRate": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "takenOver": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "averageTakeoverMinutes": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "medianTakeoverMinutes": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "breaches": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "withinSlaRate": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "botConversations": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "botResolved": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "botResolutionRate": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "escalationsByReason": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WhatsAppMetricReasonDto"
+            },
+            "nullable": true
+          },
+          "costByCategory": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WhatsAppMetricCostDto"
+            },
+            "nullable": true
+          },
+          "currency": {
+            "type": "string",
+            "nullable": true
+          },
+          "estimatedTotalCost": {
+            "type": "number",
+            "format": "double",
             "nullable": true
           }
         },

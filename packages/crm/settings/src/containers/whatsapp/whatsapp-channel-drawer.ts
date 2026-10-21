@@ -158,7 +158,7 @@ class WhatsAppChannelFormModel {
               <tas-form-field class="mt-3 block">
                 <tas-label>Adresse de l’API 360dialog</tas-label>
                 <input tasInput type="url" [placeholder]="defaultBaseUrl" [formField]="formSchema.apiBaseUrl" />
-                <tas-hint>Laissez vide pour l’adresse standard. À ne changer que sur indication de 360dialog.</tas-hint>
+                <tas-hint>Laissez vide pour l’adresse standard. Seul le bac à sable de 360dialog (https://waba-sandbox.360dialog.io) peut la remplacer.</tas-hint>
                 @if (formSchema.apiBaseUrl().touched() && formSchema.apiBaseUrl().invalid()) {
                   <tas-error>{{ formSchema.apiBaseUrl().errors()[0].message }}</tas-error>
                 }
@@ -233,9 +233,13 @@ export class WhatsAppChannelDrawer {
       const value = (ctx.value() ?? '').trim();
       if (!value) return null;
       try {
-        return new URL(value).protocol === 'https:'
+        // Même liste que le serveur (Dialog360Settings.AllowedApiHosts) : la clé API du numéro
+        // part à cette adresse, elle ne peut donc viser qu'un hôte de 360dialog.
+        const url = new URL(value);
+        return url.protocol === 'https:' && !url.port && !url.username
+          && ['waba-v2.360dialog.io', 'waba-sandbox.360dialog.io'].includes(url.hostname.toLowerCase())
           ? null
-          : { kind: 'pattern', message: 'L’adresse doit commencer par https://' };
+          : { kind: 'pattern', message: 'Seuls https://waba-v2.360dialog.io et https://waba-sandbox.360dialog.io sont acceptés' };
       } catch {
         return { kind: 'pattern', message: 'Adresse invalide' };
       }

@@ -1,0 +1,122 @@
+<tas-side-drawer width="560px">
+  <tas-drawer-title>
+    <tas-title>{{ detail()?.name ?? 'Conversation WhatsApp' }}</tas-title>
+  </tas-drawer-title>
+
+  <tas-drawer-content>
+    @if (loadError(); as error) {
+      <p class="py-10 text-center text-sm text-slate-600">{{ error }}</p>
+    } @else if (isLoading()) {
+      <div class="flex justify-center py-10"><tas-spinner size="8" class="text-primary"></tas-spinner></div>
+    } @else if (detail(); as d) {
+      @let status = statusOf(d.status);
+      <div class="mb-4 flex flex-wrap items-center gap-2 text-xs text-slate-600">
+        <span class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-semibold" [class]="status.tone">
+          <tas-icon [iconName]="status.icon" style="font-size:11px"></tas-icon>{{ status.label }}
+        </span>
+        @if (d.maskedPhone) { <span class="tabular-nums">{{ d.maskedPhone }}</span> }
+        @if (d.clientId && !d.leadId) { <span class="rounded-full bg-sky-50 px-2 py-0.5 font-medium text-sky-800">Client existant</span> }
+        @if (d.anonymized) { <span class="rounded-full bg-slate-100 px-2 py-0.5 font-medium">Anonymisée</span> }
+        @if (d.escalationReasonLabel && d.status === 'PendingHuman') { <span>· {{ d.escalationReasonLabel }}</span> }
+      </div>
+
+      @if (d.escalationSummary && d.status === 'PendingHuman') {
+        <p class="mb-4 rounded-lg bg-sky-50 px-3 py-2 text-xs text-sky-900">
+          <span class="font-semibold">Résumé du bot :</span> {{ d.escalationSummary }}
+        </p>
+      }
+
+      <!-- Le fil, en lecture seule : les actions se font sur la fiche du lead. -->
+      <section class="rounded-xl bg-slate-50 p-3" aria-label="Fil de la conversation">
+        @if (nextBefore()) {
+          <div class="mb-2 flex justify-center">
+            <button tas-text-button type="button" [disabled]="isLoadingOlder()" [isLoading]="isLoadingOlder()" (click)="loadOlder()">
+              Messages plus anciens
+            </button>
+          </div>
+        }
+
+        @if (messages().length === 0) {
+          <p class="py-6 text-center text-sm text-slate-500">Aucun message.</p>
+        }
+
+        <ol class="flex flex-col gap-2">
+          @for (m of messages(); track m.id) {
+            @let inbound = m.direction === 'Inbound';
+            <li class="flex" [class.justify-end]="!inbound">
+              <div class="max-w-[80%] rounded-2xl px-3 py-2 text-sm shadow-xs"
+                   [class]="inbound ? 'bg-white text-slate-800' : m.author === 'Bot' ? 'bg-sky-100 text-slate-800' : 'bg-emerald-100 text-slate-800'">
+                @if (!inbound) {
+                  <p class="mb-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                    {{ m.author === 'Bot' ? 'Bot' : m.author === 'System' ? 'Message automatique' : (m.authorName || 'Agent') }}
+                  </p>
+                }
+
+                @if (m.mediaPurged) {
+                  <p class="mb-1 text-xs italic text-slate-500">Pièce jointe supprimée (durée de conservation dépassée)</p>
+                } @else if (isImage(m)) {
+                  @if (images()[m.id!]; as src) {
+                    <img [src]="src" alt="Image de la conversation" class="mb-1 max-h-56 rounded-lg object-contain" />
+                  } @else {
+                    <p class="mb-1 text-xs text-slate-500">Image en cours de chargement…</p>
+                  }
+                } @else if (m.hasMedia) {
+                  <button type="button" class="mb-1 flex items-center gap-2 rounded-lg bg-slate-100 px-3 py-2 text-left text-xs font-medium text-slate-700 hover:bg-slate-200"
+                          (click)="download(m)">
+                    <tas-icon iconName="feather:paperclip" style="font-size:13px"></tas-icon>
+                    <span class="truncate">{{ m.mediaFileName || 'Pièce jointe' }}</span>
+                  </button>
+                }
+
+                @if (m.body) {
+                  <p class="whitespace-pre-line break-words">{{ m.body }}</p>
+                } @else if (!m.hasMedia && !m.mediaPurged) {
+                  <p class="italic text-slate-500">{{ d.anonymized ? 'Contenu anonymisé' : 'Message sans texte' }}</p>
+                }
+
+                <p class="mt-0.5 text-right text-[10px] text-slate-500 tabular-nums">{{ m.occurredAt | date: 'dd/MM HH:mm' }}</p>
+              </div>
+            </li>
+          }
+        </ol>
+      </section>
+
+      @if (attaching()) {
+        <form [formRoot]="formSchema" class="mt-5 flex flex-col gap-3 rounded-xl border border-slate-200 p-4">
+          <p class="text-sm font-semibold text-slate-800">Rattacher à un lead</p>
+          <tas-form-field>
+            <tas-label>Rechercher un lead</tas-label>
+            <input tasInput type="text" placeholder="Nom, téléphone ou e-mail…"
+                   [ngModel]="leadSearch()" [ngModelOptions]="{ standalone: true }" (ngModelChange)="onLeadSearch($event)" />
+          </tas-form-field>
+          <tas-form-field>
+            <tas-label>Lead <span class="text-functional-error">*</span></tas-label>
+            <tas-select [options]="leadOptions()" placeholder="Choisir dans les résultats" [formField]="formSchema.leadId"></tas-select>
+            <tas-hint>Vous devez pouvoir travailler ce lead. La conversation s’ouvrira ensuite sur sa fiche.</tas-hint>
+            @if (formSchema.leadId().touched() && formSchema.leadId().invalid()) {
+              <tas-error>{{ formSchema.leadId().errors()[0].message }}</tas-error>
+            }
+          </tas-form-field>
+        </form>
+      }
+    }
+  </tas-drawer-content>
+
+  <tas-drawer-action>
+    <div class="flex justify-end gap-3">
+      <button tas-outlined-button type="button" (click)="close()">Fermer</button>
+      @if (detail()?.route) {
+        <button tas-raised-button color="primary" type="button" (click)="openLead()">Ouvrir la fiche</button>
+      } @else if (detail()?.canAttach) {
+        @if (attaching()) {
+          <button tas-raised-button color="primary" type="button"
+                  [disabled]="formSchema().invalid() || formSchema().submitting()"
+                  [isLoading]="formSchema().submitting()"
+                  (click)="attach()">Rattacher</button>
+        } @else {
+          <button tas-raised-button color="primary" type="button" (click)="startAttach()">Rattacher à un lead</button>
+        }
+      }
+    </div>
+  </tas-drawer-action>
+</tas-side-drawer>

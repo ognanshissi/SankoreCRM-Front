@@ -1,0 +1,143 @@
+<div class="pb-6 flex flex-col gap-4">
+  <div class="flex flex-wrap items-start justify-between gap-3">
+    <div class="max-w-2xl">
+      <h1 class="text-lg font-semibold text-slate-800">Indicateurs WhatsApp</h1>
+      <p class="text-sm text-slate-500 mt-0.5">
+        Sur les conversations de votre périmètre.
+        @if (metrics(); as m) {
+          Du {{ m.from | date: 'dd/MM/yyyy' }} au {{ m.to | date: 'dd/MM/yyyy' }}.
+        }
+      </p>
+    </div>
+    <div class="flex items-center gap-2">
+      <div class="w-48">
+        <tas-select [options]="periods" [ngModel]="period()" (ngModelChange)="setPeriod($event)" aria-label="Période"></tas-select>
+      </div>
+      <a tas-outlined-button color="primary" routerLink="/leads/whatsapp">
+        <tas-icon iconName="feather:message-circle" style="font-size:14px"></tas-icon>
+        Inbox
+      </a>
+    </div>
+  </div>
+
+  @if (loadError(); as error) {
+    <tas-card class="block">
+      <div class="flex flex-col items-center py-16 text-center">
+        <tas-icon iconName="feather:alert-triangle" class="text-functional-error mb-2" style="font-size:24px"></tas-icon>
+        <p class="text-sm text-slate-600">{{ error }}</p>
+        <button tas-outlined-button type="button" class="mt-3" (click)="reload()">Réessayer</button>
+      </div>
+    </tas-card>
+  } @else if (isLoading() && !metrics()) {
+    <div class="flex justify-center py-16"><tas-spinner size="10" class="text-primary"></tas-spinner></div>
+  } @else if (metrics(); as m) {
+    <!-- Les indicateurs principaux -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+      <tas-card class="block">
+        <div class="p-4">
+          <p class="text-xs font-medium text-slate-500">Réponse aux templates</p>
+          <p class="mt-1 text-2xl font-semibold text-slate-900 tabular-nums">
+            {{ m.templateResponseRate != null ? (m.templateResponseRate | percent: '1.0-1') : '—' }}
+          </p>
+          <p class="mt-1 text-xs text-slate-500 tabular-nums">{{ m.templatesAnswered }} / {{ m.templatesSent }} templates, réponse sous 24 h</p>
+        </div>
+      </tas-card>
+
+      <tas-card class="block">
+        <div class="p-4">
+          <p class="text-xs font-medium text-slate-500">Taux d’escalade</p>
+          <p class="mt-1 text-2xl font-semibold text-slate-900 tabular-nums">
+            {{ m.escalationRate != null ? (m.escalationRate | percent: '1.0-1') : '—' }}
+          </p>
+          <p class="mt-1 text-xs text-slate-500 tabular-nums">{{ m.escalations }} passage(s) à un conseiller · {{ m.conversationsWithInbound }} conversation(s) avec message client</p>
+        </div>
+      </tas-card>
+
+      <tas-card class="block">
+        <div class="p-4">
+          <p class="text-xs font-medium text-slate-500">Délai de prise en charge</p>
+          <p class="mt-1 text-2xl font-semibold text-slate-900 tabular-nums">
+            {{ m.medianTakeoverMinutes != null ? (m.medianTakeoverMinutes | number: '1.0-1') + ' min' : '—' }}
+          </p>
+          <p class="mt-1 text-xs text-slate-500 tabular-nums">
+            Médiane · moyenne {{ m.averageTakeoverMinutes != null ? (m.averageTakeoverMinutes | number: '1.0-1') + ' min' : '—' }}
+            · {{ m.withinSlaRate != null ? (m.withinSlaRate | percent: '1.0-0') : '—' }} dans le délai
+            @if ((m.breaches ?? 0) > 0) { · <span class="text-functional-error">{{ m.breaches }} dépassement(s)</span> }
+          </p>
+        </div>
+      </tas-card>
+
+      <tas-card class="block">
+        <div class="p-4">
+          <p class="text-xs font-medium text-slate-500">Résolues par le bot</p>
+          <p class="mt-1 text-2xl font-semibold text-slate-900 tabular-nums">
+            {{ m.botResolutionRate != null ? (m.botResolutionRate | percent: '1.0-1') : '—' }}
+          </p>
+          <p class="mt-1 text-xs text-slate-500 tabular-nums">{{ m.botResolved }} / {{ m.botConversations }} conversation(s) où le bot a répondu, sans passage à un conseiller</p>
+        </div>
+      </tas-card>
+    </div>
+
+    <div class="grid grid-cols-1 xl:grid-cols-2 gap-4 items-start">
+      <!-- Motifs d'escalade -->
+      <tas-card class="block">
+        <div class="p-4 pb-0">
+          <h2 class="text-sm font-semibold text-slate-800">Motifs de passage à un conseiller</h2>
+        </div>
+        @if (reasons().length === 0) {
+          <p class="py-8 text-center text-sm text-slate-400">Aucune escalade sur la période.</p>
+        } @else {
+          <tas-table [data]="reasons()" identifierField="reason" [config]="reasonsConfig()" [hasCaption]="false">
+            <ng-template #header>
+              <tr><th>Motif</th><th class="text-right">Nombre</th></tr>
+            </ng-template>
+            <ng-template #body let-item>
+              <tr>
+                <td class="py-2.5 text-sm text-slate-700">{{ item.label }}</td>
+                <td class="text-right text-sm font-medium text-slate-800 tabular-nums">{{ item.count }}</td>
+              </tr>
+            </ng-template>
+          </tas-table>
+        }
+      </tas-card>
+
+      <!-- Coût estimé -->
+      <tas-card class="block">
+        <div class="p-4 pb-0 flex items-start justify-between gap-3">
+          <div>
+            <h2 class="text-sm font-semibold text-slate-800">Messages par catégorie et coût estimé</h2>
+            @if (missingPrices()) {
+              <p class="text-xs text-slate-500 mt-0.5">
+                Renseignez le tarif de chaque catégorie dans les paramètres des leads (« whatsapp-template-unit-prices »)
+                pour obtenir une estimation complète.
+              </p>
+            }
+          </div>
+          @if (m.estimatedTotalCost != null) {
+            <p class="text-right">
+              <span class="block text-xs text-slate-500">Total estimé</span>
+              <span class="text-lg font-semibold text-slate-900 tabular-nums">{{ m.estimatedTotalCost | number: '1.0-2' }} {{ m.currency }}</span>
+            </p>
+          }
+        </div>
+        @if (costs().length === 0) {
+          <p class="py-8 text-center text-sm text-slate-400">Aucun message envoyé sur la période.</p>
+        } @else {
+          <tas-table [data]="costs()" identifierField="category" [config]="costsConfig()" [hasCaption]="false">
+            <ng-template #header>
+              <tr><th>Catégorie</th><th class="text-right">Messages</th><th class="text-right">Tarif unitaire</th><th class="text-right">Coût</th></tr>
+            </ng-template>
+            <ng-template #body let-item>
+              <tr>
+                <td class="py-2.5 text-sm text-slate-700">{{ categoryLabel(item.category) }}</td>
+                <td class="text-right text-sm text-slate-800 tabular-nums">{{ item.messages }}</td>
+                <td class="text-right text-sm text-slate-600 tabular-nums">{{ item.unitPrice != null ? (item.unitPrice | number: '1.0-2') + ' ' + m.currency : 'Non renseigné' }}</td>
+                <td class="text-right text-sm font-medium text-slate-800 tabular-nums">{{ item.estimatedCost != null ? (item.estimatedCost | number: '1.0-2') + ' ' + m.currency : '—' }}</td>
+              </tr>
+            </ng-template>
+          </tas-table>
+        }
+      </tas-card>
+    </div>
+  }
+</div>

@@ -13,8 +13,8 @@
         <p class="flex items-center gap-2 text-sm font-semibold text-slate-900">
           <tas-icon iconName="feather:message-circle" class="text-emerald-600" style="font-size:15px"></tas-icon>
           {{ conversation()?.contactName || name() }}
-          @if (panel()?.maskedPhone) {
-            <span class="text-xs font-normal text-slate-500 tabular-nums">{{ panel()!.maskedPhone }}</span>
+          @if (conversation()?.maskedPhone ?? panel()?.maskedPhone; as phone) {
+            <span class="text-xs font-normal text-slate-500 tabular-nums">{{ phone }}</span>
           }
         </p>
         <div class="mt-1 flex flex-wrap items-center gap-2">
@@ -80,11 +80,33 @@
       </div>
     }
 
-    @if (conversation()?.status === 'PendingHuman' && conversation()?.escalationSummary) {
-      <!-- WA-FE-12 : ce que le bot a compris, en tête du fil (rempli par le bot du lot 3). -->
-      <div class="border-b border-sky-100 bg-sky-50 px-4 py-2 text-xs text-sky-900">
-        <span class="font-semibold">Résumé :</span> {{ conversation()!.escalationSummary }}
-      </div>
+    @if (handover(); as h) {
+      <!-- WA-FE-12 : la passation du bot, en tête du fil. Les valeurs sont celles de la fiche
+           aujourd'hui (une correction d'agent depuis s'y voit), chacune menant à son onglet. -->
+      <section class="border-b border-sky-100 bg-sky-50 px-4 py-3 text-xs text-sky-900" aria-label="Résumé de passation">
+        <div class="flex items-center gap-2">
+          <tas-icon iconName="feather:cpu" style="font-size:12px"></tas-icon>
+          <span class="font-semibold">Passation du bot</span>
+          @if (h.reason) { <span class="text-sky-700">· {{ h.reason }}</span> }
+        </div>
+        @if (h.summary) {
+          <p class="mt-1.5 text-sky-900">{{ h.summary }}</p>
+        }
+        @if (h.fields.length > 0) {
+          <dl class="mt-2 flex flex-wrap gap-x-4 gap-y-1">
+            @for (f of h.fields; track f.label) {
+              <div class="flex items-center gap-1">
+                <dt class="text-sky-700">{{ f.label }} :</dt>
+                <dd>
+                  <a class="font-medium underline decoration-sky-300 underline-offset-2 hover:decoration-sky-700" [routerLink]="f.link">
+                    {{ f.value || '—' }}
+                  </a>
+                </dd>
+              </div>
+            }
+          </dl>
+        }
+      </section>
     }
 
     @if (closing()) {
@@ -156,7 +178,11 @@
                   </p>
                 }
 
-                @if (isImage(m)) {
+                @if (m.mediaPurged) {
+                  <p class="mb-1 flex items-center gap-1 text-xs italic text-slate-500">
+                    <tas-icon iconName="feather:trash-2" style="font-size:12px"></tas-icon> Pièce jointe supprimée (durée de conservation dépassée)
+                  </p>
+                } @else if (isImage(m)) {
                   @if (images()[m.id!]; as src) {
                     <img [src]="src" alt="Image envoyée par le client" class="mb-1 max-h-64 rounded-lg object-contain" />
                   } @else {

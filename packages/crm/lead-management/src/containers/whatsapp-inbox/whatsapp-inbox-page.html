@@ -8,9 +8,17 @@
       }
     </p>
   </div>
-  @if (!realtime.connected()) {
-    <p class="rounded-lg bg-slate-100 px-3 py-1.5 text-xs text-slate-600">Mise à jour en direct indisponible : la liste se relit toutes les 30 s.</p>
-  }
+  <div class="flex flex-wrap items-center gap-2">
+    @if (!realtime.connected()) {
+      <p class="rounded-lg bg-slate-100 px-3 py-1.5 text-xs text-slate-600">Mise à jour en direct indisponible : la liste se relit toutes les 30 s.</p>
+    }
+    @if (isSupervisor()) {
+      <a tas-outlined-button color="primary" routerLink="/leads/whatsapp/indicateurs">
+        <tas-icon iconName="feather:bar-chart-2" style="font-size:14px"></tas-icon>
+        Indicateurs
+      </a>
+    }
+  </div>
 </div>
 
 <div class="mb-4 flex flex-wrap items-center gap-3">

@@ -88,11 +88,39 @@ export const ESCALATION_REASON_LABELS: Record<string, string> = {
   CUSTOMER_REPLIED: 'Le client a répondu',
   REASSIGNED: 'Conversation réattribuée',
   TAKEOVER_SLA_BREACHED: 'Délai de prise en charge dépassé',
+  // Lot 3 : les règles du bot et ses propres raisons. Le serveur envoie aussi le libellé
+  // (`escalationReasonLabel`) ; cette table ne sert qu'aux écrans qui n'ont que le code.
+  BOT_HUMAN_REQUESTED: 'Le client demande un conseiller',
+  BOT_SENSITIVE_KEYWORD: 'Sujet sensible détecté',
+  BOT_NO_USEFUL_ANSWER: 'Le bot n’a pas su répondre',
+  BOT_LEAD_QUALIFIED: 'Prospect qualifié',
+  BOT_WINDOW_EXPIRING: 'Fenêtre WhatsApp bientôt fermée',
+  BOT_UNSUPPORTED_MESSAGE: 'Message que le bot ne sait pas lire',
+  BOT_FAILURE: 'Le bot n’a pas pu répondre',
+  BOT_DISABLED: 'Bot désactivé',
+  BOT_CUSTOMER_REQUEST: 'Le client demande un conseiller',
+  BOT_READY_TO_SUBSCRIBE: 'Le client veut souscrire',
+  BOT_COMPLAINT: 'Réclamation',
+  BOT_SENSITIVE_TOPIC: 'Sujet sensible',
+  BOT_OUT_OF_SCOPE: 'Question hors du périmètre du bot',
+  BOT_OTHER: 'Passage à un conseiller demandé par le bot',
+};
+
+/**
+ * Où se corrige chaque champ recueilli par le bot (WA-FE-12) : l'onglet de la fiche qui le porte.
+ */
+export const BOT_FIELD_TABS: Record<string, string> = {
+  FIRST_NAME: 'identite',
+  LAST_NAME: 'identite',
+  CITY: 'identite',
+  EMAIL: 'informations',
+  DESIRED_AMOUNT: 'informations',
 };
 
 const ACTION_ERROR_LABELS: Record<string, string> = {
   ...SEND_ERROR_LABELS,
   WHATSAPP_NOT_HOLDER: 'Vous n’avez pas la main sur cette conversation.',
+  WHATSAPP_CONVERSATION_ALREADY_ATTACHED: 'Cette conversation est déjà rattachée à une fiche lead.',
   WHATSAPP_CONVERSATION_HELD_BY_ANOTHER: 'Un autre agent a la main : un superviseur doit d’abord la réassigner.',
   WHATSAPP_WINDOW_CLOSED: 'La fenêtre de 24 h est fermée : seul un template peut être envoyé.',
   WHATSAPP_TEXT_INVALID: 'Le message est vide ou trop long.',

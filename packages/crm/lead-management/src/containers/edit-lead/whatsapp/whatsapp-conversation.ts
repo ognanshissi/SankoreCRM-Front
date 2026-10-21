@@ -1,3 +1,4 @@
+import { RouterLink } from '@angular/router';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -36,6 +37,7 @@ import { ReassignWhatsAppDrawer, ReassignWhatsAppDrawerData } from './reassign-w
 import { WhatsAppConsentBadge } from './whatsapp-contact-button';
 import {
   CONVERSATION_STATUS,
+  BOT_FIELD_TABS,
   ESCALATION_REASON_LABELS,
   whatsAppActionError,
   whatsAppBlockerLabel,
@@ -107,7 +109,7 @@ const TIME = new Intl.DateTimeFormat('fr-FR', { hour: '2-digit', minute: '2-digi
   selector: 'lead-whatsapp-conversation',
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './whatsapp-conversation.html',
-  imports: [TasIcon, TasSpinner, Button, WhatsAppConsentBadge, FormRoot, FormField, TasFormField, TasLabel, TasError, TasInput],
+  imports: [RouterLink, TasIcon, TasSpinner, Button, WhatsAppConsentBadge, FormRoot, FormField, TasFormField, TasLabel, TasError, TasInput],
   providers: [WhatsAppRealtime],
 })
 export class LeadWhatsAppConversation {
@@ -201,8 +203,27 @@ export class LeadWhatsAppConversation {
   });
 
   public readonly escalationLabel = computed(() => {
-    const reason = this.conversation()?.escalationReason;
-    return reason ? ESCALATION_REASON_LABELS[reason] ?? reason : null;
+    const c = this.conversation();
+    const reason = c?.escalationReason;
+    return reason ? c?.escalationReasonLabel ?? ESCALATION_REASON_LABELS[reason] ?? reason : null;
+  });
+
+  /**
+   * Le bloc de passation (WA-FE-12) : ce que le bot a compris et ce qu'il a recueilli. Affiché
+   * tant qu'un humain attend ou tient la conversation — celui qui vient de prendre la main en a
+   * le plus besoin — et seulement si le bot a eu la parole.
+   */
+  public readonly handover = computed(() => {
+    const c = this.conversation();
+    if (!c || (c.status !== 'PendingHuman' && c.status !== 'Human')) return null;
+    const fields = (c.botCollectedFields ?? []).map((f) => ({
+      label: f.label ?? f.code ?? '',
+      value: f.value ?? null,
+      link: ['/leads', this.id(), BOT_FIELD_TABS[f.code ?? ''] ?? 'informations'],
+    }));
+    const fromBot = (c.escalationReason ?? '').startsWith('BOT_');
+    if (!c.escalationSummary && fields.length === 0 && !fromBot) return null;
+    return { reason: this.escalationLabel(), summary: c.escalationSummary ?? null, fields };
   });
 
   /** Le délai de prise en charge, à rebours (WA-FE-06). */
@@ -362,7 +383,7 @@ export class LeadWhatsAppConversation {
   public download(message: WhatsAppMessageDto): void {
     this._api.getLeadWhatsAppMedia(this.id(), message.id!).pipe(
       catchError(() => {
-        this._snackbar.error('Pièce jointe', 'Elle n’a pas pu être récupérée — Meta ne la conserve que 30 jours.');
+        this._snackbar.error('Pièce jointe', 'Elle n’a pas pu être récupérée.');
         return EMPTY;
       }),
     ).subscribe((blob) => {

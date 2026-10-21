@@ -1,0 +1,285 @@
+<div class="pb-6 flex flex-col gap-4">
+  @if (loadError(); as error) {
+    <tas-card class="block">
+      <div class="flex flex-col items-center py-16 text-center">
+        <tas-icon iconName="feather:alert-triangle" class="text-functional-error mb-2" style="font-size:24px"></tas-icon>
+        <p class="text-sm text-slate-600">{{ error }}</p>
+        <a tas-outlined-button class="mt-3" routerLink="/settings/whatsapp/bot">Retour aux profils</a>
+      </div>
+    </tas-card>
+  } @else if (isLoading() && !profile()) {
+    <div class="flex justify-center py-16"><tas-spinner size="10" class="text-primary"></tas-spinner></div>
+  } @else if (profile(); as p) {
+    <!-- En-tête -->
+    <div class="flex flex-wrap items-start justify-between gap-3">
+      <div class="max-w-2xl">
+        <div class="flex items-center gap-2.5">
+          <h1 class="text-lg font-semibold text-slate-800">{{ p.name }}</h1>
+          @if (p.version) {
+            <span class="px-2 py-0.5 rounded-md bg-slate-100 text-slate-500 text-xs font-medium tabular-nums">v{{ p.version }}</span>
+          } @else {
+            <tas-tag severity="neutral">Jamais enregistré</tas-tag>
+          }
+        </div>
+        <p class="text-sm text-slate-500 mt-0.5">
+          @if (isGeneral()) {
+            Répond aux prospects dont le produit n’est pas encore connu, et aux produits qui n’ont pas de profil.
+          } @else {
+            Répond aux prospects de ce produit. Désactivé, ils passent directement à un conseiller — le profil général ne prend pas le relais.
+          }
+        </p>
+      </div>
+      <div class="flex items-center gap-2">
+        <a tas-outlined-button color="primary" routerLink="/settings/whatsapp/bot">Annuler</a>
+        <button
+          tas-raised-button
+          color="primary"
+          type="button"
+          (click)="handleSubmit()"
+          [disabled]="formSchema().invalid() || formSchema().submitting()"
+          [isLoading]="formSchema().submitting()"
+        >
+          Enregistrer une nouvelle version
+        </button>
+      </div>
+    </div>
+
+    @if (restoredVersion(); as restored) {
+      <div class="flex gap-3 p-3 rounded-lg bg-amber-50 border border-amber-200">
+        <tas-icon iconName="feather:rotate-ccw" class="text-amber-600 shrink-0 mt-0.5" style="font-size:14px"></tas-icon>
+        <p class="text-sm text-amber-800">
+          La version {{ restored }} est chargée dans le formulaire. Enregistrez pour la rétablir — elle deviendra la
+          version {{ (p.version ?? 0) + 1 }}.
+        </p>
+      </div>
+    }
+
+    <form [formRoot]="formSchema" class="grid grid-cols-1 xl:grid-cols-3 gap-4 items-start">
+      <div class="xl:col-span-2 flex flex-col gap-4">
+        <!-- Activation et messages -->
+        <tas-card class="block">
+          <div class="p-4 flex flex-col gap-4">
+            <div class="flex items-start gap-3">
+              <tas-switch [checked]="model().isEnabled" ariaLabel="Activer le bot pour ce profil" (toggle)="setEnabled($event)"></tas-switch>
+              <div>
+                <p class="text-sm font-semibold text-slate-800">Bot activé pour ce profil</p>
+                <p class="text-xs text-slate-500 mt-0.5">Il répond seulement si le chatbot est aussi activé pour l’institution.</p>
+              </div>
+            </div>
+
+            <tas-form-field>
+              <tas-label>Message d’accueil</tas-label>
+              <textarea tasInput rows="2" placeholder="Bonjour ! Je suis l’assistant de…" [formField]="formSchema.welcomeMessage"></textarea>
+              <tas-hint>Envoyé une fois, quand le bot ouvre la conversation. Vide : pas d’accueil.</tas-hint>
+              @if (formSchema.welcomeMessage().invalid()) {
+                <tas-error>{{ formSchema.welcomeMessage().errors()[0].message }}</tas-error>
+              }
+            </tas-form-field>
+
+            <tas-form-field>
+              <tas-label>Consignes au bot</tas-label>
+              <textarea
+                tasInput
+                rows="6"
+                placeholder="Ton à adopter, ce que le produit couvre, ce qu’il ne faut jamais dire…"
+                [formField]="formSchema.instructions"
+              ></textarea>
+              <tas-hint>
+                Le bot ne répond qu’avec ces consignes et la FAQ : il n’invente ni taux, ni montant, ni condition, et ne
+                demande jamais de pièce d’identité. {{ model().instructions.length }} / 4 000
+              </tas-hint>
+              @if (formSchema.instructions().invalid()) {
+                <tas-error>{{ formSchema.instructions().errors()[0].message }}</tas-error>
+              }
+            </tas-form-field>
+          </div>
+        </tas-card>
+
+        <!-- FAQ -->
+        <tas-card class="block">
+          <div class="p-4">
+            <div class="flex items-center justify-between gap-3 mb-3">
+              <div>
+                <h2 class="text-sm font-semibold text-slate-800">FAQ</h2>
+                <p class="text-xs text-slate-500 mt-0.5">Les réponses de l’institution, que le bot reprend telles quelles.</p>
+              </div>
+              <button tas-outlined-button color="primary" type="button" (click)="addFaq()" [disabled]="model().faq.length >= 40">
+                <tas-icon iconName="feather:plus" style="font-size:14px"></tas-icon>
+                Ajouter une question
+              </button>
+            </div>
+
+            @if (model().faq.length === 0) {
+              <p class="text-sm text-slate-400 py-6 text-center">Aucune question. Sans FAQ, le bot ne sait répondre qu’avec les consignes.</p>
+            } @else {
+              <ol class="flex flex-col divide-y divide-slate-100">
+                @for (entry of model().faq; track $index; let i = $index) {
+                  <li class="py-3 flex gap-3">
+                    <span class="text-xs text-slate-400 tabular-nums w-5 pt-2">{{ i + 1 }}.</span>
+                    <div class="flex-1 flex flex-col gap-2">
+                      <tas-form-field>
+                        <input tasInput type="text" placeholder="Question" [formField]="formSchema.faq[i].question" [attr.aria-label]="'Question ' + (i + 1)" />
+                        @if (formSchema.faq[i].question().touched() && formSchema.faq[i].question().invalid()) {
+                          <tas-error>{{ formSchema.faq[i].question().errors()[0].message }}</tas-error>
+                        }
+                      </tas-form-field>
+                      <tas-form-field>
+                        <textarea tasInput rows="2" placeholder="Réponse" [formField]="formSchema.faq[i].answer" [attr.aria-label]="'Réponse ' + (i + 1)"></textarea>
+                        @if (formSchema.faq[i].answer().touched() && formSchema.faq[i].answer().invalid()) {
+                          <tas-error>{{ formSchema.faq[i].answer().errors()[0].message }}</tas-error>
+                        }
+                      </tas-form-field>
+                    </div>
+                    <button tas-button iconButton type="button" (click)="removeFaq(i)" [attr.aria-label]="'Retirer la question ' + (i + 1)">
+                      <tas-icon iconName="feather:trash-2" class="text-slate-400" style="font-size:14px"></tas-icon>
+                    </button>
+                  </li>
+                }
+              </ol>
+            }
+          </div>
+        </tas-card>
+
+        <!-- Horaires -->
+        <tas-card class="block">
+          <div class="p-4">
+            <div class="flex flex-wrap items-start justify-between gap-3 mb-2">
+              <div>
+                <h2 class="text-sm font-semibold text-slate-800">Horaires des conseillers</h2>
+                <p class="text-xs text-slate-500 mt-0.5">
+                  Le bot les annonce, et hors horaires il envoie le message ci-dessous en passant la main. Aucun jour coché : jamais « hors horaires ».
+                </p>
+              </div>
+              <tas-form-field class="w-56">
+                <tas-label>Fuseau horaire</tas-label>
+                <tas-select [options]="timeZones" [formField]="formSchema.timeZoneId"></tas-select>
+              </tas-form-field>
+            </div>
+
+            <ul class="divide-y divide-slate-100">
+              @for (day of model().days; track day.day; let i = $index) {
+                <li class="flex flex-wrap items-center gap-3 py-2.5">
+                  <tas-switch [checked]="day.enabled" [ariaLabel]="day.label" (toggle)="toggleDay(i, $event)"></tas-switch>
+                  <span class="w-24 text-sm font-medium text-slate-800">{{ day.label }}</span>
+                  @if (day.enabled) {
+                    <div class="flex items-center gap-2">
+                      <input tasInput type="time" class="w-28" [formField]="formSchema.days[i].start" [attr.aria-label]="day.label + ', début'" />
+                      <span class="text-slate-400">–</span>
+                      <input tasInput type="time" class="w-28" [formField]="formSchema.days[i].end" [attr.aria-label]="day.label + ', fin'" />
+                    </div>
+                    @if (formSchema.days[i].end().invalid()) {
+                      <span class="text-xs text-functional-error">{{ formSchema.days[i].end().errors()[0].message }}</span>
+                    }
+                  } @else {
+                    <span class="text-sm text-slate-400">Fermé</span>
+                  }
+                </li>
+              }
+            </ul>
+
+            <tas-form-field class="mt-3">
+              <tas-label>Message hors horaires</tas-label>
+              <textarea
+                tasInput
+                rows="2"
+                placeholder="Nos conseillers vous répondent dès demain matin, à partir de 8 h."
+                [formField]="formSchema.outOfHoursMessage"
+              ></textarea>
+              <tas-hint>Remplace le message d’attente de l’institution quand personne n’est là. Vide : le message d’attente habituel.</tas-hint>
+            </tas-form-field>
+          </div>
+        </tas-card>
+      </div>
+
+      <div class="flex flex-col gap-4">
+        <!-- Informations à recueillir -->
+        <tas-card class="block">
+          <div class="p-4">
+            <h2 class="text-sm font-semibold text-slate-800">Informations à recueillir</h2>
+            <p class="text-xs text-slate-500 mt-0.5 mb-3">Le bot les écrit sur la fiche quand le client les donne, sans insister.</p>
+            <ul class="flex flex-col gap-2">
+              @for (field of model().fields; track field.code; let i = $index) {
+                <li>
+                  <label class="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
+                    <input type="checkbox" class="form-checkbox accent-primary w-4 h-4" [formField]="formSchema.fields[i].selected" />
+                    {{ field.label }}
+                  </label>
+                </li>
+              }
+            </ul>
+          </div>
+        </tas-card>
+
+        <!-- Règles d'escalade -->
+        <tas-card class="block">
+          <div class="p-4 flex flex-col gap-4">
+            <div>
+              <h2 class="text-sm font-semibold text-slate-800">Passage à un conseiller</h2>
+              <p class="text-xs text-slate-500 mt-0.5">
+                Ces règles sont appliquées avant que le bot ne réponde. Une demande explicite de conseiller et un prospect
+                qualifié passent toujours la main.
+              </p>
+            </div>
+
+            <tas-form-field>
+              <tas-label>Mots-clés sensibles</tas-label>
+              <input tasInput type="text" placeholder="montant, taux, réclamation" [formField]="formSchema.keywords" />
+              <tas-hint>Séparés par des virgules. Accents et pluriels ignorés.</tas-hint>
+            </tas-form-field>
+
+            <tas-form-field>
+              <tas-label>Réponses inutiles avant de passer la main</tas-label>
+              <input tasInput type="text" inputmode="numeric" class="w-28" [formField]="formSchema.maxTurnsWithoutAnswer" />
+              <tas-hint>Tours consécutifs où le bot dit ne pas savoir. 0 : jamais sur ce motif.</tas-hint>
+              @if (formSchema.maxTurnsWithoutAnswer().invalid()) {
+                <tas-error>{{ formSchema.maxTurnsWithoutAnswer().errors()[0].message }}</tas-error>
+              }
+            </tas-form-field>
+
+            <tas-form-field>
+              <tas-label>Avant fermeture de la fenêtre de 24 h (heures)</tas-label>
+              <input tasInput type="text" inputmode="decimal" class="w-28" [formField]="formSchema.windowThresholdHours" />
+              <tas-hint>Une conversation encore chez le bot passe à un conseiller tant qu’il peut répondre librement. 0 : jamais.</tas-hint>
+              @if (formSchema.windowThresholdHours().invalid()) {
+                <tas-error>{{ formSchema.windowThresholdHours().errors()[0].message }}</tas-error>
+              }
+            </tas-form-field>
+          </div>
+        </tas-card>
+
+        <!-- Historique -->
+        <tas-card class="block">
+          <div class="p-4 pb-0">
+            <h2 class="text-sm font-semibold text-slate-800">Historique des versions</h2>
+            <p class="text-xs text-slate-500 mt-0.5">Chaque tour du bot garde la version sous laquelle il a répondu.</p>
+          </div>
+          @if (history().length === 0) {
+            <p class="text-sm text-slate-400 py-6 text-center">Aucune version enregistrée.</p>
+          } @else {
+            <tas-table [data]="history()" identifierField="version" [config]="historyConfig()" [hasCaption]="false">
+              <ng-template #body let-item>
+                <tr class="cursor-pointer hover:bg-slate-50 transition-colors" (click)="restore(item)">
+                  <td class="py-2.5 text-sm font-medium text-slate-800 tabular-nums">v{{ item.version }}</td>
+                  <td>
+                    <tas-tag [severity]="item.isEnabled ? 'success' : 'warning'">{{ item.isEnabled ? 'Activé' : 'Désactivé' }}</tas-tag>
+                  </td>
+                  <td class="text-xs text-slate-500">
+                    <div class="tabular-nums">{{ item.createdAt | date: 'dd/MM/yyyy HH:mm' }}</div>
+                    <div class="text-slate-400">{{ item.createdByName || '—' }}</div>
+                  </td>
+                  <td class="text-right">
+                    @if (item.version === p.version) {
+                      <span class="text-xs text-slate-400">Actuelle</span>
+                    } @else {
+                      <span class="text-xs text-primary">Recharger</span>
+                    }
+                  </td>
+                </tr>
+              </ng-template>
+            </tas-table>
+          }
+        </tas-card>
+      </div>
+    </form>
+  }
+</div>

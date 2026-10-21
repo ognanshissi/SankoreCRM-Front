@@ -9,7 +9,7 @@ import {
   WhatsAppApiService,
   WhatsAppChannelDto,
 } from '@sankore/crm-api';
-import { BreadcrumbService } from '@sankore/crm/common';
+import { BreadcrumbService, PermissionsService } from '@sankore/crm/common';
 import { Anchor, Button } from '@talisoft/ui/button';
 import { TasCard } from '@talisoft/ui/card';
 import { ConfirmDialogService } from '@talisoft/ui/confirm-dialog';
@@ -88,6 +88,7 @@ const DRAWER_CONFIG = {
 })
 export class WhatsAppSettingsPage implements OnInit {
   private readonly _api = inject(WhatsAppApiService);
+  private readonly _permissions = inject(PermissionsService);
   private readonly _agenciesApi = inject(AgenciesApiService);
   private readonly _breadcrumb = inject(BreadcrumbService);
   private readonly _sideDrawer = inject(SideDrawerService);
@@ -122,6 +123,8 @@ export class WhatsAppSettingsPage implements OnInit {
       totalElements: 0,
     },
   });
+
+  public readonly canConfigureBot = this._permissions.can('WhatsApp.Bot.Config');
 
   public readonly agencyNames = computed(() => {
     const names: Record<string, string> = {};

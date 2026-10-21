@@ -36,6 +36,13 @@ export const leadManagementRoutes = [
     loadComponent: () => import('./containers/whatsapp-inbox/whatsapp-inbox-page'),
   },
   {
+    // WA-BE-22 — les indicateurs WhatsApp, pour qui supervise.
+    path: 'whatsapp/indicateurs',
+    canActivate: [hasPermissionGuard('WhatsApp.Supervise')],
+    title: 'Indicateurs WhatsApp',
+    loadComponent: () => import('./containers/whatsapp-metrics/whatsapp-metrics-page'),
+  },
+  {
     // Avant `:id`, sinon le joker capturerait « import » comme identifiant de lead.
     path: 'import',
     canActivate: [hasPermissionGuard('lead:import')],

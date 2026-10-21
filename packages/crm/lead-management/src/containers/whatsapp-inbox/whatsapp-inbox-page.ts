@@ -1,5 +1,5 @@
 import { Component, computed, DestroyRef, inject, OnInit, signal } from '@angular/core';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { catchError, EMPTY, of } from 'rxjs';
 import {
@@ -11,13 +11,15 @@ import {
   WhatsAppInboxItemDto,
 } from '@sankore/crm-api';
 import { BreadcrumbService, PermissionsService } from '@sankore/crm/common';
-import { Button } from '@talisoft/ui/button';
+import { Anchor, Button } from '@talisoft/ui/button';
+import { SideDrawerService } from '@talisoft/ui/side-drawer';
 import { TasIcon } from '@talisoft/ui/icon';
 import { TasSelect } from '@talisoft/ui/select';
 import { TableConfig, TasTable } from '@talisoft/ui/table';
 import { TimeagoPipe } from '@talisoft/ui/timeago';
 import { CONVERSATION_STATUS } from '../edit-lead/whatsapp/whatsapp-labels';
 import { WhatsAppRealtime } from '../edit-lead/whatsapp/whatsapp-realtime';
+import { WhatsAppConversationDrawer, WhatsAppConversationDrawerData } from './whatsapp-conversation-drawer';
 
 type InboxTab = 'ToHandle' | 'Human' | 'AwaitingReply' | 'Bot' | 'Closed';
 
@@ -35,7 +37,8 @@ const PAGE = 30;
  * L'inbox WhatsApp (WA-FE-09) : la file de l'utilisateur, par onglet, triée par urgence — délai de
  * prise en charge pour ce qui attend une personne, fermeture de la fenêtre pour ce qu'un agent
  * tient. Un superviseur filtre par agent et par produit ; le périmètre, lui, est celui que le
- * serveur applique. Un clic ouvre l'onglet WhatsApp de la fiche.
+ * serveur applique. Un clic ouvre l'onglet WhatsApp de la fiche ; une conversation sans fiche
+ * (un client, un numéro inconnu) s'ouvre dans un tiroir, d'où elle se rattache à un lead.
  *
  * La liste passe par `tas-table` (une carte par ligne) ; la suite se charge par curseur avec
  * « Afficher plus », le tableau paginant ce qui est déjà chargé.
@@ -43,7 +46,7 @@ const PAGE = 30;
 @Component({
   selector: 'whatsapp-inbox-page',
   templateUrl: './whatsapp-inbox-page.html',
-  imports: [FormsModule, TasTable, TasIcon, TasSelect, Button, TimeagoPipe],
+  imports: [FormsModule, RouterLink, TasTable, TasIcon, TasSelect, Anchor, Button, TimeagoPipe],
   providers: [WhatsAppRealtime],
 })
 export class WhatsAppInboxPage implements OnInit {
@@ -54,6 +57,7 @@ export class WhatsAppInboxPage implements OnInit {
   private readonly _route = inject(ActivatedRoute);
   private readonly _breadcrumb = inject(BreadcrumbService);
   private readonly _permissions = inject(PermissionsService);
+  private readonly _drawer = inject(SideDrawerService);
   public readonly realtime = inject(WhatsAppRealtime);
 
   public readonly tabs = TABS;
@@ -102,9 +106,10 @@ export class WhatsAppInboxPage implements OnInit {
     this.productFilter.set(params.get('produit') ?? '');
     this.unreadOnly.set(params.get('nonLus') === '1');
 
-    // Une conversation sans fiche (un numéro inconnu, un client) s'ouvre ici, filtrée sur elle.
+    // Une conversation sans fiche (un numéro inconnu, un client) s'ouvre ici : c'est le lien que
+    // portent les notifications pour elle.
     const conversation = params.get('conversation');
-    if (conversation) this.tab.set('ToHandle');
+    if (conversation) this._openDrawer(conversation);
 
     this._load(false);
     this.realtime.connect(() => this._load(false), () => this._load(false));
@@ -155,6 +160,19 @@ export class WhatsAppInboxPage implements OnInit {
 
   public open(item: WhatsAppInboxItemDto): void {
     if (item.route) this._router.navigateByUrl(item.route);
+    else if (item.conversationId) this._openDrawer(item.conversationId);
+  }
+
+  private _openDrawer(conversationId: string): void {
+    const ref = this._drawer.open<boolean, WhatsAppConversationDrawerData, WhatsAppConversationDrawer>(WhatsAppConversationDrawer, {
+      width: '100%',
+      height: '100%',
+      panelClass: 'side-drawer-panel',
+      data: { conversationId },
+    });
+    ref.closed.subscribe((attached) => {
+      if (attached) this._load(false);
+    });
   }
 
   /** Le délai de prise en charge, ou la fenêtre, selon l'onglet — ce qui fait l'urgence. */

@@ -32,5 +32,6 @@ export interface WhatsAppMessageDto {
     failedAt?: string | null;
     errorCode?: string | null;
     errorDetail?: string | null;
+    mediaPurged?: boolean;
 }
 

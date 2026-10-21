@@ -274,6 +274,10 @@ export const PERMISSIONS = {
   WHATSAPP_REPLY: 'WhatsApp.Reply',
   WHATSAPP_SUPERVISE: 'WhatsApp.Supervise',
   WHATSAPP_CONFIG: 'WhatsApp.Config',
+  // Ce que dit le chatbot et quand il passe la main, par produit, et son activation pour
+  // l'institution. Distinct de WhatsApp.Config : les mots du bot sont une affaire commerciale
+  // et de conformité, le numéro une affaire technique.
+  WHATSAPP_BOT_CONFIG: 'WhatsApp.Bot.Config',
 
   // Volontairement en minuscules à deux-points, contrairement à ses voisines de ce
   // bloc : c'est la chaîne exacte que les endpoints de la politique d'enregistrement

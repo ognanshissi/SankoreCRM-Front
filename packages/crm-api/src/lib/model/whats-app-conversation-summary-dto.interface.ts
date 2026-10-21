@@ -9,6 +9,7 @@
  * https://openapi-generator.tech
  * Do not edit the class manually.
  */
+import { WhatsAppBotCollectedFieldDto } from './whats-app-bot-collected-field-dto.interface';
 
 
 export interface WhatsAppConversationSummaryDto { 
@@ -33,5 +34,8 @@ export interface WhatsAppConversationSummaryDto {
     closeReason?: string | null;
     isHolder?: boolean;
     canReply?: boolean;
+    escalationReasonLabel?: string | null;
+    botCollectedFields?: Array<WhatsAppBotCollectedFieldDto> | null;
+    maskedPhone?: string | null;
 }
 

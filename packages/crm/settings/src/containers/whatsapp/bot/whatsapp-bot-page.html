@@ -1,0 +1,137 @@
+<div class="pb-6 flex flex-col gap-4">
+  <!-- En-tête -->
+  <div class="flex flex-wrap items-start justify-between gap-3">
+    <div class="max-w-2xl">
+      <h1 class="text-lg font-semibold text-slate-800">Chatbot WhatsApp</h1>
+      <p class="text-sm text-slate-500 mt-0.5">
+        Ce que le bot répond pour chaque produit, les informations qu’il recueille et le moment où il
+        passe la main à un conseiller.
+      </p>
+    </div>
+    <a tas-outlined-button color="primary" routerLink="/settings/whatsapp">
+      <tas-icon iconName="feather:phone" style="font-size:14px"></tas-icon>
+      Numéros WhatsApp
+    </a>
+  </div>
+
+  @if (loadError(); as error) {
+    <tas-card class="block">
+      <div class="flex flex-col items-center py-16 text-center">
+        <tas-icon iconName="feather:alert-triangle" class="text-functional-error mb-2" style="font-size:24px"></tas-icon>
+        <p class="text-sm text-slate-600">{{ error }}</p>
+        <button tas-outlined-button type="button" class="mt-3" (click)="reload()">Réessayer</button>
+      </div>
+    </tas-card>
+  } @else {
+    @if (overview(); as o) {
+      <!-- Les deux interrupteurs qui ne sont pas par produit -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <tas-card class="block">
+          <div class="p-4 flex items-start gap-3">
+            <tas-switch
+              [checked]="!!o.tenantEnabled"
+              [isLoading]="isToggling()"
+              [disabled]="isToggling()"
+              ariaLabel="Activer le chatbot pour l’institution"
+              (toggle)="setTenantEnabled($event)"
+            ></tas-switch>
+            <div>
+              <p class="text-sm font-semibold text-slate-800">Chatbot de l’institution</p>
+              <p class="text-xs text-slate-500 mt-0.5">
+                @if (o.tenantEnabled) {
+                  Le bot répond pour les {{ enabledCount() }} profil(s) activé(s). Les autres produits passent directement à un conseiller.
+                } @else {
+                  Désactivé : chaque message client part directement vers un conseiller, quels que soient les profils.
+                }
+              </p>
+            </div>
+          </div>
+        </tas-card>
+
+        <tas-card class="block">
+          <div class="p-4 flex items-start gap-3">
+            <div
+              class="w-8 h-8 rounded-full flex items-center justify-center shrink-0"
+              [class.bg-emerald-50]="o.modelAvailable"
+              [class.bg-slate-100]="!o.modelAvailable"
+            >
+              <tas-icon
+                [iconName]="o.modelAvailable ? 'feather:cpu' : 'feather:slash'"
+                [class.text-emerald-600]="o.modelAvailable"
+                [class.text-slate-400]="!o.modelAvailable"
+                style="font-size:14px"
+              ></tas-icon>
+            </div>
+            <div>
+              <p class="text-sm font-semibold text-slate-800">Modèle de langage</p>
+              <p class="text-xs text-slate-500 mt-0.5">
+                @if (o.modelAvailable) {
+                  {{ o.provider }} · <span class="font-mono">{{ o.modelName }}</span>
+                } @else {
+                  Aucun modèle n’est configuré sur ce déploiement : le bot ne répondra pas, même activé.
+                  Voyez avec l’exploitant de la plateforme.
+                }
+              </p>
+            </div>
+          </div>
+        </tas-card>
+      </div>
+
+      <div class="flex gap-3 p-3 rounded-lg bg-slate-50 border border-slate-200">
+        <tas-icon iconName="feather:info" class="text-primary shrink-0 mt-0.5" style="font-size:14px"></tas-icon>
+        <p class="text-sm text-slate-600">
+          Un produit qui a son propre profil est servi par lui, même désactivé. Le <strong>profil général</strong>
+          répond aux prospects dont le produit n’est pas encore connu et aux produits sans profil.
+          Chaque enregistrement crée une nouvelle version : l’historique garde qui a changé quoi.
+        </p>
+      </div>
+    }
+
+    <tas-table
+      [data]="profiles()"
+      identifierField="name"
+      [config]="tableConfig()"
+      [isLoading]="isLoading()"
+      [hasCaption]="false"
+    >
+      <ng-template #header>
+        <tr>
+          <th>Profil</th>
+          <th>Catégorie</th>
+          <th>Bot</th>
+          <th>Version</th>
+          <th>Dernière modification</th>
+        </tr>
+      </ng-template>
+
+      <ng-template #body let-item>
+        <tr class="cursor-pointer hover:bg-slate-50 transition-colors" (click)="open(item)">
+          <td class="py-3">
+            <div class="flex items-center gap-2">
+              @if (!item.productLineId) {
+                <tas-icon iconName="feather:globe" class="text-primary" style="font-size:14px"></tas-icon>
+              }
+              <span class="font-medium text-slate-800">{{ item.name }}</span>
+              @if (!item.productActive) {
+                <tas-tag severity="neutral">Produit inactif</tas-tag>
+              }
+            </div>
+          </td>
+          <td class="text-sm text-slate-600">{{ item.category || '—' }}</td>
+          <td><tas-tag [severity]="statusOf(item).severity">{{ statusOf(item).label }}</tas-tag></td>
+          <td class="text-sm text-slate-600 tabular-nums">{{ item.version ? 'v' + item.version : '—' }}</td>
+          <td class="text-sm text-slate-500">
+            @if (item.updatedAt) {
+              <span class="tabular-nums">{{ item.updatedAt | date: 'dd/MM/yyyy HH:mm' }}</span>
+              @if (item.updatedByName) {
+                <span class="text-slate-400"> · {{ item.updatedByName }}</span>
+              }
+            } @else {
+              —
+            }
+          </td>
+        </tr>
+      </ng-template>
+    </tas-table>
+  }
+</div>

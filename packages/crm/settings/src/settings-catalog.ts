@@ -96,6 +96,7 @@ export const SETTINGS_CATALOG: ReadonlyArray<SettingsGroup> = [
       { id: 'email-templates', title: 'Modèles d’e-mail', icon: 'feather:file-text', link: '/settings/email-templates', permission: 'notification:template:read', description: 'Les modèles transactionnels et marketing.' },
       { id: 'whatsapp', title: 'WhatsApp Business', icon: 'feather:message-circle', link: '/settings/whatsapp', permission: 'WhatsApp.Config', description: 'Les numéros WhatsApp de l’institution, leur clé 360dialog et leur webhook.' },
       { id: 'whatsapp-templates', title: 'Templates WhatsApp', icon: 'feather:file-text', link: '/settings/whatsapp/templates', permission: 'WhatsApp.Config', description: 'Les modèles approuvés par Meta, leurs produits et leurs variables.' },
+      { id: 'whatsapp-bot', title: 'Chatbot WhatsApp', icon: 'feather:cpu', link: '/settings/whatsapp/bot', permission: 'WhatsApp.Bot.Config', description: 'Ce que le bot répond par produit, ce qu’il recueille et quand il passe la main.' },
     ],
   },
   {

@@ -20,6 +20,12 @@
         <tas-icon iconName="feather:file-text" style="font-size:14px"></tas-icon>
         Templates WhatsApp
       </a>
+      @if (canConfigureBot()) {
+        <a tas-outlined-button color="primary" routerLink="/settings/whatsapp/bot">
+          <tas-icon iconName="feather:cpu" style="font-size:14px"></tas-icon>
+          Chatbot
+        </a>
+      }
       <button tas-raised-button color="primary" type="button" (click)="openCreate()">
         <tas-icon iconName="feather:plus" style="font-size:14px"></tas-icon>
         Connecter un numéro
