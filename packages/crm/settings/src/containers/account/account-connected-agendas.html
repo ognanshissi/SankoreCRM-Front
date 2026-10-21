@@ -19,6 +19,23 @@
   } @else if (isLoading()) {
     <div class="flex justify-center py-12"><tas-spinner size="10" class="text-primary"></tas-spinner></div>
   } @else {
+    @if (accounts().length > 0) {
+      <section class="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-4" aria-label="Agenda cible des rendez-vous">
+        <div>
+          <h3 class="text-base font-semibold text-slate-900">Rendez-vous SANKORÉ dans votre agenda</h3>
+          <p class="text-xs text-slate-500">
+            Chaque rendez-vous que vous organisez ou auquel vous êtes invité y est copié, puis déplacé ou retiré avec lui.
+            Seuls le titre, l’horaire et le lieu ou le lien y figurent — jamais le lead ou le client concerné.
+          </p>
+        </div>
+        <tas-form-field class="max-w-md">
+          <tas-label>Agenda cible</tas-label>
+          <tas-select [options]="targetOptions()" optionLabel="label" optionValue="value"
+                      [ngModel]="target()" (ngModelChange)="setTarget($event)" [disabled]="savingTarget()"></tas-select>
+        </tas-form-field>
+      </section>
+    }
+
     @for (p of providers; track p.code) {
       @let list = byProvider()[p.code] ?? [];
       <section class="flex flex-col gap-3" [attr.aria-label]="p.title">
@@ -81,6 +98,30 @@
                     </span>
                   }
                 </div>
+
+                @if ((a.calendars ?? []).length > 0) {
+                  <ul class="flex flex-col gap-2" [attr.aria-label]="'Agendas de ' + a.label">
+                    @for (c of a.calendars ?? []; track c.id) {
+                      <li class="flex items-center justify-between gap-3">
+                        <label class="flex min-w-0 cursor-pointer items-center gap-2 text-sm text-slate-700">
+                          <input type="checkbox" class="form-checkbox h-4 w-4 accent-primary" [checked]="c.isSelected"
+                                 [disabled]="reconnect" (change)="toggleCalendar(a, c, $any($event.target).checked)" />
+                          <span class="size-2.5 shrink-0 rounded-full" [style.background]="c.color || '#94A3B8'" aria-hidden="true"></span>
+                          <span class="truncate">{{ c.name }}</span>
+                          @if (c.isAppointmentTarget) {
+                            <span class="shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-semibold text-primary">Reçoit les RDV</span>
+                          }
+                        </label>
+                        <span class="shrink-0 text-xs tabular-nums" [class]="c.lastError ? 'text-functional-error' : 'text-slate-500'"
+                              [attr.title]="c.lastError ? 'Dernière lecture en échec' : null">
+                          {{ c.lastError ? 'lecture en échec' : eventsLabel(c) }}
+                        </span>
+                      </li>
+                    }
+                  </ul>
+                } @else if (!reconnect) {
+                  <p class="text-xs text-slate-400">Agendas en cours de lecture… Synchronisez si rien n’apparaît.</p>
+                }
 
                 @if (reconnect) {
                   <p class="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-900">

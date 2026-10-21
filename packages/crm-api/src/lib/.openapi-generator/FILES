@@ -208,6 +208,7 @@ model/configure-whats-app-template-request.interface.ts
 model/configure-whats-app-webhook-response.interface.ts
 model/connected-account-dto.interface.ts
 model/connected-accounts-dto.interface.ts
+model/connected-calendar-dto.interface.ts
 model/connection-detail-dto.interface.ts
 model/connection-health-dto.interface.ts
 model/connection-list-dto.interface.ts
@@ -464,6 +465,7 @@ model/models.ts
 model/money.interface.ts
 model/move-agency-request.interface.ts
 model/my-agenda-dto.interface.ts
+model/my-calendar-event-dto.interface.ts
 model/my-kyc-access-dto.interface.ts
 model/my-notification-dto.interface.ts
 model/my-notifications-dto.interface.ts
@@ -582,6 +584,7 @@ model/request-client-export-request.interface.ts
 model/request-client-export-result.interface.ts
 model/request-client-merge-request.interface.ts
 model/request-client-merge-result.interface.ts
+model/reschedule-appointment-request.interface.ts
 model/reschedule-reminder-request.interface.ts
 model/reschedule-tasks-request.interface.ts
 model/reset-password-request.interface.ts
@@ -628,6 +631,7 @@ model/segment-distribution-dto.interface.ts
 model/segment-rule-definition.interface.ts
 model/segment-rule-dto.interface.ts
 model/segment-rules-dto.interface.ts
+model/select-connected-calendar-request.interface.ts
 model/send-snippet-request.interface.ts
 model/send-test-email-request.interface.ts
 model/send-whats-app-media-result.interface.ts
@@ -636,6 +640,7 @@ model/send-whats-app-template-result.interface.ts
 model/send-whats-app-text-request.interface.ts
 model/server-webhook-settings.interface.ts
 model/set-agent-capacity-ceiling-request.interface.ts
+model/set-appointment-target-request.interface.ts
 model/set-beneficiary-policy-request.interface.ts
 model/set-biometry-token-request.interface.ts
 model/set-connection-secret-request.interface.ts

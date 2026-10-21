@@ -1,0 +1,281 @@
+<div class="flex flex-col gap-4 p-4 md:p-6">
+  <!-- En-tête -->
+  <div class="flex flex-wrap items-center justify-between gap-3">
+    <div>
+      <h1 class="text-xl font-semibold text-slate-900">Calendrier</h1>
+      <p class="text-sm text-slate-500">{{ subtitle() }}</p>
+    </div>
+
+    <div class="flex flex-wrap items-center gap-2">
+      <button tas-outlined-button type="button" (click)="goToday()">Aujourd'hui</button>
+      <div class="flex items-center">
+        <button tas-button iconButton type="button" aria-label="Période précédente" (click)="move(-1)">
+          <tas-icon iconName="feather:chevron-left" style="font-size:16px"></tas-icon>
+        </button>
+        <button tas-button iconButton type="button" aria-label="Période suivante" (click)="move(1)">
+          <tas-icon iconName="feather:chevron-right" style="font-size:16px"></tas-icon>
+        </button>
+      </div>
+      <span class="min-w-40 text-sm font-semibold text-slate-800">{{ label() }}</span>
+      @if (isLoading()) {
+        <tas-spinner size="5" class="text-primary"></tas-spinner>
+      }
+
+      <div class="flex rounded-lg border border-slate-200 p-0.5 text-sm" role="group" aria-label="Affichage">
+        @for (v of [{ id: 'day', label: 'Jour' }, { id: 'week', label: 'Semaine' }, { id: 'month', label: 'Mois' }]; track v.id) {
+          <button
+            type="button"
+            class="rounded-md px-3 py-1"
+            [class]="view() === v.id ? 'bg-primary text-white' : 'text-slate-600 hover:bg-slate-100'"
+            [attr.aria-pressed]="view() === v.id"
+            (click)="setView($any(v.id))"
+          >
+            {{ v.label }}
+          </button>
+        }
+      </div>
+
+      <button tas-raised-button color="primary" type="button" (click)="createAppointment()">
+        <tas-icon iconName="feather:plus" style="font-size:14px"></tas-icon>
+        Rendez-vous
+      </button>
+    </div>
+  </div>
+
+  <!-- Conflits -->
+  @for (c of conflicts(); track c.appointment.key) {
+    <div class="flex flex-wrap items-center gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+      <tas-icon iconName="feather:alert-triangle" class="shrink-0 text-amber-600" style="font-size:16px"></tas-icon>
+      <p class="min-w-0 flex-1"><span class="font-semibold">Conflit :</span> {{ conflictText(c) }}</p>
+      @if (canMove(c)) {
+        <button
+          tas-outlined-button
+          type="button"
+          [isLoading]="movingId() === c.appointment.appointment?.id"
+          [disabled]="!!movingId()"
+          (click)="moveTo(c)"
+        >
+          Déplacer à {{ timeLabel(c.freeSlot!) }}
+        </button>
+      } @else if (!c.freeSlot) {
+        <span class="text-xs text-amber-700">Aucun créneau libre ce jour-là.</span>
+      } @else {
+        <span class="text-xs text-amber-700">Seul l’organisateur peut le déplacer.</span>
+      }
+    </div>
+  }
+
+  @if (externalFailed()) {
+    <p class="rounded-lg border border-slate-200 bg-slate-50 px-4 py-2 text-xs text-slate-500">
+      Vos agendas connectés n’ont pas pu être lus : seules les entrées SANKORÉ sont affichées.
+    </p>
+  }
+
+  <div class="flex flex-col gap-4 lg:flex-row">
+    <!-- Barre latérale : filtres -->
+    <aside class="flex w-full shrink-0 flex-col gap-5 lg:w-64">
+      <section>
+        <h2 class="mb-2 text-xs font-semibold tracking-wide text-slate-400 uppercase">Sankoré</h2>
+        <ul class="flex flex-col gap-1">
+          @for (f of sankoreFilters(); track f.key) {
+            <li>
+              <label class="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-slate-50">
+                <input type="checkbox" class="size-4 accent-current" [style.color]="f.color" [checked]="isShown(f.key)" (change)="toggle(f.key)" />
+                <span class="min-w-0 flex-1 truncate text-slate-700">{{ f.label }}</span>
+                <span class="text-xs text-slate-400 tabular-nums">{{ f.count }}</span>
+              </label>
+            </li>
+          }
+        </ul>
+      </section>
+
+      @if (canConnect()) {
+        @for (a of accountFilters(); track a.id) {
+          <section>
+            <h2 class="mb-2 flex items-center gap-1.5 text-xs font-semibold text-slate-500">
+              <tas-icon [iconName]="a.provider === 'Google' ? 'feather:calendar' : 'feather:mail'" style="font-size:12px"></tas-icon>
+              <span class="truncate">{{ a.label }}</span>
+            </h2>
+            @if (a.needsReconnect) {
+              <a routerLink="/settings/account/agendas" class="mb-1 block rounded-md bg-red-50 px-2 py-1 text-xs text-functional-error hover:underline">
+                Connexion expirée : reconnecter ce compte
+              </a>
+            }
+            <ul class="flex flex-col gap-1">
+              @for (f of a.calendars; track f.key) {
+                <li>
+                  <label class="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-slate-50">
+                    <input type="checkbox" class="size-4 accent-current" [style.color]="f.color" [checked]="isShown(f.key)" (change)="toggle(f.key)" />
+                    <span class="min-w-0 flex-1 truncate text-slate-700">{{ f.label }}</span>
+                    <span class="text-xs text-slate-400 tabular-nums">{{ f.count }}</span>
+                  </label>
+                </li>
+              } @empty {
+                <li class="px-2 text-xs text-slate-400">Aucun agenda coché.</li>
+              }
+            </ul>
+          </section>
+        }
+
+        <div class="flex flex-col gap-1 text-sm">
+          <a routerLink="/settings/account/agendas" class="flex items-center gap-2 px-2 py-1 text-primary hover:underline">
+            <tas-icon iconName="feather:plus" style="font-size:14px"></tas-icon>
+            Ajouter un compte Microsoft ou Google
+          </a>
+          <a routerLink="/settings/account/agendas" class="flex items-center gap-2 px-2 py-1 text-slate-600 hover:underline">
+            <tas-icon iconName="feather:settings" style="font-size:14px"></tas-icon>
+            Gérer les comptes connectés
+          </a>
+        </div>
+
+        <p class="flex items-start gap-2 rounded-lg bg-slate-50 p-3 text-xs text-slate-500">
+          <tas-icon iconName="feather:lock" class="mt-0.5 shrink-0" style="font-size:12px"></tas-icon>
+          Les événements de vos agendas connectés ne sont visibles que par vous. Leur titre et leur lieu sont
+          stockés chiffrés.
+        </p>
+      }
+    </aside>
+
+    <!-- Grille -->
+    <div class="min-w-0 flex-1 overflow-hidden rounded-lg border border-slate-200 bg-white">
+      @if (view() === 'month') {
+        <div class="grid grid-cols-7 border-b border-slate-200 bg-slate-50 text-xs font-medium text-slate-500">
+          @for (d of weekdayHeaders(); track $index) {
+            <div class="px-2 py-2 capitalize">{{ d }}</div>
+          }
+        </div>
+        <div class="grid grid-cols-7 grid-rows-6">
+          @for (cell of monthCells(); track cell.key) {
+            <div
+              class="flex min-h-28 flex-col gap-1 border-b border-r border-slate-100 p-1.5"
+              [class.bg-slate-50]="!cell.inMonth"
+            >
+              <button
+                type="button"
+                class="self-start rounded-full px-1.5 text-xs tabular-nums hover:bg-slate-100"
+                [class]="cell.isToday ? 'bg-primary font-semibold text-white hover:bg-primary' : cell.inMonth ? 'text-slate-700' : 'text-slate-400'"
+                (click)="openDay(cell.day)"
+              >
+                {{ cell.day.getDate() }}
+              </button>
+              @for (item of cell.items; track item.key) {
+                <button
+                  type="button"
+                  class="truncate rounded border-l-2 px-1.5 py-0.5 text-left text-xs text-slate-800"
+                  [style]="chipStyle(item)"
+                  [title]="item.title + ' · ' + timeRange(item)"
+                  (click)="open(item)"
+                >
+                  @if (!item.allDay) {
+                    <span class="tabular-nums text-slate-500">{{ timeLabel(item.start) }}</span>
+                  }
+                  {{ item.title }}
+                </button>
+              }
+              @if (cell.more) {
+                <button type="button" class="self-start px-1.5 text-xs text-slate-500 hover:underline" (click)="openDay(cell.day)">
+                  + {{ cell.more }} autre{{ cell.more > 1 ? 's' : '' }}
+                </button>
+              }
+            </div>
+          }
+        </div>
+      } @else {
+        <!-- En-têtes de jours -->
+        <div class="grid border-b border-slate-200 bg-slate-50" [style.grid-template-columns]="'56px repeat(' + columns().length + ', minmax(0, 1fr))'">
+          <div></div>
+          @for (col of columns(); track col.key) {
+            <button
+              type="button"
+              class="border-l border-slate-200 px-2 py-2 text-left text-xs font-medium capitalize hover:bg-slate-100"
+              [class]="col.isToday ? 'text-primary' : 'text-slate-600'"
+              (click)="openDay(col.day)"
+            >
+              {{ col.label }}
+            </button>
+          }
+        </div>
+
+        <!-- Journée entière -->
+        @if (hasAllDay()) {
+          <div class="grid border-b border-slate-200" [style.grid-template-columns]="'56px repeat(' + columns().length + ', minmax(0, 1fr))'">
+            <div class="px-1 py-1 text-right text-[10px] text-slate-400">Journée</div>
+            @for (col of columns(); track col.key) {
+              <div class="flex min-w-0 flex-col gap-0.5 border-l border-slate-200 p-0.5">
+                @for (item of col.allDay; track item.key) {
+                  <button
+                    type="button"
+                    class="truncate rounded border-l-2 px-1.5 py-0.5 text-left text-xs text-slate-800"
+                    [style]="chipStyle(item)"
+                    [title]="item.title"
+                    (click)="open(item)"
+                  >
+                    {{ item.title }}
+                  </button>
+                }
+              </div>
+            }
+          </div>
+        }
+
+        <!-- Heures -->
+        <div #scroller class="relative overflow-y-auto" style="height: calc(100vh - 300px); min-height: 420px">
+          <div class="grid" [style.grid-template-columns]="'56px repeat(' + columns().length + ', minmax(0, 1fr))'">
+            <div class="relative" [style.height.px]="hourPx * 24">
+              @for (h of hours; track h) {
+                @if (h > 0) {
+                  <span class="absolute right-2 -translate-y-1/2 text-[10px] text-slate-400 tabular-nums" [style.top.px]="h * hourPx">
+                    {{ h }}:00
+                  </span>
+                }
+              }
+            </div>
+
+            @for (col of columns(); track col.key) {
+              <div
+                class="relative cursor-pointer border-l border-slate-200"
+                [class.bg-slate-50]="col.isToday"
+                [style.height.px]="hourPx * 24"
+                (click)="onSlotClick(col, $event)"
+              >
+                @for (h of hours; track h) {
+                  <div class="pointer-events-none absolute inset-x-0 border-t border-slate-100" [style.top.px]="h * hourPx"></div>
+                }
+
+                @for (p of col.placed; track p.item.key) {
+                  <button
+                    type="button"
+                    class="absolute overflow-hidden rounded border-l-[3px] px-1.5 py-0.5 text-left text-xs leading-tight text-slate-800 shadow-sm hover:brightness-95"
+                    [style]="blockStyle(p)"
+                    [title]="p.item.title + ' · ' + timeRange(p.item)"
+                    (click)="$event.stopPropagation(); open(p.item)"
+                  >
+                    <span class="block truncate font-medium">
+                      @if (p.item.kind === 'task' || p.item.kind === 'reminder') {
+                        <tas-icon [iconName]="p.item.kind === 'task' ? 'feather:check-square' : 'feather:bell'" style="font-size:10px"></tas-icon>
+                      }
+                      {{ p.item.title }}
+                    </span>
+                    @if (!isShort(p)) {
+                      <span class="block truncate text-slate-500 tabular-nums">{{ timeRange(p.item) }}</span>
+                      @if (p.item.detail) {
+                        <span class="block truncate text-slate-500">{{ p.item.detail }}</span>
+                      }
+                    }
+                  </button>
+                }
+
+                @if (col.isToday) {
+                  <div class="pointer-events-none absolute inset-x-0 z-10 flex items-center" [style.top.px]="nowTop()">
+                    <span class="-ml-1 size-2 rounded-full bg-red-500"></span>
+                    <span class="h-px flex-1 bg-red-500"></span>
+                  </div>
+                }
+              </div>
+            }
+          </div>
+        </div>
+      }
+    </div>
+  </div>
+</div>

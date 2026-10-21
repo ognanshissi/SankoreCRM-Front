@@ -8,6 +8,10 @@ const tasksRoutes: Route[] = [
     canActivate: [],
     component: DashboardComponent,
   },
+  {
+    path: 'calendar',
+    loadComponent: () => import('./containers/calendar/calendar-page'),
+  },
 ];
 
 export default tasksRoutes;

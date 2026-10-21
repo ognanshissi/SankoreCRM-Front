@@ -28,6 +28,8 @@ import { dayKey } from './my-day-meta';
 export interface CreateAppointmentDrawerData {
   /** Le jour choisi dans le calendrier, s'il y en a un : la date part de là. */
   day?: string | null;
+  /** L'heure du créneau cliqué dans le Calendrier (« 14:30 ») ; sinon l'heure pleine suivante. */
+  time?: string | null;
 }
 
 type SubjectType = 'none' | 'lead' | 'client';
@@ -81,14 +83,14 @@ class CreateAppointmentFormModel {
   public participantIds!: string[];
   public description!: string;
 
-  public static instantiate(day?: string | null): CreateAppointmentFormModel {
+  public static instantiate(day?: string | null, time?: string | null): CreateAppointmentFormModel {
     const m = new CreateAppointmentFormModel();
     // L'heure pleine suivante : un rendez-vous se pose rarement à 14 h 37.
     const next = new Date();
     next.setHours(next.getHours() + 1, 0, 0, 0);
     m.title = '';
     m.date = day && day >= dayKey(Date.now()) ? day : dayKey(next);
-    m.time = `${String(next.getHours()).padStart(2, '0')}:00`;
+    m.time = time && /^\d{2}:\d{2}$/.test(time) ? time : `${String(next.getHours()).padStart(2, '0')}:00`;
     m.duration = '30';
     m.mode = 'InPerson';
     m.meetingUrl = '';
@@ -149,7 +151,7 @@ export class CreateAppointmentDrawer {
   public readonly subjectOptions = SUBJECT_OPTIONS;
   public readonly minDate = dayKey(Date.now());
 
-  public model = signal(CreateAppointmentFormModel.instantiate(this._data?.day));
+  public model = signal(CreateAppointmentFormModel.instantiate(this._data?.day, this._data?.time));
 
   public formSchema = form(this.model, (schema) => {
     required(schema.title, { message: 'L’objet est obligatoire' });

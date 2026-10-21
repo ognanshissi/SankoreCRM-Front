@@ -9,6 +9,7 @@
  * https://openapi-generator.tech
  * Do not edit the class manually.
  */
+import { ConnectedCalendarDto } from './connected-calendar-dto.interface';
 
 
 export interface ConnectedAccountDto { 
@@ -21,5 +22,6 @@ export interface ConnectedAccountDto {
     connectedAt?: string;
     lastSyncAt?: string | null;
     lastError?: string | null;
+    calendars?: Array<ConnectedCalendarDto> | null;
 }
 

@@ -97,6 +97,13 @@ export class PortalLayoutComponent implements OnInit {
         link: '/tasks/my-day',
       },
       {
+        id: 'calendar',
+        icon: 'feather:calendar',
+        title: 'Calendrier',
+        type: 'basic',
+        link: '/tasks/calendar',
+      },
+      {
         id: 'contacts',
         icon: 'feather:phone',
         title: 'leads',

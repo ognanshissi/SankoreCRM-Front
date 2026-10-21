@@ -583,6 +583,46 @@
         }
       }
     },
+    "/api/v1/leads/appointments/{appointmentId}/reschedule": {
+      "post": {
+        "tags": [
+          "Appointments"
+        ],
+        "operationId": "RescheduleAppointment",
+        "parameters": [
+          {
+            "name": "appointmentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RescheduleAppointmentRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "422": {
+            "description": "Unprocessable Entity"
+          }
+        }
+      }
+    },
     "/api/v1/audit/entries": {
       "get": {
         "tags": [
@@ -4051,6 +4091,53 @@
         }
       }
     },
+    "/api/v1/integration/me/calendar-events": {
+      "get": {
+        "tags": [
+          "ConnectedAccounts"
+        ],
+        "summary": "The caller's own events from their ticked agendas, between two instants (62 days at most)",
+        "operationId": "ListMyCalendarEvents",
+        "parameters": [
+          {
+            "name": "from",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MyCalendarEventDto"
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity"
+          }
+        }
+      }
+    },
     "/api/v1/integration/me/connected-accounts": {
       "get": {
         "tags": [
@@ -4204,6 +4291,84 @@
           },
           "409": {
             "description": "Conflict"
+          }
+        }
+      }
+    },
+    "/api/v1/integration/me/connected-accounts/{id}/calendars/{calendarId}": {
+      "put": {
+        "tags": [
+          "ConnectedAccounts"
+        ],
+        "summary": "Ticks or unticks an agenda: unticking deletes what was read from it, ticking reads it in the background",
+        "operationId": "SelectConnectedCalendar",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "calendarId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SelectConnectedCalendarRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/api/v1/integration/me/connected-accounts/appointment-target": {
+      "put": {
+        "tags": [
+          "ConnectedAccounts"
+        ],
+        "summary": "Chooses the agenda the caller's SANKORÉ rendez-vous are copied into, or none",
+        "description": "One writable agenda of the caller's own accounts, or `calendarId: null` to stop copying. Upcoming rendez-vous move to the new agenda in the background. Requires permission: ConnectedAccounts.Use.",
+        "operationId": "SetAppointmentTarget",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetAppointmentTargetRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "422": {
+            "description": "Unprocessable Entity"
           }
         }
       }
@@ -31315,6 +31480,13 @@
           "lastError": {
             "type": "string",
             "nullable": true
+          },
+          "calendars": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ConnectedCalendarDto"
+            },
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -31335,6 +31507,52 @@
               "$ref": "#/components/schemas/ConnectedAccountDto"
             },
             "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ConnectedCalendarDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "color": {
+            "type": "string",
+            "nullable": true
+          },
+          "isPrimary": {
+            "type": "boolean"
+          },
+          "isReadOnly": {
+            "type": "boolean"
+          },
+          "isSubscription": {
+            "type": "boolean"
+          },
+          "isSelected": {
+            "type": "boolean"
+          },
+          "eventCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "lastSyncAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "lastError": {
+            "type": "string",
+            "nullable": true
+          },
+          "isAppointmentTarget": {
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -40844,6 +41062,63 @@
         },
         "additionalProperties": false
       },
+      "MyCalendarEventDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "accountId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "accountLabel": {
+            "type": "string",
+            "nullable": true
+          },
+          "provider": {
+            "type": "string",
+            "nullable": true
+          },
+          "calendarId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "calendarName": {
+            "type": "string",
+            "nullable": true
+          },
+          "color": {
+            "type": "string",
+            "nullable": true
+          },
+          "title": {
+            "type": "string",
+            "nullable": true
+          },
+          "location": {
+            "type": "string",
+            "nullable": true
+          },
+          "startAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "endAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "isAllDay": {
+            "type": "boolean"
+          },
+          "showAs": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "MyKycAccessDto": {
         "type": "object",
         "properties": {
@@ -44913,6 +45188,21 @@
         },
         "additionalProperties": false
       },
+      "RescheduleAppointmentRequest": {
+        "type": "object",
+        "properties": {
+          "startAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "durationMinutes": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "RescheduleReminderRequest": {
         "type": "object",
         "properties": {
@@ -46469,6 +46759,15 @@
         },
         "additionalProperties": false
       },
+      "SelectConnectedCalendarRequest": {
+        "type": "object",
+        "properties": {
+          "isSelected": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
       "SendSnippetRequest": {
         "type": "object",
         "properties": {
@@ -46628,6 +46927,17 @@
           "capacityCeiling": {
             "type": "integer",
             "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "SetAppointmentTargetRequest": {
+        "type": "object",
+        "properties": {
+          "calendarId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
           }
         },
         "additionalProperties": false

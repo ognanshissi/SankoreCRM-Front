@@ -1,14 +1,16 @@
 import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
+import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { form, FormField, FormRoot, required, submit, validate } from '@angular/forms/signals';
 import { catchError, EMPTY, firstValueFrom, of } from 'rxjs';
-import { ConnectedAccountDto, ConnectedAccountsApiService } from '@sankore/crm-api';
+import { ConnectedAccountDto, ConnectedAccountsApiService, ConnectedCalendarDto } from '@sankore/crm-api';
 import { Button } from '@talisoft/ui/button';
 import { ConfirmDialogService } from '@talisoft/ui/confirm-dialog';
-import { TasError, TasFormField } from '@talisoft/ui/form-field';
+import { TasError, TasFormField, TasLabel } from '@talisoft/ui/form-field';
 import { TasIcon } from '@talisoft/ui/icon';
 import { TasInput } from '@talisoft/ui/input';
+import { TasSelect } from '@talisoft/ui/select';
 import { SnackbarService } from '@talisoft/ui/snackbar';
 import { TasSpinner } from '@talisoft/ui/spinner';
 import { TimeagoPipe } from '@talisoft/ui/timeago';
@@ -57,7 +59,11 @@ const ERRORS: Record<string, string> = {
   CONNECTED_ACCOUNT_NEEDS_RECONNECT: 'Le fournisseur a refusé l’accès : reconnectez le compte.',
   CONNECTED_ACCOUNT_PROVIDER_ERROR: 'Le fournisseur ne répond pas pour le moment. Réessayez plus tard.',
   CONNECTED_ACCOUNT_NOT_FOUND: 'Ce compte n’existe plus.',
+  CALENDAR_READ_ONLY: 'Cet agenda est en lecture seule : choisissez-en un où vous pouvez écrire.',
 };
+
+/** « Ne pas copier » : une chaîne vide, `tas-select` travaillant en chaînes. */
+const NO_TARGET = '';
 
 class RenameFormModel {
   public label!: string;
@@ -74,13 +80,14 @@ class RenameFormModel {
  *
  * Les comptes sont rendus en cartes et non en `tas-table` : quelques comptes de l'utilisateur
  * lui-même, jamais paginés, présentés comme la maquette le demande — l'exception des aperçus
- * courts déjà admise ailleurs. Le choix des agendas, l'import des contacts et l'agenda cible des
- * rendez-vous arrivent avec les lots 2, 4 et 5.
+ * courts déjà admise ailleurs. Les cases à cocher (lot 2) choisissent les agendas affichés ;
+ * l'agenda cible (lot 4) reçoit une copie des rendez-vous SANKORÉ ; l'import des contacts viendra
+ * avec le lot 5.
  */
 @Component({
   selector: 'account-connected-agendas',
   templateUrl: './account-connected-agendas.html',
-  imports: [Button, TasIcon, TasSpinner, TasInput, TasFormField, TasError, FormRoot, FormField, TimeagoPipe],
+  imports: [Button, TasIcon, TasSpinner, TasInput, TasFormField, TasError, TasLabel, TasSelect, FormsModule, FormRoot, FormField, TimeagoPipe],
 })
 export class AccountConnectedAgendas implements OnInit {
   private readonly _api = inject(ConnectedAccountsApiService);
@@ -110,6 +117,22 @@ export class AccountConnectedAgendas implements OnInit {
     return groups;
   });
 
+  /** Les agendas où l'on peut écrire : ceux qui peuvent recevoir les rendez-vous. */
+  public readonly targetOptions = computed(() => [
+    { label: 'Ne pas copier mes rendez-vous', value: NO_TARGET },
+    ...this.accounts().flatMap((a) =>
+      (a.calendars ?? [])
+        .filter((c) => !c.isReadOnly)
+        .map((c) => ({ label: `${a.label} · ${c.name}`, value: c.id ?? '' })),
+    ),
+  ]);
+
+  public readonly target = computed(
+    () => this.accounts().flatMap((a) => a.calendars ?? []).find((c) => c.isAppointmentTarget)?.id ?? NO_TARGET,
+  );
+
+  public readonly savingTarget = signal(false);
+
   public renameModel = signal(RenameFormModel.of(''));
   public renameForm = form(this.renameModel, (schema) => {
     required(schema.label, { message: 'Le nom est obligatoire' });
@@ -126,6 +149,10 @@ export class AccountConnectedAgendas implements OnInit {
       this._snackbar[kind](title, message);
       // Le paramètre a servi : un rechargement ne doit pas réafficher le message.
       this._router.navigate([], { relativeTo: this._route, queryParams: {}, replaceUrl: true });
+
+      // Les agendas d'un compte qui vient d'être connecté sont lus en arrière-plan : on relit
+      // une fois, quelques secondes plus tard, pour les faire apparaître sans rechargement.
+      if (outcome === 'ok') setTimeout(() => this.reload(), 5000);
     }
 
     this.reload();
@@ -211,6 +238,72 @@ export class AccountConnectedAgendas implements OnInit {
         });
       },
     });
+  }
+
+  /**
+   * Coche ou décoche un agenda. Décocher efface ce qui en avait été lu ; cocher le relit en
+   * arrière-plan — d'où la relecture différée.
+   */
+  public toggleCalendar(account: ConnectedAccountDto, calendar: ConnectedCalendarDto, selected: boolean): void {
+    const apply = (value: boolean) =>
+      this.accounts.update((all) => all.map((a) => a.id !== account.id ? a : {
+        ...a,
+        calendars: (a.calendars ?? []).map((c) => c.id === calendar.id ? { ...c, isSelected: value, eventCount: value ? c.eventCount : 0 } : c),
+      }));
+
+    apply(selected);
+
+    this._api.selectConnectedCalendar(account.id!, calendar.id!, { isSelected: selected }).pipe(
+      catchError((err: HttpErrorResponse) => {
+        apply(!selected);
+        this._snackbar.error('Agenda non modifié', this._message(err));
+        return EMPTY;
+      }),
+    ).subscribe(() => {
+      if (selected) setTimeout(() => this.reload(), 4000);
+    });
+  }
+
+  /**
+   * L'agenda qui reçoit une copie des rendez-vous SANKORÉ, ou aucun. Appliqué tout de suite,
+   * comme les cases à cocher : les rendez-vous à venir y sont recopiés en arrière-plan.
+   */
+  public setTarget(calendarId: string): void {
+    const previous = this.target();
+    if (calendarId === previous) return;
+
+    const apply = (id: string) =>
+      this.accounts.update((all) => all.map((a) => ({
+        ...a,
+        calendars: (a.calendars ?? []).map((c) => ({ ...c, isAppointmentTarget: c.id === id })),
+      })));
+
+    apply(calendarId);
+    this.savingTarget.set(true);
+
+    this._api.setAppointmentTarget({ calendarId: calendarId || null }).pipe(
+      catchError((err: HttpErrorResponse) => {
+        apply(previous);
+        this.savingTarget.set(false);
+        this._snackbar.error('Agenda cible non modifié', this._message(err));
+        return EMPTY;
+      }),
+    ).subscribe(() => {
+      this.savingTarget.set(false);
+      this._snackbar.success(
+        calendarId ? 'Agenda cible enregistré' : 'Copie arrêtée',
+        calendarId
+          ? 'Vos rendez-vous à venir y sont copiés dans quelques instants, puis chaque nouveau rendez-vous.'
+          : 'Vos rendez-vous à venir sont retirés de l’agenda où ils avaient été copiés.',
+      );
+    });
+  }
+
+  public eventsLabel(calendar: ConnectedCalendarDto): string {
+    if (calendar.isSubscription) return 'abonnement';
+    if (!calendar.isSelected) return 'non affiché';
+    const count = calendar.eventCount ?? 0;
+    return `${count} événement${count > 1 ? 's' : ''}`;
   }
 
   public startRename(account: ConnectedAccountDto): void {
