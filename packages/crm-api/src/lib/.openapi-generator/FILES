@@ -399,6 +399,7 @@ model/lead-report-stage.interface.ts
 model/lead-report-status.interface.ts
 model/lead-row-validation-result.interface.ts
 model/lead-setting-dto.interface.ts
+model/lead-sla-dto.interface.ts
 model/lead-source-detail-dto.interface.ts
 model/lead-source-list-dto.interface.ts
 model/lead-stats-dto.interface.ts
@@ -664,6 +665,7 @@ model/suspend-group-request.interface.ts
 model/suspend-group-result.interface.ts
 model/system-capture-lead-request.interface.ts
 model/tag-dto.interface.ts
+model/task-assignment-entry-dto.interface.ts
 model/task-dto.interface.ts
 model/task-generation-rule-dto.interface.ts
 model/task-type-dto.interface.ts

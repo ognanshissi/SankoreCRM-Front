@@ -164,6 +164,49 @@
         </div>
       </div>
 
+      <!-- Historique des attributions : création, transferts, prolongations de SLA -->
+      <div>
+        <p class="text-xs text-slate-400 mb-1">Historique des attributions</p>
+        <tas-table
+          [data]="assignments()"
+          [config]="assignmentsTableConfig"
+          [isLoading]="isLoadingAssignments()"
+        >
+          <ng-template #body let-row>
+            <tr>
+              <td class="py-2 px-1">
+                <div class="flex items-start justify-between gap-3">
+                  <div class="min-w-0">
+                    <p class="text-sm text-slate-700">{{ assignmentLabel(row) }}</p>
+                    @if (row.slaDeadline) {
+                      <p class="text-xs text-slate-500 tabular-nums mt-0.5">
+                        SLA :
+                        @if (row.previousSlaDeadline && row.previousSlaDeadline !== row.slaDeadline) {
+                          <span class="line-through text-slate-400">{{ row.previousSlaDeadline | date: 'short' }}</span>
+                          →
+                        }
+                        {{ row.slaDeadline | date: 'short' }}
+                      </p>
+                    }
+                    @if (row.reason) {
+                      <p class="text-xs text-slate-400 mt-0.5">{{ row.reason }}</p>
+                    }
+                    @if (row.kind !== 'Initial') {
+                      <p class="text-xs text-slate-400 mt-0.5">
+                        {{ row.actorId ? 'Par ' + agentName(row.actorId) : 'Automatique' }}
+                      </p>
+                    }
+                  </div>
+                  <span class="text-xs text-slate-500 tabular-nums shrink-0" [title]="(row.at | date: 'long') ?? ''">
+                    {{ row.at | date: 'short' }}
+                  </span>
+                </div>
+              </td>
+            </tr>
+          </ng-template>
+        </tas-table>
+      </div>
+
       <!-- Origine : seulement si la tâche a été créée par une règle -->
       @if (triggerLabel(task().triggerEventType)) {
         <div>

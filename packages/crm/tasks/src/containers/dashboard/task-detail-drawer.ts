@@ -1,13 +1,14 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { DIALOG_DATA, DialogRef } from '@angular/cdk/dialog';
 import { DatePipe } from '@angular/common';
-import { catchError, EMPTY, of } from 'rxjs';
+import { catchError, EMPTY, forkJoin, map, of } from 'rxjs';
 import { TasIcon } from '@talisoft/ui/icon';
 import { TasSpinner } from '@talisoft/ui/spinner';
 import { TasTag } from '@talisoft/ui/tag';
 import { Button } from '@talisoft/ui/button';
 import { TasTitle } from '@talisoft/ui/title';
 import { TimeagoPipe } from '@talisoft/ui/timeago';
+import { TableConfig, TasTable } from '@talisoft/ui/table';
 import {
   TasDrawerAction,
   TasDrawerContent,
@@ -19,6 +20,7 @@ import {
   CrmTaskDtoStatusEnum,
   LeadDto,
   LeadsApiService,
+  TaskAssignmentEntryDto,
   TasksApiService,
   UserDto,
   UsersApiService,
@@ -30,6 +32,11 @@ import {
   triggerLabel,
   typeLabel,
 } from './task-meta';
+
+/** Une ligne de l'historique des attributions ; `id` sert de clé de suivi à `tas-table`. */
+export interface TaskAssignmentRow extends TaskAssignmentEntryDto {
+  id: string;
+}
 
 export interface TaskDetailDrawerData {
   task: CrmTaskDto;
@@ -81,6 +88,7 @@ export interface TaskDetailDrawerResult {
     TasIcon,
     TasSpinner,
     TasTag,
+    TasTable,
     Button,
   ],
   templateUrl: './task-detail-drawer.html',
@@ -106,6 +114,15 @@ export class TaskDetailDrawer {
   public agent = signal<UserDto | null>(null);
 
   public readonly sla = computed(() => computeSla(this.task(), Date.now()));
+
+  public assignments = signal<TaskAssignmentRow[]>([]);
+  public isLoadingAssignments = signal(true);
+  /** Noms des agents cités dans l'historique, résolus une fois chacun. */
+  public agentNames = signal<Record<string, string>>({});
+  public readonly assignmentsTableConfig: TableConfig = {
+    property: 'id',
+    pagination: { serverSide: false, pageIndex: 0, pageSize: 5, pageSizeOptions: [5, 10] },
+  };
 
   public readonly isPending = computed(
     () => this.task().status === CrmTaskDtoStatusEnum.Pending,
@@ -140,6 +157,23 @@ export class TaskDetailDrawer {
     this._refreshTask();
     this._loadLead();
     this._loadAgent();
+    this._loadAssignments();
+  }
+
+  public agentName(id: string | null | undefined): string {
+    if (!id) return 'personne';
+    return this.agentNames()[id] ?? 'un agent';
+  }
+
+  public assignmentLabel(row: TaskAssignmentRow): string {
+    switch (row.kind) {
+      case 'Initial':
+        return row.agentId ? `Attribuée à ${this.agentName(row.agentId)}` : 'Créée sans agent';
+      case 'SlaExtended':
+        return `SLA prolongé — reste à ${this.agentName(row.agentId)}`;
+      default:
+        return `Transférée de ${this.agentName(row.previousAgentId)} à ${this.agentName(row.agentId)}`;
+    }
   }
 
   public close(): void {
@@ -192,6 +226,57 @@ export class TaskDetailDrawer {
         this.lead.set(lead);
         this.isLoadingLead.set(false);
       });
+  }
+
+  private _loadAssignments(): void {
+    const id = this.data.task.id;
+    if (!id) {
+      this.isLoadingAssignments.set(false);
+      return;
+    }
+
+    this._tasksApi
+      .getCrmTaskAssignments(id)
+      .pipe(
+        catchError(() => {
+          this.isLoadingAssignments.set(false);
+          return EMPTY;
+        }),
+      )
+      .subscribe((entries) => {
+        // Le plus récent d'abord : c'est le dernier transfert qu'on vient chercher, et la table
+        // pagine par cinq.
+        const rows = [...entries]
+          .reverse()
+          .map((e, i) => ({ ...e, id: `${i}` }) as TaskAssignmentRow);
+        this.assignments.set(rows);
+        this.isLoadingAssignments.set(false);
+        this._resolveAgentNames(rows);
+      });
+  }
+
+  private _resolveAgentNames(rows: TaskAssignmentRow[]): void {
+    const ids = [
+      ...new Set(
+        rows
+          .flatMap((r) => [r.agentId, r.previousAgentId, r.actorId])
+          .filter((x): x is string => !!x),
+      ),
+    ];
+    if (!ids.length) return;
+
+    forkJoin(
+      ids.map((uid) =>
+        this._usersApi.getUser(uid).pipe(
+          map((u) => [uid, u?.fullName?.trim() || u?.email?.trim() || ''] as const),
+          catchError(() => of([uid, ''] as const)),
+        ),
+      ),
+    ).subscribe((pairs) => {
+      const names: Record<string, string> = {};
+      for (const [uid, name] of pairs) if (name) names[uid] = name;
+      this.agentNames.set(names);
+    });
   }
 
   private _loadAgent(): void {

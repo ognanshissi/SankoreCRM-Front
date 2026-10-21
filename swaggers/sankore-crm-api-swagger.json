@@ -19493,6 +19493,43 @@
         }
       }
     },
+    "/api/v1/leads/tasks/{taskId}/assignments": {
+      "get": {
+        "tags": [
+          "Tasks"
+        ],
+        "operationId": "GetCrmTaskAssignments",
+        "parameters": [
+          {
+            "name": "taskId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TaskAssignmentEntryDto"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
     "/api/v1/leads/tasks/{taskId}/complete": {
       "post": {
         "tags": [
@@ -36420,6 +36457,9 @@
           },
           "nextStep": {
             "$ref": "#/components/schemas/LeadNextStepDto"
+          },
+          "sla": {
+            "$ref": "#/components/schemas/LeadSlaDto"
           }
         },
         "additionalProperties": false
@@ -37051,6 +37091,26 @@
           "updatedBy": {
             "type": "string",
             "format": "uuid",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "LeadSlaDto": {
+        "type": "object",
+        "properties": {
+          "deadline": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "warningAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "firstContactAt": {
+            "type": "string",
+            "format": "date-time",
             "nullable": true
           }
         },
@@ -45587,6 +45647,49 @@
           "addedAt": {
             "type": "string",
             "format": "date-time"
+          }
+        },
+        "additionalProperties": false
+      },
+      "TaskAssignmentEntryDto": {
+        "type": "object",
+        "properties": {
+          "at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "kind": {
+            "type": "string",
+            "nullable": true
+          },
+          "previousAgentId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "agentId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "previousSlaDeadline": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "slaDeadline": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "reason": {
+            "type": "string",
+            "nullable": true
+          },
+          "actorId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
           }
         },
         "additionalProperties": false

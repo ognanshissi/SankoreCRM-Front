@@ -182,9 +182,6 @@ const PIPELINE_PHASES: PipelinePhase[] = [
   { key: 'converted',  label: 'Converti',       exit: 'client créé',                 stages: [S.Converted],                                             dropStage: S.Converted },
 ];
 
-/** En deçà, une échéance SLA est signalée « en risque ». */
-const SLA_WARNING_MS = 24 * 3_600_000;
-
 function assigneeId(lead: LeadDto): string | null {
   return lead.currentAssignedId ?? lead.ownerId ?? null;
 }
@@ -472,11 +469,21 @@ export class LeadHomepage implements OnInit {
     return agencyId ? this.agencyOptions().find((o) => o.value === agencyId)?.label ?? '' : '';
   }
 
+  /**
+   * Le SLA de premier contact de l'affectation en cours, tel que le serveur le calcule. Ce badge
+   * lisait auparavant `expiresAt` — la durée de vie du lead, 180 jours par défaut — avec un seuil
+   * fixe de 24 h : il ne signalait jamais un premier contact en retard. Le seuil « en risque »
+   * vient maintenant du serveur (`sla.warningAt`), le même que celui de l'e-mail de préalerte.
+   */
   public cardSla(lead: LeadDto): CardSla | null {
-    if (!lead.expiresAt) return null;
-    const remaining = new Date(lead.expiresAt).getTime() - Date.now();
+    const sla = lead.sla;
+    if (!sla?.deadline) return null;
+    if (sla.firstContactAt) return { label: 'Premier contact fait', tone: 'ok' };
+
+    const now = Date.now();
+    const remaining = new Date(sla.deadline).getTime() - now;
     if (remaining < 0) return { label: 'SLA dépassé', tone: 'breach' };
-    if (remaining < SLA_WARNING_MS) {
+    if (sla.warningAt && now >= new Date(sla.warningAt).getTime()) {
       const h = Math.max(1, Math.round(remaining / 3_600_000));
       return { label: `SLA : ${h} h restante${h > 1 ? 's' : ''}`, tone: 'warning' };
     }
