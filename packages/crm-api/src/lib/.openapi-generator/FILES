@@ -100,6 +100,9 @@ model/advance-opportunity-stage-request.interface.ts
 model/agency-dto.interface.ts
 model/agency-factor.interface.ts
 model/agency-tree-node-dto.interface.ts
+model/agenda-activity-dto.interface.ts
+model/agenda-alert-dto.interface.ts
+model/agenda-reminder-dto.interface.ts
 model/agent-comparison-dto.interface.ts
 model/agent-performance-dto.interface.ts
 model/agent-report-dto.interface.ts
@@ -445,6 +448,7 @@ model/missing-questionnaire.interface.ts
 model/models.ts
 model/money.interface.ts
 model/move-agency-request.interface.ts
+model/my-agenda-dto.interface.ts
 model/my-kyc-access-dto.interface.ts
 model/my-performance-dto.interface.ts
 model/my-profile-dto.interface.ts
@@ -560,6 +564,7 @@ model/request-client-export-result.interface.ts
 model/request-client-merge-request.interface.ts
 model/request-client-merge-result.interface.ts
 model/reschedule-reminder-request.interface.ts
+model/reschedule-tasks-request.interface.ts
 model/reset-password-request.interface.ts
 model/reset-password-result.interface.ts
 model/resolve-complaint-request.interface.ts
@@ -667,6 +672,7 @@ model/system-capture-lead-request.interface.ts
 model/tag-dto.interface.ts
 model/task-assignment-entry-dto.interface.ts
 model/task-dto.interface.ts
+model/task-due-date-input.interface.ts
 model/task-generation-rule-dto.interface.ts
 model/task-type-dto.interface.ts
 model/telephony-call-context.interface.ts

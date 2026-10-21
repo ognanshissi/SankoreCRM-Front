@@ -1,161 +1,160 @@
 <!-- En-tête -->
-<div class="flex flex-wrap items-start justify-between gap-4 mb-6">
-  <div class="flex flex-col gap-3">
-    <div>
-      <h1 class="text-lg font-semibold text-slate-800">{{ scope() === 'team' ? 'Tâches de l’équipe' : 'Mes tâches' }}</h1>
-      <p class="text-sm text-slate-500 mt-0.5">
-        @if (scope() === 'team') {
-          Les tâches de vos agents@if (agencyName()) { · {{ agencyName() }} et ses sous-agences}
-        } @else {
-          {{ userName() }}@if (agencyName()) { · {{ agencyName() }}}
-        }
+<div class="mb-6 flex flex-wrap items-start justify-between gap-4">
+  <div>
+    @if (scope() === 'team') {
+      <h1 class="text-2xl font-bold text-slate-900">Tâches de l’équipe</h1>
+      <p class="mt-1 text-sm text-slate-600">
+        Les tâches de vos agents@if (agencyName()) { · {{ agencyName() }} et ses sous-agences}
       </p>
-    </div>
-    @if (isSupervisor()) {
-      <div class="flex flex-wrap items-center gap-2">
-        <div role="group" aria-label="Tâches affichées" class="flex gap-1 rounded-full bg-slate-100 p-1">
-          <button type="button" class="min-h-9 rounded-full px-3.5 text-sm font-semibold transition-colors"
-            [class]="scope() === 'mine' ? 'bg-white text-primary shadow-xs' : 'text-slate-700 hover:text-slate-900'"
-            [attr.aria-pressed]="scope() === 'mine'"
-            (click)="setScope('mine')">Mes tâches</button>
-          <button type="button" class="min-h-9 rounded-full px-3.5 text-sm font-semibold transition-colors"
-            [class]="scope() === 'team' ? 'bg-white text-primary shadow-xs' : 'text-slate-700 hover:text-slate-900'"
-            [attr.aria-pressed]="scope() === 'team'"
-            (click)="setScope('team')">Équipe</button>
+    } @else {
+      <h1 class="text-2xl font-bold text-slate-900">Bonjour{{ userFirstName() ? ' ' + userFirstName() : '' }}</h1>
+      <p class="mt-1 text-sm text-slate-600">
+        <span class="tabular-nums">{{ tasksToday() }}</span> tâche{{ tasksToday() > 1 ? 's' : '' }} aujourd’hui,
+        <span class="tabular-nums">{{ reminders().length }}</span> rappel{{ reminders().length > 1 ? 's' : '' }} en attente@if (agencyName()) { · {{ agencyName() }}}
+      </p>
+    }
+  </div>
+
+  @if (isSupervisor()) {
+    <div class="flex flex-wrap items-center gap-2">
+      @if (scope() === 'team') {
+        <div class="w-56">
+          <tas-select
+            [options]="agentOptions()"
+            [ngModel]="agentFilter()"
+            (ngModelChange)="setAgentFilter($event)"
+            placeholder="Tous les agents"
+            aria-label="Agent"
+          ></tas-select>
         </div>
-        @if (scope() === 'team') {
-          <div class="w-56">
-            <tas-select
-              [options]="agentOptions()"
-              [ngModel]="agentFilter()"
-              (ngModelChange)="setAgentFilter($event)"
-              placeholder="Tous les agents"
-              aria-label="Agent"
-            ></tas-select>
-          </div>
-        }
+      }
+      <div role="group" aria-label="Tâches affichées" class="flex gap-1 rounded-full bg-slate-200/60 p-1">
+        <button type="button" class="min-h-9 rounded-full px-4 text-sm font-semibold transition-colors"
+          [class]="scope() === 'mine' ? 'bg-white text-primary shadow-xs' : 'text-slate-700 hover:text-slate-900'"
+          [attr.aria-pressed]="scope() === 'mine'"
+          (click)="setScope('mine')">Mes tâches</button>
+        <button type="button" class="min-h-9 rounded-full px-4 text-sm font-semibold transition-colors"
+          [class]="scope() === 'team' ? 'bg-white text-primary shadow-xs' : 'text-slate-700 hover:text-slate-900'"
+          [attr.aria-pressed]="scope() === 'team'"
+          (click)="setScope('team')">Équipe</button>
       </div>
-    }
-  </div>
-
-  <div class="flex items-center gap-1 p-1 rounded-full bg-white border border-slate-200 shadow-sm">
-    <button type="button" class="px-4 py-2 rounded-full text-sm font-semibold transition-colors"
-      [class]="activeTab() === 'todo' ? 'bg-primary text-white' : 'text-slate-700 hover:bg-slate-50'"
-      (click)="setTab('todo')">
-      À faire (<span class="tabular-nums">{{ openTasks().length }}</span>)
-    </button>
-    <button type="button" class="px-4 py-2 rounded-full text-sm font-semibold transition-colors"
-      [class]="activeTab() === 'overdue' ? 'bg-red-600 text-white' : 'text-red-600 hover:bg-red-50'"
-      (click)="setTab('overdue')">
-      En retard (<span class="tabular-nums">{{ overdueTasks().length }}</span>)
-    </button>
-    <button type="button" class="px-4 py-2 rounded-full text-sm font-semibold transition-colors"
-      [class]="activeTab() === 'done' ? 'bg-primary text-white' : 'text-slate-700 hover:bg-slate-50'"
-      (click)="setTab('done')">
-      Terminées
-    </button>
-    <!-- Les approbations sont celles de l'utilisateur : pas d'équivalent « équipe ». -->
-    @if (scope() === 'mine') {
-      <button type="button" class="px-4 py-2 rounded-full text-sm font-semibold transition-colors"
-        [class]="activeTab() === 'approvals' ? 'bg-primary text-white' : 'text-slate-700 hover:bg-slate-50'"
-        (click)="setTab('approvals')">
-        Approbations
-        @if (approvalsCount() > 0) {
-          <span class="ml-1 inline-flex min-w-5 justify-center rounded-full px-1.5 text-xs tabular-nums"
-            [class]="activeTab() === 'approvals' ? 'bg-white/20' : 'bg-amber-100 text-amber-800'">{{ approvalsCount() }}</span>
-        }
-      </button>
-    }
-  </div>
-</div>
-
-@if (activeTab() === 'approvals') {
-  <tasks-approvals-list
-    [items]="approvals()"
-    [kycAwaitingTotal]="kycAwaitingTotal()"
-    [isLoading]="isApprovalsLoading()"
-    [now]="now()"
-    (changed)="loadApprovals()"
-  ></tasks-approvals-list>
-} @else {
-
-<div class="grid grid-cols-1 xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] gap-6 items-start">
-  <!-- Liste -->
-  <tas-table [data]="visibleTasks()" [config]="tableConfig()" [isLoading]="isLoading()">
-    <ng-template #header>
-      <tr class="bg-slate-50 text-left text-xs font-medium uppercase tracking-wide text-slate-500">
-        <th class="px-4 py-3">Tâche</th>
-        <th class="px-4 py-3">Lead</th>
-        @if (scope() === 'team') {
-          <th class="px-4 py-3">Agent</th>
-        }
-        <th class="px-4 py-3">Échéance</th>
-        <th class="px-4 py-3">Statut</th>
-      </tr>
-    </ng-template>
-
-    <ng-template #body let-item>
-      @let due = computeDue(item, now());
-      @let isSelected = selectedTask()?.id === item.id;
-      <!--
-        Fond, barre à gauche et titre en couleur : un fond seul à 5 % d'opacité ne se distinguait
-        pas du survol, et rien ne reliait la ligne au panneau de droite.
-      -->
-      <tr class="cursor-pointer transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
-        [class]="isSelected ? 'bg-primary/10 shadow-[inset_4px_0_0_0_var(--color-primary)]' : 'hover:bg-slate-50'"
-        tabindex="0"
-        [attr.aria-selected]="isSelected"
-        (click)="selectTask(item)"
-        (keydown.enter)="selectTask(item)"
-        (keydown.space)="$event.preventDefault(); selectTask(item)">
-        <td class="px-4 py-4 text-sm font-semibold" [class]="isSelected ? 'text-primary' : 'text-slate-800'">
-          <span class="flex items-center gap-2">
-            @if (isSelected) {
-              <span class="size-2 shrink-0 rounded-full bg-primary" aria-hidden="true"></span>
-            }
-            {{ taskActionLabel(item) }}
-          </span>
-        </td>
-        <td class="px-4 py-4">
-          <p class="text-sm text-slate-800">{{ leadName(item) || '—' }}</p>
-          @if (leadOf(item)?.interestedProduct) {
-            <p class="text-xs text-slate-500 mt-0.5">{{ leadOf(item)!.interestedProduct }}</p>
-          }
-        </td>
-        @if (scope() === 'team') {
-          <td class="px-4 py-4 text-sm text-slate-700">{{ assigneeName(item) }}</td>
-        }
-        <td class="px-4 py-4">
-          @if (due.tone === 'breach') {
-            <span class="inline-flex px-2 py-0.5 rounded-md bg-red-100 text-red-700 text-xs font-medium">{{ due.label }}</span>
-          } @else if (due.tone === 'soon') {
-            <span class="inline-flex px-2 py-0.5 rounded-md bg-amber-100 text-amber-800 text-xs font-medium">{{ due.label }}</span>
-          } @else {
-            <span class="text-xs text-slate-700">{{ due.label }}</span>
-          }
-        </td>
-        <td class="px-4 py-4 text-xs text-slate-700">{{ workStatusLabel(item.status) }}</td>
-      </tr>
-    </ng-template>
-  </tas-table>
-
-  <!-- Panneau de travail -->
-  <!--
-    Un @for indexé sur l'id plutôt qu'un @if : changer de tâche recrée le panneau, ce qui rejoue
-    l'animation d'entrée, alors qu'un rechargement de la même tâche le laisse en place.
-  -->
-  @for (task of selectedTaskAsList(); track task.id) {
-    <div class="task-panel bg-white rounded-xl shadow-sm border border-slate-100" animate.enter="task-panel-enter">
-      <task-work-panel
-        [task]="task"
-        [lead]="leadOf(task)"
-        [agentName]="scope() === 'team' ? assigneeName(task) : userName()"
-        [now]="now()"
-        (completed)="onTaskCompleted()"
-        (reassignRequested)="openReassign($event)"
-        (openLeadRequested)="openLead($event)"
-      ></task-work-panel>
     </div>
   }
 </div>
-}
+
+<div class="grid grid-cols-1 items-start gap-5 lg:grid-cols-[290px_minmax(0,1fr)]">
+  <!-- Colonne gauche : calendrier et vues -->
+  <aside class="flex flex-col gap-4">
+    <my-day-calendar
+      [month]="calendarMonth()"
+      [today]="todayKey()"
+      [selected]="selectedDay()"
+      [markers]="markers()"
+      (monthChange)="onMonthChange($event)"
+      (daySelect)="selectedDay.set($event)"
+    ></my-day-calendar>
+
+    <nav class="rounded-2xl border border-slate-100 bg-white p-2 shadow-sm" aria-label="Vues de Ma journée">
+      <ul class="flex flex-col gap-0.5">
+        @for (item of visibleNav(); track item.view) {
+          @let active = view() === item.view;
+          @let count = item.count();
+          <li>
+            <button type="button"
+              class="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-colors"
+              [class]="active ? 'bg-primary font-semibold text-white' : 'text-slate-700 hover:bg-slate-50'"
+              [attr.aria-current]="active ? 'page' : null"
+              (click)="setView(item.view)">
+              <tas-icon [iconName]="item.icon" style="font-size:15px"></tas-icon>
+              <span class="flex-1 text-left">{{ item.label }}</span>
+              <span class="min-w-6 rounded-full px-1.5 text-center text-xs font-semibold tabular-nums"
+                [class]="active ? 'bg-white text-primary'
+                  : count > 0 && item.tone === 'amber' ? 'bg-amber-100 text-amber-800'
+                  : count > 0 && item.tone === 'blue' ? 'bg-blue-100 text-blue-800'
+                  : 'bg-slate-100 text-slate-600'">{{ count }}</span>
+            </button>
+          </li>
+        }
+      </ul>
+    </nav>
+  </aside>
+
+  <!-- Colonne principale -->
+  <main class="flex min-w-0 flex-col gap-4">
+    @if (selectedDay()) {
+      <div class="flex items-center gap-2 text-sm">
+        <span class="text-slate-600">Jour affiché :</span>
+        <span class="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1 font-semibold text-primary">
+          {{ selectedDayLabel() }}
+          <button type="button" class="inline-flex text-primary hover:opacity-70" aria-label="Afficher tous les jours" (click)="selectedDay.set(null)">
+            <tas-icon iconName="feather:x" style="font-size:12px"></tas-icon>
+          </button>
+        </span>
+      </div>
+    }
+
+    @switch (view()) {
+      @case ('approvals') {
+        <tasks-approvals-list
+          [items]="approvals()"
+          [kycAwaitingTotal]="kycAwaitingTotal()"
+          [isLoading]="isApprovalsLoading()"
+          [now]="now()"
+          (changed)="loadApprovals()"
+        ></tasks-approvals-list>
+      }
+      @case ('reminders') {
+        @if (isAgendaLoading() && !agenda()) {
+          <div class="flex justify-center py-16"><span class="size-6 animate-spin rounded-full border-2 border-primary border-t-transparent"></span></div>
+        } @else {
+          <my-day-agenda-list
+            [groups]="reminderGroups()"
+            [leads]="leads()"
+            [now]="now()"
+            emptyTitle="Aucun rappel en attente"
+            emptyText="Les rappels posés sur vos leads apparaîtront ici, en retard compris."
+            (changed)="loadAgenda()"
+          ></my-day-agenda-list>
+        }
+      }
+      @case ('meetings') {
+        @if (isAgendaLoading() && !agenda()) {
+          <div class="flex justify-center py-16"><span class="size-6 animate-spin rounded-full border-2 border-primary border-t-transparent"></span></div>
+        } @else {
+          <my-day-agenda-list
+            [groups]="meetingGroups()"
+            [leads]="leads()"
+            [now]="now()"
+            emptyTitle="Aucun rendez-vous à venir"
+            emptyText="Les rendez-vous, visites et appels enregistrés avec une date prévue apparaîtront ici."
+            (changed)="loadAgenda()"
+          ></my-day-agenda-list>
+        }
+      }
+      @default {
+        @if (view() === 'todo' && scope() === 'mine' && !selectedDay()) {
+          <my-day-promised-reminders [entries]="reminders()" [leads]="leads()" [now]="now()"></my-day-promised-reminders>
+        }
+        @if (isLoading()) {
+          <div class="flex justify-center py-16"><span class="size-6 animate-spin rounded-full border-2 border-primary border-t-transparent"></span></div>
+        } @else {
+          <my-day-task-list
+            [groups]="taskGroups()"
+            [leads]="leads()"
+            [now]="now()"
+            [duplicates]="duplicates()"
+            [agentNames]="scope() === 'team' ? agentNames() : null"
+            [canSpread]="scope() === 'mine' && view() === 'todo'"
+            [busyIds]="busyIds()"
+            [emptyTitle]="view() === 'done' ? 'Aucune tâche terminée' : view() === 'overdue' ? 'Rien en retard' : 'Rien à faire'"
+            [emptyText]="selectedDay() ? 'Aucune tâche ce jour-là.' : view() === 'todo' ? 'Les tâches qui vous sont attribuées apparaîtront ici.' : ''"
+            (open)="openTask($event)"
+            (postpone)="postpone($event)"
+            (spread)="spread($event)"
+            (reassign)="openReassign($event)"
+          ></my-day-task-list>
+        }
+      }
+    }
+  </main>
+</div>

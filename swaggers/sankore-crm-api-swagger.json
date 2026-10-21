@@ -14285,6 +14285,49 @@
         }
       }
     },
+    "/api/v1/leads/me/agenda": {
+      "get": {
+        "tags": [
+          "Leads"
+        ],
+        "summary": "Rappels, activités planifiées et alertes SLA de l'utilisateur connecté, sur une fenêtre de jours.",
+        "operationId": "GetMyAgenda",
+        "parameters": [
+          {
+            "name": "from",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "days",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 14
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyAgendaDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request"
+          }
+        }
+      }
+    },
     "/api/v1/leads/{leadId}/reminders": {
       "get": {
         "tags": [
@@ -19526,6 +19569,35 @@
           },
           "404": {
             "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/api/v1/leads/tasks/reschedule": {
+      "post": {
+        "tags": [
+          "Tasks"
+        ],
+        "operationId": "RescheduleCrmTasks",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RescheduleTasksRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "422": {
+            "description": "Unprocessable Entity"
           }
         }
       }
@@ -25785,6 +25857,114 @@
               "$ref": "#/components/schemas/AgencyTreeNodeDto"
             },
             "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "AgendaActivityDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "leadId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "leadName": {
+            "type": "string",
+            "nullable": true
+          },
+          "type": {
+            "enum": [
+              "Call",
+              "Meeting",
+              "Email",
+              "Visit",
+              "Note",
+              "Sms",
+              "WhatsApp",
+              "Task"
+            ],
+            "type": "string",
+            "description": "One of: Call, Meeting, Email, Visit, Note, Sms, WhatsApp, Task"
+          },
+          "subject": {
+            "type": "string",
+            "nullable": true
+          },
+          "notes": {
+            "type": "string",
+            "nullable": true
+          },
+          "scheduledAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "durationMinutes": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "AgendaAlertDto": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "enum": [
+              "SlaBreached",
+              "SlaAtRisk"
+            ],
+            "type": "string",
+            "description": "One of: SlaBreached, SlaAtRisk"
+          },
+          "leadId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "leadName": {
+            "type": "string",
+            "nullable": true
+          },
+          "deadline": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false
+      },
+      "AgendaReminderDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "leadId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "leadName": {
+            "type": "string",
+            "nullable": true
+          },
+          "title": {
+            "type": "string",
+            "nullable": true
+          },
+          "notes": {
+            "type": "string",
+            "nullable": true
+          },
+          "dueAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "isOverdue": {
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -38399,6 +38579,41 @@
         },
         "additionalProperties": false
       },
+      "MyAgendaDto": {
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "to": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "reminders": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AgendaReminderDto"
+            },
+            "nullable": true
+          },
+          "activities": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AgendaActivityDto"
+            },
+            "nullable": true
+          },
+          "alerts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AgendaAlertDto"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "MyKycAccessDto": {
         "type": "object",
         "properties": {
@@ -42402,6 +42617,19 @@
         },
         "additionalProperties": false
       },
+      "RescheduleTasksRequest": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TaskDueDateInput"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "ResetPasswordRequest": {
         "type": "object",
         "properties": {
@@ -45759,6 +45987,20 @@
           "completionComment": {
             "type": "string",
             "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "TaskDueDateInput": {
+        "type": "object",
+        "properties": {
+          "taskId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "dueAt": {
+            "type": "string",
+            "format": "date-time"
           }
         },
         "additionalProperties": false
