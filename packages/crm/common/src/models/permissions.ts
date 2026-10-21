@@ -278,6 +278,8 @@ export const PERMISSIONS = {
   // l'institution. Distinct de WhatsApp.Config : les mots du bot sont une affaire commerciale
   // et de conformité, le numéro une affaire technique.
   WHATSAPP_BOT_CONFIG: 'WhatsApp.Bot.Config',
+  // Connecter SES propres comptes Microsoft et Google (agendas, contacts).
+  CONNECTED_ACCOUNTS_USE: 'ConnectedAccounts.Use',
 
   // Volontairement en minuscules à deux-points, contrairement à ses voisines de ce
   // bloc : c'est la chaîne exacte que les endpoints de la politique d'enregistrement

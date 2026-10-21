@@ -1,0 +1,116 @@
+<div class="flex flex-col gap-6 pb-6">
+  <div>
+    <h2 class="text-lg font-semibold text-slate-800">Agendas et contacts connectés</h2>
+    <p class="text-sm text-slate-500 mt-0.5">
+      Ajoutez autant de comptes Microsoft et Google que nécessaire. Vous seul voyez leur contenu.
+    </p>
+  </div>
+
+  @if (loadFailed()) {
+    <div class="flex flex-col items-center rounded-2xl bg-white py-12 text-center">
+      <tas-icon iconName="feather:alert-triangle" class="text-functional-error mb-2" style="font-size:22px"></tas-icon>
+      @if (needsNewSession()) {
+        <p class="text-sm text-slate-600">Cette fonctionnalité vient de vous être ouverte : déconnectez-vous puis reconnectez-vous pour l’activer.</p>
+      } @else {
+        <p class="text-sm text-slate-600">Vos comptes connectés n’ont pas pu être chargés.</p>
+        <button tas-outlined-button type="button" class="mt-3" (click)="reload()">Réessayer</button>
+      }
+    </div>
+  } @else if (isLoading()) {
+    <div class="flex justify-center py-12"><tas-spinner size="10" class="text-primary"></tas-spinner></div>
+  } @else {
+    @for (p of providers; track p.code) {
+      @let list = byProvider()[p.code] ?? [];
+      <section class="flex flex-col gap-3" [attr.aria-label]="p.title">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <div class="flex items-center gap-3">
+            <span class="flex size-10 items-center justify-center rounded-xl text-sm font-bold" [class]="p.badgeTone" aria-hidden="true">{{ p.badge }}</span>
+            <div>
+              <h3 class="text-base font-semibold text-slate-900">{{ p.title }}</h3>
+              <p class="text-xs text-slate-500">
+                {{ list.length }} compte{{ list.length > 1 ? 's' : '' }} · {{ p.subtitle }}
+              </p>
+            </div>
+          </div>
+          @if (isAvailable(p.code)) {
+            <button tas-raised-button color="primary" type="button" [disabled]="busy() !== null" [isLoading]="busy() === p.code" (click)="connect(p.code)">
+              <tas-icon iconName="feather:plus" style="font-size:14px"></tas-icon>
+              {{ p.addLabel }}
+            </button>
+          } @else {
+            <span class="rounded-lg bg-slate-100 px-3 py-1.5 text-xs text-slate-500">Non configuré sur ce déploiement</span>
+          }
+        </div>
+
+        @if (list.length > 0) {
+          <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            @for (a of list; track a.id) {
+              @let reconnect = a.status === 'NeedsReconnect';
+              <article class="flex flex-col gap-3 rounded-2xl border bg-white p-4"
+                       [class]="reconnect ? 'border-amber-300' : 'border-slate-200'">
+                <div class="flex items-start justify-between gap-3">
+                  <div class="min-w-0 flex-1">
+                    @if (renaming() === a.id) {
+                      <form [formRoot]="renameForm" class="flex items-start gap-2" (submit)="$event.preventDefault(); saveRename(a)">
+                        <tas-form-field class="flex-1">
+                          <input tasInput type="text" aria-label="Nom du compte" [formField]="renameForm.label" />
+                          @if (renameForm.label().touched() && renameForm.label().invalid()) {
+                            <tas-error>{{ renameForm.label().errors()[0].message }}</tas-error>
+                          }
+                        </tas-form-field>
+                        <button tas-raised-button color="primary" type="submit" [disabled]="renameForm().invalid()">OK</button>
+                        <button tas-text-button type="button" (click)="renaming.set(null)">Annuler</button>
+                      </form>
+                    } @else {
+                      <p class="flex items-center gap-1.5 text-sm font-semibold text-slate-900">
+                        {{ a.label }}
+                        <button tas-button iconButton type="button" (click)="startRename(a)" [attr.aria-label]="'Renommer ' + a.label">
+                          <tas-icon iconName="feather:edit-2" class="text-slate-400" style="font-size:12px"></tas-icon>
+                        </button>
+                      </p>
+                      <p class="truncate text-xs text-slate-500">{{ a.email }}</p>
+                    }
+                  </div>
+                  @if (reconnect) {
+                    <span class="inline-flex shrink-0 items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-800">
+                      <tas-icon iconName="feather:alert-triangle" style="font-size:11px"></tas-icon> À reconnecter
+                    </span>
+                  } @else {
+                    <span class="inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-800">
+                      <tas-icon iconName="feather:check" style="font-size:11px"></tas-icon> Synchronisé
+                    </span>
+                  }
+                </div>
+
+                @if (reconnect) {
+                  <p class="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-900">
+                    Le fournisseur n’accorde plus l’accès (mot de passe changé, accès retiré…). Reconnectez le compte pour reprendre la synchronisation.
+                  </p>
+                }
+
+                <div class="mt-auto flex items-center justify-between gap-3 border-t border-slate-100 pt-3 text-xs">
+                  <span class="text-slate-500">
+                    @if (a.lastSyncAt) { {{ a.lastSyncAt | dateTimeAgo }} } @else { Jamais synchronisé }
+                  </span>
+                  <div class="flex items-center gap-3">
+                    @if (reconnect) {
+                      <button tas-text-button color="primary" type="button" [disabled]="busy() !== null" (click)="connect(p.code, a.label)">Reconnecter</button>
+                    } @else {
+                      <button tas-text-button color="primary" type="button" [disabled]="busy() !== null" [isLoading]="busy() === a.id" (click)="sync(a)">Synchroniser</button>
+                    }
+                    <button tas-text-button color="warn" type="button" [disabled]="busy() !== null" (click)="remove(a)">Retirer</button>
+                  </div>
+                </div>
+              </article>
+            }
+          </div>
+        }
+      </section>
+    }
+
+    <p class="flex items-start gap-2 text-xs text-slate-500">
+      <tas-icon iconName="feather:info" class="mt-0.5 shrink-0" style="font-size:12px"></tas-icon>
+      Apple iCloud n’est pas pris en charge. Pour voir un agenda iPhone, abonnez-le depuis un compte Google ou Microsoft déjà connecté.
+    </p>
+  }
+</div>

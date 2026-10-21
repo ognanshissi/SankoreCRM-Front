@@ -34,6 +34,16 @@ ENV NX_DAEMON=false
 # après « ❯ Building... », sans message. Voir admin.Dockerfile pour les mesures.
 ENV NG_BUILD_MAX_WORKERS=1
 
+# `crm` est bien plus lourd que `admin` : pic mesuré à 4,3 Go avec le seul réglage ci-dessus,
+# partagé entre le binaire esbuild (Go, ~2,3 Go) et Node (~1,8 Go). Laissés à eux-mêmes, leurs
+# ramasse-miettes laissent le tas grossir bien au-delà du nécessaire. GOMEMLIMIT (lu par le
+# binaire esbuild, qui hérite de l'environnement) et un plafond de tas V8 les font collecter
+# plus tôt : pic ramené à 3,0 Go, pour ~40 % de temps de build en plus. Plafonds souples —
+# dépasser GOMEMLIMIT ralentit esbuild sans le tuer ; un tas V8 trop bas, lui, échoue en
+# « JavaScript heap out of memory » (bruyant, au moins).
+ENV GOMEMLIMIT=1200MiB
+ENV NODE_OPTIONS=--max-old-space-size=1280
+
 COPY --from=deps /workspace/node_modules ./node_modules
 COPY . .
 

@@ -36,6 +36,11 @@ ENV NX_DAEMON=false
 # build partage la RAM du serveur avec les conteneurs en service.
 ENV NG_BUILD_MAX_WORKERS=1
 
+# Ramasse-miettes d'esbuild (Go) et de Node plus agressifs : voir le `Dockerfile` de `crm`
+# pour les mesures. Mêmes plafonds ici, `admin` restant en dessous.
+ENV GOMEMLIMIT=1200MiB
+ENV NODE_OPTIONS=--max-old-space-size=1280
+
 COPY --from=deps /workspace/node_modules ./node_modules
 COPY . .
 

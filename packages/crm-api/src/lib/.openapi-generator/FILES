@@ -19,6 +19,7 @@ api/client-timeline-segments.service.ts
 api/clients.service.ts
 api/company-info.service.ts
 api/compliance-settings.service.ts
+api/connected-accounts.service.ts
 api/customer-compliance.service.ts
 api/customer-settings.service.ts
 api/delivery-logs.service.ts
@@ -205,6 +206,8 @@ model/completeness-gap.interface.ts
 model/compliance-settings-response.interface.ts
 model/configure-whats-app-template-request.interface.ts
 model/configure-whats-app-webhook-response.interface.ts
+model/connected-account-dto.interface.ts
+model/connected-accounts-dto.interface.ts
 model/connection-detail-dto.interface.ts
 model/connection-health-dto.interface.ts
 model/connection-list-dto.interface.ts
@@ -568,6 +571,7 @@ model/relay-target-health-report.interface.ts
 model/reminder-dto.interface.ts
 model/remove-group-member-result.interface.ts
 model/remove-household-member-result.interface.ts
+model/rename-connected-account-request.interface.ts
 model/replay-integration-command-result.interface.ts
 model/report-suspicious-login-request.interface.ts
 model/reprocess-ingestion-request.interface.ts
@@ -671,6 +675,8 @@ model/source-settings.interface.ts
 model/stage-count.interface.ts
 model/stage-metric.interface.ts
 model/stalled-holding-dto.interface.ts
+model/start-connected-account-request.interface.ts
+model/start-connected-account-result.interface.ts
 model/start-instance-request.interface.ts
 model/statement-detail-dto.interface.ts
 model/statement-dto.interface.ts

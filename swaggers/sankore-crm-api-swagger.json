@@ -4051,6 +4051,163 @@
         }
       }
     },
+    "/api/v1/integration/me/connected-accounts": {
+      "get": {
+        "tags": [
+          "ConnectedAccounts"
+        ],
+        "summary": "The caller's connected Microsoft and Google accounts, and the providers this deployment can connect",
+        "operationId": "ListMyConnectedAccounts",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectedAccountsDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/integration/me/connected-accounts/authorize": {
+      "post": {
+        "tags": [
+          "ConnectedAccounts"
+        ],
+        "summary": "Starts connecting a Microsoft or Google account: answers the provider's consent URL to navigate to",
+        "description": "The browser navigates to `authorizationUrl`; the provider sends it back to `/integration/oauth/{provider}/callback`, which redirects to `{origin}/settings/account/agendas?connexion=ok|refuse|expire|erreur`. The origin is the calling page's, checked against the CORS allow-list. Requires permission: ConnectedAccounts.Use.",
+        "operationId": "StartConnectedAccount",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StartConnectedAccountRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StartConnectedAccountResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity"
+          }
+        }
+      }
+    },
+    "/api/v1/integration/me/connected-accounts/{id}": {
+      "patch": {
+        "tags": [
+          "ConnectedAccounts"
+        ],
+        "operationId": "RenameConnectedAccount",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RenameConnectedAccountRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "ConnectedAccounts"
+        ],
+        "summary": "Disconnects the account: revokes at the provider when it can, deletes the tokens and the account",
+        "operationId": "RemoveConnectedAccount",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/api/v1/integration/me/connected-accounts/{id}/sync": {
+      "post": {
+        "tags": [
+          "ConnectedAccounts"
+        ],
+        "summary": "Checks the account still answers and records the synchronisation",
+        "operationId": "SyncConnectedAccount",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectedAccountDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "409": {
+            "description": "Conflict"
+          }
+        }
+      }
+    },
     "/api/v1/clients/retention/candidates": {
       "get": {
         "tags": [
@@ -31119,6 +31276,69 @@
         },
         "additionalProperties": false
       },
+      "ConnectedAccountDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "provider": {
+            "type": "string",
+            "nullable": true
+          },
+          "label": {
+            "type": "string",
+            "nullable": true
+          },
+          "email": {
+            "type": "string",
+            "nullable": true
+          },
+          "displayName": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "nullable": true
+          },
+          "connectedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "lastSyncAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "lastError": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ConnectedAccountsDto": {
+        "type": "object",
+        "properties": {
+          "providers": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "accounts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ConnectedAccountDto"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "ConnectionDetailDto": {
         "type": "object",
         "properties": {
@@ -44454,6 +44674,16 @@
         },
         "additionalProperties": false
       },
+      "RenameConnectedAccountRequest": {
+        "type": "object",
+        "properties": {
+          "label": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "ReplayIntegrationCommandResult": {
         "type": "object",
         "properties": {
@@ -47374,6 +47604,30 @@
           "stalledSinceHours": {
             "type": "integer",
             "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "StartConnectedAccountRequest": {
+        "type": "object",
+        "properties": {
+          "provider": {
+            "type": "string",
+            "nullable": true
+          },
+          "label": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "StartConnectedAccountResult": {
+        "type": "object",
+        "properties": {
+          "authorizationUrl": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false

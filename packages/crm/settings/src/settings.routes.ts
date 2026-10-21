@@ -32,6 +32,13 @@ const paneRoutes: Routes = [
         path: 'performance',
         loadComponent: () => import('./containers/account/account-performance'),
       },
+      {
+        // Agendas connectés : ses propres comptes Microsoft et Google. C'est aussi la page où le
+        // fournisseur renvoie après le consentement (`?connexion=…`) — le chemin est dans l'API.
+        path: 'agendas',
+        canActivate: [hasPermissionGuard('ConnectedAccounts.Use')],
+        loadComponent: () => import('./containers/account/account-connected-agendas'),
+      },
       // Ancien onglet « Préférences » : la langue et les formats sont passés dans Informations.
       { path: 'account-settings', redirectTo: 'profil' },
     ],

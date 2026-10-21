@@ -2,7 +2,7 @@ import { Component, computed, inject, Injectable, OnInit, signal } from '@angula
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { catchError, forkJoin, of } from 'rxjs';
 import { MyProfileDto, UsersApiService } from '@sankore/crm-api';
-import { AuthenticationService, BreadcrumbService } from '@sankore/crm/common';
+import { AuthenticationService, BreadcrumbService, PermissionsService } from '@sankore/crm/common';
 
 export type AgentAvailabilityCode = 'Available' | 'Paused' | 'Absent';
 
@@ -51,7 +51,7 @@ const AVAILABILITY_PILL: Record<AgentAvailabilityCode, { label: string; classes:
 
       <!-- Onglets -->
       <nav class="flex gap-1 border-b border-slate-200 overflow-x-auto" aria-label="Sections du compte">
-        @for (tab of tabs; track tab.route) {
+        @for (tab of tabs(); track tab.route) {
           <a
             [routerLink]="tab.route"
             routerLinkActive="!text-primary !border-primary font-semibold"
@@ -72,12 +72,15 @@ export class AccountNavigation implements OnInit {
   private readonly _usersApi = inject(UsersApiService);
   private readonly _state = inject(AccountHeaderState);
 
-  public readonly tabs = [
+  private readonly _canConnectAccounts = inject(PermissionsService).can('ConnectedAccounts.Use');
+
+  public readonly tabs = computed(() => [
     { label: 'Informations', route: 'profil' },
     { label: 'Sécurité', route: 'securite' },
     { label: 'Paramétrage agent', route: 'agent' },
     { label: 'Performance', route: 'performance' },
-  ];
+    ...(this._canConnectAccounts() ? [{ label: 'Agendas et contacts', route: 'agendas' }] : []),
+  ]);
 
   public readonly userName = computed(() => {
     const profile = this._state.profile();
