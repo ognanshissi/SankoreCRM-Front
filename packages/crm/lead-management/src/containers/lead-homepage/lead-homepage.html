@@ -304,6 +304,7 @@
             [checked]="allSelected()" (change)="toggleSelectAll()" />
         </th>
         <th>Lead</th>
+        <th>Prochaine étape</th>
         <th>Produit d'intérêt</th>
         <th>Téléphone</th>
         <th>Type</th>
@@ -335,6 +336,9 @@
               }
             </div>
           </div>
+        </td>
+        <td class="py-3 max-w-[16rem]">
+          <lead-next-step [step]="item.nextStep"></lead-next-step>
         </td>
         <td>
           @if (productLabel(item); as product) {
@@ -444,6 +448,12 @@
                     {{ agentShortName(lead) || 'Agent inconnu' }}@if (agencyName(lead.agencyId)) { · {{ agencyName(lead.agencyId) }}}
                   }
                 </p>
+
+                @if (lead.nextStep) {
+                  <div class="mt-2 pt-2 border-t border-slate-100">
+                    <lead-next-step [step]="lead.nextStep"></lead-next-step>
+                  </div>
+                }
 
                 @if (lead.awaitingDispatchSince && !lead.currentAssignmentId) {
                   <span class="inline-flex mt-2 px-2 py-0.5 rounded-md bg-amber-100 text-amber-800 text-xs font-medium"

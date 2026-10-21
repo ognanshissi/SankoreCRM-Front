@@ -387,6 +387,7 @@ model/lead-fatca-dto.interface.ts
 model/lead-household-dto.interface.ts
 model/lead-import-status-response.interface.ts
 model/lead-intent-level-dto.interface.ts
+model/lead-next-step-dto.interface.ts
 model/lead-questionnaires-dto.interface.ts
 model/lead-report-agency.interface.ts
 model/lead-report-agent.interface.ts

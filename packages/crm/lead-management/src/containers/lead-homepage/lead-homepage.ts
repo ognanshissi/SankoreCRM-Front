@@ -37,6 +37,7 @@ import { CreateLeadComponent } from '../create-lead/create-lead';
 import { ImportLeadsComponent } from '../import-leads/import-leads';
 import { SystemCaptureDrawer } from './system-capture-drawer';
 import { interestedProductLabel } from '../../components/interested-product';
+import { LeadNextStep } from '../../components/lead-next-step';
 import { CreateTaskDrawer } from '@sankore/crm/tasks';
 import { Severity, TasTag } from '@talisoft/ui/tag';
 import { AuthenticationService, CustomFieldFilters, PermissionsService } from '@sankore/crm/common';
@@ -230,6 +231,7 @@ interface StatusTab {
   templateUrl: './lead-homepage.html',
   imports: [
     CustomFieldFilters,
+    LeadNextStep,
     FormsModule,
     Button,
     TasIcon,

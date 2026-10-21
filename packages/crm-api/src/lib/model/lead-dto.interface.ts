@@ -11,6 +11,7 @@
  */
 import { Money } from './money.interface';
 import { LeadAddressDto } from './lead-address-dto.interface';
+import { LeadNextStepDto } from './lead-next-step-dto.interface';
 
 
 export interface LeadDto { 
@@ -68,5 +69,6 @@ export interface LeadDto {
     nameVerifiedAt?: string | null;
     identitySourceActivityId?: string | null;
     qualificationThreshold?: number | null;
+    nextStep?: LeadNextStepDto;
 }
 

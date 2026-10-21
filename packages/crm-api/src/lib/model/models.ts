@@ -310,6 +310,7 @@ export * from './lead-fatca-dto.interface';
 export * from './lead-household-dto.interface';
 export * from './lead-import-status-response.interface';
 export * from './lead-intent-level-dto.interface';
+export * from './lead-next-step-dto.interface';
 export * from './lead-questionnaires-dto.interface';
 export * from './lead-report-agency.interface';
 export * from './lead-report-agent.interface';

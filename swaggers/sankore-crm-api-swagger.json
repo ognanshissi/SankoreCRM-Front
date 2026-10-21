@@ -36417,6 +36417,9 @@
             "type": "integer",
             "format": "int32",
             "nullable": true
+          },
+          "nextStep": {
+            "$ref": "#/components/schemas/LeadNextStepDto"
           }
         },
         "additionalProperties": false
@@ -36583,6 +36586,72 @@
           "updatedAt": {
             "type": "string",
             "format": "date-time"
+          }
+        },
+        "additionalProperties": false
+      },
+      "LeadNextStepDto": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "enum": [
+              "Task",
+              "Reminder",
+              "FirstContact",
+              "Suggestion"
+            ],
+            "type": "string",
+            "description": "One of: Task, Reminder, FirstContact, Suggestion"
+          },
+          "title": {
+            "type": "string",
+            "nullable": true
+          },
+          "detail": {
+            "type": "string",
+            "nullable": true
+          },
+          "dueAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "isOverdue": {
+            "type": "boolean"
+          },
+          "taskId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "reminderId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "assigneeId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "actionType": {
+            "enum": [
+              "Qualify",
+              "Dispatch",
+              "CollectMoreData",
+              "CompleteQualification",
+              "ContactAgain",
+              "FollowUp",
+              "Nurture",
+              "Disqualify"
+            ],
+            "type": "string",
+            "description": "One of: Qualify, Dispatch, CollectMoreData, CompleteQualification, ContactAgain, FollowUp, Nurture, Disqualify",
+            "nullable": true
+          },
+          "urgency": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false

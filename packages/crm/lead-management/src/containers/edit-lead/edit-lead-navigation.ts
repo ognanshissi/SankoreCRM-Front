@@ -14,8 +14,8 @@ import {
   LeadIntentLevelDto,
   LeadsApiService,
   LogActivityRequestTypeEnum,
-  NextActionDto,
-  NextActionDtoActionTypeEnum,
+  LeadNextStepDtoActionTypeEnum,
+  LeadNextStepDtoKindEnum,
 } from '@sankore/crm-api';
 import { ConfirmDialogService } from '@talisoft/ui/confirm-dialog';
 import {
@@ -35,10 +35,12 @@ import { LogActivityDrawer, LogActivityDrawerData } from './log-activity-drawer'
 import { TasTag } from '@talisoft/ui/tag';
 import { TimeagoPipe } from '@talisoft/ui/timeago';
 import { Menu, MenuItem, TasMenuTrigger } from '@talisoft/ui/menu';
-import { catchError, EMPTY, filter, forkJoin, map, of } from 'rxjs';
+import { catchError, EMPTY, filter, firstValueFrom, forkJoin, map, of } from 'rxjs';
 import { LeadEditContext } from './lead-edit-context';
 import { LeadComplianceStore } from './lead-compliance-store';
 import { interestedProductLabel } from '../../components/interested-product';
+import { nextStepDue, nextStepDueClass, nextStepIcon } from '../../components/lead-next-step';
+import { form, FormField, FormRoot, required, submit, validate } from '@angular/forms/signals';
 import {
   displayName,
   formatDay,
@@ -140,8 +142,19 @@ function scoreBarClass(score: number, threshold: number): string {
   return 'bg-red-500';
 }
 
+/** Valeur par défaut du planificateur : demain, 9 h, au format d'un `<input type="datetime-local">`. */
+function defaultPlanDate(): string {
+  const d = new Date();
+  d.setDate(d.getDate() + 1);
+  d.setHours(9, 0, 0, 0);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
 @Component({
   imports: [
+    FormRoot,
+    FormField,
     RouterLink,
     RouterOutlet,
     TasIcon,
@@ -227,7 +240,6 @@ export class EditLeadNavigation implements OnDestroy {
   public showFactors = signal(false);
   public isReopening = signal(false);
   public isReturningToQueue = signal(false);
-  public nextAction = signal<NextActionDto | null>(null);
   public intentLevelDetail = signal<LeadIntentLevelDto | null>(null);
   public latestFactorsJson = signal<string | null>(null);
   private readonly _duplicates = signal<DuplicateMatchResult[]>([]);
@@ -254,6 +266,34 @@ export class EditLeadNavigation implements OnDestroy {
     const lead = this.lead();
     const id = lead?.currentAssignedId ?? lead?.ownerId;
     return id ? this._users().get(id) ?? null : null;
+  });
+
+  // ——— Prochaine étape : calculée par le serveur (`LeadDto.nextStep`), relue avec le lead ———
+
+  public readonly nextStep = computed(() => (this.isConverted() ? null : this.lead()?.nextStep ?? null));
+  public readonly nextStepDue = computed(() => nextStepDue(this.nextStep()));
+  public readonly nextStepIcon = computed(() => nextStepIcon(this.nextStep()));
+  public readonly nextStepDueClass = computed(() => nextStepDueClass(this.nextStepDue().tone));
+  public readonly nextStepAssignee = computed(() => {
+    const id = this.nextStep()?.assigneeId;
+    return id ? this._users().get(id) ?? null : null;
+  });
+  public readonly nextStepIsQualification = computed(() => {
+    const type = this.nextStep()?.actionType;
+    return type === LeadNextStepDtoActionTypeEnum.Qualify || type === LeadNextStepDtoActionTypeEnum.CompleteQualification;
+  });
+  public readonly nextStepKind = LeadNextStepDtoKindEnum;
+
+  /** « Planifier » une suggestion : le serveur en fait un rappel, qui devient l'étape datée. */
+  public readonly showPlanner = signal(false);
+  public readonly planModel = signal({ dueAt: defaultPlanDate() });
+  public readonly planForm = form(this.planModel, (schema) => {
+    required(schema.dueAt, { message: 'Choisissez une date' });
+    validate(schema.dueAt, (ctx) =>
+      ctx.value() && new Date(ctx.value()).getTime() <= Date.now()
+        ? { kind: 'past', message: 'Choisissez une date à venir.' }
+        : undefined,
+    );
   });
 
   /**
@@ -425,7 +465,6 @@ export class EditLeadNavigation implements OnDestroy {
         this._setLead(lead);
         this.isLoading.set(false);
         this._loadScoreFactors(id);
-        this._loadNextAction(id);
         this._loadIntentLevel(id);
         this._loadDuplicates(lead);
         this._startPolling(id);
@@ -441,7 +480,6 @@ export class EditLeadNavigation implements OnDestroy {
   public reload(): void {
     this._leadsApiService.getLead(this.id()).pipe(catchError(() => EMPTY)).subscribe((lead) => {
       this._setLead(lead);
-      this._loadNextAction(this.id());
       // Un enrichissement de l'adresse ou un appel noté recalcule le score côté serveur.
       this._loadScoreFactors(this.id());
     });
@@ -496,25 +534,29 @@ export class EditLeadNavigation implements OnDestroy {
     });
   }
 
-  /**
-   * « Lancer » : l'action recommandée est acceptée, et quand elle consiste à qualifier le lead,
-   * l'agent est mené à l'onglet où il le fait — accepter sans y aller ne faisait rien voir.
-   */
-  public acceptNextAction(): void {
-    const action = this.nextAction();
-    this.acknowledgeNextAction('Accept');
-    if (action?.actionType === NextActionDtoActionTypeEnum.Qualify
-        || action?.actionType === NextActionDtoActionTypeEnum.CompleteQualification) {
-      this._router.navigate(['/leads', this.id(), 'qualification']);
-    }
+  public openPlanner(): void {
+    this.planModel.set({ dueAt: defaultPlanDate() });
+    this.showPlanner.set(true);
   }
 
-  public acknowledgeNextAction(action: 'Accept' | 'Ignore'): void {
-    this._leadsApiService.acknowledgeLeadNextAction(this.id(), {
-      action: action === 'Accept' ? AcknowledgeNextActionRequestActionEnum.Accept : AcknowledgeNextActionRequestActionEnum.Ignore,
-    }).pipe(
-      catchError(() => EMPTY),
-    ).subscribe(() => this.nextAction.set(null));
+  public planNextStep(): void {
+    submit(this.planForm, async (field) => {
+      const dueAt = new Date(field().value().dueAt).toISOString();
+      const ok = await firstValueFrom(this._leadsApiService.acknowledgeLeadNextAction(this.id(), {
+        action: AcknowledgeNextActionRequestActionEnum.Reschedule,
+        rescheduledAt: dueAt,
+      }).pipe(
+        map(() => true),
+        catchError(() => {
+          this._snackbar.error('Erreur', 'Impossible de planifier cette étape.');
+          return of(false);
+        }),
+      ));
+      if (!ok) return;
+      this.showPlanner.set(false);
+      this._snackbar.success('Étape planifiée', 'Un rappel a été créé à cette date.');
+      this.reload();
+    });
   }
 
   public reopenLead(): void {
@@ -625,12 +667,6 @@ export class EditLeadNavigation implements OnDestroy {
     this._leadsApiService.getLeadIntentLevel(leadId).pipe(
       catchError(() => EMPTY),
     ).subscribe((detail) => this.intentLevelDetail.set(detail ?? null));
-  }
-
-  private _loadNextAction(leadId: string): void {
-    this._leadsApiService.getLeadNextAction(leadId).pipe(
-      catchError(() => EMPTY),
-    ).subscribe((action) => this.nextAction.set(action ?? null));
   }
 
   private _loadScoreFactors(leadId: string): void {

@@ -144,6 +144,99 @@
     }
   </div>
 
+  <!-- ═══════ Prochaine étape : quoi, et pour quand ═══════ -->
+  <!--
+    Sous l'en-tête et au-dessus des rubriques, pour qu'aucun onglet ne la cache. L'étape et sa date
+    viennent du serveur (`LeadDto.nextStep`) : la plus proche des tâches, rappels et premier contact
+    dus ; à défaut une suggestion, sans date, qu'on peut planifier ici.
+  -->
+  @if (!isLoading() && nextStep(); as step) {
+    @let due = nextStepDue();
+    <section
+      class="mb-5 rounded-2xl border px-4 py-3.5 flex flex-wrap items-center gap-x-5 gap-y-3"
+      [class]="due.tone === 'overdue' ? 'border-red-200 bg-red-50/60'
+        : due.tone === 'today' ? 'border-amber-200 bg-amber-50/60'
+        : due.tone === 'unplanned' ? 'border-dashed border-slate-300 bg-white'
+        : 'border-slate-200 bg-white'"
+      aria-label="Prochaine étape"
+    >
+      <span
+        class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+        [class]="due.tone === 'overdue' ? 'bg-red-100 text-red-700' : due.tone === 'today' ? 'bg-amber-100 text-amber-800' : 'bg-primary/10 text-primary'"
+      >
+        <tas-icon [iconName]="nextStepIcon()" style="font-size:18px"></tas-icon>
+      </span>
+
+      <div class="flex-1 min-w-56">
+        <p class="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Prochaine étape</p>
+        <p class="text-base font-semibold text-slate-900">{{ step.title }}</p>
+        @if (step.detail || nextStepAssignee()) {
+          <p class="text-sm text-slate-600">
+            {{ step.detail }}
+            @if (step.detail && nextStepAssignee()) { · }
+            @if (nextStepAssignee(); as who) { <span class="whitespace-nowrap">par {{ who }}</span> }
+          </p>
+        }
+      </div>
+
+      <div class="shrink-0">
+        <p class="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Échéance</p>
+        <span class="inline-flex mt-0.5 px-2.5 py-1 rounded-lg text-sm font-semibold" [class]="nextStepDueClass()"
+              [attr.title]="due.fullDate">
+          {{ due.label }}
+        </span>
+      </div>
+
+      <div class="flex items-center gap-2 shrink-0">
+        @switch (step.kind) {
+          @case (nextStepKind.Task) {
+            <a tas-outlined-button color="primary" class="bg-white" [routerLink]="['suivi', 'taches']">Voir la tâche</a>
+          }
+          @case (nextStepKind.Reminder) {
+            <a tas-outlined-button color="primary" class="bg-white" [routerLink]="['suivi', 'rappels']">Voir le rappel</a>
+          }
+          @case (nextStepKind.FirstContact) {
+            <!-- L'en-tête propose déjà « Premier contact » sur un lead nouveau : pas de second bouton. -->
+            @if (canUpdate() && !awaitsFirstContact()) {
+              <button tas-raised-button color="primary" type="button" (click)="openFirstContact()">Enregistrer le contact</button>
+            }
+          }
+          @default {
+            @if (nextStepIsQualification()) {
+              <a tas-raised-button color="primary" [routerLink]="['qualification']">Lancer la qualification</a>
+            }
+            @if (!showPlanner()) {
+              <button tas-outlined-button color="primary" type="button" class="bg-white" (click)="openPlanner()">
+                <tas-icon iconName="feather:calendar" style="font-size:13px"></tas-icon>
+                &nbsp;Planifier
+              </button>
+            }
+          }
+        }
+      </div>
+
+      @if (step.kind === nextStepKind.Suggestion && showPlanner()) {
+        <form [formRoot]="planForm" class="basis-full flex flex-wrap items-center gap-2 pt-3 border-t border-slate-200">
+          <label for="next-step-date" class="text-sm text-slate-700">À faire le</label>
+          <input
+            id="next-step-date"
+            type="datetime-local"
+            class="h-9 px-2.5 rounded-lg border border-slate-300 bg-white text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary/30"
+            [formField]="planForm.dueAt"
+          />
+          <button tas-raised-button color="primary" type="button"
+                  [isLoading]="planForm().submitting()" (click)="planNextStep()">Planifier</button>
+          <button tas-text-button type="button" (click)="showPlanner.set(false)">Annuler</button>
+          @if (planForm.dueAt().touched() && planForm.dueAt().invalid()) {
+            <p class="basis-full text-xs text-functional-error">{{ planForm.dueAt().errors()[0].message }}</p>
+          } @else {
+            <p class="basis-full text-xs text-slate-500">Un rappel « {{ step.title }} » sera créé à cette date.</p>
+          }
+        </form>
+      }
+    </section>
+  }
+
   <!-- ═══════ Rubriques : en haut, collées au défilement ═══════ -->
   <!--
     Un menu déroulant par groupe du parcours ; un groupe d'une seule page (Suivi) est un lien
@@ -338,36 +431,6 @@
               </div>
             }
 
-            <!-- L'action recommandée porte sur un lead en cours : rien à décider sur un converti. -->
-            @if (nextAction(); as action) {
-              @if (!isConverted()) {
-                <div class="mt-4 rounded-xl bg-slate-50 p-3">
-                  <div class="flex items-center justify-between gap-2">
-                    <p class="text-xs font-semibold text-primary flex items-center gap-1.5">
-                      <tas-icon iconName="feather:zap" style="font-size:12px"></tas-icon>
-                      Prochaine étape
-                    </p>
-                    @if (action.urgency) {
-                      <span class="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 text-[10px] font-semibold">{{ action.urgency }}</span>
-                    }
-                  </div>
-                  <p class="mt-2 text-sm font-semibold text-slate-800">{{ action.title }}</p>
-                  @if (action.detail) {
-                    <p class="text-xs text-slate-500 mt-0.5">{{ action.detail }}</p>
-                  }
-                  <div class="mt-3 flex items-center gap-2">
-                    <button type="button" class="px-3 py-1.5 rounded-full bg-primary text-white text-xs font-semibold hover:opacity-90"
-                            (click)="acceptNextAction()">
-                      {{ action.actionType === 'Qualify' || action.actionType === 'CompleteQualification' ? 'Lancer la qualification' : 'C\'est fait' }}
-                    </button>
-                    <button type="button" class="px-3 py-1.5 rounded-full text-xs font-medium text-slate-600 hover:bg-slate-100"
-                            (click)="acknowledgeNextAction('Ignore')">
-                      Plus tard
-                    </button>
-                  </div>
-                </div>
-              }
-            }
           </div>
         </tas-card>
       }
