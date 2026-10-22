@@ -14,13 +14,14 @@ import { ENVIRONMENT_CONFIG } from '../../../utils/environment-config.token';
 import { CommandPalette } from './command-palette';
 import { NavBadges } from './nav-badges.service';
 import { activeNavItem, groupOf, PORTAL_NAVIGATION, PortalNavGroup, SETTINGS_NAV_ITEM } from './portal-navigation';
+import { PortalQuickCreate } from './portal-quick-create';
 import { PortalSidebar } from './portal-sidebar';
 import { PortalUserMenu } from './portal-user-menu';
 import { ShortcutsDialog, ShortcutsDialogData } from './shortcuts-dialog';
 
 /**
  * La mise en page du portail : barre latérale sombre sur toute la hauteur, barre du haut blanche
- * avec le fil d'Ariane et le titre de la page, la recherche (Ctrl K), la cloche et le profil.
+ * avec le fil d'Ariane et le titre de la page, « Créer », la recherche (Ctrl K), la cloche et le profil.
  *
  * Le titre est celui que la page pose dans `BreadcrumbService` (son dernier élément), précédé du
  * groupe de la navigation auquel elle appartient — « Pilotage › Suivi des workflows ». Une page
@@ -33,7 +34,7 @@ import { ShortcutsDialog, ShortcutsDialogData } from './shortcuts-dialog';
 @Component({
   selector: 'common-portal-layout',
   templateUrl: 'portal-layout.component.html',
-  imports: [RouterOutlet, RouterLink, TasIcon, ImpersonationBanner, NotificationBell, PortalSidebar, PortalUserMenu],
+  imports: [RouterOutlet, RouterLink, TasIcon, ImpersonationBanner, NotificationBell, PortalQuickCreate, PortalSidebar, PortalUserMenu],
 })
 export class PortalLayoutComponent {
   private readonly _tenantProvider = inject(TenantProvider);

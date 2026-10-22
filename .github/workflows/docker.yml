@@ -61,14 +61,19 @@ jobs:
           cache-from: type=gha,scope=${{ matrix.app }}
           cache-to: type=gha,mode=max,scope=${{ matrix.app }}
 
-      # Déclenche le redéploiement dans Dokploy une fois l'image publiée. Facultatif : sans le
-      # secret, l'étape ne fait rien et le déploiement se lance à la main depuis Dokploy.
+  # Un seul redéploiement, une fois LES DEUX images poussées : le service Compose de Dokploy
+  # (docker-compose.dokploy.yml) les tire ensemble. Un appel par image redéploierait deux fois,
+  # et le premier pourrait tirer l'ancienne image de l'autre application.
+  deploy:
+    needs: image
+    runs-on: ubuntu-latest
+    steps:
       - name: Redéployer sur Dokploy
         env:
-          WEBHOOK: ${{ matrix.app == 'crm' && secrets.DOKPLOY_WEBHOOK_CRM || secrets.DOKPLOY_WEBHOOK_ADMIN }}
+          WEBHOOK: ${{ secrets.DOKPLOY_WEBHOOK }}
         run: |
           if [ -z "$WEBHOOK" ]; then
-            echo "Pas de webhook Dokploy configuré pour ${{ matrix.app }}, redéploiement manuel."
+            echo "Pas de webhook Dokploy configuré (secret DOKPLOY_WEBHOOK), redéploiement manuel."
             exit 0
           fi
           curl -fsS -X POST "$WEBHOOK"

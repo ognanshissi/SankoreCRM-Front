@@ -41,7 +41,7 @@ import { interestedProductLabel } from '../../components/interested-product';
 import { LeadNextStep } from '../../components/lead-next-step';
 import { CreateTaskDrawer } from '@sankore/crm/tasks';
 import { Severity, TasTag } from '@talisoft/ui/tag';
-import { AuthenticationService, CustomFieldFilters, PermissionsService } from '@sankore/crm/common';
+import { AuthenticationService, CustomFieldFilters, PermissionsService, QuickCreateEvents } from '@sankore/crm/common';
 
 function leadStatusMeta(status: string | null | undefined): { label: string; severity: Severity } {
   switch (status) {
@@ -281,6 +281,7 @@ export class LeadHomepage implements OnInit {
   private readonly _sideDrawerService = inject(SideDrawerService);
   private readonly _snackbar = inject(SnackbarService);
   private readonly _destroyRef = inject(DestroyRef);
+  private readonly _quickCreate = inject(QuickCreateEvents);
   private readonly _route = inject(ActivatedRoute);
   private readonly _router = inject(Router);
 
@@ -452,6 +453,17 @@ export class LeadHomepage implements OnInit {
       .subscribe(() => {
         this._router.navigate([], { relativeTo: this._route, queryParams: { nouveau: null }, queryParamsHandling: 'merge', replaceUrl: true });
         if (this.canCreate()) this.openCreateDrawer();
+      });
+
+    // Créé depuis « Créer » de la barre du haut : ce n'est pas cette page qui a ouvert le tiroir.
+    this._quickCreate.created$
+      .pipe(
+        filter((c) => c.kind === 'lead'),
+        takeUntilDestroyed(this._destroyRef),
+      )
+      .subscribe(() => {
+        this.reloadCurrentPage();
+        this._loadStats();
       });
 
     this.reloadCurrentPage();

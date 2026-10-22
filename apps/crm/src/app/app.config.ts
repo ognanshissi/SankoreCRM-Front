@@ -19,6 +19,7 @@ import {
   ENVIRONMENT_CONFIG,
   errorInterceptor,
   loadingInterceptor,
+  provideQuickCreateActions,
   provideTenantInitializer,
   tenantInterceptor,
 } from '@sankore/crm/common';
@@ -52,6 +53,31 @@ export const appConfig: ApplicationConfig = {
       ]),
     ),
     provideTenantInitializer(),
+    // Le menu « Créer » de la barre du haut. Les tiroirs sont chargés au clic, dans les mêmes
+    // morceaux que les routes de leurs libs ; les droits sont ceux des boutons des écrans.
+    provideQuickCreateActions([
+      {
+        kind: 'lead',
+        label: 'Nouveau lead',
+        icon: 'feather:user-plus',
+        anyOf: ['lead:create'],
+        load: () => import('@sankore/crm/lead-management').then((m) => m.CreateLeadComponent),
+      },
+      {
+        kind: 'task',
+        label: 'Nouvelle tâche',
+        icon: 'feather:check-square',
+        anyOf: ['lead:task:manage'],
+        load: () => import('@sankore/crm/tasks').then((m) => m.NewTaskDrawer),
+      },
+      {
+        kind: 'appointment',
+        label: 'Nouveau rendez-vous',
+        icon: 'feather:calendar',
+        anyOf: ['lead:activity:log'],
+        load: () => import('@sankore/crm/tasks').then((m) => m.CreateAppointmentDrawer),
+      },
+    ]),
     importProvidersFrom(TasIconRegistry),
     {
       provide: BASE_PATH,

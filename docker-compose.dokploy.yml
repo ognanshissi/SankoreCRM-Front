@@ -1,0 +1,69 @@
+# Déploiement Dokploy des deux applications, à partir des images publiées sur GHCR par
+# .github/workflows/docker.yml — rien n'est construit sur le serveur (le build de `crm` y était
+# tué faute de mémoire). docker-compose.yml et docker-compose.admin.yml restent ceux du poste
+# de développement, qui construisent les images.
+#
+# Dans Dokploy (service Compose) : Compose Path = ./docker-compose.dokploy.yml, Autodeploy
+# désactivé — c'est la CI qui redéploie, une fois les images poussées (sinon Dokploy
+# redéploierait au push, avant que les nouvelles images existent). Domaines : port 4000 pour
+# chaque service.
+#
+# Les images sont privées : le serveur doit être connecté à ghcr.io (Settings → Registry dans
+# Dokploy, ou `docker login ghcr.io` sur le serveur) avec un jeton classique `read:packages`.
+
+services:
+  web:
+    image: ghcr.io/ognanshissi/sankore-crm:${CRM_TAG:-latest}
+    # Sans ceci, `docker compose up` réutilise l'image `latest` déjà présente sur le serveur et
+    # un redéploiement ne change rien.
+    pull_policy: always
+    environment:
+      NG_ALLOWED_HOSTS: "${NG_ALLOWED_HOSTS:?domaine public du CRM}"
+      NG_API_URL: "${NG_API_URL:?URL publique de l'API}"
+      NG_INGEST_URL: "${NG_INGEST_URL:-}"
+      # Traefik termine TLS devant le conteneur : sans ceci le rendu SSR voit http:// et l'hôte
+      # interne.
+      NG_TRUST_PROXY_HEADERS: "x-forwarded-proto,x-forwarded-host"
+    restart: unless-stopped
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "require('http').get({host:'127.0.0.1',port:process.env.PORT||4000,path:'/favicon.ico'},r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"
+      interval: 30s
+      timeout: 5s
+      start_period: 20s
+      retries: 3
+    labels:
+      # Traefik doit joindre le conteneur par le réseau qu'il partage avec lui, pas par le
+      # réseau interne du projet — sinon 404/502 alors que le conteneur tourne.
+      traefik.docker.network: dokploy-network
+    networks:
+      - dokploy-network
+
+  admin:
+    image: ghcr.io/ognanshissi/sankore-admin:${ADMIN_TAG:-latest}
+    pull_policy: always
+    environment:
+      NG_ALLOWED_HOSTS: "${ADMIN_ALLOWED_HOSTS:?domaine public de l'admin}"
+      NG_TRUST_PROXY_HEADERS: "x-forwarded-proto,x-forwarded-host"
+    restart: unless-stopped
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "require('http').get({host:'127.0.0.1',port:process.env.PORT||4000,path:'/favicon.ico'},r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"
+      interval: 30s
+      timeout: 5s
+      start_period: 20s
+      retries: 3
+    labels:
+      traefik.docker.network: dokploy-network
+    networks:
+      - dokploy-network
+
+networks:
+  dokploy-network:
+    external: true

@@ -1,4 +1,5 @@
-import { Component, computed, inject, signal, OnInit, OnDestroy } from '@angular/core';
+import { Component, computed, DestroyRef, inject, signal, OnInit, OnDestroy } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { HttpErrorResponse } from '@angular/common/http';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -21,7 +22,7 @@ import {
   UserDto,
   UsersApiService,
 } from '@sankore/crm-api';
-import { AuthenticationService, BreadcrumbService, PermissionsService } from '@sankore/crm/common';
+import { AuthenticationService, BreadcrumbService, PermissionsService, QuickCreateEvents } from '@sankore/crm/common';
 import { leadDisplayName } from './task-meta';
 import { ReassignTaskDrawer, ReassignTaskDrawerData } from './reassign-task-drawer';
 import { ApprovalItem, MyApprovalsService } from './my-approvals.service';
@@ -120,6 +121,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
   private readonly _breadcrumbService = inject(BreadcrumbService);
   private readonly _approvalsService = inject(MyApprovalsService);
   private readonly _permissions = inject(PermissionsService);
+  private readonly _quickCreate = inject(QuickCreateEvents);
+  private readonly _destroyRef = inject(DestroyRef);
 
   /** Planifier un rendez-vous, c'est consigner une interaction à venir : le droit de l'activité. */
   public readonly canScheduleAppointment = this._permissions.can('lead:activity:log');
@@ -291,6 +294,12 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.loadAgenda();
     this._loadAgency();
     this._tickTimer = setInterval(() => this.now.set(Date.now()), 30_000);
+
+    // Créé depuis « Créer » de la barre du haut : ce n'est pas cette page qui a ouvert le tiroir.
+    this._quickCreate.created$.pipe(takeUntilDestroyed(this._destroyRef)).subscribe(({ kind }) => {
+      if (kind === 'task') this._loadTasks();
+      if (kind === 'appointment') this.loadAgenda();
+    });
   }
 
   ngOnDestroy(): void {

@@ -42,20 +42,6 @@ const BADGE_TONES: Record<NavBadgeKey, string> = {
       </div>
     </div>
 
-    @if (canCreateLead()) {
-      <div class="px-3 pb-3">
-        <a
-          routerLink="/leads"
-          [queryParams]="{ nouveau: 1 }"
-          class="flex w-full items-center justify-center gap-2 rounded-xl bg-[#9fe3bf] px-4 py-2.5 text-sm font-semibold text-primary transition hover:brightness-95"
-          (click)="navigated.emit()"
-        >
-          <tas-icon iconName="feather:plus" style="font-size:16px"></tas-icon>
-          Nouveau lead
-        </a>
-      </div>
-    }
-
     <nav class="flex-1 overflow-y-auto px-3 pb-3" aria-label="Navigation principale">
       @for (group of groups(); track group.label; let last = $last) {
         <ul class="flex flex-col gap-1" [attr.aria-label]="group.label">

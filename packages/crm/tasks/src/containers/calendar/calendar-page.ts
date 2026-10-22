@@ -1,4 +1,5 @@
 import { Component, computed, DestroyRef, effect, ElementRef, inject, OnInit, signal, viewChild } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { HttpErrorResponse } from '@angular/common/http';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { catchError, EMPTY, finalize, of } from 'rxjs';
@@ -12,7 +13,7 @@ import {
   MyCalendarEventDto,
   TasksApiService,
 } from '@sankore/crm-api';
-import { AuthenticationService, BreadcrumbService, PERMISSIONS, PermissionsService } from '@sankore/crm/common';
+import { AuthenticationService, BreadcrumbService, PERMISSIONS, PermissionsService, QuickCreateEvents } from '@sankore/crm/common';
 import { Button } from '@talisoft/ui/button';
 import { TasIcon } from '@talisoft/ui/icon';
 import { SideDrawerService } from '@talisoft/ui/side-drawer';
@@ -255,6 +256,14 @@ export class CalendarPage implements OnInit {
   constructor() {
     const timer = setInterval(() => this.now.set(new Date()), 60_000);
     inject(DestroyRef).onDestroy(() => clearInterval(timer));
+
+    // Créé depuis « Créer » de la barre du haut : ce n'est pas cette page qui a ouvert le tiroir.
+    inject(QuickCreateEvents)
+      .created$.pipe(takeUntilDestroyed())
+      .subscribe(({ kind }) => {
+        if (kind === 'appointment') this._load();
+        if (kind === 'task') this._loadTasks();
+      });
 
     // À chaque fois que la grille horaire apparaît, elle s'ouvre sur le début de journée.
     effect(() => {

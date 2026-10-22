@@ -4,6 +4,8 @@ export * from './layouts/portal-layout/portal-layout.component';
 // laisse `telephony` l'alimenter. C'est le sens dans lequel la dépendance doit aller — le
 // contraire avait produit un cycle qui empêchait un spec de se charger.
 export * from './layouts/portal-layout/telephony-top-bar-state';
+// Même logique : `common` affiche le menu « Créer », l'application y déclare les tiroirs.
+export * from './layouts/portal-layout/quick-create';
 export * from './layouts/auth-layout/auth-layout.component';
 export * from './layouts/admin-layout/admin-layout.component';
 export * from './navigation/navigation';
