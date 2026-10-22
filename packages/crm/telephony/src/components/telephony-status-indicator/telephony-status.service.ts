@@ -7,6 +7,7 @@ import {
   effect,
   inject,
   signal,
+  untracked,
 } from '@angular/core';
 import { MyTelephonyStatusDto, TelephonyApiService } from '@sankore/crm-api';
 import { AuthenticationService, PermissionsService } from '@sankore/crm/common';
@@ -121,6 +122,14 @@ export class TelephonyStatusService {
         return;
       }
 
+      // La lecture suit la session au lieu de partir au démarrage : `CallPanel` est monté à
+      // la racine, donc aussi sur les pages publiques. Lancé sans jeton, `telephony/me`
+      // répondait 401, l'intercepteur tentait un rafraîchissement voué à l'échec puis
+      // appelait `logout()` — qui renvoie sur /auth/login. Un lien de réinitialisation du
+      // mot de passe ouvert depuis un e-mail était ainsi redirigé avant d'avoir pu s'afficher.
+      // C'est aussi ce qui recharge l'état après une connexion sans rechargement de page.
+      untracked(() => this.load());
+
       if (this._realtimeRequested) return;
       if (!this.telephonyEnabled() || !this.canView()) return;
 
@@ -167,6 +176,8 @@ export class TelephonyStatusService {
 
   /** Idempotent : les trois surfaces l'appellent, une seule requête part. */
   public load(): void {
+    // Sans session, rien à lire : voir l'effet de session dans le constructeur.
+    if (!this._isBrowser || !this._auth.accessToken()) return;
     if (this._hasLoaded() || this._isLoading()) return;
     this.reload();
   }
