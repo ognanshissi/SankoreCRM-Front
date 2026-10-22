@@ -3,6 +3,7 @@ import {
   Component,
   inject,
   input,
+  OnInit,
   signal,
 } from '@angular/core';
 import { RouterLink } from '@angular/router';
@@ -40,7 +41,7 @@ type ActivationStep = 'checking' | 'invalid' | 'form' | 'success';
     FormField,
   ],
 })
-export class AccountActivationComponent {
+export class AccountActivationComponent implements OnInit {
   private readonly _authApiService = inject(AuthApiService);
   private readonly _loadingService = inject(Loading);
   // Bound automatically from the `?token=` query param (see `withComponentInputBinding`).
@@ -92,7 +93,8 @@ export class AccountActivationComponent {
     this._loadingService
       .showLoaderUntilCompleted(
         this._authApiService.activateAccount({
-          ...this.formSchema()?.value,
+          newPassword: this.model()?.password,
+          confirmPassword: this.model()?.confirmPassword,
           token: this.token(),
           userId: this.userId()
         }),
