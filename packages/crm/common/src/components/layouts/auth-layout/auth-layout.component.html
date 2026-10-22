@@ -1,31 +1,36 @@
-<div class="relative grid grid-cols-12 grid-rows-1 h-screen overflow-hidden">
-  <div class="relative grid grid-cols-1 grid-rows-[100px_auto] px-8 py-6 col-span-6 bg-primary h-screen overflow-hidden overflow-x-hidden">
+<div class="relative grid min-h-dvh grid-cols-1 lg:h-dvh lg:grid-cols-12 lg:overflow-hidden">
+  <!-- Panneau de marque : à partir de `lg` seulement. En dessous il prendrait tout l'écran avant le formulaire. -->
+  <div class="relative hidden grid-cols-1 grid-rows-[100px_auto] overflow-hidden bg-primary px-8 py-6 lg:col-span-6 lg:grid">
     <!-- start: Cricles -->
-    <div class="h-[400px] w-[400px] rounded-full bg-slate-100/10 absolute top-[20px] left-[-90px]"></div>
-    <div class="h-[600px] w-[600px] rounded-full bg-slate-100/10 absolute bottom-[-120px] right-[-90px] flex justify-center">
+    <div class="absolute top-[20px] left-[-90px] h-[400px] w-[400px] rounded-full bg-slate-100/10"></div>
+    <div class="absolute right-[-90px] bottom-[-120px] flex h-[600px] w-[600px] justify-center rounded-full bg-slate-100/10">
     </div>
     <!-- End: circles -->
 
     <div class="pt-4">
-      <span class="font-bold text-lg text-white">{{ companyName() }}</span>
+      <span class="text-lg font-bold text-white">{{ companyName() }}</span>
     </div>
-    <div class="flex items-center">
+    <div class="relative flex items-center">
       <div>
-        <div class="text-[4rem] font-bold text-white uppercase">Organisez tout vos <br/> <span class="text-orange-500 text-[4rem]">clients</span> au même endroit.</div>
-        <div class="text-gray-300">Contact centralisé avec la capture de leads depuis plusieurs canaux, <br/>
+        <div class="text-5xl leading-tight font-bold text-white uppercase xl:text-[4rem]">Organisez tous vos <br class="hidden xl:inline" /> <span class="text-5xl text-orange-500 xl:text-[4rem]">clients</span> au même endroit.</div>
+        <div class="mt-4 text-gray-300">Contact centralisé avec la capture de leads depuis plusieurs canaux, <br class="hidden xl:inline" />
           gestion des taches et traitement des clients. </div>
       </div>
     </div>
   </div>
-  <div class="relative col-span-6 border-l border-gray-300 bg-white overflow-y-auto">
-    <!-- right side circle design -->
-    <div class="z-0 h-[600px] w-[600px] rounded-full bg-primary/10 absolute bottom-[-20px] right-[-90px] flex justify-center">
-      <div class="bg-primary/20 h-[200px] w-[200px] rounded-full"></div>
+
+  <div class="relative flex flex-col bg-white lg:col-span-6 lg:overflow-y-auto lg:border-l lg:border-gray-300">
+    <!-- Petit écran : le nom de l'institution, que le panneau de marque masqué ne montre plus. -->
+    <div class="relative z-10 bg-primary px-5 py-4 sm:px-10 lg:hidden">
+      <span class="text-base font-bold text-white">{{ companyName() }}</span>
     </div>
-    <div class="relative z-10">
+
+    <!-- right side circle design -->
+    <div class="pointer-events-none absolute right-[-90px] bottom-[-20px] z-0 hidden h-[600px] w-[600px] justify-center rounded-full bg-primary/10 sm:flex">
+      <div class="h-[200px] w-[200px] rounded-full bg-primary/20"></div>
+    </div>
+    <div class="relative z-10 flex-1">
       <router-outlet></router-outlet>
     </div>
   </div>
 </div>
-
-

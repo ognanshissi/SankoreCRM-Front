@@ -6,7 +6,7 @@
       <section class="flex flex-col items-center justify-center gap-4 text-center">
         <tas-icon iconName="feather:clock" iconSize="2xl" class="text-slate-400"></tas-icon>
         <TasTitle class="text-2xl">Vérification du lien</TasTitle>
-        <p class="text-lg text-slate-600">Merci de patienter pendant que nous vérifions votre lien d'activation.</p>
+        <p class="text-base text-slate-600 sm:text-lg">Merci de patienter pendant que nous vérifions votre lien d'activation.</p>
       </section>
     }
 
@@ -15,9 +15,9 @@
         <tas-icon iconName="feather:alert-triangle" iconSize="2xl" class="text-functional-error"></tas-icon>
 
 
-        <div class="mt-6">
+        <div class="mt-2 sm:mt-6">
           <TasTitle class="text-2xl">Lien d'activation invalide</TasTitle>
-          <p class="text-lg text-slate-600">Ce lien n'est plus valable, il a peut-être déjà été utilisé ou a expiré. Contactez votre administrateur pour recevoir un nouveau lien d'activation.</p>
+          <p class="text-base text-slate-600 sm:text-lg">Ce lien n'est plus valable, il a peut-être déjà été utilisé ou a expiré. Contactez votre administrateur pour recevoir un nouveau lien d'activation.</p>
         </div>
       </section>
 
@@ -29,7 +29,7 @@
     @case ('form') {
       <section>
         <TasTitle class="text-2xl">Activez votre compte</TasTitle>
-        <p class="mt-6 text-xl text-slate-800 justify-center">Choisissez un mot de passe pour finaliser la création de votre compte.</p>
+        <p class="mt-4 text-base text-slate-800 sm:mt-6 sm:text-xl">Choisissez un mot de passe pour finaliser la création de votre compte.</p>
       </section>
 
       <section class="flex flex-col gap-6">
@@ -48,7 +48,7 @@
           }
         </div>
 
-        <div class="mt-[50px] flex flex-col items-center space-y-5">
+        <div class="mt-6 sm:mt-[50px] flex flex-col items-center space-y-5">
           <button class="w-full" tas-raised-button size="large" (click)="handleFormSubmission()" [color]="'primary'" [disabled]="formSchema().invalid()">Activer mon compte</button>
         </div>
       </section>
@@ -58,7 +58,7 @@
       <section class="flex flex-col items-center justify-center gap-4 text-center">
         <tas-icon iconName="feather:check-circle" iconSize="2xl" class="text-functional-success"></tas-icon>
         <TasTitle class="text-2xl">Votre compte est activé</TasTitle>
-        <p class="text-lg text-slate-600">Votre mot de passe a été enregistré, vous pouvez maintenant vous connecter.</p>
+        <p class="text-base text-slate-600 sm:text-lg">Votre mot de passe a été enregistré, vous pouvez maintenant vous connecter.</p>
       </section>
 
       <section class="flex flex-col items-center space-y-5">

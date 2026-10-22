@@ -1,8 +1,8 @@
 <AuthenticationWrapper>
   <section class="flex flex-col gap-4">
     <p class="uppercase text-primary/80">Bienvenue sur votre CRM</p>
-    <div class="font-bold text-slate-800 text-[3.5rem]">Ne manquez aucune action importante.</div>
-    <p class="text-lg text-slate-600">don't let your work slip through the cracks.</p>
+    <div class="text-3xl leading-tight font-bold text-slate-800 sm:text-4xl xl:text-[3.5rem]">Ne manquez aucune action importante.</div>
+    <p class="text-base text-slate-600 sm:text-lg">Ne laissez plus rien passer entre les mailles du filet.</p>
   </section>
 
   <form [formRoot]="loginFormSchema">
@@ -26,17 +26,17 @@
         }
       }
 
-      <div class="mt-[2rem]" >
+      <div class="mt-4 sm:mt-8">
         <button tas-raised-button type="submit" size="large" color="primary" class="w-full" [disabled]="loginFormSchema().pending()" [isLoading]="loginFormSchema().submitting()">
           Entrer dans votre espace de travail
           <tas-icon iconName="feather:arrow-right"></tas-icon>
         </button>
 
-        <a class="text-center w-full mt-8" tas-text-button size="large" color="primary" [routerLink]="['/auth', 'forgot-password']" [queryParams]="{ email: loginFormSchema.email().value() }">Mot de passe oublié ?</a>
+        <a class="mt-6 w-full text-center sm:mt-8" tas-text-button size="large" color="primary" [routerLink]="['/auth', 'forgot-password']" [queryParams]="{ email: loginFormSchema.email().value() }">Mot de passe oublié ?</a>
       </div>
 
       <!--    footer  -->
-      <div class="flex justify-center text-center text-functional-success "> <tas-icon iconName="feather:check" ></tas-icon> <span class="text-[12px]">Votre session de connexion reste privée et protégée</span></div>
+      <div class="flex items-center justify-center gap-1 text-center text-functional-success"> <tas-icon iconName="feather:check" ></tas-icon> <span class="text-[12px]">Votre session de connexion reste privée et protégée</span></div>
     </section>
   </form>
 
