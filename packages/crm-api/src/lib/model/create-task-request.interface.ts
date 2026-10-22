@@ -26,6 +26,14 @@ export interface CreateTaskRequest {
     assignedAgentId?: string | null;
     slaDeadline?: string | null;
     description?: string | null;
+    /**
+     * One of: Lead, Client, KycFile
+     */
+    entityType?: CreateTaskRequestEntityTypeEnum | null;
+    entityId?: string | null;
+    participantIds?: Array<string> | null;
+    criteria?: Array<string> | null;
+    tags?: Array<string> | null;
 }
 export enum CreateTaskRequestTypeEnum {
     FirstContact = 'FirstContact',
@@ -41,6 +49,11 @@ export enum CreateTaskRequestPriorityEnum {
     Medium = 'Medium',
     High = 'High',
     Critical = 'Critical'
+};
+export enum CreateTaskRequestEntityTypeEnum {
+    Lead = 'Lead',
+    Client = 'Client',
+    KycFile = 'KycFile'
 };
 
 

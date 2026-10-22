@@ -1,0 +1,188 @@
+<tas-side-drawer width="640px">
+  <tas-drawer-title>
+    <tas-title>Nouvelle tâche</tas-title>
+  </tas-drawer-title>
+
+  <tas-drawer-content>
+    <form [formRoot]="formSchema" class="flex flex-col gap-5">
+      <tas-form-field>
+        <tas-label>Titre <span class="text-functional-error">*</span></tas-label>
+        <input tasInput type="text" placeholder="Relancer le dossier, préparer le comité…" [formField]="formSchema.title" />
+        @if (formSchema.title().touched() && formSchema.title().invalid()) {
+          <tas-error>{{ formSchema.title().errors()[0].message }}</tas-error>
+        }
+      </tas-form-field>
+
+      <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <tas-form-field>
+          <tas-label>Échéance <span class="text-functional-error">*</span></tas-label>
+          <input tasInput type="date" [min]="minDate" [formField]="formSchema.date" />
+          @if (formSchema.date().touched() && formSchema.date().invalid()) {
+            <tas-error>{{ formSchema.date().errors()[0].message }}</tas-error>
+          }
+        </tas-form-field>
+        <tas-form-field>
+          <tas-label>Heure <span class="text-functional-error">*</span></tas-label>
+          <input tasInput type="time" step="300" [formField]="formSchema.time" />
+          @if (formSchema.time().touched() && formSchema.time().invalid()) {
+            <tas-error>{{ formSchema.time().errors()[0].message }}</tas-error>
+          }
+        </tas-form-field>
+        <tas-form-field>
+          <tas-label>Priorité</tas-label>
+          <tas-select [options]="priorityOptions" [formField]="formSchema.priority"></tas-select>
+        </tas-form-field>
+      </div>
+
+      <!-- Sujet -->
+      <div>
+        <p class="mb-2 text-sm font-medium text-slate-700">Concerne</p>
+        <div role="group" aria-label="La tâche concerne" class="inline-flex flex-wrap gap-1 rounded-full bg-slate-100 p-1">
+          @for (opt of subjectOptions; track opt.value) {
+            <button type="button" class="rounded-full px-4 py-1.5 text-sm font-semibold transition-colors disabled:opacity-50"
+              [class]="subjectType() === opt.value ? 'bg-white text-primary shadow-xs' : 'text-slate-600 hover:text-slate-900'"
+              [disabled]="subjectLocked"
+              [attr.aria-pressed]="subjectType() === opt.value" (click)="setSubjectType(opt.value)">{{ opt.label }}</button>
+          }
+        </div>
+
+        @if (subjectType() !== 'none') {
+          <div class="mt-3 flex flex-col gap-3">
+            @if (subjectLabel()) {
+              <div class="flex items-center justify-between rounded-lg border border-primary/40 bg-primary/5 p-3">
+                <p class="text-sm font-medium text-slate-700">{{ subjectLabel() }}</p>
+                @if (!subjectLocked) {
+                  <button tas-text-button color="warn" type="button" (click)="clearSubject()">Retirer</button>
+                }
+              </div>
+            } @else {
+              <tas-form-field>
+                <tas-label>{{ searchLabel() }}</tas-label>
+                <input tasInput type="search" placeholder="Nom, téléphone…"
+                  [ngModel]="searchTerm()" (ngModelChange)="onSearchTermChange($event)" [ngModelOptions]="{ standalone: true }" />
+                <tas-hint>Tapez au moins deux caractères.</tas-hint>
+              </tas-form-field>
+
+              @if (isSearching()) {
+                <div class="flex justify-center py-3"><tas-spinner size="6" class="text-primary"></tas-spinner></div>
+              } @else if (results().length > 0) {
+                <ul class="divide-y divide-slate-100 rounded-lg border border-slate-200">
+                  @for (candidate of results(); track candidate.id) {
+                    <li>
+                      <button type="button" class="flex w-full items-center justify-between p-3 text-left hover:bg-slate-50" (click)="selectSubject(candidate)">
+                        <span class="text-sm">
+                          <span class="block font-medium text-slate-700">{{ candidate.label }}</span>
+                          @if (candidate.detail) { <span class="block text-xs text-slate-500">{{ candidate.detail }}</span> }
+                        </span>
+                        <tas-icon iconName="feather:plus" style="font-size:14px"></tas-icon>
+                      </button>
+                    </li>
+                  }
+                </ul>
+              } @else if (hasSearched() && searchTerm().trim().length >= 2) {
+                <p class="text-sm text-slate-500">
+                  {{ subjectType() === 'kyc' ? 'Aucun client avec un dossier KYC pour cette recherche.' : 'Aucun résultat pour cette recherche.' }}
+                </p>
+              }
+            }
+
+            @if (formSchema.subjectId().touched() && formSchema.subjectId().invalid()) {
+              <p class="text-xs text-functional-error">{{ formSchema.subjectId().errors()[0].message }}</p>
+            }
+          </div>
+        }
+      </div>
+
+      <!-- Personnes -->
+      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <tas-form-field>
+          <tas-label>Confiée à <span class="text-functional-error">*</span></tas-label>
+          <tas-select [options]="holderOptions()" [formField]="formSchema.holderId"></tas-select>
+        </tas-form-field>
+        <tas-form-field>
+          <tas-label>Personnes associées</tas-label>
+          <tas-multi-select
+            [options]="userOptions()"
+            [placeholder]="isLoadingUsers() ? 'Chargement des collègues…' : 'Collègues qui suivent la tâche'"
+            [formField]="formSchema.participantIds"
+          ></tas-multi-select>
+        </tas-form-field>
+      </div>
+      <p class="-mt-3 text-xs text-slate-500">
+        Les personnes associées voient la tâche, la commentent et y joignent des fichiers. Le responsable et le chef d'agence
+        de la personne qui en est chargée y ont accès aussi.
+      </p>
+
+      <tas-form-field>
+        <tas-label>Description</tas-label>
+        <textarea tasInput rows="4" placeholder="Le contexte, ce qu’il faut savoir avant de commencer…" [formField]="formSchema.description"></textarea>
+        @if (formSchema.description().invalid()) {
+          <tas-error>{{ formSchema.description().errors()[0].message }}</tas-error>
+        }
+      </tas-form-field>
+
+      <!-- Critères -->
+      <div>
+        <p class="mb-1 text-sm font-medium text-slate-700">Critères</p>
+        <p class="mb-2 text-xs text-slate-500">Ce que « fait » veut dire, à cocher un par un.</p>
+        @if (criteria().length > 0) {
+          <ol class="mb-2 flex flex-col gap-1.5">
+            @for (c of criteria(); track $index) {
+              <li class="flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700">
+                <span class="size-4 shrink-0 rounded border border-slate-300" aria-hidden="true"></span>
+                <span class="min-w-0 flex-1">{{ c }}</span>
+                <button type="button" class="text-slate-400 hover:text-functional-error" [attr.aria-label]="'Retirer ' + c" (click)="removeCriterion($index)">
+                  <tas-icon iconName="feather:x" style="font-size:14px"></tas-icon>
+                </button>
+              </li>
+            }
+          </ol>
+        }
+        <div class="flex gap-2">
+          <tas-form-field class="flex-1">
+            <input tasInput type="text" placeholder="Pièce d’identité reçue, client rappelé…" aria-label="Nouveau critère"
+              [ngModel]="criterionDraft()" (ngModelChange)="criterionDraft.set($event)" [ngModelOptions]="{ standalone: true }"
+              (keydown.enter)="$event.preventDefault(); addCriterion()" />
+          </tas-form-field>
+          <button tas-outlined-button type="button" [disabled]="!criterionDraft().trim()" (click)="addCriterion()">Ajouter</button>
+        </div>
+      </div>
+
+      <!-- Étiquettes -->
+      <div>
+        <p class="mb-2 text-sm font-medium text-slate-700">Étiquettes</p>
+        @if (tags().length > 0) {
+          <div class="mb-2 flex flex-wrap gap-1.5">
+            @for (t of tags(); track t) {
+              <span class="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700">
+                {{ t }}
+                <button type="button" class="text-slate-400 hover:text-slate-700" [attr.aria-label]="'Retirer ' + t" (click)="removeTag(t)">
+                  <tas-icon iconName="feather:x" style="font-size:11px"></tas-icon>
+                </button>
+              </span>
+            }
+          </div>
+        }
+        <tas-form-field>
+          <input tasInput type="text" placeholder="Tapez une étiquette puis Entrée" aria-label="Nouvelle étiquette"
+            [ngModel]="tagDraft()" (ngModelChange)="tagDraft.set($event)" [ngModelOptions]="{ standalone: true }"
+            (keydown.enter)="$event.preventDefault(); addTag()" />
+        </tas-form-field>
+      </div>
+
+      @if (submitError()) {
+        <p class="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{{ submitError() }}</p>
+      }
+    </form>
+  </tas-drawer-content>
+
+  <tas-drawer-action>
+    <div class="flex justify-end gap-3">
+      <button tas-outlined-button type="button" (click)="close()">Annuler</button>
+      <button tas-raised-button color="primary" type="button"
+        [disabled]="formSchema().submitting()" [isLoading]="formSchema().submitting()" (click)="handleSubmit()">
+        Créer la tâche
+      </button>
+    </div>
+  </tas-drawer-action>
+</tas-side-drawer>

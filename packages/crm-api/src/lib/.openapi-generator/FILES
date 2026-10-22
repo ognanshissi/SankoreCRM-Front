@@ -97,6 +97,7 @@ model/add-relationship-result.interface.ts
 model/add-rule-request.interface.ts
 model/add-step-request.interface.ts
 model/add-tag-request.interface.ts
+model/add-task-criterion-request.interface.ts
 model/add-transition-request.interface.ts
 model/add-trigger-request.interface.ts
 model/admin-reset-password-request.interface.ts
@@ -261,6 +262,7 @@ model/create-territory-result.interface.ts
 model/create-user-request.interface.ts
 model/create-user-result.interface.ts
 model/credential-dto.interface.ts
+model/crm-task-detail-dto.interface.ts
 model/crm-task-dto.interface.ts
 model/current-user-dto.interface.ts
 model/customer-match-dto.interface.ts
@@ -655,6 +657,8 @@ model/set-qualification-completeness-request.interface.ts
 model/set-recording-policy-request.interface.ts
 model/set-secret-request.interface.ts
 model/set-sms-monthly-quota-command.interface.ts
+model/set-task-participants-request.interface.ts
+model/set-task-tags-request.interface.ts
 model/set-telephony-caller-number-request.interface.ts
 model/set-whats-app-api-key-request.interface.ts
 model/set-whats-app-bot-enabled-request.interface.ts
@@ -709,9 +713,16 @@ model/suspend-group-result.interface.ts
 model/system-capture-lead-request.interface.ts
 model/tag-dto.interface.ts
 model/task-assignment-entry-dto.interface.ts
+model/task-attachment-dto.interface.ts
+model/task-comment-dto.interface.ts
+model/task-comment-request.interface.ts
+model/task-comments-page-dto.interface.ts
+model/task-criterion-dto.interface.ts
 model/task-dto.interface.ts
 model/task-due-date-input.interface.ts
 model/task-generation-rule-dto.interface.ts
+model/task-person-dto.interface.ts
+model/task-subject-dto.interface.ts
 model/task-type-dto.interface.ts
 model/telephony-call-context.interface.ts
 model/telephony-call-list-item-dto.interface.ts
@@ -772,6 +783,8 @@ model/update-sla-config-request.interface.ts
 model/update-sms-settings-command.interface.ts
 model/update-sms-template-request.interface.ts
 model/update-step-request.interface.ts
+model/update-task-criterion-request.interface.ts
+model/update-task-details-request.interface.ts
 model/update-task-generation-rule-request.interface.ts
 model/update-task-type-request.interface.ts
 model/update-template-request.interface.ts

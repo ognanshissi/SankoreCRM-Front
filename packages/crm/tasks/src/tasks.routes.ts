@@ -12,6 +12,11 @@ const tasksRoutes: Route[] = [
     path: 'calendar',
     loadComponent: () => import('./containers/calendar/calendar-page'),
   },
+  {
+    // Après les chemins nommés : « my-day » et « calendar » ne sont pas des identifiants de tâche.
+    path: ':taskId',
+    loadComponent: () => import('./containers/task/task-page'),
+  },
 ];
 
 export default tasksRoutes;

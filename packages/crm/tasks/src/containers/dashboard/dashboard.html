@@ -16,6 +16,12 @@
   </div>
 
   <div class="flex flex-wrap items-center gap-2">
+    @if (canManageTasks()) {
+      <button tas-outlined-button type="button" (click)="openNewTask()">
+        <tas-icon iconName="feather:check-square" style="font-size:14px"></tas-icon>
+        Nouvelle tâche
+      </button>
+    }
     @if (canScheduleAppointment()) {
       <button tas-raised-button color="primary" type="button" (click)="openCreateAppointment()">
         <tas-icon iconName="feather:calendar" style="font-size:14px"></tas-icon>

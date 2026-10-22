@@ -37,6 +37,12 @@ export interface CrmTaskDto {
     completedAt?: string | null;
     triggerEventType?: string | null;
     triggerEventId?: string | null;
+    /**
+     * One of: Lead, Client, KycFile
+     */
+    entityType?: CrmTaskDtoEntityTypeEnum | null;
+    entityId?: string | null;
+    createdBy?: string | null;
 }
 export enum CrmTaskDtoTypeEnum {
     FirstContact = 'FirstContact',
@@ -58,6 +64,11 @@ export enum CrmTaskDtoStatusEnum {
     InProgress = 'InProgress',
     Completed = 'Completed',
     Cancelled = 'Cancelled'
+};
+export enum CrmTaskDtoEntityTypeEnum {
+    Lead = 'Lead',
+    Client = 'Client',
+    KycFile = 'KycFile'
 };
 
 

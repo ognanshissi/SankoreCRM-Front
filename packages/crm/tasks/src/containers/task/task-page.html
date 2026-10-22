@@ -1,0 +1,333 @@
+@if (isLoading()) {
+  <div class="flex justify-center py-16"><tas-spinner size="10" class="text-primary"></tas-spinner></div>
+} @else if (notFound() || !task()) {
+  <div class="mx-auto flex max-w-md flex-col items-center rounded-2xl bg-white py-12 text-center">
+    <tas-icon iconName="feather:alert-circle" class="mb-2 text-slate-400" style="font-size:24px"></tas-icon>
+    <p class="text-sm text-slate-600">Cette tâche n’existe plus, ou vous n’y avez pas accès.</p>
+    <button tas-outlined-button type="button" class="mt-4" (click)="back()">Retour à ma journée</button>
+  </div>
+} @else {
+  @let t = task()!;
+  <div class="flex flex-col gap-5 xl:flex-row">
+    <!-- Colonne principale -->
+    <div class="flex min-w-0 flex-1 flex-col gap-5">
+      <!-- En-tête -->
+      <section class="rounded-2xl bg-white p-5">
+        @if (editingDetails()) {
+          <form [formRoot]="detailsForm" class="flex flex-col gap-4" (submit)="$event.preventDefault(); saveDetails()">
+            <tas-form-field>
+              <tas-label>Titre</tas-label>
+              <input tasInput type="text" [formField]="detailsForm.title" />
+              @if (detailsForm.title().touched() && detailsForm.title().invalid()) {
+                <tas-error>{{ detailsForm.title().errors()[0].message }}</tas-error>
+              }
+            </tas-form-field>
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+              <tas-form-field>
+                <tas-label>Échéance</tas-label>
+                <input tasInput type="date" [formField]="detailsForm.date" />
+              </tas-form-field>
+              <tas-form-field>
+                <tas-label>Heure</tas-label>
+                <input tasInput type="time" step="300" [formField]="detailsForm.time" />
+              </tas-form-field>
+              <tas-form-field>
+                <tas-label>Priorité</tas-label>
+                <tas-select [options]="priorityOptions" [formField]="detailsForm.priority"></tas-select>
+              </tas-form-field>
+            </div>
+            <tas-form-field>
+              <tas-label>Description</tas-label>
+              <textarea tasInput rows="6" [formField]="detailsForm.description"></textarea>
+              @if (detailsForm.description().invalid()) {
+                <tas-error>{{ detailsForm.description().errors()[0].message }}</tas-error>
+              }
+            </tas-form-field>
+            <div class="flex justify-end gap-2">
+              <button tas-text-button type="button" (click)="editingDetails.set(false)">Annuler</button>
+              <button tas-raised-button color="primary" type="submit"
+                [disabled]="detailsForm().invalid() || detailsForm().submitting()" [isLoading]="detailsForm().submitting()">Enregistrer</button>
+            </div>
+          </form>
+        } @else {
+          <div class="flex flex-wrap items-start justify-between gap-3">
+            <div class="min-w-0">
+              <div class="mb-2 flex flex-wrap items-center gap-2 text-xs">
+                <span class="rounded-full px-2 py-0.5 font-semibold" [class]="status().tone">{{ status().label }}</span>
+                <span class="rounded-full px-2 py-0.5 font-semibold" [class]="priority().tone">Priorité {{ priority().label.toLowerCase() }}</span>
+                <span class="flex items-center gap-1" [class]="isLate() ? 'font-semibold text-functional-error' : 'text-slate-500'">
+                  <tas-icon iconName="feather:clock" style="font-size:12px"></tas-icon>
+                  {{ isLate() ? 'En retard · ' : 'Échéance · ' }}{{ when(t.dueAt) }}
+                </span>
+              </div>
+              <h2 class="text-xl font-bold text-slate-900">{{ t.title }}</h2>
+              @if (t.subject) {
+                <p class="mt-1 flex items-center gap-1.5 text-sm text-slate-600">
+                  <tas-icon [iconName]="t.subject.type === 'Lead' ? 'feather:target' : t.subject.type === 'Client' ? 'feather:users' : 'feather:user-check'" style="font-size:14px"></tas-icon>
+                  @if (subjectLink()) {
+                    <a [routerLink]="subjectLink()" class="font-medium text-primary hover:underline">{{ t.subject.label }}</a>
+                  } @else {
+                    {{ t.subject.label }}
+                  }
+                </p>
+              }
+            </div>
+            @if (editable()) {
+              <button tas-outlined-button type="button" (click)="editDetails()">
+                <tas-icon iconName="feather:edit-2" style="font-size:14px"></tas-icon> Modifier
+              </button>
+            }
+          </div>
+
+          <div class="mt-4 border-t border-slate-100 pt-4">
+            <p class="mb-1 text-xs font-semibold tracking-wide text-slate-400 uppercase">Description</p>
+            @if (t.description) {
+              <p class="text-sm whitespace-pre-line text-slate-700">{{ t.description }}</p>
+            } @else {
+              <p class="text-sm text-slate-400">Aucune description.</p>
+            }
+          </div>
+        }
+      </section>
+
+      <!-- Critères -->
+      <section class="rounded-2xl bg-white p-5">
+        <div class="mb-3 flex items-center justify-between">
+          <h3 class="text-base font-semibold text-slate-900">Critères</h3>
+          @if ((t.criteria ?? []).length) {
+            <span class="text-xs text-slate-500 tabular-nums">{{ criteriaDone() }} / {{ t.criteria!.length }}</span>
+          }
+        </div>
+
+        @if ((t.criteria ?? []).length) {
+          <ul class="flex flex-col gap-1">
+            @for (c of t.criteria; track c.id) {
+              <li class="group flex items-start gap-3 rounded-lg px-2 py-2 hover:bg-slate-50">
+                <input type="checkbox" class="mt-0.5 size-4 accent-primary" [checked]="c.isMet"
+                  [disabled]="!editable() || busy() === 'c-' + c.id" (change)="toggleCriterion(c.id!, $any($event.target).checked)"
+                  [attr.aria-label]="c.label" />
+                <div class="min-w-0 flex-1">
+                  <p class="text-sm" [class]="c.isMet ? 'text-slate-500 line-through' : 'text-slate-800'">{{ c.label }}</p>
+                  @if (c.isMet) {
+                    <p class="text-xs text-slate-400">Coché par {{ c.metByName ?? 'Utilisateur' }} · {{ when(c.metAt) }}</p>
+                  }
+                </div>
+                @if (editable()) {
+                  <button type="button" class="text-slate-300 opacity-0 group-hover:opacity-100 hover:text-functional-error" [attr.aria-label]="'Retirer ' + c.label" (click)="removeCriterion(c.id!)">
+                    <tas-icon iconName="feather:x" style="font-size:14px"></tas-icon>
+                  </button>
+                }
+              </li>
+            }
+          </ul>
+        } @else {
+          <p class="text-sm text-slate-400">Aucun critère : ajoutez ce que « fait » veut dire.</p>
+        }
+
+        @if (editable()) {
+          <div class="mt-3 flex gap-2">
+            <tas-form-field class="flex-1">
+              <input tasInput type="text" placeholder="Nouveau critère" aria-label="Nouveau critère"
+                [ngModel]="criterionDraft()" (ngModelChange)="criterionDraft.set($event)" (keydown.enter)="addCriterion()" />
+            </tas-form-field>
+            <button tas-outlined-button type="button" [disabled]="!criterionDraft().trim() || busy() === 'add-criterion'" (click)="addCriterion()">Ajouter</button>
+          </div>
+        }
+      </section>
+
+      <!-- Commentaires -->
+      <section class="rounded-2xl bg-white p-5">
+        <h3 class="mb-3 text-base font-semibold text-slate-900">
+          Commentaires <span class="text-sm font-normal text-slate-400 tabular-nums">{{ t.commentCount }}</span>
+        </h3>
+
+        @if (olderBefore()) {
+          <button tas-text-button type="button" class="mb-2" (click)="loadOlder()">Voir les commentaires plus anciens</button>
+        }
+
+        <ol class="flex flex-col gap-3">
+          @for (m of comments(); track m.id) {
+            <li class="flex gap-3">
+              <span class="flex size-8 shrink-0 items-center justify-center rounded-full bg-slate-100 text-[11px] font-bold text-primary" aria-hidden="true">
+                {{ (m.authorName ?? '?').slice(0, 2).toUpperCase() }}
+              </span>
+              <div class="min-w-0 flex-1">
+                <p class="text-xs text-slate-500">
+                  <span class="font-semibold text-slate-800">{{ m.authorName }}</span>
+                  · <span [title]="when(m.createdAt)">{{ m.createdAt | dateTimeAgo }}</span>
+                  @if (m.editedAt && !m.isDeleted) { · modifié }
+                </p>
+                @if (m.isDeleted) {
+                  <p class="mt-1 text-sm text-slate-400 italic">Commentaire supprimé</p>
+                } @else if (editingCommentId() === m.id) {
+                  <tas-form-field class="mt-1 block">
+                    <textarea tasInput rows="3" aria-label="Modifier le commentaire"
+                      [ngModel]="editingCommentText()" (ngModelChange)="editingCommentText.set($event)"></textarea>
+                  </tas-form-field>
+                  <div class="mt-1 flex justify-end gap-2">
+                    <button tas-text-button type="button" (click)="editingCommentId.set(null)">Annuler</button>
+                    <button tas-raised-button color="primary" type="button" [disabled]="!editingCommentText().trim()" (click)="saveComment(m.id!)">Enregistrer</button>
+                  </div>
+                } @else {
+                  <p class="mt-1 rounded-xl rounded-tl-none bg-slate-50 px-3 py-2 text-sm whitespace-pre-line text-slate-800">{{ m.body }}</p>
+                  @if (m.isMine && canManage()) {
+                    <div class="mt-1 flex gap-3 text-xs">
+                      <button type="button" class="text-slate-500 hover:text-slate-800" (click)="editComment(m)">Modifier</button>
+                      <button type="button" class="text-slate-500 hover:text-functional-error" (click)="deleteComment(m.id!)">Supprimer</button>
+                    </div>
+                  }
+                }
+              </div>
+            </li>
+          } @empty {
+            <li class="text-sm text-slate-400">Pas encore de commentaire.</li>
+          }
+        </ol>
+
+        @if (canManage()) {
+          <form [formRoot]="commentForm" class="mt-4 flex flex-col gap-2" (submit)="$event.preventDefault(); sendComment()">
+            <tas-form-field>
+              <textarea tasInput rows="3" placeholder="Écrire un commentaire…" aria-label="Nouveau commentaire" [formField]="commentForm.body"></textarea>
+            </tas-form-field>
+            <div class="flex justify-end">
+              <button tas-raised-button color="primary" type="submit"
+                [disabled]="commentForm().invalid() || commentForm().submitting()" [isLoading]="commentForm().submitting()">Commenter</button>
+            </div>
+          </form>
+        }
+      </section>
+    </div>
+
+    <!-- Colonne latérale -->
+    <aside class="flex w-full shrink-0 flex-col gap-5 xl:w-96">
+      @if (canManage() && t.isOpen) {
+        <section class="flex flex-wrap gap-2 rounded-2xl bg-white p-4">
+          @if (t.status === 'Pending') {
+            <button tas-outlined-button type="button" [isLoading]="busy() === 'start'" (click)="start()">Démarrer</button>
+          }
+          <button tas-raised-button color="primary" type="button" [isLoading]="busy() === 'complete'" (click)="complete()">Terminer</button>
+          <button tas-outlined-button type="button" (click)="reassign()">Réassigner</button>
+          <button tas-text-button color="warn" type="button" [isLoading]="busy() === 'cancel'" (click)="cancelTask()">Annuler la tâche</button>
+        </section>
+      }
+
+      <!-- Personnes -->
+      <section class="rounded-2xl bg-white p-5">
+        <h3 class="mb-3 text-base font-semibold text-slate-900">Personnes</h3>
+        <dl class="flex flex-col gap-3 text-sm">
+          <div>
+            <dt class="text-xs text-slate-400">Confiée à</dt>
+            <dd class="font-medium text-slate-800">{{ t.holder?.name ?? 'Personne' }}</dd>
+          </div>
+          <div>
+            <dt class="text-xs text-slate-400">Créée par</dt>
+            <dd class="text-slate-700">{{ t.creator?.name ?? 'Le système' }} · {{ when(t.createdAt) }}</dd>
+          </div>
+          <div>
+            <dt class="flex items-center justify-between text-xs text-slate-400">
+              Personnes associées
+              @if (editable() && !editingPeople()) {
+                <button type="button" class="text-primary hover:underline" (click)="editPeople()">Modifier</button>
+              }
+            </dt>
+            @if (editingPeople()) {
+              <form [formRoot]="peopleForm" class="mt-2 flex flex-col gap-2" (submit)="$event.preventDefault(); savePeople()">
+                <tas-multi-select [options]="userOptions()" placeholder="Collègues" [formField]="peopleForm.userIds"></tas-multi-select>
+                <div class="flex justify-end gap-2">
+                  <button tas-text-button type="button" (click)="editingPeople.set(false)">Annuler</button>
+                  <button tas-raised-button color="primary" type="submit" [isLoading]="peopleForm().submitting()">Enregistrer</button>
+                </div>
+              </form>
+            } @else {
+              <dd class="mt-1 flex flex-wrap gap-1.5">
+                @for (p of t.participants; track p.id) {
+                  <span class="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700">{{ p.name }}</span>
+                } @empty {
+                  <span class="text-slate-400">Aucune</span>
+                }
+              </dd>
+            }
+          </div>
+        </dl>
+      </section>
+
+      <!-- Étiquettes -->
+      <section class="rounded-2xl bg-white p-5">
+        <h3 class="mb-3 text-base font-semibold text-slate-900">Étiquettes</h3>
+        <div class="flex flex-wrap gap-1.5">
+          @for (tag of t.tags; track tag) {
+            <span class="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
+              {{ tag }}
+              @if (canManage()) {
+                <button type="button" class="opacity-60 hover:opacity-100" [attr.aria-label]="'Retirer ' + tag" (click)="removeTag(tag)">
+                  <tas-icon iconName="feather:x" style="font-size:11px"></tas-icon>
+                </button>
+              }
+            </span>
+          } @empty {
+            <span class="text-sm text-slate-400">Aucune</span>
+          }
+        </div>
+        @if (canManage()) {
+          <tas-form-field class="mt-3 block">
+            <input tasInput type="text" placeholder="Ajouter une étiquette puis Entrée" aria-label="Nouvelle étiquette"
+              [ngModel]="tagDraft()" (ngModelChange)="tagDraft.set($event)" (keydown.enter)="addTag()" />
+          </tas-form-field>
+        }
+      </section>
+
+      <!-- Fichiers -->
+      <section class="rounded-2xl bg-white p-5">
+        <div class="mb-3 flex items-center justify-between">
+          <h3 class="text-base font-semibold text-slate-900">Fichiers</h3>
+          @if (canManage()) {
+            <button tas-outlined-button type="button" [isLoading]="busy() === 'upload'" (click)="fileInput.click()">
+              <tas-icon iconName="feather:paperclip" style="font-size:14px"></tas-icon> Joindre
+            </button>
+            <input #fileInput type="file" class="hidden"
+              accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx,.pptx,.txt,.csv" (change)="upload(fileInput)" />
+          }
+        </div>
+        <ul class="flex flex-col gap-2">
+          @for (a of t.attachments; track a.id) {
+            <li class="flex items-center gap-3 rounded-lg border border-slate-200 px-3 py-2">
+              <tas-icon iconName="feather:file-text" class="shrink-0 text-slate-400" style="font-size:16px"></tas-icon>
+              <button type="button" class="min-w-0 flex-1 text-left" (click)="download(a)">
+                <span class="block truncate text-sm font-medium text-primary hover:underline">{{ a.fileName }}</span>
+                <span class="block text-xs text-slate-500">{{ size(a.sizeBytes) }} · {{ a.uploadedByName }} · {{ a.uploadedAt | dateTimeAgo }}</span>
+              </button>
+              @if (canManage()) {
+                <button type="button" class="text-slate-400 hover:text-functional-error" [attr.aria-label]="'Retirer ' + a.fileName" (click)="removeAttachment(a)">
+                  <tas-icon iconName="feather:trash-2" style="font-size:14px"></tas-icon>
+                </button>
+              }
+            </li>
+          } @empty {
+            <li class="text-sm text-slate-400">Aucun fichier.</li>
+          }
+        </ul>
+        <p class="mt-2 text-xs text-slate-400">PDF, image, document Office ou texte, 10 Mo au plus. Stockés chiffrés.</p>
+      </section>
+
+      <!-- Historique -->
+      <section class="rounded-2xl bg-white p-5">
+        <h3 class="mb-3 text-base font-semibold text-slate-900">Historique des assignations</h3>
+        <ol class="relative flex flex-col gap-3 border-l border-slate-200 pl-4">
+          @for (h of history(); track $index) {
+            <li class="relative">
+              <span class="absolute top-1.5 -left-[21px] size-2.5 rounded-full border-2 border-white bg-primary" aria-hidden="true"></span>
+              <p class="text-sm text-slate-800">{{ historyLabel(h) }}</p>
+              <p class="text-xs text-slate-500">
+                {{ when(h.at) }}
+                @if (h.actorId) { · par {{ userName(h.actorId) }} }
+              </p>
+              @if (h.reason) {
+                <p class="text-xs text-slate-500 italic">« {{ h.reason }} »</p>
+              }
+            </li>
+          }
+        </ol>
+      </section>
+    </aside>
+  </div>
+}

@@ -18,7 +18,8 @@ export interface TaskWorkDrawerData {
 export type TaskWorkDrawerResult =
   | { action: 'completed' }
   | { action: 'reassign'; task: CrmTaskDto }
-  | { action: 'open-lead'; leadId: string };
+  | { action: 'open-lead'; leadId: string }
+  | { action: 'open-task'; taskId: string };
 
 /**
  * Le panneau de travail d'une tâche, dans un drawer. Il était la colonne de droite de l'ancienne
@@ -33,7 +34,12 @@ export type TaskWorkDrawerResult =
   template: `
     <tas-side-drawer width="560px">
       <tas-drawer-title>
-        <tas-title>Traiter la tâche</tas-title>
+        <div class="flex w-full items-center justify-between gap-3">
+          <tas-title>Traiter la tâche</tas-title>
+          <button type="button" class="ml-auto text-sm font-medium text-primary hover:underline" (click)="close({ action: 'open-task', taskId: data.task.id! })">
+            Ouvrir la fiche
+          </button>
+        </div>
       </tas-drawer-title>
       <tas-drawer-content>
         <div class="-m-4">

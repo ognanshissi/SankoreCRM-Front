@@ -26,6 +26,7 @@ import { leadDisplayName } from './task-meta';
 import { ReassignTaskDrawer, ReassignTaskDrawerData } from './reassign-task-drawer';
 import { ApprovalItem, MyApprovalsService } from './my-approvals.service';
 import { ApprovalsList } from './approvals-list';
+import { NewTaskDrawer, NewTaskDrawerData } from '../task/new-task-drawer';
 import { agendaEntries } from './agenda-meta';
 import {
   addDays,
@@ -122,6 +123,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   /** Planifier un rendez-vous, c'est consigner une interaction à venir : le droit de l'activité. */
   public readonly canScheduleAppointment = this._permissions.can('lead:activity:log');
+  public readonly canManageTasks = this._permissions.can('lead:task:manage');
 
   public now = signal(Date.now());
   private _tickTimer: ReturnType<typeof setInterval> | null = null;
@@ -330,6 +332,18 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   // ——— Rendez-vous ———
 
+  /** Une tâche pour soi (ou pour un collègue) : elle rejoint la journée de qui la porte. */
+  public openNewTask(): void {
+    const ref = this._sideDrawer.open<string, NewTaskDrawerData, NewTaskDrawer>(NewTaskDrawer, {
+      width: '100%',
+      height: '100%',
+      panelClass: 'side-drawer-panel',
+    });
+    ref.closed.subscribe((id) => {
+      if (id) this._loadTasks();
+    });
+  }
+
   public openCreateAppointment(): void {
     const ref = this._sideDrawer.open<string, CreateAppointmentDrawerData, CreateAppointmentDrawer>(CreateAppointmentDrawer, {
       width: '100%',
@@ -373,6 +387,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
         case 'completed': this._loadTasks(); break;
         case 'reassign':  this.openReassign(result.task); break;
         case 'open-lead': this._router.navigate(['/leads', result.leadId]); break;
+        case 'open-task': this._router.navigate(['/tasks', result.taskId]); break;
       }
     });
   }
