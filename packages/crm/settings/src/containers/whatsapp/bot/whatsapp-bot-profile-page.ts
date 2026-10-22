@@ -25,7 +25,7 @@ import { BOT_DAYS, BOT_TIME_ZONES, botErrorMessage } from './whatsapp-bot-refere
 
 interface FaqRow { question: string; answer: string }
 interface DayRow { day: number; label: string; enabled: boolean; start: string; end: string }
-interface FieldRow { code: string; label: string; selected: boolean }
+interface FieldRow { code: string; label: string; selected: boolean; required: boolean; custom: boolean }
 
 class BotProfileFormModel {
   public isEnabled!: boolean;
@@ -50,6 +50,7 @@ class BotProfileFormModel {
     const m = new BotProfileFormModel();
     const hours = dto.agentHours ?? [];
     const selected = new Set(dto.fieldsToCollect ?? []);
+    const required = new Set(dto.fieldsRequiredForLead ?? []);
 
     m.isEnabled = !!dto.isEnabled;
     m.welcomeMessage = dto.welcomeMessage ?? '';
@@ -60,6 +61,8 @@ class BotProfileFormModel {
       code: f.code ?? '',
       label: f.label ?? f.code ?? '',
       selected: selected.has(f.code ?? ''),
+      required: required.has(f.code ?? ''),
+      custom: !!f.isCustom,
     }));
     m.days = BOT_DAYS.map(({ day, label }) => {
       const slot = hours.find((h) => h.day === day);
@@ -220,6 +223,9 @@ export class WhatsAppBotProfilePage implements OnInit {
         instructions: v.instructions.trim() || null,
         faq: v.faq.map((f) => ({ question: f.question.trim(), answer: f.answer.trim() })),
         fieldsToCollect: v.fields.filter((f) => f.selected).map((f) => f.code),
+        // Indispensable n'a de sens que pour un champ recueilli : une case restée cochée sur un
+        // champ décoché ne doit pas faire refuser l'enregistrement.
+        fieldsRequiredForLead: v.fields.filter((f) => f.selected && f.required).map((f) => f.code),
         agentHours: v.days.filter((d) => d.enabled).map((d) => ({ day: d.day, start: d.start, end: d.end })),
         timeZoneId: v.timeZoneId,
         escalationKeywords: v.keywords.split(',').map((k) => k.trim()).filter((k) => k.length > 0),

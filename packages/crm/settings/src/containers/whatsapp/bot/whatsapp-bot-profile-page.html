@@ -193,14 +193,27 @@
         <tas-card class="block">
           <div class="p-4">
             <h2 class="text-sm font-semibold text-slate-800">Informations à recueillir</h2>
-            <p class="text-xs text-slate-500 mt-0.5 mb-3">Le bot les écrit sur la fiche quand le client les donne, sans insister.</p>
+            <p class="text-xs text-slate-500 mt-0.5 mb-3">
+              Le bot les écrit sur la fiche quand le client les donne, sans insister. Les informations
+              <span class="text-xs font-medium text-slate-700">indispensables</span> forment le minimum : pour un numéro inconnu, le
+              lead est créé quand elles sont toutes recueillies, puis un conseiller prend la main.
+            </p>
             <ul class="flex flex-col gap-2">
               @for (field of model().fields; track field.code; let i = $index) {
-                <li>
+                <li class="flex flex-wrap items-center justify-between gap-2">
                   <label class="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
                     <input type="checkbox" class="form-checkbox accent-primary w-4 h-4" [formField]="formSchema.fields[i].selected" />
                     {{ field.label }}
+                    @if (field.custom) {
+                      <span class="text-xs text-slate-400">Champ personnalisé</span>
+                    }
                   </label>
+                  @if (field.selected) {
+                    <label class="flex items-center gap-2 text-xs text-slate-600 cursor-pointer">
+                      <input type="checkbox" class="form-checkbox accent-primary w-4 h-4" [formField]="formSchema.fields[i].required" />
+                      Indispensable
+                    </label>
+                  }
                 </li>
               }
             </ul>

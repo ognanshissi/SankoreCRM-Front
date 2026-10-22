@@ -40,6 +40,7 @@ const ERROR_MESSAGES: Record<string, string> = {
   WHATSAPP_BOT_FAQ_TOO_LONG: 'La FAQ est trop longue (40 questions, 1 000 caractères chacune au plus).',
   WHATSAPP_BOT_FAQ_INCOMPLETE: 'Chaque question de la FAQ doit avoir sa réponse.',
   WHATSAPP_BOT_FIELD_UNKNOWN: 'Un champ à recueillir n’est pas reconnu.',
+  WHATSAPP_BOT_REQUIRED_NOT_COLLECTED: 'Une information indispensable doit aussi être cochée parmi les informations à recueillir.',
   WHATSAPP_BOT_HOURS_INVALID: 'Un créneau horaire est invalide : la fin doit suivre le début.',
   WHATSAPP_BOT_TIMEZONE_UNKNOWN: 'Ce fuseau horaire n’est pas reconnu par le serveur.',
   WHATSAPP_BOT_KEYWORDS_TOO_LONG: 'Trop de mots-clés (40 au plus, 60 caractères chacun).',

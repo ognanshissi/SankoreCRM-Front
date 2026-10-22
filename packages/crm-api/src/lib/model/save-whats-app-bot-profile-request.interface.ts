@@ -26,5 +26,6 @@ export interface SaveWhatsAppBotProfileRequest {
     escalationKeywords?: Array<string> | null;
     maxTurnsWithoutAnswer?: number;
     windowExpiryThresholdMinutes?: number;
+    fieldsRequiredForLead?: Array<string> | null;
 }
 

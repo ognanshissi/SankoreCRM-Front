@@ -31,5 +31,6 @@ export interface WhatsAppInboxItemDto {
     takeoverBreached?: boolean;
     ambiguousMatch?: boolean;
     route?: string | null;
+    collectingProspect?: boolean;
 }
 

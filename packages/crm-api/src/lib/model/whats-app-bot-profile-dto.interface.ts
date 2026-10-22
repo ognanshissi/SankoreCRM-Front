@@ -30,6 +30,7 @@ export interface WhatsAppBotProfileDto {
     escalationKeywords?: Array<string> | null;
     maxTurnsWithoutAnswer?: number;
     windowExpiryThresholdMinutes?: number;
+    fieldsRequiredForLead?: Array<string> | null;
     createdAt?: string | null;
     createdByName?: string | null;
     history?: Array<WhatsAppBotVersionDto> | null;

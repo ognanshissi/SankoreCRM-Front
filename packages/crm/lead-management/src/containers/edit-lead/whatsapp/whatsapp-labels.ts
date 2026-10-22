@@ -104,6 +104,7 @@ export const ESCALATION_REASON_LABELS: Record<string, string> = {
   BOT_SENSITIVE_TOPIC: 'Sujet sensible',
   BOT_OUT_OF_SCOPE: 'Question hors du périmètre du bot',
   BOT_OTHER: 'Passage à un conseiller demandé par le bot',
+  BOT_LEAD_READY: 'Fiche prospect complétée par le bot',
 };
 
 /**
@@ -112,8 +113,11 @@ export const ESCALATION_REASON_LABELS: Record<string, string> = {
 export const BOT_FIELD_TABS: Record<string, string> = {
   FIRST_NAME: 'identite',
   LAST_NAME: 'identite',
+  GENDER: 'identite',
   CITY: 'identite',
+  NEIGHBOURHOOD: 'identite',
   EMAIL: 'informations',
+  PRODUCT: 'informations',
   DESIRED_AMOUNT: 'informations',
 };
 

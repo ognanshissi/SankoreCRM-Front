@@ -14,5 +14,6 @@
 export interface WhatsAppBotFieldDto { 
     code?: string | null;
     label?: string | null;
+    isCustom?: boolean;
 }
 

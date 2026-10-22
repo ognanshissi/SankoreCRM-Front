@@ -46951,6 +46951,13 @@
           "windowExpiryThresholdMinutes": {
             "type": "integer",
             "format": "int32"
+          },
+          "fieldsRequiredForLead": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -53096,6 +53103,9 @@
           "label": {
             "type": "string",
             "nullable": true
+          },
+          "isCustom": {
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -53222,6 +53232,13 @@
           "windowExpiryThresholdMinutes": {
             "type": "integer",
             "format": "int32"
+          },
+          "fieldsRequiredForLead": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
           },
           "createdAt": {
             "type": "string",
@@ -53555,6 +53572,16 @@
           },
           "canAttach": {
             "type": "boolean"
+          },
+          "collectingProspect": {
+            "type": "boolean"
+          },
+          "pendingFields": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WhatsAppBotCollectedFieldDto"
+            },
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -53779,6 +53806,9 @@
           "route": {
             "type": "string",
             "nullable": true
+          },
+          "collectingProspect": {
+            "type": "boolean"
           }
         },
         "additionalProperties": false
