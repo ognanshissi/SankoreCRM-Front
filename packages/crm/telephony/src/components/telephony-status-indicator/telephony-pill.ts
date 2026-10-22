@@ -73,8 +73,10 @@ export function telephonyIndicatorPill(
 
   if (link === 'NotLinked') {
     return {
-      label: TEL_LINK_STATUS_LABELS['NotLinked'],
-      hint: "Votre poste n'est pas rattaché au système de téléphonie : vous ne pouvez pas appeler. Demandez à un administrateur de le rattacher.",
+      // « Téléphone » et non « Compte » : c'est ce que l'agent cherche quand son bouton
+      // « Appeler » manque. La réparation est dans le menu du profil (« Lier mon compte »).
+      label: 'Téléphone non lié',
+      hint: "Vous ne pouvez pas appeler depuis le CRM tant que votre compte téléphonique n'est pas lié.",
       tone: 'warning',
       icon: 'feather:phone-missed',
     };

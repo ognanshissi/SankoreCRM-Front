@@ -1,103 +1,76 @@
-<tas-navigation-layout>
-  <tas-navigation-sidebar>
-    <div class="h-[20px]">
+<div class="flex h-screen overflow-hidden">
+  <common-portal-sidebar
+    class="hidden lg:flex"
+    [groups]="groups()"
+    [activeId]="activeItem()?.id ?? null"
+    [companyName]="companyName()"
+    [logoUrl]="logoUrl()"
+    [subtitle]="subtitle()"
+  ></common-portal-sidebar>
 
+  <!-- Petit écran : la même barre, en tiroir. -->
+  @if (menuOpen()) {
+    <div class="fixed inset-0 z-40 lg:hidden">
+      <button type="button" class="absolute inset-0 bg-slate-900/40" aria-label="Fermer le menu" (click)="menuOpen.set(false)"></button>
+      <common-portal-sidebar
+        class="relative z-10 flex shadow-xl"
+        [groups]="groups()"
+        [activeId]="activeItem()?.id ?? null"
+        [companyName]="companyName()"
+        [logoUrl]="logoUrl()"
+        [subtitle]="subtitle()"
+        (navigated)="menuOpen.set(false)"
+      ></common-portal-sidebar>
     </div>
-    <div class="flex flex-col justify-between h-full">
-      <div>
-        <NavigationMenu>
-          @for (item of navigationItems; track item.id) {
-          <NavigationMenuItem [iconName]="item.icon ?? ''" [path]="[item.link]"
-            >{{ item.title }}
-          </NavigationMenuItem>
-          }
-        </NavigationMenu>
+  }
+
+  <div class="flex min-w-0 flex-1 flex-col">
+    <header class="flex h-[76px] shrink-0 items-center gap-3 border-b border-slate-200 bg-white px-4 lg:gap-4 lg:px-7">
+      <button type="button" class="rounded-lg p-2 text-slate-600 hover:bg-slate-100 lg:hidden" aria-label="Ouvrir le menu" (click)="menuOpen.set(true)">
+        <tas-icon iconName="feather:menu" style="font-size:20px"></tas-icon>
+      </button>
+
+      <div class="min-w-0 flex-1">
+        @if (trail().length > 1) {
+          <nav class="flex min-w-0 items-center gap-1 text-xs text-slate-500" aria-label="Fil d'Ariane">
+            @for (crumb of trail(); track $index; let last = $last) {
+              @if (crumb.link && !last) {
+                <a [routerLink]="crumb.link" class="truncate hover:text-slate-800 hover:underline">{{ crumb.label }}</a>
+              } @else {
+                <span class="truncate">{{ crumb.label }}</span>
+              }
+              @if (!last) {
+                <span aria-hidden="true">›</span>
+              }
+            }
+          </nav>
+        }
+        <h1 class="truncate text-xl font-bold text-slate-900">{{ title() }}</h1>
       </div>
 
-      <NavigationMenu class="mb-2">
-        <NavigationMenuItem iconName="feather:settings" [path]="['/settings']">
-          Paramètrages
-        </NavigationMenuItem>
-      </NavigationMenu>
-    </div>
-  </tas-navigation-sidebar>
-  <tas-navigation-navbar>
-    <div tasNavigationNavbarLeft>
-      <p>
-          <span class="text-primary text-xl font-bold">{{ companyName() }}</span>
-<!--        <span class="text-gray-500 text-[10px]">Microfinance</span>-->
-      </p>
-    </div>
+      <button
+        type="button"
+        class="hidden h-10 w-64 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-500 transition hover:border-slate-300 md:flex"
+        (click)="openPalette()"
+      >
+        <tas-icon iconName="feather:search" style="font-size:16px"></tas-icon>
+        <span class="flex-1 text-left">Rechercher</span>
+        <kbd class="rounded-md border border-slate-200 px-1.5 py-0.5 text-[11px] text-slate-500">{{ modifier }} K</kbd>
+      </button>
+      <button type="button" class="rounded-lg p-2 text-slate-600 hover:bg-slate-100 md:hidden" aria-label="Rechercher" (click)="openPalette()">
+        <tas-icon iconName="feather:search" style="font-size:18px"></tas-icon>
+      </button>
 
-    <div tasNavigationNavbarRight>
-      <div class="flex space-x-4 items-center">
-        <!--
-          État de la téléphonie (TEL-F-11). La pastille se masque elle-même tant que le
-          module Téléphonie n'a rien posé — c'est le cas de tous les établissements sans
-          téléphonie active, c'est-à-dire la plupart : rien à conditionner ici.
-        -->
-        <lib-telephony-status-pill></lib-telephony-status-pill>
-        <!-- Cloche des notifications in-app (WA-FE-10), pour tous les utilisateurs connectés. -->
-        <common-notification-bell></common-notification-bell>
-<!--        <div>-->
-<!--          <button tas-raised-button color="primary">-->
-<!--            <tas-icon iconName="feather:plus" iconSize="md"></tas-icon>-->
-<!--          </button>-->
-<!--        </div>-->
+      <!-- Cloche des notifications in-app (WA-FE-10), pour tous les utilisateurs connectés. -->
+      <common-notification-bell></common-notification-bell>
 
-        <!-- User menu -->
-        <button
-          tas-button
-          color="primary"
-          TasMenuTrigger
-          [panel]="userMenu"
-        >
-          <div class="flex flex-col">
-            <span> {{ userName() }}</span>
-            <span class="text-[10px]">{{ userRole() }}</span>
-          </div>
-          <tas-icon iconName="feather:chevron-down" iconSize="sm"></tas-icon>
-        </button>
+      <common-portal-user-menu (help)="openShortcuts()"></common-portal-user-menu>
+    </header>
 
-        <ng-template #userMenu>
-          <tas-menu>
-            <div class="px-4 py-2 border-b border-slate-100">
-              <p class="text-sm font-medium text-slate-800">{{ userName() }}</p>
-              <span class="text-sm font-semibold text-slate-600">{{ userEmail() }}</span>
-            </div>
-            <tas-menu-item>
-              <a routerLink="/settings/account/profil" class="w-full flex items-center gap-2 text-sm text-slate-700">
-                <tas-icon iconName="feather:user" style="font-size:14px" class="text-slate-400"></tas-icon>
-                Mon profil
-              </a>
-            </tas-menu-item>
-            <tas-menu-item>
-              <a routerLink="/settings/account/securite" class="w-full flex items-center gap-2 text-sm text-slate-700">
-                <tas-icon iconName="feather:lock" style="font-size:14px" class="text-slate-400"></tas-icon>
-                Sécurité
-              </a>
-            </tas-menu-item>
-            <tas-menu-item>
-              <a routerLink="/settings" class="w-full flex items-center gap-2 text-sm text-slate-700">
-                <tas-icon iconName="feather:settings" style="font-size:14px" class="text-slate-400"></tas-icon>
-                Paramètres
-              </a>
-            </tas-menu-item>
-            <div class="my-1 border-t border-slate-100"></div>
-            <tas-menu-item>
-              <button type="button" class="w-full flex items-center gap-2 text-sm text-red-600" (click)="logout()">
-                <tas-icon iconName="feather:log-out" style="font-size:14px" class="text-red-400"></tas-icon>
-                Déconnexion
-              </button>
-            </tas-menu-item>
-          </tas-menu>
-        </ng-template>
-      </div>
-    </div>
-  </tas-navigation-navbar>
-  <common-impersonation-banner></common-impersonation-banner>
-  <div class="p-4">
-    <common-breadcrumb></common-breadcrumb>
-    <router-outlet></router-outlet>
+    <common-impersonation-banner></common-impersonation-banner>
+
+    <main class="flex-1 overflow-y-auto p-4 lg:p-7">
+      <router-outlet></router-outlet>
+    </main>
   </div>
-</tas-navigation-layout>
+</div>

@@ -11,7 +11,9 @@ export interface TelephonyTopBarPill {
 }
 
 /**
- * État de la pastille de téléphonie de la barre supérieure (TEL-F-11).
+ * État de la téléphonie de l'utilisateur dans la barre supérieure (TEL-F-11) : depuis la nouvelle
+ * navigation, il se lit sur le profil (pastille de l'avatar, « téléphone non lié » sous le rôle)
+ * et dans la carte en tête de son menu — voir `PortalUserMenu`.
  *
  * **Ce service existe pour que `common` ne dépende PAS de `telephony`.** La première
  * version importait le composant de la pastille depuis `@sankore/crm/telephony` dans
@@ -38,7 +40,31 @@ export class TelephonyTopBarState {
   private readonly _pill = signal<TelephonyTopBarPill | null>(null);
   public readonly pill = this._pill.asReadonly();
 
+  /**
+   * Ce que l'utilisateur peut faire lui-même pour réparer, ou `null` — « Lier mon compte » dans
+   * le menu du profil. Même règle que la pastille : `common` affiche le bouton et l'appelle, le
+   * module Téléphonie possède l'appel au serveur et ce qui s'ensuit.
+   */
+  private readonly _action = signal<TelephonyTopBarAction | null>(null);
+  public readonly action = this._action.asReadonly();
+
+  private readonly _actionBusy = signal(false);
+  public readonly actionBusy = this._actionBusy.asReadonly();
+
   public set(pill: TelephonyTopBarPill | null): void {
     this._pill.set(pill);
   }
+
+  public setAction(action: TelephonyTopBarAction | null): void {
+    this._action.set(action);
+  }
+
+  public setActionBusy(busy: boolean): void {
+    this._actionBusy.set(busy);
+  }
+}
+
+export interface TelephonyTopBarAction {
+  readonly label: string;
+  readonly run: () => void;
 }

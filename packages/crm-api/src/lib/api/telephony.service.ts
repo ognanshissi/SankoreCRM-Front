@@ -29,6 +29,8 @@ import { DismissMissedCallRequest } from '../model/dismiss-missed-call-request.i
 // @ts-ignore
 import { LinkCallRequest } from '../model/link-call-request.interface';
 // @ts-ignore
+import { LinkMyTelephonyAccountResponse } from '../model/link-my-telephony-account-response.interface';
+// @ts-ignore
 import { LinkTelephonyUserRequest } from '../model/link-telephony-user-request.interface';
 // @ts-ignore
 import { LinkTelephonyUserResponse } from '../model/link-telephony-user-response.interface';
@@ -883,6 +885,68 @@ export class TelephonyApiService {
             {
                 context: localVarHttpContext,
                 params: localVarQueryParameters,
+                responseType: <any>responseType_,
+                withCredentials: this.configuration.withCredentials,
+                headers: localVarHeaders,
+                observe: observe,
+                reportProgress: reportProgress
+            }
+        );
+    }
+
+    /**
+     * Pairs YOU with your provider account, found by your e-mail address
+     * No body: the account is the provider account whose address belongs to exactly one CRM user, you. TELEPHONY_SELF_LINK_NO_MATCH when none does, TELEPHONY_SELF_LINK_AMBIGUOUS when two accounts or two users share it — an administrator then pairs by hand. 409 TELEPHONY_USER_LINK_ALREADY_TAKEN when the account is someone else\&#39;s. Audited. Needs no permission beyond being signed in.
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     */
+    public linkMyTelephonyAccount(observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<LinkMyTelephonyAccountResponse>;
+    public linkMyTelephonyAccount(observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<LinkMyTelephonyAccountResponse>>;
+    public linkMyTelephonyAccount(observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<LinkMyTelephonyAccountResponse>>;
+    public linkMyTelephonyAccount(observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
+
+        let localVarHeaders = this.defaultHeaders;
+
+        let localVarCredential: string | undefined;
+        // authentication (BearerToken) required
+        localVarCredential = this.configuration.lookupCredential('BearerToken');
+        if (localVarCredential) {
+            localVarHeaders = localVarHeaders.set('Authorization', 'Bearer ' + localVarCredential);
+        }
+
+        let localVarHttpHeaderAcceptSelected: string | undefined = options && options.httpHeaderAccept;
+        if (localVarHttpHeaderAcceptSelected === undefined) {
+            // to determine the Accept header
+            const httpHeaderAccepts: string[] = [
+                'application/json'
+            ];
+            localVarHttpHeaderAcceptSelected = this.configuration.selectHeaderAccept(httpHeaderAccepts);
+        }
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+
+        let localVarHttpContext: HttpContext | undefined = options && options.context;
+        if (localVarHttpContext === undefined) {
+            localVarHttpContext = new HttpContext();
+        }
+
+
+        let responseType_: 'text' | 'json' | 'blob' = 'json';
+        if (localVarHttpHeaderAcceptSelected) {
+            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+                responseType_ = 'text';
+            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+                responseType_ = 'json';
+            } else {
+                responseType_ = 'blob';
+            }
+        }
+
+        let localVarPath = `/api/v1/integration/telephony/me/link`;
+        return this.httpClient.request<LinkMyTelephonyAccountResponse>('post', `${this.configuration.basePath}${localVarPath}`,
+            {
+                context: localVarHttpContext,
                 responseType: <any>responseType_,
                 withCredentials: this.configuration.withCredentials,
                 headers: localVarHeaders,

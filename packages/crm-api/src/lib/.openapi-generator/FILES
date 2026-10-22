@@ -432,6 +432,7 @@ model/leads-remove-household-member-request.interface.ts
 model/leads-update-household-member-request.interface.ts
 model/legal-form-dto.interface.ts
 model/link-call-request.interface.ts
+model/link-my-telephony-account-response.interface.ts
 model/link-product-to-cbs-request.interface.ts
 model/link-telephony-user-request.interface.ts
 model/link-telephony-user-response.interface.ts

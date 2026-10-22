@@ -35,8 +35,8 @@ describe('telephonyIndicatorPill', () => {
       input({ linkStatus: 'NotLinked', realtimeState: 'Disconnected' }),
     );
 
-    expect(pill?.label).toBe('Compte non lié');
-    expect(pill?.hint).toContain('administrateur');
+    expect(pill?.label).toBe('Téléphone non lié');
+    expect(pill?.hint).toContain('pas appeler');
   });
 
   it('dit qu’un lien cassé laisse encore appeler', () => {

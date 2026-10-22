@@ -10,7 +10,9 @@ import {
 } from '@angular/core';
 import { MyTelephonyStatusDto, TelephonyApiService } from '@sankore/crm-api';
 import { AuthenticationService, PermissionsService } from '@sankore/crm/common';
-import { EMPTY, catchError } from 'rxjs';
+import { HttpErrorResponse } from '@angular/common/http';
+import { SnackbarService } from '@talisoft/ui/snackbar';
+import { EMPTY, catchError, finalize } from 'rxjs';
 // Import PROFOND et non par la barrique de `common` : la flèche
 // `telephony -> common` est la bonne (toutes les libs métier importent `common`), mais
 // elle doit viser une FEUILLE. Passer par `@sankore/crm/common` conviendrait aussi ; le
@@ -58,6 +60,7 @@ export class TelephonyStatusService {
   private readonly _platformId = inject(PLATFORM_ID);
   private readonly _topBar = inject(TelephonyTopBarState);
   private readonly _destroyRef = inject(DestroyRef);
+  private readonly _snackbar = inject(SnackbarService);
 
   private readonly _isBrowser = isPlatformBrowser(this._platformId);
 
@@ -142,7 +145,21 @@ export class TelephonyStatusService {
       );
     });
 
+    // « Lier mon compte » dans le menu du profil : proposé tant que le poste n'est pas
+    // rattaché (ou ne l'est plus chez le fournisseur). Le serveur trouve le compte par
+    // l'adresse e-mail de l'agent ; à défaut, il le dit et un administrateur reprend la main.
+    effect(() => {
+      const link = this.linkStatus();
+      const repairable = this.telephonyEnabled() && (link === 'NotLinked' || link === 'Broken');
+      this._topBar.setAction(
+        repairable
+          ? { label: link === 'Broken' ? 'Relier mon compte' : 'Lier mon compte', run: () => this.linkMyAccount() }
+          : null,
+      );
+    });
+
     this._destroyRef.onDestroy(() => {
+      this._topBar.setAction(null);
       this._topBar.set(null);
       this.stopRealtime();
     });
@@ -178,9 +195,43 @@ export class TelephonyStatusService {
       });
   }
 
+  /** Rattache l'agent à SON compte chez le fournisseur, retrouvé par son adresse e-mail. */
+  public linkMyAccount(): void {
+    if (this._topBar.actionBusy()) return;
+    this._topBar.setActionBusy(true);
+
+    this._telephonyApi
+      .linkMyTelephonyAccount()
+      .pipe(
+        catchError((err: HttpErrorResponse) => {
+          this._snackbar.error('Compte non lié', SELF_LINK_ERRORS[err.error?.error] ?? SELF_LINK_ERRORS['default']);
+          return EMPTY;
+        }),
+        finalize(() => this._topBar.setActionBusy(false)),
+      )
+      .subscribe((linked) => {
+        this._snackbar.success(
+          'Compte téléphonique lié',
+          linked.displayName ? `Vous appelez désormais depuis le compte « ${linked.displayName} ».` : 'Vous pouvez appeler depuis le CRM.',
+        );
+        this.reload();
+      });
+  }
+
   public stopRealtime(): void {
     this._realtimeRequested = false;
     this._realtimeAttempted.set(false);
     this._realtime.disconnect();
   }
 }
+
+/** Les refus du rattachement en libre-service, dits avec ce que l'agent peut faire ensuite. */
+const SELF_LINK_ERRORS: Record<string, string> = {
+  TELEPHONY_SELF_LINK_NO_MATCH:
+    'Aucun compte chez votre fournisseur de téléphonie ne porte votre adresse e-mail. Demandez à un administrateur de vous rattacher.',
+  TELEPHONY_SELF_LINK_AMBIGUOUS:
+    'Plusieurs comptes ou utilisateurs partagent votre adresse e-mail : un administrateur doit choisir le bon.',
+  TELEPHONY_USER_LINK_ALREADY_TAKEN: 'Ce compte est déjà rattaché à un collègue. Contactez un administrateur.',
+  INTEGRATION_UNAVAILABLE: 'Le fournisseur de téléphonie ne répond pas. Réessayez dans un instant.',
+  default: 'Le rattachement a échoué. Réessayez, ou demandez à un administrateur.',
+};

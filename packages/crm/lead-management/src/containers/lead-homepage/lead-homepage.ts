@@ -10,7 +10,7 @@ import {
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
-import { catchError, debounceTime, EMPTY, map, Subject } from 'rxjs';
+import { catchError, debounceTime, EMPTY, filter, map, Subject } from 'rxjs';
 import { CdkDragDrop, CdkDragStart, DragDropModule } from '@angular/cdk/drag-drop';
 import { Button } from '@talisoft/ui/button';
 import { TasIcon } from '@talisoft/ui/icon';
@@ -440,6 +440,19 @@ export class LeadHomepage implements OnInit {
     if (params['queue'] === '1') this.filterAwaitingDispatch.set(true);
     this.filterCustom.set(this._route.snapshot.queryParamMap.getAll('cf'));
     if (params['view'] === 'list') this.viewMode.set('list');
+
+    // « Nouveau lead » de la barre latérale arrive ici avec `?nouveau=1`. Écouté et non lu une
+    // fois : depuis cette page, le clic change seulement le paramètre, sans recréer l'écran.
+    // Le paramètre est retiré aussitôt, pour qu'un rafraîchissement ne rouvre pas le tiroir.
+    this._route.queryParamMap
+      .pipe(
+        filter((p) => p.get('nouveau') === '1'),
+        takeUntilDestroyed(this._destroyRef),
+      )
+      .subscribe(() => {
+        this._router.navigate([], { relativeTo: this._route, queryParams: { nouveau: null }, queryParamsHandling: 'merge', replaceUrl: true });
+        if (this.canCreate()) this.openCreateDrawer();
+      });
 
     this.reloadCurrentPage();
     this._loadAgencies();

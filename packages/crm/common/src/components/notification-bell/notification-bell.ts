@@ -2,7 +2,6 @@ import { CdkMenuItem, CdkMenuTrigger } from '@angular/cdk/menu';
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { MyNotificationDto } from '@sankore/crm-api';
-import { ButtonModule } from '@talisoft/ui/button';
 import { TasIcon } from '@talisoft/ui/icon';
 import { Menu } from '@talisoft/ui/menu';
 import { TasSpinner } from '@talisoft/ui/spinner';
@@ -34,7 +33,7 @@ function categoryVisual(category: string | null | undefined): CategoryVisual {
  */
 @Component({
   selector: 'common-notification-bell',
-  imports: [ButtonModule, TasIcon, TasSpinner, Menu, CdkMenuTrigger, CdkMenuItem, TimeagoPipe],
+  imports: [TasIcon, TasSpinner, Menu, CdkMenuTrigger, CdkMenuItem, TimeagoPipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './notification-bell.html',
 })

@@ -20386,6 +20386,37 @@
         }
       }
     },
+    "/api/v1/integration/telephony/me/link": {
+      "post": {
+        "tags": [
+          "Telephony"
+        ],
+        "summary": "Pairs YOU with your provider account, found by your e-mail address",
+        "description": "No body: the account is the provider account whose address belongs to exactly one CRM user, you. TELEPHONY_SELF_LINK_NO_MATCH when none does, TELEPHONY_SELF_LINK_AMBIGUOUS when two accounts or two users share it — an administrator then pairs by hand. 409 TELEPHONY_USER_LINK_ALREADY_TAKEN when the account is someone else's. Audited. Needs no permission beyond being signed in.",
+        "operationId": "LinkMyTelephonyAccount",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LinkMyTelephonyAccountResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict"
+          },
+          "422": {
+            "description": "Unprocessable Entity"
+          },
+          "503": {
+            "description": "Service Unavailable"
+          }
+        }
+      }
+    },
     "/api/v1/integration/telephony/directory": {
       "get": {
         "tags": [
@@ -40265,6 +40296,20 @@
             "format": "uuid"
           },
           "reason": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "LinkMyTelephonyAccountResponse": {
+        "type": "object",
+        "properties": {
+          "linkId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "displayName": {
             "type": "string",
             "nullable": true
           }

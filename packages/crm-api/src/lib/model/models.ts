@@ -351,6 +351,7 @@ export * from './leads-remove-household-member-request.interface';
 export * from './leads-update-household-member-request.interface';
 export * from './legal-form-dto.interface';
 export * from './link-call-request.interface';
+export * from './link-my-telephony-account-response.interface';
 export * from './link-product-to-cbs-request.interface';
 export * from './link-telephony-user-request.interface';
 export * from './link-telephony-user-response.interface';
