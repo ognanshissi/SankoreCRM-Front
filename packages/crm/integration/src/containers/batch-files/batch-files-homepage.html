@@ -1,12 +1,9 @@
 <!-- En-tête -->
 <div class="mb-5 flex items-start justify-between gap-4">
-  <div>
-    <h1 class="text-lg font-semibold text-slate-800">Fichiers batch</h1>
-    <p class="mt-0.5 text-sm text-slate-500">
-      Les fichiers échangés avec vos systèmes externes, dans les deux sens. Un fichier
-      sortant resté sans accusé au-delà du délai annoncé est signalé.
-    </p>
-  </div>
+  <p class="text-sm text-slate-500">
+    Les fichiers échangés avec vos systèmes externes, dans les deux sens. Un fichier
+    sortant resté sans accusé au-delà du délai annoncé est signalé.
+  </p>
   <button tas-outlined-button type="button" [disabled]="isLoading()" (click)="reload()">
     <tas-icon iconName="feather:refresh-cw" style="font-size:14px"></tas-icon>
     Actualiser

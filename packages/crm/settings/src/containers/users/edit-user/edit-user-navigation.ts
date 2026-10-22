@@ -1,4 +1,4 @@
-import { Component, computed, effect, inject, input, signal } from '@angular/core';
+import { Component, computed, DestroyRef, effect, inject, input, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
@@ -52,15 +52,12 @@ const DAY_MS = 24 * 60 * 60 * 1000;
             <div class="w-16 h-16 rounded-full bg-slate-100 text-primary text-xl font-bold flex items-center justify-center shrink-0">{{ initials() }}</div>
           }
           <div class="flex-1 min-w-0">
-            <div class="flex flex-wrap items-center gap-3">
-              <h1 class="text-2xl font-bold text-slate-900 truncate">{{ u.fullName || u.email }}</h1>
+            <p class="text-sm text-slate-600 flex flex-wrap items-center gap-x-4 gap-y-1">
               @if (status(); as s) {
                 <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold" [class]="s.classes">
                   <span class="w-1.5 h-1.5 rounded-full" [class]="s.dot"></span>{{ s.label }}
                 </span>
               }
-            </div>
-            <p class="text-sm text-slate-600 mt-1 flex flex-wrap gap-x-4 gap-y-1">
               <span>{{ u.email }}</span>
               @if (roleAndAgency()) { <span>{{ roleAndAgency() }}</span> }
               <span>{{ accountType() }}</span>
@@ -155,6 +152,7 @@ export class EditUserNavigation {
   private readonly _usersApi = inject(UsersApiService);
   private readonly _auditApi = inject(AuditApiService);
   private readonly _breadcrumb = inject(BreadcrumbService);
+  private readonly _breadcrumbOwner = inject(DestroyRef);
   private readonly _permissions = inject(PermissionsService);
   private readonly _drawer = inject(SideDrawerService);
   private readonly _snackbar = inject(SnackbarService);
@@ -244,11 +242,11 @@ export class EditUserNavigation {
     effect(() => {
       const u = this.user();
       if (!u) return;
-      this._breadcrumb.set([
+      this._breadcrumb.setForTabs([
         { label: 'Paramétrage', link: ['/settings'] },
         { label: 'Utilisateurs', link: ['/settings/users'] },
         { label: u.fullName ?? u.email ?? 'Utilisateur' },
-      ]);
+      ], this._breadcrumbOwner);
     });
   }
 

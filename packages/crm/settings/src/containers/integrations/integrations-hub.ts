@@ -220,13 +220,10 @@ const CATEGORY_ORDER: string[] = [
   template: `
     <div class="pb-6">
       <!-- Header -->
-      <div class="mb-6">
-        <h1 class="text-lg font-semibold text-slate-800">Intégrations</h1>
-        <p class="text-sm text-slate-500 mt-1">
-          Connectez des services externes pour étendre les fonctionnalités de
-          votre CRM.
-        </p>
-      </div>
+      <p class="text-sm text-slate-500 mb-6">
+        Connectez des services externes pour étendre les fonctionnalités de
+        votre CRM.
+      </p>
 
       <!-- Stats -->
       <div class="grid grid-cols-3 gap-4 mb-6">

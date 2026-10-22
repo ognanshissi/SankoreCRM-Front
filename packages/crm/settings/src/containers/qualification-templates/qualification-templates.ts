@@ -23,10 +23,7 @@ import { statusSeverity, statusLabel, productLabel } from './qualification-templ
     } @else {
       <div class="pb-6">
         <div class="flex items-start justify-between mb-6">
-          <div>
-            <h1 class="text-lg font-semibold text-slate-800">Formulaires de qualification</h1>
-            <p class="text-sm text-slate-500 mt-0.5">Configurez les formulaires de qualification par produit.</p>
-          </div>
+          <p class="text-sm text-slate-500">Configurez les formulaires de qualification par produit.</p>
           @if (canManage()) {
             <button tas-raised-button color="primary" type="button" (click)="navigateToCreate()">
               <tas-icon iconName="feather:plus" style="font-size:14px"></tas-icon>

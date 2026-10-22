@@ -27,14 +27,13 @@
         <div class="h-7 w-56 bg-slate-200 rounded animate-pulse"></div>
       } @else if (lead(); as l) {
         <div class="flex items-center gap-2 flex-wrap">
-          <h1 class="text-2xl font-bold text-slate-900 truncate">{{ name() }}</h1>
           <tas-tag [severity]="statusMeta().severity">{{ statusMeta().label }}</tas-tag>
           <pep-exposure-badge [exposed]="compliance.hasPepExposure()"></pep-exposure-badge>
           @if (compliance.fatcaEnabled()) {
             <fatca-status-badge [status]="compliance.principalFatcaStatus()"></fatca-status-badge>
           }
         </div>
-        <!-- Le produit demandé oriente tout le traitement du lead : il se lit avec le nom. -->
+        <!-- Le produit demandé oriente tout le traitement du lead : il se lit avec le statut, sous le nom que porte la barre du haut. -->
         <div class="mt-0.5 flex items-center gap-2">
           @if (productLabel(); as product) {
             <span class="inline-flex items-center gap-1.5 text-sm font-semibold text-primary">

@@ -1,9 +1,6 @@
 <!-- Page header -->
-<div class="flex items-start justify-between mb-5">
-  <div>
-    <h1 class="text-lg font-semibold text-slate-800">Journal d'audit</h1>
-    <p class="text-sm text-slate-400 mt-0.5">Traçabilité des actions effectuées sur l'organisation.</p>
-  </div>
+<div class="flex items-center justify-between gap-4 mb-5">
+  <p class="text-sm text-slate-400">Traçabilité des actions effectuées sur l'organisation.</p>
   <button tas-outlined-button color="primary" (click)="load(1, tableConfig().pagination.pageSize)">
     <tas-icon iconName="feather:refresh-cw" iconSize="sm"></tas-icon>
     Actualiser

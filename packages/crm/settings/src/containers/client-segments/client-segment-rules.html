@@ -6,15 +6,10 @@
   <div class="pb-8 flex flex-col gap-4">
     <!-- En-tête -->
     <div class="flex items-start justify-between gap-4">
-      <div>
-        <h1 class="text-lg font-semibold text-slate-800">
-          Segmentation des clients
-        </h1>
-        <p class="text-sm text-slate-500 mt-0.5">
-          Les règles s'évaluent de haut en bas et la première qui correspond
-          emporte le classement. Le traitement nocturne applique cet ordre.
-        </p>
-      </div>
+      <p class="text-sm text-slate-500">
+        Les règles s'évaluent de haut en bas et la première qui correspond
+        emporte le classement. Le traitement nocturne applique cet ordre.
+      </p>
       <div class="flex items-center gap-2 shrink-0">
         <button tas-outlined-button type="button" (click)="reload()">
           <tas-icon iconName="feather:refresh-cw" style="font-size: 14px"></tas-icon>

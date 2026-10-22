@@ -1,9 +1,8 @@
 <!-- En-tête -->
 <div class="flex flex-wrap items-start justify-between gap-3 mb-5">
   <div class="min-w-0">
-    <div class="flex flex-wrap items-center gap-2.5">
-      <h1 class="text-lg font-semibold text-slate-800">FATCA et conformité</h1>
-      @if (!isLoading() && !loadError()) {
+    @if (!isLoading() && !loadError()) {
+      <div class="flex flex-wrap items-center gap-2.5 mb-1">
         @if (settings()?.fatcaEnabled) {
           <tas-tag severity="success">FATCA actif</tas-tag>
         } @else {
@@ -14,9 +13,9 @@
         } @else {
           <tas-tag severity="neutral">PPE inactive</tas-tag>
         }
-      }
-    </div>
-    <p class="text-sm text-slate-400 mt-0.5">
+      </div>
+    }
+    <p class="text-sm text-slate-400">
       Régime FATCA de l'institution et durée de maintien du statut PPE, appliqués à tous les
       leads et dossiers clients de votre organisation.
     </p>

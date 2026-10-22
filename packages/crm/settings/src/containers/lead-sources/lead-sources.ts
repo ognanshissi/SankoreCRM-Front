@@ -56,15 +56,11 @@ import { TimeagoPipe } from '@talisoft/ui/timeago';
       -->
       <div class="pb-6">
           <!-- Header -->
-          <div class="flex items-start justify-between mb-6">
-            <div>
-              <h1 class="text-lg font-semibold text-slate-800">
-                Sources & Campagnes
-              </h1>
-              <p class="text-sm text-slate-500 mt-0.5">
-                Gérez les sources d'acquisition et campagnes de leads.
-              </p>
-            </div>
+          <div class="flex items-center justify-between gap-4 mb-6">
+            <p class="text-sm text-slate-500">
+              Gérez les sources d'acquisition et campagnes de leads.
+            </p>
+            <div class="flex items-center gap-2 shrink-0">
               <button
                 tas-outlined-button
                 type="button"
@@ -93,6 +89,7 @@ import { TimeagoPipe } from '@talisoft/ui/timeago';
                   Ajouter une source
                 </button>
               }
+            </div>
           </div>
 
           <!-- Filters -->

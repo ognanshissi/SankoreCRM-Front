@@ -1,4 +1,4 @@
-import { Component, computed, inject, OnInit, signal } from '@angular/core';
+import { Component, computed, DestroyRef, inject, OnInit, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { DecimalPipe } from '@angular/common';
 import { catchError, EMPTY } from 'rxjs';
@@ -22,12 +22,9 @@ import { BreadcrumbService, MenuItem } from '@sankore/crm/common';
           <a [routerLink]="['/settings']" tas-button iconButton>
             <tas-icon iconName="feather:chevron-left"></tas-icon>
           </a>
-          <div class="flex-1 min-w-0">
-            <h1 class="text-lg font-semibold text-slate-900">Notifications</h1>
-            <p class="text-xs text-slate-400 mt-0.5">
-              Fournisseurs, expéditeur et suivi des envois.
-            </p>
-          </div>
+          <p class="flex-1 min-w-0 text-xs text-slate-400">
+            Fournisseurs, expéditeur et suivi des envois.
+          </p>
         </div>
       </div>
 
@@ -123,6 +120,7 @@ import { BreadcrumbService, MenuItem } from '@sankore/crm/common';
 })
 export class NotificationNavigation implements OnInit {
   private readonly _breadcrumbService = inject(BreadcrumbService);
+  private readonly _breadcrumbOwner = inject(DestroyRef);
   private readonly _settingsApi = inject(NotificationSettingsApiService);
   private readonly _smsApi = inject(SMSSettingsApiService);
 
@@ -162,10 +160,10 @@ export class NotificationNavigation implements OnInit {
   });
 
   ngOnInit(): void {
-    this._breadcrumbService.set([
+    this._breadcrumbService.setForTabs([
       { label: 'Paramétrage', link: ['/settings'] },
       { label: 'Notifications' },
-    ]);
+    ], this._breadcrumbOwner);
     this._settingsApi
       .getNotificationSettings()
       .pipe(catchError(() => EMPTY))

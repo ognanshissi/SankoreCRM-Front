@@ -45,17 +45,14 @@ type ClientTypeChoice = 'Individual' | 'Legal';
   template: `
     <div class="flex flex-col gap-4">
       <div class="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <p class="text-lg font-semibold text-slate-800">Nouveau client</p>
-          <p class="text-xs text-slate-400">
-            @if (clientType()) {
-              {{ clientTypeLabel(clientType()) }} — suivez les étapes de
-              l'assistant.
-            } @else {
-              Choisissez le type de client pour démarrer l'assistant.
-            }
-          </p>
-        </div>
+        <p class="text-sm text-slate-500">
+          @if (clientType()) {
+            {{ clientTypeLabel(clientType()) }} — suivez les étapes de
+            l'assistant.
+          } @else {
+            Choisissez le type de client pour démarrer l'assistant.
+          }
+        </p>
 
         @if (clientType()) {
           <button

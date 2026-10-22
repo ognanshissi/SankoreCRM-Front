@@ -19,7 +19,6 @@
           <tas-icon iconName="feather:arrow-left" style="font-size:14px"></tas-icon>
           Produits d'assurance
         </button>
-        <h1 class="text-lg font-semibold text-slate-800">{{ loaded.name }}</h1>
         <div class="flex items-center gap-2 mt-2">
           <tas-tag [severity]="loaded.isActive ? 'success' : 'neutral'">
             {{ loaded.isActive ? 'En distribution' : 'Retiré de la distribution' }}

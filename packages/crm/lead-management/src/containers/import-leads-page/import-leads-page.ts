@@ -15,12 +15,9 @@ import { LeadImportWizard } from '../../components/lead-import-wizard/lead-impor
   imports: [LeadImportWizard],
   template: `
     <div class="pb-6">
-      <div class="mb-6">
-        <h1 class="text-lg font-semibold text-slate-800">Importer des leads</h1>
-        <p class="text-sm text-slate-500 mt-0.5">
-          Importez des leads depuis un fichier, un classeur Google Sheets ou Google Contacts.
-        </p>
-      </div>
+      <p class="mb-6 text-sm text-slate-500">
+        Importez des leads depuis un fichier, un classeur Google Sheets ou Google Contacts.
+      </p>
 
       <lead-import-wizard></lead-import-wizard>
     </div>

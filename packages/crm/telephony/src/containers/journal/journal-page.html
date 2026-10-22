@@ -1,13 +1,10 @@
 <!-- En-tête -->
 <div class="mb-5 flex items-start justify-between gap-4">
-  <div>
-    <h1 class="text-lg font-semibold text-slate-800">Journal des appels</h1>
-    <p class="mt-0.5 max-w-3xl text-sm text-slate-500">
-      Les appels de votre périmètre : les vôtres, ceux qui ne sont attribués à personne, et
-      ceux des agences que vous couvrez. Ce n'est pas l'activité de tout l'établissement — le
-      serveur applique ce périmètre, l'écran ne l'élargit pas.
-    </p>
-  </div>
+  <p class="max-w-3xl text-sm text-slate-500">
+    Les appels de votre périmètre : les vôtres, ceux qui ne sont attribués à personne, et
+    ceux des agences que vous couvrez. Ce n'est pas l'activité de tout l'établissement — le
+    serveur applique ce périmètre, l'écran ne l'élargit pas.
+  </p>
   <div class="flex shrink-0 items-center gap-2">
     @if (canExport()) {
       <button

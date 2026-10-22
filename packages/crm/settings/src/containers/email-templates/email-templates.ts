@@ -60,16 +60,11 @@ const LOCALE_FILTER_OPTIONS = [
         </div>
       } @else {
         <div class="pb-6">
-          <div class="flex items-start justify-between mb-6">
-            <div>
-              <h1 class="text-lg font-semibold text-slate-800">
-                Modeles d'e-mail
-              </h1>
-              <p class="text-sm text-slate-500 mt-0.5">
-                Créez et personnalisez les modèles d'e-mail transactionnels et
-                marketing.
-              </p>
-            </div>
+          <div class="flex items-center justify-between gap-4 mb-6">
+            <p class="text-sm text-slate-500">
+              Créez et personnalisez les modèles d'e-mail transactionnels et
+              marketing.
+            </p>
             <button
               tas-raised-button
               color="primary"

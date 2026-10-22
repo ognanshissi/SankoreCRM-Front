@@ -4,23 +4,16 @@
       <a [routerLink]="['/settings/agencies']" tas-icon-button>
         <tas-icon iconName="feather:chevron-left"></tas-icon>
       </a>
-      <div class="flex-1">
-        @if (isLoading()) {
-          <div class="h-6 w-48 bg-slate-200 rounded animate-pulse"></div>
-        } @else {
-          <TasTitle>{{ agency()?.name ?? 'Agence' }}</TasTitle>
-        }
-      </div>
       @if (!isLoading() && agency()) {
         <span
-          class="inline-flex items-center px-8 py-2 rounded-full font-medium"
+          class="ml-auto inline-flex items-center px-8 py-2 rounded-full font-medium"
           [ngClass]="{
-          'bg-green-100 text-green-700': agency()!.isActive,
-          'bg-red-100 text-red-700': !agency()!.isActive
-        }"
+            'bg-green-100 text-green-700': agency()!.isActive,
+            'bg-red-100 text-red-700': !agency()!.isActive
+          }"
         >
-        {{ agency()!.isActive ? 'Actif' : 'Inactif' }}
-      </span>
+          {{ agency()!.isActive ? 'Actif' : 'Inactif' }}
+        </span>
       }
     </div>
 

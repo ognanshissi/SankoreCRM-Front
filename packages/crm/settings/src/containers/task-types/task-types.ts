@@ -26,12 +26,7 @@ import { BreadcrumbService, PermissionsService } from '@sankore/crm/common';
         <div class="flex justify-center py-24"><tas-spinner size="10" class="text-primary"></tas-spinner></div>
       } @else {
         <div class="pb-6">
-          <div class="flex items-start justify-between mb-6">
-            <div>
-              <h1 class="text-lg font-semibold text-slate-800">Types de tâches</h1>
-              <p class="text-sm text-slate-500 mt-0.5">Définissez les types disponibles dans les formulaires de tâches.</p>
-            </div>
-          </div>
+          <p class="text-sm text-slate-500 mb-6">Définissez les types disponibles dans les formulaires de tâches.</p>
 
           <!-- Create form -->
           <tas-card class="mb-4 block">

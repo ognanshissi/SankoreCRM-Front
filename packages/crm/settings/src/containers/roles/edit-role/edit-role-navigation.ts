@@ -1,4 +1,4 @@
-import { Component, computed, effect, inject, input, signal } from '@angular/core';
+import { Component, computed, DestroyRef, effect, inject, input, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { NgClass } from '@angular/common';
 import { Navigation } from '../../../components/navigation/navigation';
@@ -17,18 +17,9 @@ import { BreadcrumbService, MenuItem } from '@sankore/crm/common';
           <a [routerLink]="['/settings/roles']" tas-button iconButton>
             <tas-icon iconName="feather:chevron-left"></tas-icon>
           </a>
-          <div class="flex-1 min-w-0">
-            @if (isLoading()) {
-              <div class="h-5 w-40 bg-slate-200 rounded animate-pulse"></div>
-            } @else {
-              <h1 class="text-lg font-semibold text-slate-900 truncate">
-                {{ role()?.label ?? role()?.name ?? 'Rôle' }}
-              </h1>
-            }
-          </div>
           @if (!isLoading() && role()) {
             <span
-              class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium shrink-0"
+              class="ml-auto inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium shrink-0"
               [ngClass]="{
                 'bg-slate-100 text-slate-600': role()!.isSystem,
                 'bg-blue-100 text-blue-700': !role()!.isSystem,
@@ -80,6 +71,7 @@ import { BreadcrumbService, MenuItem } from '@sankore/crm/common';
 export class EditRoleNavigation {
   private readonly _rolesApiService = inject(RolesApiService);
   private readonly _breadcrumbService = inject(BreadcrumbService);
+  private readonly _breadcrumbOwner = inject(DestroyRef);
 
   public readonly id = input.required<string>();
 
@@ -99,11 +91,11 @@ export class EditRoleNavigation {
         next: (role) => {
           this.role.set(role);
           this.isLoading.set(false);
-          this._breadcrumbService.set([
+          this._breadcrumbService.setForTabs([
             { label: 'Paramétrage', link: ['/settings'] },
             { label: 'Rôles', link: ['/settings/roles'] },
             { label: role.label ?? role.name ?? 'Rôle' },
-          ]);
+          ], this._breadcrumbOwner);
         },
         error: () => {
           this.isLoading.set(false);

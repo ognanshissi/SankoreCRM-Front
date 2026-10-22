@@ -1,11 +1,8 @@
 <div class="pb-6">
   <div class="flex items-start justify-between mb-6 gap-4">
-    <div>
-      <h1 class="text-lg font-semibold text-slate-800">Produits d'assurance</h1>
-      <p class="text-sm text-slate-500 mt-0.5">
-        Le catalogue que vos agents peuvent proposer au guichet, assureur par assureur.
-      </p>
-    </div>
+    <p class="text-sm text-slate-500">
+      Le catalogue que vos agents peuvent proposer au guichet, assureur par assureur.
+    </p>
     @if (canManage() && hasInsurer()) {
       <button tas-raised-button color="primary" type="button" (click)="openCreateDrawer()">
         <tas-icon iconName="feather:plus" style="font-size:14px"></tas-icon>

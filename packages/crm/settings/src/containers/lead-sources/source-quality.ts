@@ -40,13 +40,10 @@ const PERIOD_OPTIONS = [
   template: `
     <div class="pb-6">
       <!-- Header -->
-      <div class="flex items-start justify-between mb-6">
-        <div>
-          <h1 class="text-lg font-semibold text-slate-800">Qualité des fournisseurs</h1>
-          <p class="text-sm text-slate-500 mt-0.5">
-            Comparez les sources sur la quantité, la qualité et le coût d'acquisition.
-          </p>
-        </div>
+      <div class="flex items-center justify-between gap-4 mb-6">
+        <p class="text-sm text-slate-500">
+          Comparez les sources sur la quantité, la qualité et le coût d'acquisition.
+        </p>
         <div class="flex items-center gap-3">
           <tas-form-field>
             <tas-select

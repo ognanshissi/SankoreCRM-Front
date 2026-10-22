@@ -18,9 +18,10 @@
     <!--
       ═══════ Le produit, au-dessus des onglets ═══════
 
-      Le médaillon et le nom sont hors des volets : ils disent QUEL produit est en cours
-      d'édition, ce qui vaut sur les six onglets. Dans le volet « Identité », ils auraient
-      disparu dès qu'on passe à « KYC à distance » — où une politique s'enregistre pour de bon.
+      Le médaillon et le code sont hors des volets : avec le nom, titre de la barre du haut, ils
+      disent QUEL produit est en cours d'édition, ce qui vaut sur les six onglets. Dans le volet
+      « Identité », ils auraient disparu dès qu'on passe à « KYC à distance » — où une politique
+      s'enregistre pour de bon.
     -->
     <div class="flex flex-wrap items-center gap-4">
       <!--
@@ -32,12 +33,7 @@
         <tas-icon [iconName]="categoryIcon()" class="text-primary" style="font-size:26px"
           aria-hidden="true"></tas-icon>
       </div>
-      <div class="min-w-0">
-        <h1 class="text-lg font-semibold text-slate-900 truncate">
-          {{ dto.name || dto.code || 'Produit sans nom' }}
-        </h1>
-        <p class="text-sm font-mono text-slate-500 mt-0.5">{{ dto.code || '—' }}</p>
-      </div>
+      <p class="min-w-0 text-sm font-mono text-slate-500">{{ dto.code || '—' }}</p>
     </div>
 
     <!--

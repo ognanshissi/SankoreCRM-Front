@@ -12,7 +12,6 @@ import { form, FormField, FormRoot, required, submit } from '@angular/forms/sign
 import { catchError, EMPTY, filter, firstValueFrom } from 'rxjs';
 import { NgClass } from '@angular/common';
 import { Dialog } from '@angular/cdk/dialog';
-import { TasTitle } from '@talisoft/ui/title';
 import { TasCard, TasCardHeader } from '@talisoft/ui/card';
 import { Button } from '@talisoft/ui/button';
 import { TasIcon } from '@talisoft/ui/icon';
@@ -74,7 +73,6 @@ const AGENCY_TYPE_OPTIONS = [
   imports: [
     RouterLink,
     NgClass,
-    TasTitle,
     TasCard,
     TasCardHeader,
     Button,

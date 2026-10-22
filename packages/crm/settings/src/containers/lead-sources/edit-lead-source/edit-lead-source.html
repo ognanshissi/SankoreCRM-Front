@@ -19,14 +19,11 @@
             class="text-slate-400"
             style="font-size:16px"
           ></tas-icon>
-          <h1 class="text-lg font-semibold text-slate-800 truncate">
-            {{ source()!.label }}
-          </h1>
           <span
             class="text-[10px] text-slate-400 font-mono bg-slate-50 px-1.5 py-0.5 rounded"
           >
-                {{ source()!.code }}
-              </span>
+            {{ source()!.code }}
+          </span>
           <tas-tag [severity]="getStatusSeverity(source()!.status)">
             {{ getStatusLabel(source()!.status) }}
           </tas-tag>

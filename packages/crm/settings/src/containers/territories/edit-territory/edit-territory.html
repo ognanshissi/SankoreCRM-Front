@@ -8,14 +8,11 @@
     <!-- Header -->
     <div class="flex items-center justify-between">
       <div class="flex items-center">
-        <a [routerLink]="['/settings/terriories']" tas-button iconButton>
+        <a [routerLink]="['/settings/territories']" tas-button iconButton>
           <tas-icon iconName="feather:chevron-left"></tas-icon>
         </a>
 
-        <div>
-          <h1 class="text-xl font-semibold text-slate-800">{{ territory()!.name }}</h1>
-          <p class="text-sm text-slate-500 mt-0.5">Code : {{ territory()!.code ?? '—' }}</p>
-        </div>
+        <p class="text-sm text-slate-500">Code : {{ territory()!.code ?? '—' }}</p>
       </div>
       <span
         class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"

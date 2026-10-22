@@ -5,20 +5,17 @@
       <tas-icon iconName="feather:chevron-left" style="font-size:14px"></tas-icon>
       Parcours
     </a>
-    <div class="min-w-0">
-      @if (template(); as t) {
-        <h1 class="text-lg font-semibold text-slate-900 truncate">{{ t.name }}</h1>
-        <p class="text-xs text-slate-500">
-          @if (isDraft()) {
-            Version publiée : {{ published() ? 'v' + published()!.version : 'aucune' }} · brouillon modifié {{ t.updatedAt | dateTimeAgo }}
-          } @else {
-            Version publiée · modifiée {{ t.updatedAt | dateTimeAgo }}
-          }
-        </p>
-      } @else {
-        <div class="h-5 w-48 bg-slate-200 rounded animate-pulse"></div>
-      }
-    </div>
+    @if (template(); as t) {
+      <p class="min-w-0 text-xs text-slate-500">
+        @if (isDraft()) {
+          Version publiée : {{ published() ? 'v' + published()!.version : 'aucune' }} · brouillon modifié {{ t.updatedAt | dateTimeAgo }}
+        } @else {
+          Version publiée · modifiée {{ t.updatedAt | dateTimeAgo }}
+        }
+      </p>
+    } @else {
+      <div class="h-4 w-48 bg-slate-200 rounded animate-pulse"></div>
+    }
     @if (template(); as t) {
       <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold"
         [class]="isDraft() ? 'bg-amber-100 text-amber-800' : 'bg-green-100 text-green-800'">

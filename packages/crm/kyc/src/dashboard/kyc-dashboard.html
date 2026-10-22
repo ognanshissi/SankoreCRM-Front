@@ -1,27 +1,24 @@
 <div class="pb-6 flex flex-col gap-5 min-h-[calc(100vh-8rem)]">
   <!-- ═══ En-tête : périmètre, recherche, ouverture ═══ -->
   <div class="flex flex-wrap items-center justify-between gap-4">
-    <div class="flex flex-wrap items-center gap-4">
-      <h1 class="text-2xl font-semibold text-slate-900">Dossiers KYC</h1>
-      <div class="h-11 p-1 rounded-full bg-white border border-slate-100 shadow-sm flex items-center gap-1" role="group" aria-label="Périmètre">
-        @for (s of [
-          { key: 'mine', label: 'Mes dossiers' },
-          { key: 'agency', label: 'Mon agence' },
-          { key: 'all', label: 'Toutes les agences' }
-        ]; track s.key) {
-          <button
-            type="button"
-            class="h-9 px-3.5 rounded-full text-sm whitespace-nowrap transition-colors disabled:opacity-40 disabled:cursor-not-allowed focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-            [class]="scope() === s.key ? 'bg-primary text-white font-semibold' : 'text-slate-600 hover:bg-slate-50'"
-            [attr.aria-pressed]="scope() === s.key"
-            [disabled]="s.key === 'agency' && !myAgencyId()"
-            [title]="s.key === 'agency' && !myAgencyId() ? 'Votre compte n’est rattaché à aucune agence' : ''"
-            (click)="setScope($any(s.key))"
-          >
-            {{ s.label }}
-          </button>
-        }
-      </div>
+    <div class="h-11 p-1 rounded-full bg-white border border-slate-100 shadow-sm flex items-center gap-1" role="group" aria-label="Périmètre">
+      @for (s of [
+        { key: 'mine', label: 'Mes dossiers' },
+        { key: 'agency', label: 'Mon agence' },
+        { key: 'all', label: 'Toutes les agences' }
+      ]; track s.key) {
+        <button
+          type="button"
+          class="h-9 px-3.5 rounded-full text-sm whitespace-nowrap transition-colors disabled:opacity-40 disabled:cursor-not-allowed focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+          [class]="scope() === s.key ? 'bg-primary text-white font-semibold' : 'text-slate-600 hover:bg-slate-50'"
+          [attr.aria-pressed]="scope() === s.key"
+          [disabled]="s.key === 'agency' && !myAgencyId()"
+          [title]="s.key === 'agency' && !myAgencyId() ? 'Votre compte n’est rattaché à aucune agence' : ''"
+          (click)="setScope($any(s.key))"
+        >
+          {{ s.label }}
+        </button>
+      }
     </div>
 
     <div class="flex items-center gap-3">

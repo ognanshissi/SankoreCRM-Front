@@ -1,13 +1,10 @@
 <div class="pb-6">
   <!-- En-tête -->
   <div class="flex items-start justify-between gap-4 mb-5">
-    <div>
-      <h1 class="text-lg font-semibold text-slate-800">Formulaires</h1>
-      <p class="text-sm text-slate-500 mt-0.5">
-        Les champs des leads, des clients et des produits : leur ordre, leurs sections, ceux qui
-        apparaissent à la création, et vos champs personnalisés.
-      </p>
-    </div>
+    <p class="text-sm text-slate-500">
+      Les champs des leads, des clients et des produits : leur ordre, leurs sections, ceux qui
+      apparaissent à la création, et vos champs personnalisés.
+    </p>
     @if (canManage()) {
       <div class="flex items-center gap-2 shrink-0">
         @if (isDirty()) {

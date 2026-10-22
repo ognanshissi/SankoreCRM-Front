@@ -1,12 +1,4 @@
-import {
-  ChangeDetectionStrategy,
-  Component,
-  computed,
-  effect,
-  inject,
-  input,
-  signal,
-} from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, effect, inject, input, signal } from '@angular/core';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { TasCard } from '@talisoft/ui/card';
 import { TasIcon } from '@talisoft/ui/icon';
@@ -161,9 +153,6 @@ const PENDING_KYC_ALERT_DAYS = 15;
             <div class="flex items-start justify-between gap-4">
               <div class="min-w-0">
                 <div class="flex items-center gap-2 flex-wrap">
-                  <h1 class="text-lg font-semibold text-slate-900 truncate">
-                    {{ client()!.displayName || '—' }}
-                  </h1>
                   <tas-tag [severity]="statusSeverity()">{{ statusLabel() }}</tas-tag>
                 </div>
                 <p class="text-sm text-slate-500 mt-0.5">
@@ -248,6 +237,7 @@ export class ClientDetailNavigation {
   protected readonly store = inject(ClientDetailStore);
   protected readonly householdStore = inject(ClientHouseholdStore);
   private readonly _breadcrumb = inject(BreadcrumbService);
+  private readonly _breadcrumbOwner = inject(DestroyRef);
   private readonly _agenciesApi = inject(AgenciesApiService);
   private readonly _usersApi = inject(UsersApiService);
 
@@ -365,10 +355,10 @@ export class ClientDetailNavigation {
       const client = this.client();
       if (!client) return;
 
-      this._breadcrumb.set([
+      this._breadcrumb.setForTabs([
         { label: 'Clients', link: ['/customers'] },
         { label: client.displayName ?? client.clientNumber ?? 'Client' },
-      ]);
+      ], this._breadcrumbOwner);
 
       if (client.agencyId) {
         this._agenciesApi.getAgency(client.agencyId).pipe(

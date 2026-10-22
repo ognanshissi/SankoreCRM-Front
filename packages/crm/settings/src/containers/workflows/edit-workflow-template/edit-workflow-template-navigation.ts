@@ -1,4 +1,4 @@
-import { Component, effect, inject, input, signal } from '@angular/core';
+import { Component, DestroyRef, effect, inject, input, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { catchError, EMPTY } from 'rxjs';
 import { Navigation } from '../../../components/navigation/navigation';
@@ -23,23 +23,13 @@ import { Anchor, Button } from '@talisoft/ui/button';
   template: `
     <crm-navigation [menuItems]="menuItems()">
       <div tas-navigation-top>
-        <!-- Row 1: back + title + status badge -->
+        <!-- Row 1: back + actions -->
         <div class="flex items-center gap-2 mb-1">
           <a [routerLink]="['/settings/workflows']" tas-button iconButton>
             <tas-icon iconName="feather:chevron-left"></tas-icon>
           </a>
-          <div class="flex-1 min-w-0">
-            @if (isLoading()) {
-              <div class="h-5 w-40 bg-slate-200 rounded animate-pulse"></div>
-            } @else {
-              <h1 class="text-base font-semibold text-slate-900 truncate">
-                {{ template()?.name ?? 'Modèle de workflow' }}
-              </h1>
-            }
-          </div>
-          <!-- Row 2: actions -->
           @if (!isLoading() && template()) {
-            <div class="flex items-center gap-1.5">
+            <div class="ml-auto flex items-center gap-1.5">
               <button
                 tas-raised-button
                 color="primary"
@@ -115,6 +105,7 @@ export class EditWorkflowTemplateNavigation {
     WorkflowTemplatesApiService,
   );
   private readonly _breadcrumbService = inject(BreadcrumbService);
+  private readonly _breadcrumbOwner = inject(DestroyRef);
   private readonly _snackbar = inject(SnackbarService);
   private readonly _router = inject(Router);
 
@@ -174,11 +165,11 @@ export class EditWorkflowTemplateNavigation {
           next: (template) => {
             this.template.set(template);
             this.isLoading.set(false);
-            this._breadcrumbService.set([
+            this._breadcrumbService.setForTabs([
               { label: 'Paramétrage', link: ['/settings'] },
               { label: 'Workflows', link: ['/settings/workflows'] },
               { label: template.name ?? 'Modèle' },
-            ]);
+            ], this._breadcrumbOwner);
           },
           error: () => this.isLoading.set(false),
         });

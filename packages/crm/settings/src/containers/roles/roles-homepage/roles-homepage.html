@@ -1,15 +1,12 @@
 <!-- Page header -->
 <div class="flex items-start justify-between mb-5">
-  <div>
-    <div class="flex items-center gap-2.5">
-      <h1 class="text-lg font-semibold text-slate-800">Rôles</h1>
-      @if (roles().length > 0) {
-        <span class="px-2 py-0.5 rounded-md bg-slate-100 text-slate-500 text-xs font-medium tabular-nums">
-          {{ filteredRoles().length }}
-        </span>
-      }
-    </div>
-    <p class="text-sm text-slate-400 mt-0.5">Gérez les rôles et leurs permissions dans votre organisation.</p>
+  <div class="flex items-center gap-2.5">
+    @if (roles().length > 0) {
+      <span class="px-2 py-0.5 rounded-md bg-slate-100 text-slate-500 text-xs font-medium tabular-nums">
+        {{ filteredRoles().length }}
+      </span>
+    }
+    <p class="text-sm text-slate-400">Gérez les rôles et leurs permissions dans votre organisation.</p>
   </div>
   @if (canCreate()) {
     <button tas-filled-button [color]="'primary'" (click)="openCreateDrawer()">

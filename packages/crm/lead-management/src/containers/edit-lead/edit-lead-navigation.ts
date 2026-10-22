@@ -1,4 +1,4 @@
-import { Component, computed, effect, inject, input, signal, OnDestroy } from '@angular/core';
+import { Component, computed, DestroyRef, effect, inject, input, OnDestroy, signal } from '@angular/core';
 import { NavigationEnd, Router, RouterLink, RouterOutlet } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { TasIcon } from '@talisoft/ui/icon';
@@ -181,6 +181,7 @@ export class EditLeadNavigation implements OnDestroy {
 
   private readonly _leadsApiService = inject(LeadsApiService);
   private readonly _breadcrumbService = inject(BreadcrumbService);
+  private readonly _breadcrumbOwner = inject(DestroyRef);
   private readonly _sideDrawerService = inject(SideDrawerService);
   private readonly _snackbar = inject(SnackbarService);
   private readonly _confirmDialog = inject(ConfirmDialogService);
@@ -488,10 +489,10 @@ export class EditLeadNavigation implements OnDestroy {
 
   private _setLead(lead: LeadDto): void {
     this.lead.set(lead);
-    this._breadcrumbService.set([
+    this._breadcrumbService.setForTabs([
       { label: 'Leads', link: ['/leads'] },
       { label: displayName(lead) },
-    ]);
+    ], this._breadcrumbOwner);
   }
 
   public closeLead(): void {

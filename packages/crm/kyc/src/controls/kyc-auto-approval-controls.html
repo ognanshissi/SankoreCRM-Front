@@ -4,16 +4,11 @@
     <div class="p-4 flex flex-wrap items-start justify-between gap-4">
       <div class="flex items-start gap-3">
         <tas-icon iconName="feather:shield" class="text-primary shrink-0 mt-0.5" style="font-size:18px"></tas-icon>
-        <div>
-          <h1 class="text-base font-semibold text-slate-800">
-            Contrôle des validations automatiques
-          </h1>
-          <p class="text-sm text-slate-600 mt-0.5 max-w-2xl">
-            Un échantillon des dossiers validés sans intervention humaine. Chaque constat est
-            consigné une fois et ne peut plus être modifié ; un constat « non conforme » ouvre
-            une revue sur le dossier.
-          </p>
-        </div>
+        <p class="text-sm text-slate-600 max-w-2xl">
+          Un échantillon des dossiers validés sans intervention humaine. Chaque constat est
+          consigné une fois et ne peut plus être modifié ; un constat « non conforme » ouvre
+          une revue sur le dossier.
+        </p>
       </div>
 
       @if (pendingCount() > 0) {

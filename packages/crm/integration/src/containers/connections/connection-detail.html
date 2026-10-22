@@ -22,7 +22,6 @@
         {{ family() === 'Insurance' ? 'Connexions assurance' : 'Connexions' }}
       </button>
       <div class="flex items-center gap-2.5">
-        <h1 class="text-lg font-semibold text-slate-800">{{ dto.name || kindLabel() }}</h1>
         <tas-tag [severity]="dto.isActive ? 'success' : 'neutral'">
           {{ dto.isActive ? 'Active' : 'Inactive' }}
         </tas-tag>

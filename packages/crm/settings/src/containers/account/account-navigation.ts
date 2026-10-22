@@ -1,4 +1,4 @@
-import { Component, computed, inject, Injectable, OnInit, signal } from '@angular/core';
+import { Component, computed, DestroyRef, inject, Injectable, OnInit, signal } from '@angular/core';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { catchError, forkJoin, of } from 'rxjs';
 import { MyProfileDto, UsersApiService } from '@sankore/crm-api';
@@ -68,6 +68,7 @@ const AVAILABILITY_PILL: Record<AgentAvailabilityCode, { label: string; classes:
 })
 export class AccountNavigation implements OnInit {
   private readonly _breadcrumbService = inject(BreadcrumbService);
+  private readonly _breadcrumbOwner = inject(DestroyRef);
   private readonly _auth = inject(AuthenticationService);
   private readonly _usersApi = inject(UsersApiService);
   private readonly _state = inject(AccountHeaderState);
@@ -112,10 +113,10 @@ export class AccountNavigation implements OnInit {
   });
 
   ngOnInit(): void {
-    this._breadcrumbService.set([
+    this._breadcrumbService.setForTabs([
       { label: 'Paramétrage', link: ['/settings'] },
       { label: 'Mon compte' },
-    ]);
+    ], this._breadcrumbOwner);
 
     // Ce qui vient de « me » plutôt que de GET users/{id} et GET roles : un agent n'a pas
     // forcément le droit de lire les utilisateurs ou les rôles, mais doit voir son propre en-tête.
