@@ -42,6 +42,17 @@ import { SnackbarPrimitiveData } from './snackbar.service';
       .tas-snackbar--error,
       .tas-snackbar--info {
         @apply rounded border border-gray-200 border-t-4 bg-white;
+
+        /* Material 3 peint le fond sur une surface INTÉRIEURE (.mat-mdc-snackbar-surface), aux
+           couleurs « inverse-surface » du thème — quasi noire, texte clair. Le bg-white ci-dessus
+           n'atteint que le conteneur, que cette surface recouvre : le snackbar s'affichait sur
+           fond noir. Ce sont ses jetons qu'il faut fixer. */
+        --mat-snack-bar-container-color: #ffffff;
+        --mat-snack-bar-supporting-text-color: #1e293b; /* slate-800 */
+        --mat-snack-bar-container-shape: 0.25rem;
+        /* Le thème Material impose Roboto, que l'application ne charge pas : le texte tombait
+           sur la police à empattements du navigateur. */
+        --mat-snack-bar-supporting-text-font: var(--tas-font-family, sans-serif);
       }
 
       .tas-snackbar--success {
