@@ -62,6 +62,7 @@ api/sla-configs.service.ts
 api/sms-settings.service.ts
 api/sms-templates.service.ts
 api/sms-webhooks.service.ts
+api/support.service.ts
 api/task-generation-rules.service.ts
 api/task-types.service.ts
 api/tasks.service.ts
@@ -483,6 +484,7 @@ model/notification-settings-dto.interface.ts
 model/nurture-lead-request.interface.ts
 model/nurturing-sequence-dto.interface.ts
 model/nurturing-step-dto.interface.ts
+model/open-support-ticket-command.interface.ts
 model/opportunity-dto.interface.ts
 model/orass-settings.interface.ts
 model/overdue-profile-notice-dto.interface.ts
@@ -579,6 +581,7 @@ model/remove-group-member-result.interface.ts
 model/remove-household-member-result.interface.ts
 model/rename-connected-account-request.interface.ts
 model/replay-integration-command-result.interface.ts
+model/reply-support-ticket-body.interface.ts
 model/report-suspicious-login-request.interface.ts
 model/reprocess-ingestion-request.interface.ts
 model/reprocess-ingestion-result.interface.ts
@@ -709,6 +712,11 @@ model/subscribe-insurance-policy-request.interface.ts
 model/subscribe-insurance-policy-result.interface.ts
 model/subscribe-request.interface.ts
 model/subscribe-response.interface.ts
+model/support-message-dto.interface.ts
+model/support-ticket-dto.interface.ts
+model/support-ticket-opened-dto.interface.ts
+model/support-ticket-page-dto.interface.ts
+model/support-ticket-summary-dto.interface.ts
 model/suspend-client-request.interface.ts
 model/suspend-group-request.interface.ts
 model/suspend-group-result.interface.ts

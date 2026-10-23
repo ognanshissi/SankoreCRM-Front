@@ -35,6 +35,13 @@ import { AdminAuthService } from '@sankore/admin/auth';
               class="rounded-full px-4 py-2 text-sm font-semibold text-slate-700 hover:text-slate-900"
               >Catalogue des modules</a
             >
+            <a
+              routerLink="/support"
+              routerLinkActive="bg-primary/10 text-primary"
+              ariaCurrentWhenActive="page"
+              class="rounded-full px-4 py-2 text-sm font-semibold text-slate-700 hover:text-slate-900"
+              >Support</a
+            >
           </nav>
         </div>
         <div class="flex items-center gap-3">

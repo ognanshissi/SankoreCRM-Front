@@ -1,0 +1,92 @@
+<div class="flex flex-col gap-5">
+  <div class="flex flex-wrap items-center justify-between gap-4">
+    <div>
+      <h1 class="text-xl font-bold text-slate-800">Support</h1>
+      <p class="mt-0.5 text-sm text-slate-500">
+        Les tickets ouverts par les utilisateurs des tenants. Une réponse est envoyée au demandeur par e-mail et dans sa cloche.
+      </p>
+    </div>
+    <button tas-button iconButton type="button" title="Actualiser" (click)="load()">
+      <tas-icon iconName="feather:refresh-cw" iconSize="sm"></tas-icon>
+    </button>
+  </div>
+
+  <div role="tablist" aria-label="File" class="flex w-fit flex-wrap gap-1 rounded-full bg-slate-100 p-1">
+    @for (t of tabs; track t.value) {
+      <button
+        type="button"
+        role="tab"
+        [attr.aria-selected]="tab() === t.value"
+        class="flex min-h-10 items-center gap-2 rounded-full px-4 text-sm font-semibold transition-colors"
+        [class]="tab() === t.value ? 'bg-white text-primary shadow-xs' : 'text-slate-700 hover:text-slate-900'"
+        (click)="pickTab(t.value)"
+      >
+        {{ t.label }}
+        @if (countOf(t); as n) {
+          <span class="rounded-full bg-slate-200 px-2 text-xs tabular-nums text-slate-700">{{ n }}</span>
+        }
+      </button>
+    }
+  </div>
+
+  <div class="grid grid-cols-1 gap-3 rounded-3xl bg-white p-4 md:grid-cols-3">
+    <tas-form-field class="md:col-span-2">
+      <tas-label>Rechercher</tas-label>
+      <input tasInput type="text" placeholder="SUP-000123 ou un mot du sujet…" [ngModel]="search()" (ngModelChange)="onSearchChange($event)" />
+    </tas-form-field>
+    <tas-form-field>
+      <tas-label>Priorité</tas-label>
+      <tas-select [options]="priorityOptions" [ngModel]="priority()" (ngModelChange)="onPriorityChange($event)"></tas-select>
+    </tas-form-field>
+  </div>
+
+  @if (loadError()) {
+    <div role="alert" class="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-red-50 px-5 py-4">
+      <p class="text-sm text-red-800">{{ loadError() }}</p>
+      <button tas-outlined-button color="primary" type="button" (click)="load()">Réessayer</button>
+    </div>
+  } @else {
+    <tas-table
+      [data]="rows()"
+      identifierField="id"
+      [config]="tableConfig()"
+      [hasCaption]="false"
+      [isLoading]="isLoading()"
+      (pageEventChange)="onPageChange($event)"
+    >
+      <ng-template #header>
+        <tr class="text-left text-xs font-bold uppercase tracking-wide text-slate-500">
+          <th class="py-2.5 pl-5">Ticket</th>
+          <th class="py-2.5">Tenant</th>
+          <th class="py-2.5">Priorité</th>
+          <th class="py-2.5">Statut</th>
+          <th class="py-2.5">Assigné</th>
+          <th class="py-2.5 pr-5 text-right">Dernière activité</th>
+        </tr>
+      </ng-template>
+
+      <ng-template #body let-row>
+        <tr class="cursor-pointer transition-colors hover:bg-slate-50" (click)="open(row.id)">
+          <td class="py-3 pl-5">
+            <p class="font-mono text-xs text-slate-500">{{ row.reference }}</p>
+            <p class="text-sm font-bold text-slate-800">{{ row.subject }}</p>
+            <p class="text-xs text-slate-500">{{ row.category }} · {{ row.requester }}</p>
+          </td>
+          <td class="py-3">
+            <a [routerLink]="['/tenants', row.tenantId]" (click)="$event.stopPropagation()"
+               class="text-sm font-semibold text-slate-700 hover:text-primary">{{ row.tenantName }}</a>
+          </td>
+          <td class="py-3 text-sm" [class]="row.priorityTone">{{ row.priority }}</td>
+          <td class="py-3">
+            <span class="flex items-center gap-1.5 text-sm font-semibold" [class]="row.tone">
+              <span class="size-2 rounded-full" [class]="row.dot" aria-hidden="true"></span>
+              {{ row.label }}
+            </span>
+          </td>
+          <td class="py-3 text-sm text-slate-600">{{ row.assignee ?? '—' }}</td>
+          <td class="py-3 pr-5 text-right text-xs text-slate-500 tabular-nums">{{ row.lastActivityAt | date: 'd MMM y, HH:mm' }}</td>
+        </tr>
+      </ng-template>
+    </tas-table>
+  }
+</div>

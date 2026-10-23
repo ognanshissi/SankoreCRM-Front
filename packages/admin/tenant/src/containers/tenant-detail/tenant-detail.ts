@@ -17,6 +17,7 @@ import {
 } from '@sankore/crm-admin-api';
 import { AddDomainDrawer, AddDomainDrawerData } from './add-domain-drawer';
 import { TenantModulesSection } from './tenant-modules-section';
+import { TenantSupportSection } from './tenant-support-section';
 
 type DomainState = 'active' | 'scheduled' | 'expired' | 'inactive';
 
@@ -38,7 +39,7 @@ const DOMAIN_DELAY_NOTICE = 'Le CRM peut encore accepter cette origine jusquâ€™Ã
 
 @Component({
   templateUrl: './tenant-detail.html',
-  imports: [DatePipe, RouterLink, Button, TasIcon, TasTable, TenantModulesSection],
+  imports: [DatePipe, RouterLink, Button, TasIcon, TasTable, TenantModulesSection, TenantSupportSection],
 })
 export class TenantDetail implements OnInit {
   private readonly _tenantsApi = inject(TenantsApiService);

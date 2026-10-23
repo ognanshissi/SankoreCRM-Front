@@ -1,0 +1,72 @@
+<tas-side-drawer width="640px">
+  <tas-drawer-title>
+    <tas-title>Nouveau ticket</tas-title>
+  </tas-drawer-title>
+
+  <tas-drawer-content>
+    <form [formRoot]="formSchema" class="flex flex-col gap-5">
+      <tas-form-field>
+        <tas-label>Sujet <span class="text-functional-error">*</span></tas-label>
+        <input tasInput type="text" placeholder="L'export des leads ne se termine pas" [formField]="formSchema.subject" />
+        @if (formSchema.subject().touched() && formSchema.subject().invalid()) {
+          <tas-error>{{ formSchema.subject().errors()[0].message }}</tas-error>
+        }
+      </tas-form-field>
+
+      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <tas-form-field>
+          <tas-label>Catégorie</tas-label>
+          <tas-select [options]="categoryOptions" [formField]="formSchema.category"></tas-select>
+        </tas-form-field>
+        <tas-form-field>
+          <tas-label>Priorité</tas-label>
+          <tas-select [options]="priorityOptions" [formField]="formSchema.priority"></tas-select>
+        </tas-form-field>
+      </div>
+
+      <tas-form-field>
+        <tas-label>Description <span class="text-functional-error">*</span></tas-label>
+        <textarea
+          tasInput
+          rows="8"
+          placeholder="Ce que vous faisiez, ce qui s'est passé, ce que vous attendiez."
+          [formField]="formSchema.body"
+        ></textarea>
+        <tas-hint>{{ model().body.length }} / 10 000</tas-hint>
+        @if (formSchema.body().touched() && formSchema.body().invalid()) {
+          <tas-error>{{ formSchema.body().errors()[0].message }}</tas-error>
+        }
+      </tas-form-field>
+
+      <div class="flex gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
+        <tas-icon iconName="feather:shield" style="font-size:14px"></tas-icon>
+        <p>
+          Ne collez pas de données de vos clients (pièce d'identité, numéro de compte, téléphone) :
+          un nom de lead ou une référence de dossier suffit au support pour retrouver le cas.
+        </p>
+      </div>
+
+      @if (pageUrl) {
+        <p class="text-xs text-slate-500">
+          Écran d'origine joint au ticket : <span class="font-mono">{{ pageUrl }}</span>
+        </p>
+      }
+    </form>
+  </tas-drawer-content>
+
+  <tas-drawer-action>
+    <div class="flex justify-end gap-2">
+      <button tas-outlined-button type="button" (click)="close()">Annuler</button>
+      <button
+        tas-raised-button
+        color="primary"
+        type="button"
+        (click)="handleSubmit()"
+        [disabled]="formSchema().invalid() || formSchema().submitting()"
+        [isLoading]="formSchema().submitting()"
+      >
+        Envoyer
+      </button>
+    </div>
+  </tas-drawer-action>
+</tas-side-drawer>

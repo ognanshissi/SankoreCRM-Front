@@ -19564,6 +19564,279 @@
         }
       }
     },
+    "/api/v1/support/tickets": {
+      "get": {
+        "tags": [
+          "Support"
+        ],
+        "summary": "My tickets to the platform team — or the institution's, with support:read:all",
+        "description": "mine=true narrows to the caller's own even with the wide read. 503 TENANT_REGISTRY_UNAVAILABLE. Requires support:read.",
+        "operationId": "ListSupportTickets",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "description": "One of: New, InProgress, WaitingOnTenant, Resolved, Closed",
+            "schema": {
+              "enum": [
+                "New",
+                "InProgress",
+                "WaitingOnTenant",
+                "Resolved",
+                "Closed"
+              ],
+              "type": "string",
+              "description": "One of: New, InProgress, WaitingOnTenant, Resolved, Closed"
+            }
+          },
+          {
+            "name": "openOnly",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "mine",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SupportTicketPageDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Support"
+        ],
+        "summary": "Open a ticket to the platform team",
+        "description": "The page the user was on and the application version help the platform reproduce; the browser is read from the request. The platform team is mailed. Audited. Requires support:create.",
+        "operationId": "OpenSupportTicket",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OpenSupportTicketCommand"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SupportTicketOpenedDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "503": {
+            "description": "Service Unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/support/tickets/{ticketId}": {
+      "get": {
+        "tags": [
+          "Support"
+        ],
+        "summary": "A ticket and its thread",
+        "description": "404 SUPPORT_TICKET_NOT_FOUND for a ticket the caller may not read. Requires support:read.",
+        "operationId": "GetSupportTicket",
+        "parameters": [
+          {
+            "name": "ticketId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SupportTicketDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "503": {
+            "description": "Service Unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/support/tickets/{ticketId}/messages": {
+      "post": {
+        "tags": [
+          "Support"
+        ],
+        "summary": "Answer on a ticket; one the platform waited on goes back to it",
+        "description": "409 SUPPORT_TICKET_CLOSED — reopen it first. Audited. Requires support:create.",
+        "operationId": "ReplySupportTicket",
+        "parameters": [
+          {
+            "name": "ticketId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReplySupportTicketBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "409": {
+            "description": "Conflict"
+          },
+          "503": {
+            "description": "Service Unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/support/tickets/{ticketId}/close": {
+      "post": {
+        "tags": [
+          "Support"
+        ],
+        "summary": "Close a ticket: the problem went away",
+        "description": "Audited. Requires support:create.",
+        "operationId": "CloseSupportTicket",
+        "parameters": [
+          {
+            "name": "ticketId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "409": {
+            "description": "Conflict"
+          },
+          "503": {
+            "description": "Service Unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/support/tickets/{ticketId}/reopen": {
+      "post": {
+        "tags": [
+          "Support"
+        ],
+        "summary": "Reopen a Resolved or Closed ticket",
+        "description": "409 SUPPORT_INVALID_TRANSITION on any other status. Audited. Requires support:create.",
+        "operationId": "ReopenSupportTicket",
+        "parameters": [
+          {
+            "name": "ticketId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "409": {
+            "description": "Conflict"
+          },
+          "503": {
+            "description": "Service Unavailable"
+          }
+        }
+      }
+    },
     "/api/v1/leads/task-types": {
       "get": {
         "tags": [
@@ -42578,6 +42851,63 @@
         },
         "additionalProperties": false
       },
+      "OpenSupportTicketCommand": {
+        "type": "object",
+        "properties": {
+          "subject": {
+            "type": "string",
+            "nullable": true
+          },
+          "category": {
+            "enum": [
+              "Bug",
+              "Question",
+              "Access",
+              "ModulesBilling",
+              "Suggestion"
+            ],
+            "type": "string",
+            "description": "One of: Bug, Question, Access, ModulesBilling, Suggestion"
+          },
+          "priority": {
+            "enum": [
+              "Low",
+              "Normal",
+              "High",
+              "Blocking"
+            ],
+            "type": "string",
+            "description": "One of: Low, Normal, High, Blocking"
+          },
+          "body": {
+            "type": "string",
+            "nullable": true
+          },
+          "pageUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "appVersion": {
+            "type": "string",
+            "nullable": true
+          },
+          "userAgent": {
+            "type": "string",
+            "nullable": true
+          },
+          "resourceType": {
+            "type": "string",
+            "nullable": true,
+            "readOnly": true
+          },
+          "resourceId": {
+            "type": "string",
+            "nullable": true,
+            "readOnly": true
+          }
+        },
+        "additionalProperties": false
+      },
       "OpportunityDto": {
         "type": "object",
         "properties": {
@@ -45982,6 +46312,16 @@
             "items": {
               "type": "string"
             },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ReplySupportTicketBody": {
+        "type": "object",
+        "properties": {
+          "body": {
+            "type": "string",
             "nullable": true
           }
         },
@@ -49655,6 +49995,216 @@
           "holdingId": {
             "type": "string",
             "format": "uuid"
+          }
+        },
+        "additionalProperties": false
+      },
+      "SupportMessageDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kind": {
+            "enum": [
+              "Reply",
+              "InternalNote",
+              "StatusChange"
+            ],
+            "type": "string",
+            "description": "One of: Reply, InternalNote, StatusChange"
+          },
+          "authorKind": {
+            "enum": [
+              "Tenant",
+              "Platform",
+              "System"
+            ],
+            "type": "string",
+            "description": "One of: Tenant, Platform, System"
+          },
+          "authorName": {
+            "type": "string",
+            "nullable": true
+          },
+          "body": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "enum": [
+              "New",
+              "InProgress",
+              "WaitingOnTenant",
+              "Resolved",
+              "Closed"
+            ],
+            "type": "string",
+            "description": "One of: New, InProgress, WaitingOnTenant, Resolved, Closed",
+            "nullable": true
+          },
+          "isMine": {
+            "type": "boolean"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false
+      },
+      "SupportTicketDto": {
+        "type": "object",
+        "properties": {
+          "ticket": {
+            "$ref": "#/components/schemas/SupportTicketSummaryDto"
+          },
+          "pageUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "resolvedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "closedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "messages": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SupportMessageDto"
+            },
+            "nullable": true
+          },
+          "canReply": {
+            "type": "boolean"
+          },
+          "canClose": {
+            "type": "boolean"
+          },
+          "canReopen": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "SupportTicketOpenedDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "number": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "reference": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "SupportTicketPageDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SupportTicketSummaryDto"
+            },
+            "nullable": true
+          },
+          "total": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "page": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "SupportTicketSummaryDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "number": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "reference": {
+            "type": "string",
+            "nullable": true
+          },
+          "subject": {
+            "type": "string",
+            "nullable": true
+          },
+          "category": {
+            "enum": [
+              "Bug",
+              "Question",
+              "Access",
+              "ModulesBilling",
+              "Suggestion"
+            ],
+            "type": "string",
+            "description": "One of: Bug, Question, Access, ModulesBilling, Suggestion"
+          },
+          "priority": {
+            "enum": [
+              "Low",
+              "Normal",
+              "High",
+              "Blocking"
+            ],
+            "type": "string",
+            "description": "One of: Low, Normal, High, Blocking"
+          },
+          "status": {
+            "enum": [
+              "New",
+              "InProgress",
+              "WaitingOnTenant",
+              "Resolved",
+              "Closed"
+            ],
+            "type": "string",
+            "description": "One of: New, InProgress, WaitingOnTenant, Resolved, Closed"
+          },
+          "requesterUserId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "requesterName": {
+            "type": "string",
+            "nullable": true
+          },
+          "isMine": {
+            "type": "boolean"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "lastActivityAt": {
+            "type": "string",
+            "format": "date-time"
           }
         },
         "additionalProperties": false

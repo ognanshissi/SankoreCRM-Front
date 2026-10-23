@@ -64,6 +64,17 @@ export class PortalLayoutComponent {
     { initialValue: this._router.url },
   );
 
+  public readonly canUseSupport = this._permissions.can('support:read');
+
+  /**
+   * L'écran courant part avec le lien « Support » : le ticket ouvert depuis là l'emporte, et le
+   * support sait où regarder. Rien depuis le support lui-même, ce ne serait pas une information.
+   */
+  public readonly supportFrom = computed(() => {
+    const url = this._url().split('?')[0];
+    return url.startsWith('/support') ? null : url;
+  });
+
   public readonly companyName = computed(() => this._tenantProvider.context()?.companyName ?? '');
   public readonly logoUrl = computed(() => this._tenantProvider.context()?.logoUrl ?? null);
 

@@ -64,6 +64,18 @@
         <tas-icon iconName="feather:search" style="font-size:18px"></tas-icon>
       </button>
 
+      @if (canUseSupport()) {
+        <a
+          routerLink="/support"
+          [queryParams]="{ from: supportFrom() }"
+          class="rounded-lg p-2 text-slate-600 hover:bg-slate-100"
+          aria-label="Support Sankoré"
+          title="Support Sankoré"
+        >
+          <tas-icon iconName="feather:life-buoy" style="font-size:18px"></tas-icon>
+        </a>
+      }
+
       <!-- Cloche des notifications in-app (WA-FE-10), pour tous les utilisateurs connectés. -->
       <common-notification-bell></common-notification-bell>
 

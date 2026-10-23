@@ -66,6 +66,12 @@ export const PERMISSIONS = {
   TENANT_MODULES_REQUEST: 'tenant:modules:request',
   TENANT_MODULES_DEACTIVATE: 'tenant:modules:deactivate',
 
+  // Tickets adressés à l'équipe Sankoré. Chacun voit les siens ; « read:all » (Administrateur)
+  // ouvre ceux de toute l'institution.
+  SUPPORT_READ: 'support:read',
+  SUPPORT_CREATE: 'support:create',
+  SUPPORT_READ_ALL: 'support:read:all',
+
   NOTIFICATION_SETTINGS_READ: 'notification:settings:read',
   NOTIFICATION_SETTINGS_MANAGE: 'notification:settings:manage',
   NOTIFICATION_SETTINGS_QUOTA: 'notification:settings:quota',

@@ -1,0 +1,113 @@
+@if (isLoading()) {
+  <div class="flex justify-center py-24">
+    <tas-spinner size="10" class="text-primary"></tas-spinner>
+  </div>
+} @else if (notFound()) {
+  <tas-card class="block">
+    <div class="flex flex-col items-center gap-3 p-10 text-center">
+      <tas-icon iconName="feather:life-buoy" class="text-slate-300" style="font-size:32px"></tas-icon>
+      <p class="text-sm text-slate-600">Ce ticket n'existe pas ou ne vous est pas accessible.</p>
+      <a routerLink="/support" class="text-sm font-medium text-primary hover:underline">Retour au support</a>
+    </div>
+  </tas-card>
+} @else if (detail(); as d) {
+  @let t = d.ticket!;
+  <div class="mx-auto flex max-w-4xl flex-col gap-4">
+    <!-- En-tête -->
+    <tas-card class="block">
+      <div class="flex flex-wrap items-start justify-between gap-4 p-4">
+        <div class="min-w-0">
+          <p class="font-mono text-xs text-slate-500">{{ t.reference }}</p>
+          <h2 class="text-lg font-semibold text-slate-900">{{ t.subject }}</h2>
+          <div class="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-600">
+            <tas-tag [severity]="statusSeverities[t.status!]">{{ statusLabels[t.status!] }}</tas-tag>
+            <span>{{ categoryLabels[t.category!] }}</span>
+            <span aria-hidden="true">·</span>
+            <span [class.font-semibold]="t.priority === 'Blocking'" [class.text-functional-error]="t.priority === 'Blocking'">
+              Priorité {{ priorityLabels[t.priority!] | lowercase }}
+            </span>
+            <span aria-hidden="true">·</span>
+            <span>Ouvert {{ t.isMine ? 'par vous' : 'par ' + t.requesterName }} le {{ t.createdAt | date: 'dd/MM/yyyy à HH:mm' }}</span>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <button tas-button iconButton type="button" aria-label="Rafraîchir" (click)="refresh()">
+            <tas-icon iconName="feather:refresh-cw" style="font-size:14px"></tas-icon>
+          </button>
+          @if (canWrite() && d.canReopen) {
+            <button tas-outlined-button type="button" [disabled]="busy()" (click)="reopen()">Rouvrir</button>
+          }
+          @if (canWrite() && d.canClose) {
+            <button tas-outlined-button type="button" [disabled]="busy()" (click)="close()">Clore</button>
+          }
+        </div>
+      </div>
+      @if (t.status === 'Resolved') {
+        <p class="border-t border-slate-100 px-4 py-3 text-xs text-slate-600">
+          Le support considère ce ticket résolu. Sans réponse de votre part, il se fermera de lui-même au bout de 7 jours ;
+          s'il n'est pas réglé, répondez simplement ci-dessous.
+        </p>
+      }
+    </tas-card>
+
+    <!-- Fil -->
+    <tas-card class="block">
+      <div class="flex flex-col gap-3 bg-slate-50 p-4">
+        @for (m of messages(); track m.id) {
+          @if (isStatusChange(m)) {
+            <p class="self-center rounded-full bg-white px-3 py-1 text-[11px] text-slate-600 shadow-sm">
+              {{ authorLabel(m) }} · statut « {{ statusLabels[m.status!] }} » · {{ m.createdAt | date: 'dd/MM HH:mm' }}
+            </p>
+          } @else {
+            <div class="flex flex-col" [class]="m.isMine ? 'items-end' : 'items-start'">
+              <div
+                class="max-w-[85%] rounded-xl px-3 py-2 text-sm text-slate-900 shadow-sm"
+                [class]="m.isMine ? 'rounded-tr-sm bg-primary/10' : m.authorKind === 'Platform' ? 'rounded-tl-sm bg-white ring-1 ring-sky-200' : 'rounded-tl-sm bg-white'"
+              >
+                <p class="mb-0.5 text-[11px] font-semibold" [class]="m.authorKind === 'Platform' ? 'text-sky-800' : 'text-slate-600'">
+                  {{ authorLabel(m) }}
+                </p>
+                <p class="whitespace-pre-wrap break-words">{{ m.body }}</p>
+                <p class="mt-1 text-right text-[10px] text-slate-400">{{ m.createdAt | date: 'dd/MM/yyyy HH:mm' }}</p>
+              </div>
+            </div>
+          }
+        }
+      </div>
+
+      <!-- Réponse -->
+      @if (canWrite() && d.canReply) {
+        <form [formRoot]="replyForm" class="flex flex-col gap-3 border-t border-slate-100 p-4">
+          <tas-form-field>
+            <tas-label>Votre réponse</tas-label>
+            <textarea tasInput rows="4" placeholder="Écrivez au support…" [formField]="replyForm.body"></textarea>
+            @if (replyForm.body().touched() && replyForm.body().invalid()) {
+              <tas-error>{{ replyForm.body().errors()[0].message }}</tas-error>
+            }
+          </tas-form-field>
+          <div class="flex justify-end">
+            <button
+              tas-raised-button
+              color="primary"
+              type="button"
+              (click)="handleReply()"
+              [disabled]="replyForm().invalid() || replyForm().submitting() || busy()"
+              [isLoading]="replyForm().submitting()"
+            >
+              Envoyer
+            </button>
+          </div>
+        </form>
+      } @else if (t.status === 'Closed') {
+        <p class="border-t border-slate-100 p-4 text-sm text-slate-500">
+          Ce ticket est fermé. {{ canWrite() ? 'Rouvrez-le pour écrire au support.' : '' }}
+        </p>
+      }
+    </tas-card>
+
+    @if (d.pageUrl) {
+      <p class="text-xs text-slate-400">Écran d'origine : <span class="font-mono">{{ d.pageUrl }}</span></p>
+    }
+  </div>
+}
