@@ -13,17 +13,17 @@
           <tas-icon iconName="feather:chevron-right" style="font-size:16px"></tas-icon>
         </button>
       </div>
-      <span class="min-w-40 text-sm font-semibold text-slate-800">{{ label() }}</span>
+      <calendar-date-jump [view]="view()" [anchor]="anchor()" [label]="label()" (datePick)="goTo($event)"></calendar-date-jump>
       @if (isLoading()) {
         <tas-spinner size="5" class="text-primary"></tas-spinner>
       }
 
-      <div class="flex rounded-lg border border-slate-200 p-0.5 text-sm" role="group" aria-label="Affichage">
+      <div class="flex gap-1 rounded-full border border-slate-100 bg-white p-1 shadow-xs" role="group" aria-label="Affichage">
         @for (v of [{ id: 'day', label: 'Jour' }, { id: 'week', label: 'Semaine' }, { id: 'month', label: 'Mois' }]; track v.id) {
           <button
             type="button"
-            class="rounded-md px-3 py-1"
-            [class]="view() === v.id ? 'bg-primary text-white' : 'text-slate-600 hover:bg-slate-100'"
+            class="min-h-9 rounded-full px-3.5 text-sm font-semibold transition-colors"
+            [class]="view() === v.id ? 'bg-primary text-white' : 'text-slate-700 hover:bg-slate-50'"
             [attr.aria-pressed]="view() === v.id"
             (click)="setView($any(v.id))"
           >
@@ -34,7 +34,7 @@
 
       <button tas-raised-button color="primary" type="button" (click)="createAppointment()">
         <tas-icon iconName="feather:plus" style="font-size:14px"></tas-icon>
-        Rendez-vous
+        Ajouter un événement
       </button>
     </div>
   </div>
@@ -146,12 +146,15 @@
             <div
               class="flex min-h-28 flex-col gap-1 border-b border-r border-slate-100 p-1.5"
               [class.bg-slate-50]="!cell.inMonth"
+              [class]="cell.isPast ? '' : 'cursor-pointer hover:bg-primary/5'"
+              [title]="cell.isPast ? '' : 'Nouveau rendez-vous ce jour-là'"
+              (click)="onMonthCellClick(cell)"
             >
               <button
                 type="button"
                 class="self-start rounded-full px-1.5 text-xs tabular-nums hover:bg-slate-100"
                 [class]="cell.isToday ? 'bg-primary font-semibold text-white hover:bg-primary' : cell.inMonth ? 'text-slate-700' : 'text-slate-400'"
-                (click)="openDay(cell.day)"
+                (click)="$event.stopPropagation(); openDay(cell.day)"
               >
                 {{ cell.day.getDate() }}
               </button>
@@ -161,7 +164,7 @@
                   class="truncate rounded border-l-2 px-1.5 py-0.5 text-left text-xs text-slate-800"
                   [style]="chipStyle(item)"
                   [title]="item.title + ' · ' + timeRange(item)"
-                  (click)="open(item)"
+                  (click)="$event.stopPropagation(); open(item)"
                 >
                   @if (!item.allDay) {
                     <span class="tabular-nums text-slate-500">{{ timeLabel(item.start) }}</span>
@@ -170,7 +173,7 @@
                 </button>
               }
               @if (cell.more) {
-                <button type="button" class="self-start px-1.5 text-xs text-slate-500 hover:underline" (click)="openDay(cell.day)">
+                <button type="button" class="self-start px-1.5 text-xs text-slate-500 hover:underline" (click)="$event.stopPropagation(); openDay(cell.day)">
                   + {{ cell.more }} autre{{ cell.more > 1 ? 's' : '' }}
                 </button>
               }
@@ -230,8 +233,9 @@
 
             @for (col of columns(); track col.key) {
               <div
-                class="relative cursor-pointer border-l border-slate-200"
+                class="relative border-l border-slate-200"
                 [class.bg-slate-50]="col.isToday"
+                [class.cursor-pointer]="!col.isPast"
                 [style.height.px]="hourPx * 24"
                 (click)="onSlotClick(col, $event)"
               >

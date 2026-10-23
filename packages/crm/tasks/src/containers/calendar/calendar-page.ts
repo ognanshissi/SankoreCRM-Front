@@ -22,6 +22,7 @@ import { TasSpinner } from '@talisoft/ui/spinner';
 import { AppointmentDetailDrawer, AppointmentDetailDrawerData, AppointmentDetailDrawerResult } from '../dashboard/appointment-detail-drawer';
 import { CreateAppointmentDrawer, CreateAppointmentDrawerData } from '../dashboard/create-appointment-drawer';
 import { dayKey, fromDayKey, startOfDay } from '../dashboard/my-day-meta';
+import { CalendarDateJump } from './calendar-date-jump';
 import { CalendarEventDrawer, CalendarEventDrawerData } from './calendar-event-drawer';
 import {
   allDayItems,
@@ -45,6 +46,7 @@ import {
   timeLabel,
   timeRange,
   viewRange,
+  WORK_START_HOUR,
 } from './calendar-meta';
 
 /** Hauteur d'une heure sur la grille, en pixels. */
@@ -75,6 +77,7 @@ interface DayColumn {
   day: Date;
   key: string;
   isToday: boolean;
+  isPast: boolean;
   label: string;
   placed: PlacedItem[];
   allDay: CalendarItem[];
@@ -84,6 +87,7 @@ interface MonthCell {
   day: Date;
   key: string;
   isToday: boolean;
+  isPast: boolean;
   inMonth: boolean;
   items: CalendarItem[];
   more: number;
@@ -117,7 +121,7 @@ function writeHidden(keys: Set<string>): void {
  */
 @Component({
   selector: 'calendar-page',
-  imports: [RouterLink, Button, TasIcon, TasSpinner],
+  imports: [RouterLink, Button, TasIcon, TasSpinner, CalendarDateJump],
   templateUrl: './calendar-page.html',
 })
 export class CalendarPage implements OnInit {
@@ -219,6 +223,7 @@ export class CalendarPage implements OnInit {
       day,
       key: dayKey(day),
       isToday: dayKey(day) === todayKey,
+      isPast: dayKey(day) < todayKey,
       label: `${WEEKDAY.format(day)} ${day.getDate()}`,
       placed: layoutDay(items, day),
       allDay: allDayItems(items, day),
@@ -238,6 +243,7 @@ export class CalendarPage implements OnInit {
         day,
         key: dayKey(day),
         isToday: dayKey(day) === todayKey,
+        isPast: dayKey(day) < todayKey,
         inMonth: day.getMonth() === month,
         items: all.slice(0, MONTH_CHIPS),
         more: Math.max(0, all.length - MONTH_CHIPS),
@@ -303,6 +309,11 @@ export class CalendarPage implements OnInit {
     this._navigated();
   }
 
+  public goTo(day: Date): void {
+    this.anchor.set(day);
+    this._navigated();
+  }
+
   public openDay(day: Date): void {
     this.anchor.set(startOfDay(day));
     this.view.set('day');
@@ -364,10 +375,18 @@ export class CalendarPage implements OnInit {
 
   /** Un clic dans une colonne vide propose un rendez-vous à la demi-heure cliquée. */
   public onSlotClick(column: DayColumn, event: MouseEvent): void {
+    // Un jour passé n'est pas proposé : le tiroir le remplacerait en silence par le prochain créneau.
+    if (column.isPast) return;
     const minutes = Math.floor(((event.offsetY / HOUR_PX) * 60) / 30) * 30;
     const hh = String(Math.floor(minutes / 60)).padStart(2, '0');
     const mm = String(minutes % 60).padStart(2, '0');
     this.createAppointment(column.key, `${hh}:${mm}`);
+  }
+
+  /** Un clic dans une case du mois propose un rendez-vous ce jour-là, en début de journée. */
+  public onMonthCellClick(cell: MonthCell): void {
+    if (cell.isPast) return;
+    this.createAppointment(cell.key, cell.isToday ? undefined : `${String(WORK_START_HOUR).padStart(2, '0')}:00`);
   }
 
   // ——— Actions ———
