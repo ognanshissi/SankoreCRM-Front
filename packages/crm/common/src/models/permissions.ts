@@ -72,6 +72,9 @@ export const PERMISSIONS = {
 
   // ——— Leads ———
   LEAD_READ: 'lead:read',
+  // Sans les trois « read:all », l'utilisateur ne voit que ses leads, clients et dossiers KYC —
+  // le serveur filtre, l'écran n'a rien à faire. Agent et Agent commercial ne les ont pas.
+  LEAD_READ_ALL: 'lead:read:all',
   LEAD_CREATE: 'lead:create',
   LEAD_UPDATE: 'lead:update',
   LEAD_ASSIGN: 'lead:assign',
@@ -148,6 +151,7 @@ export const PERMISSIONS = {
   // parle de « clients » (`/api/v1/clients`, `ClientDetailDto`) : c'est bien ainsi
   // dans le swagger, ne pas « harmoniser ».
   CUSTOMERS_READ: 'customers:read',
+  CUSTOMERS_READ_ALL: 'customers:read:all',
   CUSTOMERS_CREATE: 'customers:create',
   CUSTOMERS_UPDATE: 'customers:update',
   CUSTOMERS_UPDATE_SENSITIVE: 'customers:update_sensitive',
@@ -191,6 +195,7 @@ export const PERMISSIONS = {
 
   // KYC
   KYC_READ: 'kyc:read',
+  KYC_READ_ALL: 'kyc:read:all',
   KYC_MANAGE: 'kyc:manage',
   KYC_VERIFY: 'kyc:verify',
   KYC_APPROVE: 'kyc:approve',
