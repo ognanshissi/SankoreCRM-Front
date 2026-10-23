@@ -5,7 +5,7 @@ import { FormsModule } from '@angular/forms';
 import { PageEvent } from '@angular/material/paginator';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { ConnectionListDto, InsuranceProductDto } from '@sankore/crm-api';
-import { BreadcrumbService, PermissionsService } from '@sankore/crm/common';
+import { BreadcrumbService, PermissionsService, TENANT_MODULES, TenantModulesService, TenantModule, ModuleReadOnlyNotice } from '@sankore/crm/common';
 import { TasAlert } from '@talisoft/ui/alert';
 import { Anchor, Button } from '@talisoft/ui/button';
 import { TasCard } from '@talisoft/ui/card';
@@ -59,7 +59,7 @@ export type InsuranceProductRow = {
 @Component({
   selector: 'insurance-products-page',
   templateUrl: './insurance-products-page.html',
-  imports: [
+  imports: [ModuleReadOnlyNotice, 
     FormsModule,
     RouterLink,
     Anchor,
@@ -79,6 +79,10 @@ export type InsuranceProductRow = {
   ],
 })
 export class InsuranceProductsPage implements OnInit {
+  /** Module désactivé : l'écran reste consultable, sans action (bandeau en tête). */
+  public readonly readOnlyModules: TenantModule[] = [TENANT_MODULES.INSURANCE];
+  /** Module désactivé : consultation seule, les actions se masquent (le serveur les refuserait). */
+  private readonly _moduleReadOnly = inject(TenantModulesService).readOnly(TENANT_MODULES.INSURANCE);
   private readonly _facade = inject(IntegrationFacadeService);
   private readonly _breadcrumb = inject(BreadcrumbService);
   private readonly _permissions = inject(PermissionsService);
@@ -89,7 +93,8 @@ export class InsuranceProductsPage implements OnInit {
   private readonly _router = inject(Router);
   private readonly _route = inject(ActivatedRoute);
 
-  public readonly canManage = this._permissions.can('Ins.Product.Manage');
+  private readonly _canManagePermission = this._permissions.can('Ins.Product.Manage');
+  public readonly canManage = computed(() => this._canManagePermission() && !this._moduleReadOnly());
 
   /** L'écran des connexions assurance, vers lequel renvoyer quand aucune n'est déclarée. */
   public readonly insuranceConnectionsLink = '/settings/integrations/insurance-connections';

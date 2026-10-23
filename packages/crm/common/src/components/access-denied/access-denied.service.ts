@@ -1,11 +1,14 @@
 import { Injectable, signal } from '@angular/core';
 import { PermissionCode } from '../../models/permissions';
+import { TenantModule } from '../../models/tenant-modules';
 
 export interface AccessDenial {
   /** URL que l'utilisateur a tenté d'ouvrir. */
   attemptedUrl: string;
   /** Permission(s) qui auraient permis l'accès. */
   required: PermissionCode[];
+  /** Renseigné quand c'est un module payant inactif, et non une permission, qui ferme la page. */
+  modules?: TenantModule[];
 }
 
 /** Effacement automatique, pour que la bannière ne reste pas indéfiniment. */
@@ -33,6 +36,13 @@ export class AccessDeniedService {
   /** Appelé par les gardes de permission au moment du refus. */
   public notify(attemptedUrl: string, required: PermissionCode[]): void {
     this._notice.set({ attemptedUrl, required });
+    this._skipNextSettle = true;
+    this._restartTimer();
+  }
+
+  /** Appelé par la garde de module : la page appartient à un module que l'institution n'a pas. */
+  public notifyModule(attemptedUrl: string, modules: TenantModule[]): void {
+    this._notice.set({ attemptedUrl, required: [], modules });
     this._skipNextSettle = true;
     this._restartTimer();
   }

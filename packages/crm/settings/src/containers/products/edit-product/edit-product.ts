@@ -61,6 +61,7 @@ const CATEGORY_ICONS: Record<string, string> = {
   GroupCredit: 'feather:user-plus',
   Agriculture: 'feather:sun',
   CurrentAccount: 'feather:credit-card',
+  Standard: 'feather:box',
 };
 
 /**

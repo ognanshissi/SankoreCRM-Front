@@ -1,0 +1,70 @@
+<div class="flex flex-col gap-5">
+  <div class="flex flex-wrap items-center justify-between gap-4">
+    <div>
+      <h1 class="text-xl font-bold text-slate-800">Catalogue des modules</h1>
+      <p class="mt-0.5 text-sm text-slate-500">
+        Les modules payants que les tenants peuvent demander, et leur prix mensuel.
+      </p>
+    </div>
+    <button tas-button iconButton type="button" title="Actualiser" (click)="load()">
+      <tas-icon iconName="feather:refresh-cw" iconSize="sm"></tas-icon>
+    </button>
+  </div>
+
+  @if (loadError()) {
+    <div role="alert" class="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-red-50 px-5 py-4">
+      <p class="text-sm text-red-800">{{ loadError() }}</p>
+      <button tas-outlined-button color="primary" type="button" (click)="load()">Réessayer</button>
+    </div>
+  } @else {
+    <tas-table
+      [data]="definitions()"
+      identifierField="code"
+      [config]="tableConfig()"
+      [hasCaption]="false"
+      [isLoading]="isLoading()"
+    >
+      <ng-template #header>
+        <tr class="text-left text-xs font-bold uppercase tracking-wide text-slate-500">
+          <th class="py-2.5 pl-5">Module</th>
+          <th class="py-2.5 text-right">Prix mensuel</th>
+          <th class="py-2.5">Souscription</th>
+          <th class="py-2.5">Mis à jour</th>
+          <th class="py-2.5 pr-5 text-right"><span class="sr-only">Action</span></th>
+        </tr>
+      </ng-template>
+
+      <ng-template #body let-d>
+        <tr class="transition-colors hover:bg-slate-50">
+          <td class="py-3 pl-5">
+            <div class="flex max-w-xl flex-col leading-snug">
+              <span class="text-sm font-bold text-slate-800">{{ d.label }}</span>
+              <span class="text-xs text-slate-500">{{ d.description }}</span>
+            </div>
+          </td>
+          <td class="py-3 text-right text-sm font-semibold text-slate-700 tabular-nums">
+            {{ price(d.monthlyPrice, d.currency) }}
+          </td>
+          <td class="py-3">
+            @if (d.isAvailable) {
+              <span class="flex items-center gap-1.5 text-sm font-semibold text-green-800">
+                <span class="size-2 rounded-full bg-green-700" aria-hidden="true"></span> Proposé
+              </span>
+            } @else {
+              <span class="flex items-center gap-1.5 text-sm font-semibold text-slate-600">
+                <span class="size-2 rounded-full bg-slate-400" aria-hidden="true"></span> Non proposé
+              </span>
+            }
+          </td>
+          <td class="py-3 text-xs text-slate-600 tabular-nums">{{ d.updatedAt | date: 'd MMM y' }}</td>
+          <td class="py-3 pr-5 text-right">
+            <button tas-outlined-button color="primary" type="button" (click)="edit(d)">
+              <tas-icon iconName="feather:edit-2" style="font-size: 14px"></tas-icon>
+              Modifier
+            </button>
+          </td>
+        </tr>
+      </ng-template>
+    </tas-table>
+  }
+</div>

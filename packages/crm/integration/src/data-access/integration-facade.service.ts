@@ -511,6 +511,8 @@ export function integrationErrorMessage(error: HttpErrorResponse, fallback: stri
     | undefined;
 
   switch (body?.code) {
+    case 'TENANT_MODULE_DISABLED':
+      return "Ce type de connexion relève d'un module payant qui n'est pas activé pour votre institution (Paramétrage › Modules et abonnement).";
     case 'INTEGRATION_CONNECTION_NOT_HEALTHY':
       return "Le test de connexion n'est pas passé. Lancez un test réussi avant d'activer.";
     case 'INTEGRATION_CORE_BANKING_ALREADY_ACTIVE':

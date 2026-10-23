@@ -10,7 +10,7 @@ import { ConfirmDialogService } from '@talisoft/ui/confirm-dialog';
 import { SnackbarService } from '@talisoft/ui/snackbar';
 import { catchError, EMPTY } from 'rxjs';
 import { CreateProductComponent } from '../create-product/create-product';
-import { BreadcrumbService, PermissionsService } from '@sankore/crm/common';
+import { BreadcrumbService, PermissionsService, productCategoryLabel } from '@sankore/crm/common';
 
 @Component({
   templateUrl: './products-homepage.html',
@@ -72,7 +72,7 @@ export class ProductsHomePage {
       case 'Loan': return { label: 'Prêt', severity: 'info' };
       case 'Savings': return { label: 'Épargne', severity: 'success' };
       case 'Tontine': return { label: 'Tontine', severity: 'warning' };
-      default: return { label: cat ?? '—', severity: 'neutral' };
+      default: return { label: productCategoryLabel(cat), severity: 'neutral' };
     }
   }
 

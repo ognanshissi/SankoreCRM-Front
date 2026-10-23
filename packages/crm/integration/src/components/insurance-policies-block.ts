@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, OnInit, computed, inject, input, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { PermissionsService } from '@sankore/crm/common';
+import { PermissionsService, TENANT_MODULES, TenantModulesService } from '@sankore/crm/common';
 import { TasAlert } from '@talisoft/ui/alert';
 import { Anchor, Button } from '@talisoft/ui/button';
 import { TasCard } from '@talisoft/ui/card';
@@ -51,6 +51,8 @@ export function isPolicyAtRisk(row: PolicyRow): boolean {
   imports: [TasAlert, Anchor, Button, TasCard, TasIcon, TasTable, TasTag, TimeagoPipe, RouterLink],
 })
 export class InsurancePoliciesBlock implements OnInit {
+  /** Module désactivé : consultation seule, les actions se masquent (le serveur les refuserait). */
+  private readonly _moduleReadOnly = inject(TenantModulesService).readOnly(TENANT_MODULES.INSURANCE);
   private readonly _permissions = inject(PermissionsService);
   private readonly _sideDrawer = inject(SideDrawerService);
 
@@ -59,8 +61,10 @@ export class InsurancePoliciesBlock implements OnInit {
 
   public readonly customerId = input.required<string>();
 
-  public readonly canSubscribe = this._permissions.can('Ins.Policy.Subscribe');
-  public readonly canDeclareClaim = this._permissions.can('Ins.Claim.Declare');
+  private readonly _canSubscribePermission = this._permissions.can('Ins.Policy.Subscribe');
+  public readonly canSubscribe = computed(() => this._canSubscribePermission() && !this._moduleReadOnly());
+  private readonly _canDeclareClaimPermission = this._permissions.can('Ins.Claim.Declare');
+  public readonly canDeclareClaim = computed(() => this._canDeclareClaimPermission() && !this._moduleReadOnly());
 
   public readonly isLoading = signal(true);
   public readonly rows = signal<PolicyRow[]>([]);

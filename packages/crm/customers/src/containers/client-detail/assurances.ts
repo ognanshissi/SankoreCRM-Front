@@ -4,6 +4,7 @@ import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/c
 // eslint-disable-next-line @nx/enforce-module-boundaries
 import { CustomerClaimsList, InsurancePoliciesBlock } from '@sankore/crm/integration';
 import { ClientDetailStore } from '../../models/client-detail.store';
+import { TENANT_MODULES, TenantModule, ModuleReadOnlyNotice } from '@sankore/crm/common';
 
 /**
  * Onglet « Assurances » de la fiche client — ASS-16 et ASS-17.
@@ -16,8 +17,9 @@ import { ClientDetailStore } from '../../models/client-detail.store';
 @Component({
   selector: 'client-assurances',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [InsurancePoliciesBlock, CustomerClaimsList],
+  imports: [ModuleReadOnlyNotice, InsurancePoliciesBlock, CustomerClaimsList],
   template: `
+    <module-read-only-notice [modules]="readOnlyModules"></module-read-only-notice>
     <div class="flex flex-col gap-4">
       @if (clientId(); as customerId) {
         <insurance-policies-block [customerId]="customerId"></insurance-policies-block>
@@ -27,6 +29,8 @@ import { ClientDetailStore } from '../../models/client-detail.store';
   `,
 })
 export class ClientAssurancesPage {
+  /** Module désactivé : l'écran reste consultable, sans action (bandeau en tête). */
+  public readonly readOnlyModules: TenantModule[] = [TENANT_MODULES.INSURANCE];
   protected readonly store = inject(ClientDetailStore);
 
   protected readonly clientId = computed(() => this.store.clientId() ?? '');

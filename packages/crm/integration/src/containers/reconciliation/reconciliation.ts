@@ -3,7 +3,7 @@ import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { ConnectionListDto } from '@sankore/crm-api';
-import { BreadcrumbService, PermissionCode, PermissionsService } from '@sankore/crm/common';
+import { BreadcrumbService, PermissionCode, PermissionsService, TENANT_MODULES, TenantModule, ModuleReadOnlyNotice } from '@sankore/crm/common';
 import { TasCard } from '@talisoft/ui/card';
 import { TasFormField, TasLabel } from '@talisoft/ui/form-field';
 import { TasSelect } from '@talisoft/ui/select';
@@ -28,7 +28,7 @@ import { CONNECTION_FAMILY_LABELS } from '../../data-access/integration-referent
  */
 @Component({
   templateUrl: './reconciliation.html',
-  imports: [
+  imports: [ModuleReadOnlyNotice, 
     FormsModule,
     TasCard,
     TasFormField,
@@ -39,6 +39,8 @@ import { CONNECTION_FAMILY_LABELS } from '../../data-access/integration-referent
   ],
 })
 export class ReconciliationPage implements OnInit {
+  /** Module désactivé : l'écran reste consultable, sans action (bandeau en tête). */
+  public readonly readOnlyModules: TenantModule[] = [TENANT_MODULES.BANKING_MICROFINANCE, TENANT_MODULES.INSURANCE];
   private readonly _facade = inject(IntegrationFacadeService);
   private readonly _permissions = inject(PermissionsService);
   private readonly _breadcrumb = inject(BreadcrumbService);

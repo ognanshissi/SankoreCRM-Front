@@ -1744,14 +1744,14 @@ export class LeadsApiService {
     }
 
     /**
-     * @param productCategory One of: Loan, Savings, Insurance, HealthInsurance, ForecastInsurance, Tontine, GroupCredit, Agriculture, CurrentAccount
+     * @param productCategory One of: Loan, Savings, Insurance, HealthInsurance, ForecastInsurance, Tontine, GroupCredit, Agriculture, CurrentAccount, Standard
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      */
-    public getActiveTemplateForProduct(productCategory: 'Loan' | 'Savings' | 'Insurance' | 'HealthInsurance' | 'ForecastInsurance' | 'Tontine' | 'GroupCredit' | 'Agriculture' | 'CurrentAccount', observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<QualificationTemplateDto>;
-    public getActiveTemplateForProduct(productCategory: 'Loan' | 'Savings' | 'Insurance' | 'HealthInsurance' | 'ForecastInsurance' | 'Tontine' | 'GroupCredit' | 'Agriculture' | 'CurrentAccount', observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<QualificationTemplateDto>>;
-    public getActiveTemplateForProduct(productCategory: 'Loan' | 'Savings' | 'Insurance' | 'HealthInsurance' | 'ForecastInsurance' | 'Tontine' | 'GroupCredit' | 'Agriculture' | 'CurrentAccount', observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<QualificationTemplateDto>>;
-    public getActiveTemplateForProduct(productCategory: 'Loan' | 'Savings' | 'Insurance' | 'HealthInsurance' | 'ForecastInsurance' | 'Tontine' | 'GroupCredit' | 'Agriculture' | 'CurrentAccount', observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
+    public getActiveTemplateForProduct(productCategory: 'Loan' | 'Savings' | 'Insurance' | 'HealthInsurance' | 'ForecastInsurance' | 'Tontine' | 'GroupCredit' | 'Agriculture' | 'CurrentAccount' | 'Standard', observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<QualificationTemplateDto>;
+    public getActiveTemplateForProduct(productCategory: 'Loan' | 'Savings' | 'Insurance' | 'HealthInsurance' | 'ForecastInsurance' | 'Tontine' | 'GroupCredit' | 'Agriculture' | 'CurrentAccount' | 'Standard', observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<QualificationTemplateDto>>;
+    public getActiveTemplateForProduct(productCategory: 'Loan' | 'Savings' | 'Insurance' | 'HealthInsurance' | 'ForecastInsurance' | 'Tontine' | 'GroupCredit' | 'Agriculture' | 'CurrentAccount' | 'Standard', observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<QualificationTemplateDto>>;
+    public getActiveTemplateForProduct(productCategory: 'Loan' | 'Savings' | 'Insurance' | 'HealthInsurance' | 'ForecastInsurance' | 'Tontine' | 'GroupCredit' | 'Agriculture' | 'CurrentAccount' | 'Standard', observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
         if (productCategory === null || productCategory === undefined) {
             throw new Error('Required parameter productCategory was null or undefined when calling getActiveTemplateForProduct.');
         }
@@ -1794,7 +1794,7 @@ export class LeadsApiService {
             }
         }
 
-        let localVarPath = `/api/v1/leads/qualification-templates/active/${this.configuration.encodeParam({name: "productCategory", value: productCategory, in: "path", style: "simple", explode: false, dataType: "'Loan' | 'Savings' | 'Insurance' | 'HealthInsurance' | 'ForecastInsurance' | 'Tontine' | 'GroupCredit' | 'Agriculture' | 'CurrentAccount'", dataFormat: undefined})}`;
+        let localVarPath = `/api/v1/leads/qualification-templates/active/${this.configuration.encodeParam({name: "productCategory", value: productCategory, in: "path", style: "simple", explode: false, dataType: "'Loan' | 'Savings' | 'Insurance' | 'HealthInsurance' | 'ForecastInsurance' | 'Tontine' | 'GroupCredit' | 'Agriculture' | 'CurrentAccount' | 'Standard'", dataFormat: undefined})}`;
         return this.httpClient.request<QualificationTemplateDto>('get', `${this.configuration.basePath}${localVarPath}`,
             {
                 context: localVarHttpContext,
@@ -3501,14 +3501,14 @@ export class LeadsApiService {
 
     /**
      * @param status One of: Draft, Published, Archived
-     * @param productCategory One of: Loan, Savings, Insurance, HealthInsurance, ForecastInsurance, Tontine, GroupCredit, Agriculture, CurrentAccount
+     * @param productCategory One of: Loan, Savings, Insurance, HealthInsurance, ForecastInsurance, Tontine, GroupCredit, Agriculture, CurrentAccount, Standard
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      */
-    public listQualificationTemplates(status?: 'Draft' | 'Published' | 'Archived', productCategory?: 'Loan' | 'Savings' | 'Insurance' | 'HealthInsurance' | 'ForecastInsurance' | 'Tontine' | 'GroupCredit' | 'Agriculture' | 'CurrentAccount', observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<Array<QualificationTemplateDto>>;
-    public listQualificationTemplates(status?: 'Draft' | 'Published' | 'Archived', productCategory?: 'Loan' | 'Savings' | 'Insurance' | 'HealthInsurance' | 'ForecastInsurance' | 'Tontine' | 'GroupCredit' | 'Agriculture' | 'CurrentAccount', observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<Array<QualificationTemplateDto>>>;
-    public listQualificationTemplates(status?: 'Draft' | 'Published' | 'Archived', productCategory?: 'Loan' | 'Savings' | 'Insurance' | 'HealthInsurance' | 'ForecastInsurance' | 'Tontine' | 'GroupCredit' | 'Agriculture' | 'CurrentAccount', observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<Array<QualificationTemplateDto>>>;
-    public listQualificationTemplates(status?: 'Draft' | 'Published' | 'Archived', productCategory?: 'Loan' | 'Savings' | 'Insurance' | 'HealthInsurance' | 'ForecastInsurance' | 'Tontine' | 'GroupCredit' | 'Agriculture' | 'CurrentAccount', observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
+    public listQualificationTemplates(status?: 'Draft' | 'Published' | 'Archived', productCategory?: 'Loan' | 'Savings' | 'Insurance' | 'HealthInsurance' | 'ForecastInsurance' | 'Tontine' | 'GroupCredit' | 'Agriculture' | 'CurrentAccount' | 'Standard', observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<Array<QualificationTemplateDto>>;
+    public listQualificationTemplates(status?: 'Draft' | 'Published' | 'Archived', productCategory?: 'Loan' | 'Savings' | 'Insurance' | 'HealthInsurance' | 'ForecastInsurance' | 'Tontine' | 'GroupCredit' | 'Agriculture' | 'CurrentAccount' | 'Standard', observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<Array<QualificationTemplateDto>>>;
+    public listQualificationTemplates(status?: 'Draft' | 'Published' | 'Archived', productCategory?: 'Loan' | 'Savings' | 'Insurance' | 'HealthInsurance' | 'ForecastInsurance' | 'Tontine' | 'GroupCredit' | 'Agriculture' | 'CurrentAccount' | 'Standard', observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<Array<QualificationTemplateDto>>>;
+    public listQualificationTemplates(status?: 'Draft' | 'Published' | 'Archived', productCategory?: 'Loan' | 'Savings' | 'Insurance' | 'HealthInsurance' | 'ForecastInsurance' | 'Tontine' | 'GroupCredit' | 'Agriculture' | 'CurrentAccount' | 'Standard', observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
 
         let localVarQueryParameters = new HttpParams({encoder: this.encoder});
         if (status !== undefined && status !== null) {

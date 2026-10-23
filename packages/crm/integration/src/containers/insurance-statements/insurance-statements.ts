@@ -3,7 +3,7 @@ import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { ConnectionListDto } from '@sankore/crm-api';
-import { BreadcrumbService, PermissionCode, PermissionsService } from '@sankore/crm/common';
+import { BreadcrumbService, PermissionCode, PermissionsService, TENANT_MODULES, TenantModule, ModuleReadOnlyNotice } from '@sankore/crm/common';
 import { TasAlert } from '@talisoft/ui/alert';
 import { Button } from '@talisoft/ui/button';
 import { TasCard } from '@talisoft/ui/card';
@@ -51,7 +51,7 @@ import {
  */
 @Component({
   templateUrl: './insurance-statements.html',
-  imports: [
+  imports: [ModuleReadOnlyNotice, 
     FormsModule,
     TasAlert,
     Button,
@@ -66,6 +66,8 @@ import {
   ],
 })
 export class InsuranceStatementsPage implements OnInit {
+  /** Module désactivé : l'écran reste consultable, sans action (bandeau en tête). */
+  public readonly readOnlyModules: TenantModule[] = [TENANT_MODULES.INSURANCE];
   private readonly _facade = inject(IntegrationFacadeService);
   private readonly _permissions = inject(PermissionsService);
   private readonly _breadcrumb = inject(BreadcrumbService);

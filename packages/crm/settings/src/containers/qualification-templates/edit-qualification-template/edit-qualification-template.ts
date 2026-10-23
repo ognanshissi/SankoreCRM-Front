@@ -104,6 +104,9 @@ export class EditQualificationTemplate implements OnInit {
   public readonly id = input<string>();
 
   public readonly productConfig = inject(ProductConfigService);
+  /** La catégorie enregistrée reste proposée même si son module a été désactivé depuis. */
+  private readonly _storedCategory = signal<string | null>(null);
+  public readonly categoryOptions = computed(() => this.productConfig.offeredCategories(this._storedCategory()));
 
   public readonly productsOptions = signal<{ value: string | null | undefined; label: string | null | undefined }[]>([]);
 
@@ -502,6 +505,7 @@ export class EditQualificationTemplate implements OnInit {
         this.editName.set(tpl.name ?? '');
         this.editDescription.set(tpl.description ?? '');
         this.editProductType.set(tpl.productCategory ?? '');
+        this._storedCategory.set(tpl.productCategory ?? null);
         this.editProductCode.set(tpl.productCode ?? '');
 
         const sections = (tpl.sections ?? []).sort(

@@ -22,7 +22,7 @@ import { TasSpinner } from '@talisoft/ui/spinner';
 import { TasTable, TableConfig } from '@talisoft/ui/table';
 import { TasTag } from '@talisoft/ui/tag';
 import { KycApprovalCircuitDto, KycFileDto, UsersApiService } from '@sankore/crm-api';
-import { BreadcrumbService, PermissionsService } from '@sankore/crm/common';
+import { BreadcrumbService, PermissionsService, TENANT_MODULES, TenantModulesService } from '@sankore/crm/common';
 import { KycFacadeService } from '../data-access/kyc-facade.service';
 import {
   kycApprovalDecisionMeta,
@@ -134,6 +134,9 @@ export class KycFileDetailPage implements OnInit {
   private readonly _usersApi = inject(UsersApiService);
   private readonly _breadcrumbService = inject(BreadcrumbService);
   private readonly _permissions = inject(PermissionsService);
+  private readonly _tenantModules = inject(TenantModulesService);
+  /** L'état de création dans le core banking reste consultable après désactivation du module. */
+  public readonly hasCoreBanking = computed(() => this._tenantModules.canRead(TENANT_MODULES.BANKING_MICROFINANCE));
   private readonly _snackbarService = inject(SnackbarService);
   private readonly _sideDrawerService = inject(SideDrawerService);
   private readonly _router = inject(Router);

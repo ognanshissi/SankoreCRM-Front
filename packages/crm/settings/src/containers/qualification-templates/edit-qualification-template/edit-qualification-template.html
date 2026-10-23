@@ -146,7 +146,7 @@
         <tas-form-field>
           <tas-label>Catégorie de produit</tas-label>
           <tas-select
-            [options]="productConfig.categories"
+            [options]="categoryOptions()"
             [readonly]="isReadonly()"
             optionLabel="label"
             optionValue="value"

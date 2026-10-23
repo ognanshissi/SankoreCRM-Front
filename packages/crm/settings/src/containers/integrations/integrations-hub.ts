@@ -8,6 +8,9 @@ import {
   BreadcrumbService,
   PermissionCode,
   PermissionsService,
+  TENANT_MODULES,
+  TenantModule,
+  TenantModulesService,
 } from '@sankore/crm/common';
 
 interface Integration {
@@ -213,6 +216,27 @@ const CATEGORY_ORDER: string[] = [
   'data',
 ];
 
+/**
+ * Modules payants dont une tuile relève : au moins un doit être actif. Le core banking relève de
+ * « Banking - Microfinance », les assureurs d'« Assurance » ; correspondances, écritures et
+ * réconciliation servent les deux. La téléphonie et les autres canaux sont du socle.
+ */
+function modulesOf(integration: Integration): TenantModule[] | null {
+  if (SHARED_INTEGRATIONS.has(integration.id)) {
+    return [TENANT_MODULES.BANKING_MICROFINANCE, TENANT_MODULES.INSURANCE];
+  }
+  switch (integration.category) {
+    case 'banking':
+      return [TENANT_MODULES.BANKING_MICROFINANCE];
+    case 'insurance':
+      return [TENANT_MODULES.INSURANCE];
+    default:
+      return null;
+  }
+}
+
+const SHARED_INTEGRATIONS = new Set(['mappings', 'commands', 'reconciliation']);
+
 @Component({
   selector: 'integrations-hub',
   standalone: true,
@@ -287,7 +311,7 @@ const CATEGORY_ORDER: string[] = [
       </div>
 
       <!-- Categories -->
-      @for (category of categories; track category) {
+      @for (category of categories(); track category) {
         <div class="mb-6">
           <h2 class="text-sm font-semibold text-slate-700 mb-3">
             {{ categoryLabel(category) }}
@@ -353,8 +377,7 @@ const CATEGORY_ORDER: string[] = [
 export class IntegrationsHub implements OnInit {
   private readonly _breadcrumb = inject(BreadcrumbService);
   private readonly _permissions = inject(PermissionsService);
-
-  public readonly categories = CATEGORY_ORDER;
+  private readonly _tenantModules = inject(TenantModulesService);
 
   /**
    * Les tuiles menant aux écrans d'intégration sont gardées par les mêmes
@@ -364,8 +387,19 @@ export class IntegrationsHub implements OnInit {
    */
   public readonly visibleIntegrations = computed(() => {
     const granted = this._permissions.granted();
-    return INTEGRATIONS.filter((i) => !i.permission || granted.has(i.permission));
+    // Un module désactivé garde ses tuiles : ses écrans s'ouvrent en consultation seule.
+    const readable = this._tenantModules.readable();
+    return INTEGRATIONS.filter(
+      (i) =>
+        (!i.permission || granted.has(i.permission)) &&
+        (modulesOf(i)?.some((m) => readable.has(m)) ?? true),
+    );
   });
+
+  /** Une rubrique vidée par les modules disparaît, plutôt que de rester en titre seul. */
+  public readonly categories = computed(() =>
+    CATEGORY_ORDER.filter((c) => this.visibleIntegrations().some((i) => i.category === c)),
+  );
 
   public readonly connectedCount = computed(
     () =>

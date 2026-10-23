@@ -22,7 +22,7 @@ import { TasIcon } from '@talisoft/ui/icon';
 import { SideDrawerService } from '@talisoft/ui/side-drawer';
 import { SnackbarService } from '@talisoft/ui/snackbar';
 import { AgenciesApiService, ClientGroupsApiService, GroupListItemDto } from '@sankore/crm-api';
-import { BreadcrumbService, PermissionsService } from '@sankore/crm/common';
+import { BreadcrumbService, PermissionsService, TENANT_MODULES, TenantModulesService, TenantModule, ModuleReadOnlyNotice } from '@sankore/crm/common';
 
 import { CreateGroupDrawer } from './create-group-drawer';
 import {
@@ -39,7 +39,7 @@ import {
   selector: 'client-groups-list',
   templateUrl: './client-groups-list.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [
+  imports: [ModuleReadOnlyNotice, 
     FormsModule,
     TasCard,
     Button,
@@ -53,6 +53,10 @@ import {
   ],
 })
 export class ClientGroupsListPage implements OnInit {
+  /** Module désactivé : l'écran reste consultable, sans action (bandeau en tête). */
+  public readonly readOnlyModules: TenantModule[] = [TENANT_MODULES.BANKING_MICROFINANCE];
+  /** Module désactivé : consultation seule, les actions se masquent (le serveur les refuserait). */
+  private readonly _moduleReadOnly = inject(TenantModulesService).readOnly(TENANT_MODULES.BANKING_MICROFINANCE);
   private readonly _clientGroupsApiService = inject(ClientGroupsApiService);
   private readonly _agenciesApiService = inject(AgenciesApiService);
   private readonly _snackbarService = inject(SnackbarService);
@@ -64,7 +68,8 @@ export class ClientGroupsListPage implements OnInit {
   private readonly _router = inject(Router);
 
   /** La lecture tient à `customers:read` ; toute écriture sur un groupe exige ce droit. */
-  public readonly canManage = this._permissions.can('customers:groups_manage');
+  private readonly _canManagePermission = this._permissions.can('customers:groups_manage');
+  public readonly canManage = computed(() => this._canManagePermission() && !this._moduleReadOnly());
 
   public readonly typeOptions = GROUP_TYPE_OPTIONS;
   public readonly statusOptions = GROUP_STATUS_OPTIONS;

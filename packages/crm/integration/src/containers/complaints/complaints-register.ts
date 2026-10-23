@@ -2,7 +2,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ComplaintDto, ComplaintReportDto } from '@sankore/crm-api';
-import { BreadcrumbService, PERMISSIONS, PermissionsService } from '@sankore/crm/common';
+import { BreadcrumbService, PERMISSIONS, PermissionsService, TENANT_MODULES, TenantModulesService, TenantModule, ModuleReadOnlyNotice } from '@sankore/crm/common';
 import { TasAlert } from '@talisoft/ui/alert';
 import { Button } from '@talisoft/ui/button';
 import { TasCard } from '@talisoft/ui/card';
@@ -56,7 +56,7 @@ type RegisterFilter = 'open' | 'overdue' | 'all';
  */
 @Component({
   templateUrl: './complaints-register.html',
-  imports: [
+  imports: [ModuleReadOnlyNotice, 
     FormsModule,
     TasAlert,
     Button,
@@ -68,6 +68,10 @@ type RegisterFilter = 'open' | 'overdue' | 'all';
   ],
 })
 export class ComplaintsRegisterPage implements OnInit {
+  /** Module désactivé : l'écran reste consultable, sans action (bandeau en tête). */
+  public readonly readOnlyModules: TenantModule[] = [TENANT_MODULES.INSURANCE];
+  /** Module désactivé : consultation seule, les actions se masquent (le serveur les refuserait). */
+  private readonly _moduleReadOnly = inject(TenantModulesService).readOnly(TENANT_MODULES.INSURANCE);
   private readonly _integration = inject(IntegrationFacadeService);
   private readonly _permissions = inject(PermissionsService);
   private readonly _breadcrumb = inject(BreadcrumbService);
@@ -77,7 +81,8 @@ export class ComplaintsRegisterPage implements OnInit {
   public readonly canView = this._permissions.can(PERMISSIONS.INS_COMPLAINT_VIEW);
 
   /** Déposer et faire avancer demandent le droit d'ÉCRITURE, pas celui de lecture. */
-  public readonly canHandle = this._permissions.can(PERMISSIONS.INS_COMPLAINT_HANDLE);
+  private readonly _canHandlePermission = this._permissions.can(PERMISSIONS.INS_COMPLAINT_HANDLE);
+  public readonly canHandle = computed(() => this._canHandlePermission() && !this._moduleReadOnly());
 
   public readonly isLoading = signal(true);
   public readonly isLoadingReport = signal(true);

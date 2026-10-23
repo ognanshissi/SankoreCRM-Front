@@ -1,0 +1,116 @@
+<div class="flex flex-col gap-5">
+  <div class="flex flex-wrap items-center justify-between gap-4">
+    <div>
+      <h1 class="text-xl font-bold text-slate-800">Demandes de modules</h1>
+      <p class="mt-0.5 text-sm text-slate-500">
+        Les modules payants demandés par les tenants. Un module n’est actif qu’après votre autorisation.
+      </p>
+    </div>
+    <button tas-button iconButton type="button" title="Actualiser" (click)="load()">
+      <tas-icon iconName="feather:refresh-cw" iconSize="sm"></tas-icon>
+    </button>
+  </div>
+
+  <div role="tablist" aria-label="Statut" class="flex w-fit flex-wrap gap-1 rounded-full bg-slate-100 p-1">
+    @for (tab of tabs; track tab.value) {
+      <button
+        type="button"
+        role="tab"
+        [attr.aria-selected]="status() === tab.value"
+        class="min-h-10 rounded-full px-4 text-sm font-semibold transition-colors"
+        [class]="status() === tab.value ? 'bg-white text-primary shadow-xs' : 'text-slate-700 hover:text-slate-900'"
+        (click)="pickTab(tab.value)"
+      >
+        {{ tab.label }}
+      </button>
+    }
+  </div>
+
+  @if (loadError()) {
+    <div role="alert" class="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-red-50 px-5 py-4">
+      <p class="text-sm text-red-800">{{ loadError() }}</p>
+      <button tas-outlined-button color="primary" type="button" (click)="load()">Réessayer</button>
+    </div>
+  } @else if (!isLoading() && rows().length === 0) {
+    <div class="rounded-3xl bg-white px-5 py-12 text-center text-sm text-slate-500">
+      @if (status() === 'Requested') {
+        Aucune demande en attente.
+      } @else {
+        Rien dans cet onglet.
+      }
+    </div>
+  } @else {
+    <tas-table
+      [data]="rows()"
+      identifierField="id"
+      [config]="tableConfig()"
+      [hasCaption]="false"
+      [isLoading]="isLoading()"
+    >
+      <ng-template #header>
+        <tr class="text-left text-xs font-bold uppercase tracking-wide text-slate-500">
+          <th class="py-2.5 pl-5">Tenant</th>
+          <th class="py-2.5">Module</th>
+          <th class="py-2.5">Demande</th>
+          <th class="py-2.5 text-right">Prix accepté</th>
+          <th class="py-2.5 pr-5 text-right">
+            @if (status() === 'Requested') { Décision } @else { Statut }
+          </th>
+        </tr>
+      </ng-template>
+
+      <ng-template #body let-row>
+        <tr class="transition-colors hover:bg-slate-50">
+          <td class="py-3 pl-5">
+            <a [routerLink]="['/tenants', row.tenantId]" class="text-sm font-bold text-slate-800 hover:text-primary">
+              {{ row.tenantName }}
+            </a>
+          </td>
+          <td class="py-3 text-sm font-semibold text-slate-700">{{ row.moduleLabel }}</td>
+          <td class="py-3 text-xs leading-snug text-slate-600">
+            @if (row.isDirect) {
+              Activation directe par la plateforme
+            } @else {
+              {{ row.requestedBy ?? '—' }}
+            }
+            <br />
+            <span class="tabular-nums">{{ row.requestedAt | date: 'd MMM y, HH:mm' }}</span>
+          </td>
+          <td class="py-3 text-right text-sm text-slate-700 tabular-nums">{{ row.acceptedPrice }}</td>
+          <td class="py-3 pr-5 text-right">
+            @if (status() === 'Requested') {
+              <div class="flex justify-end gap-2">
+                <button tas-outlined-button color="warn" type="button" [disabled]="approvingId() === row.id"
+                        (click)="openReject(row)">
+                  Refuser
+                </button>
+                <button tas-filled-button color="primary" type="button" [disabled]="approvingId() === row.id"
+                        [isLoading]="approvingId() === row.id" (click)="confirmApprove(row)">
+                  Autoriser
+                </button>
+              </div>
+            } @else {
+              <div class="flex flex-col items-end leading-snug">
+                <span class="flex items-center gap-1.5 text-sm font-semibold" [class]="row.tone">
+                  <span class="size-2 rounded-full" [class]="row.dot" aria-hidden="true"></span>
+                  {{ row.label }}
+                </span>
+                <span class="text-xs text-slate-500 tabular-nums">
+                  @switch (status()) {
+                    @case ('Active') { depuis le {{ row.activatedAt | date: 'd MMM y' }} }
+                    @case ('Rejected') { le {{ row.decidedAt | date: 'd MMM y' }} — {{ row.reason }} }
+                    @case ('Deactivated') {
+                      le {{ row.deactivatedAt | date: 'd MMM y' }}
+                      @if (row.deactivatedBy) { par {{ row.deactivatedBy }} }
+                    }
+                    @case ('Cancelled') { le {{ row.cancelledAt | date: 'd MMM y' }} }
+                  }
+                </span>
+              </div>
+            }
+          </td>
+        </tr>
+      </ng-template>
+    </tas-table>
+  }
+</div>

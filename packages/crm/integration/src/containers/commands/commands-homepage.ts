@@ -18,7 +18,7 @@ import { SnackbarService } from '@talisoft/ui/snackbar';
 import { TableConfig, TasTable } from '@talisoft/ui/table';
 import { TasTag } from '@talisoft/ui/tag';
 import { TimeagoPipe } from '@talisoft/ui/timeago';
-import { BreadcrumbService, PermissionsService } from '@sankore/crm/common';
+import { BreadcrumbService, PermissionsService, TENANT_MODULES, TenantModulesService, TenantModule, ModuleReadOnlyNotice } from '@sankore/crm/common';
 import {
   IntegrationFacadeService,
   integrationErrorMessage,
@@ -75,7 +75,7 @@ const DEFAULT_PAGE_SIZE = 20;
 @Component({
   selector: 'integration-commands-homepage',
   templateUrl: './commands-homepage.html',
-  imports: [
+  imports: [ModuleReadOnlyNotice, 
     FormsModule,
     Button,
     TasCard,
@@ -92,6 +92,10 @@ const DEFAULT_PAGE_SIZE = 20;
   ],
 })
 export class CommandsHomePage implements OnInit {
+  /** Module désactivé : l'écran reste consultable, sans action (bandeau en tête). */
+  public readonly readOnlyModules: TenantModule[] = [TENANT_MODULES.BANKING_MICROFINANCE, TENANT_MODULES.INSURANCE];
+  /** Module désactivé : consultation seule, les actions se masquent (le serveur les refuserait). */
+  private readonly _moduleReadOnly = inject(TenantModulesService).readOnly(TENANT_MODULES.BANKING_MICROFINANCE, TENANT_MODULES.INSURANCE);
   private readonly _facade = inject(IntegrationFacadeService);
   private readonly _breadcrumb = inject(BreadcrumbService);
   private readonly _permissions = inject(PermissionsService);
@@ -102,7 +106,8 @@ export class CommandsHomePage implements OnInit {
   private readonly _route = inject(ActivatedRoute);
   private readonly _router = inject(Router);
 
-  public readonly canReplay = this._permissions.can('Integration.Command.Replay');
+  private readonly _canReplayPermission = this._permissions.can('Integration.Command.Replay');
+  public readonly canReplay = computed(() => this._canReplayPermission() && !this._moduleReadOnly());
 
   // Libellés et aides du référentiel, liés au template.
   public readonly statusMeta = commandStatusMeta;

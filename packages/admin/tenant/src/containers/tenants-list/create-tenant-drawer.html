@@ -1,0 +1,110 @@
+<tas-side-drawer>
+  <tas-drawer-title>
+    <TasTitle class="text-lg">Nouveau tenant</TasTitle>
+    <p class="text-sm text-slate-500">Une institution cliente, son adresse et ses modules de départ.</p>
+  </tas-drawer-title>
+
+  <tas-drawer-content>
+    <form [formRoot]="formSchema" class="flex flex-col gap-5">
+      <tas-form-field>
+        <tas-label>Nom de l’institution <span class="text-functional-error">*</span></tas-label>
+        <input tasInput type="text" placeholder="Caisse Rurale de Bouaké" [formField]="formSchema.name" />
+        @if (formSchema.name().touched() && formSchema.name().invalid()) {
+          <tas-error>{{ formSchema.name().errors()[0].message }}</tas-error>
+        }
+      </tas-form-field>
+
+      <tas-form-field>
+        <tas-label>Origine du CRM <span class="text-functional-error">*</span></tas-label>
+        <input tasInput type="url" placeholder="https://crm.exemple.com" [formField]="formSchema.fqdn" />
+        @if (formSchema.fqdn().touched() && formSchema.fqdn().invalid()) {
+          <tas-error>{{ formSchema.fqdn().errors()[0].message }}</tas-error>
+        } @else {
+          <tas-hint>L’adresse exacte que le navigateur affichera, schéma compris.</tas-hint>
+        }
+      </tas-form-field>
+
+      <tas-form-field>
+        <tas-label>E-mail du compte racine <span class="text-functional-error">*</span></tas-label>
+        <input tasInput type="email" placeholder="admin@exemple.com" [formField]="formSchema.rootUserEmail" />
+        @if (formSchema.rootUserEmail().touched() && formSchema.rootUserEmail().invalid()) {
+          <tas-error>{{ formSchema.rootUserEmail().errors()[0].message }}</tas-error>
+        }
+      </tas-form-field>
+
+      <tas-form-field>
+        <tas-label>Fin de la période d’essai</tas-label>
+        <input tasInput type="date" [min]="today" [formField]="formSchema.trialExpiresAt" />
+        @if (formSchema.trialExpiresAt().touched() && formSchema.trialExpiresAt().invalid()) {
+          <tas-error>{{ formSchema.trialExpiresAt().errors()[0].message }}</tas-error>
+        } @else {
+          <tas-hint>Facultatif. Vide : pas d’essai, le tenant est ouvert sans échéance.</tas-hint>
+        }
+      </tas-form-field>
+
+      <div class="flex flex-col gap-2">
+        <p class="text-sm font-medium text-slate-700">Profil <span class="text-functional-error">*</span></p>
+        <p class="text-xs text-slate-500">
+          Les modules payants activés dès la création, sans demande. Le tenant pourra ensuite en demander ou en
+          désactiver.
+        </p>
+        @if (profilesError()) {
+          <p role="alert" class="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-800">
+            Les profils n’ont pas pu être chargés.
+          </p>
+        }
+        <div role="radiogroup" aria-label="Profil" class="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          @for (profile of profiles(); track profile.code) {
+            <button
+              type="button"
+              role="radio"
+              [attr.aria-checked]="formSchema.profile().value() === profile.code"
+              class="flex flex-col items-start gap-1 rounded-xl border p-3 text-left transition-colors"
+              [class]="
+                formSchema.profile().value() === profile.code
+                  ? 'border-primary bg-primary/5'
+                  : 'border-slate-200 hover:border-slate-300'
+              "
+              (click)="pickProfile(profile.code!)"
+            >
+              <span class="flex w-full items-center justify-between gap-2">
+                <span class="text-sm font-semibold text-slate-800">{{ profile.label }}</span>
+                @if (formSchema.profile().value() === profile.code) {
+                  <tas-icon iconName="feather:check-circle" class="text-primary" style="font-size: 16px"></tas-icon>
+                }
+              </span>
+              <span class="text-xs text-slate-500">{{ profile.description }}</span>
+              <span class="text-xs font-medium text-slate-700">{{ moduleNames(profile) }}</span>
+            </button>
+          }
+        </div>
+        @if (formSchema.profile().touched() && formSchema.profile().invalid()) {
+          <tas-error>{{ formSchema.profile().errors()[0].message }}</tas-error>
+        }
+      </div>
+
+      <p class="rounded-xl bg-slate-50 px-4 py-3 text-xs text-slate-600">
+        Le compte racine du CRM n’est pas créé ici : il l’est au déploiement de l’API du tenant, ou par
+        <span class="font-mono">POST users/create-root</span>.
+      </p>
+
+      @if (serverError()) {
+        <p role="alert" class="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-800">{{ serverError() }}</p>
+      }
+    </form>
+  </tas-drawer-content>
+
+  <tas-drawer-action>
+    <button tas-outlined-button color="primary" type="button" (click)="close()">Annuler</button>
+    <button
+      tas-raised-button
+      color="primary"
+      type="button"
+      (click)="handleSubmit()"
+      [disabled]="formSchema().invalid() || formSchema().submitting()"
+      [isLoading]="formSchema().submitting()"
+    >
+      Créer le tenant
+    </button>
+  </tas-drawer-action>
+</tas-side-drawer>

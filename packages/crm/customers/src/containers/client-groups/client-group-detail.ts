@@ -29,7 +29,7 @@ import {
   GroupDetailDto,
   GroupMemberDto,
 } from '@sankore/crm-api';
-import { BreadcrumbService, PermissionsService } from '@sankore/crm/common';
+import { BreadcrumbService, PermissionsService, TENANT_MODULES, TenantModulesService, TenantModule, ModuleReadOnlyNotice } from '@sankore/crm/common';
 
 import { clientStatusLabel, clientStatusSeverity } from '../../models/client-labels';
 import {
@@ -88,7 +88,7 @@ class ReasonFormModel {
   selector: 'client-group-detail',
   templateUrl: './client-group-detail.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [
+  imports: [ModuleReadOnlyNotice, 
     FormsModule,
     TasCard,
     Button,
@@ -106,6 +106,10 @@ class ReasonFormModel {
   ],
 })
 export class ClientGroupDetailPage {
+  /** Module désactivé : l'écran reste consultable, sans action (bandeau en tête). */
+  public readonly readOnlyModules: TenantModule[] = [TENANT_MODULES.BANKING_MICROFINANCE];
+  /** Module désactivé : consultation seule, les actions se masquent (le serveur les refuserait). */
+  private readonly _moduleReadOnly = inject(TenantModulesService).readOnly(TENANT_MODULES.BANKING_MICROFINANCE);
   private readonly _clientGroupsApiService = inject(ClientGroupsApiService);
   private readonly _agenciesApiService = inject(AgenciesApiService);
   private readonly _snackbarService = inject(SnackbarService);
@@ -119,7 +123,8 @@ export class ClientGroupDetailPage {
    * couvre les écritures de la fiche : ajout et retrait d'un membre, attribution
    * d'un rôle de bureau, suspension et dissolution.
    */
-  public readonly canManage = this._permissions.can('customers:groups_manage');
+  private readonly _canManagePermission = this._permissions.can('customers:groups_manage');
+  public readonly canManage = computed(() => this._canManagePermission() && !this._moduleReadOnly());
 
   public readonly groupId = input.required<string>();
 

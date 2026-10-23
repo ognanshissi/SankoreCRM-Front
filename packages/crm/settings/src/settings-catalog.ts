@@ -1,4 +1,4 @@
-import { PermissionCode } from '@sankore/crm/common';
+import { PermissionCode, TENANT_MODULES, TenantModule } from '@sankore/crm/common';
 
 export interface SettingsEntry {
   id: string;
@@ -8,6 +8,11 @@ export interface SettingsEntry {
   /** Absent : l'écran n'existe pas encore. L'entrée s'affiche « Bientôt », sans lien. */
   link?: string;
   permission?: PermissionCode | PermissionCode[];
+  /**
+   * Modules payants dont l'écran relève : au moins un doit être actif, ou désactivé (l'écran
+   * s'ouvre alors en consultation seule). Absent : socle.
+   */
+  modules?: TenantModule[];
 }
 
 export interface SettingsGroup {
@@ -27,6 +32,9 @@ export interface SettingsGroup {
  * Les entrées sans `link` sont celles dont l'écran n'existe pas : elles pointaient vers des
  * routes absentes (`/settings/currency`, `/settings/tags`…) et menaient à un écran blanc.
  */
+/** Surfaces partagées par le core banking et les assureurs : ouvertes avec l'un ou l'autre module. */
+const BANKING_OR_INSURANCE: TenantModule[] = [TENANT_MODULES.BANKING_MICROFINANCE, TENANT_MODULES.INSURANCE];
+
 export const SETTINGS_CATALOG: ReadonlyArray<SettingsGroup> = [
   {
     id: 'organisation',
@@ -68,7 +76,7 @@ export const SETTINGS_CATALOG: ReadonlyArray<SettingsGroup> = [
     tint: 'bg-[#f6efe5]',
     entries: [
       { id: 'products', title: 'Produits', icon: 'feather:credit-card', link: '/settings/products', permission: 'product:read', description: 'Comptes, crédits et épargne.' },
-      { id: 'insurance-products', title: 'Assurances', icon: 'feather:umbrella', link: '/settings/integrations/insurance-products', permission: 'Ins.Product.Manage', description: 'Les offres des assureurs partenaires que vos agents peuvent proposer.' },
+      { id: 'insurance-products', title: 'Assurances', icon: 'feather:umbrella', link: '/settings/integrations/insurance-products', permission: 'Ins.Product.Manage', description: 'Les offres des assureurs partenaires que vos agents peuvent proposer.' , modules: [TENANT_MODULES.INSURANCE] },
     ],
   },
   {
@@ -108,12 +116,12 @@ export const SETTINGS_CATALOG: ReadonlyArray<SettingsGroup> = [
     entries: [
       { id: 'integrations-hub', title: 'Vue d’ensemble', icon: 'feather:grid', link: '/settings/integrations', permission: 'lead:source:read', description: 'Les services externes connectables depuis SANKORE, et leur état.' },
       { id: 'connections', title: 'Connexions', icon: 'feather:link', link: '/settings/integrations/connections', permission: 'Integration.Connection.View', description: 'Core banking, assurance et téléphonie.' },
-      { id: 'mappings', title: 'Correspondances de codes', icon: 'feather:repeat', link: '/settings/integrations/mappings', permission: 'Integration.Mapping.Manage', description: 'Les codes du CRM et ceux attendus par chaque système externe.' },
-      { id: 'commands', title: 'Écritures et rejets', icon: 'feather:send', link: '/settings/integrations/commands', permission: 'Integration.Command.View', description: 'Les écritures envoyées aux systèmes externes, et les rejets à traiter.' },
-      { id: 'batch-files', title: 'Fichiers échangés', icon: 'feather:file', link: '/settings/integrations/batch-files', permission: 'Integration.Command.View', description: 'Les fichiers sortants et entrants, et les accusés manquants.' },
-      { id: 'reconciliation', title: 'Réconciliation', icon: 'feather:git-pull-request', link: '/settings/integrations/reconciliation', permission: 'Integration.Reconciliation.View', description: 'Les écarts entre le CRM et les systèmes externes.' },
-      { id: 'insurance-connections', title: 'Connexions assurance', icon: 'feather:shield', link: '/settings/integrations/insurance-connections', permission: 'Integration.Connection.View', description: 'Les back-offices des assureurs partenaires.' },
-      { id: 'insurance-statements', title: 'Bordereaux assurance', icon: 'feather:book-open', link: '/settings/integrations/insurance-statements', permission: 'Ins.Statement.View', description: 'Primes reversées et commissions, par assureur et par mois.' },
+      { id: 'mappings', title: 'Correspondances de codes', icon: 'feather:repeat', link: '/settings/integrations/mappings', permission: 'Integration.Mapping.Manage', description: 'Les codes du CRM et ceux attendus par chaque système externe.' , modules: BANKING_OR_INSURANCE },
+      { id: 'commands', title: 'Écritures et rejets', icon: 'feather:send', link: '/settings/integrations/commands', permission: 'Integration.Command.View', description: 'Les écritures envoyées aux systèmes externes, et les rejets à traiter.' , modules: BANKING_OR_INSURANCE },
+      { id: 'batch-files', title: 'Fichiers échangés', icon: 'feather:file', link: '/settings/integrations/batch-files', permission: 'Integration.Command.View', description: 'Les fichiers sortants et entrants, et les accusés manquants.' , modules: BANKING_OR_INSURANCE },
+      { id: 'reconciliation', title: 'Réconciliation', icon: 'feather:git-pull-request', link: '/settings/integrations/reconciliation', permission: 'Integration.Reconciliation.View', description: 'Les écarts entre le CRM et les systèmes externes.' , modules: BANKING_OR_INSURANCE },
+      { id: 'insurance-connections', title: 'Connexions assurance', icon: 'feather:shield', link: '/settings/integrations/insurance-connections', permission: 'Integration.Connection.View', description: 'Les back-offices des assureurs partenaires.' , modules: [TENANT_MODULES.INSURANCE] },
+      { id: 'insurance-statements', title: 'Bordereaux assurance', icon: 'feather:book-open', link: '/settings/integrations/insurance-statements', permission: 'Ins.Statement.View', description: 'Primes reversées et commissions, par assureur et par mois.' , modules: [TENANT_MODULES.INSURANCE] },
     ],
   },
   {
@@ -138,17 +146,18 @@ export const SETTINGS_CATALOG: ReadonlyArray<SettingsGroup> = [
       { id: 'company', title: 'Institution', icon: 'feather:briefcase', link: '/settings/company', permission: 'company:read', description: 'Nom, logo, langue par défaut et couleurs.' },
       { id: 'currency', title: 'Monnaie', icon: 'feather:dollar-sign', description: 'Les devises utilisées.' },
       { id: 'tags', title: 'Tags', icon: 'feather:tag', description: 'L’ensemble des tags.' },
-      { id: 'billing', title: 'Abonnement et facturation', icon: 'feather:file-text', description: 'Formule, licences et factures.' },
+      { id: 'billing', title: 'Modules et abonnement', icon: 'feather:package', link: '/settings/modules', permission: 'tenant:modules:read', description: 'Les modules payants de l’institution : Banking - Microfinance et Assurance.' },
     ],
   },
 ];
 
 /**
- * Les rubriques que l'utilisateur peut ouvrir, groupe vide retiré. Une entrée « Bientôt » reste
+ * Les rubriques que l'utilisateur peut ouvrir — permission ET module payant —, groupe vide retiré. Une entrée « Bientôt » reste
  * visible : elle n'ouvre rien et ne révèle rien.
  */
-export function visibleCatalog(granted: ReadonlySet<string>): SettingsGroup[] {
+export function visibleCatalog(granted: ReadonlySet<string>, activeModules: ReadonlySet<string>): SettingsGroup[] {
   const allowed = (entry: SettingsEntry) => {
+    if (entry.modules && !entry.modules.some((m) => activeModules.has(m))) return false;
     if (!entry.permission) return true;
     const codes = Array.isArray(entry.permission) ? entry.permission : [entry.permission];
     return codes.some((c) => granted.has(c));

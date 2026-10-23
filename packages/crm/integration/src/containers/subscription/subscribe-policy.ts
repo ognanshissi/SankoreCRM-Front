@@ -10,7 +10,7 @@ import {
   validate,
 } from '@angular/forms/signals';
 import { Router } from '@angular/router';
-import { BreadcrumbService, PermissionsService } from '@sankore/crm/common';
+import { BreadcrumbService, PermissionsService, TENANT_MODULES, TenantModulesService } from '@sankore/crm/common';
 import {
   ClientDetailDto,
   ClientsApiService,
@@ -173,6 +173,7 @@ export class SubscribePolicyPage implements OnInit {
   private readonly _clients = inject(ClientsApiService);
   private readonly _breadcrumb = inject(BreadcrumbService);
   private readonly _permissions = inject(PermissionsService);
+  private readonly _tenantModules = inject(TenantModulesService);
   private readonly _snackbar = inject(SnackbarService);
   private readonly _confirm = inject(ConfirmDialogService);
   private readonly _router = inject(Router);
@@ -185,7 +186,14 @@ export class SubscribePolicyPage implements OnInit {
 
   public readonly customerId = input.required<string>();
 
-  public readonly canViewBalance = this._permissions.can('CoreBanking.Balance.ViewLive');
+  private readonly _hasBalancePermission = this._permissions.can('CoreBanking.Balance.ViewLive');
+  /**
+   * Le solde vient du core banking, qui relève de « Banking - Microfinance » : un tenant qui n'a
+   * que l'assurance n'en a pas (choix du propriétaire), et la route répondrait 403.
+   */
+  public readonly canViewBalance = computed(
+    () => this._hasBalancePermission() && this._tenantModules.has(TENANT_MODULES.BANKING_MICROFINANCE),
+  );
 
   public readonly steps = [
     { index: 1, label: 'Produit' },

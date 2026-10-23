@@ -26,5 +26,7 @@ export interface CurrentUserDto {
     defaultLanguage?: string | null;
     impersonatorId?: string | null;
     impersonatorName?: string | null;
+    activeModules?: Array<string> | null;
+    readOnlyModules?: Array<string> | null;
 }
 

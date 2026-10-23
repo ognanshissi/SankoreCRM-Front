@@ -20,6 +20,7 @@ import {
   TasSideDrawer,
 } from '@talisoft/ui/side-drawer';
 import { TasTitle } from '@talisoft/ui/title';
+import { TenantModulesService } from '@sankore/crm/common';
 import { catchError, EMPTY, firstValueFrom } from 'rxjs';
 import {
   ConnectionSettingsFormComponent,
@@ -33,7 +34,7 @@ import {
   IntegrationFacadeService,
 } from '../../data-access/integration-facade.service';
 import {
-  CONNECTION_FAMILIES,
+  availableFamilies,
   CONNECTION_FAMILY_LABELS,
   CONNECTION_KIND_LABELS,
   CONNECTION_KINDS_BY_FAMILY,
@@ -159,6 +160,7 @@ export class CreateConnectionDrawer {
   public readonly data = inject<CreateConnectionDrawerData>(DIALOG_DATA);
   private readonly _facade = inject(IntegrationFacadeService);
   private readonly _snackbar = inject(SnackbarService);
+  private readonly _tenantModules = inject(TenantModulesService);
 
   public readonly modes = CONNECTION_MODES;
 
@@ -228,9 +230,9 @@ export class CreateConnectionDrawer {
   /** Une famille imposée par l'écran appelant n'offre plus qu'une carte, déjà cochée. */
   public readonly families = computed(() => {
     const selected = this.selectedFamily();
-    return CONNECTION_FAMILIES.filter((f) => !this.data.family || f.value === this.data.family).map(
-      (f) => ({ ...f, ...FAMILY_STYLE[f.value], isSelected: f.value === selected }),
-    );
+    return availableFamilies(this._tenantModules.active())
+      .filter((f) => !this.data.family || f.value === this.data.family)
+      .map((f) => ({ ...f, ...FAMILY_STYLE[f.value], isSelected: f.value === selected }));
   });
 
   public readonly systems = computed(() => {

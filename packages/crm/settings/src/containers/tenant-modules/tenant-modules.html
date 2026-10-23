@@ -1,0 +1,140 @@
+<p class="text-sm text-slate-400 mb-5">
+  Les modules payants de votre institution. Le socle — leads, clients, conformité, téléphonie — reste toujours actif.
+</p>
+
+@if (isLoading()) {
+  <div class="flex justify-center py-24">
+    <tas-spinner size="10" class="text-primary"></tas-spinner>
+  </div>
+} @else if (loadFailed(); as message) {
+  <tas-card class="block max-w-3xl">
+    <div class="p-4 flex items-center gap-3">
+      <tas-icon iconName="feather:alert-triangle" class="text-functional-error" style="font-size:16px"></tas-icon>
+      <p class="text-sm text-slate-600 flex-1">{{ message }}</p>
+      <button tas-outlined-button type="button" (click)="reload()">Réessayer</button>
+    </div>
+  </tas-card>
+} @else {
+  <div class="max-w-3xl flex flex-col gap-4">
+    @for (module of modules(); track module.code) {
+      @let current = module.current;
+      <tas-card class="block">
+        <div class="p-4 flex flex-col gap-3">
+          <div class="flex items-start justify-between gap-4">
+            <div class="min-w-0">
+              <p class="text-base font-semibold text-slate-800">{{ module.label }}</p>
+              <p class="text-sm text-slate-500 mt-0.5">{{ module.description }}</p>
+            </div>
+            <tas-tag class="shrink-0" [severity]="stateMeta[state(module)].severity">
+              {{ stateMeta[state(module)].label }}
+            </tas-tag>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-x-6 gap-y-1 text-sm">
+            <span class="text-slate-700 tabular-nums">
+              <span class="font-semibold">{{ price(module.monthlyPrice, module.currency) }}</span>
+              <span class="text-slate-400"> / mois</span>
+            </span>
+            @switch (state(module)) {
+              @case ('Active') {
+                @if (current?.activatedAt) {
+                  <span class="text-slate-500">Actif depuis le {{ current?.activatedAt | date: 'dd/MM/yyyy' }}</span>
+                }
+                @if (current?.acceptedMonthlyPrice != null) {
+                  <span class="text-slate-500 tabular-nums">
+                    Tarif accepté : {{ price(current?.acceptedMonthlyPrice, current?.acceptedCurrency) }}
+                  </span>
+                }
+              }
+              @case ('Requested') {
+                <span class="text-slate-500">
+                  Demandé le {{ current?.requestedAt | date: 'dd/MM/yyyy' }}
+                  @if (current?.requestedByEmail) { par {{ current?.requestedByEmail }} }
+                </span>
+              }
+              @case ('Deactivated') {
+                <span class="text-slate-500">
+                  Désactivé le {{ current?.deactivatedAt | date: 'dd/MM/yyyy' }}
+                  @if (current?.deactivatedByEmail) { par {{ current?.deactivatedByEmail }} }
+                </span>
+              }
+            }
+          </div>
+
+          @if (state(module) === 'Rejected' && current?.decisionReason) {
+            <div class="rounded-lg bg-slate-50 border border-slate-200 px-3 py-2 text-sm text-slate-600">
+              <span class="font-medium">Motif du refus :</span> {{ current?.decisionReason }}
+            </div>
+          }
+
+          @if (state(module) === 'Requested') {
+            <p class="text-xs text-slate-500">
+              La demande attend l’autorisation de l’équipe Sankoré. Le module s’activera dès qu’elle sera accordée.
+            </p>
+          }
+
+          @if (!module.isAvailable && state(module) !== 'Active' && state(module) !== 'Requested') {
+            <p class="text-xs text-slate-500">Ce module n’est pas encore proposé à la souscription.</p>
+          }
+
+          <div class="flex flex-wrap items-center justify-between gap-3 pt-1">
+            @if (pastPeriods(module).length > 0) {
+              <button tas-text-button type="button" (click)="toggleHistory(module.code!)">
+                <tas-icon
+                  [iconName]="expandedHistory().has(module.code!) ? 'feather:chevron-down' : 'feather:chevron-right'"
+                  style="font-size:14px"
+                ></tas-icon>
+                &nbsp; Historique ({{ pastPeriods(module).length }})
+              </button>
+            } @else {
+              <span></span>
+            }
+
+            <div class="flex items-center gap-2">
+              @if (state(module) === 'Requested' && canRequest()) {
+                <button tas-outlined-button type="button" [disabled]="busyCode() === module.code"
+                        [isLoading]="busyCode() === module.code" (click)="cancelRequest(module)">
+                  Annuler la demande
+                </button>
+              }
+              @if (state(module) === 'Active' && canDeactivate()) {
+                <button tas-outlined-button color="warn" type="button" [disabled]="busyCode() === module.code"
+                        [isLoading]="busyCode() === module.code" (click)="deactivate(module)">
+                  <tas-icon iconName="feather:power" style="font-size:14px"></tas-icon> &nbsp; Désactiver
+                </button>
+              }
+              @if (canAsk(module) && canRequest()) {
+                <button tas-raised-button color="primary" type="button" (click)="openRequest(module)">
+                  <tas-icon iconName="feather:send" style="font-size:14px"></tas-icon> &nbsp;
+                  {{ state(module) === 'None' ? 'Demander' : 'Demander à nouveau' }}
+                </button>
+              }
+            </div>
+          </div>
+
+          @if (expandedHistory().has(module.code!)) {
+            <ul class="border-t border-slate-100 pt-3 flex flex-col gap-2">
+              @for (period of pastPeriods(module); track period.id) {
+                <li class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500">
+                  <tas-tag [severity]="stateMeta[period.status ?? 'None'].severity">
+                    {{ stateMeta[period.status ?? 'None'].label }}
+                  </tas-tag>
+                  <span>{{ (period.requestedAt ?? period.createdAt) | date: 'dd/MM/yyyy' }}</span>
+                  @if (period.requestedByEmail) { <span>demandé par {{ period.requestedByEmail }}</span> }
+                  @if (period.activatedAt) { <span>actif le {{ period.activatedAt | date: 'dd/MM/yyyy' }}</span> }
+                  @if (period.deactivatedAt) {
+                    <span>
+                      désactivé le {{ period.deactivatedAt | date: 'dd/MM/yyyy' }}
+                      @if (period.deactivatedByEmail) { par {{ period.deactivatedByEmail }} }
+                    </span>
+                  }
+                  @if (period.decisionReason) { <span>motif : {{ period.decisionReason }}</span> }
+                </li>
+              }
+            </ul>
+          }
+        </div>
+      </tas-card>
+    }
+  </div>
+}

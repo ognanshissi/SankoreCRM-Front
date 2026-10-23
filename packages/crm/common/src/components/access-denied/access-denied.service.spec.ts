@@ -71,6 +71,16 @@ describe('AccessDeniedService', () => {
     expect(service.notice()).toBeNull();
   });
 
+  it('retient le module inactif quand c’est lui qui ferme la page', () => {
+    service.notifyModule('/customers/groupes', ['BankingMicrofinance']);
+
+    expect(service.notice()).toEqual({
+      attemptedUrl: '/customers/groupes',
+      required: [],
+      modules: ['BankingMicrofinance'],
+    });
+  });
+
   it('ignore une navigation terminée quand aucune bannière n’est affichée', () => {
     expect(() => service.onNavigationSettled()).not.toThrow();
     expect(service.notice()).toBeNull();

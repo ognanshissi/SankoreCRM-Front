@@ -32,7 +32,7 @@
       <tas-form-field>
         <tas-label>Catégorie de produit</tas-label>
         <tas-select
-          [options]="productConfig.categories"
+          [options]="categoryOptions()"
           optionLabel="label"
           optionValue="value"
           placeholder="Sélectionnez"

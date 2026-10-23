@@ -30,7 +30,7 @@ import {
   RevealSensitiveFieldRequestFieldEnum,
   UsersApiService,
 } from '@sankore/crm-api';
-import { BreadcrumbService, CustomFieldFilters, PermissionsService } from '@sankore/crm/common';
+import { BreadcrumbService, CustomFieldFilters, PermissionsService, TENANT_MODULES, TenantModulesService } from '@sankore/crm/common';
 import {
   CLIENT_STATUS_ORDER,
   CLIENT_TYPE_ORDER,
@@ -183,6 +183,7 @@ export class ClientsListPage implements OnInit {
   private readonly _usersApi = inject(UsersApiService);
   private readonly _breadcrumb = inject(BreadcrumbService);
   private readonly _permissions = inject(PermissionsService);
+  private readonly _tenantModules = inject(TenantModulesService);
   private readonly _snackbar = inject(SnackbarService);
   private readonly _destroyRef = inject(DestroyRef);
   private readonly _route = inject(ActivatedRoute);
@@ -190,6 +191,8 @@ export class ClientsListPage implements OnInit {
 
   public readonly canCreate = this._permissions.can('customers:create');
   public readonly canRead = this._permissions.can('customers:read');
+  /** Groupes solidaires, tontines et AVEC : module « Banking - Microfinance ». */
+  public readonly hasGroups = computed(() => this._tenantModules.canRead(TENANT_MODULES.BANKING_MICROFINANCE));
   public readonly canMerge = this._permissions.can('customers:merge');
   public readonly canAssign = this._permissions.can('customers:update');
   public readonly canReveal = this._permissions.can('customers:reveal_sensitive');

@@ -10,6 +10,7 @@ export * from './models/environment-config';
 export * from './models/permissions';
 export * from './guards/authorized.guard';
 export * from './guards/permission.guard';
+export * from './guards/module.guard';
 export * from './guards/tenant.guard';
 
 export * from './models';

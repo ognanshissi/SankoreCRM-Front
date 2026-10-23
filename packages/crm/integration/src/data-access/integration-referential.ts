@@ -3,6 +3,7 @@ import {
   RecordComplaintRequestChannelEnum,
 } from '@sankore/crm-api';
 import { Severity } from '@talisoft/ui/tag';
+import { TENANT_MODULES, TenantModule } from '@sankore/crm/common';
 
 /**
  * Libellés et métadonnées du module Intégration.
@@ -49,6 +50,26 @@ export const CONNECTION_FAMILIES: ReadonlyArray<{
       "Le standard téléphonique de vos agences : appels sortants depuis une fiche, journal des appels et enregistrements.",
   },
 ];
+
+/**
+ * Le module payant qu'exige la création d'une connexion de cette famille, ou `null` pour le
+ * socle. Même règle que le serveur (`ConnectionFamilyModules`) : pas de connexion core banking
+ * sans « Banking - Microfinance », même pour un tenant qui n'a que l'assurance.
+ */
+const FAMILY_MODULE: Record<ConnectionFamily, TenantModule | null> = {
+  CoreBanking: TENANT_MODULES.BANKING_MICROFINANCE,
+  Insurance: TENANT_MODULES.INSURANCE,
+  Telephony: null,
+  Messaging: null,
+};
+
+/** Les familles qu'un tenant peut créer avec ses modules actifs. La téléphonie, toujours. */
+export function availableFamilies(active: ReadonlySet<string>): typeof CONNECTION_FAMILIES {
+  return CONNECTION_FAMILIES.filter((f) => {
+    const module = FAMILY_MODULE[f.value];
+    return module === null || active.has(module);
+  });
+}
 
 export const CONNECTION_FAMILY_LABELS: Record<ConnectionFamily, string> = {
   CoreBanking: 'Core banking',

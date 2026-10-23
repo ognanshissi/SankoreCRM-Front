@@ -5,6 +5,7 @@ import { TasCard } from '@talisoft/ui/card';
 import { TasIcon } from '@talisoft/ui/icon';
 import { TasTag } from '@talisoft/ui/tag';
 import { ClientDetailStore } from '../../models/client-detail.store';
+import { TENANT_MODULES, TenantModule, ModuleReadOnlyNotice } from '@sankore/crm/common';
 
 /**
  * Une adhésion du client à un groupe, telle que l'onglet l'affiche.
@@ -46,8 +47,9 @@ interface GroupMembershipRow {
 @Component({
   selector: 'client-groupes',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [TasCard, TasIcon, TasTag, Anchor, RouterLink],
+  imports: [ModuleReadOnlyNotice, TasCard, TasIcon, TasTag, Anchor, RouterLink],
   template: `
+    <module-read-only-notice [modules]="readOnlyModules"></module-read-only-notice>
     <div class="flex flex-col gap-4">
       <tas-card class="block">
         <div class="flex flex-wrap items-start justify-between gap-3 p-4">
@@ -162,6 +164,8 @@ interface GroupMembershipRow {
   `,
 })
 export class ClientGroupsTabPage {
+  /** Module désactivé : l'écran reste consultable, sans action (bandeau en tête). */
+  public readonly readOnlyModules: TenantModule[] = [TENANT_MODULES.BANKING_MICROFINANCE];
   protected readonly store = inject(ClientDetailStore);
 
   /**

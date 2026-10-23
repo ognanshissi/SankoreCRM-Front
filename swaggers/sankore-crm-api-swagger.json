@@ -15125,7 +15125,7 @@
           {
             "name": "productCategory",
             "in": "query",
-            "description": "One of: Loan, Savings, Insurance, HealthInsurance, ForecastInsurance, Tontine, GroupCredit, Agriculture, CurrentAccount",
+            "description": "One of: Loan, Savings, Insurance, HealthInsurance, ForecastInsurance, Tontine, GroupCredit, Agriculture, CurrentAccount, Standard",
             "schema": {
               "enum": [
                 "Loan",
@@ -15136,10 +15136,11 @@
                 "Tontine",
                 "GroupCredit",
                 "Agriculture",
-                "CurrentAccount"
+                "CurrentAccount",
+                "Standard"
               ],
               "type": "string",
-              "description": "One of: Loan, Savings, Insurance, HealthInsurance, ForecastInsurance, Tontine, GroupCredit, Agriculture, CurrentAccount"
+              "description": "One of: Loan, Savings, Insurance, HealthInsurance, ForecastInsurance, Tontine, GroupCredit, Agriculture, CurrentAccount, Standard"
             }
           }
         ],
@@ -15170,7 +15171,7 @@
           {
             "name": "productCategory",
             "in": "path",
-            "description": "One of: Loan, Savings, Insurance, HealthInsurance, ForecastInsurance, Tontine, GroupCredit, Agriculture, CurrentAccount",
+            "description": "One of: Loan, Savings, Insurance, HealthInsurance, ForecastInsurance, Tontine, GroupCredit, Agriculture, CurrentAccount, Standard",
             "required": true,
             "schema": {
               "enum": [
@@ -15182,10 +15183,11 @@
                 "Tontine",
                 "GroupCredit",
                 "Agriculture",
-                "CurrentAccount"
+                "CurrentAccount",
+                "Standard"
               ],
               "type": "string",
-              "description": "One of: Loan, Savings, Insurance, HealthInsurance, ForecastInsurance, Tontine, GroupCredit, Agriculture, CurrentAccount"
+              "description": "One of: Loan, Savings, Insurance, HealthInsurance, ForecastInsurance, Tontine, GroupCredit, Agriculture, CurrentAccount, Standard"
             }
           }
         ],
@@ -18333,7 +18335,7 @@
           {
             "name": "category",
             "in": "query",
-            "description": "One of: Loan, Savings, Insurance, HealthInsurance, ForecastInsurance, Tontine, GroupCredit, Agriculture, CurrentAccount",
+            "description": "One of: Loan, Savings, Insurance, HealthInsurance, ForecastInsurance, Tontine, GroupCredit, Agriculture, CurrentAccount, Standard",
             "schema": {
               "enum": [
                 "Loan",
@@ -18344,10 +18346,11 @@
                 "Tontine",
                 "GroupCredit",
                 "Agriculture",
-                "CurrentAccount"
+                "CurrentAccount",
+                "Standard"
               ],
               "type": "string",
-              "description": "One of: Loan, Savings, Insurance, HealthInsurance, ForecastInsurance, Tontine, GroupCredit, Agriculture, CurrentAccount"
+              "description": "One of: Loan, Savings, Insurance, HealthInsurance, ForecastInsurance, Tontine, GroupCredit, Agriculture, CurrentAccount, Standard"
             }
           }
         ],
@@ -18397,6 +18400,9 @@
           },
           "400": {
             "description": "Bad Request"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         }
       }
@@ -18516,7 +18522,7 @@
           "Products"
         ],
         "summary": "Link a CRM product to a CBS product",
-        "description": "Associates the CRM product with an external Core Banking System product identifier. Audited separately from general product updates.",
+        "description": "Associates the CRM product with an external Core Banking System product identifier. Audited separately from general product updates. Requires the Banking - Microfinance module.",
         "operationId": "LinkProductToCbs",
         "parameters": [
           {
@@ -22423,6 +22429,146 @@
           },
           "422": {
             "description": "Unprocessable Entity"
+          }
+        }
+      }
+    },
+    "/api/v1/tenant-modules": {
+      "get": {
+        "tags": [
+          "Tenant Modules"
+        ],
+        "summary": "The paid modules: offer, price, the tenant's state and history",
+        "operationId": "ListTenantModules",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantModulesDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/tenant-modules/{module}/requests": {
+      "post": {
+        "tags": [
+          "Tenant Modules"
+        ],
+        "summary": "Ask the platform for a paid module, accepting its price",
+        "description": "Send the price the user was shown. The platform must authorise the request before the module is active. 409 MODULE_PRICE_CHANGED when the price moved since it was shown, MODULE_UNAVAILABLE, MODULE_REQUEST_PENDING, MODULE_ALREADY_ACTIVE; 503 TENANT_REGISTRY_UNAVAILABLE. Audited. Requires tenant:modules:request.",
+        "operationId": "RequestTenantModule",
+        "parameters": [
+          {
+            "name": "module",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RequestTenantModuleBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "409": {
+            "description": "Conflict"
+          },
+          "503": {
+            "description": "Service Unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/tenant-modules/requests/{subscriptionId}/cancel": {
+      "post": {
+        "tags": [
+          "Tenant Modules"
+        ],
+        "summary": "Withdraw a module request the platform has not decided yet",
+        "description": "409 MODULE_REQUEST_NOT_PENDING once decided. Audited. Requires tenant:modules:request.",
+        "operationId": "CancelTenantModuleRequest",
+        "parameters": [
+          {
+            "name": "subscriptionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "409": {
+            "description": "Conflict"
+          },
+          "503": {
+            "description": "Service Unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/tenant-modules/{module}/deactivate": {
+      "post": {
+        "tags": [
+          "Tenant Modules"
+        ],
+        "summary": "Switch a module off, effective immediately",
+        "description": "No platform approval and no data deleted: the module's screens and routes close on the next request, and switching it back on finds everything where it was. 409 MODULE_NOT_ACTIVE. Audited. Requires tenant:modules:deactivate.",
+        "operationId": "DeactivateTenantModule",
+        "parameters": [
+          {
+            "name": "module",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "409": {
+            "description": "Conflict"
+          },
+          "503": {
+            "description": "Service Unavailable"
           }
         }
       }
@@ -33672,10 +33818,11 @@
               "Tontine",
               "GroupCredit",
               "Agriculture",
-              "CurrentAccount"
+              "CurrentAccount",
+              "Standard"
             ],
             "type": "string",
-            "description": "One of: Loan, Savings, Insurance, HealthInsurance, ForecastInsurance, Tontine, GroupCredit, Agriculture, CurrentAccount"
+            "description": "One of: Loan, Savings, Insurance, HealthInsurance, ForecastInsurance, Tontine, GroupCredit, Agriculture, CurrentAccount, Standard"
           },
           "description": {
             "type": "string",
@@ -33719,10 +33866,11 @@
               "Tontine",
               "GroupCredit",
               "Agriculture",
-              "CurrentAccount"
+              "CurrentAccount",
+              "Standard"
             ],
             "type": "string",
-            "description": "One of: Loan, Savings, Insurance, HealthInsurance, ForecastInsurance, Tontine, GroupCredit, Agriculture, CurrentAccount",
+            "description": "One of: Loan, Savings, Insurance, HealthInsurance, ForecastInsurance, Tontine, GroupCredit, Agriculture, CurrentAccount, Standard",
             "nullable": true
           },
           "productCode": {
@@ -34500,6 +34648,20 @@
           },
           "impersonatorName": {
             "type": "string",
+            "nullable": true
+          },
+          "activeModules": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "readOnlyModules": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
             "nullable": true
           }
         },
@@ -44063,10 +44225,11 @@
               "Tontine",
               "GroupCredit",
               "Agriculture",
-              "CurrentAccount"
+              "CurrentAccount",
+              "Standard"
             ],
             "type": "string",
-            "description": "One of: Loan, Savings, Insurance, HealthInsurance, ForecastInsurance, Tontine, GroupCredit, Agriculture, CurrentAccount"
+            "description": "One of: Loan, Savings, Insurance, HealthInsurance, ForecastInsurance, Tontine, GroupCredit, Agriculture, CurrentAccount, Standard"
           },
           "description": {
             "type": "string",
@@ -46023,6 +46186,20 @@
           "workflowInstanceId": {
             "type": "string",
             "format": "uuid",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "RequestTenantModuleBody": {
+        "type": "object",
+        "properties": {
+          "acceptedMonthlyPrice": {
+            "type": "number",
+            "format": "double"
+          },
+          "acceptedCurrency": {
+            "type": "string",
             "nullable": true
           }
         },
@@ -50745,6 +50922,146 @@
         },
         "additionalProperties": false
       },
+      "TenantModuleDto": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "nullable": true
+          },
+          "label": {
+            "type": "string",
+            "nullable": true
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "monthlyPrice": {
+            "type": "number",
+            "format": "double"
+          },
+          "currency": {
+            "type": "string",
+            "nullable": true
+          },
+          "isAvailable": {
+            "type": "boolean"
+          },
+          "state": {
+            "enum": [
+              "None",
+              "Requested",
+              "Active",
+              "Rejected",
+              "Cancelled",
+              "Deactivated"
+            ],
+            "type": "string",
+            "description": "One of: None, Requested, Active, Rejected, Cancelled, Deactivated"
+          },
+          "current": {
+            "$ref": "#/components/schemas/TenantModuleSubscriptionDto"
+          },
+          "history": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TenantModuleSubscriptionDto"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "TenantModuleSubscriptionDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "enum": [
+              "None",
+              "Requested",
+              "Active",
+              "Rejected",
+              "Cancelled",
+              "Deactivated"
+            ],
+            "type": "string",
+            "description": "One of: None, Requested, Active, Rejected, Cancelled, Deactivated"
+          },
+          "source": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "requestedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "requestedByEmail": {
+            "type": "string",
+            "nullable": true
+          },
+          "acceptedMonthlyPrice": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "acceptedCurrency": {
+            "type": "string",
+            "nullable": true
+          },
+          "decidedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "decisionReason": {
+            "type": "string",
+            "nullable": true
+          },
+          "cancelledAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "activatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "deactivatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "deactivatedByEmail": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "TenantModulesDto": {
+        "type": "object",
+        "properties": {
+          "modules": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TenantModuleDto"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "TerritoryDto": {
         "type": "object",
         "properties": {
@@ -51983,10 +52300,11 @@
               "Tontine",
               "GroupCredit",
               "Agriculture",
-              "CurrentAccount"
+              "CurrentAccount",
+              "Standard"
             ],
             "type": "string",
-            "description": "One of: Loan, Savings, Insurance, HealthInsurance, ForecastInsurance, Tontine, GroupCredit, Agriculture, CurrentAccount",
+            "description": "One of: Loan, Savings, Insurance, HealthInsurance, ForecastInsurance, Tontine, GroupCredit, Agriculture, CurrentAccount, Standard",
             "nullable": true
           },
           "productCode": {

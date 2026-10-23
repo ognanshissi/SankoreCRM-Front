@@ -16,7 +16,7 @@ import { SideDrawerService } from '@talisoft/ui/side-drawer';
 import { TableConfig, TasTable } from '@talisoft/ui/table';
 import { TasTag } from '@talisoft/ui/tag';
 import { TimeagoPipe } from '@talisoft/ui/timeago';
-import { BreadcrumbService } from '@sankore/crm/common';
+import { BreadcrumbService, TENANT_MODULES, TenantModule, ModuleReadOnlyNotice } from '@sankore/crm/common';
 import { IntegrationFacadeService } from '../../data-access/integration-facade.service';
 import { BatchFileRow, PendingIntegrationEndpoints } from '../../data-access/pending-endpoints';
 import {
@@ -65,7 +65,7 @@ const DEFAULT_PAGE_SIZE = 20;
 @Component({
   selector: 'integration-batch-files-homepage',
   templateUrl: './batch-files-homepage.html',
-  imports: [
+  imports: [ModuleReadOnlyNotice, 
     FormsModule,
     Button,
     TasAlert,
@@ -82,6 +82,8 @@ const DEFAULT_PAGE_SIZE = 20;
   ],
 })
 export class BatchFilesHomePage implements OnInit {
+  /** Module désactivé : l'écran reste consultable, sans action (bandeau en tête). */
+  public readonly readOnlyModules: TenantModule[] = [TENANT_MODULES.BANKING_MICROFINANCE, TENANT_MODULES.INSURANCE];
   private readonly _facade = inject(IntegrationFacadeService);
   private readonly _breadcrumb = inject(BreadcrumbService);
   private readonly _sideDrawer = inject(SideDrawerService);

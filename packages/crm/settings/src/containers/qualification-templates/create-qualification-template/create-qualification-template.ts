@@ -1,6 +1,7 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  computed,
   effect,
   inject,
   signal,
@@ -74,6 +75,7 @@ export class CreateQualificationTemplateComponent {
   private readonly _snackbarService = inject(SnackbarService);
 
   public readonly productConfig = inject(ProductConfigService);
+  public readonly categoryOptions = computed(() => this.productConfig.offeredCategories());
 
   public model = signal(CreateQualificationTemplateFormModel.instantiate());
 

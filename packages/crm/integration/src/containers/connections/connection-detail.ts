@@ -9,7 +9,7 @@ import {
   UnmappedCodesResponse,
   UpdateConnectionRequestModeEnum,
 } from '@sankore/crm-api';
-import { BreadcrumbService, PermissionsService } from '@sankore/crm/common';
+import { BreadcrumbService, PermissionsService, TENANT_MODULES, TenantModulesService } from '@sankore/crm/common';
 import { Button } from '@talisoft/ui/button';
 import { TasCard } from '@talisoft/ui/card';
 import { ConfirmDialogService } from '@talisoft/ui/confirm-dialog';
@@ -137,7 +137,12 @@ export class ConnectionDetailPage {
   private readonly _permissions = inject(PermissionsService);
   public readonly canManage = this._permissions.can('Integration.Connection.Manage');
   public readonly canManageMappings = this._permissions.can('Integration.Mapping.Manage');
-  public readonly canSeeInsuranceProducts = this._permissions.can('Ins.Product.Manage');
+  private readonly _tenantModules = inject(TenantModulesService);
+  private readonly _hasInsuranceProductPermission = this._permissions.can('Ins.Product.Manage');
+  /** Le catalogue d'un assureur relève du module « Assurance » ; sans lui, la route répond 403. */
+  public readonly canSeeInsuranceProducts = computed(
+    () => this._hasInsuranceProductPermission() && this._tenantModules.canRead(TENANT_MODULES.INSURANCE),
+  );
 
   public readonly id = input.required<string>();
 

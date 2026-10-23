@@ -25,6 +25,8 @@ import {
   PermissionsService,
   reconciliationGapTypeLabel,
   UNKNOWN_CODE_LABEL,
+  TENANT_MODULES,
+  TenantModulesService,
 } from '@sankore/crm/common';
 import { TasAlert } from '@talisoft/ui/alert';
 import { Button } from '@talisoft/ui/button';
@@ -498,8 +500,14 @@ export class ReconciliationGapsList implements OnInit {
    * à l'appel, on lit donc l'ensemble accordé pour rester réactif au changement
    * d'entrée.
    */
-  public readonly canResolve = computed(() =>
-    this._permissions.granted().has(this.resolvePermission()),
+  public readonly canResolve = computed(
+    () => this._permissions.granted().has(this.resolvePermission()) && !this._moduleReadOnly(),
+  );
+
+  /** Les deux modules désactivés : les écarts se consultent, ne se résolvent plus. */
+  private readonly _moduleReadOnly = inject(TenantModulesService).readOnly(
+    TENANT_MODULES.BANKING_MICROFINANCE,
+    TENANT_MODULES.INSURANCE,
   );
 
   public readonly lastRun = computed(() => this._pageMeta()?.lastRun ?? null);

@@ -1,5 +1,5 @@
 import { Route } from '@angular/router';
-import { hasAllPermissionsGuard, hasPermissionGuard } from '@sankore/crm/common';
+import { canReadModuleGuard, hasAllPermissionsGuard, hasModuleGuard, hasPermissionGuard, TENANT_MODULES } from '@sankore/crm/common';
 import ImportClientsPage from './containers/import-clients/import-clients';
 
 /**
@@ -7,6 +7,11 @@ import ImportClientsPage from './containers/import-clients/import-clients';
  *
  * L'ordre compte : les segments fixes (`nouveau`, `groupes`, `doublons`, `fusions`)
  * doivent précéder `:id`, sinon le joker les capturerait comme identifiants.
+ *
+ * Groupes et core banking relèvent du module payant « Banking - Microfinance », assurances et
+ * souscription du module « Assurance » : sans le module, le serveur répond 403 et ces écrans
+ * n'auraient que des erreurs à montrer. Un module désactivé garde ses écrans en consultation
+ * (`canReadModuleGuard`) ; la souscription, qui crée, exige le module actif.
  */
 export const customersRoutes: Route[] = [
   {
@@ -27,13 +32,13 @@ export const customersRoutes: Route[] = [
   },
   {
     path: 'groupes',
-    canActivate: [hasPermissionGuard('customers:read')],
+    canActivate: [hasPermissionGuard('customers:read'), canReadModuleGuard(TENANT_MODULES.BANKING_MICROFINANCE)],
     loadComponent: () =>
       import('./containers/client-groups/client-groups-list'),
   },
   {
     path: 'groupes/:groupId',
-    canActivate: [hasPermissionGuard('customers:read')],
+    canActivate: [hasPermissionGuard('customers:read'), canReadModuleGuard(TENANT_MODULES.BANKING_MICROFINANCE)],
     loadComponent: () =>
       import('./containers/client-groups/client-group-detail'),
   },
@@ -63,7 +68,7 @@ export const customersRoutes: Route[] = [
     // paramètre s'appelle `customerId` parce que c'est le nom de l'`input()` du
     // composant, lié par `withComponentInputBinding()`.
     path: ':customerId/souscrire-assurance',
-    canActivate: [hasPermissionGuard('Ins.Policy.Subscribe')],
+    canActivate: [hasPermissionGuard('Ins.Policy.Subscribe'), hasModuleGuard(TENANT_MODULES.INSURANCE)],
     loadComponent: () =>
       // Chargé depuis la barrique de la lib `integration`, qui porte déjà les blocs
       // Core banking et Assurances de cette fiche : l'écran arrive donc dans un
@@ -104,6 +109,7 @@ export const customersRoutes: Route[] = [
       },
       {
         path: 'groupes',
+        canActivate: [canReadModuleGuard(TENANT_MODULES.BANKING_MICROFINANCE)],
         loadComponent: () => import('./containers/client-detail/groupes'),
       },
       {
@@ -116,10 +122,12 @@ export const customersRoutes: Route[] = [
       },
       {
         path: 'core-banking',
+        canActivate: [canReadModuleGuard(TENANT_MODULES.BANKING_MICROFINANCE)],
         loadComponent: () => import('./containers/client-detail/core-banking'),
       },
       {
         path: 'assurances',
+        canActivate: [canReadModuleGuard(TENANT_MODULES.INSURANCE)],
         loadComponent: () => import('./containers/client-detail/assurances'),
       },
       {

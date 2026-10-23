@@ -9,6 +9,9 @@ import {
   BreadcrumbService,
   PermissionCode,
   PermissionsService,
+  TENANT_MODULES,
+  TenantModule,
+  TenantModulesService,
 } from '@sankore/crm/common';
 import { AgenciesApiService, UsersApiService } from '@sankore/crm-api';
 import { catchError, EMPTY } from 'rxjs';
@@ -43,6 +46,8 @@ interface ClientTab {
    * répondraient 403 et l'onglet n'afficherait que des erreurs.
    */
   permissions?: PermissionCode[];
+  /** Module payant dont relève l'onglet (actif ou désactivé). Absent : socle, toujours visible. */
+  module?: TenantModule;
 }
 
 /** Au-delà de ce délai en attente de KYC, la fiche affiche une alerte. */
@@ -242,6 +247,7 @@ export class ClientDetailNavigation {
   private readonly _usersApi = inject(UsersApiService);
 
   private readonly _permissions = inject(PermissionsService);
+  private readonly _tenantModules = inject(TenantModulesService);
   public readonly canReveal = this._permissions.can('customers:reveal_sensitive');
 
   public readonly id = input.required<string>();
@@ -273,7 +279,7 @@ export class ClientDetailNavigation {
     { label: 'Produits détenus', icon: 'feather:package', route: 'produits' },
     { label: 'Demandes en cours', icon: 'feather:inbox', route: 'demandes' },
     { label: 'Relations', icon: 'feather:users', route: 'relations' },
-    { label: 'Groupes', icon: 'feather:layers', route: 'groupes' },
+    { label: 'Groupes', icon: 'feather:layers', route: 'groupes', module: TENANT_MODULES.BANKING_MICROFINANCE },
     { label: 'Bénéficiaires effectifs', icon: 'feather:pie-chart', route: 'beneficiaires', legalOnly: true },
     { label: 'KYC', icon: 'feather:shield', route: 'kyc' },
     {
@@ -286,12 +292,14 @@ export class ClientDetailNavigation {
       // que l'onglet ait quelque chose à montrer. Le contrat ne déclare pas encore de
       // droit de lecture propre au core banking — à revoir si le back en ajoute un.
       permissions: ['Integration.Command.View', 'CoreBanking.Balance.ViewLive'],
+      module: TENANT_MODULES.BANKING_MICROFINANCE,
     },
     {
       label: 'Assurances',
       icon: 'feather:umbrella',
       route: 'assurances',
       permissions: ['Ins.Policy.View', 'Ins.Policy.Subscribe', 'Ins.Claim.View'],
+      module: TENANT_MODULES.INSURANCE,
     },
     { label: 'Historique', icon: 'feather:clock', route: 'historique' },
   ];
@@ -299,9 +307,12 @@ export class ClientDetailNavigation {
   protected readonly visibleTabs = computed(() => {
     const isLegal = isLegalClient(this.client()?.clientType);
     const granted = this._permissions.granted();
+    // Un module désactivé garde ses onglets, en consultation seule.
+    const modules = this._tenantModules.readable();
     return this._tabs.filter(
       (t) =>
         (!t.legalOnly || isLegal) &&
+        (!t.module || modules.has(t.module)) &&
         (!t.permissions || t.permissions.some((c) => granted.has(c))),
     );
   });

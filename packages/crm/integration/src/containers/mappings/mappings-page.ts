@@ -14,7 +14,7 @@ import { FormsModule } from '@angular/forms';
 import { form, FormField, required, submit } from '@angular/forms/signals';
 import { ActivatedRoute, Router } from '@angular/router';
 import { ConnectionListDto, MappingDto, UnmappedCodesResponse } from '@sankore/crm-api';
-import { BreadcrumbService, PermissionsService } from '@sankore/crm/common';
+import { BreadcrumbService, PermissionsService, TENANT_MODULES, TenantModulesService, TenantModule, ModuleReadOnlyNotice } from '@sankore/crm/common';
 import { TasAlert } from '@talisoft/ui/alert';
 import { Button } from '@talisoft/ui/button';
 import { TasCard } from '@talisoft/ui/card';
@@ -84,7 +84,7 @@ class MappingRowFormModel {
 @Component({
   selector: 'integration-mappings-page',
   templateUrl: './mappings-page.html',
-  imports: [
+  imports: [ModuleReadOnlyNotice, 
     FormsModule,
     FormField,
     TasAlert,
@@ -102,6 +102,10 @@ class MappingRowFormModel {
   ],
 })
 export class MappingsPage implements OnInit {
+  /** Module désactivé : l'écran reste consultable, sans action (bandeau en tête). */
+  public readonly readOnlyModules: TenantModule[] = [TENANT_MODULES.BANKING_MICROFINANCE, TENANT_MODULES.INSURANCE];
+  /** Module désactivé : consultation seule, les actions se masquent (le serveur les refuserait). */
+  private readonly _moduleReadOnly = inject(TenantModulesService).readOnly(TENANT_MODULES.BANKING_MICROFINANCE, TENANT_MODULES.INSURANCE);
   private readonly _facade = inject(IntegrationFacadeService);
   private readonly _breadcrumb = inject(BreadcrumbService);
   private readonly _permissions = inject(PermissionsService);
@@ -114,7 +118,8 @@ export class MappingsPage implements OnInit {
 
   private readonly _tabButtons = viewChildren<ElementRef<HTMLButtonElement>>('tabButton');
 
-  public readonly canManage = this._permissions.can('Integration.Mapping.Manage');
+  private readonly _canManagePermission = this._permissions.can('Integration.Mapping.Manage');
+  public readonly canManage = computed(() => this._canManagePermission() && !this._moduleReadOnly());
 
   public readonly domains = MAPPING_DOMAINS;
 

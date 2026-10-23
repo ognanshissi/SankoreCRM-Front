@@ -8,7 +8,9 @@ import { catchError, debounceTime, EMPTY, finalize, Subject } from 'rxjs';
 import { Anchor, Button } from '@talisoft/ui/button';
 import { TasIcon } from '@talisoft/ui/icon';
 import { TableConfig, TasTable } from '@talisoft/ui/table';
+import { SideDrawerService } from '@talisoft/ui/side-drawer';
 import { TenantResponse, TenantsApiService } from '@sankore/crm-admin-api';
+import { CreateTenantDrawer } from './create-tenant-drawer';
 
 export type TenantStatusFilter = 'actifs' | 'maintenance' | 'inactifs';
 type TenantState = 'active' | 'trial' | 'trial-expired' | 'maintenance' | 'inactive';
@@ -49,6 +51,7 @@ export interface TenantRow {
 })
 export class TenantsList implements OnInit {
   private readonly _tenantsApi = inject(TenantsApiService);
+  private readonly _drawer = inject(SideDrawerService);
   private readonly _router = inject(Router);
   private readonly _route = inject(ActivatedRoute);
   private readonly _destroyRef = inject(DestroyRef);
@@ -174,6 +177,17 @@ export class TenantsList implements OnInit {
     this.searchQuery.set('');
     this.statusFilter.set(null);
     this._persistFilters();
+  }
+
+  public openCreate(): void {
+    const ref = this._drawer.open<string | null, unknown, CreateTenantDrawer>(CreateTenantDrawer, {
+      width: '100%',
+      height: '100%',
+      panelClass: 'side-drawer-panel',
+    });
+    ref.closed.subscribe((id) => {
+      if (id) this._router.navigate(['/tenants', id]);
+    });
   }
 
   public originHref(fqdn: string): string | null {

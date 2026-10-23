@@ -59,6 +59,13 @@ export const PERMISSIONS = {
   COMPANY_READ: 'company:read',
   COMPANY_UPDATE: 'company:update',
 
+  // Modules payants du tenant (« Banking - Microfinance », « Assurance ») : la demande
+  // d'activation est autorisée par la plateforme, la désactivation est immédiate. Seul le
+  // rôle Administrateur les détient par défaut.
+  TENANT_MODULES_READ: 'tenant:modules:read',
+  TENANT_MODULES_REQUEST: 'tenant:modules:request',
+  TENANT_MODULES_DEACTIVATE: 'tenant:modules:deactivate',
+
   NOTIFICATION_SETTINGS_READ: 'notification:settings:read',
   NOTIFICATION_SETTINGS_MANAGE: 'notification:settings:manage',
   NOTIFICATION_SETTINGS_QUOTA: 'notification:settings:quota',

@@ -16,5 +16,7 @@ export interface CreateTenantRequest {
     rootUserEmail?: string | null;
     fqdn?: string | null;
     trialExpiresAt?: string | null;
+    activeModules?: Array<string> | null;
+    profile?: string | null;
 }
 

@@ -22,5 +22,7 @@ export interface TenantResponse {
     blockedAt?: string | null;
     createdAt?: string;
     updatedAt?: string;
+    activeModules?: Array<string> | null;
+    readOnlyModules?: Array<string> | null;
 }
 

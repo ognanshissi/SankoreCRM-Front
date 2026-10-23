@@ -1,4 +1,6 @@
-import { Injectable } from '@angular/core';
+import { inject, Injectable } from '@angular/core';
+import { isCategoryOpen } from '../models/tenant-modules';
+import { TenantModulesService } from './tenant-modules.service';
 import {
   CreateProductRequestCategoryEnum,
   ProductDtoCategoryEnum,
@@ -29,6 +31,7 @@ export const PRODUCT_CATEGORY_OPTIONS: { label: string; value: ProductDtoCategor
   { label: 'Crédit groupe',         value: ProductDtoCategoryEnum.GroupCredit },
   { label: 'Agriculture',           value: ProductDtoCategoryEnum.Agriculture },
   { label: 'Compte courant',        value: ProductDtoCategoryEnum.CurrentAccount },
+  { label: 'Produit standard',      value: ProductDtoCategoryEnum.Standard },
 ];
 
 export const PRODUCT_CATEGORY_LABELS: Record<string, string> = {
@@ -43,6 +46,8 @@ export const PRODUCT_CATEGORY_LABELS: Record<string, string> = {
   // Ajoutée au contrat après ce référentiel : sans elle, l'onglet Produits détenus
   // affichait « CurrentAccount » en brut et la catégorie manquait dans son filtre.
   [ProductDtoCategoryEnum.CurrentAccount]: 'Compte courant',
+  // Catégorie du socle : celle d'un tenant sans module payant.
+  [ProductDtoCategoryEnum.Standard]: 'Produit standard',
 };
 
 export function productCategoryLabel(category: string | null | undefined): string {
@@ -63,5 +68,18 @@ export class ProductConfigService {
     { label: 'Tontine',               value: CreateProductRequestCategoryEnum.Tontine },
     { label: 'Crédit groupe',         value: CreateProductRequestCategoryEnum.GroupCredit },
     { label: 'Agriculture',           value: CreateProductRequestCategoryEnum.Agriculture },
+    { label: 'Produit standard',      value: CreateProductRequestCategoryEnum.Standard },
   ];
+
+  private readonly _tenantModules = inject(TenantModulesService);
+
+  /**
+   * Les catégories qu'un modèle de qualification peut prendre : Standard et celles des modules
+   * actifs, plus `keep` — la catégorie déjà enregistrée, que le serveur laisse garder même quand
+   * son module est désactivé. Lit un signal : à appeler dans un `computed`.
+   */
+  public offeredCategories(keep?: string | null): { label: string; value: CreateProductRequestCategoryEnum }[] {
+    const active = this._tenantModules.active();
+    return this.categories.filter((c) => c.value === keep || isCategoryOpen(c.value, active));
+  }
 }

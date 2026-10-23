@@ -307,7 +307,7 @@ export class ProductsApiService {
 
     /**
      * Link a CRM product to a CBS product
-     * Associates the CRM product with an external Core Banking System product identifier. Audited separately from general product updates.
+     * Associates the CRM product with an external Core Banking System product identifier. Audited separately from general product updates. Requires the Banking - Microfinance module.
      * @param id 
      * @param linkProductToCbsRequest 
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
@@ -387,14 +387,14 @@ export class ProductsApiService {
     /**
      * List financial products for the tenant, optionally filtered by category
      * @param activeOnly 
-     * @param category One of: Loan, Savings, Insurance, HealthInsurance, ForecastInsurance, Tontine, GroupCredit, Agriculture, CurrentAccount
+     * @param category One of: Loan, Savings, Insurance, HealthInsurance, ForecastInsurance, Tontine, GroupCredit, Agriculture, CurrentAccount, Standard
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      */
-    public listProducts(activeOnly?: boolean, category?: 'Loan' | 'Savings' | 'Insurance' | 'HealthInsurance' | 'ForecastInsurance' | 'Tontine' | 'GroupCredit' | 'Agriculture' | 'CurrentAccount', observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<Array<ProductDto>>;
-    public listProducts(activeOnly?: boolean, category?: 'Loan' | 'Savings' | 'Insurance' | 'HealthInsurance' | 'ForecastInsurance' | 'Tontine' | 'GroupCredit' | 'Agriculture' | 'CurrentAccount', observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<Array<ProductDto>>>;
-    public listProducts(activeOnly?: boolean, category?: 'Loan' | 'Savings' | 'Insurance' | 'HealthInsurance' | 'ForecastInsurance' | 'Tontine' | 'GroupCredit' | 'Agriculture' | 'CurrentAccount', observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<Array<ProductDto>>>;
-    public listProducts(activeOnly?: boolean, category?: 'Loan' | 'Savings' | 'Insurance' | 'HealthInsurance' | 'ForecastInsurance' | 'Tontine' | 'GroupCredit' | 'Agriculture' | 'CurrentAccount', observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
+    public listProducts(activeOnly?: boolean, category?: 'Loan' | 'Savings' | 'Insurance' | 'HealthInsurance' | 'ForecastInsurance' | 'Tontine' | 'GroupCredit' | 'Agriculture' | 'CurrentAccount' | 'Standard', observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<Array<ProductDto>>;
+    public listProducts(activeOnly?: boolean, category?: 'Loan' | 'Savings' | 'Insurance' | 'HealthInsurance' | 'ForecastInsurance' | 'Tontine' | 'GroupCredit' | 'Agriculture' | 'CurrentAccount' | 'Standard', observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<Array<ProductDto>>>;
+    public listProducts(activeOnly?: boolean, category?: 'Loan' | 'Savings' | 'Insurance' | 'HealthInsurance' | 'ForecastInsurance' | 'Tontine' | 'GroupCredit' | 'Agriculture' | 'CurrentAccount' | 'Standard', observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<Array<ProductDto>>>;
+    public listProducts(activeOnly?: boolean, category?: 'Loan' | 'Savings' | 'Insurance' | 'HealthInsurance' | 'ForecastInsurance' | 'Tontine' | 'GroupCredit' | 'Agriculture' | 'CurrentAccount' | 'Standard', observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
 
         let localVarQueryParameters = new HttpParams({encoder: this.encoder});
         if (activeOnly !== undefined && activeOnly !== null) {

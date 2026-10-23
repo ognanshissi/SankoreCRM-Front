@@ -4,7 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Button } from '@talisoft/ui/button';
 import { TasIcon } from '@talisoft/ui/icon';
-import { BreadcrumbService, PermissionsService } from '@sankore/crm/common';
+import { BreadcrumbService, PermissionsService, TenantModulesService } from '@sankore/crm/common';
 import { SettingsEntry, SettingsGroup, visibleCatalog } from '../../settings-catalog';
 import { EntryStatus, SettingsOverviewStatus, SettingsStatusService } from './settings-status.service';
 
@@ -44,6 +44,7 @@ interface GroupView extends Omit<SettingsGroup, 'entries'> {
 export class OverviewComponent implements OnInit {
   private readonly _breadcrumbService = inject(BreadcrumbService);
   private readonly _permissions = inject(PermissionsService);
+  private readonly _tenantModules = inject(TenantModulesService);
   private readonly _statusService = inject(SettingsStatusService);
   private readonly _router = inject(Router);
   private readonly _route = inject(ActivatedRoute);
@@ -56,7 +57,7 @@ export class OverviewComponent implements OnInit {
 
   public readonly groups = computed<GroupView[]>(() => {
     const entries = this.status()?.entries ?? {};
-    return visibleCatalog(this._permissions.granted()).map((g) => {
+    return visibleCatalog(this._permissions.granted(), this._tenantModules.readable()).map((g) => {
       const views = g.entries.map((e) => {
         const status = entries[e.id] ?? null;
         const tone = TONE_STYLE[status?.tone ?? 'neutral'];

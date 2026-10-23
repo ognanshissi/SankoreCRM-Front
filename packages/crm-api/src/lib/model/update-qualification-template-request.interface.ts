@@ -17,7 +17,7 @@ export interface UpdateQualificationTemplateRequest {
     name?: string | null;
     description?: string | null;
     /**
-     * One of: Loan, Savings, Insurance, HealthInsurance, ForecastInsurance, Tontine, GroupCredit, Agriculture, CurrentAccount
+     * One of: Loan, Savings, Insurance, HealthInsurance, ForecastInsurance, Tontine, GroupCredit, Agriculture, CurrentAccount, Standard
      */
     productCategory?: UpdateQualificationTemplateRequestProductCategoryEnum | null;
     productCode?: string | null;
@@ -33,7 +33,8 @@ export enum UpdateQualificationTemplateRequestProductCategoryEnum {
     Tontine = 'Tontine',
     GroupCredit = 'GroupCredit',
     Agriculture = 'Agriculture',
-    CurrentAccount = 'CurrentAccount'
+    CurrentAccount = 'CurrentAccount',
+    Standard = 'Standard'
 };
 
 

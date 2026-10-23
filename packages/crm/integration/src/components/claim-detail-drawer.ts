@@ -17,7 +17,7 @@ import { TasTable } from '@talisoft/ui/table';
 import { Severity, TasTag } from '@talisoft/ui/tag';
 import { TimeagoPipe } from '@talisoft/ui/timeago';
 import { ClaimDocumentDto, ClaimDto } from '@sankore/crm-api';
-import { PERMISSIONS, PermissionsService } from '@sankore/crm/common';
+import { PERMISSIONS, PermissionsService, TENANT_MODULES, TenantModulesService } from '@sankore/crm/common';
 import {
   CLAIM_DOCUMENT_ACCEPT,
   CLAIM_DOCUMENT_MAX_SIZE_MB,
@@ -172,7 +172,7 @@ interface DocumentRow {
             }
 
             <!-- Pièces demandées par l'assureur : la seule action de l'agent ici -->
-            @if (claim()!.missingDocuments; as requested) {
+            @if (canSendDocuments() && claim()!.missingDocuments; as requested) {
               <div class="flex flex-col gap-3 rounded-lg border border-amber-200 bg-amber-50 p-4">
                 <div>
                   <p class="text-sm font-medium text-slate-800">L'assureur demande des pièces</p>
@@ -305,6 +305,9 @@ export class ClaimDetailDrawer {
    * `Permissions.All`.
    */
   public readonly canView = this._permissions.can(PERMISSIONS.INS_CLAIM_VIEW);
+
+  /** Module « Assurance » désactivé : le dossier se consulte, aucune pièce ne part plus. */
+  public readonly canSendDocuments = inject(TenantModulesService).can(TENANT_MODULES.INSURANCE);
 
   public readonly accept = CLAIM_DOCUMENT_ACCEPT;
   public readonly maxSizeMb = CLAIM_DOCUMENT_MAX_SIZE_MB;

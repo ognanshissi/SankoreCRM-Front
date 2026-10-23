@@ -3,7 +3,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { HttpErrorResponse } from '@angular/common/http';
 import { ActivatedRoute, Router } from '@angular/router';
 import { ConnectionHealthDto, ConnectionListDto } from '@sankore/crm-api';
-import { BreadcrumbService, PermissionsService } from '@sankore/crm/common';
+import { BreadcrumbService, PermissionsService, TenantModulesService } from '@sankore/crm/common';
 import { Button } from '@talisoft/ui/button';
 import { TasIcon } from '@talisoft/ui/icon';
 import { SnackbarService } from '@talisoft/ui/snackbar';
@@ -16,6 +16,7 @@ import {
   IntegrationFacadeService,
 } from '../../data-access/integration-facade.service';
 import {
+  availableFamilies,
   CONNECTION_FAMILIES,
   CONNECTION_FAMILY_LABELS,
   CONNECTION_KIND_LABELS,
@@ -108,6 +109,7 @@ export interface ConnectionGroupHeader {
 })
 export class ConnectionsPage implements OnInit {
   private readonly _facade = inject(IntegrationFacadeService);
+  private readonly _tenantModules = inject(TenantModulesService);
   private readonly _router = inject(Router);
   private readonly _route = inject(ActivatedRoute);
   private readonly _destroyRef = inject(DestroyRef);
@@ -221,9 +223,14 @@ export class ConnectionsPage implements OnInit {
 
   public readonly tabs = computed(() => {
     const all = this.connections();
+    // Un onglet par famille ouverte par les modules, plus celles qui gardent des connexions :
+    // une connexion core banking survit à la désactivation du module, elle doit rester visible.
+    const creatable = new Set(availableFamilies(this._tenantModules.active()).map((f) => f.value));
     return [
       { value: null, label: 'Toutes', count: all.length },
-      ...CONNECTION_FAMILIES.map((f) => ({
+      ...CONNECTION_FAMILIES.filter(
+        (f) => creatable.has(f.value) || all.some((c) => c.family === f.value),
+      ).map((f) => ({
         value: f.value,
         label: f.label,
         count: all.filter((c) => c.family === f.value).length,

@@ -621,33 +621,36 @@
                   </ul>
                 </section>
 
-                <!-- ═══ Système bancaire ═══ -->
-                <section class="rounded-2xl bg-white border border-slate-100 shadow-sm p-5">
-                  <div class="flex items-start gap-3">
-                    <span class="w-10 h-10 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center shrink-0" aria-hidden="true">
-                      <tas-icon iconName="feather:server" style="font-size:16px"></tas-icon>
-                    </span>
-                    <div class="min-w-0">
-                      <h2 class="text-sm font-semibold text-slate-900">Système bancaire</h2>
-                      <p class="text-xs text-slate-500 mt-0.5">Création du client après approbation</p>
+                <!-- Sans « Banking - Microfinance », aucun client n'est créé dans un système bancaire. -->
+                @if (hasCoreBanking()) {
+                  <!-- ═══ Système bancaire ═══ -->
+                  <section class="rounded-2xl bg-white border border-slate-100 shadow-sm p-5">
+                    <div class="flex items-start gap-3">
+                      <span class="w-10 h-10 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center shrink-0" aria-hidden="true">
+                        <tas-icon iconName="feather:server" style="font-size:16px"></tas-icon>
+                      </span>
+                      <div class="min-w-0">
+                        <h2 class="text-sm font-semibold text-slate-900">Système bancaire</h2>
+                        <p class="text-xs text-slate-500 mt-0.5">Création du client après approbation</p>
+                      </div>
                     </div>
-                  </div>
-                  <!--
-                    Annoncé AVANT la décision : si le cœur bancaire ne crée ses clients qu'en lot,
-                    l'agent doit le savoir avant de valider. Ne rend rien quand le CBS répond en direct.
-                  -->
-                  <cbs-batch-notice class="mt-4 block"></cbs-batch-notice>
-                  <div class="mt-4 rounded-xl bg-slate-50 px-4 py-3">
-                    @if (file()?.customerId; as customerId) {
-                      <!-- Se sonde seul tant que l'état peut bouger ; les détails techniques restent sur l'écran Commandes. -->
-                      <cbs-provisioning-status [customerId]="customerId" appearance="inline"></cbs-provisioning-status>
-                    }
-                    <p class="text-xs text-slate-500 mt-2">
-                      Le client est créé automatiquement dans le système bancaire une fois le circuit
-                      entièrement approuvé.
-                    </p>
-                  </div>
-                </section>
+                    <!--
+                      Annoncé AVANT la décision : si le cœur bancaire ne crée ses clients qu'en lot,
+                      l'agent doit le savoir avant de valider. Ne rend rien quand le CBS répond en direct.
+                    -->
+                    <cbs-batch-notice class="mt-4 block"></cbs-batch-notice>
+                    <div class="mt-4 rounded-xl bg-slate-50 px-4 py-3">
+                      @if (file()?.customerId; as customerId) {
+                        <!-- Se sonde seul tant que l'état peut bouger ; les détails techniques restent sur l'écran Commandes. -->
+                        <cbs-provisioning-status [customerId]="customerId" appearance="inline"></cbs-provisioning-status>
+                      }
+                      <p class="text-xs text-slate-500 mt-2">
+                        Le client est créé automatiquement dans le système bancaire une fois le circuit
+                        entièrement approuvé.
+                      </p>
+                    </div>
+                  </section>
+                }
               </div>
             </div>
           }

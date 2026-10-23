@@ -13,6 +13,7 @@ export const appRoutes: Route[] = [
     children: [
       { path: '', pathMatch: 'full', redirectTo: 'tenants' },
       { path: 'tenants', loadChildren: () => import('@sankore/admin/tenant') },
+      { path: 'modules', loadChildren: () => import('@sankore/admin/tenant').then((m) => m.moduleRoutes) },
     ],
   },
   { path: '**', redirectTo: '' },

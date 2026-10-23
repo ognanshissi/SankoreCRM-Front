@@ -12,6 +12,7 @@ export * from './navigation/navigation';
 export * from './loading';
 export * from './access-denied/access-denied.service';
 export * from './access-denied/access-denied.component';
+export * from './module-read-only-notice/module-read-only-notice';
 export * from './unknown-tenant/unknown-tenant';
 export * from './tenant-suspended/tenant-suspended';
 export * from './breadcrumb/breadcrumb.component';

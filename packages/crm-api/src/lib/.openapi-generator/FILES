@@ -66,6 +66,7 @@ api/task-generation-rules.service.ts
 api/task-types.service.ts
 api/tasks.service.ts
 api/telephony.service.ts
+api/tenant-modules.service.ts
 api/territories.service.ts
 api/user-import.service.ts
 api/users.service.ts
@@ -587,6 +588,7 @@ model/request-client-export-request.interface.ts
 model/request-client-export-result.interface.ts
 model/request-client-merge-request.interface.ts
 model/request-client-merge-result.interface.ts
+model/request-tenant-module-body.interface.ts
 model/reschedule-appointment-request.interface.ts
 model/reschedule-reminder-request.interface.ts
 model/reschedule-tasks-request.interface.ts
@@ -738,6 +740,9 @@ model/template-diff-dto.interface.ts
 model/template-queue-dto.interface.ts
 model/template-stats-dto.interface.ts
 model/tenant-context-response.interface.ts
+model/tenant-module-dto.interface.ts
+model/tenant-module-subscription-dto.interface.ts
+model/tenant-modules-dto.interface.ts
 model/territory-dto.interface.ts
 model/test-email-result.interface.ts
 model/timeline-event.interface.ts

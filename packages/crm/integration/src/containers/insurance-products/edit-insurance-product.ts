@@ -22,7 +22,7 @@ import {
   ProductDto,
   ProductsApiService,
 } from '@sankore/crm-api';
-import { BreadcrumbService, PermissionsService } from '@sankore/crm/common';
+import { BreadcrumbService, PermissionsService, TENANT_MODULES, TenantModulesService, TenantModule, ModuleReadOnlyNotice } from '@sankore/crm/common';
 import { TasAlert } from '@talisoft/ui/alert';
 import { Button } from '@talisoft/ui/button';
 import { TasCard } from '@talisoft/ui/card';
@@ -146,7 +146,7 @@ function isBlankOrPositiveInteger(raw: string | number | null | undefined, max: 
 @Component({
   selector: 'edit-insurance-product',
   templateUrl: './edit-insurance-product.html',
-  imports: [
+  imports: [ModuleReadOnlyNotice, 
     FormsModule,
     FormRoot,
     FormField,
@@ -167,6 +167,10 @@ function isBlankOrPositiveInteger(raw: string | number | null | undefined, max: 
   ],
 })
 export class EditInsuranceProductPage {
+  /** Module désactivé : l'écran reste consultable, sans action (bandeau en tête). */
+  public readonly readOnlyModules: TenantModule[] = [TENANT_MODULES.INSURANCE];
+  /** Module désactivé : consultation seule, les actions se masquent (le serveur les refuserait). */
+  private readonly _moduleReadOnly = inject(TenantModulesService).readOnly(TENANT_MODULES.INSURANCE);
   private readonly _facade = inject(IntegrationFacadeService);
   private readonly _productsApi = inject(ProductsApiService);
   private readonly _breadcrumb = inject(BreadcrumbService);
@@ -175,7 +179,8 @@ export class EditInsuranceProductPage {
   private readonly _snackbar = inject(SnackbarService);
   private readonly _router = inject(Router);
 
-  public readonly canManage = this._permissions.can('Ins.Product.Manage');
+  private readonly _canManagePermission = this._permissions.can('Ins.Product.Manage');
+  public readonly canManage = computed(() => this._canManagePermission() && !this._moduleReadOnly());
 
   public readonly id = input.required<string>();
 

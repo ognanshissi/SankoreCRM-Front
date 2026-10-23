@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { TasAlert } from '@talisoft/ui/alert';
 import { TasIcon } from '@talisoft/ui/icon';
 import { AccessDeniedService } from './access-denied.service';
+import { TENANT_MODULE_LABELS, TenantModule } from '../../models/tenant-modules';
 
 /**
  * Bannière affichée quand une garde de route refuse l'accès à une page.
@@ -25,11 +26,20 @@ import { AccessDeniedService } from './access-denied.service';
         <tas-alert type="info" class="bg-white">
           <div class="flex items-start gap-3 w-full">
             <div class="flex-1 min-w-0">
-              <p class="text-sm font-medium">Accès refusé</p>
-              <p class="text-xs text-slate-600 mt-0.5">
-                Vous n'avez pas la permission d'ouvrir
-                <span class="font-mono">{{ denial.attemptedUrl }}</span>.
-              </p>
+              @if (denial.modules?.length) {
+                <p class="text-sm font-medium">Module non activé</p>
+                <p class="text-xs text-slate-600 mt-0.5">
+                  Cette page fait partie du module {{ moduleNames(denial.modules!) }}, qui n'est pas activé
+                  pour votre institution. Un administrateur peut le demander depuis Paramétrage › Modules et
+                  abonnement.
+                </p>
+              } @else {
+                <p class="text-sm font-medium">Accès refusé</p>
+                <p class="text-xs text-slate-600 mt-0.5">
+                  Vous n'avez pas la permission d'ouvrir
+                  <span class="font-mono">{{ denial.attemptedUrl }}</span>.
+                </p>
+              }
               @if (denial.required.length > 0) {
                 <p class="text-xs text-slate-500 mt-1">
                   Permission requise :
@@ -58,4 +68,8 @@ import { AccessDeniedService } from './access-denied.service';
 })
 export class AccessDeniedBanner {
   public readonly service = inject(AccessDeniedService);
+
+  public moduleNames(modules: TenantModule[]): string {
+    return modules.map((m) => `« ${TENANT_MODULE_LABELS[m]} »`).join(' ou ');
+  }
 }

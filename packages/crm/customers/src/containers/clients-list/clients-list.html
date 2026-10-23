@@ -15,7 +15,7 @@
         }
       </button>
     }
-    @if (canRead()) {
+    @if (canRead() && hasGroups()) {
       <button tas-outlined-button type="button" class="!rounded-full" (click)="goToGroups()">
         <tas-icon iconName="feather:users" style="font-size:14px"></tas-icon>
         Groupes

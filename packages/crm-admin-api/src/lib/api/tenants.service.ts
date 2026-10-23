@@ -167,6 +167,7 @@ export class TenantsApiService {
 
     /**
      * Create a new tenant
+     * Profile (optional: ImfOrBank, CaisseWithInsurance, InsuranceDistributor, CrmOnly — GET /api/v1/tenant-profiles) or ActiveModules (codes: BankingMicrofinance, Insurance) choose the paid modules switched on at creation; not both. Neither: the socle alone. 409 TENANT_FQDN_TAKEN when the address belongs to another tenant.
      * @param createTenantRequest 
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
