@@ -7,21 +7,18 @@ import {
   signal,
 } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { form, FormField, minLength, pattern, required, validate } from '@angular/forms/signals';
+import { form, FormField, required, validate } from '@angular/forms/signals';
 import { TasTitle } from '@talisoft/ui/title';
-import { TasError, TasHint } from '@talisoft/ui/form-field';
+import { TasError } from '@talisoft/ui/form-field';
 import { TasInputPassword } from '@talisoft/ui/input-password';
 import { TasIcon } from '@talisoft/ui/icon';
 import { Anchor, Button } from '@talisoft/ui/button';
 import { AuthenticationWrapper } from '../../components/authentication-wrapper';
+import { PasswordStrength } from '../../components/password-strength';
+import { firstUnmetPasswordCriterion } from '../../models/password-policy';
 import { AccountActivationModel } from '../../models/account-activation.model';
 import { AuthApiService } from '@sankore/crm-api';
 import { Loading } from '@sankore/crm/common';
-
-/**
- * A password needs at least one lowercase letter, one uppercase letter and one digit.
- */
-const PASSWORD_COMPLEXITY_PATTERN = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).+$/;
 
 type ActivationStep = 'checking' | 'invalid' | 'form' | 'success';
 
@@ -31,7 +28,7 @@ type ActivationStep = 'checking' | 'invalid' | 'form' | 'success';
   imports: [
     AuthenticationWrapper,
     TasTitle,
-    TasHint,
+    PasswordStrength,
     TasError,
     TasInputPassword,
     TasIcon,
@@ -54,12 +51,9 @@ export class AccountActivationComponent implements OnInit {
 
   public formSchema = form(this.model, (schema) => {
     required(schema.password, { message: 'Le mot de passe est obligatoire' });
-    minLength(schema.password, 8, {
-      message: 'Le mot de passe doit contenir au moins 8 caractères',
-    });
-    pattern(schema.password, PASSWORD_COMPLEXITY_PATTERN, {
-      message:
-        'Le mot de passe doit contenir une majuscule, une minuscule et un chiffre',
+    validate(schema.password, (ctx) => {
+      const unmet = ctx.value() ? firstUnmetPasswordCriterion(ctx.value()) : undefined;
+      return unmet ? { kind: `password-${unmet.key}`, message: unmet.message } : null;
     });
 
     required(schema.confirmPassword, {

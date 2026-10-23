@@ -6,14 +6,18 @@ import {
   OnInit,
   signal,
 } from '@angular/core';
+import { HttpErrorResponse } from '@angular/common/http';
 import { RouterLink } from '@angular/router';
-import { form, FormField, minLength, pattern, required, validate } from '@angular/forms/signals';
+import { form, FormField, required, validate } from '@angular/forms/signals';
 import { TasTitle } from '@talisoft/ui/title';
-import { TasError, TasHint } from '@talisoft/ui/form-field';
+import { TasError } from '@talisoft/ui/form-field';
 import { TasInputPassword } from '@talisoft/ui/input-password';
 import { TasIcon } from '@talisoft/ui/icon';
+import { SnackbarService } from '@talisoft/ui/snackbar';
 import { Anchor, Button } from '@talisoft/ui/button';
 import { AuthenticationWrapper } from '../../components/authentication-wrapper';
+import { PasswordStrength } from '../../components/password-strength';
+import { firstUnmetPasswordCriterion } from '../../models/password-policy';
 import { ResetPasswordModel } from '../../models/reset-password.model';
 import {
   AuthApiService,
@@ -21,11 +25,6 @@ import {
   UsersApiService,
 } from '@sankore/crm-api';
 import { Loading } from '@sankore/crm/common';
-
-/**
- * A password needs at least one lowercase letter, one uppercase letter and one digit.
- */
-const PASSWORD_COMPLEXITY_PATTERN = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).+$/;
 
 type ResetPasswordStep = 'checking' | 'invalid' | 'form' | 'success';
 
@@ -35,7 +34,7 @@ type ResetPasswordStep = 'checking' | 'invalid' | 'form' | 'success';
   imports: [
     AuthenticationWrapper,
     TasTitle,
-    TasHint,
+    PasswordStrength,
     TasError,
     TasInputPassword,
     TasIcon,
@@ -48,6 +47,7 @@ type ResetPasswordStep = 'checking' | 'invalid' | 'form' | 'success';
 export class ResetPasswordComponent implements OnInit {
   private readonly _authApiService = inject(AuthApiService);
   private readonly _loadingService = inject(Loading);
+  private readonly _snackbarService = inject(SnackbarService);
 
   public token = input<string>();
   public userId = input<string>();
@@ -58,12 +58,9 @@ export class ResetPasswordComponent implements OnInit {
 
   public formSchema = form(this.model, (schema) => {
     required(schema.password, { message: 'Le mot de passe est obligatoire' });
-    minLength(schema.password, 8, {
-      message: 'Le mot de passe doit contenir au moins 8 caractères',
-    });
-    pattern(schema.password, PASSWORD_COMPLEXITY_PATTERN, {
-      message:
-        'Le mot de passe doit contenir une majuscule, une minuscule et un chiffre',
+    validate(schema.password, (ctx) => {
+      const unmet = ctx.value() ? firstUnmetPasswordCriterion(ctx.value()) : undefined;
+      return unmet ? { kind: `password-${unmet.key}`, message: unmet.message } : null;
     });
 
     required(schema.confirmPassword, {
@@ -105,7 +102,18 @@ export class ResetPasswordComponent implements OnInit {
       )
       .subscribe({
         next: () => this.step.set('success'),
-        error: () => this.step.set('invalid'),
+        error: (err: HttpErrorResponse) => {
+          // L'historique des 12 derniers mots de passe ne peut être vérifié que par le
+          // serveur ; sans ce cas, un mot de passe déjà utilisé affichait « lien invalide ».
+          if (err.error?.detail === 'PASSWORD_RECENTLY_USED') {
+            this._snackbarService.error(
+              'Mot de passe déjà utilisé',
+              'Choisissez un mot de passe que vous n\'avez pas utilisé récemment.',
+            );
+            return;
+          }
+          this.step.set('invalid');
+        },
       });
   }
 

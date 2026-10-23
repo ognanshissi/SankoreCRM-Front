@@ -35,10 +35,7 @@
       <section class="flex flex-col gap-6">
         <div>
           <tas-input-password placeholder="Saisissez votre mot de passe" [formField]="formSchema.password">Mot de passe</tas-input-password>
-          <tas-hint>Au moins 8 caractères, une majuscule, une minuscule et un chiffre.</tas-hint>
-          @if (formSchema.password().touched() && formSchema.password().invalid()) {
-            <tas-error>{{ formSchema.password().errors()[0].message }}</tas-error>
-          }
+          <PasswordStrength [password]="model().password" />
         </div>
 
         <div>
