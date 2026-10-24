@@ -94,9 +94,7 @@ const MENU: ReadonlyArray<LeadMenuGroup> = [
     title: 'Dossier',
     icon: 'feather:folder',
     items: [
-      { label: 'Qualification', icon: 'feather:list', route: 'qualification' },
       { label: 'Score', icon: 'feather:bar-chart-2', route: 'score' },
-      { label: 'Questionnaires', icon: 'feather:clipboard', route: 'questionnaires' },
       { label: 'Conformité', icon: 'feather:flag', route: 'conformite' },
       { label: 'Consentements', icon: 'feather:shield', route: 'consentement' },
       { label: 'Projets', icon: 'feather:briefcase', route: 'projets' },
@@ -185,7 +183,6 @@ export class EditLeadNavigation implements OnDestroy {
   private readonly _sideDrawerService = inject(SideDrawerService);
   private readonly _snackbar = inject(SnackbarService);
   private readonly _confirmDialog = inject(ConfirmDialogService);
-  private readonly _router = inject(Router);
   private readonly _leadEditContext = inject(LeadEditContext);
   private readonly _references = inject(EntityFormReferences);
   protected readonly compliance = inject(LeadComplianceStore);
@@ -385,18 +382,23 @@ export class EditLeadNavigation implements OnDestroy {
   });
 
   /**
-   * BNF-F-19 : un lead rattaché à un client existant ne crée pas de fiche. Le contrat n'a pas de
-   * drapeau dédié — `customerReference`, saisie à la capture, est le seul indice disponible.
+   * Le lead devient client quand l'un de ses projets est approuvé : le bouton n'ouvre que son
+   * dossier client. Un lead reconnu à la capture (`customerReference`) est rattaché, sans création.
    */
-  public readonly convertActionLabel = computed(() => {
+  public readonly convertActionLabel = computed(() =>
+    this.lead()?.customerReference?.trim() ? 'Rattacher au dossier client' : 'Ouvrir le dossier client',
+  );
+
+  /** Le dossier client est ouvert (ou le lead rattaché à un client), le lead pas encore converti. */
+  public readonly openClientFileId = computed(() => {
     const lead = this.lead();
-    const attached = !!lead?.customerReference?.trim() || !!lead?.convertedToCustomerId;
-    return attached ? 'Créer la souscription' : 'Convertir en client';
+    return lead && lead.status !== 'Converted' ? lead.customerId ?? null : null;
   });
 
   public readonly canBeConverted = computed(() => {
     const status = this.lead()?.status;
-    return status !== 'Converted' && status !== 'Lost' && status !== 'Disqualified' && status !== 'Archived';
+    return !this.openClientFileId()
+      && status !== 'Converted' && status !== 'Lost' && status !== 'Disqualified' && status !== 'Archived';
   });
 
   /**
@@ -620,13 +622,9 @@ export class EditLeadNavigation implements OnDestroy {
       data: { lead: currentLead },
     });
 
-    ref.closed.subscribe((result: any) => {
-      // L'assistant rend l'identifiant du client (fiche créée, ou fiche existante proposée sur un
-      // doublon bloquant) : la redirection reste ici, pour ne pas dépendre du module Clients.
-      if (result && typeof result === 'object' && result.clientId) {
-        this._router.navigate(['/customers', result.clientId]);
-        return;
-      }
+    ref.closed.subscribe((result: unknown) => {
+      // Le lead reste un lead tant qu'aucun projet n'est approuvé : on reste sur sa fiche, qui
+      // affiche désormais « Dossier client ouvert » avec le lien vers le client.
       if (result) this.reload();
     });
   }

@@ -122,6 +122,10 @@
                 <input type="checkbox" class="size-4 accent-current text-primary" [formField]="step.isApproval" />
                 Étape d'approbation
               </label>
+              <label class="flex items-center gap-2" title="Les questionnaires que le produit demande — au dossier et à chaque personne — doivent être remplis pour atteindre cette étape">
+                <input type="checkbox" class="size-4 accent-current text-primary" [formField]="step.requiresQuestionnaires" />
+                Questionnaires complets
+              </label>
             </div>
             <tas-form-field class="ml-8">
               <tas-label class="sr-only">Action proposée à l'étape {{ i + 1 }}</tas-label>

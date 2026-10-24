@@ -72,5 +72,6 @@ export interface LeadDto {
     qualificationThreshold?: number | null;
     nextStep?: LeadNextStepDto;
     sla?: LeadSlaDto;
+    customerId?: string | null;
 }
 

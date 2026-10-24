@@ -134,6 +134,8 @@ export class LeadOpportunitiesPage {
    */
   public readonly gate = signal<{ oppId: string; code: ProjectGateCode; message: string; clientId: string | null } | null>(null);
   private _target: string | null = null;
+  /** Ce que l'agent tentait quand l'étape a été refusée : rejoué une fois le dossier client ouvert. */
+  private _retry: ((fresh: OpportunityDto) => void) | null = null;
   public readonly formatAmount = formatAmount;
   public readonly formatDay = formatDay;
   public readonly stageLabel = stageLabel;
@@ -260,6 +262,7 @@ export class LeadOpportunitiesPage {
   public moveTo(opp: OpportunityDto, step: ProjectStepDto): void {
     if (!this.canManage() || this.isCurrentStep(opp, step) || this.busyId() || !hasTemplateSteps(opp)) return;
     this._target = step.label ?? null;
+    this._retry = (fresh) => this.moveTo(fresh, step);
     this._run(
       opp,
       this._opportunitiesApi.moveOpportunityToStep(opp.id!, {
@@ -271,19 +274,25 @@ export class LeadOpportunitiesPage {
   }
 
   /**
-   * L'assistant de conversion que la fiche lead ouvre déjà : il gère ce qu'une conversion peut
-   * demander à l'agent (dossier incomplet, doublon, pièce d'identité connue). Le projet ne bouge
-   * pas tout seul ensuite — l'agent rejoue l'étape, qui passe désormais.
+   * L'assistant d'ouverture du dossier client que la fiche lead ouvre déjà : il gère ce que la
+   * création d'un client peut demander à l'agent (dossier incomplet, doublon, pièce d'identité
+   * connue). Ensuite, l'étape refusée est rejouée sur le projet relu — et si c'était l'approbation,
+   * le lead devient client.
    */
   public convertForGate(): void {
     const lead = this.lead();
-    if (!lead) return;
+    const oppId = this.gate()?.oppId;
+    if (!lead || !oppId) return;
+    const retry = this._retry;
     const ref = this._sideDrawer.open(ConvertLeadWizard, { panelClass: 'side-drawer-panel', data: { lead } });
     ref.closed.subscribe((result: unknown) => {
       if (!result) return;
       this.gate.set(null);
       this._context.reload();
-      this._snackbar.success('Prospect converti', 'Vous pouvez maintenant faire avancer le projet.');
+      this._snackbar.success('Dossier client ouvert', 'Le projet reprend là où il était bloqué.');
+      if (!retry) return;
+      // Relu d'abord : l'ouverture du dossier a rattaché le projet au client et changé sa date.
+      this._opportunitiesApi.getOpportunity(oppId).pipe(catchError(() => EMPTY)).subscribe((fresh) => retry(fresh));
     });
   }
 
@@ -370,18 +379,21 @@ export class LeadOpportunitiesPage {
       showCancelButton: true,
       acceptButtonProps: { label: 'Marquer gagné', theme: 'primary' },
       rejectButtonProps: { label: 'Annuler' },
-      accept: () => {
-        this._target = null;
-        this._run(
-          opp,
-          this._opportunitiesApi.closeOpportunity(opp.id!, {
-            outcome: CloseOpportunityRequestOutcomeEnum.ClosedWon,
-            expectedUpdatedAt: opp.updatedAt ?? null,
-          }),
-          'Projet gagné',
-        );
-      },
+      accept: () => this._win(opp),
     });
+  }
+
+  private _win(opp: OpportunityDto): void {
+    this._target = null;
+    this._retry = (fresh) => this._win(fresh);
+    this._run(
+      opp,
+      this._opportunitiesApi.closeOpportunity(opp.id!, {
+        outcome: CloseOpportunityRequestOutcomeEnum.ClosedWon,
+        expectedUpdatedAt: opp.updatedAt ?? null,
+      }),
+      'Projet gagné',
+    );
   }
 
   public startLose(opp: OpportunityDto): void {

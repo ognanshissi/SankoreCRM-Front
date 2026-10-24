@@ -1,14 +1,20 @@
 import { HttpErrorResponse } from '@angular/common/http';
 
 /**
- * Les refus des étapes marquées d'un gabarit de projet (Paramètres › Étapes des projets) : une
- * fiche client à l'étape « ouvre le dossier client », un KYC validé au niveau du produit à l'étape
+ * Les refus des étapes marquées d'un gabarit de projet (Paramètres › Étapes des projets) : les
+ * questionnaires du produit à l'étape « questionnaires complets » (et ceux des personnes pour
+ * gagner le projet), une fiche client à l'étape « ouvre le dossier client », un KYC validé au niveau du produit à l'étape
  * d'approbation et pour gagner le projet. Partagé par l'onglet Projets du lead, celui du client et
  * le tableau des projets, pour que les trois écrans disent la même chose.
  */
-export type ProjectGateCode = 'PROJECT_CLIENT_FILE_REQUIRED' | 'PROJECT_KYC_NOT_APPROVED' | 'PROJECT_KYC_TIER_INSUFFICIENT';
+export type ProjectGateCode =
+  | 'PROJECT_QUESTIONNAIRES_INCOMPLETE'
+  | 'PROJECT_CLIENT_FILE_REQUIRED'
+  | 'PROJECT_KYC_NOT_APPROVED'
+  | 'PROJECT_KYC_TIER_INSUFFICIENT';
 
 const GATE_CODES: ReadonlySet<string> = new Set<ProjectGateCode>([
+  'PROJECT_QUESTIONNAIRES_INCOMPLETE',
   'PROJECT_CLIENT_FILE_REQUIRED',
   'PROJECT_KYC_NOT_APPROVED',
   'PROJECT_KYC_TIER_INSUFFICIENT',
@@ -24,8 +30,10 @@ export function projectGateCode(error: HttpErrorResponse): ProjectGateCode | nul
 export function projectGateMessage(code: ProjectGateCode, target: string | null): string {
   const reach = target ? `Pour passer à « ${target} »` : 'Pour gagner ce projet';
   switch (code) {
+    case 'PROJECT_QUESTIONNAIRES_INCOMPLETE':
+      return `${reach}, les questionnaires que ce produit demande doivent être remplis.`;
     case 'PROJECT_CLIENT_FILE_REQUIRED':
-      return `${reach}, le prospect doit d'abord devenir client : convertissez-le.`;
+      return `${reach}, son dossier client doit d'abord être ouvert.`;
     case 'PROJECT_KYC_NOT_APPROVED':
       return `${reach}, le dossier KYC du client doit être validé.`;
     case 'PROJECT_KYC_TIER_INSUFFICIENT':

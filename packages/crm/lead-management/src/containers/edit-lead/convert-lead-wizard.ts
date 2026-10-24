@@ -402,17 +402,6 @@ export class ConvertLeadWizard implements OnInit {
     return rows;
   });
 
-  /** « 2/4 questionnaires complétés » (BNF-F-06, repris dans le récapitulatif). */
-  public readonly questionnaireText = computed(() => {
-    const { done, total } = this.compliance.questionnaireProgress();
-    if (total === 0) return 'Aucun questionnaire requis';
-    return `${done}/${total} questionnaire${total > 1 ? 's' : ''} complété${done > 1 ? 's' : ''}`;
-  });
-
-  public readonly missingQuestionnaires = computed(
-    () => this.compliance.questionnaires()?.missing ?? [],
-  );
-
   public readonly refusalLabel = computed(() => blockingCodeLabel(this.refusal()?.blockingCode));
 
   /**
@@ -422,11 +411,12 @@ export class ConvertLeadWizard implements OnInit {
    */
   public readonly isExistingCustomerLead = computed(() => {
     const lead = this.lead();
-    return !!lead.customerReference?.trim() || !!lead.convertedToCustomerId;
+    return !!lead.customerId || !!lead.customerReference?.trim() || !!lead.convertedToCustomerId;
   });
 
+  /** Le lead devient client à l'approbation d'un projet ; ici, on n'ouvre que son dossier. */
   public readonly primaryActionLabel = computed(() =>
-    this.isExistingCustomerLead() ? 'Créer la souscription' : 'Convertir en client',
+    this.isExistingCustomerLead() ? 'Rattacher au dossier client' : 'Ouvrir le dossier client',
   );
 
   public ngOnInit(): void {
@@ -635,8 +625,7 @@ export class ConvertLeadWizard implements OnInit {
             (body.duplicateDetected === true ||
               !!body.blockingCode ||
               !!body.completeness ||
-              !!body.existingCustomerId ||
-              (body.missingQuestionnaires?.length ?? 0) > 0);
+              !!body.existingCustomerId);
           if (isBusinessBody) {
             return of<ConvertOutcome>({ accepted: false, result: body as ConvertLeadResult });
           }
@@ -665,29 +654,32 @@ export class ConvertLeadWizard implements OnInit {
     const attachedCustomerId = request.customerId ?? result.existingCustomerId ?? null;
     if (attachedCustomerId) {
       this._snackbar.success(
-        'Souscription rattachée',
-        'Aucune fiche client créée : données reprises du lead sur le client existant.',
+        'Rattaché au client existant',
+        "Aucune fiche créée. Le lead deviendra client quand l'un de ses projets sera approuvé.",
       );
-      this._openExistingCustomerProducts(attachedCustomerId, result.holdingId ?? null);
+      this._dialogRef.close({ clientId: attachedCustomerId, converted: false });
       return;
     }
 
     if (!result.customerId) {
       this._snackbar.error(
         'Erreur',
-        "La conversion n'a pas renvoyé d'identifiant client. Vérifiez la fiche dans le module Clients.",
+        "L'ouverture du dossier n'a pas renvoyé d'identifiant client. Vérifiez la fiche dans le module Clients.",
       );
       return;
     }
 
     if (result.alreadyConverted === true) {
-      this._snackbar.info('Lead déjà converti', 'La fiche client existe déjà, elle s\'ouvre.');
-      this._dialogRef.close({ clientId: result.customerId, converted: false });
+      this._snackbar.info('Dossier déjà ouvert', 'La fiche client de ce lead existe déjà.');
+      this._dialogRef.close({ clientId: result.customerId, converted: result.leadConverted === true });
       return;
     }
 
-    this._snackbar.success('Client créé', 'Données reprises du lead.');
-    this._dialogRef.close({ clientId: result.customerId, converted: true });
+    this._snackbar.success(
+      'Dossier client ouvert',
+      "Données reprises du lead. Il deviendra client quand l'un de ses projets sera approuvé.",
+    );
+    this._dialogRef.close({ clientId: result.customerId, converted: false });
   }
 
   /** Refus serveur : on reste sur l'écran et on montre pourquoi, au lieu d'un message générique. */
@@ -705,30 +697,19 @@ export class ConvertLeadWizard implements OnInit {
 
     if (result.alreadyConverted === true && (result.customerId || result.existingCustomerId)) {
       const customerId = (result.customerId || result.existingCustomerId) as string;
-      this._snackbar.info('Lead déjà converti', "La fiche client existe déjà, elle s'ouvre.");
-      this._dialogRef.close({ clientId: customerId, converted: false });
+      this._snackbar.info('Dossier déjà ouvert', 'La fiche client de ce lead existe déjà.');
+      this._dialogRef.close({ clientId: customerId, converted: result.leadConverted === true });
       return;
     }
 
     this.refusal.set(result);
     this.currentStep.set('recap');
-    this._snackbar.error('Conversion refusée', this.refusalLabel());
+    this._snackbar.error('Ouverture refusée', this.refusalLabel());
     // Le refus signifie que la complétude du store est périmée : on la relit pour que la liste
     // bloquante affiche les mêmes manques que le serveur vient d'évaluer.
     this.compliance.reloadCompleteness().subscribe();
   }
 
-  /**
-   * BNF-F-19 : un lead rattaché à un client existant ne crée aucune fiche. La navigation est
-   * faite ici, puis le drawer se ferme sur `false` — la redirection par défaut de l'en-tête
-   * (`/customers/<id>`) irait sur l'identité du client, pas sur le produit en brouillon.
-   */
-  private _openExistingCustomerProducts(customerId: string, holdingId: string | null): void {
-    this._dialogRef.close(false);
-    this._router.navigate(['/customers', customerId, 'produits'], {
-      queryParams: holdingId ? { holding: holdingId } : undefined,
-    });
-  }
 
   /**
    * `DuplicateMatchResult` ne porte que l'identifiant du **lead** similaire, jamais celui de son

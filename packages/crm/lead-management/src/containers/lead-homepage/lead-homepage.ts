@@ -177,10 +177,10 @@ const PIPELINE_PHASES: PipelinePhase[] = [
   { key: 'new',        label: 'Nouveau',        exit: 'doublon écarté',              stages: [S.New],                                                   dropStage: S.New },
   { key: 'dispatched', label: 'Dispatché',      exit: 'premier contact',             stages: [S.ContactAttempted],                                      dropStage: S.ContactAttempted },
   { key: 'contacted',  label: 'En contact',       exit: 'besoin identifié',          stages: [S.ContactEstablished],                                    dropStage: S.ContactEstablished },
-  { key: 'need',       label: 'Besoin identifié', exit: 'projet ouvert, client créé',
+  { key: 'need',       label: 'Besoin identifié', exit: 'projet approuvé',
     stages: [S.NeedIdentified, S.Qualified, S.ProductProposed, S.ApplicationStarted, S.DocumentCollection, S.ApplicationCompleted, S.ApprovalPending],
     dropStage: S.NeedIdentified },
-  { key: 'converted',  label: 'Converti',       exit: 'client créé',                 stages: [S.Converted],                                             dropStage: S.Converted },
+  { key: 'converted',  label: 'Converti',       exit: 'projet approuvé',             stages: [S.Converted],                                             dropStage: S.Converted },
 ];
 
 function assigneeId(lead: LeadDto): string | null {
@@ -189,7 +189,11 @@ function assigneeId(lead: LeadDto): string | null {
 
 /** Phase d'un lead, ou `null` pour un lead perdu (hors pipeline actif). */
 function phaseOf(lead: LeadDto): PipelinePhase['key'] | null {
+  // Converti = un projet approuvé, et le statut le dit. Une étape « Converti » posée à la main par
+  // l'ancien Kanban, sans client, ne suffit pas : ce lead reste dans « Besoin identifié ».
+  if (lead.status === 'Converted') return 'converted';
   const stage = lead.pipelineStage ?? S.New;
+  if (stage === S.Converted) return 'need';
   // Une étape `New` couvre deux réalités : le lead attend un agent, ou il en a un et attend son
   // premier contact. Seule l'affectation les distingue.
   if (stage === S.New) return assigneeId(lead) ? 'dispatched' : 'new';
@@ -583,6 +587,14 @@ export class LeadHomepage implements OnInit {
     if (fromStage === phase.dropStage) {
       // Seul cas : un lead affecté ramené dans « Nouveau ». Sans désaffectation, il y reviendrait.
       this._snackbar.error('Transition refusée', 'Ce lead a déjà un agent : il reste dans « Dispatché ».');
+      return;
+    }
+
+    if (phase.key === 'converted') {
+      this._snackbar.error(
+        'Transition refusée',
+        "Un lead devient client quand l'un de ses projets est approuvé : faites avancer le projet depuis sa fiche.",
+      );
       return;
     }
 

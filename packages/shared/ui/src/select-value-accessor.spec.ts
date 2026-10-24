@@ -92,4 +92,31 @@ describe('TasSelect — contrat ControlValueAccessor', () => {
     expect(select.selectionModel.isSelected('ServerWebhook')).toBe(false);
     expect(host.emitted).toEqual([]);
   });
+
+  it("garde l'option déjà choisie quand on la reclique", async () => {
+    // Avant : `toggle` la désélectionnait. Sur un champ prérempli dont le libellé n'était pas
+    // encore rafraîchi, l'agent « choisissait » le produit et l'effaçait sans le voir.
+    host.value.set('ServerWebhook');
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    const select = fixture.debugElement.children[0].componentInstance as TasSelect<unknown>;
+    select.toggleSelection('ServerWebhook');
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    expect(select.value).toBe('ServerWebhook');
+    expect(host.emitted).toEqual([]);
+  });
+
+  it('affiche le libellé de la valeur écrite par le modèle', async () => {
+    const select = fixture.debugElement.children[0].componentInstance as TasSelect<unknown>;
+    select.writeValue('ScheduledPull');
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    expect(select.displayValue.label).toBe('Collecte planifiée');
+    expect((fixture.nativeElement as HTMLElement).querySelector('button span')?.textContent?.trim())
+      .toBe('Collecte planifiée');
+  });
 });

@@ -79,8 +79,6 @@ import { LeadImportStatusResponse } from '../model/lead-import-status-response.i
 // @ts-ignore
 import { LeadIntentLevelDto } from '../model/lead-intent-level-dto.interface';
 // @ts-ignore
-import { LeadQuestionnairesDto } from '../model/lead-questionnaires-dto.interface';
-// @ts-ignore
 import { LeadStatsDto } from '../model/lead-stats-dto.interface';
 // @ts-ignore
 import { LeadsAddHouseholdMemberRequest } from '../model/leads-add-household-member-request.interface';
@@ -148,8 +146,6 @@ import { SetQualificationCompletenessRequest } from '../model/set-qualification-
 import { SubmitFatcaDeclarationRequest } from '../model/submit-fatca-declaration-request.interface';
 // @ts-ignore
 import { SubmitFatcaDeclarationResponse } from '../model/submit-fatca-declaration-response.interface';
-// @ts-ignore
-import { SubmitQuestionnaireResponseRequest } from '../model/submit-questionnaire-response-request.interface';
 // @ts-ignore
 import { SystemCaptureLeadRequest } from '../model/system-capture-lead-request.interface';
 // @ts-ignore
@@ -2508,71 +2504,6 @@ export class LeadsApiService {
 
         let localVarPath = `/api/v1/leads/${this.configuration.encodeParam({name: "leadId", value: leadId, in: "path", style: "simple", explode: false, dataType: "string", dataFormat: "uuid"})}/owner-history`;
         return this.httpClient.request<Array<OwnerAssignmentDto>>('get', `${this.configuration.basePath}${localVarPath}`,
-            {
-                context: localVarHttpContext,
-                responseType: <any>responseType_,
-                withCredentials: this.configuration.withCredentials,
-                headers: localVarHeaders,
-                observe: observe,
-                reportProgress: reportProgress
-            }
-        );
-    }
-
-    /**
-     * Questionnaires owed and answered by each person of a lead
-     * @param leadId 
-     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
-     * @param reportProgress flag to report request and response progress.
-     */
-    public getLeadQuestionnaires(leadId: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<LeadQuestionnairesDto>;
-    public getLeadQuestionnaires(leadId: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<LeadQuestionnairesDto>>;
-    public getLeadQuestionnaires(leadId: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<LeadQuestionnairesDto>>;
-    public getLeadQuestionnaires(leadId: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
-        if (leadId === null || leadId === undefined) {
-            throw new Error('Required parameter leadId was null or undefined when calling getLeadQuestionnaires.');
-        }
-
-        let localVarHeaders = this.defaultHeaders;
-
-        let localVarCredential: string | undefined;
-        // authentication (BearerToken) required
-        localVarCredential = this.configuration.lookupCredential('BearerToken');
-        if (localVarCredential) {
-            localVarHeaders = localVarHeaders.set('Authorization', 'Bearer ' + localVarCredential);
-        }
-
-        let localVarHttpHeaderAcceptSelected: string | undefined = options && options.httpHeaderAccept;
-        if (localVarHttpHeaderAcceptSelected === undefined) {
-            // to determine the Accept header
-            const httpHeaderAccepts: string[] = [
-                'application/json'
-            ];
-            localVarHttpHeaderAcceptSelected = this.configuration.selectHeaderAccept(httpHeaderAccepts);
-        }
-        if (localVarHttpHeaderAcceptSelected !== undefined) {
-            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
-        }
-
-        let localVarHttpContext: HttpContext | undefined = options && options.context;
-        if (localVarHttpContext === undefined) {
-            localVarHttpContext = new HttpContext();
-        }
-
-
-        let responseType_: 'text' | 'json' | 'blob' = 'json';
-        if (localVarHttpHeaderAcceptSelected) {
-            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
-                responseType_ = 'text';
-            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
-                responseType_ = 'json';
-            } else {
-                responseType_ = 'blob';
-            }
-        }
-
-        let localVarPath = `/api/v1/leads/${this.configuration.encodeParam({name: "leadId", value: leadId, in: "path", style: "simple", explode: false, dataType: "string", dataFormat: "uuid"})}/questionnaires`;
-        return this.httpClient.request<LeadQuestionnairesDto>('get', `${this.configuration.basePath}${localVarPath}`,
             {
                 context: localVarHttpContext,
                 responseType: <any>responseType_,
@@ -5278,84 +5209,6 @@ export class LeadsApiService {
             {
                 context: localVarHttpContext,
                 body: submitFatcaDeclarationRequest,
-                responseType: <any>responseType_,
-                withCredentials: this.configuration.withCredentials,
-                headers: localVarHeaders,
-                observe: observe,
-                reportProgress: reportProgress
-            }
-        );
-    }
-
-    /**
-     * Record one person\&#39;s answers to a questionnaire
-     * @param leadId 
-     * @param submitQuestionnaireResponseRequest 
-     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
-     * @param reportProgress flag to report request and response progress.
-     */
-    public submitLeadQuestionnaireResponse(leadId: string, submitQuestionnaireResponseRequest: SubmitQuestionnaireResponseRequest, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<any>;
-    public submitLeadQuestionnaireResponse(leadId: string, submitQuestionnaireResponseRequest: SubmitQuestionnaireResponseRequest, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<HttpResponse<any>>;
-    public submitLeadQuestionnaireResponse(leadId: string, submitQuestionnaireResponseRequest: SubmitQuestionnaireResponseRequest, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<HttpEvent<any>>;
-    public submitLeadQuestionnaireResponse(leadId: string, submitQuestionnaireResponseRequest: SubmitQuestionnaireResponseRequest, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<any> {
-        if (leadId === null || leadId === undefined) {
-            throw new Error('Required parameter leadId was null or undefined when calling submitLeadQuestionnaireResponse.');
-        }
-        if (submitQuestionnaireResponseRequest === null || submitQuestionnaireResponseRequest === undefined) {
-            throw new Error('Required parameter submitQuestionnaireResponseRequest was null or undefined when calling submitLeadQuestionnaireResponse.');
-        }
-
-        let localVarHeaders = this.defaultHeaders;
-
-        let localVarCredential: string | undefined;
-        // authentication (BearerToken) required
-        localVarCredential = this.configuration.lookupCredential('BearerToken');
-        if (localVarCredential) {
-            localVarHeaders = localVarHeaders.set('Authorization', 'Bearer ' + localVarCredential);
-        }
-
-        let localVarHttpHeaderAcceptSelected: string | undefined = options && options.httpHeaderAccept;
-        if (localVarHttpHeaderAcceptSelected === undefined) {
-            // to determine the Accept header
-            const httpHeaderAccepts: string[] = [
-            ];
-            localVarHttpHeaderAcceptSelected = this.configuration.selectHeaderAccept(httpHeaderAccepts);
-        }
-        if (localVarHttpHeaderAcceptSelected !== undefined) {
-            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
-        }
-
-        let localVarHttpContext: HttpContext | undefined = options && options.context;
-        if (localVarHttpContext === undefined) {
-            localVarHttpContext = new HttpContext();
-        }
-
-
-        // to determine the Content-Type header
-        const consumes: string[] = [
-            'application/json'
-        ];
-        const httpContentTypeSelected: string | undefined = this.configuration.selectHeaderContentType(consumes);
-        if (httpContentTypeSelected !== undefined) {
-            localVarHeaders = localVarHeaders.set('Content-Type', httpContentTypeSelected);
-        }
-
-        let responseType_: 'text' | 'json' | 'blob' = 'json';
-        if (localVarHttpHeaderAcceptSelected) {
-            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
-                responseType_ = 'text';
-            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
-                responseType_ = 'json';
-            } else {
-                responseType_ = 'blob';
-            }
-        }
-
-        let localVarPath = `/api/v1/leads/${this.configuration.encodeParam({name: "leadId", value: leadId, in: "path", style: "simple", explode: false, dataType: "string", dataFormat: "uuid"})}/questionnaires/responses`;
-        return this.httpClient.request<any>('post', `${this.configuration.basePath}${localVarPath}`,
-            {
-                context: localVarHttpContext,
-                body: submitQuestionnaireResponseRequest,
                 responseType: <any>responseType_,
                 withCredentials: this.configuration.withCredentials,
                 headers: localVarHeaders,

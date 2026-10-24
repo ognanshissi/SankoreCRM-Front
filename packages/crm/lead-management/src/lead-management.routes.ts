@@ -88,15 +88,9 @@ export const leadManagementRoutes = [
         path: 'conformite',
         loadComponent: () => import('./containers/edit-lead/conformite'),
       },
-      {
-        path: 'questionnaires',
-        loadComponent: () => import('./containers/edit-lead/questionnaires'),
-      },
-      {
-        path: 'qualification',
-        canActivate: [hasPermissionGuard('lead:qualify')],
-        loadComponent: () => import('./containers/edit-lead/qualification'),
-      },
+      // La qualification et les questionnaires se remplissent dans le projet, d'après son produit.
+      { path: 'questionnaires', redirectTo: 'projets', pathMatch: 'full' as const },
+      { path: 'qualification', redirectTo: 'projets', pathMatch: 'full' as const },
       {
         path: 'score',
         canActivate: [hasPermissionGuard('lead:scoring-config:read')],

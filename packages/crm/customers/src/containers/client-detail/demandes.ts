@@ -623,6 +623,7 @@ export class ClientDemandes {
     const code = projectGateCode(error);
     if (!code) return null;
     const message = projectGateMessage(code, target);
+    if (code === 'PROJECT_QUESTIONNAIRES_INCOMPLETE') return `${message} Ouvrez le projet pour les remplir.`;
     return code === 'PROJECT_CLIENT_FILE_REQUIRED' ? message : `${message} Voir l'onglet KYC de la fiche.`;
   }
 

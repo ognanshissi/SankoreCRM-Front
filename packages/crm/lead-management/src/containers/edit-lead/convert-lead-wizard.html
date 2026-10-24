@@ -7,8 +7,12 @@
   </tas-drawer-title>
 
   <tas-drawer-content>
-    <!-- ===== Contrôle avant conversion + récapitulatif ===== -->
+    <!-- ===== Contrôle avant l'ouverture du dossier client + récapitulatif ===== -->
     @if (currentStep() === 'recap') {
+      <p class="mb-4 rounded-lg bg-slate-50 p-3 text-sm text-slate-600">
+        La fiche client est créée maintenant, avec le dossier KYC si le produit en demande un. Le lead
+        deviendra client quand l'un de ses projets sera approuvé.
+      </p>
       @if (compliance.isLoading()) {
         <div class="py-12 flex flex-col items-center gap-3" aria-busy="true" aria-live="polite">
           <tas-spinner size="10" class="text-primary"></tas-spinner>
@@ -27,7 +31,7 @@
               style="font-size:14px"
             ></tas-icon>
             <div class="min-w-0">
-              <p class="text-sm font-semibold text-red-700">Conversion refusée</p>
+              <p class="text-sm font-semibold text-red-700">Ouverture refusée</p>
               <p class="text-xs text-red-700 mt-0.5">{{ refusalLabel() }}</p>
               @if (refusal()!.blockingCode) {
                 <p class="text-xs text-red-400 mt-0.5">Code : {{ refusal()!.blockingCode }}</p>
@@ -52,16 +56,6 @@
                   Rattacher au client existant
                 </button>
               }
-              @if ((refusal()!.missingQuestionnaires?.length ?? 0) > 0) {
-                <div class="flex flex-wrap gap-2 mt-2">
-                  @for (missing of refusal()!.missingQuestionnaires; track $index) {
-                    <tas-tag severity="warning">
-                      {{ missing.templateName || 'Questionnaire' }} —
-                      {{ missing.subjectLabel || 'Dossier' }}
-                    </tas-tag>
-                  }
-                </div>
-              }
             </div>
           </div>
         }
@@ -78,7 +72,7 @@
               style="font-size:14px"
             ></tas-icon>
             <p class="text-xs text-amber-800">
-              Le contrôle de complétude est indisponible. Vous pouvez tenter la conversion : le
+              Le contrôle de complétude est indisponible. Vous pouvez tenter l'ouverture : le
               serveur la refusera en indiquant ce qui manque.
             </p>
           </div>
@@ -99,7 +93,7 @@
                 style="font-size:14px"
               ></tas-icon>
               <p class="text-xs text-slate-600">
-                Dossier incomplet : la conversion reste désactivée. Cliquez un élément manquant
+                Dossier incomplet : l'ouverture du dossier client reste désactivée. Cliquez un élément manquant
                 ci-dessus pour ouvrir la section où le corriger.
               </p>
             </div>
@@ -257,26 +251,6 @@
           </tas-card>
         }
 
-        <!-- Questionnaires -->
-        <tas-card class="block mb-4">
-          <div class="p-4 border-b border-slate-100">
-            <p class="text-sm font-semibold text-slate-700">Questionnaires</p>
-          </div>
-          <div class="p-4">
-            <p class="text-sm text-slate-800">{{ questionnaireText() }}</p>
-            @if (missingQuestionnaires().length > 0) {
-              <div class="flex flex-wrap gap-2 mt-3">
-                @for (missing of missingQuestionnaires(); track $index) {
-                  <tas-tag severity="warning">
-                    {{ missing.templateName || 'Questionnaire' }} —
-                    {{ missing.subjectLabel || 'Dossier' }}
-                  </tas-tag>
-                }
-              </div>
-            }
-          </div>
-        </tas-card>
-
         <!-- Champs encore modifiables sur le lead : la saisie a un effet avant conversion -->
         @if (missingOnLead().length > 0) {
           <tas-card class="block mb-4">
@@ -288,7 +262,7 @@
                 </p>
               </div>
               <p class="text-xs text-slate-400 mt-1">
-                Complétez-les maintenant : la conversion les reprend telles quelles.
+                Complétez-les maintenant : la fiche client les reprend telles quelles.
               </p>
             </div>
             <div class="p-4">
@@ -317,11 +291,11 @@
             <div class="flex items-center gap-2">
               <tas-icon iconName="feather:info" class="text-slate-400" style="font-size:14px"></tas-icon>
               <p class="text-sm font-semibold text-slate-700">
-                À compléter sur la fiche client après conversion
+                À compléter sur la fiche client une fois créée
               </p>
             </div>
             <p class="text-xs text-slate-400 mt-1">
-              Ces informations ne font pas partie du contrat de conversion : elles ne se saisissent
+              Ces informations ne sont pas reprises du lead : elles ne se saisissent
               pas ici, mais sur la fiche client une fois celle-ci créée.
             </p>
           </div>
@@ -366,7 +340,7 @@
               style="font-size:14px"
             ></tas-icon>
             <p class="text-xs text-amber-800">
-              Le droit « Convertir un lead » est requis pour valider cette conversion.
+              Le droit « Convertir un lead » est requis pour ouvrir le dossier client.
             </p>
           </div>
         }
@@ -379,7 +353,7 @@
               style="font-size:14px"
             ></tas-icon>
             <p class="text-xs text-amber-800">
-              Vous n'avez pas le droit de consulter les fiches clients : la conversion aboutira,
+              Vous n'avez pas le droit de consulter les fiches clients : le dossier sera ouvert,
               mais l'ouverture de la fiche vous sera refusée.
             </p>
           </div>
@@ -390,7 +364,7 @@
     <!-- ===== Compléter le lead (seuls champs que le contrat de mise à jour couvre) ===== -->
     @if (currentStep() === 'complete') {
       <p class="text-xs text-slate-500 mb-4">
-        Ces informations sont enregistrées sur le lead, puis reprises par la conversion. Le type et
+        Ces informations sont enregistrées sur le lead, puis reprises par la fiche client. Le type et
         le numéro de pièce d'identité ne sont pas modifiables ici : ils se saisissent sur la fiche
         client.
       </p>
@@ -463,7 +437,7 @@
             </p>
           </div>
           <p class="text-xs text-amber-700 mt-1">
-            La conversion est suspendue. Rattachez le lead à la fiche client existante, ou confirmez
+            L'ouverture du dossier est suspendue. Rattachez le lead à la fiche client existante, ou confirmez
             qu'il s'agit d'une autre personne.
           </p>
         </div>

@@ -77,8 +77,10 @@
       <div class="flex flex-wrap items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900" role="alert">
         <tas-icon iconName="feather:lock" class="shrink-0 text-amber-600" style="font-size:16px"></tas-icon>
         <p class="min-w-56 flex-1">{{ g.message }}</p>
-        @if (g.code === 'PROJECT_CLIENT_FILE_REQUIRED' && lead()) {
-          <button tas-raised-button color="primary" type="button" (click)="convertForGate()">Convertir en client</button>
+        @if (g.code === 'PROJECT_QUESTIONNAIRES_INCOMPLETE') {
+          <button tas-raised-button color="primary" type="button" (click)="scrollToQuestionnaires()">Remplir les questionnaires</button>
+        } @else if (g.code === 'PROJECT_CLIENT_FILE_REQUIRED' && lead()) {
+          <button tas-raised-button color="primary" type="button" (click)="convertForGate()">Ouvrir le dossier client</button>
         } @else if (clientId()) {
           <a tas-outlined-button color="primary" [routerLink]="['/customers', clientId(), 'kyc']">Voir le KYC du client</a>
         }
@@ -109,6 +111,9 @@
                 }
                 @if (step.isApproval) {
                   <span class="mt-1 inline-flex items-center gap-1 text-[11px] font-medium text-slate-600"><tas-icon iconName="feather:shield" style="font-size:11px"></tas-icon>Approbation</span>
+                }
+                @if (step.requiresQuestionnaires) {
+                  <span class="mt-1 inline-flex items-center gap-1 text-[11px] font-medium text-slate-600"><tas-icon iconName="feather:clipboard" style="font-size:11px"></tas-icon>Questionnaires</span>
                 }
               </button>
             }
@@ -240,6 +245,9 @@
         </div>
       </tas-card>
     }
+
+    <!-- Questionnaires du produit : celui du dossier et ceux de chaque personne -->
+    <project-questionnaires [projectId]="p.id!" [canEdit]="canManage()" (changed)="onQuestionnairesChanged()"></project-questionnaires>
 
     <!-- Informations -->
     <tas-card class="block">

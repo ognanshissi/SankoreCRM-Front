@@ -9,7 +9,6 @@
  * https://openapi-generator.tech
  * Do not edit the class manually.
  */
-import { MissingQuestionnaire } from './missing-questionnaire.interface';
 import { CompletenessGap } from './completeness-gap.interface';
 
 
@@ -21,7 +20,6 @@ export interface LeadCompletenessDto {
     applicable?: number;
     canConvert?: boolean;
     gaps?: Array<CompletenessGap> | null;
-    missingQuestionnaires?: Array<MissingQuestionnaire> | null;
     requiredConsents?: Array<string> | null;
 }
 

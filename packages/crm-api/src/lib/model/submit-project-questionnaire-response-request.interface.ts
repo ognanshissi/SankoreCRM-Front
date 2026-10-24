@@ -9,23 +9,14 @@
  * https://openapi-generator.tech
  * Do not edit the class manually.
  */
-import { HealthAnswer } from './health-answer.interface';
+import { QuestionnaireAnswerInput } from './questionnaire-answer-input.interface';
 
 
-export interface QuestionnaireResponseDto { 
-    responseId?: string;
+export interface SubmitProjectQuestionnaireResponseRequest { 
     templateId?: string;
-    templateName?: string | null;
-    isHealthQuestionnaire?: boolean;
     subjectType?: string | null;
     subjectId?: string;
-    subjectLabel?: string | null;
-    questionnaireVersion?: number;
-    status?: string | null;
+    answers?: Array<QuestionnaireAnswerInput> | null;
     respondentId?: string | null;
-    answeredAt?: string | null;
-    isPurged?: boolean;
-    answers?: Array<HealthAnswer> | null;
-    answersWithheldReason?: string | null;
 }
 

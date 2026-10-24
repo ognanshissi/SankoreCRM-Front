@@ -413,7 +413,6 @@ model/lead-household-dto.interface.ts
 model/lead-import-status-response.interface.ts
 model/lead-intent-level-dto.interface.ts
 model/lead-next-step-dto.interface.ts
-model/lead-questionnaires-dto.interface.ts
 model/lead-report-agency.interface.ts
 model/lead-report-agent.interface.ts
 model/lead-report-dto.interface.ts
@@ -468,7 +467,6 @@ model/merged-into-dto.interface.ts
 model/migrate-objects-result.interface.ts
 model/missed-call-dto.interface.ts
 model/missing-fatca-declaration.interface.ts
-model/missing-questionnaire.interface.ts
 model/models.ts
 model/money.interface.ts
 model/move-agency-request.interface.ts
@@ -534,6 +532,8 @@ model/product-performance-dto.interface.ts
 model/product-routing-dto.interface.ts
 model/product-routing-line-dto.interface.ts
 model/project-contact-dto.interface.ts
+model/project-questionnaire-item-dto.interface.ts
+model/project-questionnaires-dto.interface.ts
 model/project-step-dto.interface.ts
 model/project-step-request.interface.ts
 model/project-template-dto.interface.ts
@@ -548,7 +548,7 @@ model/qualify-lead-result.interface.ts
 model/question-input.interface.ts
 model/question-rule-dto.interface.ts
 model/questionnaire-answer-input.interface.ts
-model/questionnaire-response-dto.interface.ts
+model/questionnaire-respondent-dto.interface.ts
 model/quote-insurance-product-request.interface.ts
 model/raise-kyc-review-request.interface.ts
 model/raise-kyc-review-result.interface.ts
@@ -715,7 +715,7 @@ model/steps-diff-dto.interface.ts
 model/stuck-instance-dto.interface.ts
 model/submit-fatca-declaration-request.interface.ts
 model/submit-fatca-declaration-response.interface.ts
-model/submit-questionnaire-response-request.interface.ts
+model/submit-project-questionnaire-response-request.interface.ts
 model/subscribe-insurance-policy-request.interface.ts
 model/subscribe-insurance-policy-result.interface.ts
 model/subscribe-request.interface.ts

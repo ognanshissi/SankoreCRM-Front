@@ -11,12 +11,8 @@
  */
 
 
-export interface MissingQuestionnaire { 
-    templateId?: string;
-    templateName?: string | null;
-    isHealthQuestionnaire?: boolean;
-    subjectType?: string | null;
-    subjectId?: string;
-    subjectLabel?: string | null;
+export interface QuestionnaireRespondentDto { 
+    id?: string;
+    label?: string | null;
 }
 

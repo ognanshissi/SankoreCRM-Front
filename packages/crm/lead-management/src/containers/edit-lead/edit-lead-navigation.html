@@ -67,6 +67,12 @@
             <tas-icon iconName="feather:phone-call" style="font-size:14px"></tas-icon>
             &nbsp;Premier contact
           </button>
+        } @else if (openClientFileId(); as clientId) {
+          <a tas-outlined-button color="primary" class="rounded-full bg-white" [routerLink]="['/customers', clientId]"
+             title="Le lead deviendra client quand l'un de ses projets sera approuvé">
+            <tas-icon iconName="feather:folder" style="font-size:14px"></tas-icon>
+            &nbsp;Dossier client ouvert
+          </a>
         } @else if (canBeConverted()) {
           <!--
             Désactivé sur le canConvert de l'API (BNF-F-08), jamais sur une règle recalculée ici.
@@ -202,7 +208,7 @@
           }
           @default {
             @if (nextStepIsQualification()) {
-              <a tas-raised-button color="primary" [routerLink]="['qualification']">Lancer la qualification</a>
+              <a tas-raised-button color="primary" [routerLink]="['projets']">Qualifier dans un projet</a>
             }
             @if (!showPlanner()) {
               <button tas-outlined-button color="primary" type="button" class="bg-white" (click)="openPlanner()">

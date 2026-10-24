@@ -50,6 +50,7 @@ import {
   stepSuggestion,
   weightedAmount,
 } from '../edit-lead/opportunities/opportunity.model';
+import { ProjectQuestionnaires } from './project-questionnaires';
 
 class InfoFormModel {
   public title!: string;
@@ -116,7 +117,7 @@ function parseAmount(text: string): number | null {
   selector: 'project-detail',
   imports: [
     RouterLink, FormRoot, FormField, Anchor, Button, TasCard, TasFormField, TasLabel, TasError,
-    TasIcon, TasInput, TasSelect, TasSpinner,
+    TasIcon, TasInput, TasSelect, TasSpinner, ProjectQuestionnaires,
   ],
   templateUrl: './project-detail.html',
 })
@@ -230,6 +231,15 @@ export class ProjectDetail implements OnInit {
     maxLength(schema.reason, 500, { message: 'Le motif ne peut pas dépasser 500 caractères' });
   });
 
+  public scrollToQuestionnaires(): void {
+    document.getElementById('questionnaires')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  /** Une réponse enregistrée peut lever le refus d'étape affiché. */
+  public onQuestionnairesChanged(): void {
+    if (this.gate()?.code === 'PROJECT_QUESTIONNAIRES_INCOMPLETE') this.gate.set(null);
+  }
+
   public ngOnInit(): void {
     this._route.paramMap.pipe(takeUntilDestroyed(this._destroyRef)).subscribe((params) => {
       this.projectId.set(params.get('projectId') ?? '');
@@ -254,6 +264,8 @@ export class ProjectDetail implements OnInit {
         this.isLoading.set(false);
         this._breadcrumb.set([{ label: 'Projets', link: ['/leads/projets'] }, { label: project.title ?? 'Projet' }]);
         this._loadPerson(project);
+        // Arrivée depuis « Remplir les questionnaires » d'un autre écran : la section est en bas.
+        if (this._route.snapshot.fragment === 'questionnaires') setTimeout(() => this.scrollToQuestionnaires());
       });
   }
 
@@ -280,26 +292,39 @@ export class ProjectDetail implements OnInit {
 
   // ——— Étapes ———
 
+  /** Ce que l'agent tentait quand l'étape a été refusée : rejoué une fois le dossier client ouvert. */
+  private _retry: (() => void) | null = null;
+
   public moveTo(step: ProjectStepDto): void {
     const p = this.project();
     if (!p || !this.canManage() || this.isCurrent(step) || this.busy() || !hasTemplateSteps(p)) return;
     this._target = step.label ?? null;
+    this._retry = () => this.moveTo(step);
     void this._run(
       this._api.moveOpportunityToStep(p.id!, { stepId: step.id!, expectedUpdatedAt: p.updatedAt ?? null }),
       `Étape : ${step.label} · probabilité ${step.probability} %`,
     );
   }
 
-  /** L'assistant de conversion de la fiche lead ; l'agent rejoue ensuite l'étape. */
+  /**
+   * L'assistant d'ouverture du dossier client de la fiche lead ; l'étape refusée est ensuite
+   * rejouée sur le projet relu — et si c'était l'approbation, le lead devient client.
+   */
   public convertForGate(): void {
     const lead = this.lead();
     if (!lead) return;
+    const retry = this._retry;
     const ref = this._sideDrawer.open(ConvertLeadWizard, { panelClass: 'side-drawer-panel', data: { lead } });
     ref.closed.subscribe((result: unknown) => {
       if (!result) return;
       this.gate.set(null);
-      this._snackbar.success('Prospect converti', 'Vous pouvez maintenant faire avancer le projet.');
-      this.load();
+      this._snackbar.success('Dossier client ouvert', 'Le projet reprend là où il était bloqué.');
+      // Relu d'abord : l'ouverture du dossier a rattaché le projet au client et changé sa date.
+      this._api.getOpportunity(this.projectId()).pipe(catchError(() => EMPTY)).subscribe((fresh) => {
+        this.project.set(fresh);
+        if (retry) retry();
+        else this.load();
+      });
     });
   }
 
@@ -380,16 +405,21 @@ export class ProjectDetail implements OnInit {
       showCancelButton: true,
       acceptButtonProps: { label: 'Marquer gagné', theme: 'primary' },
       rejectButtonProps: { label: 'Annuler' },
-      accept: () => {
-        this._target = null;
-        void this._run(
-          this._api
-            .closeOpportunity(p.id!, { outcome: CloseOpportunityRequestOutcomeEnum.ClosedWon, expectedUpdatedAt: p.updatedAt ?? null })
-            .pipe(map((r) => this.holdingId.set(r?.holdingId ?? null))),
-          'Projet gagné',
-        );
-      },
+      accept: () => this._win(),
     });
+  }
+
+  private _win(): void {
+    const p = this.project();
+    if (!p) return;
+    this._target = null;
+    this._retry = () => this._win();
+    void this._run(
+      this._api
+        .closeOpportunity(p.id!, { outcome: CloseOpportunityRequestOutcomeEnum.ClosedWon, expectedUpdatedAt: p.updatedAt ?? null })
+        .pipe(map((r) => this.holdingId.set(r?.holdingId ?? null))),
+      'Projet gagné',
+    );
   }
 
   public startLose(): void {

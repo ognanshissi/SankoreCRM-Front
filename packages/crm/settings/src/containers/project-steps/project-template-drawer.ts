@@ -45,6 +45,7 @@ interface StepRow {
   suggestion: string;
   opensClientFile: boolean;
   isApproval: boolean;
+  requiresQuestionnaires: boolean;
 }
 
 class TemplateFormModel {
@@ -68,6 +69,7 @@ class TemplateFormModel {
       suggestion: s.suggestion ?? '',
       opensClientFile: !!s.opensClientFile,
       isApproval: !!s.isApproval,
+      requiresQuestionnaires: !!s.requiresQuestionnaires,
     }));
     return m;
   }
@@ -82,6 +84,7 @@ function fromPreset(steps: StepPreset[]): StepRow[] {
     suggestion: s.suggestion ?? '',
     opensClientFile: !!s.opensClientFile,
     isApproval: !!s.isApproval,
+    requiresQuestionnaires: !!s.requiresQuestionnaires,
   }));
 }
 
@@ -142,6 +145,7 @@ export class ProjectTemplateDrawer {
       if (new Set(labels).size !== labels.length) return { kind: 'steps', message: 'Deux étapes portent le même nom' };
       if (steps.filter((s) => s.opensClientFile).length > 1) return { kind: 'steps', message: 'Une seule étape peut ouvrir le dossier client' };
       if (steps.filter((s) => s.isApproval).length > 1) return { kind: 'steps', message: 'Une seule étape peut être l’étape d’approbation' };
+      if (steps.filter((s) => s.requiresQuestionnaires).length > 1) return { kind: 'steps', message: 'Une seule étape peut exiger les questionnaires complets' };
       const opens = steps.findIndex((s) => s.opensClientFile);
       const approval = steps.findIndex((s) => s.isApproval);
       if (opens >= 0 && approval >= 0 && approval < opens) {
@@ -176,7 +180,7 @@ export class ProjectTemplateDrawer {
   public addStep(): void {
     this.formSchema.steps().value.update((rows) => {
       const last = rows[rows.length - 1];
-      return [...rows, { id: null, label: '', phase: last?.phase ?? 'Prospecting', probability: '', suggestion: '', opensClientFile: false, isApproval: false }];
+      return [...rows, { id: null, label: '', phase: last?.phase ?? 'Prospecting', probability: '', suggestion: '', opensClientFile: false, isApproval: false, requiresQuestionnaires: false }];
     });
   }
 
@@ -214,6 +218,7 @@ export class ProjectTemplateDrawer {
         suggestion: s.suggestion.trim() || null,
         opensClientFile: s.opensClientFile,
         isApproval: s.isApproval,
+        requiresQuestionnaires: s.requiresQuestionnaires,
       }));
 
       // Le parcours intégré n'est pas stocké : l'enregistrer en crée la copie du tenant, avec les

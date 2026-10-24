@@ -5,21 +5,19 @@ import {
   LeadCompletenessDto,
   LeadFatcaDto,
   LeadHouseholdDto,
-  LeadQuestionnairesDto,
   LeadsApiService,
   LeadsHouseholdMemberDto,
 } from '@sankore/crm-api';
 import { identityLabel } from '@sankore/crm/common';
 
 /**
- * État « foyer, conformité et questionnaires » du lead courant, fourni par la
+ * État « foyer et conformité » du lead courant, fourni par la
  * route `leads/:id` à côté de `LeadEditContext`.
  *
  * Il existe parce que ces quatre ressources sont lues par plusieurs onglets **et**
  * par l'en-tête : l'en-tête a besoin de l'exposition PPE et du statut FATCA, la
  * jauge de complétude est posée en tête de l'onglet Identité comme dans le
- * contrôle avant conversion, et le sélecteur de personne des questionnaires est
- * dessiné à partir du foyer. Sans état partagé, chaque onglet referait les mêmes
+ * contrôle avant conversion. Sans état partagé, chaque onglet referait les mêmes
  * appels et afficherait sa propre version de la même vérité — c'est exactement la
  * divergence que `ClientDetailStore` est venu supprimer côté clients.
  *
@@ -35,7 +33,6 @@ export class LeadComplianceStore {
   private readonly _household = signal<LeadHouseholdDto | null>(null);
   private readonly _completeness = signal<LeadCompletenessDto | null>(null);
   private readonly _fatca = signal<LeadFatcaDto | null>(null);
-  private readonly _questionnaires = signal<LeadQuestionnairesDto | null>(null);
   private readonly _consents = signal<ConsentDto[]>([]);
 
   private readonly _isLoading = signal(true);
@@ -45,7 +42,6 @@ export class LeadComplianceStore {
   public readonly household = this._household.asReadonly();
   public readonly completeness = this._completeness.asReadonly();
   public readonly fatca = this._fatca.asReadonly();
-  public readonly questionnaires = this._questionnaires.asReadonly();
   public readonly consents = this._consents.asReadonly();
   public readonly isLoading = this._isLoading.asReadonly();
   public readonly loadFailed = this._loadFailed.asReadonly();
@@ -92,14 +88,6 @@ export class LeadComplianceStore {
 
   public readonly canConvert = computed(() => this._completeness()?.canConvert === true);
 
-  /** « 2/4 questionnaires complétés » (BNF-F-06). */
-  public readonly questionnaireProgress = computed(() => {
-    const data = this._questionnaires();
-    const done = (data?.responses ?? []).length;
-    const missing = (data?.missing ?? []).length;
-    return { done, total: done + missing };
-  });
-
   public load(leadId: string): void {
     if (this._leadId() === leadId && !this._isLoading()) return;
     this._leadId.set(leadId);
@@ -115,12 +103,10 @@ export class LeadComplianceStore {
       household: this._fetchHousehold(leadId),
       completeness: this._fetchCompleteness(leadId),
       fatca: this._fetchFatca(leadId),
-      questionnaires: this._fetchQuestionnaires(leadId),
     })
       .pipe(finalize(() => this._isLoading.set(false)))
       .subscribe((result) => {
-        const everythingFailed =
-          !result.household && !result.completeness && !result.fatca && !result.questionnaires;
+        const everythingFailed = !result.household && !result.completeness && !result.fatca;
         this._loadFailed.set(everythingFailed);
       });
   }
@@ -140,11 +126,6 @@ export class LeadComplianceStore {
     return id ? this._fetchFatca(id) : EMPTY;
   }
 
-  public reloadQuestionnaires(): Observable<LeadQuestionnairesDto | null> {
-    const id = this._leadId();
-    return id ? this._fetchQuestionnaires(id) : EMPTY;
-  }
-
   public reloadConsents(): Observable<ConsentDto[]> {
     const id = this._leadId();
     if (!id) return EMPTY;
@@ -155,8 +136,8 @@ export class LeadComplianceStore {
   }
 
   /**
-   * À appeler après toute écriture : le foyer, la PPE, FATCA et les questionnaires
-   * alimentent tous la même jauge, et un 200 sur une section rend périmé le reste
+   * À appeler après toute écriture : le foyer, la PPE et FATCA alimentent tous
+   * la même jauge, et un 200 sur une section rend périmé le reste
    * de la fiche. Le rechargement est silencieux, sans état « chargement ».
    */
   public reloadAfterWrite(): void {
@@ -181,13 +162,6 @@ export class LeadComplianceStore {
   private _fetchFatca(leadId: string): Observable<LeadFatcaDto | null> {
     return this._leadsApi.getLeadFatcaDeclarations(leadId).pipe(
       tap((dto) => this._fatca.set(dto)),
-      catchError(() => of(null)),
-    );
-  }
-
-  private _fetchQuestionnaires(leadId: string): Observable<LeadQuestionnairesDto | null> {
-    return this._leadsApi.getLeadQuestionnaires(leadId).pipe(
-      tap((dto) => this._questionnaires.set(dto)),
       catchError(() => of(null)),
     );
   }

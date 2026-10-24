@@ -22,6 +22,7 @@ export interface ProjectStepDto {
     suggestion?: string | null;
     opensClientFile?: boolean;
     isApproval?: boolean;
+    requiresQuestionnaires?: boolean;
 }
 export enum ProjectStepDtoPhaseEnum {
     Prospecting = 'Prospecting',

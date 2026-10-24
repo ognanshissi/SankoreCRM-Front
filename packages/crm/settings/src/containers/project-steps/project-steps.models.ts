@@ -24,6 +24,7 @@ export interface StepPreset {
   suggestion?: string;
   opensClientFile?: boolean;
   isApproval?: boolean;
+  requiresQuestionnaires?: boolean;
 }
 
 /**
@@ -36,7 +37,7 @@ export const PRESETS: { key: string; label: string; steps: StepPreset[] }[] = [
     label: 'Crédit',
     steps: [
       { label: 'Étude du besoin', phase: 'Qualification', probability: 20, suggestion: "Vérifier l'éligibilité" },
-      { label: 'Montage du dossier', phase: 'NeedsAnalysis', probability: 35, suggestion: 'Réunir les pièces du dossier', opensClientFile: true },
+      { label: 'Montage du dossier', phase: 'NeedsAnalysis', probability: 35, suggestion: 'Réunir les pièces du dossier', opensClientFile: true, requiresQuestionnaires: true },
       { label: 'Analyse de crédit', phase: 'NeedsAnalysis', probability: 50, suggestion: "Transmettre le dossier à l'analyste" },
       { label: 'Comité', phase: 'Proposal', probability: 65, suggestion: 'Présenter le dossier au comité', isApproval: true },
       { label: 'Accord et offre', phase: 'Negotiation', probability: 85, suggestion: 'Fixer la date de signature' },
@@ -48,7 +49,7 @@ export const PRESETS: { key: string; label: string; steps: StepPreset[] }[] = [
     steps: [
       { label: 'Recueil du besoin', phase: 'Qualification', probability: 20, suggestion: 'Recueillir le besoin de couverture' },
       { label: 'Devis', phase: 'Proposal', probability: 50, suggestion: 'Envoyer le devis' },
-      { label: 'Souscription', phase: 'Negotiation', probability: 70, suggestion: "Compléter la proposition d'assurance", opensClientFile: true },
+      { label: 'Souscription', phase: 'Negotiation', probability: 70, suggestion: "Compléter la proposition d'assurance", opensClientFile: true, requiresQuestionnaires: true },
       { label: 'Acceptation', phase: 'Negotiation', probability: 85, suggestion: "Obtenir l'acceptation de l'assureur", isApproval: true },
     ],
   },
@@ -57,7 +58,7 @@ export const PRESETS: { key: string; label: string; steps: StepPreset[] }[] = [
     label: 'Épargne ou compte',
     steps: [
       { label: 'Prise de contact', phase: 'Prospecting', probability: 10, suggestion: 'Planifier un rendez-vous' },
-      { label: "Présentation de l'offre", phase: 'Proposal', probability: 50, suggestion: "Présenter l'offre", opensClientFile: true },
+      { label: "Présentation de l'offre", phase: 'Proposal', probability: 50, suggestion: "Présenter l'offre", opensClientFile: true, requiresQuestionnaires: true },
       { label: 'Ouverture', phase: 'Negotiation', probability: 80, suggestion: "Fixer le rendez-vous d'ouverture", isApproval: true },
     ],
   },
@@ -80,6 +81,7 @@ const ERRORS: Record<string, string> = {
   PROJECT_TEMPLATE_NOT_FOUND: "Ce gabarit n'existe plus. Rechargez la page.",
   PROJECT_TEMPLATE_TOO_MANY_CLIENT_FILE_STEPS: 'Une seule étape peut ouvrir le dossier client.',
   PROJECT_TEMPLATE_TOO_MANY_APPROVAL_STEPS: 'Une seule étape peut être l’étape d’approbation.',
+  PROJECT_TEMPLATE_TOO_MANY_QUESTIONNAIRE_STEPS: 'Une seule étape peut exiger les questionnaires complets.',
   PROJECT_TEMPLATE_APPROVAL_BEFORE_CLIENT_FILE: 'L’approbation ne peut pas précéder l’ouverture du dossier client.',
 };
 

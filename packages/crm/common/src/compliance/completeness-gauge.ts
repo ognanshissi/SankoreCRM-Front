@@ -84,7 +84,7 @@ function toView(gap: CompletenessGap): CompletenessGapView {
           <div class="flex items-center gap-2">
             <span class="text-2xl font-semibold text-slate-900 tabular-nums">{{ percentage() }}%</span>
             @if (canConvert()) {
-              <tas-tag severity="success">Prêt à convertir</tas-tag>
+              <tas-tag severity="success">Dossier complet</tas-tag>
             } @else if (blockingCount() > 0) {
               <tas-tag severity="warning">{{ blockingCount() }} point{{ blockingCount() > 1 ? 's' : '' }} bloquant{{ blockingCount() > 1 ? 's' : '' }}</tas-tag>
             }

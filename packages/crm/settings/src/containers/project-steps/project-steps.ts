@@ -18,7 +18,7 @@ interface TemplateRow {
   scopeLabel: string;
   scopeDetail: string;
   isBuiltIn: boolean;
-  steps: { label: string; phase: string; probability: number; opensClientFile: boolean; isApproval: boolean }[];
+  steps: { label: string; phase: string; probability: number; opensClientFile: boolean; isApproval: boolean; requiresQuestionnaires: boolean }[];
   updatedAt: string | null;
 }
 
@@ -89,6 +89,9 @@ interface TemplateRow {
                         @if (step.isApproval) {
                           <tas-icon iconName="feather:shield" style="font-size:11px" aria-label="Étape d'approbation"></tas-icon>
                         }
+                        @if (step.requiresQuestionnaires) {
+                          <tas-icon iconName="feather:clipboard" style="font-size:11px" aria-label="Questionnaires complets"></tas-icon>
+                        }
                         {{ step.label }}
                       </span>
                       @if (!last) {
@@ -148,6 +151,7 @@ export class ProjectStepsPage implements OnInit {
         probability: s.probability ?? 0,
         opensClientFile: !!s.opensClientFile,
         isApproval: !!s.isApproval,
+        requiresQuestionnaires: !!s.requiresQuestionnaires,
       })),
       updatedAt: t.updatedAt ?? null,
     }));

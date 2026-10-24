@@ -76,6 +76,15 @@ export class TasSelect<T>
 
   public selectControl = new FormControl<string | null>(null);
 
+  /**
+   * La valeur courante, en signal : c'est elle que lit le libellé affiché. Une valeur écrite par le
+   * formulaire en dehors d'un changement d'entrée (un champ prérempli par le parent, avec les
+   * signal forms) ne déclenchait aucune détection sur un parent OnPush : la liste gardait son
+   * libellé « vide » alors que la valeur était choisie, et le clic suivant sur cette option la
+   * DÉsélectionnait sans que personne le voie.
+   */
+  private readonly _current = signal<string | null>(null);
+
   /** Vrai pendant une écriture venue du modèle : aucune notification sortante. */
   private _syncingFromModel = false;
 
@@ -134,6 +143,7 @@ export class TasSelect<T>
     this._syncingFromModel = true;
     try {
       this.selectControl.setValue(next, { emitEvent: false });
+      this._current.set(next);
       this.selectionModel.setSelection(...(next ? [next] : []));
     } finally {
       this._syncingFromModel = false;
@@ -156,8 +166,12 @@ export class TasSelect<T>
     this.searchKey.set(($event.target as HTMLInputElement).value);
   }
 
+  /**
+   * Choisit une option. Sélection simple : recliquer l'option déjà choisie la garde — la croix
+   * (`clearable`) est la seule façon de vider le champ, un clic de confirmation ne doit pas le faire.
+   */
   public toggleSelection(item: string) {
-    this.selectionModel.toggle(item);
+    this.selectionModel.select(item);
     this.isDropdownOpened.set(false);
   }
 
@@ -191,13 +205,14 @@ export class TasSelect<T>
   }
 
   override get value(): any {
-    return this.selectControl.value;
+    return this._current();
   }
 
   override set value(value: any) {
     // `emitEvent: false` : la notification est émise explicitement juste après,
     // et une seule fois.
     this.selectControl.setValue(value, { emitEvent: false });
+    this._current.set(value ?? null);
     this.onChange(value);
     this.onTouched();
   }

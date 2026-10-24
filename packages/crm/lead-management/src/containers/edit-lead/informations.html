@@ -337,12 +337,11 @@
                   }
                 }
               </div>
-              @if (canUpdate()) {
-                <button type="button" class="shrink-0 px-4 py-2 rounded-full bg-primary text-white text-sm font-semibold hover:opacity-90"
-                        (click)="openTab('qualification')">
-                  {{ qualification().started ? 'Continuer' : 'Commencer' }}
-                </button>
-              }
+              <!-- Les questions se posent dans chaque projet, d'après son produit. -->
+              <button type="button" class="shrink-0 px-4 py-2 rounded-full bg-primary text-white text-sm font-semibold hover:opacity-90"
+                      (click)="openTab('projets')">
+                Voir les projets
+              </button>
             </div>
           </div>
         </tas-card>

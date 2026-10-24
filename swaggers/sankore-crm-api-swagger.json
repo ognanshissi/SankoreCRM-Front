@@ -13472,94 +13472,6 @@
         }
       }
     },
-    "/api/v1/leads/{leadId}/questionnaires": {
-      "get": {
-        "tags": [
-          "Leads"
-        ],
-        "summary": "Questionnaires owed and answered by each person of a lead",
-        "operationId": "GetLeadQuestionnaires",
-        "parameters": [
-          {
-            "name": "leadId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/LeadQuestionnairesDto"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Forbidden"
-          },
-          "404": {
-            "description": "Not Found"
-          }
-        }
-      }
-    },
-    "/api/v1/leads/{leadId}/questionnaires/responses": {
-      "post": {
-        "tags": [
-          "Leads"
-        ],
-        "summary": "Record one person's answers to a questionnaire",
-        "operationId": "SubmitLeadQuestionnaireResponse",
-        "parameters": [
-          {
-            "name": "leadId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/SubmitQuestionnaireResponseRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "204": {
-            "description": "No Content"
-          },
-          "400": {
-            "description": "Bad Request"
-          },
-          "403": {
-            "description": "Forbidden"
-          },
-          "404": {
-            "description": "Not Found"
-          },
-          "409": {
-            "description": "Conflict"
-          },
-          "422": {
-            "description": "Unprocessable Entity"
-          }
-        }
-      }
-    },
     "/api/v1/leads/{leadId}/health-consents": {
       "post": {
         "tags": [
@@ -17353,6 +17265,91 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "/api/v1/leads/opportunities/{id}/questionnaires": {
+      "get": {
+        "tags": [
+          "Opportunities"
+        ],
+        "summary": "Questionnaires a project's product asks, of its file and of each person, with their answers",
+        "operationId": "GetProjectQuestionnaires",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectQuestionnairesDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/api/v1/leads/opportunities/{id}/questionnaires/responses": {
+      "post": {
+        "tags": [
+          "Opportunities"
+        ],
+        "summary": "Record the answers to one of a project's questionnaires",
+        "operationId": "SubmitProjectQuestionnaireResponse",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubmitProjectQuestionnaireResponseRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "422": {
+            "description": "Unprocessable Entity"
           }
         }
       }
@@ -33259,18 +33256,14 @@
             },
             "nullable": true
           },
-          "missingQuestionnaires": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/MissingQuestionnaire"
-            },
-            "nullable": true
-          },
           "conversionType": {
             "type": "string",
             "nullable": true
           },
           "alreadyConverted": {
+            "type": "boolean"
+          },
+          "leadConverted": {
             "type": "boolean"
           },
           "holdingId": {
@@ -40289,13 +40282,6 @@
             },
             "nullable": true
           },
-          "missingQuestionnaires": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/MissingQuestionnaire"
-            },
-            "nullable": true
-          },
           "requiredConsents": {
             "type": "array",
             "items": {
@@ -40546,6 +40532,11 @@
           },
           "sla": {
             "$ref": "#/components/schemas/LeadSlaDto"
+          },
+          "customerId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -40778,33 +40769,6 @@
           "urgency": {
             "type": "string",
             "nullable": true
-          }
-        },
-        "additionalProperties": false
-      },
-      "LeadQuestionnairesDto": {
-        "type": "object",
-        "properties": {
-          "leadId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "responses": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/QuestionnaireResponseDto"
-            },
-            "nullable": true
-          },
-          "missing": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/MissingQuestionnaire"
-            },
-            "nullable": true
-          },
-          "isComplete": {
-            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -42473,35 +42437,6 @@
             "nullable": true
           },
           "reason": {
-            "type": "string",
-            "nullable": true
-          }
-        },
-        "additionalProperties": false
-      },
-      "MissingQuestionnaire": {
-        "type": "object",
-        "properties": {
-          "templateId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "templateName": {
-            "type": "string",
-            "nullable": true
-          },
-          "isHealthQuestionnaire": {
-            "type": "boolean"
-          },
-          "subjectType": {
-            "type": "string",
-            "nullable": true
-          },
-          "subjectId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "subjectLabel": {
             "type": "string",
             "nullable": true
           }
@@ -45030,6 +44965,126 @@
         },
         "additionalProperties": false
       },
+      "ProjectQuestionnaireItemDto": {
+        "type": "object",
+        "properties": {
+          "templateId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "templateName": {
+            "type": "string",
+            "nullable": true
+          },
+          "isDossier": {
+            "type": "boolean"
+          },
+          "isHealthQuestionnaire": {
+            "type": "boolean"
+          },
+          "isExpected": {
+            "type": "boolean"
+          },
+          "subjectType": {
+            "type": "string",
+            "nullable": true
+          },
+          "subjectId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "subjectLabel": {
+            "type": "string",
+            "nullable": true
+          },
+          "isMinor": {
+            "type": "boolean"
+          },
+          "hasHealthConsent": {
+            "type": "boolean"
+          },
+          "canRecordHealthConsent": {
+            "type": "boolean"
+          },
+          "status": {
+            "type": "string",
+            "nullable": true
+          },
+          "responseId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "inheritedFromLead": {
+            "type": "boolean"
+          },
+          "answeredAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "computedScore": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "respondentId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "isPurged": {
+            "type": "boolean"
+          },
+          "answers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HealthAnswer"
+            },
+            "nullable": true
+          },
+          "answersWithheldReason": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ProjectQuestionnairesDto": {
+        "type": "object",
+        "properties": {
+          "projectId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "leadId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProjectQuestionnaireItemDto"
+            },
+            "nullable": true
+          },
+          "respondents": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/QuestionnaireRespondentDto"
+            },
+            "nullable": true
+          },
+          "isComplete": {
+            "type": "boolean"
+          },
+          "planUnavailable": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
       "ProjectStepDto": {
         "type": "object",
         "properties": {
@@ -45066,6 +45121,9 @@
             "type": "boolean"
           },
           "isApproval": {
+            "type": "boolean"
+          },
+          "requiresQuestionnaires": {
             "type": "boolean"
           }
         },
@@ -45108,6 +45166,9 @@
             "type": "boolean"
           },
           "isApproval": {
+            "type": "boolean"
+          },
+          "requiresQuestionnaires": {
             "type": "boolean"
           }
         },
@@ -45659,65 +45720,14 @@
         },
         "additionalProperties": false
       },
-      "QuestionnaireResponseDto": {
+      "QuestionnaireRespondentDto": {
         "type": "object",
         "properties": {
-          "responseId": {
+          "id": {
             "type": "string",
             "format": "uuid"
           },
-          "templateId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "templateName": {
-            "type": "string",
-            "nullable": true
-          },
-          "isHealthQuestionnaire": {
-            "type": "boolean"
-          },
-          "subjectType": {
-            "type": "string",
-            "nullable": true
-          },
-          "subjectId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "subjectLabel": {
-            "type": "string",
-            "nullable": true
-          },
-          "questionnaireVersion": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "status": {
-            "type": "string",
-            "nullable": true
-          },
-          "respondentId": {
-            "type": "string",
-            "format": "uuid",
-            "nullable": true
-          },
-          "answeredAt": {
-            "type": "string",
-            "format": "date-time",
-            "nullable": true
-          },
-          "isPurged": {
-            "type": "boolean"
-          },
-          "answers": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/HealthAnswer"
-            },
-            "nullable": true
-          },
-          "answersWithheldReason": {
+          "label": {
             "type": "string",
             "nullable": true
           }
@@ -50282,7 +50292,7 @@
         },
         "additionalProperties": false
       },
-      "SubmitQuestionnaireResponseRequest": {
+      "SubmitProjectQuestionnaireResponseRequest": {
         "type": "object",
         "properties": {
           "templateId": {
@@ -50307,11 +50317,6 @@
           "respondentId": {
             "type": "string",
             "format": "uuid",
-            "nullable": true
-          },
-          "expectedUpdatedAt": {
-            "type": "string",
-            "format": "date-time",
             "nullable": true
           }
         },
