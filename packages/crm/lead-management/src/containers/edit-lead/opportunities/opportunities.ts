@@ -1,38 +1,17 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, signal, untracked } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { form, FormField, FormRoot, maxLength, minLength, required, submit } from '@angular/forms/signals';
-import { catchError, EMPTY, firstValueFrom, map, Observable } from 'rxjs';
-import { Anchor, Button } from '@talisoft/ui/button';
+import { Router } from '@angular/router';
+import { catchError, EMPTY, map } from 'rxjs';
+import { Button } from '@talisoft/ui/button';
 import { TasCard } from '@talisoft/ui/card';
-import { ConfirmDialogService } from '@talisoft/ui/confirm-dialog';
-import { TasError, TasFormField, TasLabel } from '@talisoft/ui/form-field';
 import { TasIcon } from '@talisoft/ui/icon';
-import { TasInput } from '@talisoft/ui/input';
 import { SideDrawerService } from '@talisoft/ui/side-drawer';
 import { SnackbarService } from '@talisoft/ui/snackbar';
 import { TasSpinner } from '@talisoft/ui/spinner';
 import { TableConfig, TasTable } from '@talisoft/ui/table';
-import {
-  CloseOpportunityRequestOutcomeEnum,
-  FormFieldReferenceTargetEnum,
-  LeadsApiService,
-  OpportunitiesApiService,
-  OpportunityDto,
-  ProjectStepDto,
-  UpdateOpportunityRequest,
-} from '@sankore/crm-api';
-import {
-  EntityFormReferences,
-  PermissionsService,
-  projectAmountLabel,
-  ProjectGateCode,
-  projectGateCode,
-  projectGateMessage,
-  projectSaveErrorMessage,
-} from '@sankore/crm/common';
-import { RouterLink } from '@angular/router';
-import { ConvertLeadWizard } from '../convert-lead-wizard';
+import { FormFieldReferenceTargetEnum, LeadsApiService, OpportunitiesApiService, OpportunityDto } from '@sankore/crm-api';
+import { EntityFormReferences, PermissionsService, projectAmountLabel, projectSaveErrorMessage } from '@sankore/crm/common';
 import { interestedProductLabel } from '../../../components/interested-product';
 import { ConvertedLeadNotice } from '../converted-lead-notice';
 import { LeadEditContext } from '../lead-edit-context';
@@ -43,81 +22,28 @@ import {
   closeDateWarning,
   currentStep,
   differsFromLead,
-  hasTemplateSteps,
   isClosed,
-  monthsFromNow,
   probabilityPercent,
-  tracksForecast,
   projectSteps,
-  stageLabel,
-  stageMeta,
   stepLabel,
-  stepSuggestion,
+  tracksForecast,
   weightedAmount,
 } from './opportunity.model';
 
-/** La prochaine action d'une opportunité, en cours de saisie. */
-class NextStepFormModel {
-  public text!: string;
-  public dueOn!: string;
-
-  public static fromOpportunity(opp: OpportunityDto | null): NextStepFormModel {
-    const m = new NextStepFormModel();
-    m.text = opp?.nextStep ?? '';
-    m.dueOn = opp?.nextStepDueOn ?? '';
-    return m;
-  }
-}
-
-class CloseDateFormModel {
-  public date!: string;
-
-  public static fromOpportunity(opp: OpportunityDto | null): CloseDateFormModel {
-    const m = new CloseDateFormModel();
-    m.date = opp?.expectedCloseDate?.slice(0, 10) ?? '';
-    return m;
-  }
-}
-
-class LoseFormModel {
-  public reason!: string;
-
-  public static instantiate(): LoseFormModel {
-    const m = new LoseFormModel();
-    m.reason = '';
-    return m;
-  }
-}
-
-type Editor = { id: string; kind: 'nextStep' | 'closeDate' | 'lose' };
-
 /**
- * Onglet « Opportunités » de la fiche lead : ce que le prospect pourrait signer, où en est chaque
- * affaire, et ce qu'il reste à faire pour la conclure.
+ * Onglet « Projets » de la fiche lead : la LISTE de ce que le prospect pourrait signer — une ligne
+ * par projet, qui ouvre sa fiche.
  *
- * Une liste d'entités du serveur, donc une `tas-table` — chaque ligne est une carte, sur une seule
- * cellule, comme les autres listes « en cartes » du projet.
+ * Avant, chaque projet était une grande carte avec son avancement complet et ses actions (étape,
+ * clôture, prochaine étape, gagné / perdu) : deux projets remplissaient l'écran, et les mêmes
+ * actions existaient en double avec la fiche projet. Tout ce qui fait avancer un projet se fait
+ * désormais sur sa fiche ; ici, on voit, on compare et on ouvre.
  */
 @Component({
   selector: 'lead-opportunities',
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './opportunities.html',
-  imports: [
-    FormRoot,
-    FormField,
-    TasCard,
-    TasIcon,
-    TasInput,
-    TasFormField,
-    TasLabel,
-    TasError,
-    TasSpinner,
-    TasTable,
-    Button,
-    ConvertedLeadNotice,
-    RouterLink,
-    Anchor,
-  ],
+  imports: [TasCard, TasIcon, TasSpinner, TasTable, Button, ConvertedLeadNotice],
 })
 export class LeadOpportunitiesPage {
   private readonly _permissions = inject(PermissionsService);
@@ -127,7 +53,7 @@ export class LeadOpportunitiesPage {
   private readonly _references = inject(EntityFormReferences);
   private readonly _sideDrawer = inject(SideDrawerService);
   private readonly _snackbar = inject(SnackbarService);
-  private readonly _confirm = inject(ConfirmDialogService);
+  private readonly _router = inject(Router);
 
   // Un lead converti est figé : l'état est replié dans la garde de droits que le template lit.
   private readonly _canManage = this._permissions.can('lead:opportunity:manage');
@@ -137,17 +63,9 @@ export class LeadOpportunitiesPage {
 
   public readonly lead = this._context.lead;
 
-  /**
-   * Le dernier refus d'une étape marquée, affiché sur le projet concerné avec l'action qui le lève
-   * (lot 3) : convertir le prospect, ou aller voir le KYC du client.
-   */
-  public readonly gate = signal<{ oppId: string; code: ProjectGateCode; message: string; clientId: string | null } | null>(null);
-  private _target: string | null = null;
-  /** Ce que l'agent tentait quand l'étape a été refusée : rejoué une fois le dossier client ouvert. */
-  private _retry: ((fresh: OpportunityDto) => void) | null = null;
   public readonly formatAmount = formatAmount;
   public readonly formatDay = formatDay;
-  public readonly stageLabel = stageLabel;
+  public readonly stepLabel = stepLabel;
   public readonly probabilityPercent = probabilityPercent;
   public readonly weightedAmount = weightedAmount;
   public readonly tracksForecast = tracksForecast;
@@ -166,7 +84,6 @@ export class LeadOpportunitiesPage {
   public readonly loadFailed = signal(false);
   public readonly busyId = signal<string | null>(null);
   public readonly showClosed = signal(false);
-  public readonly editor = signal<Editor | null>(null);
 
   private readonly _users = toSignal(
     this._references.options(FormFieldReferenceTargetEnum.User).pipe(
@@ -207,24 +124,6 @@ export class LeadOpportunitiesPage {
     () => interestedProductLabel(this.lead()?.interestedProduct)?.toLowerCase() ?? 'un besoin',
   );
 
-  public nextStepModel = signal(NextStepFormModel.fromOpportunity(null));
-  public nextStepForm = form(this.nextStepModel, (schema) => {
-    required(schema.text, { message: "Décrivez l'action à mener" });
-    maxLength(schema.text, 200, { message: "L'action ne peut pas dépasser 200 caractères" });
-  });
-
-  public closeDateModel = signal(CloseDateFormModel.fromOpportunity(null));
-  public closeDateForm = form(this.closeDateModel, (schema) => {
-    required(schema.date, { message: 'Choisissez une date' });
-  });
-
-  public loseModel = signal(LoseFormModel.instantiate());
-  public loseForm = form(this.loseModel, (schema) => {
-    required(schema.reason, { message: 'Le motif est obligatoire' });
-    minLength(schema.reason, 3, { message: 'Précisez le motif' });
-    maxLength(schema.reason, 500, { message: 'Le motif ne peut pas dépasser 500 caractères' });
-  });
-
   constructor() {
     effect(() => {
       const id = this.lead()?.id;
@@ -234,33 +133,23 @@ export class LeadOpportunitiesPage {
 
   // ——— Lecture ———
 
-  public readonly stepsOf = projectSteps;
-  public readonly stepLabel = stepLabel;
-  public readonly stepSuggestion = stepSuggestion;
-  public readonly hasTemplateSteps = hasTemplateSteps;
-
-  /** La phase sous le nom de l'étape : ce que l'étape veut dire pour l'entonnoir. */
-  public phaseLabel(phase: string | null | undefined): string {
-    return stageMeta(phase)?.label ?? '';
-  }
-
-  /** L'étape courante et celles déjà franchies, pour la barre de chaque case de la frise. */
-  public stepIndex(opp: OpportunityDto): number {
-    const step = currentStep(opp);
-    return step ? projectSteps(opp).findIndex((s) => s.id === step.id) : -1;
-  }
-
-  public isCurrentStep(opp: OpportunityDto, step: ProjectStepDto): boolean {
-    return currentStep(opp)?.id === step.id;
-  }
-
   public ownerName(opp: OpportunityDto): string | null {
     return opp.ownerId ? this._users().get(opp.ownerId) ?? null : null;
   }
 
-  public isEditing(opp: OpportunityDto, kind: Editor['kind']): boolean {
-    const editor = this.editor();
-    return !!editor && editor.id === opp.id && editor.kind === kind;
+  /** « 2 / 5 » : où en est le projet dans son parcours, pour la barre de la ligne. */
+  public progress(opp: OpportunityDto): { index: number; total: number; segments: number[] } {
+    const steps = projectSteps(opp);
+    const step = currentStep(opp);
+    return {
+      index: step ? steps.findIndex((s) => s.id === step.id) + 1 : 0,
+      total: steps.length,
+      segments: steps.map((_, i) => i + 1),
+    };
+  }
+
+  public open(opp: OpportunityDto): void {
+    if (opp.id) void this._router.navigate(['/leads/projets', opp.id]);
   }
 
   // ——— Création ———
@@ -275,92 +164,6 @@ export class LeadOpportunitiesPage {
     ref.closed.subscribe((id) => {
       if (id) this._load(lead.id!);
     });
-  }
-
-  // ——— Étapes ———
-
-  public moveTo(opp: OpportunityDto, step: ProjectStepDto): void {
-    if (!this.canManage() || this.isCurrentStep(opp, step) || this.busyId() || !hasTemplateSteps(opp)) return;
-    this._target = step.label ?? null;
-    this._retry = (fresh) => this.moveTo(fresh, step);
-    this._run(
-      opp,
-      this._opportunitiesApi.moveOpportunityToStep(opp.id!, {
-        stepId: step.id!,
-        expectedUpdatedAt: opp.updatedAt ?? null,
-      }),
-      `Étape : ${step.label} · probabilité ${step.probability} %`,
-    );
-  }
-
-  /**
-   * L'assistant d'ouverture du dossier client que la fiche lead ouvre déjà : il gère ce que la
-   * création d'un client peut demander à l'agent (dossier incomplet, doublon, pièce d'identité
-   * connue). Ensuite, l'étape refusée est rejouée sur le projet relu — et si c'était l'approbation,
-   * le lead devient client.
-   */
-  public convertForGate(): void {
-    const lead = this.lead();
-    const oppId = this.gate()?.oppId;
-    if (!lead || !oppId) return;
-    const retry = this._retry;
-    const ref = this._sideDrawer.open(ConvertLeadWizard, {
-      panelClass: 'side-drawer-panel',
-      data: { lead, projectId: oppId },
-    });
-    ref.closed.subscribe((result: unknown) => {
-      if (!result) return;
-      this.gate.set(null);
-      this._context.reload();
-      this._snackbar.success('Dossier client ouvert', 'Le projet reprend là où il était bloqué.');
-      if (!retry) return;
-      // Relu d'abord : l'ouverture du dossier a rattaché le projet au client et changé sa date.
-      this._opportunitiesApi.getOpportunity(oppId).pipe(catchError(() => EMPTY)).subscribe((fresh) => retry(fresh));
-    });
-  }
-
-  // ——— Clôture prévue ———
-
-  public setCloseInMonths(opp: OpportunityDto, months: number): void {
-    this._update(opp, { expectedCloseDate: monthsFromNow(months) }, 'Clôture prévue mise à jour');
-  }
-
-  public editCloseDate(opp: OpportunityDto): void {
-    this.closeDateForm().reset(CloseDateFormModel.fromOpportunity(opp));
-    this.editor.set({ id: opp.id!, kind: 'closeDate' });
-  }
-
-  public saveCloseDate(opp: OpportunityDto): void {
-    submit(this.closeDateForm, async (field) => {
-      await this._updateAsync(opp, { expectedCloseDate: `${field().value().date}T12:00:00Z` }, 'Clôture prévue mise à jour');
-    });
-  }
-
-  // ——— Prochaine étape ———
-
-  public useSuggestion(opp: OpportunityDto, suggestion: string): void {
-    this._update(opp, { nextStep: suggestion }, 'Prochaine étape définie');
-  }
-
-  public editNextStep(opp: OpportunityDto): void {
-    this.nextStepForm().reset(NextStepFormModel.fromOpportunity(opp));
-    this.editor.set({ id: opp.id!, kind: 'nextStep' });
-  }
-
-  public saveNextStep(opp: OpportunityDto): void {
-    submit(this.nextStepForm, async (field) => {
-      const value = field().value();
-      await this._updateAsync(
-        opp,
-        { nextStep: value.text.trim(), nextStepDueOn: value.dueOn || null },
-        'Prochaine étape définie',
-      );
-    });
-  }
-
-  /** « Fait » : l'action est menée, la case redevient « Non définie » pour la suivante. */
-  public clearNextStep(opp: OpportunityDto): void {
-    this._update(opp, { nextStep: '' }, 'Prochaine étape faite');
   }
 
   // ——— Deux demandes différentes ? ———
@@ -389,57 +192,21 @@ export class LeadOpportunitiesPage {
   }
 
   public confirmSeparateNeed(opp: OpportunityDto): void {
-    this._update(opp, { confirmSeparateNeed: true }, 'Noté : ce sont deux besoins distincts');
-  }
-
-  // ——— Gagnée, perdue ———
-
-  public markWon(opp: OpportunityDto): void {
-    this._confirm.confirm({
-      title: 'Marquer ce projet gagné ?',
-      message: `« ${opp.title} » sera clos comme gagné. Il ne pourra plus changer d'étape.`,
-      closable: true,
-      showCancelButton: true,
-      acceptButtonProps: { label: 'Marquer gagné', theme: 'primary' },
-      rejectButtonProps: { label: 'Annuler' },
-      accept: () => this._win(opp),
-    });
-  }
-
-  private _win(opp: OpportunityDto): void {
-    this._target = null;
-    this._retry = (fresh) => this._win(fresh);
-    this._run(
-      opp,
-      this._opportunitiesApi.closeOpportunity(opp.id!, {
-        outcome: CloseOpportunityRequestOutcomeEnum.ClosedWon,
-        expectedUpdatedAt: opp.updatedAt ?? null,
-      }),
-      'Projet gagné',
-    );
-  }
-
-  public startLose(opp: OpportunityDto): void {
-    this.loseForm().reset(LoseFormModel.instantiate());
-    this.editor.set({ id: opp.id!, kind: 'lose' });
-  }
-
-  public confirmLose(opp: OpportunityDto): void {
-    submit(this.loseForm, async (field) => {
-      await this._runAsync(
-        opp,
-        this._opportunitiesApi.closeOpportunity(opp.id!, {
-          outcome: CloseOpportunityRequestOutcomeEnum.ClosedLost,
-          reason: field().value().reason.trim(),
-          expectedUpdatedAt: opp.updatedAt ?? null,
+    this.busyId.set(opp.id!);
+    this._opportunitiesApi
+      .updateOpportunity(opp.id!, { confirmSeparateNeed: true, expectedUpdatedAt: opp.updatedAt ?? null })
+      .pipe(
+        catchError((error: HttpErrorResponse) => {
+          this.busyId.set(null);
+          this._snackbar.error('Erreur', this._errorMessage(error, "Impossible d'enregistrer la réponse."));
+          return EMPTY;
         }),
-        'Projet perdu',
-      );
-    });
-  }
-
-  public cancelEditor(): void {
-    this.editor.set(null);
+      )
+      .subscribe(() => {
+        this.busyId.set(null);
+        this._snackbar.success('Noté : ce sont deux besoins distincts', '');
+        this._load(this.lead()!.id!);
+      });
   }
 
   public retry(): void {
@@ -448,56 +215,6 @@ export class LeadOpportunitiesPage {
   }
 
   // ——— Plomberie ———
-
-  private _update(opp: OpportunityDto, patch: UpdateOpportunityRequest, success: string): void {
-    void this._updateAsync(opp, patch, success);
-  }
-
-  private _updateAsync(opp: OpportunityDto, patch: UpdateOpportunityRequest, success: string): Promise<void> {
-    return this._runAsync(
-      opp,
-      this._opportunitiesApi.updateOpportunity(opp.id!, { ...patch, expectedUpdatedAt: opp.updatedAt ?? null }),
-      success,
-    );
-  }
-
-  private _run(opp: OpportunityDto, call: Observable<unknown>, success: string): void {
-    void this._runAsync(opp, call, success);
-  }
-
-  /**
-   * Une écriture, puis la relecture de la liste : chaque opportunité porte son propre jeton de
-   * concurrence (`updatedAt`), périmé dès que le serveur a répondu.
-   */
-  private async _runAsync(opp: OpportunityDto, call: Observable<unknown>, success: string): Promise<void> {
-    this.busyId.set(opp.id!);
-    const done = await firstValueFrom(
-      call.pipe(
-        map(() => true),
-        catchError((error: HttpErrorResponse) => {
-          const code = projectGateCode(error);
-          if (code) {
-            this.gate.set({
-              oppId: opp.id!,
-              code,
-              message: projectGateMessage(code, this._target),
-              clientId: opp.customerEntityId ?? this._context.customerId() ?? null,
-            });
-          } else {
-            this._snackbar.error('Erreur', this._errorMessage(error, "Impossible d'enregistrer la modification."));
-          }
-          return EMPTY;
-        }),
-      ),
-      { defaultValue: false },
-    );
-    this.busyId.set(null);
-    if (!done) return;
-    this.gate.set(null);
-    this.editor.set(null);
-    this._snackbar.success(success, '');
-    this._load(this.lead()!.id!);
-  }
 
   private _load(leadId: string): void {
     this.loadFailed.set(false);

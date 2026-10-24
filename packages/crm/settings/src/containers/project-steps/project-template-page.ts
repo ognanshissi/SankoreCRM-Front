@@ -24,10 +24,12 @@ import { TasSelect } from '@talisoft/ui/select';
 import { TasCard } from '@talisoft/ui/card';
 import { SnackbarService } from '@talisoft/ui/snackbar';
 import { TasSpinner } from '@talisoft/ui/spinner';
+import { TasSwitch } from '@talisoft/ui/switch';
 import { BreadcrumbService, PermissionsService, PROJECT_AMOUNT_KINDS } from '@sankore/crm/common';
 import {
   FAMILY_AMOUNT_KIND,
   PHASE_OPTIONS,
+  phaseLabel,
   phaseIndex,
   PRESETS,
   projectTemplateError,
@@ -137,7 +139,7 @@ function probabilityOf(text: string): number | null {
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './project-template-page.html',
   imports: [
-    RouterLink, TasCard, TasSpinner, Button,
+    RouterLink, TasCard, TasSpinner, TasSwitch, Button,
     TasFormField, TasLabel, TasError, TasHint, TasInput, TasSelect, TasIcon, FormRoot, FormField,
   ],
 })
@@ -184,6 +186,17 @@ export class ProjectTemplatePage implements OnInit {
   ];
 
   public readonly isDeleting = signal(false);
+
+  /**
+   * L'étape affichée dans le panneau de droite. Une seule à la fois : les douze dépliées ensemble
+   * faisaient une page interminable où l'on perdait de vue le parcours.
+   */
+  public readonly selected = signal(0);
+  public readonly phaseLabel = phaseLabel;
+  public readonly noCircuit = NO_CIRCUIT;
+  public readonly amountKindLabel = computed(
+    () => this.amountKindOptions.find((k) => k.value === this.model().amountKind)?.label ?? '',
+  );
 
   public model = signal(TemplateFormModel.instantiate(null));
   public formSchema = form(this.model, (schema) => {
@@ -292,6 +305,7 @@ export class ProjectTemplatePage implements OnInit {
         this.productOptions.set(options.products);
         this.template.set(template);
         this.model.set(TemplateFormModel.instantiate(template));
+        this.selected.set(0);
         this._breadcrumb.set([
           { label: 'Paramétrage', link: ['/settings'] },
           { label: 'Étapes des projets', link: ['/settings/project-steps'] },
@@ -315,6 +329,11 @@ export class ProjectTemplatePage implements OnInit {
         },
       ];
     });
+    this.selected.set(this.model().steps.length - 1);
+  }
+
+  public selectStep(index: number): void {
+    this.selected.set(index);
   }
 
   public addChecklistItem(stepIndex: number): void {
@@ -338,6 +357,7 @@ export class ProjectTemplatePage implements OnInit {
 
   public removeStep(index: number): void {
     this.formSchema.steps().value.update((rows) => rows.filter((_, i) => i !== index));
+    this.selected.set(Math.max(0, Math.min(index, this.model().steps.length - 1)));
   }
 
   public moveStep(index: number, delta: -1 | 1): void {
@@ -348,12 +368,15 @@ export class ProjectTemplatePage implements OnInit {
       [next[index], next[target]] = [next[target], next[index]];
       return next;
     });
+    // La sélection suit l'étape déplacée.
+    if (this.selected() === index) this.selected.set(Math.max(0, Math.min(index + delta, this.model().steps.length - 1)));
   }
 
   public applyPreset(key: string): void {
     const preset = PRESETS.find((p) => p.key === key);
     if (!preset) return;
     this.formSchema.steps().value.set(fromPreset(preset.steps));
+    this.selected.set(0);
     this.formSchema.tracksForecast().value.set(preset.tracksForecast);
     this.formSchema.amountKind().value.set(preset.amountKind);
     this.formSchema.criticalCloseDate().value.set(!!preset.criticalCloseDate);

@@ -9,7 +9,7 @@
     </div>
   </div>
 } @else {
-  <div class="flex flex-col gap-5 pb-2">
+  <form [formRoot]="formSchema" class="flex flex-col gap-4 pb-2">
     <!-- En-tête -->
     <div class="flex items-center gap-3">
       <a [routerLink]="['/settings/project-steps']" tas-button iconButton aria-label="Retour aux gabarits">
@@ -17,254 +17,325 @@
       </a>
       <div class="min-w-0">
         <h1 class="truncate text-lg font-semibold text-slate-800">{{ title() }}</h1>
-        <p class="text-xs text-slate-500">Étapes des projets</p>
+        <p class="text-xs text-slate-500">
+          @if (isDefault()) {
+            Tout projet dont le produit n'a ni gabarit propre ni gabarit de famille, ou est encore « à préciser »
+          } @else {
+            Étapes des projets
+          }
+        </p>
       </div>
     </div>
 
+    <!-- Réglages généraux -->
     <tas-card class="block">
-      <div class="p-5">
-    <form [formRoot]="formSchema" class="flex flex-col gap-5">
-      @if (isDefault()) {
-        <p class="rounded-lg bg-slate-50 p-3 text-sm text-slate-600">
-          Les étapes d'un projet dont le produit n'a ni gabarit propre ni gabarit de famille — y compris
-          un projet dont le produit est encore « à préciser ».
-        </p>
-      }
-
-      @if (isNew) {
-        <tas-form-field>
-          <tas-label>S'applique à <span class="text-functional-error">*</span></tas-label>
-          <tas-select [options]="scopeOptions" [formField]="formSchema.scope"></tas-select>
-          <tas-hint>Le gabarit d'un produit précis l'emporte sur celui de sa famille.</tas-hint>
-        </tas-form-field>
-
-        @if (model().scope === 'Category') {
+      <div class="grid grid-cols-1 gap-5 p-5 lg:grid-cols-2">
+        <div class="flex flex-col gap-4">
+          <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Général</p>
+          @if (isNew) {
+            <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <tas-form-field>
+                <tas-label>S'applique à <span class="text-functional-error">*</span></tas-label>
+                <tas-select [options]="scopeOptions" [formField]="formSchema.scope"></tas-select>
+              </tas-form-field>
+              @if (model().scope === 'Category') {
+                <tas-form-field>
+                  <tas-label>Famille <span class="text-functional-error">*</span></tas-label>
+                  <tas-select [options]="categoryOptions()" placeholder="Choisir une famille" [formField]="formSchema.category"></tas-select>
+                  @if (formSchema.category().touched() && formSchema.category().invalid()) {
+                    <tas-error>{{ formSchema.category().errors()[0].message }}</tas-error>
+                  } @else if (categoryOptions().length === 0) {
+                    <tas-hint>Toutes les familles ont déjà un gabarit.</tas-hint>
+                  }
+                </tas-form-field>
+              } @else {
+                <tas-form-field>
+                  <tas-label>Produit <span class="text-functional-error">*</span></tas-label>
+                  <tas-select [options]="productOptions()" placeholder="Choisir un produit" [formField]="formSchema.productCode"></tas-select>
+                  @if (formSchema.productCode().touched() && formSchema.productCode().invalid()) {
+                    <tas-error>{{ formSchema.productCode().errors()[0].message }}</tas-error>
+                  }
+                </tas-form-field>
+              }
+            </div>
+          }
           <tas-form-field>
-            <tas-label>Famille <span class="text-functional-error">*</span></tas-label>
-            <tas-select [options]="categoryOptions()" placeholder="Choisir une famille" [formField]="formSchema.category"></tas-select>
-            @if (formSchema.category().touched() && formSchema.category().invalid()) {
-              <tas-error>{{ formSchema.category().errors()[0].message }}</tas-error>
-            }
-            @if (categoryOptions().length === 0) {
-              <tas-hint>Toutes les familles du catalogue ont déjà un gabarit.</tas-hint>
+            <tas-label>Nom <span class="text-functional-error">*</span></tas-label>
+            <input tasInput type="text" placeholder="Ex. Parcours crédit" [formField]="formSchema.name" />
+            @if (formSchema.name().touched() && formSchema.name().invalid()) {
+              <tas-error>{{ formSchema.name().errors()[0].message }}</tas-error>
+            } @else if (isNew) {
+              <tas-hint>Le gabarit d'un produit précis l'emporte sur celui de sa famille.</tas-hint>
             }
           </tas-form-field>
-        } @else {
+        </div>
+
+        <div class="flex flex-col gap-3 lg:border-l lg:border-slate-100 lg:pl-5">
+          <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Montant et prévision</p>
           <tas-form-field>
-            <tas-label>Produit <span class="text-functional-error">*</span></tas-label>
-            <tas-select [options]="productOptions()" placeholder="Choisir un produit" [formField]="formSchema.productCode"></tas-select>
-            @if (formSchema.productCode().touched() && formSchema.productCode().invalid()) {
-              <tas-error>{{ formSchema.productCode().errors()[0].message }}</tas-error>
-            }
+            <tas-label>Le montant d'un projet est</tas-label>
+            <tas-select [options]="amountKindOptions" [formField]="formSchema.amountKind"></tas-select>
+            <tas-hint>La prévision n'additionne jamais deux natures de montant.</tas-hint>
           </tas-form-field>
-        }
-      }
-
-      <tas-form-field>
-        <tas-label>Nom <span class="text-functional-error">*</span></tas-label>
-        <input tasInput type="text" placeholder="Ex. Parcours crédit" [formField]="formSchema.name" />
-        @if (formSchema.name().touched() && formSchema.name().invalid()) {
-          <tas-error>{{ formSchema.name().errors()[0].message }}</tas-error>
-        }
-      </tas-form-field>
-
-      <div class="flex flex-col gap-3 rounded-lg border border-slate-200 p-4">
-        <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Montant et prévision</p>
-
-        <tas-form-field>
-          <tas-label>Le montant d'un projet est</tas-label>
-          <tas-select [options]="amountKindOptions" [formField]="formSchema.amountKind"></tas-select>
-          <tas-hint>La prévision ne mélange jamais deux natures : un décaissement et une collecte vont en sens opposé.</tas-hint>
-        </tas-form-field>
-
-        <label class="flex items-start gap-2 text-sm text-slate-700">
-          <input type="checkbox" class="mt-0.5 size-4 accent-current text-primary" [formField]="formSchema.tracksForecast" />
-          <span>
-            <span class="font-semibold">Suivre la prévision</span> (probabilité et date de clôture prévue)
-            <span class="block text-xs text-slate-500">
-              Pour une vente qui dure — crédit, assurance, compte : ses projets comptent dans la prévision pondérée.
-              Décochez pour un produit vendu au rendez-vous : ses projets n'affichent ni probabilité ni clôture prévue.
-            </span>
-          </span>
-        </label>
-
-        <label class="flex items-start gap-2 text-sm text-slate-700" [class.opacity-50]="!model().tracksForecast">
-          <input type="checkbox" class="mt-0.5 size-4 accent-current text-primary" [formField]="formSchema.criticalCloseDate" />
-          <span>
-            <span class="font-semibold">Date de clôture critique</span>
-            <span class="block text-xs text-slate-500">
-              Une échéance, pas une estimation — un crédit de campagne accordé après le début des pluies ne sert plus.
-              La date devient obligatoire, et une tâche urgente est créée pour le responsable du projet le matin où elle est dépassée.
-            </span>
-          </span>
-        </label>
+          <!-- tas-switch n'est pas un contrôle de formulaire : il lit et écrit le champ lui-même. -->
+          <div class="flex items-center justify-between gap-3 text-sm text-slate-700"
+               title="Pour une vente qui dure (crédit, assurance, compte) : ses projets comptent dans la prévision pondérée. Désactivez pour un produit vendu au rendez-vous.">
+            <span><span class="font-medium">Suivre la prévision</span><span class="ms-1 text-slate-500">— probabilité et clôture prévue</span></span>
+            <tas-switch [checked]="formSchema.tracksForecast().value()" [disabled]="formSchema.tracksForecast().disabled()" ariaLabel="Suivre la prévision"
+                          (toggle)="formSchema.tracksForecast().value.set($event)"></tas-switch>
+          </div>
+          <div class="flex items-center justify-between gap-3 text-sm text-slate-700" [class.opacity-50]="!model().tracksForecast"
+               title="Une échéance, pas une estimation (crédit de campagne) : la date devient obligatoire, et une tâche urgente est créée le matin où elle est dépassée.">
+            <span><span class="font-medium">Date de clôture critique</span><span class="ms-1 text-slate-500">— obligatoire, relance si dépassée</span></span>
+            <tas-switch [checked]="formSchema.criticalCloseDate().value()" [disabled]="formSchema.criticalCloseDate().disabled()" ariaLabel="Date de clôture critique"
+                          (toggle)="formSchema.criticalCloseDate().value.set($event)"></tas-switch>
+          </div>
+        </div>
       </div>
+    </tas-card>
 
-      <!-- Étapes -->
-      <div class="flex flex-col gap-3 rounded-lg border border-slate-200 p-4">
-        <div class="flex flex-wrap items-center justify-between gap-2">
-          <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">
-            Étapes ({{ model().steps.length }} / {{ maxSteps }})
-          </p>
+    <!-- Parcours + étape sélectionnée -->
+    <div class="grid grid-cols-1 items-start gap-4 lg:grid-cols-[20rem_minmax(0,1fr)]">
+      <!-- Parcours -->
+      <tas-card class="block lg:sticky lg:top-4">
+        <div class="p-4">
+          <div class="mb-3 flex items-center justify-between">
+            <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Parcours</p>
+            <span class="text-xs text-slate-400 tabular-nums">{{ model().steps.length }} / {{ maxSteps }}</span>
+          </div>
+
           @if (canManage() && isNew) {
-            <div class="flex flex-wrap items-center gap-1.5 text-xs">
-              <span class="text-slate-500">Partir de :</span>
+            <div class="mb-3 flex flex-wrap gap-1.5 text-xs">
+              <span class="w-full text-slate-500">Partir d'un modèle :</span>
               @for (p of presets; track p.key) {
                 <button type="button" class="rounded-full border border-slate-200 px-2.5 py-1 font-semibold text-slate-700 hover:bg-slate-50"
                         (click)="applyPreset(p.key)">{{ p.label }}</button>
               }
             </div>
           }
+
+          <ol class="flex flex-col" role="listbox" aria-label="Étapes du parcours">
+            @for (row of model().steps; track $index; let i = $index, last = $last) {
+              <li class="flex gap-3">
+                <!-- Frise -->
+                <div class="flex flex-col items-center">
+                  <span class="flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold tabular-nums"
+                        [class]="selected() === i ? 'bg-primary text-white' : 'bg-primary/10 text-primary'">{{ i + 1 }}</span>
+                  @if (!last) {
+                    <span class="my-1 w-0.5 flex-1 rounded-full bg-slate-200"></span>
+                  }
+                </div>
+                <button type="button" role="option" [attr.aria-selected]="selected() === i"
+                        class="mb-2 min-w-0 flex-1 rounded-lg border px-3 py-2 text-left transition-colors"
+                        [class]="selected() === i ? 'border-primary bg-primary/5' : 'border-transparent hover:bg-slate-50'"
+                        (click)="selectStep(i)">
+                  <span class="flex items-center gap-1.5">
+                    <span class="truncate text-sm font-semibold" [class]="row.label.trim() ? 'text-slate-800' : 'italic text-slate-400'">
+                      {{ row.label.trim() || 'Étape sans nom' }}
+                    </span>
+                    @if (formSchema.steps[i]().invalid() && formSchema.steps[i]().touched()) {
+                      <tas-icon iconName="feather:alert-circle" class="shrink-0 text-functional-error" style="font-size:13px" aria-label="À corriger"></tas-icon>
+                    }
+                  </span>
+                  <span class="block text-xs text-slate-500">
+                    {{ phaseLabel(row.phase) }}@if (model().tracksForecast && row.probability) { · {{ row.probability }} %}
+                  </span>
+                  <span class="mt-1 flex flex-wrap gap-1.5 text-slate-500">
+                    @if (row.opensClientFile) { <tas-icon iconName="feather:user-plus" style="font-size:12px" title="Ouvre le dossier client"></tas-icon> }
+                    @if (row.isApproval) { <tas-icon iconName="feather:shield" style="font-size:12px" title="Étape d'approbation"></tas-icon> }
+                    @if (row.requiresQuestionnaires) { <tas-icon iconName="feather:clipboard" style="font-size:12px" title="Questionnaires complets"></tas-icon> }
+                    @if (row.requiresAmount || row.requiresCloseDate) { <tas-icon iconName="feather:edit-3" style="font-size:12px" title="Montant ou date exigés"></tas-icon> }
+                    @if (row.checklist.length) {
+                      <span class="inline-flex items-center gap-0.5 text-[11px]" title="Points à vérifier"><tas-icon iconName="feather:check-square" style="font-size:12px"></tas-icon>{{ row.checklist.length }}</span>
+                    }
+                    @if (row.workflowCircuit && row.workflowCircuit !== noCircuit) { <tas-icon iconName="feather:git-pull-request" style="font-size:12px" title="Circuit de validation"></tas-icon> }
+                  </span>
+                </button>
+              </li>
+            } @empty {
+              <li class="py-4 text-center text-sm text-slate-400">Aucune étape pour l'instant.</li>
+            }
+          </ol>
+
+          <!-- Vide, le panneau de droite dit déjà quoi faire : pas d'erreur rouge avant toute action. -->
+          @if (model().steps.length && formSchema.steps().invalid() && formSchema.steps().errors().length) {
+            <p class="mt-1 text-xs text-functional-error" role="alert">{{ formSchema.steps().errors()[0].message }}</p>
+          }
+
+          @if (canManage() && model().steps.length < maxSteps) {
+            <button tas-outlined-button color="primary" type="button" class="mt-2 w-full" (click)="addStep()">
+              <tas-icon iconName="feather:plus" style="font-size:14px"></tas-icon> &nbsp; Ajouter une étape
+            </button>
+          }
+
+          <details class="mt-4 text-xs text-slate-500">
+            <summary class="cursor-pointer font-semibold text-slate-600">Comment lire un parcours ?</summary>
+            <ul class="mt-2 flex list-disc flex-col gap-1 pl-4">
+              <li>La <span class="font-semibold">phase</span> range l'étape dans l'entonnoir ; elle ne revient jamais en arrière d'une étape à la suivante.</li>
+              <li>La <span class="font-semibold">probabilité</span> est celle de signer une fois l'étape atteinte.</li>
+              <li><span class="font-semibold">Ouvre le dossier client</span> : le prospect doit être client — son dossier KYC s'ouvre là si le produit en exige un.</li>
+              <li><span class="font-semibold">Approbation</span> : le KYC doit être validé au niveau du produit ; l'atteindre convertit le lead.</li>
+              <li><span class="font-semibold">Points à vérifier</span> et <span class="font-semibold">circuit de validation</span> : exigés pour QUITTER l'étape, ou gagner le projet.</li>
+            </ul>
+          </details>
         </div>
+      </tas-card>
 
-        <p class="text-xs text-slate-500">
-          La phase range l'étape dans l'entonnoir (rapports, prévisions) ; elle ne revient jamais en arrière
-          d'une étape à la suivante. La probabilité est celle de signer une fois l'étape atteinte.
-        </p>
-        <ul class="list-disc pl-5 text-xs text-slate-500">
-          <li><span class="font-semibold">Ouvre le dossier client</span> : pour l'atteindre, le prospect doit être converti en client — c'est là que s'ouvre son dossier KYC quand le produit en exige un.</li>
-          <li><span class="font-semibold">Étape d'approbation</span> : pour l'atteindre, ou gagner le projet, le KYC du client doit être validé au niveau du produit. Un produit sans KYC demande seulement que le client existe : il est créé actif à ce moment-là.</li>
-          <li><span class="font-semibold">Points à vérifier</span> : l'agent les coche pendant l'étape ; on ne la quitte pas — ni ne gagne le projet — tant qu'il en manque.</li>
-          <li><span class="font-semibold">Circuit de validation</span> : lancé quand le projet atteint l'étape ; on ne la quitte qu'une fois le circuit approuvé. Un refus bloque le projet jusqu'à ce qu'il soit relancé ou perdu.</li>
-        </ul>
-
-        @for (step of formSchema.steps; track $index; let i = $index, first = $first, last = $last) {
-          <div class="flex flex-col gap-2 rounded-lg bg-slate-50 p-3">
-            <div class="flex items-start gap-2">
-              <span class="mt-2 flex size-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary tabular-nums">{{ i + 1 }}</span>
-              <div class="grid flex-1 grid-cols-1 gap-2 sm:grid-cols-[1fr_9rem_6rem]">
-                <tas-form-field>
-                  <tas-label class="sr-only">Nom de l'étape {{ i + 1 }}</tas-label>
-                  <input tasInput type="text" placeholder="Nom de l'étape" [formField]="step.label" />
-                  @if (step.label().touched() && step.label().invalid()) {
-                    <tas-error>{{ step.label().errors()[0].message }}</tas-error>
-                  }
-                </tas-form-field>
-                <tas-form-field>
-                  <tas-label class="sr-only">Phase de l'étape {{ i + 1 }}</tas-label>
-                  <tas-select [options]="phaseOptions" [formField]="step.phase"></tas-select>
-                </tas-form-field>
-                <tas-form-field>
-                  <tas-label class="sr-only">Probabilité de l'étape {{ i + 1 }}</tas-label>
-                  <input tasInput type="text" inputmode="numeric" placeholder="%" [formField]="step.probability" />
-                  @if (step.probability().touched() && step.probability().invalid()) {
-                    <tas-error>{{ step.probability().errors()[0].message }}</tas-error>
-                  }
-                </tas-form-field>
-              </div>
+      <!-- Étape sélectionnée -->
+      @if (model().steps.length && formSchema.steps[selected()]; as step) {
+        <tas-card class="block">
+          <div class="flex flex-col gap-5 p-5">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Étape {{ selected() + 1 }}</p>
               @if (canManage()) {
-                <div class="flex shrink-0 items-center">
-                  <button tas-button iconButton type="button" [disabled]="first" (click)="moveStep(i, -1)" aria-label="Monter l'étape">
+                <div class="flex items-center gap-1">
+                  <button tas-button iconButton type="button" [disabled]="selected() === 0" (click)="moveStep(selected(), -1)" aria-label="Monter l'étape" title="Monter">
                     <tas-icon iconName="feather:arrow-up" style="font-size:14px" class="text-slate-500"></tas-icon>
                   </button>
-                  <button tas-button iconButton type="button" [disabled]="last" (click)="moveStep(i, 1)" aria-label="Descendre l'étape">
+                  <button tas-button iconButton type="button" [disabled]="selected() === model().steps.length - 1" (click)="moveStep(selected(), 1)" aria-label="Descendre l'étape" title="Descendre">
                     <tas-icon iconName="feather:arrow-down" style="font-size:14px" class="text-slate-500"></tas-icon>
                   </button>
-                  <button tas-button iconButton type="button" (click)="removeStep(i)" aria-label="Retirer l'étape">
-                    <tas-icon iconName="feather:trash-2" style="font-size:14px" class="text-slate-400"></tas-icon>
+                  <button tas-text-button color="warn" type="button" (click)="removeStep(selected())">
+                    <tas-icon iconName="feather:trash-2" style="font-size:14px"></tas-icon> &nbsp; Retirer
                   </button>
                 </div>
               }
             </div>
-            <div class="ml-8 flex flex-wrap gap-x-5 gap-y-1 text-sm text-slate-700">
-              <label class="flex items-center gap-2">
-                <input type="checkbox" class="size-4 accent-current text-primary" [formField]="step.opensClientFile" />
-                Ouvre le dossier client
-              </label>
-              <label class="flex items-center gap-2">
-                <input type="checkbox" class="size-4 accent-current text-primary" [formField]="step.isApproval" />
-                Étape d'approbation
-              </label>
-              <label class="flex items-center gap-2" title="Les questionnaires que le produit demande — au dossier et à chaque personne — doivent être remplis pour atteindre cette étape">
-                <input type="checkbox" class="size-4 accent-current text-primary" [formField]="step.requiresQuestionnaires" />
-                Questionnaires complets
-              </label>
+
+            <!-- Identité de l'étape -->
+            <div class="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_11rem_7rem]">
+              <tas-form-field>
+                <tas-label>Nom <span class="text-functional-error">*</span></tas-label>
+                <input tasInput type="text" placeholder="Ex. Montage du dossier" [formField]="step.label" />
+                @if (step.label().touched() && step.label().invalid()) {
+                  <tas-error>{{ step.label().errors()[0].message }}</tas-error>
+                }
+              </tas-form-field>
+              <tas-form-field>
+                <tas-label>Phase</tas-label>
+                <tas-select [options]="phaseOptions" [formField]="step.phase"></tas-select>
+              </tas-form-field>
+              <tas-form-field>
+                <tas-label>Probabilité</tas-label>
+                <input tasInput type="text" inputmode="numeric" placeholder="%" [formField]="step.probability" />
+                @if (step.probability().touched() && step.probability().invalid()) {
+                  <tas-error>{{ step.probability().errors()[0].message }}</tas-error>
+                }
+              </tas-form-field>
             </div>
-
-            <!-- Conditions de passage -->
-            <div class="ml-8 grid grid-cols-1 gap-3 rounded-lg border border-slate-200 bg-white p-3 lg:grid-cols-2">
-              <div class="flex flex-col gap-1.5 text-sm text-slate-700">
-                <p class="text-xs font-semibold text-slate-500">Pour l'atteindre, le projet doit avoir</p>
-                <label class="flex items-center gap-2">
-                  <input type="checkbox" class="size-4 accent-current text-primary" [formField]="step.requiresAmount" />
-                  Son montant renseigné
-                </label>
-                <label class="flex items-center gap-2">
-                  <input type="checkbox" class="size-4 accent-current text-primary" [formField]="step.requiresCloseDate" />
-                  Sa date de clôture prévue renseignée
-                </label>
-
-                <tas-form-field class="mt-2">
-                  <tas-label>Circuit de validation lancé à l'arrivée</tas-label>
-                  <tas-select [options]="circuitOptions()" [formField]="step.workflowCircuit"></tas-select>
-                  @if (circuits().length === 0) {
-                    <tas-hint>Aucun workflow « Projet » actif : créez-en un dans Paramétrage › Workflows.</tas-hint>
-                  } @else {
-                    <tas-hint>Le projet ne quitte l'étape qu'une fois le circuit approuvé.</tas-hint>
-                  }
-                </tas-form-field>
-              </div>
-
-              <div class="flex flex-col gap-1.5">
-                <p class="text-xs font-semibold text-slate-500">Pour la quitter, l'agent coche</p>
-                @for (item of step.checklist; track $index; let j = $index) {
-                  <div class="flex items-center gap-1.5">
-                    <tas-form-field>
-                      <tas-icon iconName="feather:check-square" class="shrink-0 text-slate-400" style="font-size:14px"></tas-icon>
-                      <input tasInput type="text" class="flex-1" placeholder="Ex. Visite du chantier faite" [formField]="item.label"
-                             [attr.aria-label]="'Point ' + (j + 1) + ' de l’étape ' + (i + 1)" />
-                    </tas-form-field>
-                    @if (canManage()) {
-                      <button tas-button color="warn" iconButton type="button" (click)="removeChecklistItem(i, j)" aria-label="Retirer le point">
-                        <tas-icon iconName="feather:x" style="font-size:14px" class="text-slate-400"></tas-icon>
-                      </button>
-                    }
-                  </div>
-                } @empty {
-                  <p class="text-xs text-slate-400">Aucun point à vérifier.</p>
-                }
-                @if (step.checklist().invalid() && step.checklist().errors().length) {
-                  <p class="text-xs text-functional-error" role="alert">{{ step.checklist().errors()[0].message }}</p>
-                }
-                @if (canManage() && step.checklist().value().length < 10) {
-                  <button tas-text-button color="primary" type="button" class="self-start" (click)="addChecklistItem(i)">
-                    <tas-icon iconName="feather:plus" style="font-size:14px"></tas-icon> &nbsp; Ajouter un point
-                  </button>
-                }
-              </div>
-            </div>
-            <tas-form-field class="ml-8">
-              <tas-label class="sr-only">Action proposée à l'étape {{ i + 1 }}</tas-label>
-              <input tasInput type="text" placeholder="Action proposée (facultatif) — ex. Réunir les pièces du dossier" [formField]="step.suggestion" />
+            <tas-form-field>
+              <tas-label>Action proposée à l'agent</tas-label>
+              <input tasInput type="text" placeholder="Facultatif — ex. Réunir les pièces du dossier" [formField]="step.suggestion" />
               @if (step.suggestion().touched() && step.suggestion().invalid()) {
                 <tas-error>{{ step.suggestion().errors()[0].message }}</tas-error>
               }
             </tas-form-field>
+
+            <!-- Pour l'atteindre / pour la quitter -->
+            <div class="grid grid-cols-1 gap-4 xl:grid-cols-2">
+              <div class="rounded-xl border border-slate-200 p-4">
+                <p class="flex items-center gap-1.5 text-sm font-semibold text-slate-800">
+                  <tas-icon iconName="feather:log-in" style="font-size:14px" class="text-slate-400"></tas-icon> Pour l'atteindre
+                </p>
+                <p class="mb-3 text-xs text-slate-500">Vérifié quand le projet avance jusqu'à cette étape.</p>
+                <div class="flex flex-col gap-2.5 text-sm text-slate-700">
+                  <div class="flex items-center justify-between gap-3">
+                    <span>Ouvre le dossier client<span class="ms-1 text-xs text-slate-400">— le prospect devient client</span></span>
+                    <tas-switch [checked]="step.opensClientFile().value()" [disabled]="step.opensClientFile().disabled()" ariaLabel="Ouvre le dossier client"
+                          (toggle)="step.opensClientFile().value.set($event)"></tas-switch>
+                  </div>
+                  <div class="flex items-center justify-between gap-3">
+                    <span>Étape d'approbation<span class="ms-1 text-xs text-slate-400">— KYC validé, lead converti</span></span>
+                    <tas-switch [checked]="step.isApproval().value()" [disabled]="step.isApproval().disabled()" ariaLabel="Étape d'approbation"
+                          (toggle)="step.isApproval().value.set($event)"></tas-switch>
+                  </div>
+                  <div class="flex items-center justify-between gap-3">
+                    <span>Questionnaires du produit remplis</span>
+                    <tas-switch [checked]="step.requiresQuestionnaires().value()" [disabled]="step.requiresQuestionnaires().disabled()" ariaLabel="Questionnaires du produit remplis"
+                          (toggle)="step.requiresQuestionnaires().value.set($event)"></tas-switch>
+                  </div>
+                  <div class="flex items-center justify-between gap-3">
+                    <span>Montant du projet renseigné</span>
+                    <tas-switch [checked]="step.requiresAmount().value()" [disabled]="step.requiresAmount().disabled()" ariaLabel="Montant du projet renseigné"
+                          (toggle)="step.requiresAmount().value.set($event)"></tas-switch>
+                  </div>
+                  <div class="flex items-center justify-between gap-3">
+                    <span>Date de clôture prévue renseignée</span>
+                    <tas-switch [checked]="step.requiresCloseDate().value()" [disabled]="step.requiresCloseDate().disabled()" ariaLabel="Date de clôture prévue renseignée"
+                          (toggle)="step.requiresCloseDate().value.set($event)"></tas-switch>
+                  </div>
+                </div>
+              </div>
+
+              <div class="rounded-xl border border-slate-200 p-4">
+                <p class="flex items-center gap-1.5 text-sm font-semibold text-slate-800">
+                  <tas-icon iconName="feather:log-out" style="font-size:14px" class="text-slate-400"></tas-icon> Pour la quitter
+                </p>
+                <p class="mb-3 text-xs text-slate-500">Exigé pour passer à la suite ou gagner le projet.</p>
+
+                <p class="mb-1.5 text-xs font-semibold text-slate-600">Points que l'agent coche</p>
+                <div class="flex flex-col gap-1.5">
+                  @for (item of step.checklist; track $index; let j = $index) {
+                    <div class="flex items-center gap-1.5">
+                      <tas-form-field>
+                        <tas-icon iconName="feather:check-square" class="shrink-0 text-slate-400" style="font-size:14px"></tas-icon>
+                        <input tasInput type="text" class="flex-1" placeholder="Ex. Visite du chantier faite" [formField]="item.label"
+                              [attr.aria-label]="'Point ' + (j + 1) + ' de l’étape ' + (selected() + 1)" />
+                      </tas-form-field>
+                      
+                      @if (canManage()) {
+                        <button tas-button iconButton type="button" (click)="removeChecklistItem(selected(), j)" aria-label="Retirer le point">
+                          <tas-icon iconName="feather:x" style="font-size:14px" class="text-slate-400"></tas-icon>
+                        </button>
+                      }
+                    </div>
+                  } @empty {
+                    <p class="text-xs text-slate-400">Aucun point à vérifier.</p>
+                  }
+                  @if (step.checklist().invalid() && step.checklist().errors().length) {
+                    <p class="text-xs text-functional-error" role="alert">{{ step.checklist().errors()[0].message }}</p>
+                  }
+                  @if (canManage() && step.checklist().value().length < 10) {
+                    <button tas-text-button color="primary" type="button" class="self-start" (click)="addChecklistItem(selected())">
+                      <tas-icon iconName="feather:plus" style="font-size:14px"></tas-icon> &nbsp; Ajouter un point
+                    </button>
+                  }
+                </div>
+
+                <tas-form-field class="mt-4">
+                  <tas-label>Circuit de validation</tas-label>
+                  <tas-select [options]="circuitOptions()" [formField]="step.workflowCircuit"></tas-select>
+                  @if (circuits().length === 0) {
+                    <tas-hint>Aucun workflow « Projet » actif : créez-en un dans Paramétrage › Workflows.</tas-hint>
+                  } @else {
+                    <tas-hint>Lancé à l'arrivée sur l'étape ; le projet repart une fois le circuit approuvé.</tas-hint>
+                  }
+                </tas-form-field>
+              </div>
+            </div>
           </div>
-        } @empty {
-          <p class="text-sm text-slate-400">Aucune étape pour l'instant.</p>
-        }
-
-        @if (formSchema.steps().invalid() && formSchema.steps().errors().length) {
-          <p class="text-sm text-functional-error" role="alert">{{ formSchema.steps().errors()[0].message }}</p>
-        }
-
-        @if (canManage() && model().steps.length < maxSteps) {
-          <button tas-text-button color="primary" type="button" class="self-start" (click)="addStep()">
-            <tas-icon iconName="feather:plus" style="font-size:14px"></tas-icon> &nbsp; Ajouter une étape
-          </button>
-        }
-      </div>
-
-      @if (!isNew) {
-        <p class="text-xs text-slate-500">
-          Un projet garde son étape tant qu'elle existe. Retirer une étape replace ses projets sur l'étape
-          de même phase, sans rien perdre de leur historique.
-        </p>
+        </tas-card>
+      } @else {
+        <tas-card class="block">
+          <div class="flex flex-col items-center gap-3 px-5 py-14 text-center">
+            <tas-icon iconName="feather:git-commit" style="font-size:28px" class="text-slate-300"></tas-icon>
+            <p class="text-sm text-slate-500">
+              @if (isNew) { Partez d'un modèle ou ajoutez une première étape. } @else { Ajoutez une première étape. }
+            </p>
+            @if (canManage()) {
+              <button tas-outlined-button color="primary" type="button" (click)="addStep()">Ajouter une étape</button>
+            }
+          </div>
+        </tas-card>
       }
-    </form>
-      </div>
-    </tas-card>
+    </div>
+
+    @if (!isNew) {
+      <p class="text-xs text-slate-500">
+        Un projet garde son étape tant qu'elle existe. Retirer une étape replace ses projets sur l'étape de même phase,
+        sans rien perdre de leur historique.
+      </p>
+    }
 
     <!-- Barre d'actions -->
     <div class="sticky bottom-0 z-10 -mx-1 flex flex-wrap items-center justify-between gap-3 rounded-t-xl border-t border-slate-200 bg-white/95 px-4 py-3 backdrop-blur">
@@ -291,5 +362,5 @@
         }
       </div>
     </div>
-  </div>
+  </form>
 }
