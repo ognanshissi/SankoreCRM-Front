@@ -60,6 +60,12 @@ import { LeadComplianceStore } from './lead-compliance-store';
 
 export interface ConvertLeadWizardData {
   lead: LeadDto;
+  /**
+   * Le projet pour lequel le dossier s'ouvre : c'est SON produit qui décide du KYC et des champs
+   * exigés. Absent depuis la fiche du lead : le serveur prend son unique projet ouvert, sinon le
+   * produit demandé.
+   */
+  projectId?: string | null;
 }
 
 /**
@@ -422,6 +428,24 @@ export class ConvertLeadWizard implements OnInit {
   public ngOnInit(): void {
     const leadId = this.lead().id;
     if (leadId) this.compliance.load(leadId);
+    this._loadProjectCompleteness();
+  }
+
+  /**
+   * Ouvert depuis un projet, la jauge applique la politique du produit DE CE PROJET — celle que
+   * l'ouverture du dossier vérifiera. La complétude du store, elle, suit le produit demandé par le
+   * lead : affichée ici, elle disait « Dossier complet » avant un refus, ou l'inverse.
+   */
+  private _loadProjectCompleteness(): void {
+    const leadId = this.lead().id;
+    const projectId = this.data.projectId;
+    if (!leadId || !projectId) return;
+    this._leadsApi
+      .getLeadCompleteness(leadId, projectId)
+      .pipe(catchError(() => of(null)))
+      .subscribe((report) => {
+        if (report) this.serverCompleteness.set(report);
+      });
   }
 
   public leadDisplayName(): string {
@@ -594,6 +618,7 @@ export class ConvertLeadWizard implements OnInit {
         this.serverCompleteness.set(null);
         this.refusal.set(null);
         this.compliance.reloadCompleteness().subscribe();
+        this._loadProjectCompleteness();
         this._snackbar.success(
           'Lead complété',
           'Les informations sont enregistrées sur le lead.',
@@ -609,7 +634,7 @@ export class ConvertLeadWizard implements OnInit {
     const leadId = this.lead().id ?? '';
 
     const outcome = await firstValueFrom(
-      this._leadsApi.convertLead(leadId, request).pipe(
+      this._leadsApi.convertLead(leadId, { ...request, projectId: request.projectId ?? this.data.projectId ?? null }).pipe(
         map((result): ConvertOutcome => ({ accepted: true, result: result ?? {} })),
         catchError((error: HttpErrorResponse) => {
           // 409 et 422 : le serveur renvoie un `ConvertLeadResult` dans le corps d'erreur —

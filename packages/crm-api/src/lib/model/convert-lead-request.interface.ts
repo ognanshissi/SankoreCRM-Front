@@ -15,5 +15,6 @@ export interface ConvertLeadRequest {
     customerId?: string | null;
     force?: boolean;
     minConfidenceThreshold?: number | null;
+    projectId?: string | null;
 }
 

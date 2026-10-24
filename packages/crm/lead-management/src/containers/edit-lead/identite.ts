@@ -399,8 +399,6 @@ export class LeadIdentite {
 
       // Les champs vides partent en chaîne vide et non en null : pour `enrich`, null veut dire
       // « ne pas toucher » et vide veut dire « effacer ». Un repère effacé ici doit l'être là-bas.
-      // `productLineId` est absent et `clearProductLine` à false : cet onglet ne touche pas la
-      // ligne de produit, que le même endpoint résout.
       const request: EnrichLeadRequest = {
         firstName: identity.firstName,
         lastName: identity.lastName,
@@ -414,7 +412,6 @@ export class LeadIdentite {
         neighbourhood: value.neighbourhood.trim(),
         landmark: value.landmark.trim(),
         nameVerified,
-        clearProductLine: false,
         expectedUpdatedAt: lead.updatedAt ?? null,
       };
 

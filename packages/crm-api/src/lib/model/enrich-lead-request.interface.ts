@@ -21,8 +21,6 @@ export interface EnrichLeadRequest {
     postalCode?: string | null;
     city?: string | null;
     countryCode?: string | null;
-    productLineId?: string | null;
-    clearProductLine?: boolean;
     sourceActivityId?: string | null;
     expectedUpdatedAt?: string | null;
     neighbourhood?: string | null;

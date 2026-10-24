@@ -314,7 +314,10 @@ export class ProjectDetail implements OnInit {
     const lead = this.lead();
     if (!lead) return;
     const retry = this._retry;
-    const ref = this._sideDrawer.open(ConvertLeadWizard, { panelClass: 'side-drawer-panel', data: { lead } });
+    const ref = this._sideDrawer.open(ConvertLeadWizard, {
+      panelClass: 'side-drawer-panel',
+      data: { lead, projectId: this.projectId() },
+    });
     ref.closed.subscribe((result: unknown) => {
       if (!result) return;
       this.gate.set(null);

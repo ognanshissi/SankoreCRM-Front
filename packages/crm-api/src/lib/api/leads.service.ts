@@ -1445,7 +1445,7 @@ export class LeadsApiService {
     }
 
     /**
-     * Complete the principal\&#39;s identity and resolve the product line
+     * Complete the principal\&#39;s identity
      * @param leadId 
      * @param enrichLeadRequest 
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
@@ -2066,15 +2066,22 @@ export class LeadsApiService {
     /**
      * What is still missing from a lead\&#39;s file, per person
      * @param leadId 
+     * @param projectId 
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      */
-    public getLeadCompleteness(leadId: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<LeadCompletenessDto>;
-    public getLeadCompleteness(leadId: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<LeadCompletenessDto>>;
-    public getLeadCompleteness(leadId: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<LeadCompletenessDto>>;
-    public getLeadCompleteness(leadId: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
+    public getLeadCompleteness(leadId: string, projectId?: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<LeadCompletenessDto>;
+    public getLeadCompleteness(leadId: string, projectId?: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<LeadCompletenessDto>>;
+    public getLeadCompleteness(leadId: string, projectId?: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<LeadCompletenessDto>>;
+    public getLeadCompleteness(leadId: string, projectId?: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
         if (leadId === null || leadId === undefined) {
             throw new Error('Required parameter leadId was null or undefined when calling getLeadCompleteness.');
+        }
+
+        let localVarQueryParameters = new HttpParams({encoder: this.encoder});
+        if (projectId !== undefined && projectId !== null) {
+          localVarQueryParameters = this.addToHttpParams(localVarQueryParameters,
+            <any>projectId, 'projectId');
         }
 
         let localVarHeaders = this.defaultHeaders;
@@ -2119,6 +2126,7 @@ export class LeadsApiService {
         return this.httpClient.request<LeadCompletenessDto>('get', `${this.configuration.basePath}${localVarPath}`,
             {
                 context: localVarHttpContext,
+                params: localVarQueryParameters,
                 responseType: <any>responseType_,
                 withCredentials: this.configuration.withCredentials,
                 headers: localVarHeaders,

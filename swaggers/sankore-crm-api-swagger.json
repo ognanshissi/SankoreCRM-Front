@@ -13634,6 +13634,14 @@
               "type": "string",
               "format": "uuid"
             }
+          },
+          {
+            "name": "projectId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
           }
         ],
         "responses": {
@@ -13661,7 +13669,7 @@
         "tags": [
           "Leads"
         ],
-        "summary": "Complete the principal's identity and resolve the product line",
+        "summary": "Complete the principal's identity",
         "operationId": "EnrichLead",
         "parameters": [
           {
@@ -33214,6 +33222,11 @@
             "type": "number",
             "format": "double",
             "nullable": true
+          },
+          "projectId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -36930,14 +36943,6 @@
           "countryCode": {
             "type": "string",
             "nullable": true
-          },
-          "productLineId": {
-            "type": "string",
-            "format": "uuid",
-            "nullable": true
-          },
-          "clearProductLine": {
-            "type": "boolean"
           },
           "sourceActivityId": {
             "type": "string",
