@@ -44,6 +44,7 @@ export const PORTAL_NAVIGATION: PortalNavGroup[] = [
     label: 'Portefeuille',
     items: [
       { id: 'leads', label: 'Leads', icon: 'feather:target', link: '/leads', anyOf: [PERMISSIONS.LEAD_READ], badge: 'leads' },
+      { id: 'projects', label: 'Projets', icon: 'feather:briefcase', link: '/leads/projets', anyOf: [PERMISSIONS.LEAD_OPPORTUNITY_READ] },
       { id: 'customers', label: 'Clients', icon: 'feather:users', link: '/customers', anyOf: [PERMISSIONS.CUSTOMERS_READ] },
       { id: 'kyc', label: 'Dossiers KYC', icon: 'feather:user-check', link: '/kyc', anyOf: [PERMISSIONS.KYC_READ], badge: 'kyc' },
     ],

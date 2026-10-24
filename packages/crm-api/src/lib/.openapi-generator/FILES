@@ -55,6 +55,7 @@ api/pipeline-stages.service.ts
 api/pipeline.service.ts
 api/product-holdings.service.ts
 api/products.service.ts
+api/project-templates.service.ts
 api/roles.service.ts
 api/scoring-configs.service.ts
 api/sdk.service.ts
@@ -250,6 +251,7 @@ model/create-opportunity-for-customer-result.interface.ts
 model/create-opportunity-request.interface.ts
 model/create-pipeline-stage-request.interface.ts
 model/create-product-request.interface.ts
+model/create-project-template-request.interface.ts
 model/create-qualification-template-request.interface.ts
 model/create-reminder-request.interface.ts
 model/create-role-command.interface.ts
@@ -417,6 +419,7 @@ model/lead-report-agent.interface.ts
 model/lead-report-dto.interface.ts
 model/lead-report-kpis.interface.ts
 model/lead-report-point.interface.ts
+model/lead-report-project-phase.interface.ts
 model/lead-report-source.interface.ts
 model/lead-report-stage.interface.ts
 model/lead-report-status.interface.ts
@@ -469,6 +472,7 @@ model/missing-questionnaire.interface.ts
 model/models.ts
 model/money.interface.ts
 model/move-agency-request.interface.ts
+model/move-opportunity-to-step-request.interface.ts
 model/my-agenda-dto.interface.ts
 model/my-calendar-event-dto.interface.ts
 model/my-kyc-access-dto.interface.ts
@@ -529,6 +533,9 @@ model/product-factor.interface.ts
 model/product-performance-dto.interface.ts
 model/product-routing-dto.interface.ts
 model/product-routing-line-dto.interface.ts
+model/project-step-dto.interface.ts
+model/project-step-request.interface.ts
+model/project-template-dto.interface.ts
 model/publish-sdk-version-result.interface.ts
 model/pull-config.interface.ts
 model/qualification-answer-input.interface.ts
@@ -787,6 +794,7 @@ model/update-opportunity-request.interface.ts
 model/update-pipeline-stage-config-request.interface.ts
 model/update-pipeline-stage-request.interface.ts
 model/update-product-request.interface.ts
+model/update-project-template-request.interface.ts
 model/update-qualification-template-request.interface.ts
 model/update-role-request.interface.ts
 model/update-scoring-config-request.interface.ts

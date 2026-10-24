@@ -1,7 +1,7 @@
 <tas-side-drawer>
   <tas-drawer-title>
     <TasTitle class="text-lg">
-      {{ isExistingCustomer() ? 'Nouvelle demande' : 'Nouveau lead' }}
+      {{ isExistingCustomer() ? 'Nouveau projet' : 'Nouveau lead' }}
     </TasTitle>
   </tas-drawer-title>
 
@@ -57,13 +57,13 @@
             @if (demandDuplicateCount(); as existing) {
               <div class="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm" role="alert">
                 <p class="font-medium text-amber-800">
-                  Une demande semblable existe déjà
+                  Un projet semblable existe déjà
                   @if (existing > 0) {
-                    ({{ existing }} demande{{ existing > 1 ? 's' : '' }})
+                    ({{ existing }} projet{{ existing > 1 ? 's' : '' }})
                   }
                 </p>
                 <p class="text-amber-700 mt-1">
-                  Rien n'a été créé. Vérifiez les demandes en cours du client avant d'insister.
+                  Rien n'a été créé. Vérifiez les projets en cours du client avant d'insister.
                 </p>
                 <div class="flex flex-wrap items-center gap-3 mt-3">
                   <button tas-outlined-button color="primary" type="button" class="text-xs"
@@ -85,8 +85,8 @@
               <div class="flex items-start gap-2 rounded-lg border border-slate-200 bg-slate-50 p-3">
                 <tas-icon iconName="feather:lock" class="mt-0.5 shrink-0 text-slate-500" style="font-size:14px"></tas-icon>
                 <p class="text-xs text-slate-600">
-                  Enregistrer une demande pour un client existant demande une habilitation dédiée.
-                  Choisissez « Nouveau prospect » ou faites-la créer depuis la fiche du client.
+                  Ouvrir un projet pour un client existant demande une habilitation dédiée.
+                  Choisissez « Nouveau prospect » ou faites-le créer depuis la fiche du client.
                 </p>
               </div>
             }
@@ -96,7 +96,7 @@
 
       @if (isExistingCustomer() && retainedCustomer()?.agencyLabel) {
         <p class="text-xs text-slate-500 mt-4">
-          La demande suivra la fiche du client, rattachée à {{ retainedCustomer()!.agencyLabel }}.
+          Le projet suivra la fiche du client, rattachée à {{ retainedCustomer()!.agencyLabel }}.
         </p>
       }
     } @else if (formLoadFailed()) {
@@ -119,7 +119,7 @@
       [disabled]="!form() || submitting() || (isExistingCustomer() && !canManageOpportunities())"
       [isLoading]="submitting()"
     >
-      {{ isExistingCustomer() ? 'Créer la demande' : 'Créer le lead' }}
+      {{ isExistingCustomer() ? 'Créer le projet' : 'Créer le lead' }}
     </button>
   </tas-drawer-action>
 </tas-side-drawer>

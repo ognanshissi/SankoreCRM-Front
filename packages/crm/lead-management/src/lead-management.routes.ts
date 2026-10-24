@@ -43,6 +43,13 @@ export const leadManagementRoutes = [
     loadComponent: () => import('./containers/whatsapp-metrics/whatsapp-metrics-page'),
   },
   {
+    // Le tableau des projets, par parcours. Avant `:id`, comme « import ».
+    path: 'projets',
+    canActivate: [hasPermissionGuard('lead:opportunity:read')],
+    title: 'Projets',
+    loadComponent: () => import('./containers/projects-board/projects-board'),
+  },
+  {
     // Avant `:id`, sinon le joker capturerait « import » comme identifiant de lead.
     path: 'import',
     canActivate: [hasPermissionGuard('lead:import')],
@@ -131,8 +138,9 @@ export const leadManagementRoutes = [
       { path: 'rappels', redirectTo: 'suivi/rappels', pathMatch: 'full' as const },
       { path: 'taches', redirectTo: 'suivi/taches', pathMatch: 'full' as const },
       { path: 'timeline', redirectTo: 'suivi/timeline', pathMatch: 'full' as const },
+      { path: 'opportunites', redirectTo: 'projets', pathMatch: 'full' as const },
       {
-        path: 'opportunites',
+        path: 'projets',
         canActivate: [hasPermissionGuard('lead:opportunity:read')],
         loadComponent: () =>
           import('./containers/edit-lead/opportunities/opportunities'),

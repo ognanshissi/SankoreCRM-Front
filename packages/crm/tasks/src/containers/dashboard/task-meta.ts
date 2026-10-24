@@ -200,17 +200,21 @@ function sameDay(a: Date, b: Date): boolean {
 }
 
 /**
- * Le parcours du lead en cinq temps, tel que l'agent le pense. Les douze étapes du pipeline y sont
- * regroupées ; une étape inconnue retombe sur « Qualifier » plutôt que de laisser le repère vide.
+ * Le parcours du lead en cinq temps, tel que l'agent le pense. Depuis les projets (lot 4), le lead
+ * s'arrête au besoin identifié et la suite se mène sur son projet ; les anciennes étapes « dossier »
+ * tombent sur « Projet ». Une étape inconnue retombe sur « Contacter » plutôt que de laisser le
+ * repère vide.
  */
-export const LEAD_JOURNEY = ['Capture', 'Qualifier', 'Enrichir', 'KYC', 'Convertir'] as const;
+export const LEAD_JOURNEY = ['Capture', 'Contacter', 'Besoin', 'Projet', 'Client'] as const;
 
 export function journeyIndex(pipelineStage: string | null | undefined): number {
   switch (pipelineStage) {
+    case 'ContactEstablished':
+      return 2;
+    case 'NeedIdentified':
     case 'Qualified':
     case 'ProductProposed':
     case 'ApplicationStarted':
-      return 2;
     case 'DocumentCollection':
     case 'ApplicationCompleted':
     case 'ApprovalPending':

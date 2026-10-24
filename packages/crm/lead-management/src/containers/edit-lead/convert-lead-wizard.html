@@ -38,7 +38,7 @@
                   @if (refusal()!.existingCustomerNumber) {
                     (n° {{ refusal()!.existingCustomerNumber }})
                   }
-                  : rattachez-lui la demande plutôt que de créer une seconde fiche.
+                  : rattachez-lui le projet plutôt que de créer une seconde fiche.
                 </p>
                 <button
                   tas-raised-button
@@ -151,7 +151,7 @@
               <span class="text-slate-800">{{ lead().nationalId || '—' }}</span>
             </div>
             <div class="flex justify-between gap-4 text-sm flex-wrap">
-              <span class="text-slate-500">Produit d'intérêt</span>
+              <span class="text-slate-500">Produit souhaité</span>
               <span class="text-slate-800">{{ lead().interestedProduct || '—' }}</span>
             </div>
             @if (lead().customerReference) {
@@ -340,8 +340,8 @@
               style="font-size:14px"
             ></tas-icon>
             <p class="text-xs text-slate-600">
-              Ce lead concerne un client déjà au portefeuille : aucune fiche ne sera créée, la
-              demande devient une souscription en brouillon sur sa fiche.
+              Ce lead concerne un client déjà au portefeuille : aucune fiche ne sera créée, son
+              besoin devient une souscription en brouillon sur sa fiche.
             </p>
           </div>
         } @else {

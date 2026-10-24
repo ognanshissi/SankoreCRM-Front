@@ -386,16 +386,16 @@ export class ClientTimelinePage {
           : { route: null, blockedReason: "Vous n'avez pas la permission de consulter les leads." };
 
       case 'opportunity':
-        // L'application n'expose pas d'écran par opportunité : le seul chemin existant est
-        // l'onglet Opportunités du lead d'origine, connu par `ClientDetailDto.sourceLeadId`.
+        // L'application n'expose pas d'écran par projet : le seul chemin existant est
+        // l'onglet Projets du lead d'origine, connu par `ClientDetailDto.sourceLeadId`.
         if (!sourceLeadId) {
           return { route: null, blockedReason: "Le lead d'origine de ce client n'est pas connu." };
         }
         return this._canReadOpportunity()
-          ? { route: ['/leads', sourceLeadId, 'opportunites'], blockedReason: null }
+          ? { route: ['/leads', sourceLeadId, 'projets'], blockedReason: null }
           : {
               route: null,
-              blockedReason: "Vous n'avez pas la permission de consulter les opportunités.",
+              blockedReason: "Vous n'avez pas la permission de consulter les projets.",
             };
 
       case 'client':

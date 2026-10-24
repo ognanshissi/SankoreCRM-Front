@@ -1,0 +1,178 @@
+<tas-side-drawer>
+  <tas-drawer-title>
+    <TasTitle class="text-lg">{{ title() }}</TasTitle>
+  </tas-drawer-title>
+
+  <tas-drawer-content>
+    <form [formRoot]="formSchema" class="flex flex-col gap-5">
+      @if (isDefault) {
+        <p class="rounded-lg bg-slate-50 p-3 text-sm text-slate-600">
+          Les étapes d'un projet dont le produit n'a ni gabarit propre ni gabarit de famille — y compris
+          un projet dont le produit est encore « à préciser ».
+        </p>
+      }
+
+      @if (isNew) {
+        <tas-form-field>
+          <tas-label>S'applique à <span class="text-functional-error">*</span></tas-label>
+          <tas-select [options]="scopeOptions" [formField]="formSchema.scope"></tas-select>
+          <tas-hint>Le gabarit d'un produit précis l'emporte sur celui de sa famille.</tas-hint>
+        </tas-form-field>
+
+        @if (model().scope === 'Category') {
+          <tas-form-field>
+            <tas-label>Famille <span class="text-functional-error">*</span></tas-label>
+            <tas-select [options]="data.categoryOptions" placeholder="Choisir une famille" [formField]="formSchema.category"></tas-select>
+            @if (formSchema.category().touched() && formSchema.category().invalid()) {
+              <tas-error>{{ formSchema.category().errors()[0].message }}</tas-error>
+            }
+            @if (data.categoryOptions.length === 0) {
+              <tas-hint>Toutes les familles du catalogue ont déjà un gabarit.</tas-hint>
+            }
+          </tas-form-field>
+        } @else {
+          <tas-form-field>
+            <tas-label>Produit <span class="text-functional-error">*</span></tas-label>
+            <tas-select [options]="data.productOptions" placeholder="Choisir un produit" [formField]="formSchema.productCode"></tas-select>
+            @if (formSchema.productCode().touched() && formSchema.productCode().invalid()) {
+              <tas-error>{{ formSchema.productCode().errors()[0].message }}</tas-error>
+            }
+          </tas-form-field>
+        }
+      }
+
+      <tas-form-field>
+        <tas-label>Nom <span class="text-functional-error">*</span></tas-label>
+        <input tasInput type="text" placeholder="Ex. Parcours crédit" [formField]="formSchema.name" />
+        @if (formSchema.name().touched() && formSchema.name().invalid()) {
+          <tas-error>{{ formSchema.name().errors()[0].message }}</tas-error>
+        }
+      </tas-form-field>
+
+      <!-- Étapes -->
+      <div class="flex flex-col gap-3 rounded-lg border border-slate-200 p-4">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">
+            Étapes ({{ model().steps.length }} / {{ maxSteps }})
+          </p>
+          @if (data.canManage && isNew) {
+            <div class="flex flex-wrap items-center gap-1.5 text-xs">
+              <span class="text-slate-500">Partir de :</span>
+              @for (p of presets; track p.key) {
+                <button type="button" class="rounded-full border border-slate-200 px-2.5 py-1 font-semibold text-slate-700 hover:bg-slate-50"
+                        (click)="applyPreset(p.key)">{{ p.label }}</button>
+              }
+            </div>
+          }
+        </div>
+
+        <p class="text-xs text-slate-500">
+          La phase range l'étape dans l'entonnoir (rapports, prévisions) ; elle ne revient jamais en arrière
+          d'une étape à la suivante. La probabilité est celle de signer une fois l'étape atteinte.
+        </p>
+        <ul class="list-disc pl-5 text-xs text-slate-500">
+          <li><span class="font-semibold">Ouvre le dossier client</span> : pour l'atteindre, le prospect doit être converti en client — c'est là que s'ouvre son dossier KYC quand le produit en exige un.</li>
+          <li><span class="font-semibold">Étape d'approbation</span> : pour l'atteindre, ou gagner le projet, le KYC du client doit être validé au niveau du produit. Un produit sans KYC demande seulement que le client existe : il est créé actif à ce moment-là.</li>
+        </ul>
+
+        @for (step of formSchema.steps; track $index; let i = $index, first = $first, last = $last) {
+          <div class="flex flex-col gap-2 rounded-lg bg-slate-50 p-3">
+            <div class="flex items-start gap-2">
+              <span class="mt-2 flex size-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary tabular-nums">{{ i + 1 }}</span>
+              <div class="grid flex-1 grid-cols-1 gap-2 sm:grid-cols-[1fr_9rem_6rem]">
+                <tas-form-field>
+                  <tas-label class="sr-only">Nom de l'étape {{ i + 1 }}</tas-label>
+                  <input tasInput type="text" placeholder="Nom de l'étape" [formField]="step.label" />
+                  @if (step.label().touched() && step.label().invalid()) {
+                    <tas-error>{{ step.label().errors()[0].message }}</tas-error>
+                  }
+                </tas-form-field>
+                <tas-form-field>
+                  <tas-label class="sr-only">Phase de l'étape {{ i + 1 }}</tas-label>
+                  <tas-select [options]="phaseOptions" [formField]="step.phase"></tas-select>
+                </tas-form-field>
+                <tas-form-field>
+                  <tas-label class="sr-only">Probabilité de l'étape {{ i + 1 }}</tas-label>
+                  <input tasInput type="text" inputmode="numeric" placeholder="%" [formField]="step.probability" />
+                  @if (step.probability().touched() && step.probability().invalid()) {
+                    <tas-error>{{ step.probability().errors()[0].message }}</tas-error>
+                  }
+                </tas-form-field>
+              </div>
+              @if (data.canManage) {
+                <div class="flex shrink-0 items-center">
+                  <button tas-button iconButton type="button" [disabled]="first" (click)="moveStep(i, -1)" aria-label="Monter l'étape">
+                    <tas-icon iconName="feather:arrow-up" style="font-size:14px" class="text-slate-500"></tas-icon>
+                  </button>
+                  <button tas-button iconButton type="button" [disabled]="last" (click)="moveStep(i, 1)" aria-label="Descendre l'étape">
+                    <tas-icon iconName="feather:arrow-down" style="font-size:14px" class="text-slate-500"></tas-icon>
+                  </button>
+                  <button tas-button iconButton type="button" (click)="removeStep(i)" aria-label="Retirer l'étape">
+                    <tas-icon iconName="feather:trash-2" style="font-size:14px" class="text-slate-400"></tas-icon>
+                  </button>
+                </div>
+              }
+            </div>
+            <div class="ml-8 flex flex-wrap gap-x-5 gap-y-1 text-sm text-slate-700">
+              <label class="flex items-center gap-2">
+                <input type="checkbox" class="size-4 accent-current text-primary" [formField]="step.opensClientFile" />
+                Ouvre le dossier client
+              </label>
+              <label class="flex items-center gap-2">
+                <input type="checkbox" class="size-4 accent-current text-primary" [formField]="step.isApproval" />
+                Étape d'approbation
+              </label>
+            </div>
+            <tas-form-field class="ml-8">
+              <tas-label class="sr-only">Action proposée à l'étape {{ i + 1 }}</tas-label>
+              <input tasInput type="text" placeholder="Action proposée (facultatif) — ex. Réunir les pièces du dossier" [formField]="step.suggestion" />
+              @if (step.suggestion().touched() && step.suggestion().invalid()) {
+                <tas-error>{{ step.suggestion().errors()[0].message }}</tas-error>
+              }
+            </tas-form-field>
+          </div>
+        } @empty {
+          <p class="text-sm text-slate-400">Aucune étape pour l'instant.</p>
+        }
+
+        @if (formSchema.steps().invalid() && formSchema.steps().errors().length) {
+          <p class="text-sm text-functional-error" role="alert">{{ formSchema.steps().errors()[0].message }}</p>
+        }
+
+        @if (data.canManage && model().steps.length < maxSteps) {
+          <button tas-text-button type="button" class="self-start" (click)="addStep()">
+            <tas-icon iconName="feather:plus" style="font-size:14px"></tas-icon> &nbsp; Ajouter une étape
+          </button>
+        }
+      </div>
+
+      @if (!isNew) {
+        <p class="text-xs text-slate-500">
+          Un projet garde son étape tant qu'elle existe. Retirer une étape replace ses projets sur l'étape
+          de même phase, sans rien perdre de leur historique.
+        </p>
+      }
+    </form>
+  </tas-drawer-content>
+
+  <tas-drawer-action>
+    @if (data.canManage && template?.id) {
+      <button tas-text-button color="warn" type="button" class="mr-auto" [disabled]="isDeleting()" (click)="delete()">
+        {{ isDefault ? 'Revenir au parcours standard' : 'Supprimer' }}
+      </button>
+    }
+    <button tas-outlined-button type="button" (click)="close()">{{ data.canManage ? 'Annuler' : 'Fermer' }}</button>
+    @if (data.canManage) {
+      <button
+        tas-raised-button
+        color="primary"
+        type="button"
+        [disabled]="formSchema().invalid() || formSchema().submitting()"
+        [isLoading]="formSchema().submitting()"
+        (click)="handleSubmit()"
+      >
+        Enregistrer
+      </button>
+    }
+  </tas-drawer-action>
+</tas-side-drawer>

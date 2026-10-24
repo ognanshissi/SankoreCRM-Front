@@ -99,7 +99,7 @@ const MENU: ReadonlyArray<LeadMenuGroup> = [
       { label: 'Questionnaires', icon: 'feather:clipboard', route: 'questionnaires' },
       { label: 'Conformité', icon: 'feather:flag', route: 'conformite' },
       { label: 'Consentements', icon: 'feather:shield', route: 'consentement' },
-      { label: 'Opportunités', icon: 'feather:briefcase', route: 'opportunites' },
+      { label: 'Projets', icon: 'feather:briefcase', route: 'projets' },
     ],
   },
 ];

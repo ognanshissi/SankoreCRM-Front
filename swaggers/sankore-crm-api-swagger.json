@@ -17596,6 +17596,49 @@
         }
       }
     },
+    "/api/v1/leads/opportunities/{id}/step": {
+      "put": {
+        "tags": [
+          "Opportunities"
+        ],
+        "operationId": "MoveOpportunityToStep",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MoveOpportunityToStepRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "409": {
+            "description": "Conflict"
+          },
+          "422": {
+            "description": "Unprocessable Entity"
+          }
+        }
+      }
+    },
     "/api/v1/leads/opportunities/{id}/close": {
       "post": {
         "tags": [
@@ -18646,6 +18689,129 @@
           },
           "403": {
             "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/api/v1/leads/project-templates": {
+      "get": {
+        "tags": [
+          "Project Templates"
+        ],
+        "operationId": "ListProjectTemplates",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ProjectTemplateDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Project Templates"
+        ],
+        "operationId": "CreateProjectTemplate",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateProjectTemplateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict"
+          },
+          "422": {
+            "description": "Unprocessable Entity"
+          }
+        }
+      }
+    },
+    "/api/v1/leads/project-templates/{templateId}": {
+      "put": {
+        "tags": [
+          "Project Templates"
+        ],
+        "operationId": "UpdateProjectTemplate",
+        "parameters": [
+          {
+            "name": "templateId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateProjectTemplateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "422": {
+            "description": "Unprocessable Entity"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Project Templates"
+        ],
+        "operationId": "DeleteProjectTemplate",
+        "parameters": [
+          {
+            "name": "templateId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
           },
           "404": {
             "description": "Not Found"
@@ -34118,6 +34284,44 @@
         },
         "additionalProperties": false
       },
+      "CreateProjectTemplateRequest": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "category": {
+            "enum": [
+              "Loan",
+              "Savings",
+              "Insurance",
+              "HealthInsurance",
+              "ForecastInsurance",
+              "Tontine",
+              "GroupCredit",
+              "Agriculture",
+              "CurrentAccount",
+              "Standard"
+            ],
+            "type": "string",
+            "description": "One of: Loan, Savings, Insurance, HealthInsurance, ForecastInsurance, Tontine, GroupCredit, Agriculture, CurrentAccount, Standard",
+            "nullable": true
+          },
+          "productCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "steps": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProjectStepRequest"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "CreateQualificationTemplateRequest": {
         "type": "object",
         "properties": {
@@ -40748,6 +40952,13 @@
               "$ref": "#/components/schemas/LeadReportAgency"
             },
             "nullable": true
+          },
+          "projects": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LeadReportProjectPhase"
+            },
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -40806,6 +41017,33 @@
           "converted": {
             "type": "integer",
             "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "LeadReportProjectPhase": {
+        "type": "object",
+        "properties": {
+          "phase": {
+            "enum": [
+              "Prospecting",
+              "Qualification",
+              "NeedsAnalysis",
+              "Proposal",
+              "Negotiation",
+              "ClosedWon",
+              "ClosedLost"
+            ],
+            "type": "string",
+            "description": "One of: Prospecting, Qualification, NeedsAnalysis, Proposal, Negotiation, ClosedWon, ClosedLost"
+          },
+          "count": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "amount": {
+            "type": "number",
+            "format": "double"
           }
         },
         "additionalProperties": false
@@ -42295,6 +42533,21 @@
         },
         "additionalProperties": false
       },
+      "MoveOpportunityToStepRequest": {
+        "type": "object",
+        "properties": {
+          "stepId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "expectedUpdatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "MyAgendaDto": {
         "type": "object",
         "properties": {
@@ -43000,6 +43253,32 @@
           "separateNeedConfirmedAt": {
             "type": "string",
             "format": "date-time",
+            "nullable": true
+          },
+          "stepId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "templateId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "templateName": {
+            "type": "string",
+            "nullable": true
+          },
+          "currentStepId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "steps": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProjectStepDto"
+            },
             "nullable": true
           }
         },
@@ -44713,6 +44992,148 @@
           },
           "connectionName": {
             "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ProjectStepDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "label": {
+            "type": "string",
+            "nullable": true
+          },
+          "phase": {
+            "enum": [
+              "Prospecting",
+              "Qualification",
+              "NeedsAnalysis",
+              "Proposal",
+              "Negotiation",
+              "ClosedWon",
+              "ClosedLost"
+            ],
+            "type": "string",
+            "description": "One of: Prospecting, Qualification, NeedsAnalysis, Proposal, Negotiation, ClosedWon, ClosedLost"
+          },
+          "probability": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "suggestion": {
+            "type": "string",
+            "nullable": true
+          },
+          "opensClientFile": {
+            "type": "boolean"
+          },
+          "isApproval": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ProjectStepRequest": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "label": {
+            "type": "string",
+            "nullable": true
+          },
+          "phase": {
+            "enum": [
+              "Prospecting",
+              "Qualification",
+              "NeedsAnalysis",
+              "Proposal",
+              "Negotiation",
+              "ClosedWon",
+              "ClosedLost"
+            ],
+            "type": "string",
+            "description": "One of: Prospecting, Qualification, NeedsAnalysis, Proposal, Negotiation, ClosedWon, ClosedLost"
+          },
+          "probability": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "suggestion": {
+            "type": "string",
+            "nullable": true
+          },
+          "opensClientFile": {
+            "type": "boolean"
+          },
+          "isApproval": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ProjectTemplateDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "scope": {
+            "type": "string",
+            "nullable": true
+          },
+          "category": {
+            "enum": [
+              "Loan",
+              "Savings",
+              "Insurance",
+              "HealthInsurance",
+              "ForecastInsurance",
+              "Tontine",
+              "GroupCredit",
+              "Agriculture",
+              "CurrentAccount",
+              "Standard"
+            ],
+            "type": "string",
+            "description": "One of: Loan, Savings, Insurance, HealthInsurance, ForecastInsurance, Tontine, GroupCredit, Agriculture, CurrentAccount, Standard",
+            "nullable": true
+          },
+          "productCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "productName": {
+            "type": "string",
+            "nullable": true
+          },
+          "isBuiltIn": {
+            "type": "boolean"
+          },
+          "steps": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProjectStepDto"
+            },
+            "nullable": true
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
             "nullable": true
           }
         },
@@ -52824,6 +53245,23 @@
           "customFields": {
             "type": "object",
             "additionalProperties": { },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "UpdateProjectTemplateRequest": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "steps": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProjectStepRequest"
+            },
             "nullable": true
           }
         },

@@ -1,4 +1,4 @@
-import { AdvanceOpportunityStageRequestStageEnum, OpportunityDto } from '@sankore/crm-api';
+import { AdvanceOpportunityStageRequestStageEnum, OpportunityDto, ProjectStepDto } from '@sankore/crm-api';
 
 /**
  * L'onglet lisait et écrivait les opportunités dans le `localStorage` du navigateur « en attendant
@@ -74,9 +74,44 @@ export function isClosed(opp: OpportunityDto): boolean {
 
 /** « Prospection », « Gagnée », « Perdue ». */
 export function stageLabel(stage: string | null | undefined): string {
-  if (stage === 'ClosedWon') return 'Gagnée';
-  if (stage === 'ClosedLost') return 'Perdue';
+  if (stage === 'ClosedWon') return 'Gagné';
+  if (stage === 'ClosedLost') return 'Perdu';
   return stageMeta(stage)?.label ?? stage ?? '—';
+}
+
+// ——— Étapes du gabarit ———
+
+/**
+ * Les étapes du projet, celles du gabarit que son produit désigne (Paramètres › Étapes des
+ * projets). Le serveur les joint à chaque projet ; les cinq phases ne servent de repli que pour une
+ * réponse qui n'en porterait pas.
+ */
+export function projectSteps(opp: OpportunityDto): ProjectStepDto[] {
+  if (opp.steps?.length) return opp.steps;
+  return OPEN_STAGES.map((s) => ({ id: s.value, label: s.label, phase: s.value as ProjectStepDto['phase'], probability: s.probability }));
+}
+
+export function currentStep(opp: OpportunityDto): ProjectStepDto | null {
+  if (isClosed(opp)) return null;
+  const steps = projectSteps(opp);
+  return steps.find((s) => s.id === opp.currentStepId) ?? steps.find((s) => s.phase === opp.stage) ?? null;
+}
+
+/** « Comité de crédit », « Gagné », « Perdu ». */
+export function stepLabel(opp: OpportunityDto): string {
+  return currentStep(opp)?.label ?? stageLabel(opp.stage);
+}
+
+/** La prochaine action proposée : celle de l'étape, sinon celle de sa phase. */
+export function stepSuggestion(opp: OpportunityDto): string | null {
+  const step = currentStep(opp);
+  if (!step) return null;
+  return step.suggestion || stageMeta(step.phase)?.suggestion || null;
+}
+
+/** Vrai quand l'étape vient d'un vrai gabarit, et non du repli sur les cinq phases. */
+export function hasTemplateSteps(opp: OpportunityDto): boolean {
+  return !!opp.steps?.length;
 }
 
 /** La probabilité en pourcentage entier — le serveur la tient entre 0 et 1. */
@@ -118,7 +153,7 @@ export function closeDateWarning(opp: OpportunityDto, today = new Date()): strin
   if (days < 0) return 'Date dépassée : à repousser ou à clôturer.';
   const meta = stageMeta(opp.stage);
   if (meta && days < meta.minDaysToClose) {
-    return `Trop tôt pour une opportunité en ${meta.label.toLowerCase()}.`;
+    return `Trop tôt pour un projet en ${meta.label.toLowerCase()}.`;
   }
   return null;
 }

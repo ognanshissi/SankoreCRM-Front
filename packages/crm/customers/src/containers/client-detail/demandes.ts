@@ -22,7 +22,7 @@ import { TasSpinner } from '@talisoft/ui/spinner';
 import { TableConfig, TasTable } from '@talisoft/ui/table';
 import { Severity, TasTag } from '@talisoft/ui/tag';
 import { RouterLink } from '@angular/router';
-import { PermissionsService } from '@sankore/crm/common';
+import { PermissionsService, projectGateCode, projectGateMessage } from '@sankore/crm/common';
 import {
   LeadDto,
   LeadsApiService,
@@ -46,11 +46,11 @@ import { ClientDetailStore } from '../../models/client-detail.store';
 const STAGE_META: Record<string, { label: string; severity: Severity }> = {
   Prospecting:   { label: 'Prospection',        severity: 'info' },
   Qualification: { label: 'Qualification',      severity: 'info' },
-  NeedsAnalysis: { label: 'Analyse du besoin',  severity: 'warning' },
+  NeedsAnalysis: { label: 'Étude',              severity: 'warning' },
   Proposal:      { label: 'Proposition',        severity: 'warning' },
   Negotiation:   { label: 'Négociation',        severity: 'warning' },
-  ClosedWon:     { label: 'Souscrite',          severity: 'success' },
-  ClosedLost:    { label: 'Perdue',             severity: 'error' },
+  ClosedWon:     { label: 'Gagné',              severity: 'success' },
+  ClosedLost:    { label: 'Perdu',              severity: 'error' },
 };
 
 const CLOSED_STAGES = new Set(['ClosedWon', 'ClosedLost']);
@@ -83,6 +83,9 @@ type DemandeRow = {
   productLabel: string;
   /** L'étape telle que le contrat la nomme — ce que le sélecteur renvoie et compare. */
   stageValue: string;
+  /** L'étape du gabarit du projet, et les étapes qu'il propose ; vides sans gabarit. */
+  stepId: string;
+  stepOptions: { value: string; label: string }[];
   stageLabel: string;
   stageSeverity: Severity;
   isClosed: boolean;
@@ -242,13 +245,17 @@ export class ClientDemandes {
       const lead = leadId ? leads.get(leadId) : undefined;
       const leadMeta = lead?.status ? LEAD_STATUS_META[lead.status] : undefined;
       const amount = o.estimatedAmount?.amount;
+      const steps = o.steps ?? [];
+      const step = steps.find((s) => s.id === o.currentStepId);
 
       return {
         opportunityId: o.id ?? '',
-        title: o.title?.trim() || 'Demande sans intitulé',
+        title: o.title?.trim() || 'Projet sans intitulé',
         productLabel: o.product?.trim() || 'Produit non précisé',
         stageValue: stage,
-        stageLabel: stageMeta.label,
+        stepId: step?.id ?? '',
+        stepOptions: steps.map((s) => ({ value: s.id ?? '', label: s.label ?? '' })),
+        stageLabel: step?.label ?? stageMeta.label,
         stageSeverity: stageMeta.severity,
         isClosed: CLOSED_STAGES.has(stage),
         isWon: stage === 'ClosedWon',
@@ -357,6 +364,30 @@ export class ClientDemandes {
   protected readonly wonOutcome = CloseOpportunityRequestOutcomeEnum.ClosedWon;
   protected readonly lostOutcome = CloseOpportunityRequestOutcomeEnum.ClosedLost;
 
+  /**
+   * Déplace le projet sur une étape de SON gabarit (Paramètres › Étapes des projets). Le serveur
+   * refuse une étape d'un autre gabarit plutôt que de la deviner.
+   */
+  protected moveToStep(row: DemandeRow, stepId: string): void {
+    if (!stepId || stepId === row.stepId || this.busyOpportunityId()) return;
+
+    this.busyOpportunityId.set(row.opportunityId);
+
+    this._opportunitiesApi
+      .moveOpportunityToStep(row.opportunityId, { stepId, expectedUpdatedAt: null })
+      .pipe(
+        catchError((error: HttpErrorResponse) => {
+          this._snackbar.error(
+            'Étape non enregistrée',
+            this._gateMessage(error, row.stepOptions.find((o) => o.value === stepId)?.label ?? null) ?? this._errorMessage(error),
+          );
+          return EMPTY;
+        }),
+        finalize(() => this.busyOpportunityId.set(null)),
+      )
+      .subscribe(() => this.reload());
+  }
+
   protected advanceStage(row: DemandeRow, stage: string): void {
     if (!stage || stage === row.stageValue || this.busyOpportunityId()) return;
 
@@ -407,7 +438,7 @@ export class ClientDemandes {
       })
       .pipe(
         catchError((error: HttpErrorResponse) => {
-          this._snackbar.error('Clôture impossible', this._errorMessage(error));
+          this._snackbar.error('Clôture impossible', this._gateMessage(error, null) ?? this._errorMessage(error));
           return EMPTY;
         }),
         finalize(() => this.busyOpportunityId.set(null)),
@@ -416,17 +447,17 @@ export class ClientDemandes {
         this.cancelClose();
 
         if (outcome !== CloseOpportunityRequestOutcomeEnum.ClosedWon) {
-          this._snackbar.success('Demande close', 'La demande est marquée perdue.');
+          this._snackbar.success('Projet clos', 'Le projet est marqué perdu.');
         } else if (result?.holdingId) {
           this._snackbar.success(
-            'Demande gagnée',
+            'Projet gagné',
             'Une souscription en brouillon a été ouverte sur la fiche du client.',
           );
         } else {
           // Pas une erreur : le produit est du texte libre et ne correspond à aucune ligne
           // active. La ligne affiche alors « Souscrire », qui ouvre le parcours à la main.
           this._snackbar.info(
-            'Demande gagnée',
+            'Projet gagné',
             "Aucune souscription n'a pu être ouverte automatiquement : souscrivez le produit "
               + 'depuis la ligne.',
           );
@@ -457,7 +488,7 @@ export class ClientDemandes {
         this._opportunitiesApi
           .createOpportunityForCustomer({
             customerEntityId: clientId,
-            title: value.title.trim() || `Demande — ${product}`,
+            title: value.title.trim() || `Projet — ${product}`,
             product,
             description: value.description.trim() || null,
             // Par défaut la demande suit le conseiller de la fiche : sans cela elle
@@ -486,8 +517,8 @@ export class ClientDemandes {
       }
 
       this._snackbar.success(
-        'Demande créée',
-        'La demande est rattachée au client et apparaît dans la liste.',
+        'Projet créé',
+        'Le projet est rattaché au client et apparaît dans la liste.',
       );
       this.formOpen.set(false);
       this.duplicateWarning.set(null);
@@ -587,17 +618,25 @@ export class ClientDemandes {
       .subscribe((products) => this._products.set(products ?? []));
   }
 
+  /** Le refus d'une étape marquée du gabarit (lot 3), dit comme sur l'onglet du lead. */
+  private _gateMessage(error: HttpErrorResponse, target: string | null): string | null {
+    const code = projectGateCode(error);
+    if (!code) return null;
+    const message = projectGateMessage(code, target);
+    return code === 'PROJECT_CLIENT_FILE_REQUIRED' ? message : `${message} Voir l'onglet KYC de la fiche.`;
+  }
+
   private _errorMessage(error: HttpErrorResponse): string {
     const body = error.error as
       | { code?: string; title?: string; detail?: string; errors?: Record<string, string[]> }
       | undefined;
 
     if (error.status === 403) {
-      return "Vous n'avez pas le droit de créer une demande pour ce client.";
+      return "Vous n'avez pas le droit de créer un projet pour ce client.";
     }
     const firstValidation = body?.errors ? Object.values(body.errors).flat()[0] : undefined;
     return (
-      firstValidation ?? body?.detail ?? body?.title ?? 'Impossible de créer cette demande.'
+      firstValidation ?? body?.detail ?? body?.title ?? 'Impossible de créer ce projet.'
     );
   }
 }

@@ -387,14 +387,13 @@ function positiveIntegerValidator(max: number, message: string) {
 
           <tas-form-field class="mt-4 block max-w-xs">
             <tas-label>Niveau KYC requis</tas-label>
-            <input
-              tasInput
-              type="text"
-              placeholder="Ex : Tier1"
-              [formField]="formSchema.requiredKycTier"
-            />
+            <tas-select [options]="kycTierOptions()" [formField]="formSchema.requiredKycTier"></tas-select>
             <tas-hint>
-              Code attendu par le back-office. Laissez vide pour ne rien exiger.
+              @if (isStandard()) {
+                « Aucun KYC » : le client est créé actif à l'approbation du projet, sans dossier KYC.
+              } @else {
+                Un produit de cette catégorie exige toujours un dossier KYC.
+              }
             </tas-hint>
           </tas-form-field>
         </fieldset>
@@ -454,6 +453,27 @@ export class BeneficiaryPolicyEditor {
   public readonly roleOptions = signal<{ label: string; value: string }[]>([]);
 
   public readonly code = computed(() => this.product()?.code ?? null);
+
+  public readonly isStandard = computed(() => this.product()?.category === 'Standard');
+
+  /**
+   * « Aucun KYC » n'est proposé qu'à un produit Standard : le serveur le refuse ailleurs, la
+   * catégorie étant ce qu'un régulateur regarde. Une valeur déjà enregistrée hors de la liste
+   * reste affichée telle quelle plutôt que d'être effacée en silence.
+   */
+  public readonly kycTierOptions = computed(() => {
+    const options = [
+      { value: '', label: 'Socle du tenant (dossier KYC standard)' },
+      { value: 'Simplified', label: 'Simplifié' },
+      { value: 'Full', label: 'Complet' },
+    ];
+    if (this.isStandard()) options.push({ value: 'None', label: 'Aucun KYC' });
+    const current = this.product()?.beneficiaryPolicy?.requiredKycTier;
+    if (current && !options.some((o) => o.value.toLowerCase() === current.toLowerCase())) {
+      options.push({ value: current, label: current });
+    }
+    return options;
+  });
 
   public readonly categoryLabel = computed(() =>
     productCategoryLabel(this.product()?.category),

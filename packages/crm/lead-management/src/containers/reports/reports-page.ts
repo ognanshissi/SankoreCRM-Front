@@ -22,6 +22,7 @@ import {
   formatNumber,
   formatPercent,
   label,
+  PROJECT_PHASE_LABELS,
   SERIES_COLORS,
   SOURCE_LABELS,
   STAGE_LABELS,
@@ -147,6 +148,16 @@ export class ReportsPage implements OnInit {
       note: total > 0 ? `${formatPercent(((s.count ?? 0) / total) * 100)}` : undefined,
     }));
   });
+
+  /** Les projets ouverts sur la période, par phase aujourd'hui — la suite du parcours des leads. */
+  public readonly projects = computed<BarItem[]>(() =>
+    (this.report()?.projects ?? []).map((p) => ({
+      key: String(p.phase),
+      label: label(PROJECT_PHASE_LABELS, p.phase),
+      value: p.count ?? 0,
+      note: p.amount ? formatNumber(p.amount) : undefined,
+    })),
+  );
 
   public readonly statuses = computed<BarItem[]>(() =>
     (this.report()?.byStatus ?? []).map((s) => ({ key: String(s.status), label: label(STATUS_LABELS, s.status), value: s.count ?? 0 })),

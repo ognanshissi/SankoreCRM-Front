@@ -15,7 +15,7 @@ import {
 export const ENTITY_TYPE_OPTIONS = [
   { label: 'Lead', value: 'Lead' },
   { label: 'Contact', value: 'Contact' },
-  { label: 'Opportunité', value: 'Deal' },
+  { label: 'Projet', value: 'Deal' },
   { label: 'Client', value: 'Account' },
 ];
 

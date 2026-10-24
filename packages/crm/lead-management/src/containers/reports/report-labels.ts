@@ -26,6 +26,17 @@ export const STAGE_LABELS: Record<string, string> = {
   Lost: 'Perdu',
 };
 
+/** Les phases d'un projet, communes à tous les gabarits d'étapes. */
+export const PROJECT_PHASE_LABELS: Record<string, string> = {
+  Prospecting: 'Prospection',
+  Qualification: 'Qualification',
+  NeedsAnalysis: 'Étude',
+  Proposal: 'Proposition',
+  Negotiation: 'Négociation',
+  ClosedWon: 'Gagné',
+  ClosedLost: 'Perdu',
+};
+
 export const STATUS_LABELS: Record<string, string> = {
   New: 'Nouveau',
   Open: 'Ouvert',

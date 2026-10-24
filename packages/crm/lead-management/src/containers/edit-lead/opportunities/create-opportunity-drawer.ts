@@ -67,7 +67,7 @@ class CreateOpportunityFormModel {
   template: `
     <tas-side-drawer>
       <tas-drawer-title>
-        <tas-title>Nouvelle opportunité</tas-title>
+        <tas-title>Nouveau projet</tas-title>
       </tas-drawer-title>
 
       <tas-drawer-content>
@@ -81,7 +81,7 @@ class CreateOpportunityFormModel {
           </tas-form-field>
 
           <tas-form-field>
-            <tas-label>Demande du prospect</tas-label>
+            <tas-label>Besoin exprimé</tas-label>
             <textarea tasInput rows="3" placeholder="Ce que le prospect a demandé, avec ses mots" [formField]="formSchema.description"></textarea>
             @if (formSchema.description().touched() && formSchema.description().invalid()) {
               <tas-error>{{ formSchema.description().errors()[0].message }}</tas-error>
@@ -109,7 +109,7 @@ class CreateOpportunityFormModel {
           </div>
 
           <p class="text-xs text-slate-500">
-            L'opportunité démarre en prospection, à 10 % : la probabilité suit ensuite l'étape.
+            Le projet démarre en prospection, à 10 % : la probabilité suit ensuite l'étape.
           </p>
 
           @if (submitError(); as message) {
@@ -125,7 +125,7 @@ class CreateOpportunityFormModel {
                   [disabled]="formSchema().invalid() || formSchema().submitting()"
                   [isLoading]="formSchema().submitting()"
                   (click)="handleSubmit()">
-            Créer l'opportunité
+            Créer le projet
           </button>
         </div>
       </tas-drawer-action>
@@ -155,7 +155,7 @@ export class CreateOpportunityDrawer {
   public formSchema = form(this.model, (schema) => {
     required(schema.title, { message: 'Le titre est obligatoire' });
     maxLength(schema.title, 200, { message: 'Le titre ne peut pas dépasser 200 caractères' });
-    maxLength(schema.description, 2000, { message: 'La demande ne peut pas dépasser 2 000 caractères' });
+    maxLength(schema.description, 2000, { message: 'Le besoin ne peut pas dépasser 2 000 caractères' });
     validate(schema.amount, (ctx) => {
       const amount = parseAmount(ctx.value());
       return amount !== null && (Number.isNaN(amount) || amount <= 0)
@@ -192,7 +192,7 @@ export class CreateOpportunityDrawer {
         }).pipe(
           map((created) => created || null),
           catchError((error: HttpErrorResponse) => {
-            const message = error.error?.detail ?? error.error?.title ?? "Impossible de créer l'opportunité.";
+            const message = error.error?.detail ?? error.error?.title ?? "Impossible de créer le projet.";
             this.submitError.set(message);
             this._snackbar.error('Erreur', message);
             return EMPTY;
@@ -201,7 +201,7 @@ export class CreateOpportunityDrawer {
         { defaultValue: null },
       );
       if (!id) return;
-      this._snackbar.success('Opportunité créée', `« ${value.title.trim()} » est ajoutée au lead.`);
+      this._snackbar.success('Projet créé', `« ${value.title.trim()} » est ajouté au lead.`);
       this._dialogRef.close(id);
     });
   }

@@ -21,7 +21,7 @@ describe('opportunity view model', () => {
     const tomorrow = '2026-10-21T12:00:00Z';
     expect(daysUntil(tomorrow, today)).toBe(1);
     expect(closeDateLabel(tomorrow, today)).toMatch(/^Demain, 21 oct\.? 2026$/);
-    expect(closeDateWarning(opp({ expectedCloseDate: tomorrow }), today)).toBe('Trop tôt pour une opportunité en prospection.');
+    expect(closeDateWarning(opp({ expectedCloseDate: tomorrow }), today)).toBe('Trop tôt pour un projet en prospection.');
     expect(closeDateWarning(opp({ stage: 'Negotiation', expectedCloseDate: tomorrow }), today)).toBeNull();
     expect(closeDateWarning(opp({ expectedCloseDate: '2026-10-01T12:00:00Z' }), today)).toContain('dépassée');
     expect(closeDateWarning(opp({ stage: 'ClosedWon', expectedCloseDate: '2026-10-01T12:00:00Z' }), today)).toBeNull();

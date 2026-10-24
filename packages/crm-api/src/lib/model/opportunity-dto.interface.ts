@@ -10,6 +10,7 @@
  * Do not edit the class manually.
  */
 import { Money } from './money.interface';
+import { ProjectStepDto } from './project-step-dto.interface';
 
 
 export interface OpportunityDto { 
@@ -35,6 +36,11 @@ export interface OpportunityDto {
     nextStep?: string | null;
     nextStepDueOn?: string | null;
     separateNeedConfirmedAt?: string | null;
+    stepId?: string | null;
+    templateId?: string | null;
+    templateName?: string | null;
+    currentStepId?: string | null;
+    steps?: Array<ProjectStepDto> | null;
 }
 export enum OpportunityDtoStageEnum {
     Prospecting = 'Prospecting',

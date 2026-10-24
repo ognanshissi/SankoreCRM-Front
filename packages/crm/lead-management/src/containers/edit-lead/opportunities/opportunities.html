@@ -5,16 +5,16 @@
   <tas-card class="block">
     <div class="p-5 flex items-center gap-6 flex-wrap">
       <div class="flex-1 min-w-48">
-        <h2 class="text-xl font-bold text-slate-900">Opportunités</h2>
+        <h2 class="text-xl font-bold text-slate-900">Projets</h2>
         <p class="text-sm text-slate-500 mt-0.5">
           @if (openOpportunities().length === 0) {
-            Aucune opportunité ouverte
+            Aucun projet ouvert
           } @else {
-            {{ openOpportunities().length }} opportunité{{ openOpportunities().length > 1 ? 's' : '' }} ouverte{{ openOpportunities().length > 1 ? 's' : '' }}
+            {{ openOpportunities().length }} projet{{ openOpportunities().length > 1 ? 's' : '' }} ouvert{{ openOpportunities().length > 1 ? 's' : '' }}
           }
           @if (closedOpportunities().length > 0) {
             · <button type="button" class="text-primary hover:underline" (click)="showClosed.set(!showClosed())">
-              {{ showClosed() ? 'masquer' : 'voir' }} les {{ closedOpportunities().length }} close{{ closedOpportunities().length > 1 ? 's' : '' }}
+              {{ showClosed() ? 'masquer' : 'voir' }} les {{ closedOpportunities().length }} clos
             </button>
           }
         </p>
@@ -32,21 +32,21 @@
       @if (canManage()) {
         <button tas-outlined-button color="primary" type="button" class="rounded-full bg-white" (click)="openCreateDrawer()">
           <tas-icon iconName="feather:plus" style="font-size:14px"></tas-icon>
-          &nbsp;Nouvelle opportunité
+          &nbsp;Nouveau projet
         </button>
       }
     </div>
   </tas-card>
 
-  <!-- Deux demandes différentes ? -->
+  <!-- Deux besoins différents ? -->
   @if (mismatch(); as m) {
     @if (lead(); as l) {
       <div class="rounded-2xl border border-orange-200 bg-orange-50/60 p-4 flex items-center gap-4 flex-wrap" role="status">
         <tas-icon iconName="feather:alert-circle" class="text-red-600 shrink-0" style="font-size:16px"></tas-icon>
         <p class="flex-1 min-w-64 text-sm text-slate-700">
-          <span class="font-semibold text-slate-900">Deux demandes différentes ?</span>
+          <span class="font-semibold text-slate-900">Deux besoins différents ?</span>
           Le lead porte sur {{ leadProductLabel() }} de {{ formatAmount(l.desiredAmount?.amount, l.desiredAmount?.currency) }} ;
-          cette opportunité porte sur {{ formatAmount(m.estimatedAmount?.amount, m.estimatedAmount?.currency) }} pour « {{ m.title }} ».
+          ce projet porte sur {{ formatAmount(m.estimatedAmount?.amount, m.estimatedAmount?.currency) }} pour « {{ m.title }} ».
         </p>
         <div class="flex items-center gap-2 flex-wrap">
           @if (canAlignLead()) {
@@ -75,7 +75,7 @@
   } @else if (loadFailed()) {
     <tas-card class="block">
       <div class="p-10 text-center" role="alert">
-        <p class="text-sm font-medium text-slate-700">Opportunités indisponibles</p>
+        <p class="text-sm font-medium text-slate-700">Projets indisponibles</p>
         <p class="text-sm text-slate-500 mt-1">La liste n'a pas pu être chargée.</p>
         <button tas-outlined-button color="primary" type="button" class="mt-4" (click)="retry()">Réessayer</button>
       </div>
@@ -84,9 +84,9 @@
     <tas-card class="block">
       <div class="py-14 flex flex-col items-center text-center">
         <tas-icon iconName="feather:briefcase" class="text-slate-300 mb-2" style="font-size:32px"></tas-icon>
-        <p class="text-sm font-medium text-slate-600">Aucune opportunité ouverte</p>
+        <p class="text-sm font-medium text-slate-600">Aucun projet ouvert</p>
         <p class="text-sm text-slate-400 mt-1 max-w-sm">
-          Une opportunité suit ce que le prospect pourrait signer : son montant, son avancement et la prochaine action.
+          Un projet suit un besoin du prospect jusqu'à la signature : son produit, son montant, son avancement et la prochaine action.
         </p>
       </div>
     </tas-card>
@@ -96,7 +96,7 @@
         <tr>
           <td class="p-0">
             <div class="border-b border-slate-100 last:border-b-0" [class.opacity-75]="isClosed(opp)">
-              <!-- Titre, demande, montant -->
+              <!-- Titre, besoin, montant -->
               <div class="p-5 flex items-start gap-4 flex-wrap">
                 <span class="w-11 h-11 shrink-0 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
                   <tas-icon iconName="feather:tool" style="font-size:18px"></tas-icon>
@@ -106,11 +106,11 @@
                     <p class="text-base font-bold text-slate-900">{{ opp.title }}</p>
                     <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold"
                           [class]="opp.stage === 'ClosedWon' ? 'bg-green-100 text-green-800' : opp.stage === 'ClosedLost' ? 'bg-red-100 text-red-700' : 'bg-indigo-50 text-indigo-700'">
-                      {{ stageLabel(opp.stage) }}
+                      {{ stepLabel(opp) }}
                     </span>
                   </div>
                   @if (opp.description) {
-                    <p class="text-sm text-slate-600 mt-1">Demande du prospect : « {{ opp.description }} »</p>
+                    <p class="text-sm text-slate-600 mt-1">Besoin exprimé : « {{ opp.description }} »</p>
                   }
                   <p class="text-xs text-slate-500 mt-1">
                     Produit :
@@ -119,8 +119,8 @@
                     } @else {
                       <span class="font-semibold text-red-700">À préciser</span>
                     }
-                    @if (ownerName(opp); as owner) { · suivie par {{ owner }} }
-                    · créée le {{ formatDay(opp.createdAt, true) }}
+                    @if (ownerName(opp); as owner) { · suivi par {{ owner }} }
+                    · créé le {{ formatDay(opp.createdAt, true) }}
                   </p>
                   @if (opp.closeReason) {
                     <p class="text-xs text-slate-500 mt-1">Motif : {{ opp.closeReason }}</p>
@@ -141,21 +141,49 @@
                 </div>
               </div>
 
+              @if (gate(); as g) {
+                @if (g.oppId === opp.id) {
+                  <div class="mx-5 mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900" role="alert">
+                    <tas-icon iconName="feather:lock" class="shrink-0 text-amber-600" style="font-size:16px"></tas-icon>
+                    <p class="min-w-56 flex-1">{{ g.message }}</p>
+                    @if (g.code === 'PROJECT_CLIENT_FILE_REQUIRED') {
+                      <button tas-raised-button color="primary" type="button" (click)="convertForGate()">Convertir en client</button>
+                    } @else if (g.clientId) {
+                      <a tas-outlined-button color="primary" [routerLink]="['/customers', g.clientId, 'kyc']">Voir le KYC du client</a>
+                    }
+                    <button tas-button iconButton type="button" aria-label="Fermer" (click)="gate.set(null)">
+                      <tas-icon iconName="feather:x" style="font-size:14px"></tas-icon>
+                    </button>
+                  </div>
+                }
+              }
+
               @if (!isClosed(opp)) {
                 <!-- Avancement -->
                 <div class="px-5 pb-5">
-                  <p class="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Avancement</p>
-                  <div class="mt-2 grid grid-cols-2 md:grid-cols-5 gap-2" role="radiogroup" [attr.aria-label]="'Étape de ' + opp.title">
-                    @for (stage of stages; track stage.value; let i = $index) {
+                  <p class="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                    Avancement
+                    @if (opp.templateName) {
+                      <span class="font-normal normal-case tracking-normal text-slate-400">· {{ opp.templateName }}</span>
+                    }
+                  </p>
+                  <div class="mt-2 grid grid-cols-2 md:grid-cols-[repeat(auto-fit,minmax(9rem,1fr))] gap-2" role="radiogroup" [attr.aria-label]="'Étape de ' + opp.title">
+                    @for (step of stepsOf(opp); track step.id; let i = $index) {
                       <button type="button" role="radio"
                               class="rounded-xl border p-3 text-left transition-colors disabled:cursor-default"
-                              [class]="opp.stage === stage.value ? 'border-2 border-primary bg-primary/5' : 'border-slate-200 bg-white hover:border-primary/40'"
-                              [attr.aria-checked]="opp.stage === stage.value"
+                              [class]="isCurrentStep(opp, step) ? 'border-2 border-primary bg-primary/5' : 'border-slate-200 bg-white hover:border-primary/40'"
+                              [attr.aria-checked]="isCurrentStep(opp, step)"
                               [disabled]="!canManage() || busyId() === opp.id"
-                              (click)="moveTo(opp, stage)">
-                        <span class="block h-1 rounded-full" [class]="i <= stageIndex(opp) ? 'bg-primary' : 'bg-slate-100'"></span>
-                        <span class="mt-2 block text-sm font-semibold" [class]="opp.stage === stage.value ? 'text-primary' : 'text-slate-800'">{{ stage.label }}</span>
-                        <span class="block text-xs text-slate-500">{{ stage.hint }} · {{ stage.probability }} %</span>
+                              (click)="moveTo(opp, step)">
+                        <span class="block h-1 rounded-full" [class]="i <= stepIndex(opp) ? 'bg-primary' : 'bg-slate-100'"></span>
+                        <span class="mt-2 block text-sm font-semibold" [class]="isCurrentStep(opp, step) ? 'text-primary' : 'text-slate-800'">{{ step.label }}</span>
+                        <span class="block text-xs text-slate-500">{{ phaseLabel(step.phase) }} · {{ step.probability }} %</span>
+                        @if (step.opensClientFile) {
+                          <span class="mt-1 inline-flex items-center gap-1 text-[11px] font-medium text-slate-600"><tas-icon iconName="feather:user-plus" style="font-size:11px"></tas-icon>Dossier client</span>
+                        }
+                        @if (step.isApproval) {
+                          <span class="mt-1 inline-flex items-center gap-1 text-[11px] font-medium text-slate-600"><tas-icon iconName="feather:shield" style="font-size:11px"></tas-icon>Approbation</span>
+                        }
                       </button>
                     }
                   </div>
@@ -234,9 +262,9 @@
                       }
                     } @else {
                       <p class="mt-1 font-semibold text-red-700">Non définie</p>
-                      @if (canManage() && stageMetaOf(opp); as meta) {
+                      @if (canManage() && stepSuggestion(opp); as suggestion) {
                         <div class="mt-2 flex items-center gap-1.5 flex-wrap">
-                          <button type="button" class="px-2.5 py-1 rounded-full bg-primary/10 text-xs font-semibold text-primary hover:bg-primary/15" [disabled]="busyId() === opp.id" (click)="useSuggestion(opp, meta.suggestion)">{{ meta.suggestion }}</button>
+                          <button type="button" class="px-2.5 py-1 rounded-full bg-primary/10 text-xs font-semibold text-primary hover:bg-primary/15" [disabled]="busyId() === opp.id" (click)="useSuggestion(opp, suggestion)">{{ suggestion }}</button>
                           <button type="button" class="px-2.5 py-1 rounded-full text-xs font-semibold text-slate-600 hover:bg-slate-100" (click)="editNextStep(opp)">Autre</button>
                         </div>
                       }
@@ -249,27 +277,27 @@
                   @if (isEditing(opp, 'lose')) {
                     <form [formRoot]="loseForm" class="flex-1 flex items-end gap-2 flex-wrap">
                       <tas-form-field class="flex-1 min-w-64">
-                        <tas-label>Pourquoi est-elle perdue ?</tas-label>
+                        <tas-label>Pourquoi est-il perdu ?</tas-label>
                         <input tasInput type="text" placeholder="Ex. Financement obtenu ailleurs" [formField]="loseForm.reason" />
                         @if (loseForm.reason().touched() && loseForm.reason().invalid()) {
                           <tas-error>{{ loseForm.reason().errors()[0].message }}</tas-error>
                         }
                       </tas-form-field>
-                      <button tas-raised-button color="warn" type="button" [disabled]="loseForm().invalid() || loseForm().submitting()" [isLoading]="loseForm().submitting()" (click)="confirmLose(opp)">Marquer perdue</button>
+                      <button tas-raised-button color="warn" type="button" [disabled]="loseForm().invalid() || loseForm().submitting()" [isLoading]="loseForm().submitting()" (click)="confirmLose(opp)">Marquer perdu</button>
                       <button tas-text-button type="button" (click)="cancelEditor()">Annuler</button>
                     </form>
                   } @else {
                     <p class="flex-1 text-sm text-slate-500">Dernière mise à jour le {{ formatDay(opp.updatedAt, true) }}.</p>
                     @if (canManage()) {
-                      <button type="button" class="px-4 py-2 rounded-full border border-slate-200 bg-white text-sm font-semibold text-red-700 hover:bg-red-50" [disabled]="busyId() === opp.id" (click)="startLose(opp)">Marquer perdue</button>
-                      <button type="button" class="px-4 py-2 rounded-full bg-green-700 text-sm font-semibold text-white hover:opacity-90" [disabled]="busyId() === opp.id" (click)="markWon(opp)">Marquer gagnée</button>
+                      <button type="button" class="px-4 py-2 rounded-full border border-slate-200 bg-white text-sm font-semibold text-red-700 hover:bg-red-50" [disabled]="busyId() === opp.id" (click)="startLose(opp)">Marquer perdu</button>
+                      <button type="button" class="px-4 py-2 rounded-full bg-green-700 text-sm font-semibold text-white hover:opacity-90" [disabled]="busyId() === opp.id" (click)="markWon(opp)">Marquer gagné</button>
                     }
                   }
                 </div>
               } @else {
                 <div class="px-5 py-3 border-t border-slate-100 bg-slate-50/70">
                   <p class="text-sm text-slate-500">
-                    {{ opp.stage === 'ClosedWon' ? 'Gagnée' : 'Perdue' }} le {{ formatDay(opp.closedAt ?? opp.updatedAt, true) }}.
+                    {{ opp.stage === 'ClosedWon' ? 'Gagné' : 'Perdu' }} le {{ formatDay(opp.closedAt ?? opp.updatedAt, true) }}.
                   </p>
                 </div>
               }

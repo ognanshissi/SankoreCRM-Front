@@ -81,8 +81,18 @@
       <!-- Progression -->
       <section class="rounded-2xl border border-slate-100 bg-white p-5 shadow-xs">
         <h2 class="text-base font-semibold text-slate-900">Progression des leads</h2>
-        <p class="mb-4 text-xs text-slate-500">Où en sont aujourd’hui les leads captés sur la période, étape par étape du pipeline.</p>
+        <p class="mb-4 text-xs text-slate-500">Où en sont aujourd’hui les leads captés sur la période, du premier contact au besoin identifié.</p>
         <report-bar-list [items]="progression()" [color]="colors.captured" name="Leads"></report-bar-list>
+      </section>
+
+      <!-- Projets -->
+      <section class="rounded-2xl border border-slate-100 bg-white p-5 shadow-xs">
+        <h2 class="text-base font-semibold text-slate-900">Projets par phase</h2>
+        <p class="mb-4 text-xs text-slate-500">
+          Les projets ouverts sur la période, selon leur phase aujourd’hui, avec leur montant estimé.
+          Le détail par étape de chaque parcours est sur le tableau des projets.
+        </p>
+        <report-bar-list [items]="projects()" [color]="colors.converted" name="Projets"></report-bar-list>
       </section>
 
       <div class="grid grid-cols-1 gap-5 xl:grid-cols-2">

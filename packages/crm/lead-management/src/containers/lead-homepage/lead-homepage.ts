@@ -122,14 +122,10 @@ const PIPELINE_COLUMNS: PipelineColumn[] = [
   { stage: UpdatePipelineStageRequestStageEnum.ContactAttempted,     label: 'Contact tenté',      color: '#818cf8', index: 1 },
   { stage: UpdatePipelineStageRequestStageEnum.ContactEstablished,   label: 'Contact établi',     color: '#f59e0b', index: 2 },
   { stage: UpdatePipelineStageRequestStageEnum.NeedIdentified,       label: 'Besoin identifié',   color: '#f97316', index: 3 },
-  { stage: UpdatePipelineStageRequestStageEnum.Qualified,            label: 'Qualifié',           color: '#8b5cf6', index: 4 },
-  { stage: UpdatePipelineStageRequestStageEnum.ProductProposed,      label: 'Produit proposé',    color: '#3b82f6', index: 5 },
-  { stage: UpdatePipelineStageRequestStageEnum.ApplicationStarted,   label: 'Dossier démarré',    color: '#0ea5e9', index: 6 },
-  { stage: UpdatePipelineStageRequestStageEnum.DocumentCollection,   label: 'Collecte docs',      color: '#06b6d4', index: 7 },
-  { stage: UpdatePipelineStageRequestStageEnum.ApplicationCompleted, label: 'Dossier complet',    color: '#14b8a6', index: 8 },
-  { stage: UpdatePipelineStageRequestStageEnum.ApprovalPending,      label: 'En approbation',     color: '#84cc16', index: 9 },
-  { stage: UpdatePipelineStageRequestStageEnum.Converted,            label: 'Converti',           color: '#22c55e', index: 10 },
-  { stage: UpdatePipelineStageRequestStageEnum.Lost,                 label: 'Perdu',              color: '#ef4444', index: 11 },
+  // La suite — qualification, proposition, dossier, pièces, approbation — est l'affaire du projet
+  // (tableau Projets) ; le serveur refuse d'y déplacer un lead. La conversion se fait depuis la fiche.
+  { stage: UpdatePipelineStageRequestStageEnum.Converted,            label: 'Converti',           color: '#22c55e', index: 4 },
+  { stage: UpdatePipelineStageRequestStageEnum.Lost,                 label: 'Perdu',              color: '#ef4444', index: 5 },
 ];
 
 const STAGE_INDEX = new Map(PIPELINE_COLUMNS.map((c) => [c.stage, c.index]));
@@ -157,7 +153,10 @@ function transitionBlockedMessage(from: string, to: string): string {
 // ——— Phases du pipeline (colonnes de la vue Pipeline) ———
 
 /**
- * Les douze étapes du pipeline regroupées en six phases, celles que l'agence pilote. Chaque colonne
+ * Les étapes de contact du lead regroupées en cinq phases, celles que l'agence pilote. Depuis les
+ * projets (lot 4), un lead s'arrête au besoin identifié : ce qui suivait — enrichissement, dossier,
+ * KYC — se suit sur ses projets. Les anciennes étapes restent rangées sous « Besoin identifié »
+ * pour un lead que la migration n'aurait pas encore déplacé. Chaque colonne
  * dit sa condition de sortie : c'est elle qui fait avancer un lead, pas le glisser-déposer.
  *
  * `dropStage` est l'étape posée quand on dépose une carte dans la colonne — la première de la
@@ -165,7 +164,7 @@ function transitionBlockedMessage(from: string, to: string): string {
  * pas par un changement d'étape (voir `onDrop`).
  */
 export interface PipelinePhase {
-  key: 'new' | 'dispatched' | 'qualified' | 'enrichment' | 'kyc' | 'converted';
+  key: 'new' | 'dispatched' | 'contacted' | 'need' | 'converted';
   label: string;
   exit: string;
   stages: string[];
@@ -177,9 +176,10 @@ const S = UpdatePipelineStageRequestStageEnum;
 const PIPELINE_PHASES: PipelinePhase[] = [
   { key: 'new',        label: 'Nouveau',        exit: 'doublon écarté',              stages: [S.New],                                                   dropStage: S.New },
   { key: 'dispatched', label: 'Dispatché',      exit: 'premier contact',             stages: [S.ContactAttempted],                                      dropStage: S.ContactAttempted },
-  { key: 'qualified',  label: 'Qualifié (SQL)', exit: 'besoin et produit validés',   stages: [S.ContactEstablished, S.NeedIdentified],                  dropStage: S.ContactEstablished },
-  { key: 'enrichment', label: 'Enrichissement', exit: 'bénéficiaires et PPE saisis', stages: [S.Qualified, S.ProductProposed, S.ApplicationStarted],    dropStage: S.Qualified },
-  { key: 'kyc',        label: 'KYC',            exit: 'dossier KYC validé',          stages: [S.DocumentCollection, S.ApplicationCompleted, S.ApprovalPending], dropStage: S.DocumentCollection },
+  { key: 'contacted',  label: 'En contact',       exit: 'besoin identifié',          stages: [S.ContactEstablished],                                    dropStage: S.ContactEstablished },
+  { key: 'need',       label: 'Besoin identifié', exit: 'projet ouvert, client créé',
+    stages: [S.NeedIdentified, S.Qualified, S.ProductProposed, S.ApplicationStarted, S.DocumentCollection, S.ApplicationCompleted, S.ApprovalPending],
+    dropStage: S.NeedIdentified },
   { key: 'converted',  label: 'Converti',       exit: 'client créé',                 stages: [S.Converted],                                             dropStage: S.Converted },
 ];
 

@@ -3,7 +3,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { form, FormField, FormRoot, maxLength, minLength, required, submit } from '@angular/forms/signals';
 import { catchError, EMPTY, firstValueFrom, map, Observable } from 'rxjs';
-import { Button } from '@talisoft/ui/button';
+import { Anchor, Button } from '@talisoft/ui/button';
 import { TasCard } from '@talisoft/ui/card';
 import { ConfirmDialogService } from '@talisoft/ui/confirm-dialog';
 import { TasError, TasFormField, TasLabel } from '@talisoft/ui/form-field';
@@ -19,9 +19,12 @@ import {
   LeadsApiService,
   OpportunitiesApiService,
   OpportunityDto,
+  ProjectStepDto,
   UpdateOpportunityRequest,
 } from '@sankore/crm-api';
-import { EntityFormReferences, PermissionsService } from '@sankore/crm/common';
+import { EntityFormReferences, PermissionsService, ProjectGateCode, projectGateCode, projectGateMessage } from '@sankore/crm/common';
+import { RouterLink } from '@angular/router';
+import { ConvertLeadWizard } from '../convert-lead-wizard';
 import { interestedProductLabel } from '../../../components/interested-product';
 import { ConvertedLeadNotice } from '../converted-lead-notice';
 import { LeadEditContext } from '../lead-edit-context';
@@ -30,15 +33,17 @@ import { CreateOpportunityDrawer, CreateOpportunityDrawerData } from './create-o
 import {
   closeDateLabel,
   closeDateWarning,
+  currentStep,
   differsFromLead,
+  hasTemplateSteps,
   isClosed,
   monthsFromNow,
-  OPEN_STAGES,
   probabilityPercent,
-  StageMeta,
+  projectSteps,
   stageLabel,
   stageMeta,
-  toStageRequest,
+  stepLabel,
+  stepSuggestion,
   weightedAmount,
 } from './opportunity.model';
 
@@ -101,6 +106,8 @@ type Editor = { id: string; kind: 'nextStep' | 'closeDate' | 'lose' };
     TasTable,
     Button,
     ConvertedLeadNotice,
+    RouterLink,
+    Anchor,
   ],
 })
 export class LeadOpportunitiesPage {
@@ -120,7 +127,13 @@ export class LeadOpportunitiesPage {
   public readonly canAlignLead = computed(() => this._canUpdateLead() && !this._context.isReadOnly());
 
   public readonly lead = this._context.lead;
-  public readonly stages = OPEN_STAGES;
+
+  /**
+   * Le dernier refus d'une étape marquée, affiché sur le projet concerné avec l'action qui le lève
+   * (lot 3) : convertir le prospect, ou aller voir le KYC du client.
+   */
+  public readonly gate = signal<{ oppId: string; code: ProjectGateCode; message: string; clientId: string | null } | null>(null);
+  private _target: string | null = null;
   public readonly formatAmount = formatAmount;
   public readonly formatDay = formatDay;
   public readonly stageLabel = stageLabel;
@@ -199,13 +212,24 @@ export class LeadOpportunitiesPage {
 
   // ——— Lecture ———
 
-  public stageMetaOf(opp: OpportunityDto): StageMeta | null {
-    return stageMeta(opp.stage);
+  public readonly stepsOf = projectSteps;
+  public readonly stepLabel = stepLabel;
+  public readonly stepSuggestion = stepSuggestion;
+  public readonly hasTemplateSteps = hasTemplateSteps;
+
+  /** La phase sous le nom de l'étape : ce que l'étape veut dire pour l'entonnoir. */
+  public phaseLabel(phase: string | null | undefined): string {
+    return stageMeta(phase)?.label ?? '';
   }
 
   /** L'étape courante et celles déjà franchies, pour la barre de chaque case de la frise. */
-  public stageIndex(opp: OpportunityDto): number {
-    return OPEN_STAGES.findIndex((s) => s.value === opp.stage);
+  public stepIndex(opp: OpportunityDto): number {
+    const step = currentStep(opp);
+    return step ? projectSteps(opp).findIndex((s) => s.id === step.id) : -1;
+  }
+
+  public isCurrentStep(opp: OpportunityDto, step: ProjectStepDto): boolean {
+    return currentStep(opp)?.id === step.id;
   }
 
   public ownerName(opp: OpportunityDto): string | null {
@@ -233,16 +257,34 @@ export class LeadOpportunitiesPage {
 
   // ——— Étapes ———
 
-  public moveTo(opp: OpportunityDto, stage: StageMeta): void {
-    if (!this.canManage() || opp.stage === stage.value || this.busyId()) return;
+  public moveTo(opp: OpportunityDto, step: ProjectStepDto): void {
+    if (!this.canManage() || this.isCurrentStep(opp, step) || this.busyId() || !hasTemplateSteps(opp)) return;
+    this._target = step.label ?? null;
     this._run(
       opp,
-      this._opportunitiesApi.advanceOpportunityStage(opp.id!, {
-        stage: toStageRequest(stage.value),
+      this._opportunitiesApi.moveOpportunityToStep(opp.id!, {
+        stepId: step.id!,
         expectedUpdatedAt: opp.updatedAt ?? null,
       }),
-      `Étape : ${stage.label} · probabilité ${stage.probability} %`,
+      `Étape : ${step.label} · probabilité ${step.probability} %`,
     );
+  }
+
+  /**
+   * L'assistant de conversion que la fiche lead ouvre déjà : il gère ce qu'une conversion peut
+   * demander à l'agent (dossier incomplet, doublon, pièce d'identité connue). Le projet ne bouge
+   * pas tout seul ensuite — l'agent rejoue l'étape, qui passe désormais.
+   */
+  public convertForGate(): void {
+    const lead = this.lead();
+    if (!lead) return;
+    const ref = this._sideDrawer.open(ConvertLeadWizard, { panelClass: 'side-drawer-panel', data: { lead } });
+    ref.closed.subscribe((result: unknown) => {
+      if (!result) return;
+      this.gate.set(null);
+      this._context.reload();
+      this._snackbar.success('Prospect converti', 'Vous pouvez maintenant faire avancer le projet.');
+    });
   }
 
   // ——— Clôture prévue ———
@@ -322,20 +364,21 @@ export class LeadOpportunitiesPage {
 
   public markWon(opp: OpportunityDto): void {
     this._confirm.confirm({
-      title: 'Marquer cette opportunité gagnée ?',
-      message: `« ${opp.title} » sera close comme gagnée. Elle ne pourra plus changer d'étape.`,
+      title: 'Marquer ce projet gagné ?',
+      message: `« ${opp.title} » sera clos comme gagné. Il ne pourra plus changer d'étape.`,
       closable: true,
       showCancelButton: true,
-      acceptButtonProps: { label: 'Marquer gagnée', theme: 'primary' },
+      acceptButtonProps: { label: 'Marquer gagné', theme: 'primary' },
       rejectButtonProps: { label: 'Annuler' },
       accept: () => {
+        this._target = null;
         this._run(
           opp,
           this._opportunitiesApi.closeOpportunity(opp.id!, {
             outcome: CloseOpportunityRequestOutcomeEnum.ClosedWon,
             expectedUpdatedAt: opp.updatedAt ?? null,
           }),
-          'Opportunité gagnée',
+          'Projet gagné',
         );
       },
     });
@@ -355,7 +398,7 @@ export class LeadOpportunitiesPage {
           reason: field().value().reason.trim(),
           expectedUpdatedAt: opp.updatedAt ?? null,
         }),
-        'Opportunité perdue',
+        'Projet perdu',
       );
     });
   }
@@ -397,7 +440,17 @@ export class LeadOpportunitiesPage {
       call.pipe(
         map(() => true),
         catchError((error: HttpErrorResponse) => {
-          this._snackbar.error('Erreur', this._errorMessage(error, "Impossible d'enregistrer la modification."));
+          const code = projectGateCode(error);
+          if (code) {
+            this.gate.set({
+              oppId: opp.id!,
+              code,
+              message: projectGateMessage(code, this._target),
+              clientId: opp.customerEntityId ?? this._context.customerId() ?? null,
+            });
+          } else {
+            this._snackbar.error('Erreur', this._errorMessage(error, "Impossible d'enregistrer la modification."));
+          }
           return EMPTY;
         }),
       ),
@@ -405,6 +458,7 @@ export class LeadOpportunitiesPage {
     );
     this.busyId.set(null);
     if (!done) return;
+    this.gate.set(null);
     this.editor.set(null);
     this._snackbar.success(success, '');
     this._load(this.lead()!.id!);
@@ -425,8 +479,8 @@ export class LeadOpportunitiesPage {
   }
 
   private _errorMessage(error: HttpErrorResponse, fallback: string): string {
-    if (error.status === 409) return 'Modifiée entre-temps par quelqu’un d’autre. Rechargez avant de réessayer.';
-    if (error.status === 403) return "Vous n'avez pas le droit de modifier cette opportunité.";
+    if (error.status === 409) return 'Modifié entre-temps par quelqu’un d’autre. Rechargez avant de réessayer.';
+    if (error.status === 403) return "Vous n'avez pas le droit de modifier ce projet.";
     const validation = error.error?.errors as Record<string, string[]> | undefined;
     return (validation && Object.values(validation).flat()[0]) || error.error?.detail || error.error?.title || fallback;
   }

@@ -488,7 +488,7 @@ export class CreateLeadComponent {
     if (!customerId) {
       this._snackbarService.error(
         'Fiche client introuvable',
-        "Ce lead n'est relié à aucune fiche client : créez la demande depuis la fiche, ou "
+        "Ce lead n'est relié à aucune fiche client : créez le projet depuis la fiche, ou "
           + 'indiquez qu\'il ne s\'agit pas de la même personne.',
       );
       return;
@@ -542,11 +542,11 @@ export class CreateLeadComponent {
       this._opportunitiesApiService
         .createOpportunityForCustomer({
           customerEntityId: customer.customerId,
-          title: `Demande — ${product}`,
+          title: `Projet — ${product}`,
           product,
           description: text(values, 'comment'),
-          // Le conseiller de la fiche, comme le fait l'onglet « Demandes » : sans titulaire, la
-          // demande arrive sans agent assigné, qui est l'une des colonnes de cette liste.
+          // Le conseiller de la fiche, comme le fait l'onglet « Projets » : sans titulaire, le
+          // projet arrive sans agent assigné, qui est l'une des colonnes de cette liste.
           ownerId: customer.advisorUserId,
           estimatedAmount: amount?.amount ?? null,
           estimatedCurrency: amount?.currency ?? null,
@@ -572,15 +572,15 @@ export class CreateLeadComponent {
     }
 
     this._snackbarService.success(
-      'Demande créée',
-      'La demande est rattachée au client et apparaît dans sa fiche.',
+      'Projet créé',
+      'Le projet est rattaché au client et apparaît dans sa fiche.',
     );
 
     this._demandDuplicateAcknowledged.set(false);
 
     // Fermé sans identifiant : aucun lead n'a été créé, la liste des leads n'a rien à recharger.
     this._dialogRef.close(null);
-    this._router.navigate(['/customers', customer.customerId, 'demandes']);
+    this._router.navigate(['/customers', customer.customerId, 'projets']);
   }
 
   /** La capture d'un prospect neuf — le chemin d'origine, inchangé dans son principe. */

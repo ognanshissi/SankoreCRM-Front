@@ -69,7 +69,7 @@ const SOURCE_OPTIONS = [
               placeholder="Sélectionnez" [ngModel]="source()" (ngModelChange)="source.set($event)"></tas-select>
           </tas-form-field>
           <tas-form-field>
-            <tas-label>Produit d'intérêt</tas-label>
+            <tas-label>Produit souhaité</tas-label>
             <input tasInput type="text" placeholder="Ex : Loan" [ngModel]="product()" (ngModelChange)="product.set($event)" />
           </tas-form-field>
         </div>

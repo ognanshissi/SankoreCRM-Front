@@ -90,7 +90,7 @@ function templateToSchema(t: QualificationTemplateDto): DynamicFormSchema {
             <tas-icon iconName="feather:package" class="text-slate-400" style="font-size:24px"></tas-icon>
           </div>
           <p class="text-sm text-slate-500">Ce lead n'a pas de produit associé.</p>
-          <p class="text-xs text-slate-400 mt-1">Renseignez un produit d'intérêt pour accéder à la qualification.</p>
+          <p class="text-xs text-slate-400 mt-1">Renseignez un produit souhaité pour accéder à la qualification.</p>
         </div>
       }
       @case ('no-template') {

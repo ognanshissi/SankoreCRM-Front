@@ -319,10 +319,12 @@ const paneRoutes: Routes = [
       import('./containers/dispatch-rules/dispatch-rule-editor/dispatch-rule-editor'),
   },
   {
-    path: 'pipeline-stages',
+    path: 'project-steps',
     canActivate: [hasPermissionGuard('lead:pipeline-stage:read')],
-    loadComponent: () => import('./containers/pipeline-stages/pipeline-stages'),
+    loadComponent: () => import('./containers/project-steps/project-steps'),
   },
+  // L'ancien écran « Étapes du pipeline », qui n'écrivait que dans le navigateur.
+  { path: 'pipeline-stages', redirectTo: 'project-steps', pathMatch: 'full' as const },
   {
     path: 'notifications',
     canActivate: [hasPermissionGuard('notification:settings:read', 'notification:outbox:read', 'notification:delivery-log:read')],

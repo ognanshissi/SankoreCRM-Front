@@ -1,0 +1,105 @@
+<div class="flex flex-col gap-4 pb-6">
+  <!-- Filtres -->
+  <div class="grid grid-cols-1 gap-3 rounded-xl border border-slate-200 bg-white p-4 md:grid-cols-4">
+    <tas-form-field class="md:col-span-2">
+      <tas-label>Rechercher</tas-label>
+      <input tasInput type="text" placeholder="Titre ou produit du projet" [ngModel]="search()" (ngModelChange)="onSearch($event)" />
+    </tas-form-field>
+    <tas-form-field>
+      <tas-label>Parcours</tas-label>
+      <tas-select [options]="trackOptions()" [ngModel]="track()" (ngModelChange)="onTrack($event)"></tas-select>
+    </tas-form-field>
+    <div class="flex items-end justify-between gap-3">
+      <div>
+        <p class="text-xs text-slate-500">Montant ouvert</p>
+        <p class="text-base font-bold text-slate-900 tabular-nums">{{ formatAmount(totalAmount(), 'XOF') }}</p>
+      </div>
+      <button tas-button iconButton type="button" title="Actualiser" (click)="load()">
+        <tas-icon iconName="feather:refresh-cw" style="font-size:16px"></tas-icon>
+      </button>
+    </div>
+  </div>
+
+  @if (!isByTemplate()) {
+    <p class="text-xs text-slate-500">
+      Tous parcours confondus, les colonnes sont les cinq phases. Choisissez un parcours pour voir ses étapes et y déplacer les projets.
+    </p>
+  }
+
+  @if (loadError()) {
+    <div role="alert" class="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3">
+      <p class="text-sm text-red-800">{{ loadError() }}</p>
+      <button tas-outlined-button color="primary" type="button" (click)="load()">Réessayer</button>
+    </div>
+  } @else if (isLoading() && projects().length === 0) {
+    <div class="flex justify-center py-16"><tas-spinner size="8" class="text-primary"></tas-spinner></div>
+  } @else {
+    <div class="flex items-start gap-4 overflow-x-auto pb-4" cdkDropListGroup>
+      @for (col of columns(); track col.id) {
+        <div class="flex w-[248px] flex-shrink-0 flex-col rounded-xl border border-slate-200/70 bg-white/50 p-3">
+          <div class="flex items-center gap-2">
+            <span class="truncate text-sm font-semibold text-slate-800">{{ col.label }}</span>
+            <span class="ml-auto rounded-full bg-slate-200/70 px-2.5 py-0.5 text-xs font-semibold text-slate-700 tabular-nums">{{ col.projects.length }}</span>
+          </div>
+          <p class="mt-1 border-b border-slate-200 pb-2 text-xs text-slate-500">
+            {{ col.hint }}@if (col.amount) { · <span class="tabular-nums">{{ formatAmount(col.amount, 'XOF') }}</span> }
+          </p>
+
+          <div
+            cdkDropList
+            [cdkDropListData]="col"
+            [cdkDropListConnectedTo]="columnIds()"
+            [cdkDropListDisabled]="!canDrag()"
+            [id]="'col-' + col.id"
+            (cdkDropListDropped)="onDrop($any($event))"
+            class="flex min-h-[80px] flex-col gap-3 pt-3"
+          >
+            @for (p of col.projects; track p.id) {
+              <div
+                cdkDrag
+                [cdkDragData]="p"
+                class="rounded-lg border border-slate-200 bg-white p-3 shadow-sm transition-shadow hover:shadow"
+                [class.cursor-grab]="canDrag()"
+                [class.opacity-60]="movingId() === p.id"
+              >
+                <div class="flex items-start gap-2">
+                  <p class="min-w-0 flex-1 text-sm font-semibold text-slate-800">{{ p.title }}</p>
+                  @if (ownerLink(p); as link) {
+                    <a
+                      [routerLink]="link"
+                      class="inline-flex size-6 shrink-0 items-center justify-center rounded text-slate-300 hover:bg-slate-100 hover:text-primary"
+                      title="Ouvrir le projet"
+                      aria-label="Ouvrir le projet"
+                      (mousedown)="$event.stopPropagation()"
+                    >
+                      <tas-icon iconName="feather:external-link" style="font-size:12px"></tas-icon>
+                    </a>
+                  }
+                </div>
+                @if (p.product) {
+                  <span class="mt-2 inline-flex rounded-md bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700">{{ p.product }}</span>
+                } @else {
+                  <span class="mt-2 inline-flex rounded-md bg-red-50 px-2 py-0.5 text-xs font-medium text-red-700">Produit à préciser</span>
+                }
+                @if (!isByTemplate()) {
+                  <p class="mt-1 truncate text-xs text-slate-500">{{ p.templateName }}</p>
+                }
+                <div class="mt-2 flex items-center justify-between gap-2 text-xs">
+                  <span class="font-semibold text-slate-800 tabular-nums">
+                    {{ p.estimatedAmount?.amount ? formatAmount(p.estimatedAmount!.amount, p.estimatedAmount!.currency) : 'Montant à préciser' }}
+                  </span>
+                  <span class="text-slate-500 tabular-nums">{{ probabilityPercent(p) }} %</span>
+                </div>
+                @if (p.nextStep) {
+                  <p class="mt-1 truncate text-xs text-slate-500" [title]="p.nextStep">→ {{ p.nextStep }}</p>
+                }
+              </div>
+            } @empty {
+              <p class="py-4 text-center text-xs text-slate-400">Aucun projet</p>
+            }
+          </div>
+        </div>
+      }
+    </div>
+  }
+</div>

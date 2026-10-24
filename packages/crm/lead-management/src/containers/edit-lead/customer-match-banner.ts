@@ -136,7 +136,7 @@ export function customerProductConflicts(
   );
   if (openRequest) {
     conflicts.push(
-      `Une demande est déjà ouverte pour ce client sur la ligne « ${code} »` +
+      `Un projet est déjà ouvert pour ce client sur la ligne « ${code} »` +
         (openRequest.title ? ` (${openRequest.title}).` : '.'),
     );
   }

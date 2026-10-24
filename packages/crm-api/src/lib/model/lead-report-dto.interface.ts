@@ -13,6 +13,7 @@ import { LeadReportAgency } from './lead-report-agency.interface';
 import { LeadReportStage } from './lead-report-stage.interface';
 import { LeadReportStatus } from './lead-report-status.interface';
 import { LeadReportKpis } from './lead-report-kpis.interface';
+import { LeadReportProjectPhase } from './lead-report-project-phase.interface';
 import { LeadReportAgent } from './lead-report-agent.interface';
 import { LeadReportPoint } from './lead-report-point.interface';
 import { LeadReportSource } from './lead-report-source.interface';
@@ -32,6 +33,7 @@ export interface LeadReportDto {
     bySource?: Array<LeadReportSource> | null;
     agents?: Array<LeadReportAgent> | null;
     agencies?: Array<LeadReportAgency> | null;
+    projects?: Array<LeadReportProjectPhase> | null;
 }
 export enum LeadReportDtoGranularityEnum {
     Day = 'Day',

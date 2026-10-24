@@ -277,7 +277,7 @@ export class ClientDetailNavigation {
     { label: 'Coordonnées', icon: 'feather:phone', route: 'coordonnees' },
     { label: 'Foyer', icon: 'feather:home', route: 'foyer' },
     { label: 'Produits détenus', icon: 'feather:package', route: 'produits' },
-    { label: 'Demandes en cours', icon: 'feather:inbox', route: 'demandes' },
+    { label: 'Projets', icon: 'feather:briefcase', route: 'projets' },
     { label: 'Relations', icon: 'feather:users', route: 'relations' },
     { label: 'Groupes', icon: 'feather:layers', route: 'groupes', module: TENANT_MODULES.BANKING_MICROFINANCE },
     { label: 'Bénéficiaires effectifs', icon: 'feather:pie-chart', route: 'beneficiaires', legalOnly: true },

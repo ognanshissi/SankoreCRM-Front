@@ -2,9 +2,9 @@
   <tas-card class="block">
     <div class="p-10 text-center">
       <tas-icon iconName="feather:lock" class="text-slate-300" style="font-size:28px"></tas-icon>
-      <p class="text-sm font-medium text-slate-700 mt-2">Demandes non accessibles</p>
+      <p class="text-sm font-medium text-slate-700 mt-2">Projets non accessibles</p>
       <p class="text-sm text-slate-500 mt-1">
-        La lecture des demandes d'un client demande le droit « Opportunités : lecture ».
+        Consulter les projets d'un client demande le droit de lecture des opportunités.
       </p>
     </div>
   </tas-card>
@@ -12,9 +12,9 @@
   <div class="flex flex-col gap-4">
     <div class="flex items-end justify-between gap-3 flex-wrap">
       <div>
-        <p class="text-sm font-medium text-slate-800">Demandes en cours</p>
+        <p class="text-sm font-medium text-slate-800">Projets</p>
         <p class="text-xs text-slate-500 mt-0.5">
-          Les demandes ouvertes pour de nouveaux produits, avec leur statut, l'agent assigné et
+          Les projets ouverts pour de nouveaux produits, avec leur étape, l'agent assigné et
           leur date.
         </p>
       </div>
@@ -28,7 +28,7 @@
             [attr.aria-pressed]="showClosed()"
             (click)="toggleClosed()"
           >
-            {{ showClosed() ? 'Masquer' : 'Afficher' }} les demandes clôturées ({{
+            {{ showClosed() ? 'Masquer' : 'Afficher' }} les projets clos ({{
               closedRows().length
             }})
           </button>
@@ -37,7 +37,7 @@
           tas-outlined-button
           color="primary"
           type="button"
-          aria-label="Rafraîchir les demandes"
+          aria-label="Rafraîchir les projets"
           (click)="reload()"
         >
           <tas-icon iconName="feather:refresh-cw" style="font-size:13px"></tas-icon>
@@ -46,7 +46,7 @@
         @if (canCreate()) {
           <button tas-raised-button color="primary" type="button" (click)="openForm()">
             <tas-icon iconName="feather:plus" style="font-size:13px"></tas-icon>
-            Nouvelle demande
+            Nouveau projet
           </button>
         }
       </div>
@@ -54,7 +54,7 @@
 
     @if (!canCreate() && clientStore.isReadOnly()) {
       <p class="text-xs text-slate-400">
-        Cette fiche est en lecture seule : aucune nouvelle demande ne peut y être rattachée.
+        Cette fiche est en lecture seule : aucun nouveau projet ne peut y être rattaché.
       </p>
     }
 
@@ -64,7 +64,7 @@
         <div class="p-4">
           <div class="flex items-start justify-between gap-3">
             <div class="min-w-0">
-              <p class="text-sm font-medium text-slate-800">Nouvelle demande</p>
+              <p class="text-sm font-medium text-slate-800">Nouveau projet</p>
               <p class="text-xs text-slate-500 mt-0.5">
                 Elle est créée rattachée à ce client : inutile de ressaisir son identité.
               </p>
@@ -73,7 +73,7 @@
               tas-button
               iconButton
               type="button"
-              aria-label="Fermer le formulaire de demande"
+              aria-label="Fermer le formulaire de projet"
               (click)="closeForm()"
             >
               <tas-icon iconName="feather:x" style="font-size:14px"></tas-icon>
@@ -95,10 +95,10 @@
               role="alert"
             >
               <p class="text-sm font-medium text-amber-900">
-                Une demande semblable existe déjà
+                Un projet semblable existe déjà
                 @if (duplicateWarning()! > 0) {
                   ({{ duplicateWarning() }}
-                  {{ duplicateWarning()! > 1 ? 'demandes' : 'demande' }})
+                  {{ duplicateWarning()! > 1 ? 'projets' : 'projet' }})
                 }
               </p>
               <p class="text-xs text-amber-800 mt-0.5">
@@ -191,7 +191,7 @@
               [isLoading]="formSchema().submitting()"
               (click)="handleSubmit()"
             >
-              Créer la demande
+              Créer le projet
             </button>
           </div>
         </div>
@@ -211,7 +211,7 @@
             style="font-size:28px"
           ></tas-icon>
           <p class="text-sm font-medium text-slate-700 mt-2">
-            Les demandes n'ont pas pu être chargées
+            Les projets n'ont pas pu être chargés
           </p>
           <p class="text-sm text-slate-500 mt-1">
             La liste est momentanément indisponible. Elle n'est pas vide pour autant.
@@ -226,9 +226,9 @@
       <tas-card class="block">
         <div class="p-10 text-center">
           <tas-icon iconName="feather:inbox" class="text-slate-300" style="font-size:28px"></tas-icon>
-          <p class="text-sm font-medium text-slate-700 mt-2">Aucune demande en cours</p>
+          <p class="text-sm font-medium text-slate-700 mt-2">Aucun projet en cours</p>
           <p class="text-sm text-slate-500 mt-1">
-            Créez une demande dès qu'un besoin de produit est exprimé : elle restera rattachée à
+            Créez un projet dès qu'un besoin de produit est exprimé : il restera rattaché à
             ce client.
           </p>
         </div>
@@ -353,7 +353,7 @@
                 </a>
               } @else if (item.isWon) {
                 <!--
-                  Gagnée sans contrat : le produit de la demande est du texte libre et ne
+                  Gagné sans contrat : le produit du projet est du texte libre et ne
                   correspond à aucune ligne active du catalogue, donc le serveur n'a rien pu
                   ouvrir. C'est ici que le rattrapage à la main se propose, plutôt que de laisser
                   l'agent deviner qu'il doit aller dans un autre onglet.
@@ -377,8 +377,8 @@
             </td>
 
             <!--
-              Les actions d'une demande OUVERTE. Une demande close n'en a aucune : la rouvrir
-              n'est pas une transition mais une décision, et une demande gagnée a pu produire un
+              Les actions d'un projet OUVERT. Un projet clos n'en a aucune : le rouvrir
+              n'est pas une transition mais une décision, et un projet gagné a pu produire un
               contrat qu'on ne défait pas d'un clic.
             -->
             <td class="hidden text-right md:table-cell">
@@ -402,7 +402,7 @@
                         [disabled]="busyOpportunityId() === item.opportunityId"
                         (click)="close(item, wonOutcome)"
                       >
-                        Gagnée
+                        Gagné
                       </button>
                       <button
                         tas-outlined-button
@@ -412,7 +412,7 @@
                         [disabled]="busyOpportunityId() === item.opportunityId"
                         (click)="close(item, lostOutcome)"
                       >
-                        Perdue
+                        Perdu
                       </button>
                       <button
                         type="button"
@@ -431,13 +431,23 @@
                       `[disabled]` sur ce composant est une liaison inerte qui compile sans rien
                       faire. `readonly` est ce qui ferme réellement la liste.
                     -->
-                    <tas-select
-                      class="w-44"
-                      [options]="openStages"
-                      [ngModel]="item.stageValue"
-                      (ngModelChange)="advanceStage(item, $event)"
-                      [readonly]="busyOpportunityId() === item.opportunityId"
-                    ></tas-select>
+                    @if (item.stepOptions.length) {
+                      <tas-select
+                        class="w-44"
+                        [options]="item.stepOptions"
+                        [ngModel]="item.stepId"
+                        (ngModelChange)="moveToStep(item, $event)"
+                        [readonly]="busyOpportunityId() === item.opportunityId"
+                      ></tas-select>
+                    } @else {
+                      <tas-select
+                        class="w-44"
+                        [options]="openStages"
+                        [ngModel]="item.stageValue"
+                        (ngModelChange)="advanceStage(item, $event)"
+                        [readonly]="busyOpportunityId() === item.opportunityId"
+                      ></tas-select>
+                    }
                     <button
                       tas-outlined-button
                       color="primary"

@@ -100,9 +100,11 @@ export const customersRoutes: Route[] = [
         loadComponent: () => import('./containers/client-detail/produits'),
       },
       {
-        path: 'demandes',
+        path: 'projets',
         loadComponent: () => import('./containers/client-detail/demandes'),
       },
+      // L'ancienne adresse de l'onglet, avant que « Demandes » ne devienne « Projets ».
+      { path: 'demandes', redirectTo: 'projets', pathMatch: 'full' as const },
       {
         path: 'relations',
         loadComponent: () => import('./containers/client-detail/relations'),
