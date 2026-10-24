@@ -1,11 +1,13 @@
-import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
-import { DIALOG_DATA, DialogRef } from '@angular/cdk/dialog';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, OnInit, signal } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { applyEach, disabled, form, FormField, FormRoot, maxLength, required, submit, validate } from '@angular/forms/signals';
-import { catchError, EMPTY, firstValueFrom, Observable } from 'rxjs';
+import { catchError, EMPTY, firstValueFrom, forkJoin, Observable, of } from 'rxjs';
 import {
   CreateProjectTemplateRequestAmountKindEnum,
   CreateProjectTemplateRequestCategoryEnum,
+  ProductDto,
+  ProductsApiService,
   ProjectStepRequest,
   ProjectStepRequestPhaseEnum,
   ProjectTemplateDto,
@@ -18,23 +20,23 @@ import { TasError, TasFormField, TasHint, TasLabel } from '@talisoft/ui/form-fie
 import { TasIcon } from '@talisoft/ui/icon';
 import { TasInput } from '@talisoft/ui/input';
 import { TasSelect } from '@talisoft/ui/select';
-import { TasDrawerAction, TasDrawerContent, TasDrawerTitle, TasSideDrawer } from '@talisoft/ui/side-drawer';
+import { TasCard } from '@talisoft/ui/card';
 import { SnackbarService } from '@talisoft/ui/snackbar';
-import { TasTitle } from '@talisoft/ui/title';
-import { PROJECT_AMOUNT_KINDS } from '@sankore/crm/common';
-import { FAMILY_AMOUNT_KIND, PHASE_OPTIONS, phaseIndex, PRESETS, projectTemplateError, StepPreset } from './project-steps.models';
+import { TasSpinner } from '@talisoft/ui/spinner';
+import { BreadcrumbService, PermissionsService, PROJECT_AMOUNT_KINDS } from '@sankore/crm/common';
+import {
+  FAMILY_AMOUNT_KIND,
+  PHASE_OPTIONS,
+  phaseIndex,
+  PRESETS,
+  projectTemplateError,
+  StepPreset,
+  templateScopeOptions,
+} from './project-steps.models';
 
-export interface ProjectTemplateDrawerData {
-  /** Null pour un nouveau gabarit de famille ou de produit. */
-  template: ProjectTemplateDto | null;
-  /** Les familles et produits du catalogue qui n'ont pas encore de gabarit. */
-  categoryOptions: { value: string; label: string }[];
-  productOptions: { value: string; label: string }[];
-  canManage: boolean;
-}
-
-/** Ce que le tiroir rend : vrai quand un gabarit a été enregistré ou supprimé. */
-export type ProjectTemplateDrawerResult = boolean;
+/** Le segment d'URL d'un nouveau gabarit, et celui du parcours par défaut (qui n'a pas d'id tant qu'il n'est pas modifié). */
+export const NEW_TEMPLATE = 'new';
+export const DEFAULT_TEMPLATE = 'default';
 
 type Scope = 'Category' | 'Product';
 
@@ -103,29 +105,42 @@ function probabilityOf(text: string): number | null {
 }
 
 /**
- * Crée ou modifie un gabarit d'étapes. Le gabarit par défaut et celui d'une famille ou d'un produit
- * se modifient de la même façon ; seule la portée d'un NOUVEAU gabarit se choisit, ensuite elle ne
+ * Paramètres › Étapes des projets › un gabarit, en page (`/settings/project-steps/new`, `/:id`,
+ * `/default`) : la portée, la nature du montant, la prévision et jusqu'à douze étapes ne tiennent
+ * pas lisiblement dans un tiroir. Le gabarit par défaut et celui d'une famille ou d'un produit se
+ * modifient de la même façon ; seule la portée d'un NOUVEAU gabarit se choisit, ensuite elle ne
  * change plus.
  */
 @Component({
-  selector: 'project-template-drawer',
+  selector: 'project-template-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  templateUrl: './project-template-drawer.html',
+  templateUrl: './project-template-page.html',
   imports: [
-    TasSideDrawer, TasDrawerTitle, TasDrawerContent, TasDrawerAction, TasTitle, Button,
+    RouterLink, TasCard, TasSpinner, Button,
     TasFormField, TasLabel, TasError, TasHint, TasInput, TasSelect, TasIcon, FormRoot, FormField,
   ],
 })
-export class ProjectTemplateDrawer {
-  private readonly _dialogRef = inject(DialogRef<ProjectTemplateDrawerResult>);
+export class ProjectTemplatePage implements OnInit {
   private readonly _api = inject(ProjectTemplatesApiService);
+  private readonly _productsApi = inject(ProductsApiService);
   private readonly _snackbar = inject(SnackbarService);
   private readonly _confirm = inject(ConfirmDialogService);
-  public readonly data: ProjectTemplateDrawerData = inject(DIALOG_DATA);
+  private readonly _route = inject(ActivatedRoute);
+  private readonly _router = inject(Router);
+  private readonly _breadcrumb = inject(BreadcrumbService);
+  private readonly _permissions = inject(PermissionsService);
 
-  public readonly template = this.data.template;
-  public readonly isNew = !this.template;
-  public readonly isDefault = this.template?.scope === 'Default';
+  public readonly canManage = this._permissions.can('lead:pipeline-stage:manage');
+  private readonly _key = this._route.snapshot.paramMap.get('templateId') ?? NEW_TEMPLATE;
+  public readonly isNew = this._key === NEW_TEMPLATE;
+
+  public readonly isLoading = signal(true);
+  public readonly loadError = signal<string | null>(null);
+  public readonly template = signal<ProjectTemplateDto | null>(null);
+  public readonly isDefault = computed(() => this.template()?.scope === 'Default');
+  /** Les familles et produits du catalogue qui n'ont pas encore de gabarit. */
+  public readonly categoryOptions = signal<{ value: string; label: string }[]>([]);
+  public readonly productOptions = signal<{ value: string; label: string }[]>([]);
   public readonly phaseOptions = PHASE_OPTIONS;
   public readonly presets = PRESETS;
   public readonly amountKindOptions = PROJECT_AMOUNT_KINDS.map((k) => ({ value: k.value, label: k.label }));
@@ -138,7 +153,7 @@ export class ProjectTemplateDrawer {
 
   public readonly isDeleting = signal(false);
 
-  public model = signal(TemplateFormModel.instantiate(this.template));
+  public model = signal(TemplateFormModel.instantiate(null));
   public formSchema = form(this.model, (schema) => {
     required(schema.name, { message: 'Le nom est obligatoire' });
     disabled(schema.criticalCloseDate, ({ valueOf }) => !valueOf(schema.tracksForecast));
@@ -148,6 +163,8 @@ export class ProjectTemplateDrawer {
       required(schema.category, { message: 'Choisissez une famille', when: ({ valueOf }) => valueOf(schema.scope) === 'Category' });
       required(schema.productCode, { message: 'Choisissez un produit', when: ({ valueOf }) => valueOf(schema.scope) === 'Product' });
     }
+    // Lecture seule sans le droit de gérer : le formulaire montre, il ne modifie pas.
+    disabled(schema, () => !this.canManage());
 
     validate(schema.steps, (ctx) => {
       const steps = ctx.value();
@@ -195,8 +212,53 @@ export class ProjectTemplateDrawer {
 
   public readonly title = computed(() => {
     if (this.isNew) return 'Nouveau gabarit';
-    return this.isDefault ? 'Parcours par défaut' : 'Modifier le gabarit';
+    return this.isDefault() ? 'Parcours par défaut' : this.template()?.name || 'Gabarit';
   });
+
+  public ngOnInit(): void {
+    this.load();
+  }
+
+  public load(): void {
+    this.isLoading.set(true);
+    this.loadError.set(null);
+    forkJoin({
+      templates: this._api.listProjectTemplates(),
+      // Sans catalogue lisible, la page reste utilisable : seuls les choix de portée manquent.
+      products: this._productsApi.listProducts().pipe(catchError(() => of([] as ProductDto[]))),
+    })
+      .pipe(
+        catchError((error: HttpErrorResponse) => {
+          this.loadError.set(projectTemplateError(error, 'Le gabarit n’a pas pu être chargé.'));
+          this.isLoading.set(false);
+          return EMPTY;
+        }),
+      )
+      .subscribe(({ templates, products }) => {
+        const all = templates ?? [];
+        const template = this.isNew
+          ? null
+          : (all.find((t) => (this._key === DEFAULT_TEMPLATE ? t.scope === 'Default' : t.id === this._key)) ?? null);
+
+        if (!this.isNew && !template) {
+          this.loadError.set("Ce gabarit n'existe plus.");
+          this.isLoading.set(false);
+          return;
+        }
+
+        const options = templateScopeOptions(all, products ?? []);
+        this.categoryOptions.set(options.categories);
+        this.productOptions.set(options.products);
+        this.template.set(template);
+        this.model.set(TemplateFormModel.instantiate(template));
+        this._breadcrumb.set([
+          { label: 'Paramétrage', link: ['/settings'] },
+          { label: 'Étapes des projets', link: ['/settings/project-steps'] },
+          { label: this.title() },
+        ]);
+        this.isLoading.set(false);
+      });
+  }
 
   // ——— Étapes ———
 
@@ -251,14 +313,15 @@ export class ProjectTemplateDrawer {
 
       // Le parcours intégré n'est pas stocké : l'enregistrer en crée la copie du tenant, avec les
       // ids d'étapes intégrés pour que les projets déjà placés dessus y restent.
-      const call: Observable<unknown> = this.template?.id
-        ? this._api.updateProjectTemplate(this.template.id, {
+      const template = this.template();
+      const call: Observable<unknown> = template?.id
+        ? this._api.updateProjectTemplate(template.id, {
             name: v.name.trim(), steps, ...forecast, amountKind: v.amountKind as UpdateProjectTemplateRequestAmountKindEnum,
           })
         : this._api.createProjectTemplate({
             name: v.name.trim(),
-            category: !this.isDefault && v.scope === 'Category' ? (v.category as CreateProjectTemplateRequestCategoryEnum) : null,
-            productCode: !this.isDefault && v.scope === 'Product' ? v.productCode : null,
+            category: !this.isDefault() && v.scope === 'Category' ? (v.category as CreateProjectTemplateRequestCategoryEnum) : null,
+            productCode: !this.isDefault() && v.scope === 'Product' ? v.productCode : null,
             steps,
             ...forecast,
             amountKind: v.amountKind as CreateProjectTemplateRequestAmountKindEnum,
@@ -276,21 +339,22 @@ export class ProjectTemplateDrawer {
 
       if (saved === 'failed') return;
       this._snackbar.success('Gabarit enregistré', `« ${v.name.trim()} » s'applique aux projets dès maintenant.`);
-      this._dialogRef.close(true);
+      this.back();
     });
   }
 
   public delete(): void {
-    const id = this.template?.id;
+    const id = this.template()?.id;
     if (!id) return;
+    const isDefault = this.isDefault();
     this._confirm.confirm({
-      title: this.isDefault ? 'Revenir au parcours standard ?' : 'Supprimer ce gabarit ?',
-      message: this.isDefault
+      title: isDefault ? 'Revenir au parcours standard ?' : 'Supprimer ce gabarit ?',
+      message: isDefault
         ? 'Les projets sans gabarit de famille ou de produit reprendront les cinq étapes standard.'
         : 'Ses projets suivront le gabarit de leur famille, sinon le parcours par défaut, sur l’étape de même phase.',
       closable: true,
       showCancelButton: true,
-      acceptButtonProps: { label: this.isDefault ? 'Revenir au standard' : 'Supprimer', theme: 'warn' },
+      acceptButtonProps: { label: isDefault ? 'Revenir au standard' : 'Supprimer', theme: 'warn' },
       rejectButtonProps: { label: 'Annuler' },
       accept: () => {
         this.isDeleting.set(true);
@@ -305,15 +369,15 @@ export class ProjectTemplateDrawer {
           )
           .subscribe(() => {
             this._snackbar.success('Gabarit supprimé', 'Les projets concernés suivent désormais le niveau suivant.');
-            this._dialogRef.close(true);
+            this.back();
           });
       },
     });
   }
 
-  public close(): void {
-    this._dialogRef.close(false);
+  public back(): void {
+    void this._router.navigate(['/settings/project-steps']);
   }
 }
 
-export default ProjectTemplateDrawer;
+export default ProjectTemplatePage;

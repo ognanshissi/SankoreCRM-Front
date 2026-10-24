@@ -323,6 +323,13 @@ const paneRoutes: Routes = [
     canActivate: [hasPermissionGuard('lead:pipeline-stage:read')],
     loadComponent: () => import('./containers/project-steps/project-steps'),
   },
+  {
+    // `new`, `default` (le parcours par défaut, sans id tant qu'il n'est pas modifié) ou l'id d'un gabarit.
+    // En lecture seule sans le droit de gérer, comme la liste.
+    path: 'project-steps/:templateId',
+    canActivate: [hasPermissionGuard('lead:pipeline-stage:read')],
+    loadComponent: () => import('./containers/project-steps/project-template-page'),
+  },
   // L'ancien écran « Étapes du pipeline », qui n'écrivait que dans le navigateur.
   { path: 'pipeline-stages', redirectTo: 'project-steps', pathMatch: 'full' as const },
   {

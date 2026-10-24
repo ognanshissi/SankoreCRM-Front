@@ -6,10 +6,10 @@ import { ProductDto, ProductsApiService, ProjectTemplateDto, ProjectTemplatesApi
 import { BreadcrumbService, PermissionsService, productCategoryLabel, projectAmountLabel } from '@sankore/crm/common';
 import { Button } from '@talisoft/ui/button';
 import { TasIcon } from '@talisoft/ui/icon';
-import { SideDrawerService } from '@talisoft/ui/side-drawer';
 import { TableConfig, TasTable } from '@talisoft/ui/table';
+import { Router } from '@angular/router';
 import { phaseLabel, projectTemplateError } from './project-steps.models';
-import { ProjectTemplateDrawer, ProjectTemplateDrawerData, ProjectTemplateDrawerResult } from './project-template-drawer';
+import { DEFAULT_TEMPLATE, NEW_TEMPLATE } from './project-template-page';
 
 interface TemplateRow {
   key: string;
@@ -122,7 +122,7 @@ export class ProjectStepsPage implements OnInit {
   private readonly _productsApi = inject(ProductsApiService);
   private readonly _permissions = inject(PermissionsService);
   private readonly _breadcrumb = inject(BreadcrumbService);
-  private readonly _sideDrawer = inject(SideDrawerService);
+  private readonly _router = inject(Router);
 
   public readonly canManage = this._permissions.can('lead:pipeline-stage:manage');
   public readonly phaseLabel = phaseLabel;
@@ -193,43 +193,12 @@ export class ProjectStepsPage implements OnInit {
   }
 
   public open(row: TemplateRow): void {
-    this._openDrawer(row.template);
+    // Le parcours par défaut n'a pas d'id tant que le tenant ne l'a pas modifié.
+    void this._router.navigate(['/settings/project-steps', row.template.id ?? DEFAULT_TEMPLATE]);
   }
 
   public openNew(): void {
-    this._openDrawer(null);
-  }
-
-  private _openDrawer(template: ProjectTemplateDto | null): void {
-    const templates = this.templates();
-    const takenCategories = new Set(templates.filter((t) => t.scope === 'Category').map((t) => t.category));
-    const takenProducts = new Set(templates.filter((t) => t.scope === 'Product').map((t) => (t.productCode ?? '').toUpperCase()));
-    const active = this.products().filter((p) => p.isActive !== false);
-
-    // Les familles proposées sont celles du catalogue du tenant : un gabarit pour une famille sans
-    // aucun produit ne s'appliquerait à rien.
-    const categories = [...new Set(active.map((p) => p.category).filter((c): c is NonNullable<typeof c> => !!c))]
-      .filter((c) => !takenCategories.has(c as never))
-      .map((c) => ({ value: c, label: productCategoryLabel(c) }))
-      .sort((a, b) => a.label.localeCompare(b.label, 'fr'));
-
-    const products = active
-      .filter((p) => p.code && !takenProducts.has(p.code.toUpperCase()))
-      .map((p) => ({ value: p.code!, label: `${p.name} (${productCategoryLabel(p.category)})` }))
-      .sort((a, b) => a.label.localeCompare(b.label, 'fr'));
-
-    const ref = this._sideDrawer.open<ProjectTemplateDrawerResult, ProjectTemplateDrawerData, ProjectTemplateDrawer>(
-      ProjectTemplateDrawer,
-      {
-        width: '100%',
-        height: '100%',
-        panelClass: 'side-drawer-panel',
-        data: { template, categoryOptions: categories, productOptions: products, canManage: this.canManage() },
-      },
-    );
-    ref.closed.subscribe((changed) => {
-      if (changed) this.load();
-    });
+    void this._router.navigate(['/settings/project-steps', NEW_TEMPLATE]);
   }
 }
 

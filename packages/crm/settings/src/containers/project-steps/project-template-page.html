@@ -1,11 +1,30 @@
-<tas-side-drawer>
-  <tas-drawer-title>
-    <TasTitle class="text-lg">{{ title() }}</TasTitle>
-  </tas-drawer-title>
+@if (isLoading()) {
+  <div class="flex justify-center py-24"><tas-spinner size="10" class="text-primary"></tas-spinner></div>
+} @else if (loadError()) {
+  <div role="alert" class="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3">
+    <p class="text-sm text-red-800">{{ loadError() }}</p>
+    <div class="flex gap-2">
+      <a [routerLink]="['/settings/project-steps']" tas-text-button>Retour aux gabarits</a>
+      <button tas-outlined-button color="primary" type="button" (click)="load()">Réessayer</button>
+    </div>
+  </div>
+} @else {
+  <div class="flex flex-col gap-5 pb-2">
+    <!-- En-tête -->
+    <div class="flex items-center gap-3">
+      <a [routerLink]="['/settings/project-steps']" tas-button iconButton aria-label="Retour aux gabarits">
+        <tas-icon iconName="feather:chevron-left"></tas-icon>
+      </a>
+      <div class="min-w-0">
+        <h1 class="truncate text-lg font-semibold text-slate-800">{{ title() }}</h1>
+        <p class="text-xs text-slate-500">Étapes des projets</p>
+      </div>
+    </div>
 
-  <tas-drawer-content>
+    <tas-card class="block">
+      <div class="p-5">
     <form [formRoot]="formSchema" class="flex flex-col gap-5">
-      @if (isDefault) {
+      @if (isDefault()) {
         <p class="rounded-lg bg-slate-50 p-3 text-sm text-slate-600">
           Les étapes d'un projet dont le produit n'a ni gabarit propre ni gabarit de famille — y compris
           un projet dont le produit est encore « à préciser ».
@@ -22,18 +41,18 @@
         @if (model().scope === 'Category') {
           <tas-form-field>
             <tas-label>Famille <span class="text-functional-error">*</span></tas-label>
-            <tas-select [options]="data.categoryOptions" placeholder="Choisir une famille" [formField]="formSchema.category"></tas-select>
+            <tas-select [options]="categoryOptions()" placeholder="Choisir une famille" [formField]="formSchema.category"></tas-select>
             @if (formSchema.category().touched() && formSchema.category().invalid()) {
               <tas-error>{{ formSchema.category().errors()[0].message }}</tas-error>
             }
-            @if (data.categoryOptions.length === 0) {
+            @if (categoryOptions().length === 0) {
               <tas-hint>Toutes les familles du catalogue ont déjà un gabarit.</tas-hint>
             }
           </tas-form-field>
         } @else {
           <tas-form-field>
             <tas-label>Produit <span class="text-functional-error">*</span></tas-label>
-            <tas-select [options]="data.productOptions" placeholder="Choisir un produit" [formField]="formSchema.productCode"></tas-select>
+            <tas-select [options]="productOptions()" placeholder="Choisir un produit" [formField]="formSchema.productCode"></tas-select>
             @if (formSchema.productCode().touched() && formSchema.productCode().invalid()) {
               <tas-error>{{ formSchema.productCode().errors()[0].message }}</tas-error>
             }
@@ -87,7 +106,7 @@
           <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">
             Étapes ({{ model().steps.length }} / {{ maxSteps }})
           </p>
-          @if (data.canManage && isNew) {
+          @if (canManage() && isNew) {
             <div class="flex flex-wrap items-center gap-1.5 text-xs">
               <span class="text-slate-500">Partir de :</span>
               @for (p of presets; track p.key) {
@@ -131,7 +150,7 @@
                   }
                 </tas-form-field>
               </div>
-              @if (data.canManage) {
+              @if (canManage()) {
                 <div class="flex shrink-0 items-center">
                   <button tas-button iconButton type="button" [disabled]="first" (click)="moveStep(i, -1)" aria-label="Monter l'étape">
                     <tas-icon iconName="feather:arrow-up" style="font-size:14px" class="text-slate-500"></tas-icon>
@@ -175,7 +194,7 @@
           <p class="text-sm text-functional-error" role="alert">{{ formSchema.steps().errors()[0].message }}</p>
         }
 
-        @if (data.canManage && model().steps.length < maxSteps) {
+        @if (canManage() && model().steps.length < maxSteps) {
           <button tas-text-button type="button" class="self-start" (click)="addStep()">
             <tas-icon iconName="feather:plus" style="font-size:14px"></tas-icon> &nbsp; Ajouter une étape
           </button>
@@ -189,26 +208,33 @@
         </p>
       }
     </form>
-  </tas-drawer-content>
+      </div>
+    </tas-card>
 
-  <tas-drawer-action>
-    @if (data.canManage && template?.id) {
-      <button tas-text-button color="warn" type="button" class="mr-auto" [disabled]="isDeleting()" (click)="delete()">
-        {{ isDefault ? 'Revenir au parcours standard' : 'Supprimer' }}
-      </button>
-    }
-    <button tas-outlined-button type="button" (click)="close()">{{ data.canManage ? 'Annuler' : 'Fermer' }}</button>
-    @if (data.canManage) {
-      <button
-        tas-raised-button
-        color="primary"
-        type="button"
-        [disabled]="formSchema().invalid() || formSchema().submitting()"
-        [isLoading]="formSchema().submitting()"
-        (click)="handleSubmit()"
-      >
-        Enregistrer
-      </button>
-    }
-  </tas-drawer-action>
-</tas-side-drawer>
+    <!-- Barre d'actions -->
+    <div class="sticky bottom-0 z-10 -mx-1 flex flex-wrap items-center justify-between gap-3 rounded-t-xl border-t border-slate-200 bg-white/95 px-4 py-3 backdrop-blur">
+      <div>
+        @if (canManage() && template()?.id) {
+          <button tas-text-button color="warn" type="button" [disabled]="isDeleting()" (click)="delete()">
+            {{ isDefault() ? 'Revenir au parcours standard' : 'Supprimer' }}
+          </button>
+        }
+      </div>
+      <div class="flex items-center gap-2">
+        <a [routerLink]="['/settings/project-steps']" tas-text-button>{{ canManage() ? 'Annuler' : 'Retour' }}</a>
+        @if (canManage()) {
+          <button
+            tas-raised-button
+            color="primary"
+            type="button"
+            [disabled]="formSchema().invalid() || formSchema().submitting()"
+            [isLoading]="formSchema().submitting()"
+            (click)="handleSubmit()"
+          >
+            {{ isNew ? 'Créer le gabarit' : 'Enregistrer' }}
+          </button>
+        }
+      </div>
+    </div>
+  </div>
+}

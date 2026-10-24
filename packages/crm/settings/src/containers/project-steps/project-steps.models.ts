@@ -1,5 +1,6 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { ProjectAmountKind } from '@sankore/crm/common';
+import { ProductDto, ProjectTemplateDto } from '@sankore/crm-api';
+import { productCategoryLabel, ProjectAmountKind } from '@sankore/crm/common';
 
 /** Les cinq phases : ce que l'entonnoir, les rapports et la clôture lisent d'une étape. */
 export const PHASE_OPTIONS: { value: string; label: string }[] = [
@@ -116,6 +117,32 @@ export const PRESETS: TemplatePreset[] = [
     ],
   },
 ];
+
+/**
+ * Les portées encore libres pour un NOUVEAU gabarit : les familles du catalogue du tenant (un
+ * gabarit pour une famille sans aucun produit ne s'appliquerait à rien) et ses produits actifs,
+ * moins ceux qui ont déjà leur gabarit.
+ */
+export function templateScopeOptions(
+  templates: ProjectTemplateDto[],
+  catalogue: ProductDto[],
+): { categories: { value: string; label: string }[]; products: { value: string; label: string }[] } {
+  const takenCategories = new Set(templates.filter((t) => t.scope === 'Category').map((t) => String(t.category)));
+  const takenProducts = new Set(templates.filter((t) => t.scope === 'Product').map((t) => (t.productCode ?? '').toUpperCase()));
+  const active = catalogue.filter((p) => p.isActive !== false);
+
+  const categories = [...new Set(active.map((p) => p.category).filter((c): c is NonNullable<typeof c> => !!c))]
+    .filter((c) => !takenCategories.has(String(c)))
+    .map((c) => ({ value: String(c), label: productCategoryLabel(c) }))
+    .sort((a, b) => a.label.localeCompare(b.label, 'fr'));
+
+  const products = active
+    .filter((p) => p.code && !takenProducts.has(p.code.toUpperCase()))
+    .map((p) => ({ value: p.code!, label: `${p.name} (${productCategoryLabel(p.category)})` }))
+    .sort((a, b) => a.label.localeCompare(b.label, 'fr'));
+
+  return { categories, products };
+}
 
 const ERRORS: Record<string, string> = {
   PROJECT_TEMPLATE_SCOPE_TAKEN: 'Un gabarit existe déjà pour cette famille ou ce produit.',
