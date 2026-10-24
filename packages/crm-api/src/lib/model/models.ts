@@ -448,6 +448,7 @@ export * from './product-factor.interface';
 export * from './product-performance-dto.interface';
 export * from './product-routing-dto.interface';
 export * from './product-routing-line-dto.interface';
+export * from './project-contact-dto.interface';
 export * from './project-step-dto.interface';
 export * from './project-step-request.interface';
 export * from './project-template-dto.interface';

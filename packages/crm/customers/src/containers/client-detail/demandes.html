@@ -262,7 +262,7 @@
                     <p class="text-sm font-medium text-slate-800 truncate">
                       {{ item.productLabel }}
                     </p>
-                    <p class="text-xs text-slate-500 truncate">{{ item.title }}</p>
+                    <a [routerLink]="['/leads/projets', item.opportunityId]" class="block text-xs text-slate-500 truncate hover:text-primary hover:underline">{{ item.title }}</a>
                   </div>
                   <tas-tag [severity]="item.stageSeverity">{{ item.stageLabel }}</tas-tag>
                 </div>
@@ -315,7 +315,7 @@
             <!-- Colonnes, à partir de 768 px -->
             <td class="hidden md:table-cell py-3">
               <span class="text-sm font-medium text-slate-800">{{ item.productLabel }}</span>
-              <span class="block text-xs text-slate-400">{{ item.title }}</span>
+              <a [routerLink]="['/leads/projets', item.opportunityId]" class="block text-xs text-slate-400 hover:text-primary hover:underline">{{ item.title }}</a>
             </td>
 
             <td class="hidden md:table-cell">

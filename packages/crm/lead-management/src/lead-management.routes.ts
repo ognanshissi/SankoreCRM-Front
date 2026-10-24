@@ -43,6 +43,13 @@ export const leadManagementRoutes = [
     loadComponent: () => import('./containers/whatsapp-metrics/whatsapp-metrics-page'),
   },
   {
+    // Le détail d'un projet. Avant `:id` : sinon « projets » serait pris pour un identifiant de lead.
+    path: 'projets/:projectId',
+    canActivate: [hasPermissionGuard('lead:opportunity:read')],
+    title: 'Projet',
+    loadComponent: () => import('./containers/project-detail/project-detail'),
+  },
+  {
     // Le tableau des projets, par parcours. Avant `:id`, comme « import ».
     path: 'projets',
     canActivate: [hasPermissionGuard('lead:opportunity:read')],

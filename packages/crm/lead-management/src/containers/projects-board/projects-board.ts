@@ -12,9 +12,11 @@ import { TasFormField, TasLabel } from '@talisoft/ui/form-field';
 import { TasIcon } from '@talisoft/ui/icon';
 import { TasInput } from '@talisoft/ui/input';
 import { TasSelect } from '@talisoft/ui/select';
+import { SideDrawerService } from '@talisoft/ui/side-drawer';
 import { SnackbarService } from '@talisoft/ui/snackbar';
 import { TasSpinner } from '@talisoft/ui/spinner';
 import { formatAmount } from '../edit-lead/lead-view.models';
+import { NewProjectDrawer } from './new-project-drawer';
 import { currentStep, isClosed, OPEN_STAGES, probabilityPercent, projectSteps } from '../edit-lead/opportunities/opportunity.model';
 
 /** Toutes les familles à la fois : les colonnes sont alors les cinq phases, communes à tous. */
@@ -33,6 +35,26 @@ function templateKey(opp: OpportunityDto): string {
   return opp.templateId ?? BUILT_IN;
 }
 
+/** Minuscules sans accents : « Koné » se trouve en tapant « kone ». */
+function fold(text: string): string {
+  return text.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+}
+
+/**
+ * Ce que la recherche lit d'un projet : son titre, son produit, et la personne — prénom, nom, nom
+ * complet, téléphone, e-mail du lead, ou nom et numéro du client. Le téléphone est aussi indexé
+ * sans espaces ni signes, pour qu'un numéro tapé d'une autre façon se retrouve.
+ */
+function searchText(p: OpportunityDto): string {
+  const c = p.contact;
+  const phoneDigits = (c?.phoneNumber ?? '').replace(/\D/g, '');
+  return fold(
+    [p.title, p.product, c?.name, c?.firstName, c?.lastName, c?.phoneNumber, phoneDigits, c?.email, c?.clientNumber]
+      .filter(Boolean)
+      .join(' '),
+  );
+}
+
 /**
  * Le tableau des projets ouverts. Par parcours, les colonnes sont ses étapes et une carte se glisse
  * d'une étape à l'autre ; tous parcours confondus, ce sont les cinq phases, en lecture — glisser y
@@ -48,6 +70,7 @@ export class ProjectsBoard implements OnInit {
   private readonly _permissions = inject(PermissionsService);
   private readonly _breadcrumb = inject(BreadcrumbService);
   private readonly _snackbar = inject(SnackbarService);
+  private readonly _sideDrawer = inject(SideDrawerService);
   private readonly _route = inject(ActivatedRoute);
   private readonly _router = inject(Router);
   private readonly _destroyRef = inject(DestroyRef);
@@ -89,12 +112,13 @@ export class ProjectsBoard implements OnInit {
   public readonly canDrag = computed(() => this.isByTemplate() && this.canManage());
 
   private readonly _visible = computed(() => {
-    const q = this._appliedSearch().trim().toLowerCase();
+    const terms = fold(this._appliedSearch().trim()).split(/\s+/).filter(Boolean);
     const track = this.track();
+    // Chaque mot doit se trouver quelque part : « awa 0708 » trouve Awa par son prénom et son numéro.
     return this._open().filter(
       (p) =>
         (track === ALL || templateKey(p) === track) &&
-        (!q || `${p.title ?? ''} ${p.product ?? ''}`.toLowerCase().includes(q)),
+        (terms.length === 0 || terms.every((t) => searchText(p).includes(t.replace(/^\+/, '')))),
     );
   });
 
@@ -153,6 +177,17 @@ export class ProjectsBoard implements OnInit {
         // Un parcours retenu dans l'adresse qui n'a plus de projet ouvert retombe sur « tous ».
         if (this.track() !== ALL && !this.trackOptions().some((o) => o.value === this.track())) this.track.set(ALL);
       });
+  }
+
+  public openNew(): void {
+    const ref = this._sideDrawer.open<string | false, void, NewProjectDrawer>(NewProjectDrawer, {
+      width: '100%',
+      height: '100%',
+      panelClass: 'side-drawer-panel',
+    });
+    ref.closed.subscribe((id) => {
+      if (id) this.load();
+    });
   }
 
   public onSearch(value: string): void {

@@ -1,0 +1,125 @@
+<tas-side-drawer>
+  <tas-drawer-title>
+    <TasTitle class="text-lg">Nouveau projet</TasTitle>
+  </tas-drawer-title>
+
+  <tas-drawer-content>
+    <form [formRoot]="formSchema" class="flex flex-col gap-5">
+      <!-- Sur qui -->
+      <div>
+        <p class="mb-2 text-sm font-medium text-slate-700">Le projet concerne <span class="text-functional-error">*</span></p>
+        <div role="group" aria-label="Le projet concerne" class="inline-flex gap-1 rounded-full bg-slate-100 p-1">
+          @for (opt of targetOptions; track opt.value) {
+            <button type="button" class="rounded-full px-4 py-1.5 text-sm font-semibold transition-colors"
+              [class]="target() === opt.value ? 'bg-white text-primary shadow-xs' : 'text-slate-600 hover:text-slate-900'"
+              [attr.aria-pressed]="target() === opt.value" (click)="setTarget(opt.value)">{{ opt.label }}</button>
+          }
+        </div>
+
+        <div class="mt-3 flex flex-col gap-3">
+          @if (model().subjectLabel) {
+            <div class="flex items-center justify-between rounded-lg border border-primary/40 bg-primary/5 p-3">
+              <p class="text-sm font-medium text-slate-700">{{ model().subjectLabel }}</p>
+              <button tas-text-button color="warn" type="button" (click)="clearSubject()">Retirer</button>
+            </div>
+          } @else {
+            <tas-form-field>
+              <tas-label>{{ target() === 'lead' ? 'Rechercher un lead' : 'Rechercher un client' }}</tas-label>
+              <input tasInput type="search" placeholder="Nom, téléphone…"
+                [ngModel]="searchTerm()" (ngModelChange)="onSearchTermChange($event)" [ngModelOptions]="{ standalone: true }" />
+              <tas-hint>
+                Tapez au moins deux caractères.
+                @if (target() === 'lead') { Un lead déjà converti a ses projets sur sa fiche client : cherchez le client. }
+              </tas-hint>
+            </tas-form-field>
+
+            @if (isSearching()) {
+              <div class="flex justify-center py-3"><tas-spinner size="6" class="text-primary"></tas-spinner></div>
+            } @else if (results().length > 0) {
+              <ul class="divide-y divide-slate-100 rounded-lg border border-slate-200">
+                @for (candidate of results(); track candidate.id) {
+                  <li>
+                    <button type="button" class="flex w-full items-center justify-between p-3 text-left hover:bg-slate-50" (click)="select(candidate)">
+                      <span class="text-sm">
+                        <span class="block font-medium text-slate-700">{{ candidate.label }}</span>
+                        @if (candidate.detail) { <span class="block text-xs text-slate-500">{{ candidate.detail }}</span> }
+                      </span>
+                      <tas-icon iconName="feather:plus" style="font-size:14px"></tas-icon>
+                    </button>
+                  </li>
+                }
+              </ul>
+            } @else if (hasSearched() && searchTerm().trim().length >= 2) {
+              <p class="text-sm text-slate-500">Aucun résultat pour cette recherche.</p>
+            }
+          }
+
+          @if (formSchema.subjectId().touched() && formSchema.subjectId().invalid()) {
+            <p class="text-xs text-functional-error">{{ formSchema.subjectId().errors()[0].message }}</p>
+          }
+        </div>
+      </div>
+
+      <tas-form-field>
+        <tas-label>Titre <span class="text-functional-error">*</span></tas-label>
+        <input tasInput type="text" placeholder="Ex. Crédit pour un chantier à Daloa" [formField]="formSchema.title" />
+        @if (formSchema.title().touched() && formSchema.title().invalid()) {
+          <tas-error>{{ formSchema.title().errors()[0].message }}</tas-error>
+        }
+      </tas-form-field>
+
+      <tas-form-field>
+        <tas-label>Produit @if (target() === 'client') { <span class="text-functional-error">*</span> }</tas-label>
+        <tas-select [options]="productOptions()" [placeholder]="target() === 'client' ? 'Choisir un produit' : 'À préciser'" [formField]="formSchema.product"></tas-select>
+        <tas-hint>Le produit choisit les étapes du projet (Paramètres › Étapes des projets).</tas-hint>
+        @if (formSchema.product().touched() && formSchema.product().invalid()) {
+          <tas-error>{{ formSchema.product().errors()[0].message }}</tas-error>
+        }
+      </tas-form-field>
+
+      <tas-form-field>
+        <tas-label>Besoin exprimé</tas-label>
+        <textarea tasInput rows="3" placeholder="Ce que la personne a demandé, avec ses mots" [formField]="formSchema.description"></textarea>
+        @if (formSchema.description().touched() && formSchema.description().invalid()) {
+          <tas-error>{{ formSchema.description().errors()[0].message }}</tas-error>
+        }
+      </tas-form-field>
+
+      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <tas-form-field>
+          <tas-label>Montant estimé (XOF)</tas-label>
+          <input tasInput type="text" inputmode="numeric" placeholder="Ex. 5 000 000" [formField]="formSchema.amount" />
+          @if (formSchema.amount().touched() && formSchema.amount().invalid()) {
+            <tas-error>{{ formSchema.amount().errors()[0].message }}</tas-error>
+          }
+        </tas-form-field>
+        <tas-form-field>
+          <tas-label>Clôture prévue</tas-label>
+          <input tasInput type="date" [formField]="formSchema.expectedCloseDate" />
+        </tas-form-field>
+      </div>
+
+      @if (duplicateCount() !== null) {
+        <div class="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm" role="alert">
+          <p class="font-medium text-amber-800">
+            Un projet semblable est déjà ouvert pour ce client sur ce produit
+            @if (duplicateCount()! > 0) { ({{ duplicateCount() }}) }
+          </p>
+          <p class="mt-1 text-amber-700">Rien n'a été créé. Vérifiez ses projets en cours avant d'insister.</p>
+          <button tas-outlined-button color="primary" type="button" class="mt-3 text-xs"
+                  [disabled]="formSchema().submitting()" (click)="handleSubmit(true)">Créer quand même</button>
+        </div>
+      }
+    </form>
+  </tas-drawer-content>
+
+  <tas-drawer-action>
+    <button tas-outlined-button type="button" (click)="close()">Annuler</button>
+    <button tas-raised-button color="primary" type="button"
+            [disabled]="formSchema().invalid() || formSchema().submitting()"
+            [isLoading]="formSchema().submitting()"
+            (click)="handleSubmit()">
+      Créer le projet
+    </button>
+  </tas-drawer-action>
+</tas-side-drawer>

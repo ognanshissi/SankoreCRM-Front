@@ -1,9 +1,19 @@
 <div class="flex flex-col gap-4 pb-6">
+  <div class="flex flex-wrap items-center justify-between gap-3">
+    <p class="text-sm text-slate-500">Les projets ouverts, par parcours. Glissez une carte pour la faire avancer.</p>
+    @if (canManage()) {
+      <button tas-raised-button color="primary" type="button" (click)="openNew()">
+        <tas-icon iconName="feather:plus" style="font-size:14px"></tas-icon>
+        Nouveau projet
+      </button>
+    }
+  </div>
+
   <!-- Filtres -->
   <div class="grid grid-cols-1 gap-3 rounded-xl border border-slate-200 bg-white p-4 md:grid-cols-4">
     <tas-form-field class="md:col-span-2">
       <tas-label>Rechercher</tas-label>
-      <input tasInput type="text" placeholder="Titre ou produit du projet" [ngModel]="search()" (ngModelChange)="onSearch($event)" />
+      <input tasInput type="text" placeholder="Nom, prénom, téléphone, e-mail, titre ou produit" [ngModel]="search()" (ngModelChange)="onSearch($event)" />
     </tas-form-field>
     <tas-form-field>
       <tas-label>Parcours</tas-label>
@@ -63,19 +73,27 @@
                 [class.opacity-60]="movingId() === p.id"
               >
                 <div class="flex items-start gap-2">
-                  <p class="min-w-0 flex-1 text-sm font-semibold text-slate-800">{{ p.title }}</p>
+                  <!-- `mousedown` arrêté : sans ça, la CDK prend le clic sur le lien pour le début d'un glisser. -->
+                  <a [routerLink]="['/leads/projets', p.id]" class="min-w-0 flex-1 text-sm font-semibold text-slate-800 hover:text-primary hover:underline"
+                     (mousedown)="$event.stopPropagation()">{{ p.title }}</a>
                   @if (ownerLink(p); as link) {
                     <a
                       [routerLink]="link"
                       class="inline-flex size-6 shrink-0 items-center justify-center rounded text-slate-300 hover:bg-slate-100 hover:text-primary"
-                      title="Ouvrir le projet"
-                      aria-label="Ouvrir le projet"
+                      title="Ouvrir la fiche du lead ou du client"
+                      aria-label="Ouvrir la fiche du lead ou du client"
                       (mousedown)="$event.stopPropagation()"
                     >
                       <tas-icon iconName="feather:external-link" style="font-size:12px"></tas-icon>
                     </a>
                   }
                 </div>
+                @if (p.contact; as c) {
+                  <p class="mt-1 truncate text-xs text-slate-600" [title]="c.email ?? ''">
+                    <tas-icon iconName="feather:user" class="text-slate-400" style="font-size:11px"></tas-icon>
+                    {{ c.name }}@if (c.phoneNumber) { · <span class="tabular-nums">{{ c.phoneNumber }}</span> }@if (c.clientNumber) { · {{ c.clientNumber }} }
+                  </p>
+                }
                 @if (p.product) {
                   <span class="mt-2 inline-flex rounded-md bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700">{{ p.product }}</span>
                 } @else {

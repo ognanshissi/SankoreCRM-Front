@@ -533,6 +533,7 @@ model/product-factor.interface.ts
 model/product-performance-dto.interface.ts
 model/product-routing-dto.interface.ts
 model/product-routing-line-dto.interface.ts
+model/project-contact-dto.interface.ts
 model/project-step-dto.interface.ts
 model/project-step-request.interface.ts
 model/project-template-dto.interface.ts

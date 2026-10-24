@@ -43280,6 +43280,9 @@
               "$ref": "#/components/schemas/ProjectStepDto"
             },
             "nullable": true
+          },
+          "contact": {
+            "$ref": "#/components/schemas/ProjectContactDto"
           }
         },
         "additionalProperties": false
@@ -44991,6 +44994,36 @@
             "nullable": true
           },
           "connectionName": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ProjectContactDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "firstName": {
+            "type": "string",
+            "nullable": true
+          },
+          "lastName": {
+            "type": "string",
+            "nullable": true
+          },
+          "phoneNumber": {
+            "type": "string",
+            "nullable": true
+          },
+          "email": {
+            "type": "string",
+            "nullable": true
+          },
+          "clientNumber": {
             "type": "string",
             "nullable": true
           }
