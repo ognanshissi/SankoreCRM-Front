@@ -19,5 +19,11 @@ export interface MyStepDto {
     assignedToUserId?: string | null;
     dueAt?: string | null;
     createdAt?: string;
+    entityType?: string | null;
+    entityId?: string | null;
+    workflowName?: string | null;
+    subjectLabel?: string | null;
+    subjectDetail?: string | null;
+    subjectLink?: string | null;
 }
 

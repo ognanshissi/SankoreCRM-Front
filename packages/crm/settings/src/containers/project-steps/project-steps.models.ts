@@ -27,6 +27,9 @@ export interface StepPreset {
   opensClientFile?: boolean;
   isApproval?: boolean;
   requiresQuestionnaires?: boolean;
+  requiresAmount?: boolean;
+  requiresCloseDate?: boolean;
+  checklist?: string[];
 }
 
 /**
@@ -62,7 +65,7 @@ export const PRESETS: TemplatePreset[] = [
     amountKind: 'Loan',
     steps: [
       { label: 'Étude du besoin', phase: 'Qualification', probability: 20, suggestion: "Vérifier l'éligibilité" },
-      { label: 'Montage du dossier', phase: 'NeedsAnalysis', probability: 35, suggestion: 'Réunir les pièces du dossier', opensClientFile: true, requiresQuestionnaires: true },
+      { label: 'Montage du dossier', phase: 'NeedsAnalysis', probability: 35, suggestion: 'Réunir les pièces du dossier', opensClientFile: true, requiresQuestionnaires: true, requiresAmount: true, checklist: ['Pièces du dossier réunies', 'Capacité de remboursement vérifiée'] },
       { label: 'Analyse de crédit', phase: 'NeedsAnalysis', probability: 50, suggestion: "Transmettre le dossier à l'analyste" },
       { label: 'Comité', phase: 'Proposal', probability: 65, suggestion: 'Présenter le dossier au comité', isApproval: true },
       { label: 'Accord et offre', phase: 'Negotiation', probability: 85, suggestion: 'Fixer la date de signature' },
@@ -100,7 +103,7 @@ export const PRESETS: TemplatePreset[] = [
     criticalCloseDate: true,
     steps: [
       { label: 'Recensement des besoins', phase: 'Qualification', probability: 20, suggestion: 'Recenser la surface et les intrants' },
-      { label: 'Montage du dossier', phase: 'NeedsAnalysis', probability: 40, suggestion: 'Réunir les pièces avant la date limite', opensClientFile: true, requiresQuestionnaires: true },
+      { label: 'Montage du dossier', phase: 'NeedsAnalysis', probability: 40, suggestion: 'Réunir les pièces avant la date limite', opensClientFile: true, requiresQuestionnaires: true, requiresAmount: true, requiresCloseDate: true, checklist: ['Surface et intrants recensés', 'Pièces du dossier réunies'] },
       { label: 'Comité', phase: 'Proposal', probability: 70, suggestion: 'Présenter le dossier au comité', isApproval: true },
       { label: 'Mise en place', phase: 'Negotiation', probability: 90, suggestion: 'Décaisser avant le début de la saison' },
     ],

@@ -15,7 +15,9 @@ import {
 export const ENTITY_TYPE_OPTIONS = [
   { label: 'Lead', value: 'Lead' },
   { label: 'Contact', value: 'Contact' },
-  { label: 'Projet', value: 'Deal' },
+  // Le projet est l'agrégat `Opportunity` côté serveur : chaque modèle de ce type est un circuit à
+  // part, qu'une étape de gabarit de projet peut lancer.
+  { label: 'Projet', value: 'Opportunity' },
   { label: 'Client', value: 'Account' },
 ];
 

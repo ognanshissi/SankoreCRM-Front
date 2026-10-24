@@ -1,3 +1,4 @@
+import { DatePipe, LowerCasePipe } from '@angular/common';
 import { Component, computed, DestroyRef, inject, OnInit, signal } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { HttpErrorResponse } from '@angular/common/http';
@@ -15,6 +16,7 @@ import {
   OpportunityDto,
   ProjectStepDto,
   UpdateOpportunityRequest,
+  ProjectValidationDto,
 } from '@sankore/crm-api';
 import {
   BreadcrumbService,
@@ -118,7 +120,7 @@ function parseAmount(text: string): number | null {
 @Component({
   selector: 'project-detail',
   imports: [
-    RouterLink, FormRoot, FormField, Anchor, Button, TasCard, TasFormField, TasLabel, TasError,
+    RouterLink, DatePipe, LowerCasePipe, FormRoot, FormField, Anchor, Button, TasCard, TasFormField, TasLabel, TasError,
     TasIcon, TasInput, TasSelect, TasSpinner, ProjectQuestionnaires,
   ],
   templateUrl: './project-detail.html',
@@ -143,6 +145,8 @@ export class ProjectDetail implements OnInit {
 
   public readonly projectId = signal('');
   public readonly project = signal<OpportunityDto | null>(null);
+  /** Les circuits de validation lancés par les étapes, et leurs décisions — le plus récent d'abord. */
+  public readonly validations = signal<ProjectValidationDto[]>([]);
   public readonly lead = signal<LeadDto | null>(null);
   public readonly client = signal<ClientDetailDto | null>(null);
   public readonly isLoading = signal(true);
@@ -185,6 +189,27 @@ export class ProjectDetail implements OnInit {
   public readonly probability = computed(() => (this.project() ? probabilityPercent(this.project()!) : 0));
   public readonly weighted = computed(() => (this.project() ? weightedAmount(this.project()!) : 0));
   public readonly closeWarning = computed(() => (this.project() ? closeDateWarning(this.project()!) : null));
+  /**
+   * Ce que l'étape en cours demande avant qu'on la quitte : ses points à cocher, et l'état de son
+   * circuit de validation — lancé à l'arrivée, approuvé avant de repartir.
+   */
+  public readonly exitConditions = computed(() => {
+    const step = this.current();
+    const project = this.project();
+    if (!step || !project || this.closed()) return null;
+
+    const ticked = new Set(project.checkedChecklistItemIds ?? []);
+    const checklist = (step.checklist ?? []).map((i) => ({ id: i.id ?? '', label: i.label ?? '', done: ticked.has(i.id ?? '') }));
+    const runs = (project.workflowRuns ?? []).filter((r) => r.stepId === step.id);
+    const run = runs.length ? runs[runs.length - 1] : null;
+    const workflow = step.workflowCircuit
+      ? { state: run?.state ?? 'NotStarted', startedAt: run?.startedAt ?? null, runs: runs.length }
+      : null;
+
+    if (checklist.length === 0 && !workflow) return null;
+    return { checklist, done: checklist.filter((i) => i.done).length, workflow };
+  });
+
   public readonly ownerName = computed(() => {
     const id = this.project()?.ownerId;
     return id ? this._users().get(id) ?? null : null;
@@ -239,6 +264,82 @@ export class ProjectDetail implements OnInit {
     maxLength(schema.reason, 500, { message: 'Le motif ne peut pas dépasser 500 caractères' });
   });
 
+  public toggleChecklistItem(itemId: string, done: boolean): void {
+    const p = this.project();
+    if (!p?.id || this.busy()) return;
+    void this._run(this._api.setProjectChecklistItem(p.id, itemId, { done }), done ? 'Point coché' : 'Point décoché');
+  }
+
+  public restartWorkflow(): void {
+    const p = this.project();
+    if (!p?.id || this.busy()) return;
+    void this._run(this._api.restartProjectWorkflow(p.id), 'Circuit de validation relancé');
+  }
+
+  /**
+   * Depuis un refus « montant obligatoire » : le formulaire s'ouvre plus bas, hors de l'écran —
+   * sans défilement, le bouton semblait ne rien faire.
+   */
+  public fixAmount(): void {
+    this.editInfo();
+    this._reveal('project-info', 'input[inputmode="numeric"]');
+  }
+
+  public fixCloseDate(): void {
+    this.editCloseDate();
+    this._reveal('exit-date', 'input[type="date"]');
+  }
+
+  /** Après le rendu du formulaire ouvert : le montre et y place le curseur. */
+  private _reveal(id: string, field: string): void {
+    setTimeout(() => {
+      const host = document.getElementById(id);
+      host?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      host?.querySelector<HTMLInputElement>(field)?.focus({ preventScroll: true });
+    });
+  }
+
+  /** Libellé et couleur d'un statut de circuit ou de décision, tels que le moteur les nomme. */
+  public validationStatus(status: string | null | undefined): { label: string; tone: string; icon: string } {
+    switch (status) {
+      case 'Completed':
+      case 'Approved':
+        return { label: 'Approuvé', tone: 'text-primary', icon: 'feather:check-circle' };
+      case 'Rejected':
+        return { label: 'Refusé', tone: 'text-red-700', icon: 'feather:x-circle' };
+      case 'Cancelled':
+        return { label: 'Annulé', tone: 'text-slate-500', icon: 'feather:slash' };
+      case 'TimedOut':
+        return { label: 'Délai dépassé', tone: 'text-red-700', icon: 'feather:alert-circle' };
+      case 'Skipped':
+        return { label: 'Sans objet', tone: 'text-slate-400', icon: 'feather:minus-circle' };
+      case 'Unknown':
+        return { label: 'Illisible', tone: 'text-amber-700', icon: 'feather:help-circle' };
+      default:
+        return { label: 'En attente', tone: 'text-amber-700', icon: 'feather:clock' };
+    }
+  }
+
+  public scrollToValidations(): void {
+    document.getElementById('validations')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  /** Lue à part : un moteur de validation qui ne répond pas ne doit pas empêcher d'ouvrir le projet. */
+  private _loadValidations(project: OpportunityDto): void {
+    if (!project.id || !(project.workflowRuns ?? []).length) {
+      this.validations.set([]);
+      return;
+    }
+    this._api
+      .getProjectValidations(project.id)
+      .pipe(catchError(() => of([] as ProjectValidationDto[])))
+      .subscribe((list) => this.validations.set(list ?? []));
+  }
+
+  public scrollToExitConditions(): void {
+    document.getElementById('exit-conditions')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+
   public scrollToQuestionnaires(): void {
     document.getElementById('questionnaires')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
@@ -272,6 +373,7 @@ export class ProjectDetail implements OnInit {
         this.isLoading.set(false);
         this._breadcrumb.set([{ label: 'Projets', link: ['/leads/projets'] }, { label: project.title ?? 'Projet' }]);
         this._loadPerson(project);
+        this._loadValidations(project);
         // Arrivée depuis « Remplir les questionnaires » d'un autre écran : la section est en bas.
         if (this._route.snapshot.fragment === 'questionnaires') setTimeout(() => this.scrollToQuestionnaires());
       });

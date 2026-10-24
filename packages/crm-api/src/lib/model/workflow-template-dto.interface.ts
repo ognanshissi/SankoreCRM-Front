@@ -23,5 +23,6 @@ export interface WorkflowTemplateDto {
     createdAt?: string;
     updatedAt?: string;
     steps?: Array<WorkflowStepDto> | null;
+    circuit?: string | null;
 }
 

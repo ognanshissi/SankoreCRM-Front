@@ -9,6 +9,7 @@
  * https://openapi-generator.tech
  * Do not edit the class manually.
  */
+import { ProjectWorkflowRunDto } from './project-workflow-run-dto.interface';
 import { Money } from './money.interface';
 import { ProjectContactDto } from './project-contact-dto.interface';
 import { ProjectStepDto } from './project-step-dto.interface';
@@ -49,6 +50,8 @@ export interface OpportunityDto {
      */
     amountKind?: OpportunityDtoAmountKindEnum;
     criticalCloseDate?: boolean;
+    checkedChecklistItemIds?: Array<string> | null;
+    workflowRuns?: Array<ProjectWorkflowRunDto> | null;
 }
 export enum OpportunityDtoStageEnum {
     Prospecting = 'Prospecting',

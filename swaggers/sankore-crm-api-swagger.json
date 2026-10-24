@@ -17673,6 +17673,122 @@
         }
       }
     },
+    "/api/v1/leads/opportunities/{id}/checklist/{itemId}": {
+      "put": {
+        "tags": [
+          "Opportunities"
+        ],
+        "operationId": "SetProjectChecklistItem",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "itemId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetProjectChecklistItemRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "422": {
+            "description": "Unprocessable Entity"
+          }
+        }
+      }
+    },
+    "/api/v1/leads/opportunities/{id}/validations": {
+      "get": {
+        "tags": [
+          "Opportunities"
+        ],
+        "operationId": "GetProjectValidations",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ProjectValidationDto"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/api/v1/leads/opportunities/{id}/workflow/restart": {
+      "post": {
+        "tags": [
+          "Opportunities"
+        ],
+        "operationId": "RestartProjectWorkflow",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "422": {
+            "description": "Unprocessable Entity"
+          }
+        }
+      }
+    },
     "/api/v1/leads/opportunities/{id}/close": {
       "post": {
         "tags": [
@@ -18784,6 +18900,29 @@
           },
           "422": {
             "description": "Unprocessable Entity"
+          }
+        }
+      }
+    },
+    "/api/v1/leads/project-templates/workflow-circuits": {
+      "get": {
+        "tags": [
+          "Project Templates"
+        ],
+        "operationId": "ListProjectWorkflowCircuits",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/WorkflowCircuitSummary"
+                  }
+                }
+              }
+            }
           }
         }
       }
@@ -32605,6 +32744,18 @@
             "type": "string",
             "format": "date-time",
             "nullable": true
+          },
+          "subjectLabel": {
+            "type": "string",
+            "nullable": true
+          },
+          "subjectDetail": {
+            "type": "string",
+            "nullable": true
+          },
+          "subjectLink": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -43029,6 +43180,31 @@
           "createdAt": {
             "type": "string",
             "format": "date-time"
+          },
+          "entityType": {
+            "type": "string",
+            "nullable": true
+          },
+          "entityId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "workflowName": {
+            "type": "string",
+            "nullable": true
+          },
+          "subjectLabel": {
+            "type": "string",
+            "nullable": true
+          },
+          "subjectDetail": {
+            "type": "string",
+            "nullable": true
+          },
+          "subjectLink": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -43446,6 +43622,21 @@
           },
           "criticalCloseDate": {
             "type": "boolean"
+          },
+          "checkedChecklistItemIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "nullable": true
+          },
+          "workflowRuns": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProjectWorkflowRunDto"
+            },
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -45163,6 +45354,35 @@
         },
         "additionalProperties": false
       },
+      "ProjectChecklistItem": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "label": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ProjectChecklistItemInput": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "label": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "ProjectContactDto": {
         "type": "object",
         "properties": {
@@ -45353,6 +45573,23 @@
           },
           "requiresQuestionnaires": {
             "type": "boolean"
+          },
+          "requiresAmount": {
+            "type": "boolean"
+          },
+          "requiresCloseDate": {
+            "type": "boolean"
+          },
+          "checklist": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProjectChecklistItem"
+            },
+            "nullable": true
+          },
+          "workflowCircuit": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -45398,6 +45635,23 @@
           },
           "requiresQuestionnaires": {
             "type": "boolean"
+          },
+          "requiresAmount": {
+            "type": "boolean"
+          },
+          "requiresCloseDate": {
+            "type": "boolean"
+          },
+          "checklist": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProjectChecklistItemInput"
+            },
+            "nullable": true
+          },
+          "workflowCircuit": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -45499,6 +45753,126 @@
           },
           "criticalCloseDate": {
             "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ProjectValidationDecisionDto": {
+        "type": "object",
+        "properties": {
+          "order": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "approverRole": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "nullable": true
+          },
+          "decidedBy": {
+            "type": "string",
+            "nullable": true
+          },
+          "comment": {
+            "type": "string",
+            "nullable": true
+          },
+          "dueAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "decidedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ProjectValidationDto": {
+        "type": "object",
+        "properties": {
+          "stepId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "stepLabel": {
+            "type": "string",
+            "nullable": true
+          },
+          "circuit": {
+            "type": "string",
+            "nullable": true
+          },
+          "workflowName": {
+            "type": "string",
+            "nullable": true
+          },
+          "instanceId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "type": "string",
+            "nullable": true
+          },
+          "startedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "completedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "decisions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProjectValidationDecisionDto"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ProjectWorkflowRunDto": {
+        "type": "object",
+        "properties": {
+          "stepId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "circuit": {
+            "type": "string",
+            "nullable": true
+          },
+          "instanceId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "startedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "state": {
+            "enum": [
+              "NotStarted",
+              "InProgress",
+              "Approved",
+              "Refused",
+              "Unknown"
+            ],
+            "type": "string",
+            "description": "One of: NotStarted, InProgress, Approved, Refused, Unknown",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -49225,6 +49599,15 @@
             "type": "string",
             "format": "date-time",
             "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "SetProjectChecklistItemRequest": {
+        "type": "object",
+        "properties": {
+          "done": {
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -55923,6 +56306,28 @@
         },
         "additionalProperties": false
       },
+      "WorkflowCircuitSummary": {
+        "type": "object",
+        "properties": {
+          "circuit": {
+            "type": "string",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "version": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "stepCount": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
       "WorkflowInstanceDto": {
         "type": "object",
         "properties": {
@@ -56110,6 +56515,10 @@
             "items": {
               "$ref": "#/components/schemas/WorkflowStepDto"
             },
+            "nullable": true
+          },
+          "circuit": {
+            "type": "string",
             "nullable": true
           }
         },

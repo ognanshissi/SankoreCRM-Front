@@ -536,6 +536,8 @@ model/product-factor.interface.ts
 model/product-performance-dto.interface.ts
 model/product-routing-dto.interface.ts
 model/product-routing-line-dto.interface.ts
+model/project-checklist-item-input.interface.ts
+model/project-checklist-item.interface.ts
 model/project-contact-dto.interface.ts
 model/project-questionnaire-item-dto.interface.ts
 model/project-questionnaires-dto.interface.ts
@@ -543,6 +545,9 @@ model/project-step-dto.interface.ts
 model/project-step-request.interface.ts
 model/project-template-dto.interface.ts
 model/project-template-summary-dto.interface.ts
+model/project-validation-decision-dto.interface.ts
+model/project-validation-dto.interface.ts
+model/project-workflow-run-dto.interface.ts
 model/publish-sdk-version-result.interface.ts
 model/pull-config.interface.ts
 model/qualification-answer-input.interface.ts
@@ -672,6 +677,7 @@ model/set-kyc-remote-policy-request.interface.ts
 model/set-legal-hold-request.interface.ts
 model/set-monthly-quota-command.interface.ts
 model/set-pep-status-request.interface.ts
+model/set-project-checklist-item-request.interface.ts
 model/set-qualification-completeness-request.interface.ts
 model/set-recording-policy-request.interface.ts
 model/set-secret-request.interface.ts
@@ -863,6 +869,7 @@ model/whats-app-template-sync-result.interface.ts
 model/whats-app-variable-mapping-dto.interface.ts
 model/withdraw-consent-request.interface.ts
 model/workflow-audit-entry-dto.interface.ts
+model/workflow-circuit-summary.interface.ts
 model/workflow-instance-dto.interface.ts
 model/workflow-instance-step-dto.interface.ts
 model/workflow-step-dto.interface.ts

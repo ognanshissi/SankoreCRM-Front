@@ -29,7 +29,14 @@
         @if (formSchema.entityType().touched() && formSchema.entityType().invalid()) {
           <tas-error>{{ formSchema.entityType().errors()[0].message }}</tas-error>
         }
-        <tas-hint>Le workflow sera proposé sur cette entité au moment opportun.</tas-hint>
+        @if (formSchema.entityType().value() === 'Opportunity') {
+          <tas-hint>
+            Un workflow Projet est un circuit de validation à part (ex. « Comité crédit PME ») : une étape d'un
+            gabarit de projet peut le lancer. Plusieurs peuvent être actifs ; leur nom les distingue.
+          </tas-hint>
+        } @else {
+          <tas-hint>Le workflow sera proposé sur cette entité au moment opportun.</tas-hint>
+        }
       </tas-form-field>
 
       <tas-form-field>

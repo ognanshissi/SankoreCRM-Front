@@ -25,5 +25,8 @@ export interface CompletedTaskDto {
     assignedToUserId?: string | null;
     startedAt?: string;
     completedAt?: string | null;
+    subjectLabel?: string | null;
+    subjectDetail?: string | null;
+    subjectLink?: string | null;
 }
 

@@ -124,6 +124,8 @@
         <ul class="list-disc pl-5 text-xs text-slate-500">
           <li><span class="font-semibold">Ouvre le dossier client</span> : pour l'atteindre, le prospect doit être converti en client — c'est là que s'ouvre son dossier KYC quand le produit en exige un.</li>
           <li><span class="font-semibold">Étape d'approbation</span> : pour l'atteindre, ou gagner le projet, le KYC du client doit être validé au niveau du produit. Un produit sans KYC demande seulement que le client existe : il est créé actif à ce moment-là.</li>
+          <li><span class="font-semibold">Points à vérifier</span> : l'agent les coche pendant l'étape ; on ne la quitte pas — ni ne gagne le projet — tant qu'il en manque.</li>
+          <li><span class="font-semibold">Circuit de validation</span> : lancé quand le projet atteint l'étape ; on ne la quitte qu'une fois le circuit approuvé. Un refus bloque le projet jusqu'à ce qu'il soit relancé ou perdu.</li>
         </ul>
 
         @for (step of formSchema.steps; track $index; let i = $index, first = $first, last = $last) {
@@ -178,6 +180,59 @@
                 Questionnaires complets
               </label>
             </div>
+
+            <!-- Conditions de passage -->
+            <div class="ml-8 grid grid-cols-1 gap-3 rounded-lg border border-slate-200 bg-white p-3 lg:grid-cols-2">
+              <div class="flex flex-col gap-1.5 text-sm text-slate-700">
+                <p class="text-xs font-semibold text-slate-500">Pour l'atteindre, le projet doit avoir</p>
+                <label class="flex items-center gap-2">
+                  <input type="checkbox" class="size-4 accent-current text-primary" [formField]="step.requiresAmount" />
+                  Son montant renseigné
+                </label>
+                <label class="flex items-center gap-2">
+                  <input type="checkbox" class="size-4 accent-current text-primary" [formField]="step.requiresCloseDate" />
+                  Sa date de clôture prévue renseignée
+                </label>
+
+                <tas-form-field class="mt-2">
+                  <tas-label>Circuit de validation lancé à l'arrivée</tas-label>
+                  <tas-select [options]="circuitOptions()" [formField]="step.workflowCircuit"></tas-select>
+                  @if (circuits().length === 0) {
+                    <tas-hint>Aucun workflow « Projet » actif : créez-en un dans Paramétrage › Workflows.</tas-hint>
+                  } @else {
+                    <tas-hint>Le projet ne quitte l'étape qu'une fois le circuit approuvé.</tas-hint>
+                  }
+                </tas-form-field>
+              </div>
+
+              <div class="flex flex-col gap-1.5">
+                <p class="text-xs font-semibold text-slate-500">Pour la quitter, l'agent coche</p>
+                @for (item of step.checklist; track $index; let j = $index) {
+                  <div class="flex items-center gap-1.5">
+                    <tas-form-field>
+                      <tas-icon iconName="feather:check-square" class="shrink-0 text-slate-400" style="font-size:14px"></tas-icon>
+                      <input tasInput type="text" class="flex-1" placeholder="Ex. Visite du chantier faite" [formField]="item.label"
+                             [attr.aria-label]="'Point ' + (j + 1) + ' de l’étape ' + (i + 1)" />
+                    </tas-form-field>
+                    @if (canManage()) {
+                      <button tas-button color="warn" iconButton type="button" (click)="removeChecklistItem(i, j)" aria-label="Retirer le point">
+                        <tas-icon iconName="feather:x" style="font-size:14px" class="text-slate-400"></tas-icon>
+                      </button>
+                    }
+                  </div>
+                } @empty {
+                  <p class="text-xs text-slate-400">Aucun point à vérifier.</p>
+                }
+                @if (step.checklist().invalid() && step.checklist().errors().length) {
+                  <p class="text-xs text-functional-error" role="alert">{{ step.checklist().errors()[0].message }}</p>
+                }
+                @if (canManage() && step.checklist().value().length < 10) {
+                  <button tas-text-button color="primary" type="button" class="self-start" (click)="addChecklistItem(i)">
+                    <tas-icon iconName="feather:plus" style="font-size:14px"></tas-icon> &nbsp; Ajouter un point
+                  </button>
+                }
+              </div>
+            </div>
             <tas-form-field class="ml-8">
               <tas-label class="sr-only">Action proposée à l'étape {{ i + 1 }}</tas-label>
               <input tasInput type="text" placeholder="Action proposée (facultatif) — ex. Réunir les pièces du dossier" [formField]="step.suggestion" />
@@ -195,7 +250,7 @@
         }
 
         @if (canManage() && model().steps.length < maxSteps) {
-          <button tas-text-button type="button" class="self-start" (click)="addStep()">
+          <button tas-text-button color="primary" type="button" class="self-start" (click)="addStep()">
             <tas-icon iconName="feather:plus" style="font-size:14px"></tas-icon> &nbsp; Ajouter une étape
           </button>
         }

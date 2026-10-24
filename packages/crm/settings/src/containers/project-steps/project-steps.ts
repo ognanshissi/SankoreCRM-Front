@@ -21,7 +21,10 @@ interface TemplateRow {
   tracksForecast: boolean;
   criticalCloseDate: boolean;
   amountKind: string;
-  steps: { label: string; phase: string; probability: number; opensClientFile: boolean; isApproval: boolean; requiresQuestionnaires: boolean }[];
+  steps: {
+    label: string; phase: string; probability: number; opensClientFile: boolean; isApproval: boolean;
+    requiresQuestionnaires: boolean; checklistCount: number; workflowCircuit: string | null;
+  }[];
   updatedAt: string | null;
 }
 
@@ -98,6 +101,12 @@ interface TemplateRow {
                         @if (step.requiresQuestionnaires) {
                           <tas-icon iconName="feather:clipboard" style="font-size:11px" aria-label="Questionnaires complets"></tas-icon>
                         }
+                        @if (step.checklistCount) {
+                          <tas-icon iconName="feather:check-square" style="font-size:11px" [attr.aria-label]="step.checklistCount + ' points à vérifier'"></tas-icon>
+                        }
+                        @if (step.workflowCircuit) {
+                          <tas-icon iconName="feather:git-pull-request" style="font-size:11px" aria-label="Circuit de validation"></tas-icon>
+                        }
                         {{ step.label }}
                       </span>
                       @if (!last) {
@@ -161,6 +170,8 @@ export class ProjectStepsPage implements OnInit {
         opensClientFile: !!s.opensClientFile,
         isApproval: !!s.isApproval,
         requiresQuestionnaires: !!s.requiresQuestionnaires,
+        checklistCount: s.checklist?.length ?? 0,
+        workflowCircuit: s.workflowCircuit ?? null,
       })),
       updatedAt: t.updatedAt ?? null,
     }));

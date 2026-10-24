@@ -13,6 +13,7 @@ import {
   ProjectTemplateDto,
   ProjectTemplatesApiService,
   UpdateProjectTemplateRequestAmountKindEnum,
+  WorkflowCircuitSummary,
 } from '@sankore/crm-api';
 import { Button } from '@talisoft/ui/button';
 import { ConfirmDialogService } from '@talisoft/ui/confirm-dialog';
@@ -36,6 +37,12 @@ import {
 
 /** Le segment d'URL d'un nouveau gabarit, et celui du parcours par défaut (qui n'a pas d'id tant qu'il n'est pas modifié). */
 export const NEW_TEMPLATE = 'new';
+/**
+ * « Aucun circuit » dans la liste. Pas une chaîne vide : `tas-select` lit une valeur vide comme
+ * « rien de choisi » et affiche son texte d'invite au lieu de « Aucun ».
+ */
+const NO_CIRCUIT = 'none';
+const MAX_CHECKLIST = 10;
 export const DEFAULT_TEMPLATE = 'default';
 
 type Scope = 'Category' | 'Product';
@@ -51,6 +58,12 @@ interface StepRow {
   opensClientFile: boolean;
   isApproval: boolean;
   requiresQuestionnaires: boolean;
+  requiresAmount: boolean;
+  requiresCloseDate: boolean;
+  /** L'id d'un point existant garde les coches déjà données sur les projets. */
+  checklist: { id: string | null; label: string }[];
+  /** La clé du circuit de validation lancé à l'arrivée sur l'étape, ou NO_CIRCUIT. */
+  workflowCircuit: string;
 }
 
 class TemplateFormModel {
@@ -81,6 +94,10 @@ class TemplateFormModel {
       opensClientFile: !!s.opensClientFile,
       isApproval: !!s.isApproval,
       requiresQuestionnaires: !!s.requiresQuestionnaires,
+      requiresAmount: !!s.requiresAmount,
+      requiresCloseDate: !!s.requiresCloseDate,
+      checklist: (s.checklist ?? []).map((i) => ({ id: i.id ?? null, label: i.label ?? '' })),
+      workflowCircuit: s.workflowCircuit || NO_CIRCUIT,
     }));
     return m;
   }
@@ -96,6 +113,10 @@ function fromPreset(steps: StepPreset[]): StepRow[] {
     opensClientFile: !!s.opensClientFile,
     isApproval: !!s.isApproval,
     requiresQuestionnaires: !!s.requiresQuestionnaires,
+    requiresAmount: !!s.requiresAmount,
+    requiresCloseDate: !!s.requiresCloseDate,
+    checklist: (s.checklist ?? []).map((label) => ({ id: null, label })),
+    workflowCircuit: NO_CIRCUIT,
   }));
 }
 
@@ -141,6 +162,17 @@ export class ProjectTemplatePage implements OnInit {
   /** Les familles et produits du catalogue qui n'ont pas encore de gabarit. */
   public readonly categoryOptions = signal<{ value: string; label: string }[]>([]);
   public readonly productOptions = signal<{ value: string; label: string }[]>([]);
+  /** Les circuits de validation « Projet » actifs (Paramétrage › Workflows), qu'une étape peut lancer. */
+  public readonly circuits = signal<WorkflowCircuitSummary[]>([]);
+  public readonly circuitOptions = computed(() => {
+    const active = this.circuits().map((c) => ({ value: c.circuit ?? '', label: c.name ?? c.circuit ?? '' }));
+    // Un circuit désactivé depuis reste affiché sur l'étape qui le nomme : sinon l'enregistrer
+    // l'effacerait sans que personne l'ait décidé.
+    const named = new Set(active.map((o) => o.value));
+    const orphans = [...new Set(this.model().steps.map((s) => s.workflowCircuit).filter((c) => c && c !== NO_CIRCUIT && !named.has(c)))]
+      .map((c) => ({ value: c, label: `${c} (inactif)` }));
+    return [{ value: NO_CIRCUIT, label: 'Aucun' }, ...active, ...orphans];
+  });
   public readonly phaseOptions = PHASE_OPTIONS;
   public readonly presets = PRESETS;
   public readonly amountKindOptions = PROJECT_AMOUNT_KINDS.map((k) => ({ value: k.value, label: k.label }));
@@ -191,6 +223,13 @@ export class ProjectTemplatePage implements OnInit {
       required(row.label, { message: 'Nom obligatoire' });
       maxLength(row.label, 60, { message: '60 caractères au plus' });
       maxLength(row.suggestion, 200, { message: '200 caractères au plus' });
+      validate(row.checklist, (ctx) => {
+        const labels = ctx.value().map((i) => i.label.trim().toLowerCase()).filter(Boolean);
+        if (labels.length > MAX_CHECKLIST) return { kind: 'checklist', message: `${MAX_CHECKLIST} points au plus` };
+        if (labels.some((l) => l.length > 120)) return { kind: 'checklist', message: '120 caractères au plus par point' };
+        if (new Set(labels).size !== labels.length) return { kind: 'checklist', message: 'Deux points portent le même texte' };
+        return null;
+      });
       validate(row.probability, (ctx) => {
         const n = probabilityOf(ctx.value());
         return n !== null && n >= 1 && n <= 99 ? null : { kind: 'probability', message: 'De 1 à 99' };
@@ -226,6 +265,7 @@ export class ProjectTemplatePage implements OnInit {
       templates: this._api.listProjectTemplates(),
       // Sans catalogue lisible, la page reste utilisable : seuls les choix de portée manquent.
       products: this._productsApi.listProducts().pipe(catchError(() => of([] as ProductDto[]))),
+      circuits: this._api.listProjectWorkflowCircuits().pipe(catchError(() => of([] as WorkflowCircuitSummary[]))),
     })
       .pipe(
         catchError((error: HttpErrorResponse) => {
@@ -234,7 +274,8 @@ export class ProjectTemplatePage implements OnInit {
           return EMPTY;
         }),
       )
-      .subscribe(({ templates, products }) => {
+      .subscribe(({ templates, products, circuits }) => {
+        this.circuits.set(circuits ?? []);
         const all = templates ?? [];
         const template = this.isNew
           ? null
@@ -265,8 +306,34 @@ export class ProjectTemplatePage implements OnInit {
   public addStep(): void {
     this.formSchema.steps().value.update((rows) => {
       const last = rows[rows.length - 1];
-      return [...rows, { id: null, label: '', phase: last?.phase ?? 'Prospecting', probability: '', suggestion: '', opensClientFile: false, isApproval: false, requiresQuestionnaires: false }];
+      return [
+        ...rows,
+        {
+          id: null, label: '', phase: last?.phase ?? 'Prospecting', probability: '', suggestion: '',
+          opensClientFile: false, isApproval: false, requiresQuestionnaires: false,
+          requiresAmount: false, requiresCloseDate: false, checklist: [], workflowCircuit: NO_CIRCUIT,
+        },
+      ];
     });
+  }
+
+  public addChecklistItem(stepIndex: number): void {
+    const position = this.model().steps[stepIndex]?.checklist.length ?? 0;
+    this.formSchema.steps().value.update((rows) =>
+      rows.map((r, i) => (i === stepIndex ? { ...r, checklist: [...r.checklist, { id: null, label: '' }] } : r)),
+    );
+    // Le curseur dans le nouveau point : resté sur le bouton, chaque espace tapé ajoutait un point vide.
+    // Retrouvé par le `name` que les signal forms posent (…steps.2.checklist.0.label) : `tasInput`
+    // impose son propre id, et ni un attribut ni une classe ajoutés ici n'arrivent jusqu'au champ.
+    setTimeout(() =>
+      document.querySelector<HTMLInputElement>(`input[name$="steps.${stepIndex}.checklist.${position}.label"]`)?.focus(),
+    );
+  }
+
+  public removeChecklistItem(stepIndex: number, itemIndex: number): void {
+    this.formSchema.steps().value.update((rows) =>
+      rows.map((r, i) => (i === stepIndex ? { ...r, checklist: r.checklist.filter((_, j) => j !== itemIndex) } : r)),
+    );
   }
 
   public removeStep(index: number): void {
@@ -309,6 +376,11 @@ export class ProjectTemplatePage implements OnInit {
         opensClientFile: s.opensClientFile,
         isApproval: s.isApproval,
         requiresQuestionnaires: s.requiresQuestionnaires,
+        requiresAmount: s.requiresAmount,
+        requiresCloseDate: s.requiresCloseDate,
+        // Un point laissé vide est un point qu'on n'a pas fini d'écrire : il n'est pas envoyé.
+        checklist: s.checklist.filter((i) => i.label.trim()).map((i) => ({ id: i.id, label: i.label.trim() })),
+        workflowCircuit: s.workflowCircuit === NO_CIRCUIT ? null : s.workflowCircuit || null,
       }));
 
       // Le parcours intégré n'est pas stocké : l'enregistrer en crée la copie du tenant, avec les

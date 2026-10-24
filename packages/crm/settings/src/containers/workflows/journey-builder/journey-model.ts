@@ -213,10 +213,15 @@ export interface JourneyIssue {
   label: string;
 }
 
-/** Ce qui empêche de publier, vérifié avant l'appel plutôt que découvert dans un 400. */
-export function validateJourney(steps: WorkflowStepDto[], triggers: TriggerDto[]): JourneyIssue[] {
+/**
+ * Ce qui empêche de publier, vérifié avant l'appel plutôt que découvert dans un 400.
+ *
+ * Un circuit Projet (`Opportunity`) n'a pas besoin de déclencheur : c'est l'étape du gabarit de
+ * projet qui le lance quand le projet l'atteint. L'exiger empêchait de publier tout circuit Projet.
+ */
+export function validateJourney(steps: WorkflowStepDto[], triggers: TriggerDto[], entityType?: string | null): JourneyIssue[] {
   const issues: JourneyIssue[] = [];
-  if (!triggers.length) issues.push({ label: 'Aucun déclencheur' });
+  if (!triggers.length && entityType !== 'Opportunity') issues.push({ label: 'Aucun déclencheur' });
   if (!steps.length) issues.push({ label: 'Aucune étape' });
   for (const step of steps) {
     const kind = stepKind(step);

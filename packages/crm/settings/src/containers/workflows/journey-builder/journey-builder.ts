@@ -121,7 +121,7 @@ export class JourneyBuilder implements OnInit {
   public readonly selectedStep = computed(() => this.steps().find((s) => s.id === this.selectedStepId()) ?? null);
   public readonly isDraft = computed(() => !!this.template() && !this.template()!.isActive);
   public readonly readOnly = computed(() => !this.isDraft() || !this.canManageSteps());
-  public readonly issues = computed(() => validateJourney(this.steps(), this.triggers()));
+  public readonly issues = computed(() => validateJourney(this.steps(), this.triggers(), this.template()?.entityType));
   public readonly issuesTitle = computed(() => this.issues().map((i) => i.label).join('\n'));
   public readonly zoomPercent = computed(() => Math.round(this.zoom() * 100));
 

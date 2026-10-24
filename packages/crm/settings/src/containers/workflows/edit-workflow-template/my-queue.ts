@@ -1,7 +1,7 @@
 import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { NgClass } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { catchError, EMPTY } from 'rxjs';
 import { SideDrawerService } from '@talisoft/ui/side-drawer';
 // Le module KYC ne dépend pas de la lib settings : l'import ne crée donc pas de cycle.
@@ -40,7 +40,7 @@ function completedStatusMeta(status: string | null | undefined) {
 
 @Component({
   selector: 'workflow-my-queue',
-  imports: [NgClass, FormsModule, TasCard, TasSpinner, TasIcon, TasTag, Button, TimeagoPipe],
+  imports: [NgClass, FormsModule, RouterLink, TasCard, TasSpinner, TasIcon, TasTag, Button, TimeagoPipe],
   template: `
     <div class="pb-6">
       <!-- Header -->
@@ -158,7 +158,12 @@ function completedStatusMeta(status: string | null | undefined) {
                 <!-- Info -->
                 <div class="flex-1 min-w-0">
                   <div class="flex items-center gap-2">
-                    <p class="text-sm font-medium text-slate-800 truncate">{{ step.stepName ?? '—' }}</p>
+                    <p class="text-sm font-medium text-slate-800 truncate">
+                      {{ step.stepName ?? '—' }}
+                      @if (step.workflowName) {
+                        <span class="font-normal text-slate-500">· {{ step.workflowName }}</span>
+                      }
+                    </p>
                     @if (overdue) {
                       <span class="shrink-0 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-red-100 text-red-700">
                         <tas-icon iconName="feather:clock" style="font-size:9px"></tas-icon>
@@ -166,6 +171,19 @@ function completedStatusMeta(status: string | null | undefined) {
                       </span>
                     }
                   </div>
+                  <!-- Ce qui est soumis : sans lui, « Validation » ne dit pas de quel dossier il s'agit. -->
+                  @if (step.subjectLabel) {
+                    <div class="mt-1 rounded-lg bg-slate-50 px-2.5 py-1.5">
+                      @if (step.subjectLink) {
+                        <a [routerLink]="step.subjectLink" class="text-sm font-semibold text-primary hover:underline">{{ step.subjectLabel }}</a>
+                      } @else {
+                        <p class="text-sm font-semibold text-slate-800">{{ step.subjectLabel }}</p>
+                      }
+                      @if (step.subjectDetail) {
+                        <p class="text-xs text-slate-600">{{ step.subjectDetail }}</p>
+                      }
+                    </div>
+                  }
                   <div class="flex items-center gap-3 mt-0.5 flex-wrap">
                     @if (step.approverRoleCode) {
                       <span class="text-xs text-slate-400 inline-flex items-center gap-1">
@@ -349,7 +367,16 @@ function completedStatusMeta(status: string | null | undefined) {
                       @if (task.templateName) {
                         <span class="truncate max-w-[160px]">{{ task.templateName }}</span>
                       }
-                      @if (task.entityType) {
+                      @if (task.subjectLabel) {
+                        @if (task.subjectLink) {
+                          <a [routerLink]="task.subjectLink" class="font-semibold text-primary hover:underline">{{ task.subjectLabel }}</a>
+                        } @else {
+                          <span class="font-semibold text-slate-700">{{ task.subjectLabel }}</span>
+                        }
+                        @if (task.subjectDetail) {
+                          <span>{{ task.subjectDetail }}</span>
+                        }
+                      } @else if (task.entityType) {
                         <span>{{ task.entityType }} · <span class="font-mono">{{ task.entityId }}</span></span>
                       }
                       @if (task.stepOrder != null) {

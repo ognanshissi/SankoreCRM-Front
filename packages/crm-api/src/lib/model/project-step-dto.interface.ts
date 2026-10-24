@@ -9,6 +9,7 @@
  * https://openapi-generator.tech
  * Do not edit the class manually.
  */
+import { ProjectChecklistItem } from './project-checklist-item.interface';
 
 
 export interface ProjectStepDto { 
@@ -23,6 +24,10 @@ export interface ProjectStepDto {
     opensClientFile?: boolean;
     isApproval?: boolean;
     requiresQuestionnaires?: boolean;
+    requiresAmount?: boolean;
+    requiresCloseDate?: boolean;
+    checklist?: Array<ProjectChecklistItem> | null;
+    workflowCircuit?: string | null;
 }
 export enum ProjectStepDtoPhaseEnum {
     Prospecting = 'Prospecting',

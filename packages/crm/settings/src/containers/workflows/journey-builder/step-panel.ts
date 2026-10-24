@@ -9,6 +9,7 @@ import {
   linkedSignal,
   output,
   signal,
+  untracked,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { HttpErrorResponse } from '@angular/common/http';
@@ -115,7 +116,14 @@ export class JourneyStepPanel {
   public readonly withAssignee = computed(() => hasAssignee(this.kind()));
   public readonly controls = computed(() => KYC_CONTROLS[(this.model().kycLevel as KycLevel) || 'Full'] ?? []);
 
-  private readonly _changes$ = new Subject<StepFormModel>();
+  private readonly _changes$ = new Subject<PendingSave>();
+  /**
+   * La modification pas encore partie, AVEC l'étape qu'elle concerne. Avant, l'étape était relue
+   * au moment d'enregistrer : choisir une autre étape (ou le déclencheur) dans les 600 ms
+   * détruisait le panneau et perdait la saisie — un rôle choisi puis aussitôt quitté n'était
+   * jamais enregistré — ou l'appliquait à l'étape nouvellement affichée.
+   */
+  private _pending: PendingSave | null = null;
   /** Dernier état connu du serveur pour l'étape affichée, pour n'envoyer que de vraies modifications. */
   private _lastSaved = '';
   private _lastSavedFor: string | undefined;
@@ -127,11 +135,21 @@ export class JourneyStepPanel {
       const snapshot = JSON.stringify(model);
       // Premier passage pour une étape : c'est l'état serveur, rien à enregistrer.
       if (this._lastSavedFor !== stepId) {
+        // Une autre étape s'affiche : ce qui restait à enregistrer pour la précédente part maintenant.
+        if (this._pending) this._save(this._pending).subscribe();
         this._lastSavedFor = stepId;
         this._lastSaved = snapshot;
         return;
       }
-      if (snapshot !== this._lastSaved) this._changes$.next(model);
+      if (snapshot !== this._lastSaved) {
+        this._pending = { step: untracked(() => this.step()), model };
+        this._changes$.next(this._pending);
+      }
+    });
+
+    // Le panneau se ferme (autre sélection) avant la fin du délai : on n'abandonne pas la saisie.
+    this._destroyRef.onDestroy(() => {
+      if (this._pending) this._save(this._pending).subscribe();
     });
 
     // `concatMap` et non `switchMap` : annuler un PUT déjà parti ne l'annule pas côté serveur, et
@@ -139,21 +157,24 @@ export class JourneyStepPanel {
     this._changes$
       .pipe(
         debounceTime(600),
-        concatMap((model) => this._save(model)),
+        concatMap((pending) => this._save(pending)),
         takeUntilDestroyed(this._destroyRef),
       )
       .subscribe();
   }
 
-  private _save(model: StepFormModel) {
-    if (this.readOnly() || this.formSchema().invalid()) return EMPTY;
-    const step = this.step();
+  private _save(pending: PendingSave) {
+    // Déjà parti (enregistré au changement d'étape ou à la fermeture), ou remplacé depuis.
+    if (pending !== this._pending) return EMPTY;
+    this._pending = null;
+    const { step, model } = pending;
+    if (this.readOnly() || !model.name.trim()) return EMPTY;
     const request = this._toRequest(step, model);
     this.isSaving.set(true);
     return this._api.updateWorkflowStep(this.templateId(), step.id!, request).pipe(
       tap(() => {
         this.isSaving.set(false);
-        this._lastSaved = JSON.stringify(model);
+        if (step.id === this._lastSavedFor) this._lastSaved = JSON.stringify(model);
         this.updated.emit({
           ...step,
           name: request.name,
@@ -196,4 +217,9 @@ export class JourneyStepPanel {
       isBlocking: model.isBlocking,
     };
   }
+}
+
+interface PendingSave {
+  step: WorkflowStepDto;
+  model: StepFormModel;
 }
