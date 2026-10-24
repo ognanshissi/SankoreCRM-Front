@@ -93,6 +93,31 @@
           Le détail par étape de chaque parcours est sur le tableau des projets.
         </p>
         <report-bar-list [items]="projects()" [color]="colors.converted" name="Projets"></report-bar-list>
+
+        @if (forecast(); as f) {
+          <h3 class="mt-6 text-sm font-semibold text-slate-900">Prévision</h3>
+          <p class="mb-3 text-xs text-slate-500">
+            Les projets ouverts dont la clôture est prévue sur la période, pondérés par la probabilité de leur étape.
+            Les parcours sans prévision (produits vendus au rendez-vous) n’y comptent pas.
+          </p>
+          <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <div class="rounded-xl border border-slate-100 p-3">
+              <p class="text-xs text-slate-500">Clôtures prévues</p>
+              <p class="text-lg font-bold text-slate-800 tabular-nums">{{ f.count ?? 0 }}</p>
+              <p class="text-xs text-slate-500 tabular-nums">{{ formatNumber(f.amount ?? 0) }} au total</p>
+            </div>
+            <div class="rounded-xl border border-slate-100 p-3">
+              <p class="text-xs text-slate-500">Montant pondéré</p>
+              <p class="text-lg font-bold text-primary tabular-nums">{{ formatNumber(f.weightedAmount ?? 0) }}</p>
+              <p class="text-xs text-slate-500">ce que la période devrait signer</p>
+            </div>
+            <div class="rounded-xl border border-slate-100 p-3">
+              <p class="text-xs text-slate-500">Clôture dépassée</p>
+              <p class="text-lg font-bold tabular-nums" [class]="f.overdue ? 'text-[#b4532a]' : 'text-slate-800'">{{ f.overdue ?? 0 }}</p>
+              <p class="text-xs text-slate-500 tabular-nums">{{ formatNumber(f.overdueWeightedAmount ?? 0) }} pondérés à relancer</p>
+            </div>
+          </div>
+        }
       </section>
 
       <div class="grid grid-cols-1 gap-5 xl:grid-cols-2">

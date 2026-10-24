@@ -266,7 +266,7 @@ export class ClientDemandes {
         leadStatusSeverity: leadMeta?.severity ?? 'neutral',
         ownerLabel: o.ownerId ? (owners.get(o.ownerId) ?? 'Agent inconnu') : 'Non assignée',
         createdAt: o.createdAt ?? null,
-        expectedCloseDate: o.expectedCloseDate ?? null,
+        expectedCloseDate: o.tracksForecast === false ? null : (o.expectedCloseDate ?? null),
         amountLabel:
           amount !== undefined && amount !== null
             ? `${amount} ${o.estimatedAmount?.currency ?? ''}`.trim()

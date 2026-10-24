@@ -332,6 +332,7 @@ export * from './lead-next-step-dto.interface';
 export * from './lead-report-agency.interface';
 export * from './lead-report-agent.interface';
 export * from './lead-report-dto.interface';
+export * from './lead-report-forecast.interface';
 export * from './lead-report-kpis.interface';
 export * from './lead-report-point.interface';
 export * from './lead-report-project-phase.interface';

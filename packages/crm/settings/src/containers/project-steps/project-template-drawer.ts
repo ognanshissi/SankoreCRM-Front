@@ -53,6 +53,7 @@ class TemplateFormModel {
   public scope!: Scope;
   public category!: string;
   public productCode!: string;
+  public tracksForecast!: boolean;
   public steps!: StepRow[];
 
   public static instantiate(template: ProjectTemplateDto | null): TemplateFormModel {
@@ -61,6 +62,7 @@ class TemplateFormModel {
     m.scope = template?.scope === 'Product' ? 'Product' : 'Category';
     m.category = template?.category ?? '';
     m.productCode = template?.productCode ?? '';
+    m.tracksForecast = template?.tracksForecast ?? true;
     m.steps = (template?.steps ?? []).map((s) => ({
       id: s.id ?? null,
       label: s.label ?? '',
@@ -202,6 +204,7 @@ export class ProjectTemplateDrawer {
     const preset = PRESETS.find((p) => p.key === key);
     if (!preset) return;
     this.formSchema.steps().value.set(fromPreset(preset.steps));
+    this.formSchema.tracksForecast().value.set(preset.tracksForecast);
     if (!this.model().name.trim()) this.formSchema.name().value.set(preset.label);
   }
 
@@ -224,12 +227,13 @@ export class ProjectTemplateDrawer {
       // Le parcours intégré n'est pas stocké : l'enregistrer en crée la copie du tenant, avec les
       // ids d'étapes intégrés pour que les projets déjà placés dessus y restent.
       const call: Observable<unknown> = this.template?.id
-        ? this._api.updateProjectTemplate(this.template.id, { name: v.name.trim(), steps })
+        ? this._api.updateProjectTemplate(this.template.id, { name: v.name.trim(), steps, tracksForecast: v.tracksForecast })
         : this._api.createProjectTemplate({
             name: v.name.trim(),
             category: !this.isDefault && v.scope === 'Category' ? (v.category as CreateProjectTemplateRequestCategoryEnum) : null,
             productCode: !this.isDefault && v.scope === 'Product' ? v.productCode : null,
             steps,
+            tracksForecast: v.tracksForecast,
           });
 
       const saved = await firstValueFrom(

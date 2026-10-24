@@ -155,9 +155,13 @@ export class ReportsPage implements OnInit {
       key: String(p.phase),
       label: label(PROJECT_PHASE_LABELS, p.phase),
       value: p.count ?? 0,
-      note: p.amount ? formatNumber(p.amount) : undefined,
+      note: projectNote(p.phase, p.amount ?? 0, p.weightedAmount ?? 0),
     })),
   );
+
+  /** Les projets ouverts dont la clôture prévue tombe dans la période, ou est déjà dépassée. */
+  public readonly forecast = computed(() => this.report()?.forecast ?? null);
+  public readonly formatNumber = formatNumber;
 
   public readonly statuses = computed<BarItem[]>(() =>
     (this.report()?.byStatus ?? []).map((s) => ({ key: String(s.status), label: label(STATUS_LABELS, s.status), value: s.count ?? 0 })),
@@ -405,3 +409,10 @@ export class ReportsPage implements OnInit {
 }
 
 export default ReportsPage;
+
+/** Montant et pondéré d'une phase ouverte ; une phase close n'a plus rien à pondérer. */
+function projectNote(phase: string | undefined, amount: number, weighted: number): string | undefined {
+  if (!amount) return undefined;
+  const closed = phase === 'ClosedWon' || phase === 'ClosedLost';
+  return closed || !weighted ? formatNumber(amount) : `${formatNumber(amount)} · ${formatNumber(weighted)} pondérés`;
+}

@@ -15,5 +15,6 @@ import { ProjectStepRequest } from './project-step-request.interface';
 export interface UpdateProjectTemplateRequest { 
     name?: string | null;
     steps?: Array<ProjectStepRequest> | null;
+    tracksForecast?: boolean;
 }
 

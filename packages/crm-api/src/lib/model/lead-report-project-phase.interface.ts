@@ -18,6 +18,7 @@ export interface LeadReportProjectPhase {
     phase?: LeadReportProjectPhasePhaseEnum;
     count?: number;
     amount?: number;
+    weightedAmount?: number;
 }
 export enum LeadReportProjectPhasePhaseEnum {
     Prospecting = 'Prospecting',

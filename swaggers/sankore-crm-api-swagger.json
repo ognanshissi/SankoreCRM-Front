@@ -34324,6 +34324,9 @@
               "$ref": "#/components/schemas/ProjectStepRequest"
             },
             "nullable": true
+          },
+          "tracksForecast": {
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -40928,6 +40931,35 @@
               "$ref": "#/components/schemas/LeadReportProjectPhase"
             },
             "nullable": true
+          },
+          "forecast": {
+            "$ref": "#/components/schemas/LeadReportForecast"
+          }
+        },
+        "additionalProperties": false
+      },
+      "LeadReportForecast": {
+        "type": "object",
+        "properties": {
+          "count": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "amount": {
+            "type": "number",
+            "format": "double"
+          },
+          "weightedAmount": {
+            "type": "number",
+            "format": "double"
+          },
+          "overdue": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "overdueWeightedAmount": {
+            "type": "number",
+            "format": "double"
           }
         },
         "additionalProperties": false
@@ -41011,6 +41043,10 @@
             "format": "int32"
           },
           "amount": {
+            "type": "number",
+            "format": "double"
+          },
+          "weightedAmount": {
             "type": "number",
             "format": "double"
           }
@@ -43223,6 +43259,9 @@
           },
           "contact": {
             "$ref": "#/components/schemas/ProjectContactDto"
+          },
+          "tracksForecast": {
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -45234,6 +45273,9 @@
             "type": "string",
             "format": "date-time",
             "nullable": true
+          },
+          "tracksForecast": {
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -53306,6 +53348,9 @@
               "$ref": "#/components/schemas/ProjectStepRequest"
             },
             "nullable": true
+          },
+          "tracksForecast": {
+            "type": "boolean"
           }
         },
         "additionalProperties": false

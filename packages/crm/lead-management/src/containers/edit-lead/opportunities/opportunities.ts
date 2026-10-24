@@ -39,6 +39,7 @@ import {
   isClosed,
   monthsFromNow,
   probabilityPercent,
+  tracksForecast,
   projectSteps,
   stageLabel,
   stageMeta,
@@ -141,6 +142,7 @@ export class LeadOpportunitiesPage {
   public readonly stageLabel = stageLabel;
   public readonly probabilityPercent = probabilityPercent;
   public readonly weightedAmount = weightedAmount;
+  public readonly tracksForecast = tracksForecast;
   public readonly closeDateLabel = closeDateLabel;
   public readonly closeDateWarning = closeDateWarning;
   public readonly isClosed = isClosed;
@@ -174,8 +176,9 @@ export class LeadOpportunitiesPage {
   public readonly totalAmount = computed(() =>
     this.openOpportunities().reduce((sum, o) => sum + (o.estimatedAmount?.amount ?? 0), 0),
   );
+  public readonly forecastOpportunities = computed(() => this.openOpportunities().filter(tracksForecast));
   public readonly totalWeighted = computed(() =>
-    this.openOpportunities().reduce((sum, o) => sum + weightedAmount(o), 0),
+    this.forecastOpportunities().reduce((sum, o) => sum + weightedAmount(o), 0),
   );
 
   /** La première opportunité ouverte dont le montant contredit celui du lead, sans réponse encore. */

@@ -416,6 +416,7 @@ model/lead-next-step-dto.interface.ts
 model/lead-report-agency.interface.ts
 model/lead-report-agent.interface.ts
 model/lead-report-dto.interface.ts
+model/lead-report-forecast.interface.ts
 model/lead-report-kpis.interface.ts
 model/lead-report-point.interface.ts
 model/lead-report-project-phase.interface.ts

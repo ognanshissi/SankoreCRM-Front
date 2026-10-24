@@ -17,7 +17,7 @@ import { SnackbarService } from '@talisoft/ui/snackbar';
 import { TasSpinner } from '@talisoft/ui/spinner';
 import { formatAmount } from '../edit-lead/lead-view.models';
 import { NewProjectDrawer } from './new-project-drawer';
-import { currentStep, isClosed, OPEN_STAGES, probabilityPercent, projectSteps } from '../edit-lead/opportunities/opportunity.model';
+import { currentStep, isClosed, OPEN_STAGES, probabilityPercent, projectSteps, tracksForecast, weightedAmount } from '../edit-lead/opportunities/opportunity.model';
 
 /** Toutes les familles à la fois : les colonnes sont alors les cinq phases, communes à tous. */
 const ALL = 'tous';
@@ -79,6 +79,7 @@ export class ProjectsBoard implements OnInit {
   public readonly canManage = this._permissions.can('lead:opportunity:manage');
   public readonly formatAmount = formatAmount;
   public readonly probabilityPercent = probabilityPercent;
+  public readonly tracksForecast = tracksForecast;
 
   public readonly projects = signal<OpportunityDto[]>([]);
   public readonly isLoading = signal(false);
@@ -137,12 +138,17 @@ export class ProjectsBoard implements OnInit {
     const steps = sample ? projectSteps(sample) : [];
     return steps.map((step) => {
       const list = visible.filter((p) => currentStep(p)?.id === step.id);
-      return { id: step.id ?? '', label: step.label ?? '', hint: `${step.probability ?? 0} %`, projects: list, amount: sum(list) };
+      const hint = sample && tracksForecast(sample) ? `${step.probability ?? 0} %` : '';
+      return { id: step.id ?? '', label: step.label ?? '', hint, projects: list, amount: sum(list) };
     });
   });
 
   public readonly columnIds = computed(() => this.columns().map((c) => 'col-' + c.id));
   public readonly totalAmount = computed(() => this._visible().reduce((t, p) => t + (p.estimatedAmount?.amount ?? 0), 0));
+  /** Le pondéré ne compte que les parcours qui suivent la prévision. */
+  public readonly totalWeighted = computed(() =>
+    this._visible().filter(tracksForecast).reduce((t, p) => t + weightedAmount(p), 0),
+  );
 
   public ngOnInit(): void {
     this._breadcrumb.set([{ label: 'Projets' }]);

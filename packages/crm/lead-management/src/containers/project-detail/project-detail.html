@@ -59,7 +59,7 @@
         <div class="text-right">
           @if (p.estimatedAmount?.amount) {
             <p class="text-2xl font-bold text-slate-900 tabular-nums">{{ formatAmount(p.estimatedAmount!.amount, p.estimatedAmount!.currency) }}</p>
-            @if (!closed()) {
+            @if (!closed() && tracksForecast()) {
               <p class="text-sm text-slate-500">
                 soit <span class="font-semibold text-primary tabular-nums">{{ formatAmount(weighted(), p.estimatedAmount!.currency) }}</span>
                 pondérés ({{ probability() }} %)
@@ -105,7 +105,7 @@
                       (click)="moveTo(step)">
                 <span class="block h-1 rounded-full" [class]="i <= stepIndex() ? 'bg-primary' : 'bg-slate-100'"></span>
                 <span class="mt-2 block text-sm font-semibold" [class]="isCurrent(step) ? 'text-primary' : 'text-slate-800'">{{ step.label }}</span>
-                <span class="block text-xs text-slate-500">{{ phaseLabel(step.phase) }} · {{ step.probability }} %</span>
+                <span class="block text-xs text-slate-500">{{ phaseLabel(step.phase) }}@if (tracksForecast()) { · {{ step.probability }} %}</span>
                 @if (step.opensClientFile) {
                   <span class="mt-1 inline-flex items-center gap-1 text-[11px] font-medium text-slate-600"><tas-icon iconName="feather:user-plus" style="font-size:11px"></tas-icon>Dossier client</span>
                 }
@@ -121,7 +121,8 @@
         </div>
 
         <!-- Clôture, probabilité, prochaine étape -->
-        <div class="grid grid-cols-1 gap-6 border-t border-slate-100 px-5 py-4 md:grid-cols-3">
+        <div class="grid grid-cols-1 gap-6 border-t border-slate-100 px-5 py-4" [class.md:grid-cols-3]="tracksForecast()">
+          @if (tracksForecast()) {
           <div>
             <p class="text-xs text-slate-500">Clôture prévue</p>
             @if (editor() === 'closeDate') {
@@ -159,6 +160,7 @@
               <div class="h-1.5 rounded-full bg-primary" [style.width.%]="probability()"></div>
             </div>
           </div>
+          }
 
           <div>
             <p class="text-xs text-slate-500">Prochaine étape</p>

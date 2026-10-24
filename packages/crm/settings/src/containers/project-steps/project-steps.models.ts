@@ -31,10 +31,11 @@ export interface StepPreset {
  * Des points de départ pour un nouveau gabarit, modifiables avant l'enregistrement. Ils ne sont
  * pas stockés : un gabarit n'existe qu'une fois enregistré.
  */
-export const PRESETS: { key: string; label: string; steps: StepPreset[] }[] = [
+export const PRESETS: { key: string; label: string; tracksForecast: boolean; steps: StepPreset[] }[] = [
   {
     key: 'credit',
     label: 'Crédit',
+    tracksForecast: true,
     steps: [
       { label: 'Étude du besoin', phase: 'Qualification', probability: 20, suggestion: "Vérifier l'éligibilité" },
       { label: 'Montage du dossier', phase: 'NeedsAnalysis', probability: 35, suggestion: 'Réunir les pièces du dossier', opensClientFile: true, requiresQuestionnaires: true },
@@ -46,6 +47,7 @@ export const PRESETS: { key: string; label: string; steps: StepPreset[] }[] = [
   {
     key: 'insurance',
     label: 'Assurance',
+    tracksForecast: true,
     steps: [
       { label: 'Recueil du besoin', phase: 'Qualification', probability: 20, suggestion: 'Recueillir le besoin de couverture' },
       { label: 'Devis', phase: 'Proposal', probability: 50, suggestion: 'Envoyer le devis' },
@@ -56,10 +58,21 @@ export const PRESETS: { key: string; label: string; steps: StepPreset[] }[] = [
   {
     key: 'account',
     label: 'Épargne ou compte',
+    tracksForecast: true,
     steps: [
       { label: 'Prise de contact', phase: 'Prospecting', probability: 10, suggestion: 'Planifier un rendez-vous' },
       { label: "Présentation de l'offre", phase: 'Proposal', probability: 50, suggestion: "Présenter l'offre", opensClientFile: true, requiresQuestionnaires: true },
       { label: 'Ouverture', phase: 'Negotiation', probability: 80, suggestion: "Fixer le rendez-vous d'ouverture", isApproval: true },
+    ],
+  },
+  {
+    // Une vente conclue au rendez-vous : une date de clôture et un pourcentage n'y diraient rien.
+    key: 'standard',
+    label: 'Produit standard',
+    tracksForecast: false,
+    steps: [
+      { label: 'Présentation', phase: 'Proposal', probability: 50, suggestion: 'Présenter le produit', opensClientFile: true },
+      { label: 'Vente', phase: 'Negotiation', probability: 90, suggestion: 'Conclure la vente', isApproval: true },
     ],
   },
 ];

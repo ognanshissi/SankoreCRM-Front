@@ -119,6 +119,14 @@ export function probabilityPercent(opp: OpportunityDto): number {
   return Math.round((opp.probability ?? 0) * 100);
 }
 
+/**
+ * Faux quand le parcours du projet ne suit pas la prévision (un produit vendu au rendez-vous) :
+ * sa probabilité et sa clôture prévue ne s'affichent pas et il ne compte pas dans le pondéré.
+ */
+export function tracksForecast(opp: OpportunityDto): boolean {
+  return opp.tracksForecast !== false;
+}
+
 export function weightedAmount(opp: OpportunityDto): number {
   return (opp.estimatedAmount?.amount ?? 0) * (opp.probability ?? 0);
 }

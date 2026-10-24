@@ -25,6 +25,7 @@ export interface ProjectTemplateDto {
     isBuiltIn?: boolean;
     steps?: Array<ProjectStepDto> | null;
     updatedAt?: string | null;
+    tracksForecast?: boolean;
 }
 export enum ProjectTemplateDtoCategoryEnum {
     Loan = 'Loan',

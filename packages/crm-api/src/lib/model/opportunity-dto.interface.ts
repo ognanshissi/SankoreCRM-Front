@@ -43,6 +43,7 @@ export interface OpportunityDto {
     currentStepId?: string | null;
     steps?: Array<ProjectStepDto> | null;
     contact?: ProjectContactDto;
+    tracksForecast?: boolean;
 }
 export enum OpportunityDtoStageEnum {
     Prospecting = 'Prospecting',

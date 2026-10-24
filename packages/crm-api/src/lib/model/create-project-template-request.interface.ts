@@ -20,6 +20,7 @@ export interface CreateProjectTemplateRequest {
     category?: CreateProjectTemplateRequestCategoryEnum | null;
     productCode?: string | null;
     steps?: Array<ProjectStepRequest> | null;
+    tracksForecast?: boolean;
 }
 export enum CreateProjectTemplateRequestCategoryEnum {
     Loan = 'Loan',

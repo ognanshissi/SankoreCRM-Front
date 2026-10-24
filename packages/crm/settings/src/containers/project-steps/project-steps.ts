@@ -18,6 +18,7 @@ interface TemplateRow {
   scopeLabel: string;
   scopeDetail: string;
   isBuiltIn: boolean;
+  tracksForecast: boolean;
   steps: { label: string; phase: string; probability: number; opensClientFile: boolean; isApproval: boolean; requiresQuestionnaires: boolean }[];
   updatedAt: string | null;
 }
@@ -70,6 +71,9 @@ interface TemplateRow {
                 <p class="text-sm font-semibold text-slate-800">{{ row.name }}</p>
                 @if (row.isBuiltIn) {
                   <p class="text-xs text-slate-500">Standard, jamais modifié</p>
+                }
+                @if (!row.tracksForecast) {
+                  <p class="text-xs text-slate-500">Sans prévision</p>
                 }
               </td>
               <td class="py-3">
@@ -145,6 +149,7 @@ export class ProjectStepsPage implements OnInit {
             ? productCategoryLabel(t.category)
             : 'Produit sans gabarit, ou à préciser',
       isBuiltIn: !!t.isBuiltIn,
+      tracksForecast: t.tracksForecast !== false,
       steps: (t.steps ?? []).map((s) => ({
         label: s.label ?? '',
         phase: s.phase ?? '',

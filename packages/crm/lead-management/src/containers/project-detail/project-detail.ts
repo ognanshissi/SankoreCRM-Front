@@ -174,6 +174,8 @@ export class ProjectDetail implements OnInit {
   });
   public readonly statusLabel = computed(() => (this.project() ? stepLabel(this.project()!) : ''));
   public readonly suggestion = computed(() => (this.project() ? stepSuggestion(this.project()!) : null));
+  /** Faux pour un parcours vendu au rendez-vous : ni probabilité ni clôture prévue à l'écran. */
+  public readonly tracksForecast = computed(() => this.project()?.tracksForecast !== false);
   public readonly probability = computed(() => (this.project() ? probabilityPercent(this.project()!) : 0));
   public readonly weighted = computed(() => (this.project() ? weightedAmount(this.project()!) : 0));
   public readonly closeWarning = computed(() => (this.project() ? closeDateWarning(this.project()!) : null));
