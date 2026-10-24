@@ -1,4 +1,5 @@
 import { HttpErrorResponse } from '@angular/common/http';
+import { ProjectAmountKind } from '@sankore/crm/common';
 
 /** Les cinq phases : ce que l'entonnoir, les rapports et la clôture lisent d'une étape. */
 export const PHASE_OPTIONS: { value: string; label: string }[] = [
@@ -31,11 +32,33 @@ export interface StepPreset {
  * Des points de départ pour un nouveau gabarit, modifiables avant l'enregistrement. Ils ne sont
  * pas stockés : un gabarit n'existe qu'une fois enregistré.
  */
-export const PRESETS: { key: string; label: string; tracksForecast: boolean; steps: StepPreset[] }[] = [
+export interface TemplatePreset {
+  key: string;
+  label: string;
+  tracksForecast: boolean;
+  amountKind: ProjectAmountKind;
+  criticalCloseDate?: boolean;
+  steps: StepPreset[];
+}
+
+/** La nature du montant qu'une famille suggère à la création d'un gabarit. */
+export const FAMILY_AMOUNT_KIND: Record<string, ProjectAmountKind> = {
+  Loan: 'Loan',
+  GroupCredit: 'Loan',
+  Agriculture: 'Loan',
+  Insurance: 'Premium',
+  HealthInsurance: 'Premium',
+  ForecastInsurance: 'Premium',
+  Savings: 'Deposit',
+  Tontine: 'Deposit',
+};
+
+export const PRESETS: TemplatePreset[] = [
   {
     key: 'credit',
     label: 'Crédit',
     tracksForecast: true,
+    amountKind: 'Loan',
     steps: [
       { label: 'Étude du besoin', phase: 'Qualification', probability: 20, suggestion: "Vérifier l'éligibilité" },
       { label: 'Montage du dossier', phase: 'NeedsAnalysis', probability: 35, suggestion: 'Réunir les pièces du dossier', opensClientFile: true, requiresQuestionnaires: true },
@@ -48,6 +71,7 @@ export const PRESETS: { key: string; label: string; tracksForecast: boolean; ste
     key: 'insurance',
     label: 'Assurance',
     tracksForecast: true,
+    amountKind: 'Premium',
     steps: [
       { label: 'Recueil du besoin', phase: 'Qualification', probability: 20, suggestion: 'Recueillir le besoin de couverture' },
       { label: 'Devis', phase: 'Proposal', probability: 50, suggestion: 'Envoyer le devis' },
@@ -59,6 +83,7 @@ export const PRESETS: { key: string; label: string; tracksForecast: boolean; ste
     key: 'account',
     label: 'Épargne ou compte',
     tracksForecast: true,
+    amountKind: 'Deposit',
     steps: [
       { label: 'Prise de contact', phase: 'Prospecting', probability: 10, suggestion: 'Planifier un rendez-vous' },
       { label: "Présentation de l'offre", phase: 'Proposal', probability: 50, suggestion: "Présenter l'offre", opensClientFile: true, requiresQuestionnaires: true },
@@ -66,10 +91,25 @@ export const PRESETS: { key: string; label: string; tracksForecast: boolean; ste
     ],
   },
   {
+    // Un crédit accordé après le début des pluies ne sert plus : la date est une échéance.
+    key: 'campaign',
+    label: 'Crédit de campagne',
+    tracksForecast: true,
+    amountKind: 'Loan',
+    criticalCloseDate: true,
+    steps: [
+      { label: 'Recensement des besoins', phase: 'Qualification', probability: 20, suggestion: 'Recenser la surface et les intrants' },
+      { label: 'Montage du dossier', phase: 'NeedsAnalysis', probability: 40, suggestion: 'Réunir les pièces avant la date limite', opensClientFile: true, requiresQuestionnaires: true },
+      { label: 'Comité', phase: 'Proposal', probability: 70, suggestion: 'Présenter le dossier au comité', isApproval: true },
+      { label: 'Mise en place', phase: 'Negotiation', probability: 90, suggestion: 'Décaisser avant le début de la saison' },
+    ],
+  },
+  {
     // Une vente conclue au rendez-vous : une date de clôture et un pourcentage n'y diraient rien.
     key: 'standard',
     label: 'Produit standard',
     tracksForecast: false,
+    amountKind: 'Generic',
     steps: [
       { label: 'Présentation', phase: 'Proposal', probability: 50, suggestion: 'Présenter le produit', opensClientFile: true },
       { label: 'Vente', phase: 'Negotiation', probability: 90, suggestion: 'Conclure la vente', isApproval: true },
@@ -95,6 +135,8 @@ const ERRORS: Record<string, string> = {
   PROJECT_TEMPLATE_TOO_MANY_CLIENT_FILE_STEPS: 'Une seule étape peut ouvrir le dossier client.',
   PROJECT_TEMPLATE_TOO_MANY_APPROVAL_STEPS: 'Une seule étape peut être l’étape d’approbation.',
   PROJECT_TEMPLATE_TOO_MANY_QUESTIONNAIRE_STEPS: 'Une seule étape peut exiger les questionnaires complets.',
+  PROJECT_TEMPLATE_CRITICAL_DATE_WITHOUT_FORECAST: 'Une date de clôture critique demande de suivre la prévision.',
+  PROJECT_TEMPLATE_AMOUNT_KIND_INVALID: 'Choisissez ce que représente le montant.',
   PROJECT_TEMPLATE_APPROVAL_BEFORE_CLIENT_FILE: 'L’approbation ne peut pas précéder l’ouverture du dossier client.',
 };
 

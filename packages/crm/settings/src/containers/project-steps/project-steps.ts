@@ -3,7 +3,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { DatePipe } from '@angular/common';
 import { catchError, EMPTY, finalize, forkJoin, of } from 'rxjs';
 import { ProductDto, ProductsApiService, ProjectTemplateDto, ProjectTemplatesApiService } from '@sankore/crm-api';
-import { BreadcrumbService, PermissionsService, productCategoryLabel } from '@sankore/crm/common';
+import { BreadcrumbService, PermissionsService, productCategoryLabel, projectAmountLabel } from '@sankore/crm/common';
 import { Button } from '@talisoft/ui/button';
 import { TasIcon } from '@talisoft/ui/icon';
 import { SideDrawerService } from '@talisoft/ui/side-drawer';
@@ -19,6 +19,8 @@ interface TemplateRow {
   scopeDetail: string;
   isBuiltIn: boolean;
   tracksForecast: boolean;
+  criticalCloseDate: boolean;
+  amountKind: string;
   steps: { label: string; phase: string; probability: number; opensClientFile: boolean; isApproval: boolean; requiresQuestionnaires: boolean }[];
   updatedAt: string | null;
 }
@@ -72,9 +74,9 @@ interface TemplateRow {
                 @if (row.isBuiltIn) {
                   <p class="text-xs text-slate-500">Standard, jamais modifié</p>
                 }
-                @if (!row.tracksForecast) {
-                  <p class="text-xs text-slate-500">Sans prévision</p>
-                }
+                <p class="text-xs text-slate-500">
+                  {{ row.amountKind }}@if (!row.tracksForecast) { · sans prévision }@if (row.criticalCloseDate) { · <span class="font-semibold text-[#b4532a]">date critique</span> }
+                </p>
               </td>
               <td class="py-3">
                 <p class="text-sm text-slate-700">{{ row.scopeLabel }}</p>
@@ -150,6 +152,8 @@ export class ProjectStepsPage implements OnInit {
             : 'Produit sans gabarit, ou à préciser',
       isBuiltIn: !!t.isBuiltIn,
       tracksForecast: t.tracksForecast !== false,
+      criticalCloseDate: !!t.criticalCloseDate,
+      amountKind: projectAmountLabel(t.amountKind),
       steps: (t.steps ?? []).map((s) => ({
         label: s.label ?? '',
         phase: s.phase ?? '',

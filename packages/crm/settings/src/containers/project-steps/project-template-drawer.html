@@ -49,16 +49,37 @@
         }
       </tas-form-field>
 
-      <label class="flex items-start gap-2 rounded-lg border border-slate-200 p-3 text-sm text-slate-700">
-        <input type="checkbox" class="mt-0.5 size-4 accent-current text-primary" [formField]="formSchema.tracksForecast" />
-        <span>
-          <span class="font-semibold">Suivre la prévision</span> (probabilité et date de clôture prévue)
-          <span class="block text-xs text-slate-500">
-            Pour une vente qui dure — crédit, assurance, compte : ses projets comptent dans la prévision pondérée.
-            Décochez pour un produit vendu au rendez-vous : ses projets n'affichent ni probabilité ni clôture prévue.
+      <div class="flex flex-col gap-3 rounded-lg border border-slate-200 p-4">
+        <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Montant et prévision</p>
+
+        <tas-form-field>
+          <tas-label>Le montant d'un projet est</tas-label>
+          <tas-select [options]="amountKindOptions" [formField]="formSchema.amountKind"></tas-select>
+          <tas-hint>La prévision ne mélange jamais deux natures : un décaissement et une collecte vont en sens opposé.</tas-hint>
+        </tas-form-field>
+
+        <label class="flex items-start gap-2 text-sm text-slate-700">
+          <input type="checkbox" class="mt-0.5 size-4 accent-current text-primary" [formField]="formSchema.tracksForecast" />
+          <span>
+            <span class="font-semibold">Suivre la prévision</span> (probabilité et date de clôture prévue)
+            <span class="block text-xs text-slate-500">
+              Pour une vente qui dure — crédit, assurance, compte : ses projets comptent dans la prévision pondérée.
+              Décochez pour un produit vendu au rendez-vous : ses projets n'affichent ni probabilité ni clôture prévue.
+            </span>
           </span>
-        </span>
-      </label>
+        </label>
+
+        <label class="flex items-start gap-2 text-sm text-slate-700" [class.opacity-50]="!model().tracksForecast">
+          <input type="checkbox" class="mt-0.5 size-4 accent-current text-primary" [formField]="formSchema.criticalCloseDate" />
+          <span>
+            <span class="font-semibold">Date de clôture critique</span>
+            <span class="block text-xs text-slate-500">
+              Une échéance, pas une estimation — un crédit de campagne accordé après le début des pluies ne sert plus.
+              La date devient obligatoire, et une tâche urgente est créée pour le responsable du projet le matin où elle est dépassée.
+            </span>
+          </span>
+        </label>
+      </div>
 
       <!-- Étapes -->
       <div class="flex flex-col gap-3 rounded-lg border border-slate-200 p-4">

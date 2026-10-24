@@ -22,7 +22,9 @@ import {
   PermissionsService,
   ProjectGateCode,
   projectGateCode,
+  projectAmountLabel,
   projectGateMessage,
+  projectSaveErrorMessage,
 } from '@sankore/crm/common';
 import { Anchor, Button } from '@talisoft/ui/button';
 import { TasCard } from '@talisoft/ui/card';
@@ -176,6 +178,10 @@ export class ProjectDetail implements OnInit {
   public readonly suggestion = computed(() => (this.project() ? stepSuggestion(this.project()!) : null));
   /** Faux pour un parcours vendu au rendez-vous : ni probabilité ni clôture prévue à l'écran. */
   public readonly tracksForecast = computed(() => this.project()?.tracksForecast !== false);
+  /** « Montant du crédit », « Prime annuelle »… selon le gabarit. */
+  public readonly amountLabel = computed(() => projectAmountLabel(this.project()?.amountKind));
+  /** La clôture est une échéance (crédit de campagne) : « Date limite », et dépassée = urgence. */
+  public readonly criticalCloseDate = computed(() => !!this.project()?.criticalCloseDate);
   public readonly probability = computed(() => (this.project() ? probabilityPercent(this.project()!) : 0));
   public readonly weighted = computed(() => (this.project() ? weightedAmount(this.project()!) : 0));
   public readonly closeWarning = computed(() => (this.project() ? closeDateWarning(this.project()!) : null));
@@ -490,7 +496,7 @@ export class ProjectDetail implements OnInit {
     if (error.status === 409) return 'Modifié entre-temps par quelqu’un d’autre. Rechargez avant de réessayer.';
     if (error.status === 403) return "Vous n'avez pas le droit de modifier ce projet.";
     const validation = error.error?.errors as Record<string, string[]> | undefined;
-    return (validation && Object.values(validation).flat()[0]) || error.error?.detail || error.error?.title || "Impossible d'enregistrer la modification.";
+    return (validation && Object.values(validation).flat()[0]) || projectSaveErrorMessage(error, "Impossible d'enregistrer la modification.");
   }
 
   public back(): void {

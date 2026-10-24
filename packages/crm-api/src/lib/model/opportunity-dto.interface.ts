@@ -44,6 +44,11 @@ export interface OpportunityDto {
     steps?: Array<ProjectStepDto> | null;
     contact?: ProjectContactDto;
     tracksForecast?: boolean;
+    /**
+     * One of: Generic, Loan, Premium, Deposit
+     */
+    amountKind?: OpportunityDtoAmountKindEnum;
+    criticalCloseDate?: boolean;
 }
 export enum OpportunityDtoStageEnum {
     Prospecting = 'Prospecting',
@@ -53,6 +58,12 @@ export enum OpportunityDtoStageEnum {
     Negotiation = 'Negotiation',
     ClosedWon = 'ClosedWon',
     ClosedLost = 'ClosedLost'
+};
+export enum OpportunityDtoAmountKindEnum {
+    Generic = 'Generic',
+    Loan = 'Loan',
+    Premium = 'Premium',
+    Deposit = 'Deposit'
 };
 
 

@@ -20,20 +20,25 @@
       <tas-select [options]="trackOptions()" [ngModel]="track()" (ngModelChange)="onTrack($event)"></tas-select>
     </tas-form-field>
     <div class="flex items-end justify-between gap-3">
-      <div class="flex gap-4">
-        <div>
-          <p class="text-xs text-slate-500">Montant ouvert</p>
-          <p class="text-base font-bold text-slate-900 tabular-nums">{{ formatAmount(totalAmount(), 'XOF') }}</p>
-        </div>
-        <div title="Montant × probabilité de l'étape, pour les parcours qui suivent la prévision">
-          <p class="text-xs text-slate-500">Pondéré</p>
-          <p class="text-base font-bold text-primary tabular-nums">{{ formatAmount(totalWeighted(), 'XOF') }}</p>
-        </div>
+      <div>
+        <p class="text-xs text-slate-500">Montant ouvert</p>
+        <p class="text-base font-bold text-slate-900 tabular-nums">{{ formatAmount(totalAmount(), 'XOF') }}</p>
       </div>
       <button tas-button iconButton type="button" title="Actualiser" (click)="load()">
         <tas-icon iconName="feather:refresh-cw" style="font-size:16px"></tas-icon>
       </button>
     </div>
+    @if (weightedByKind().length > 0) {
+      <div class="flex flex-wrap gap-x-8 gap-y-2 border-t border-slate-100 pt-3 md:col-span-4"
+           title="Montant × probabilité de l'étape, pour les parcours qui suivent la prévision">
+        @for (w of weightedByKind(); track w.kind) {
+          <div>
+            <p class="text-xs text-slate-500">Pondéré · {{ w.label }}</p>
+            <p class="text-base font-bold text-primary tabular-nums">{{ formatAmount(w.amount, 'XOF') }}</p>
+          </div>
+        }
+      </div>
+    }
   </div>
 
   @if (!isByTemplate()) {

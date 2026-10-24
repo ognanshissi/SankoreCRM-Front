@@ -9,13 +9,14 @@
  * https://openapi-generator.tech
  * Do not edit the class manually.
  */
+import { LeadReportForecastMonth } from './lead-report-forecast-month.interface';
+import { LeadReportForecastKind } from './lead-report-forecast-kind.interface';
+import { LeadReportForecastAgency } from './lead-report-forecast-agency.interface';
 
 
 export interface LeadReportForecast { 
-    count?: number;
-    amount?: number;
-    weightedAmount?: number;
-    overdue?: number;
-    overdueWeightedAmount?: number;
+    kinds?: Array<LeadReportForecastKind> | null;
+    schedule?: Array<LeadReportForecastMonth> | null;
+    agencies?: Array<LeadReportForecastAgency> | null;
 }
 

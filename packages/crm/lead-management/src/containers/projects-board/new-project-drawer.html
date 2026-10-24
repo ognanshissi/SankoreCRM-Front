@@ -87,16 +87,26 @@
 
       <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <tas-form-field>
-          <tas-label>Montant estimé (XOF)</tas-label>
+          <tas-label>{{ rules.amountLabel() }} (XOF)</tas-label>
           <input tasInput type="text" inputmode="numeric" placeholder="Ex. 5 000 000" [formField]="formSchema.amount" />
           @if (formSchema.amount().touched() && formSchema.amount().invalid()) {
             <tas-error>{{ formSchema.amount().errors()[0].message }}</tas-error>
           }
         </tas-form-field>
-        <tas-form-field>
-          <tas-label>Clôture prévue</tas-label>
-          <input tasInput type="date" [formField]="formSchema.expectedCloseDate" />
-        </tas-form-field>
+        @if (rules.tracksForecast()) {
+          <tas-form-field>
+            <tas-label>
+              {{ rules.criticalCloseDate() ? 'Date limite de clôture' : 'Clôture prévue' }}
+              @if (rules.criticalCloseDate()) { <span class="text-functional-error">*</span> }
+            </tas-label>
+            <input tasInput type="date" [formField]="formSchema.expectedCloseDate" />
+            @if (formSchema.expectedCloseDate().touched() && formSchema.expectedCloseDate().invalid()) {
+              <tas-error>{{ formSchema.expectedCloseDate().errors()[0].message }}</tas-error>
+            } @else if (rules.criticalCloseDate()) {
+              <tas-hint>Une échéance pour ce produit : au-delà, l'accord ne sert plus au client.</tas-hint>
+            }
+          </tas-form-field>
+        }
       </div>
 
       @if (duplicateCount() !== null) {

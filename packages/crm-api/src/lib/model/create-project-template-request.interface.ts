@@ -21,6 +21,11 @@ export interface CreateProjectTemplateRequest {
     productCode?: string | null;
     steps?: Array<ProjectStepRequest> | null;
     tracksForecast?: boolean;
+    /**
+     * One of: Generic, Loan, Premium, Deposit
+     */
+    amountKind?: CreateProjectTemplateRequestAmountKindEnum;
+    criticalCloseDate?: boolean;
 }
 export enum CreateProjectTemplateRequestCategoryEnum {
     Loan = 'Loan',
@@ -33,6 +38,12 @@ export enum CreateProjectTemplateRequestCategoryEnum {
     Agriculture = 'Agriculture',
     CurrentAccount = 'CurrentAccount',
     Standard = 'Standard'
+};
+export enum CreateProjectTemplateRequestAmountKindEnum {
+    Generic = 'Generic',
+    Loan = 'Loan',
+    Premium = 'Premium',
+    Deposit = 'Deposit'
 };
 
 

@@ -17,7 +17,7 @@ import {
 import { SnackbarService } from '@talisoft/ui/snackbar';
 import { TasTitle } from '@talisoft/ui/title';
 import { FormFieldReferenceTargetEnum, LeadDto, OpportunitiesApiService } from '@sankore/crm-api';
-import { EntityFormReferences } from '@sankore/crm/common';
+import { EntityFormReferences, projectCreationRules, projectSaveErrorMessage } from '@sankore/crm/common';
 import { amountText, parseAmount } from '../lead-view.models';
 
 export interface CreateOpportunityDrawerData {
@@ -96,21 +96,33 @@ class CreateOpportunityFormModel {
 
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <tas-form-field>
-              <tas-label>Montant estimé (FCFA)</tas-label>
+              <tas-label>{{ rules.amountLabel() }} (FCFA)</tas-label>
               <input tasInput type="text" inputmode="numeric" placeholder="Ex. 5 000 000" [formField]="formSchema.amount" />
               @if (formSchema.amount().touched() && formSchema.amount().invalid()) {
                 <tas-error>{{ formSchema.amount().errors()[0].message }}</tas-error>
               }
             </tas-form-field>
-            <tas-form-field>
-              <tas-label>Clôture prévue</tas-label>
-              <input tasInput type="date" [formField]="formSchema.expectedCloseDate" />
-            </tas-form-field>
+            @if (rules.tracksForecast()) {
+              <tas-form-field>
+                <tas-label>
+                  {{ rules.criticalCloseDate() ? 'Date limite de clôture' : 'Clôture prévue' }}
+                  @if (rules.criticalCloseDate()) { <span class="text-functional-error">*</span> }
+                </tas-label>
+                <input tasInput type="date" [formField]="formSchema.expectedCloseDate" />
+                @if (formSchema.expectedCloseDate().touched() && formSchema.expectedCloseDate().invalid()) {
+                  <tas-error>{{ formSchema.expectedCloseDate().errors()[0].message }}</tas-error>
+                } @else if (rules.criticalCloseDate()) {
+                  <tas-hint>Une échéance pour ce produit : au-delà, l'accord ne sert plus au client.</tas-hint>
+                }
+              </tas-form-field>
+            }
           </div>
 
-          <p class="text-xs text-slate-500">
-            Le projet démarre en prospection, à 10 % : la probabilité suit ensuite l'étape.
-          </p>
+          @if (rules.tracksForecast()) {
+            <p class="text-xs text-slate-500">
+              Le projet démarre sur la première étape de son parcours : la probabilité suit ensuite l'étape.
+            </p>
+          }
 
           @if (submitError(); as message) {
             <p class="text-sm text-functional-error" role="alert">{{ message }}</p>
@@ -151,9 +163,15 @@ export class CreateOpportunityDrawer {
   public readonly submitError = signal<string | null>(null);
 
   public model = signal(CreateOpportunityFormModel.fromLead(this.data.lead, ''));
+  /** Le gabarit du produit choisi : nom du montant, date critique. */
+  public readonly rules = projectCreationRules(() => this.model().product);
 
   public formSchema = form(this.model, (schema) => {
     required(schema.title, { message: 'Le titre est obligatoire' });
+    required(schema.expectedCloseDate, {
+      message: 'Obligatoire pour ce produit',
+      when: () => this.rules.criticalCloseDate() && this.rules.tracksForecast(),
+    });
     maxLength(schema.title, 200, { message: 'Le titre ne peut pas dépasser 200 caractères' });
     maxLength(schema.description, 2000, { message: 'Le besoin ne peut pas dépasser 2 000 caractères' });
     validate(schema.amount, (ctx) => {
@@ -187,12 +205,12 @@ export class CreateOpportunityDrawer {
           description: value.description.trim() || null,
           estimatedAmount: amount,
           estimatedCurrency: amount !== null ? 'XOF' : null,
-          expectedCloseDate: value.expectedCloseDate ? `${value.expectedCloseDate}T12:00:00Z` : null,
+          expectedCloseDate: value.expectedCloseDate && this.rules.tracksForecast() ? `${value.expectedCloseDate}T12:00:00Z` : null,
           ownerId: this.data.lead.currentAssignedId ?? this.data.lead.ownerId ?? null,
         }).pipe(
           map((created) => created || null),
           catchError((error: HttpErrorResponse) => {
-            const message = error.error?.detail ?? error.error?.title ?? "Impossible de créer le projet.";
+            const message = projectSaveErrorMessage(error, 'Impossible de créer le projet.');
             this.submitError.set(message);
             this._snackbar.error('Erreur', message);
             return EMPTY;

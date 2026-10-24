@@ -25,6 +25,9 @@ describe('opportunity view model', () => {
     expect(closeDateWarning(opp({ stage: 'Negotiation', expectedCloseDate: tomorrow }), today)).toBeNull();
     expect(closeDateWarning(opp({ expectedCloseDate: '2026-10-01T12:00:00Z' }), today)).toContain('dépassée');
     expect(closeDateWarning(opp({ stage: 'ClosedWon', expectedCloseDate: '2026-10-01T12:00:00Z' }), today)).toBeNull();
+    // Une échéance (crédit de campagne) : jamais « trop tôt », et dépassée = relance urgente.
+    expect(closeDateWarning(opp({ criticalCloseDate: true, expectedCloseDate: tomorrow }), today)).toBeNull();
+    expect(closeDateWarning(opp({ criticalCloseDate: true, expectedCloseDate: '2026-10-01T12:00:00Z' }), today)).toContain('Échéance dépassée');
   });
 
   it('asks about two different requests until somebody answered', () => {

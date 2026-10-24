@@ -58,6 +58,7 @@
         </div>
         <div class="text-right">
           @if (p.estimatedAmount?.amount) {
+            <p class="text-xs text-slate-500">{{ amountLabel() }}</p>
             <p class="text-2xl font-bold text-slate-900 tabular-nums">{{ formatAmount(p.estimatedAmount!.amount, p.estimatedAmount!.currency) }}</p>
             @if (!closed() && tracksForecast()) {
               <p class="text-sm text-slate-500">
@@ -66,7 +67,7 @@
               </p>
             }
           } @else {
-            <p class="text-sm font-semibold text-red-700">Montant à préciser</p>
+            <p class="text-sm font-semibold text-red-700">{{ amountLabel() }} à préciser</p>
           }
         </div>
       </div>
@@ -124,7 +125,7 @@
         <div class="grid grid-cols-1 gap-6 border-t border-slate-100 px-5 py-4" [class.md:grid-cols-3]="tracksForecast()">
           @if (tracksForecast()) {
           <div>
-            <p class="text-xs text-slate-500">Clôture prévue</p>
+            <p class="text-xs text-slate-500">{{ criticalCloseDate() ? 'Date limite de clôture' : 'Clôture prévue' }}</p>
             @if (editor() === 'closeDate') {
               <form [formRoot]="closeDateForm" class="mt-1 flex items-end gap-2">
                 <tas-form-field class="flex-1">
@@ -138,7 +139,7 @@
               @if (p.expectedCloseDate) {
                 <p class="mt-1 font-semibold" [class]="closeWarning() ? 'text-red-700' : 'text-slate-900'">{{ closeDateLabel(p.expectedCloseDate) }}</p>
               } @else {
-                <p class="mt-1 font-semibold text-red-700">Non définie</p>
+                <p class="mt-1 font-semibold text-red-700">{{ criticalCloseDate() ? 'À fixer : obligatoire pour ce produit' : 'Non définie' }}</p>
               }
               @if (closeWarning(); as warning) {
                 <p class="mt-1 text-xs text-red-700">{{ warning }}</p>
@@ -276,7 +277,7 @@
                 <tas-select [options]="productOptions()" [formField]="infoForm.product"></tas-select>
               </tas-form-field>
               <tas-form-field>
-                <tas-label>Montant estimé</tas-label>
+                <tas-label>{{ amountLabel() }}</tas-label>
                 <input tasInput type="text" inputmode="numeric" [formField]="infoForm.amount" />
                 @if (infoForm.amount().touched() && infoForm.amount().invalid()) {
                   <tas-error>{{ infoForm.amount().errors()[0].message }}</tas-error>

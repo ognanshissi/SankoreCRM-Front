@@ -11,7 +11,7 @@ import {
   LeadsApiService,
   OpportunitiesApiService,
 } from '@sankore/crm-api';
-import { EntityFormReferences } from '@sankore/crm/common';
+import { EntityFormReferences, projectCreationRules, projectSaveErrorMessage } from '@sankore/crm/common';
 import { Button } from '@talisoft/ui/button';
 import { TasError, TasFormField, TasHint, TasLabel } from '@talisoft/ui/form-field';
 import { TasIcon } from '@talisoft/ui/icon';
@@ -99,7 +99,14 @@ export class NewProjectDrawer {
   private readonly _products = toSignal(this._references.options(FormFieldReferenceTargetEnum.Product), { initialValue: [] });
 
   public model = signal(NewProjectFormModel.instantiate());
+  /** Le gabarit du produit choisi : nom du montant, date critique. */
+  public readonly rules = projectCreationRules(() => this.model().product);
   public formSchema = form(this.model, (schema) => {
+    validate(schema.expectedCloseDate, (ctx) =>
+      this.rules.criticalCloseDate() && this.rules.tracksForecast() && !ctx.value()
+        ? { kind: 'required', message: 'Obligatoire pour ce produit' }
+        : null,
+    );
     validate(schema.subjectId, (ctx) => (ctx.value() ? null : { kind: 'required', message: 'Choisissez dans les résultats' }));
     validate(schema.title, (ctx) => (ctx.value().trim() ? null : { kind: 'required', message: 'Le titre est obligatoire' }));
     maxLength(schema.title, 200, { message: '200 caractères au plus' });
@@ -255,7 +262,7 @@ export class NewProjectDrawer {
         description: v.description.trim() || null,
         estimatedAmount: amount,
         estimatedCurrency: amount !== null ? 'XOF' : null,
-        expectedCloseDate: v.expectedCloseDate ? `${v.expectedCloseDate}T12:00:00Z` : null,
+        expectedCloseDate: v.expectedCloseDate && this.rules.tracksForecast() ? `${v.expectedCloseDate}T12:00:00Z` : null,
         ownerId: this._owner,
       };
 
@@ -283,7 +290,7 @@ export class NewProjectDrawer {
             const message =
               error.status === 403
                 ? "Vous n'avez pas le droit de créer ce projet."
-                : error.error?.detail ?? error.error?.title ?? 'Impossible de créer le projet.';
+                : projectSaveErrorMessage(error, 'Impossible de créer le projet.');
             this._snackbar.error('Projet non créé', message);
             return EMPTY;
           }),

@@ -94,29 +94,86 @@
         </p>
         <report-bar-list [items]="projects()" [color]="colors.converted" name="Projets"></report-bar-list>
 
-        @if (forecast(); as f) {
-          <h3 class="mt-6 text-sm font-semibold text-slate-900">Prévision</h3>
-          <p class="mb-3 text-xs text-slate-500">
-            Les projets ouverts dont la clôture est prévue sur la période, pondérés par la probabilité de leur étape.
-            Les parcours sans prévision (produits vendus au rendez-vous) n’y comptent pas.
-          </p>
-          <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <div class="rounded-xl border border-slate-100 p-3">
-              <p class="text-xs text-slate-500">Clôtures prévues</p>
-              <p class="text-lg font-bold text-slate-800 tabular-nums">{{ f.count ?? 0 }}</p>
-              <p class="text-xs text-slate-500 tabular-nums">{{ formatNumber(f.amount ?? 0) }} au total</p>
-            </div>
-            <div class="rounded-xl border border-slate-100 p-3">
-              <p class="text-xs text-slate-500">Montant pondéré</p>
-              <p class="text-lg font-bold text-primary tabular-nums">{{ formatNumber(f.weightedAmount ?? 0) }}</p>
-              <p class="text-xs text-slate-500">ce que la période devrait signer</p>
-            </div>
-            <div class="rounded-xl border border-slate-100 p-3">
-              <p class="text-xs text-slate-500">Clôture dépassée</p>
-              <p class="text-lg font-bold tabular-nums" [class]="f.overdue ? 'text-[#b4532a]' : 'text-slate-800'">{{ f.overdue ?? 0 }}</p>
-              <p class="text-xs text-slate-500 tabular-nums">{{ formatNumber(f.overdueWeightedAmount ?? 0) }} pondérés à relancer</p>
-            </div>
+      </section>
+
+      <!-- Prévision -->
+      <section class="rounded-2xl border border-slate-100 bg-white p-5 shadow-xs">
+        <h2 class="text-base font-semibold text-slate-900">Prévision</h2>
+        <p class="mb-4 text-xs text-slate-500">
+          Les projets ouverts dont la clôture est prévue sur la période, pondérés par la probabilité de leur étape,
+          par nature de montant — un décaissement, une prime et une collecte ne s’additionnent pas. Les parcours sans
+          prévision (produits vendus au rendez-vous) n’y figurent pas.
+        </p>
+
+        @if (forecastKinds().length === 0) {
+          <p class="py-6 text-center text-sm text-slate-500">Aucun projet ouvert avec une clôture prévue sur la période.</p>
+        } @else {
+          <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            @for (k of forecastKinds(); track k.kind) {
+              <div class="rounded-xl border border-slate-100 p-4">
+                <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">{{ k.label }}</p>
+                <p class="mt-1 text-xl font-bold text-primary tabular-nums">{{ fmt(k.weightedAmount ?? 0) }}</p>
+                <p class="text-xs text-slate-500 tabular-nums">
+                  pondérés · {{ k.count ?? 0 }} clôture{{ (k.count ?? 0) > 1 ? 's' : '' }} prévue{{ (k.count ?? 0) > 1 ? 's' : '' }} · {{ fmt(k.amount ?? 0) }} au total
+                </p>
+                @if (k.overdue) {
+                  <p class="mt-2 text-xs font-semibold text-[#b4532a] tabular-nums">
+                    {{ k.overdue }} dépassée{{ k.overdue > 1 ? 's' : '' }} · {{ fmt(k.overdueWeightedAmount ?? 0) }} pondérés à relancer
+                  </p>
+                }
+              </div>
+            }
           </div>
+
+          <h3 class="mb-2 mt-6 text-sm font-semibold text-slate-900">Par mois</h3>
+          <tas-table [data]="forecastMonths()" identifierField="month" [config]="forecastTableConfig()" [hasCaption]="false">
+            <ng-template #header>
+              <tr class="bg-slate-50 text-left text-xs font-medium uppercase tracking-wide text-slate-500">
+                <th class="px-4 py-3">Mois</th>
+                @for (k of forecastKinds(); track k.kind) {
+                  <th class="px-4 py-3 text-right">{{ k.label }}</th>
+                }
+              </tr>
+            </ng-template>
+            <ng-template #body let-m>
+              <tr>
+                <td class="px-4 py-3 text-sm font-semibold capitalize text-slate-800">{{ m.label }}</td>
+                @for (c of m.cells; track c.kind) {
+                  <td class="px-4 py-3 text-right text-sm tabular-nums" [class]="c.count ? 'text-slate-800' : 'text-slate-400'">
+                    {{ fmt(c.weighted) }}
+                    <span class="block text-xs text-slate-500">{{ c.count }} projet{{ c.count > 1 ? 's' : '' }}</span>
+                  </td>
+                }
+              </tr>
+            </ng-template>
+          </tas-table>
+
+          <h3 class="mb-2 mt-6 text-sm font-semibold text-slate-900">Par agence</h3>
+          <tas-table [data]="forecastAgencies()" identifierField="key" [config]="forecastAgencyTableConfig()" [hasCaption]="false">
+            <ng-template #header>
+              <tr class="bg-slate-50 text-left text-xs font-medium uppercase tracking-wide text-slate-500">
+                <th class="px-4 py-3">Agence</th>
+                <th class="px-4 py-3">Nature</th>
+                <th class="px-4 py-3 text-right">Clôtures prévues</th>
+                <th class="px-4 py-3 text-right">Pondéré</th>
+                <th class="px-4 py-3 text-right">Dépassées</th>
+              </tr>
+            </ng-template>
+            <ng-template #body let-a>
+              <tr class="transition-colors hover:bg-slate-50">
+                <td class="px-4 py-3 text-sm font-semibold text-slate-800">{{ a.name }}</td>
+                <td class="px-4 py-3 text-sm text-slate-700">{{ a.label }}</td>
+                <td class="px-4 py-3 text-right text-sm tabular-nums text-slate-700">{{ fmt(a.count ?? 0) }}</td>
+                <td class="px-4 py-3 text-right text-sm font-semibold tabular-nums text-primary">{{ fmt(a.weightedAmount ?? 0) }}</td>
+                <td class="px-4 py-3 text-right text-sm tabular-nums" [class]="a.overdue ? 'font-semibold text-[#b4532a]' : 'text-slate-400'">
+                  {{ a.overdue ?? 0 }}
+                  @if (a.overdue) {
+                    <span class="block text-xs font-normal">{{ fmt(a.overdueWeightedAmount ?? 0) }} pondérés</span>
+                  }
+                </td>
+              </tr>
+            </ng-template>
+          </tas-table>
         }
       </section>
 

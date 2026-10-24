@@ -22,7 +22,13 @@ import { TasSpinner } from '@talisoft/ui/spinner';
 import { TableConfig, TasTable } from '@talisoft/ui/table';
 import { Severity, TasTag } from '@talisoft/ui/tag';
 import { RouterLink } from '@angular/router';
-import { PermissionsService, projectGateCode, projectGateMessage } from '@sankore/crm/common';
+import {
+  PermissionsService,
+  projectCreationRules,
+  projectGateCode,
+  projectGateMessage,
+  projectSaveErrorMessage,
+} from '@sankore/crm/common';
 import {
   LeadDto,
   LeadsApiService,
@@ -298,10 +304,16 @@ export class ClientDemandes {
   };
 
   protected model = signal(NewDemandeFormModel.instantiate());
+  /** Le gabarit du produit choisi : nom du montant, date critique. */
+  protected readonly rules = projectCreationRules(() => this.model().product);
 
   protected formSchema = form(this.model, (schema) => {
     required(schema.product, {
       message: 'Le produit demandé est obligatoire',
+    });
+    required(schema.expectedCloseDate, {
+      message: 'Obligatoire pour ce produit',
+      when: () => this.rules.criticalCloseDate() && this.rules.tracksForecast(),
     });
   });
 
@@ -496,7 +508,7 @@ export class ClientDemandes {
             ownerId: this.clientStore.client()?.advisorUserId ?? null,
             estimatedAmount: hasAmount ? amount : null,
             estimatedCurrency: hasAmount ? value.estimatedCurrency.trim() || null : null,
-            expectedCloseDate: value.expectedCloseDate || null,
+            expectedCloseDate: (this.rules.tracksForecast() && value.expectedCloseDate) || null,
             force: this._duplicateAcknowledged(),
           })
           .pipe(
@@ -636,9 +648,7 @@ export class ClientDemandes {
       return "Vous n'avez pas le droit de créer un projet pour ce client.";
     }
     const firstValidation = body?.errors ? Object.values(body.errors).flat()[0] : undefined;
-    return (
-      firstValidation ?? body?.detail ?? body?.title ?? 'Impossible de créer ce projet.'
-    );
+    return firstValidation ?? projectSaveErrorMessage(error, 'Impossible de créer ce projet.');
   }
 }
 

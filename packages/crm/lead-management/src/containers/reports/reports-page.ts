@@ -10,7 +10,7 @@ import { TasSelect } from '@talisoft/ui/select';
 import { TasSpinner } from '@talisoft/ui/spinner';
 import { TableConfig, TasTable } from '@talisoft/ui/table';
 import { AgenciesApiService, AgentComparisonDto, LeadReportDto, LeadReportsApiService } from '@sankore/crm-api';
-import { BreadcrumbService } from '@sankore/crm/common';
+import { BreadcrumbService, projectFlowLabel } from '@sankore/crm/common';
 import { SnackbarService } from '@talisoft/ui/snackbar';
 import { ReportLineChart, LinePoint, LineSeries } from './report-line-chart';
 import { BarItem, ReportBarList } from './report-bar-list';
@@ -155,13 +155,48 @@ export class ReportsPage implements OnInit {
       key: String(p.phase),
       label: label(PROJECT_PHASE_LABELS, p.phase),
       value: p.count ?? 0,
-      note: projectNote(p.phase, p.amount ?? 0, p.weightedAmount ?? 0),
+      note: phaseAmounts(p.amounts ?? []),
     })),
   );
 
-  /** Les projets ouverts dont la clôture prévue tombe dans la période, ou est déjà dépassée. */
-  public readonly forecast = computed(() => this.report()?.forecast ?? null);
-  public readonly formatNumber = formatNumber;
+  /**
+   * La prévision, toujours par nature de montant : un décaissement de crédit, une prime et une
+   * collecte d'épargne ne s'additionnent pas.
+   */
+  public readonly forecastKinds = computed(() =>
+    (this.report()?.forecast?.kinds ?? []).map((k) => ({ ...k, label: projectFlowLabel(k.kind) })),
+  );
+
+  /** L'échéancier : une ligne par mois, une colonne par nature présente. */
+  public readonly forecastMonths = computed(() => {
+    const schedule = this.report()?.forecast?.schedule ?? [];
+    const months = [...new Set(schedule.map((m) => m.month ?? ''))].filter(Boolean).sort();
+    return months.map((month) => ({
+      month,
+      label: new Date(month + 'T00:00:00Z').toLocaleDateString('fr-FR', { month: 'long', year: 'numeric', timeZone: 'UTC' }),
+      cells: this.forecastKinds().map((k) => {
+        const m = schedule.find((s) => s.month === month && s.kind === k.kind);
+        return { kind: k.kind, count: m?.count ?? 0, weighted: m?.weightedAmount ?? 0 };
+      }),
+    }));
+  });
+
+  public readonly forecastAgencies = computed(() =>
+    (this.report()?.forecast?.agencies ?? []).map((a, i) => ({
+      ...a,
+      key: `${a.agencyId ?? 'none'}-${a.kind}-${i}`,
+      label: projectFlowLabel(a.kind),
+    })),
+  );
+
+  public readonly forecastTableConfig = signal<TableConfig>({
+    property: 'month',
+    pagination: { serverSide: false, pageIndex: 0, pageSize: 13, pageSizeOptions: [13] },
+  });
+  public readonly forecastAgencyTableConfig = signal<TableConfig>({
+    property: 'key',
+    pagination: { serverSide: false, pageIndex: 0, pageSize: 20, pageSizeOptions: [10, 20, 50] },
+  });
 
   public readonly statuses = computed<BarItem[]>(() =>
     (this.report()?.byStatus ?? []).map((s) => ({ key: String(s.status), label: label(STATUS_LABELS, s.status), value: s.count ?? 0 })),
@@ -410,9 +445,10 @@ export class ReportsPage implements OnInit {
 
 export default ReportsPage;
 
-/** Montant et pondéré d'une phase ouverte ; une phase close n'a plus rien à pondérer. */
-function projectNote(phase: string | undefined, amount: number, weighted: number): string | undefined {
-  if (!amount) return undefined;
-  const closed = phase === 'ClosedWon' || phase === 'ClosedLost';
-  return closed || !weighted ? formatNumber(amount) : `${formatNumber(amount)} · ${formatNumber(weighted)} pondérés`;
+/** Le montant d'une phase, par nature : « 5 000 000 », ou « Décaissements (crédit) : … · Collecte… : … ». */
+function phaseAmounts(amounts: { kind?: string; amount?: number }[]): string | undefined {
+  const present = amounts.filter((a) => a.amount);
+  if (present.length === 0) return undefined;
+  if (present.length === 1 && present[0].kind === 'Generic') return formatNumber(present[0].amount!);
+  return present.map((a) => `${projectFlowLabel(a.kind)} : ${formatNumber(a.amount!)}`).join(' · ');
 }

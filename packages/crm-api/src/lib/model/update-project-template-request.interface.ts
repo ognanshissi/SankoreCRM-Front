@@ -16,5 +16,18 @@ export interface UpdateProjectTemplateRequest {
     name?: string | null;
     steps?: Array<ProjectStepRequest> | null;
     tracksForecast?: boolean;
+    /**
+     * One of: Generic, Loan, Premium, Deposit
+     */
+    amountKind?: UpdateProjectTemplateRequestAmountKindEnum;
+    criticalCloseDate?: boolean;
 }
+export enum UpdateProjectTemplateRequestAmountKindEnum {
+    Generic = 'Generic',
+    Loan = 'Loan',
+    Premium = 'Premium',
+    Deposit = 'Deposit'
+};
+
+
 

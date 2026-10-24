@@ -9,6 +9,7 @@
  * https://openapi-generator.tech
  * Do not edit the class manually.
  */
+import { LeadReportKindAmount } from './lead-report-kind-amount.interface';
 
 
 export interface LeadReportProjectPhase { 
@@ -17,8 +18,7 @@ export interface LeadReportProjectPhase {
      */
     phase?: LeadReportProjectPhasePhaseEnum;
     count?: number;
-    amount?: number;
-    weightedAmount?: number;
+    amounts?: Array<LeadReportKindAmount> | null;
 }
 export enum LeadReportProjectPhasePhaseEnum {
     Prospecting = 'Prospecting',

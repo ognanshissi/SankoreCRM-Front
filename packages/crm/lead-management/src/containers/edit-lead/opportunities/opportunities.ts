@@ -22,7 +22,15 @@ import {
   ProjectStepDto,
   UpdateOpportunityRequest,
 } from '@sankore/crm-api';
-import { EntityFormReferences, PermissionsService, ProjectGateCode, projectGateCode, projectGateMessage } from '@sankore/crm/common';
+import {
+  EntityFormReferences,
+  PermissionsService,
+  projectAmountLabel,
+  ProjectGateCode,
+  projectGateCode,
+  projectGateMessage,
+  projectSaveErrorMessage,
+} from '@sankore/crm/common';
 import { RouterLink } from '@angular/router';
 import { ConvertLeadWizard } from '../convert-lead-wizard';
 import { interestedProductLabel } from '../../../components/interested-product';
@@ -143,6 +151,7 @@ export class LeadOpportunitiesPage {
   public readonly probabilityPercent = probabilityPercent;
   public readonly weightedAmount = weightedAmount;
   public readonly tracksForecast = tracksForecast;
+  public readonly projectAmountLabel = projectAmountLabel;
   public readonly closeDateLabel = closeDateLabel;
   public readonly closeDateWarning = closeDateWarning;
   public readonly isClosed = isClosed;
@@ -173,13 +182,21 @@ export class LeadOpportunitiesPage {
   );
 
   /** Les totaux portent sur les affaires ouvertes : une affaire gagnée ou perdue n'est plus un potentiel. */
-  public readonly totalAmount = computed(() =>
-    this.openOpportunities().reduce((sum, o) => sum + (o.estimatedAmount?.amount ?? 0), 0),
-  );
-  public readonly forecastOpportunities = computed(() => this.openOpportunities().filter(tracksForecast));
-  public readonly totalWeighted = computed(() =>
-    this.forecastOpportunities().reduce((sum, o) => sum + weightedAmount(o), 0),
-  );
+  public readonly totalsByKind = computed(() => {
+    // Par nature de montant : un crédit et un dépôt du même lead ne s'additionnent pas.
+    const totals = new Map<string, { kind: string; label: string; amount: number; weighted: number; tracked: boolean }>();
+    for (const o of this.openOpportunities()) {
+      const kind = o.amountKind ?? 'Generic';
+      const t = totals.get(kind) ?? { kind, label: projectAmountLabel(kind), amount: 0, weighted: 0, tracked: false };
+      t.amount += o.estimatedAmount?.amount ?? 0;
+      if (tracksForecast(o)) {
+        t.weighted += weightedAmount(o);
+        t.tracked = true;
+      }
+      totals.set(kind, t);
+    }
+    return [...totals.values()].filter((t) => t.amount > 0);
+  });
 
   /** La première opportunité ouverte dont le montant contredit celui du lead, sans réponse encore. */
   public readonly mismatch = computed(() => {
@@ -500,7 +517,7 @@ export class LeadOpportunitiesPage {
     if (error.status === 409) return 'Modifié entre-temps par quelqu’un d’autre. Rechargez avant de réessayer.';
     if (error.status === 403) return "Vous n'avez pas le droit de modifier ce projet.";
     const validation = error.error?.errors as Record<string, string[]> | undefined;
-    return (validation && Object.values(validation).flat()[0]) || error.error?.detail || error.error?.title || fallback;
+    return (validation && Object.values(validation).flat()[0]) || projectSaveErrorMessage(error, fallback);
   }
 }
 

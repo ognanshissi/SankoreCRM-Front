@@ -17453,6 +17453,35 @@
         }
       }
     },
+    "/api/v1/leads/opportunities/template": {
+      "get": {
+        "tags": [
+          "Opportunities"
+        ],
+        "operationId": "GetProjectTemplateForProduct",
+        "parameters": [
+          {
+            "name": "product",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectTemplateSummaryDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/leads/opportunities/{id}": {
       "get": {
         "tags": [
@@ -34327,6 +34356,19 @@
           },
           "tracksForecast": {
             "type": "boolean"
+          },
+          "amountKind": {
+            "enum": [
+              "Generic",
+              "Loan",
+              "Premium",
+              "Deposit"
+            ],
+            "type": "string",
+            "description": "One of: Generic, Loan, Premium, Deposit"
+          },
+          "criticalCloseDate": {
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -40941,6 +40983,84 @@
       "LeadReportForecast": {
         "type": "object",
         "properties": {
+          "kinds": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LeadReportForecastKind"
+            },
+            "nullable": true
+          },
+          "schedule": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LeadReportForecastMonth"
+            },
+            "nullable": true
+          },
+          "agencies": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LeadReportForecastAgency"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "LeadReportForecastAgency": {
+        "type": "object",
+        "properties": {
+          "agencyId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "kind": {
+            "enum": [
+              "Generic",
+              "Loan",
+              "Premium",
+              "Deposit"
+            ],
+            "type": "string",
+            "description": "One of: Generic, Loan, Premium, Deposit"
+          },
+          "count": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "weightedAmount": {
+            "type": "number",
+            "format": "double"
+          },
+          "overdue": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "overdueWeightedAmount": {
+            "type": "number",
+            "format": "double"
+          }
+        },
+        "additionalProperties": false
+      },
+      "LeadReportForecastKind": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "enum": [
+              "Generic",
+              "Loan",
+              "Premium",
+              "Deposit"
+            ],
+            "type": "string",
+            "description": "One of: Generic, Loan, Premium, Deposit"
+          },
           "count": {
             "type": "integer",
             "format": "int32"
@@ -40958,6 +41078,58 @@
             "format": "int32"
           },
           "overdueWeightedAmount": {
+            "type": "number",
+            "format": "double"
+          }
+        },
+        "additionalProperties": false
+      },
+      "LeadReportForecastMonth": {
+        "type": "object",
+        "properties": {
+          "month": {
+            "type": "string",
+            "format": "date"
+          },
+          "kind": {
+            "enum": [
+              "Generic",
+              "Loan",
+              "Premium",
+              "Deposit"
+            ],
+            "type": "string",
+            "description": "One of: Generic, Loan, Premium, Deposit"
+          },
+          "count": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "amount": {
+            "type": "number",
+            "format": "double"
+          },
+          "weightedAmount": {
+            "type": "number",
+            "format": "double"
+          }
+        },
+        "additionalProperties": false
+      },
+      "LeadReportKindAmount": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "enum": [
+              "Generic",
+              "Loan",
+              "Premium",
+              "Deposit"
+            ],
+            "type": "string",
+            "description": "One of: Generic, Loan, Premium, Deposit"
+          },
+          "amount": {
             "type": "number",
             "format": "double"
           }
@@ -41042,13 +41214,12 @@
             "type": "integer",
             "format": "int32"
           },
-          "amount": {
-            "type": "number",
-            "format": "double"
-          },
-          "weightedAmount": {
-            "type": "number",
-            "format": "double"
+          "amounts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LeadReportKindAmount"
+            },
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -43262,6 +43433,19 @@
           },
           "tracksForecast": {
             "type": "boolean"
+          },
+          "amountKind": {
+            "enum": [
+              "Generic",
+              "Loan",
+              "Premium",
+              "Deposit"
+            ],
+            "type": "string",
+            "description": "One of: Generic, Loan, Premium, Deposit"
+          },
+          "criticalCloseDate": {
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -45275,6 +45459,45 @@
             "nullable": true
           },
           "tracksForecast": {
+            "type": "boolean"
+          },
+          "amountKind": {
+            "enum": [
+              "Generic",
+              "Loan",
+              "Premium",
+              "Deposit"
+            ],
+            "type": "string",
+            "description": "One of: Generic, Loan, Premium, Deposit"
+          },
+          "criticalCloseDate": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ProjectTemplateSummaryDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "tracksForecast": {
+            "type": "boolean"
+          },
+          "amountKind": {
+            "enum": [
+              "Generic",
+              "Loan",
+              "Premium",
+              "Deposit"
+            ],
+            "type": "string",
+            "description": "One of: Generic, Loan, Premium, Deposit"
+          },
+          "criticalCloseDate": {
             "type": "boolean"
           }
         },
@@ -53350,6 +53573,19 @@
             "nullable": true
           },
           "tracksForecast": {
+            "type": "boolean"
+          },
+          "amountKind": {
+            "enum": [
+              "Generic",
+              "Loan",
+              "Premium",
+              "Deposit"
+            ],
+            "type": "string",
+            "description": "One of: Generic, Loan, Premium, Deposit"
+          },
+          "criticalCloseDate": {
             "type": "boolean"
           }
         },

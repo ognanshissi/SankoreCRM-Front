@@ -6,7 +6,7 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { CdkDrag, CdkDragDrop, CdkDropList, CdkDropListGroup } from '@angular/cdk/drag-drop';
 import { catchError, debounceTime, EMPTY, finalize, Subject } from 'rxjs';
 import { OpportunitiesApiService, OpportunityDto } from '@sankore/crm-api';
-import { BreadcrumbService, PermissionsService, projectGateCode, projectGateMessage } from '@sankore/crm/common';
+import { BreadcrumbService, PermissionsService, projectGateCode, projectGateMessage, projectFlowLabel } from '@sankore/crm/common';
 import { Button } from '@talisoft/ui/button';
 import { TasFormField, TasLabel } from '@talisoft/ui/form-field';
 import { TasIcon } from '@talisoft/ui/icon';
@@ -145,10 +145,18 @@ export class ProjectsBoard implements OnInit {
 
   public readonly columnIds = computed(() => this.columns().map((c) => 'col-' + c.id));
   public readonly totalAmount = computed(() => this._visible().reduce((t, p) => t + (p.estimatedAmount?.amount ?? 0), 0));
-  /** Le pondéré ne compte que les parcours qui suivent la prévision. */
-  public readonly totalWeighted = computed(() =>
-    this._visible().filter(tracksForecast).reduce((t, p) => t + weightedAmount(p), 0),
-  );
+  /**
+   * Le pondéré, par nature de montant et pour les seuls parcours qui suivent la prévision : un
+   * décaissement de crédit et une collecte d'épargne ne s'additionnent pas.
+   */
+  public readonly weightedByKind = computed(() => {
+    const byKind = new Map<string, number>();
+    for (const p of this._visible().filter(tracksForecast)) {
+      const kind = p.amountKind ?? 'Generic';
+      byKind.set(kind, (byKind.get(kind) ?? 0) + weightedAmount(p));
+    }
+    return [...byKind.entries()].map(([kind, amount]) => ({ kind, label: projectFlowLabel(kind), amount }));
+  });
 
   public ngOnInit(): void {
     this._breadcrumb.set([{ label: 'Projets' }]);

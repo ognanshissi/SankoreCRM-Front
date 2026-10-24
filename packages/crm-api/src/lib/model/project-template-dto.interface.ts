@@ -26,6 +26,11 @@ export interface ProjectTemplateDto {
     steps?: Array<ProjectStepDto> | null;
     updatedAt?: string | null;
     tracksForecast?: boolean;
+    /**
+     * One of: Generic, Loan, Premium, Deposit
+     */
+    amountKind?: ProjectTemplateDtoAmountKindEnum;
+    criticalCloseDate?: boolean;
 }
 export enum ProjectTemplateDtoCategoryEnum {
     Loan = 'Loan',
@@ -38,6 +43,12 @@ export enum ProjectTemplateDtoCategoryEnum {
     Agriculture = 'Agriculture',
     CurrentAccount = 'CurrentAccount',
     Standard = 'Standard'
+};
+export enum ProjectTemplateDtoAmountKindEnum {
+    Generic = 'Generic',
+    Loan = 'Loan',
+    Premium = 'Premium',
+    Deposit = 'Deposit'
 };
 
 

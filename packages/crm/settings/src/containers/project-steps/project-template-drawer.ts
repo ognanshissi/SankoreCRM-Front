@@ -1,14 +1,16 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
 import { DIALOG_DATA, DialogRef } from '@angular/cdk/dialog';
 import { HttpErrorResponse } from '@angular/common/http';
-import { applyEach, form, FormField, FormRoot, maxLength, required, submit, validate } from '@angular/forms/signals';
+import { applyEach, disabled, form, FormField, FormRoot, maxLength, required, submit, validate } from '@angular/forms/signals';
 import { catchError, EMPTY, firstValueFrom, Observable } from 'rxjs';
 import {
+  CreateProjectTemplateRequestAmountKindEnum,
   CreateProjectTemplateRequestCategoryEnum,
   ProjectStepRequest,
   ProjectStepRequestPhaseEnum,
   ProjectTemplateDto,
   ProjectTemplatesApiService,
+  UpdateProjectTemplateRequestAmountKindEnum,
 } from '@sankore/crm-api';
 import { Button } from '@talisoft/ui/button';
 import { ConfirmDialogService } from '@talisoft/ui/confirm-dialog';
@@ -19,7 +21,8 @@ import { TasSelect } from '@talisoft/ui/select';
 import { TasDrawerAction, TasDrawerContent, TasDrawerTitle, TasSideDrawer } from '@talisoft/ui/side-drawer';
 import { SnackbarService } from '@talisoft/ui/snackbar';
 import { TasTitle } from '@talisoft/ui/title';
-import { PHASE_OPTIONS, phaseIndex, PRESETS, projectTemplateError, StepPreset } from './project-steps.models';
+import { PROJECT_AMOUNT_KINDS } from '@sankore/crm/common';
+import { FAMILY_AMOUNT_KIND, PHASE_OPTIONS, phaseIndex, PRESETS, projectTemplateError, StepPreset } from './project-steps.models';
 
 export interface ProjectTemplateDrawerData {
   /** Null pour un nouveau gabarit de famille ou de produit. */
@@ -54,6 +57,8 @@ class TemplateFormModel {
   public category!: string;
   public productCode!: string;
   public tracksForecast!: boolean;
+  public amountKind!: string;
+  public criticalCloseDate!: boolean;
   public steps!: StepRow[];
 
   public static instantiate(template: ProjectTemplateDto | null): TemplateFormModel {
@@ -63,6 +68,8 @@ class TemplateFormModel {
     m.category = template?.category ?? '';
     m.productCode = template?.productCode ?? '';
     m.tracksForecast = template?.tracksForecast ?? true;
+    m.amountKind = template?.amountKind ?? 'Generic';
+    m.criticalCloseDate = !!template?.criticalCloseDate;
     m.steps = (template?.steps ?? []).map((s) => ({
       id: s.id ?? null,
       label: s.label ?? '',
@@ -121,6 +128,7 @@ export class ProjectTemplateDrawer {
   public readonly isDefault = this.template?.scope === 'Default';
   public readonly phaseOptions = PHASE_OPTIONS;
   public readonly presets = PRESETS;
+  public readonly amountKindOptions = PROJECT_AMOUNT_KINDS.map((k) => ({ value: k.value, label: k.label }));
   public readonly maxSteps = 12;
 
   public readonly scopeOptions = [
@@ -133,6 +141,7 @@ export class ProjectTemplateDrawer {
   public model = signal(TemplateFormModel.instantiate(this.template));
   public formSchema = form(this.model, (schema) => {
     required(schema.name, { message: 'Le nom est obligatoire' });
+    disabled(schema.criticalCloseDate, ({ valueOf }) => !valueOf(schema.tracksForecast));
     maxLength(schema.name, 100, { message: '100 caractères au plus' });
 
     if (this.isNew) {
@@ -172,6 +181,18 @@ export class ProjectTemplateDrawer {
     });
   });
 
+  constructor() {
+    // Un nouveau gabarit de famille propose la nature de montant de cette famille (crédit →
+    // décaissement…), tant que l'utilisateur ne l'a pas choisie lui-même.
+    if (this.isNew) {
+      effect(() => {
+        const family = this.formSchema.category().value();
+        const kind = FAMILY_AMOUNT_KIND[family];
+        if (kind && !this.formSchema.amountKind().dirty()) this.formSchema.amountKind().value.set(kind);
+      });
+    }
+  }
+
   public readonly title = computed(() => {
     if (this.isNew) return 'Nouveau gabarit';
     return this.isDefault ? 'Parcours par défaut' : 'Modifier le gabarit';
@@ -205,6 +226,8 @@ export class ProjectTemplateDrawer {
     if (!preset) return;
     this.formSchema.steps().value.set(fromPreset(preset.steps));
     this.formSchema.tracksForecast().value.set(preset.tracksForecast);
+    this.formSchema.amountKind().value.set(preset.amountKind);
+    this.formSchema.criticalCloseDate().value.set(!!preset.criticalCloseDate);
     if (!this.model().name.trim()) this.formSchema.name().value.set(preset.label);
   }
 
@@ -213,6 +236,8 @@ export class ProjectTemplateDrawer {
   public handleSubmit(): void {
     submit(this.formSchema, async (field) => {
       const v = field().value();
+      // Les deux requêtes déclarent chacune leur enum : même valeurs, types distincts.
+      const forecast = { tracksForecast: v.tracksForecast, criticalCloseDate: v.tracksForecast && v.criticalCloseDate };
       const steps: ProjectStepRequest[] = v.steps.map((s) => ({
         id: s.id,
         label: s.label.trim(),
@@ -227,13 +252,16 @@ export class ProjectTemplateDrawer {
       // Le parcours intégré n'est pas stocké : l'enregistrer en crée la copie du tenant, avec les
       // ids d'étapes intégrés pour que les projets déjà placés dessus y restent.
       const call: Observable<unknown> = this.template?.id
-        ? this._api.updateProjectTemplate(this.template.id, { name: v.name.trim(), steps, tracksForecast: v.tracksForecast })
+        ? this._api.updateProjectTemplate(this.template.id, {
+            name: v.name.trim(), steps, ...forecast, amountKind: v.amountKind as UpdateProjectTemplateRequestAmountKindEnum,
+          })
         : this._api.createProjectTemplate({
             name: v.name.trim(),
             category: !this.isDefault && v.scope === 'Category' ? (v.category as CreateProjectTemplateRequestCategoryEnum) : null,
             productCode: !this.isDefault && v.scope === 'Product' ? v.productCode : null,
             steps,
-            tracksForecast: v.tracksForecast,
+            ...forecast,
+            amountKind: v.amountKind as CreateProjectTemplateRequestAmountKindEnum,
           });
 
       const saved = await firstValueFrom(

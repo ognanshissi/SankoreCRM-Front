@@ -158,6 +158,11 @@ export function closeDateLabel(iso: string, today = new Date()): string {
 export function closeDateWarning(opp: OpportunityDto, today = new Date()): string | null {
   if (!opp.expectedCloseDate || isClosed(opp)) return null;
   const days = daysUntil(opp.expectedCloseDate, today);
+  // Une date critique est une échéance : la repousser ne sauve pas la vente, et « trop tôt »
+  // n'a pas de sens pour une date que la saison impose.
+  if (opp.criticalCloseDate) {
+    return days < 0 ? 'Échéance dépassée : relancez le client aujourd’hui ou clôturez le projet.' : null;
+  }
   if (days < 0) return 'Date dépassée : à repousser ou à clôturer.';
   const meta = stageMeta(opp.stage);
   if (meta && days < meta.minDaysToClose) {
