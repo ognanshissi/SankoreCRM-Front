@@ -44,6 +44,37 @@ export function intentOption(level: string | null | undefined): IntentOption {
   return INTENT_OPTIONS.find((o) => o.value === level) ?? INTENT_OPTIONS[0];
 }
 
+/**
+ * Le parcours du lead en UNE frise. Les 4 premières étapes sont son étape de pipeline
+ * (`LeadPipeline.ContactStages` côté serveur) ; les 2 dernières, son statut — la qualification et
+ * la conversion ne sont pas des étapes de pipeline. Avant, deux frises (« Cycle de vie » sur le
+ * statut, « Étape du lead » sur le pipeline) montraient des étapes différentes pour le même lead.
+ */
+export const LEAD_JOURNEY = [
+  { stage: 'New', label: 'Nouveau' },
+  { stage: 'ContactAttempted', label: 'Contact tenté' },
+  { stage: 'ContactEstablished', label: 'Contact établi' },
+  { stage: 'NeedIdentified', label: 'Besoin identifié' },
+  { stage: 'Qualified', label: 'Qualifié' },
+  { stage: 'Converted', label: 'Converti' },
+] as const;
+
+/** Rang de l'étape courante : le statut l'emporte quand il est allé plus loin que le pipeline. -1 hors frise. */
+export function journeyIndex(lead: LeadDto | null | undefined): number {
+  if (lead?.status === 'Converted' || lead?.pipelineStage === 'Converted') return LEAD_JOURNEY.length - 1;
+  if (lead?.status === 'Qualified') return 4;
+  return LEAD_JOURNEY.findIndex((s) => s.stage === lead?.pipelineStage);
+}
+
+/** Les statuts qui sortent le lead du parcours : la frise s'éteint et le statut s'affiche à côté. */
+const OFF_JOURNEY_STATUSES = ['Lost', 'Disqualified', 'Archived', 'Nurturing', 'Recycled'];
+
+/** « Perdu », « Disqualifié »… quand le lead a quitté le parcours ; null sinon. */
+export function journeyOffTrack(lead: LeadDto | null | undefined): { label: string; severity: Severity } | null {
+  if (lead?.pipelineStage === 'Lost') return leadStatusMeta('Lost');
+  return OFF_JOURNEY_STATUSES.includes(lead?.status ?? '') ? leadStatusMeta(lead?.status) : null;
+}
+
 /** « Centre d'appels » — par où le lead est arrivé, le canal d'abord, la source à défaut. */
 export function originLabel(lead: LeadDto | null | undefined): string {
   const byChannel: Record<string, string> = {

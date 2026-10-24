@@ -27,76 +27,6 @@
       (openCustomerKyc)="openCustomerKyc($event)"
     ></customer-match-banner>
 
-    <!-- ═══════ Indicateurs ═══════ -->
-    <div class="grid grid-cols-2 xl:grid-cols-4 gap-3">
-      <tas-card class="block">
-        <div class="p-4 flex items-start gap-3">
-          <span class="w-10 h-10 shrink-0 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
-            <tas-icon iconName="feather:credit-card" style="font-size:16px"></tas-icon>
-          </span>
-          <div class="min-w-0">
-            <p class="text-xs text-slate-500">Besoin</p>
-            @if (amount(); as a) {
-              <p class="text-base font-bold text-slate-900 tabular-nums truncate">{{ a }}</p>
-            } @else {
-              <p class="text-base font-bold text-slate-400">Montant à préciser</p>
-            }
-            <p class="text-xs text-slate-500 truncate">{{ productLabel() ?? 'Produit non précisé' }}</p>
-          </div>
-        </div>
-      </tas-card>
-
-      <tas-card class="block">
-        <div class="p-4 flex items-start gap-3">
-          <span class="w-10 h-10 shrink-0 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
-            <tas-icon [iconName]="isCompany() ? 'feather:briefcase' : 'feather:user'" style="font-size:16px"></tas-icon>
-          </span>
-          <div class="min-w-0">
-            <p class="text-xs text-slate-500">Profil</p>
-            <p class="text-base font-bold text-slate-900 truncate">
-              {{ prospectTypeLabel(l.prospectType) }}@if (age() !== null) {, {{ age() }} ans}
-            </p>
-            <p class="text-xs text-slate-500 truncate">
-              {{ l.nationalId ? 'Pièce d\'identité renseignée' : 'Pièce d\'identité à recueillir' }}
-            </p>
-          </div>
-        </div>
-      </tas-card>
-
-      <tas-card class="block">
-        <div class="p-4 flex items-start gap-3">
-          <span class="w-10 h-10 shrink-0 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center">
-            <tas-icon iconName="feather:phone-incoming" style="font-size:16px"></tas-icon>
-          </span>
-          <div class="min-w-0">
-            <p class="text-xs text-slate-500">Arrivé</p>
-            <p class="text-base font-bold text-slate-900 truncate">{{ l.capturedAt ? (l.capturedAt | dateTimeAgo) : '—' }}</p>
-            <p class="text-xs text-slate-500 truncate">{{ originPhrase() }}</p>
-          </div>
-        </div>
-      </tas-card>
-
-      <tas-card class="block">
-        <div class="p-4 flex items-start gap-3">
-          <span class="w-10 h-10 shrink-0 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center">
-            <tas-icon iconName="feather:clock" style="font-size:16px"></tas-icon>
-          </span>
-          <div class="min-w-0">
-            <p class="text-xs text-slate-500">{{ l.convertedAt ? 'Converti' : 'Expire' }}</p>
-            @if (l.convertedAt) {
-              <p class="text-base font-bold text-slate-900 truncate">{{ l.convertedAt | dateTimeAgo }}</p>
-              <p class="text-xs text-slate-500">le {{ formatDay(l.convertedAt) }}</p>
-            } @else if (l.expiresAt) {
-              <p class="text-base font-bold text-slate-900 truncate">{{ l.expiresAt | dateTimeAgo }}</p>
-              <p class="text-xs text-slate-500">le {{ formatDay(l.expiresAt) }}</p>
-            } @else {
-              <p class="text-base font-bold text-slate-400">Sans échéance</p>
-            }
-          </div>
-        </div>
-      </tas-card>
-    </div>
-
     <!-- ═══════ Un contact sans trace ═══════ -->
     @switch (contactAlert()) {
       @case ('contacted-without-trace') {
@@ -136,6 +66,102 @@
     <!-- ═══════ Corps : colonne principale + colonne d'actions ═══════ -->
     <div class="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_21rem] gap-4 items-start">
       <div class="flex flex-col gap-4 min-w-0">
+        <!--
+          Son besoin, d'abord : ce qu'il veut, d'où il vient et où en est sa qualification. Le
+          parcours et l'intérêt ressenti sont dans l'en-tête, visibles depuis chaque onglet.
+        -->
+        <tas-card class="block">
+          <div class="p-5">
+            <p class="text-base font-semibold text-slate-900 flex items-center gap-2 mb-4">
+              <tas-icon iconName="feather:package" class="text-slate-500" style="font-size:16px"></tas-icon>
+              Son besoin
+            </p>
+            <div class="rounded-xl bg-blue-50/70 p-4">
+              <div class="flex flex-wrap gap-x-10 gap-y-3">
+                <div>
+                  <p class="text-xs text-blue-700/80">Produit</p>
+                  <p class="text-lg font-bold text-slate-900">{{ productLabel() ?? 'À préciser' }}</p>
+                </div>
+                <div>
+                  <p class="text-xs text-blue-700/80">Montant souhaité</p>
+                  @if (amount(); as a) {
+                    <p class="text-lg font-bold text-slate-900 tabular-nums">{{ a }}</p>
+                  } @else {
+                    <p class="text-lg font-bold text-amber-700">À demander</p>
+                  }
+                </div>
+                <!-- L'origine est dans l'en-tête (« Venu par … ») ; la campagne n'y est pas. -->
+                @if (l.campaign) {
+                  <div>
+                    <p class="text-xs text-blue-700/80">Campagne</p>
+                    <p class="text-lg font-bold text-slate-900">{{ l.campaign }}</p>
+                  </div>
+                }
+              </div>
+              <!--
+                Les champs personnalisés que le tenant a rangés dans la section « Besoin » (durée,
+                équipement…) : lus et modifiés ici, là où l'agent parle du besoin.
+              -->
+              <div class="mt-3">
+                <custom-fields-card
+                  entity="Lead"
+                  [bare]="true"
+                  title=""
+                  editLabel="Compléter le besoin"
+                  emptyLabel="À demander"
+                  [sections]="['request']"
+                  [values]="l.customFields"
+                  [context]="{ prospectType: l.prospectType }"
+                  [canEdit]="canUpdate()"
+                  [save]="saveCustomFields"
+                  (saved)="onCustomFieldsSaved()"
+                ></custom-fields-card>
+              </div>
+            </div>
+            @if (l.comment) {
+              <p class="mt-3 text-sm text-slate-600 whitespace-pre-line">{{ l.comment }}</p>
+            }
+
+            <div class="mt-4 rounded-xl bg-slate-50 p-3 flex items-center gap-4">
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center justify-between text-sm">
+                  <span class="font-semibold text-slate-800">Qualification</span>
+                  <span class="text-slate-600 tabular-nums">
+                    @if (qualification().total !== null) {
+                      {{ qualification().answered }} question{{ (qualification().answered ?? 0) > 1 ? 's' : '' }} sur {{ qualification().total }}
+                    } @else {
+                      {{ qualification().percent }} %
+                    }
+                  </span>
+                </div>
+                <div class="mt-2 h-1.5 rounded-full bg-slate-200 overflow-hidden">
+                  <div class="h-full rounded-full bg-primary transition-all" [style.width.%]="qualification().percent"></div>
+                </div>
+                @if (canUpdate()) {
+                  @if (showQualOverride()) {
+                    <div class="flex items-center gap-2 mt-2">
+                      <input type="range" min="0" max="100" class="flex-1 accent-primary"
+                             [ngModel]="qualOverrideValue()" (ngModelChange)="qualOverrideValue.set($event)" />
+                      <span class="text-xs text-slate-600 tabular-nums w-10 text-right">{{ qualOverrideValue() }} %</span>
+                      <button tas-button color="primary" type="button" class="text-xs" [disabled]="isSavingQual()" (click)="saveQualificationCompleteness()">OK</button>
+                      <button type="button" class="text-xs text-slate-400" (click)="showQualOverride.set(false)">Annuler</button>
+                    </div>
+                  } @else {
+                    <button type="button" class="mt-1 text-[11px] text-slate-400 hover:text-slate-600" (click)="showQualOverride.set(true)">
+                      Ajuster à la main
+                    </button>
+                  }
+                }
+              </div>
+              <!-- Les questions se posent dans chaque projet, d'après son produit. -->
+              <button type="button" class="shrink-0 px-4 py-2 rounded-full bg-primary text-white text-sm font-semibold hover:opacity-90"
+                      (click)="openTab('projets')">
+                Voir les projets
+              </button>
+            </div>
+          </div>
+        </tas-card>
+
         <!-- Identité -->
         <tas-card class="block">
           <div class="p-5">
@@ -219,133 +245,6 @@
           </div>
         </tas-card>
 
-        <!-- Son besoin -->
-        <tas-card class="block">
-          <div class="p-5">
-            <p class="text-base font-semibold text-slate-900 flex items-center gap-2 mb-4">
-              <tas-icon iconName="feather:package" class="text-slate-500" style="font-size:16px"></tas-icon>
-              Son besoin
-            </p>
-            <div class="rounded-xl bg-blue-50/70 p-4">
-              <div class="flex flex-wrap gap-x-10 gap-y-3">
-                <div>
-                  <p class="text-xs text-blue-700/80">Produit</p>
-                  <p class="text-lg font-bold text-slate-900">{{ productLabel() ?? 'À préciser' }}</p>
-                </div>
-                <div>
-                  <p class="text-xs text-blue-700/80">Montant souhaité</p>
-                  @if (amount(); as a) {
-                    <p class="text-lg font-bold text-slate-900 tabular-nums">{{ a }}</p>
-                  } @else {
-                    <p class="text-lg font-bold text-amber-700">À demander</p>
-                  }
-                </div>
-              </div>
-              <!--
-                Les champs personnalisés que le tenant a rangés dans la section « Besoin » (durée,
-                équipement…) : lus et modifiés ici, là où l'agent parle du besoin.
-              -->
-              <div class="mt-3">
-                <custom-fields-card
-                  entity="Lead"
-                  [bare]="true"
-                  title=""
-                  editLabel="Compléter le besoin"
-                  emptyLabel="À demander"
-                  [sections]="['request']"
-                  [values]="l.customFields"
-                  [context]="{ prospectType: l.prospectType }"
-                  [canEdit]="canUpdate()"
-                  [save]="saveCustomFields"
-                  (saved)="onCustomFieldsSaved()"
-                ></custom-fields-card>
-              </div>
-            </div>
-            @if (l.comment) {
-              <p class="mt-3 text-sm text-slate-600 whitespace-pre-line">{{ l.comment }}</p>
-            }
-          </div>
-        </tas-card>
-
-        <!-- Suivi commercial -->
-        <tas-card class="block">
-          <div class="p-5">
-            <p class="text-base font-semibold text-slate-900 flex items-center gap-2 mb-4">
-              <tas-icon iconName="feather:trending-up" class="text-slate-500" style="font-size:16px"></tas-icon>
-              Suivi commercial
-            </p>
-            <div class="grid grid-cols-2 gap-x-6 gap-y-4">
-              <div>
-                <p class="text-xs text-slate-500">Origine</p>
-                <p class="text-sm font-semibold text-slate-900 mt-0.5">{{ origin() }}</p>
-              </div>
-              <div>
-                <p class="text-xs text-slate-500">Étape du pipeline</p>
-                <p class="text-sm font-semibold text-slate-900 mt-0.5">{{ pipelineLabel(l.pipelineStage) }}</p>
-              </div>
-              @if (l.campaign) {
-                <div>
-                  <p class="text-xs text-slate-500">Campagne</p>
-                  <p class="text-sm font-semibold text-slate-900 mt-0.5">{{ l.campaign }}</p>
-                </div>
-              }
-            </div>
-
-            <p class="text-xs text-slate-500 mt-4 mb-2">Intérêt ressenti</p>
-            <div class="flex flex-wrap gap-2" role="radiogroup" aria-label="Intérêt ressenti">
-              @for (option of intentOptions; track option.value) {
-                <button type="button" role="radio"
-                        class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-sm font-medium transition-colors"
-                        [class]="(l.intentLevel ?? 'Unknown') === option.value ? 'border-primary text-slate-900 ring-1 ring-primary' : 'border-slate-200 text-slate-700 hover:bg-slate-50'"
-                        [attr.aria-checked]="(l.intentLevel ?? 'Unknown') === option.value"
-                        [disabled]="!canUpdate()"
-                        (click)="setIntentLevel(option.value)">
-                  <span class="w-2 h-2 rounded-full" [class]="option.dot"></span>
-                  {{ option.label }}
-                </button>
-              }
-            </div>
-
-            <div class="mt-4 rounded-xl bg-slate-50 p-3 flex items-center gap-4">
-              <div class="flex-1 min-w-0">
-                <div class="flex items-center justify-between text-sm">
-                  <span class="font-semibold text-slate-800">Qualification</span>
-                  <span class="text-slate-600 tabular-nums">
-                    @if (qualification().total !== null) {
-                      {{ qualification().answered }} question{{ (qualification().answered ?? 0) > 1 ? 's' : '' }} sur {{ qualification().total }}
-                    } @else {
-                      {{ qualification().percent }} %
-                    }
-                  </span>
-                </div>
-                <div class="mt-2 h-1.5 rounded-full bg-slate-200 overflow-hidden">
-                  <div class="h-full rounded-full bg-primary transition-all" [style.width.%]="qualification().percent"></div>
-                </div>
-                @if (canUpdate()) {
-                  @if (showQualOverride()) {
-                    <div class="flex items-center gap-2 mt-2">
-                      <input type="range" min="0" max="100" class="flex-1 accent-primary"
-                             [ngModel]="qualOverrideValue()" (ngModelChange)="qualOverrideValue.set($event)" />
-                      <span class="text-xs text-slate-600 tabular-nums w-10 text-right">{{ qualOverrideValue() }} %</span>
-                      <button tas-button color="primary" type="button" class="text-xs" [disabled]="isSavingQual()" (click)="saveQualificationCompleteness()">OK</button>
-                      <button type="button" class="text-xs text-slate-400" (click)="showQualOverride.set(false)">Annuler</button>
-                    </div>
-                  } @else {
-                    <button type="button" class="mt-1 text-[11px] text-slate-400 hover:text-slate-600" (click)="showQualOverride.set(true)">
-                      Ajuster à la main
-                    </button>
-                  }
-                }
-              </div>
-              <!-- Les questions se posent dans chaque projet, d'après son produit. -->
-              <button type="button" class="shrink-0 px-4 py-2 rounded-full bg-primary text-white text-sm font-semibold hover:opacity-90"
-                      (click)="openTab('projets')">
-                Voir les projets
-              </button>
-            </div>
-          </div>
-        </tas-card>
-
         <!-- Les autres champs personnalisés du tenant (formulaires dynamiques) -->
         <custom-fields-card
           entity="Lead"
@@ -402,6 +301,9 @@
 
       <!-- ═══════ Colonne d'actions ═══════ -->
       <div class="flex flex-col gap-4">
+        <!-- Cycle de vie et score : venus de l'ancienne colonne de gauche, qui les répétait sur chaque onglet -->
+        <lead-progress-card></lead-progress-card>
+
         <!-- Joindre -->
         <tas-card class="block">
           <div class="p-5">

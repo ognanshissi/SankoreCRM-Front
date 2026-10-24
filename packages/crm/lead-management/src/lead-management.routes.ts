@@ -77,16 +77,15 @@ export const leadManagementRoutes = [
         loadComponent: () => import('./containers/edit-lead/informations'),
       },
       {
+        // Identité et foyer : un onglet (refonte de la fiche, 2026-10-24).
         path: 'identite',
-        loadComponent: () => import('./containers/edit-lead/identite'),
+        loadComponent: () => import('./containers/edit-lead/identite-foyer'),
       },
+      { path: 'foyer', redirectTo: 'identite', pathMatch: 'full' as const },
       {
-        path: 'foyer',
-        loadComponent: () => import('./containers/edit-lead/foyer'),
-      },
-      {
+        // FATCA, PPE et consentements : un onglet.
         path: 'conformite',
-        loadComponent: () => import('./containers/edit-lead/conformite'),
+        loadComponent: () => import('./containers/edit-lead/conformite-tab'),
       },
       // La qualification et les questionnaires se remplissent dans le projet, d'après son produit.
       { path: 'questionnaires', redirectTo: 'projets', pathMatch: 'full' as const },
@@ -151,13 +150,7 @@ export const leadManagementRoutes = [
         canActivate: [hasPermissionGuard('lead:merge', 'lead:duplicate:dismiss')],
         loadComponent: () => import('./containers/edit-lead/doublons'),
       },
-      {
-        path: 'consentement',
-        canActivate: [
-          hasPermissionGuard('lead:consent:record', 'lead:consent:withdraw'),
-        ],
-        loadComponent: () => import('./containers/edit-lead/consentement'),
-      },
+      { path: 'consentement', redirectTo: 'conformite', pathMatch: 'full' as const },
     ],
   },
 ];

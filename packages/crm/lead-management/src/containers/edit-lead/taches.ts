@@ -325,7 +325,7 @@ export class LeadTachesPage {
       const who = assignee === me ? 'vous' : this._users().get(assignee ?? '') ?? 'l\'agent du lead';
       this._snackbar.success('Tâche ajoutée', `Échéance demain, assignée à ${who}.`);
       this.addingSuggestion.set(null);
-      this._loadTasks();
+      this._refresh();
     });
   }
 
@@ -386,7 +386,7 @@ export class LeadTachesPage {
     });
 
     ref.closed.subscribe((created: any) => {
-      if (created) this._loadTasks();
+      if (created) this._refresh();
     });
   }
 
@@ -429,7 +429,7 @@ export class LeadTachesPage {
 
     ref.closed.subscribe((result) => {
       if (result && typeof result === 'object' && (result as any).completed) {
-        this._loadTasks();
+        this._refresh();
       }
     });
   }
@@ -447,8 +447,18 @@ export class LeadTachesPage {
     ref.closed.subscribe((declined) => {
       if (declined) {
         this.tasks.update((list) => list.filter((t) => t.id !== task.id));
+        this._leadEditContext.reload();
       }
     });
+  }
+
+  /**
+   * Une tâche ajoutée, faite ou refusée change la « Prochaine étape » de l'en-tête : sans relire le
+   * lead, l'en-tête montrait encore la tâche terminée jusqu'à la relecture suivante (30 s).
+   */
+  private _refresh(): void {
+    this._loadTasks();
+    this._leadEditContext.reload();
   }
 
   /**

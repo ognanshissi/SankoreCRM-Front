@@ -73,13 +73,15 @@
       <!-- Avec qui -->
       <div>
         <p class="mb-2 text-sm font-medium text-slate-700">Concerne</p>
-        <div role="group" aria-label="Le rendez-vous concerne" class="inline-flex gap-1 rounded-full bg-slate-100 p-1">
-          @for (opt of subjectOptions; track opt.value) {
-            <button type="button" class="rounded-full px-4 py-1.5 text-sm font-semibold transition-colors"
-              [class]="subjectType() === opt.value ? 'bg-white text-primary shadow-xs' : 'text-slate-600 hover:text-slate-900'"
-              [attr.aria-pressed]="subjectType() === opt.value" (click)="setSubjectType(opt.value)">{{ opt.label }}</button>
-          }
-        </div>
+        @if (!subjectLocked) {
+          <div role="group" aria-label="Le rendez-vous concerne" class="inline-flex gap-1 rounded-full bg-slate-100 p-1">
+            @for (opt of subjectOptions; track opt.value) {
+              <button type="button" class="rounded-full px-4 py-1.5 text-sm font-semibold transition-colors"
+                [class]="subjectType() === opt.value ? 'bg-white text-primary shadow-xs' : 'text-slate-600 hover:text-slate-900'"
+                [attr.aria-pressed]="subjectType() === opt.value" (click)="setSubjectType(opt.value)">{{ opt.label }}</button>
+            }
+          </div>
+        }
 
         @if (subjectType() !== 'none') {
           <div class="mt-3 flex flex-col gap-3">
@@ -89,7 +91,9 @@
                   <p class="font-medium text-slate-700">{{ subjectLabel() }}</p>
                   <p class="text-xs text-slate-500">{{ subjectType() === 'lead' ? 'Lead retenu' : 'Client retenu' }}</p>
                 </div>
-                <button tas-text-button color="warn" type="button" (click)="clearSubject()">Retirer</button>
+                @if (!subjectLocked) {
+                  <button tas-text-button color="warn" type="button" (click)="clearSubject()">Retirer</button>
+                }
               </div>
             } @else {
               <tas-form-field>

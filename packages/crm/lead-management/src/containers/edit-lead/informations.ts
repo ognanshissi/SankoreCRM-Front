@@ -1,3 +1,4 @@
+import { LeadProgressCard } from './lead-progress-card';
 import { Component, computed, effect, inject, input, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -20,7 +21,6 @@ import {
   OpportunitiesApiService,
   OpportunityDto,
   ProductHoldingsApiService,
-  SetIntentLevelRequestIntentLevelEnum,
   TagDto,
 } from '@sankore/crm-api';
 import {
@@ -43,32 +43,13 @@ import { EditLeadInfoDrawer, genderLabel } from './edit-lead-info-drawer';
 import { LogActivityDrawer, LogActivityDrawerData } from './log-activity-drawer';
 import { CustomerMatchBanner, CustomerMatchView, customerMatchViewFromDto } from './customer-match-banner';
 import { AttachCustomerDrawer, AttachCustomerDrawerData, AttachCustomerResult } from './attach-customer-drawer';
-import { ageOf, formatAmount, formatDay, INTENT_OPTIONS, originLabel, originPhrase, prospectTypeLabel } from './lead-view.models';
+import { ageOf, formatAmount, formatDay, prospectTypeLabel } from './lead-view.models';
 
 /** Une correspondance client, avec ses produits et demandes, avant mise en forme. */
 interface LeadCustomerMatchRaw {
   dto: CustomerMatchDto;
   holdings: HoldingDto[] | null;
   opportunities: OpportunityDto[] | null;
-}
-
-function pipelineLabel(stage: string | null | undefined): string {
-  switch (stage) {
-    // Les étapes du serveur (PipelineStage).
-    case 'New':                  return 'Nouveau';
-    case 'ContactAttempted':     return 'Contact tenté';
-    case 'ContactEstablished':   return 'Contact établi';
-    case 'NeedIdentified':       return 'Besoin identifié';
-    case 'Qualified':            return 'Qualifié';
-    case 'ProductProposed':      return 'Produit proposé';
-    case 'ApplicationStarted':   return 'Dossier démarré';
-    case 'DocumentCollection':   return 'Collecte des pièces';
-    case 'ApplicationCompleted': return 'Dossier complet';
-    case 'ApprovalPending':      return 'En approbation';
-    case 'Converted':            return 'Converti';
-    case 'Lost':                 return 'Perdu';
-    default:                     return stage ?? '—';
-  }
 }
 
 /** Où se corrige un élément manquant de la jauge de complétude — l'onglet de la fiche. */
@@ -101,6 +82,7 @@ function maskDocument(value: string): string {
   selector: 'lead-informations',
   templateUrl: './informations.html',
   imports: [
+    LeadProgressCard,
     FormsModule,
     TasCard,
     TasSpinner,
@@ -157,12 +139,8 @@ export class LeadInformationsPage {
   public readonly productLabel = computed(() => interestedProductLabel(this.lead()?.interestedProduct));
   public readonly firstName = computed(() => this.lead()?.firstName || this.lead()?.fullName?.split(' ')[0] || 'le prospect');
   public readonly age = computed(() => ageOf(this.lead()?.dateOfBirth));
-  public readonly origin = computed(() => originLabel(this.lead()));
-  public readonly originPhrase = computed(() => originPhrase(this.lead()));
   public readonly isCompany = computed(() => this.lead()?.prospectType === 'Corporate');
 
-  public readonly intentOptions = INTENT_OPTIONS;
-  public readonly pipelineLabel = pipelineLabel;
   public readonly prospectTypeLabel = prospectTypeLabel;
   public readonly genderLabel = genderLabel;
   public readonly formatDay = formatDay;
@@ -303,13 +281,6 @@ export class LeadInformationsPage {
     this._reload();
   }
 
-  public setIntentLevel(level: SetIntentLevelRequestIntentLevelEnum): void {
-    if (!this.canUpdate() || this.lead()?.intentLevel === level) return;
-    this._leadsApiService.setLeadIntentLevel(this.id(), { intentLevel: level }).pipe(
-      catchError(() => { this._snackbar.error('Erreur', 'Impossible de modifier l\'intérêt ressenti.'); return EMPTY; }),
-    ).subscribe(() => this._reload());
-  }
-
   public recordFirstContact(): void {
     this.isRecordingFirstContact.set(true);
     this._leadsApiService.recordFirstContact(this.id(), { contactedAt: new Date().toISOString() }).pipe(
@@ -351,7 +322,12 @@ export class LeadInformationsPage {
   }
 
   public openTab(route: string | null): void {
-    if (route) this._router.navigate(['/leads', this.id(), route]);
+    if (!route) return;
+    // Le foyer et les consentements sont des sections d'onglets fusionnés (refonte du 2026-10-24).
+    const merged: Record<string, [string, string]> = { foyer: ['identite', 'foyer'], consentement: ['conformite', 'consentements'] };
+    const target = merged[route];
+    if (target) this._router.navigate(['/leads', this.id(), target[0]], { fragment: target[1] });
+    else this._router.navigate(['/leads', this.id(), route]);
   }
 
   public openEditInfoDrawer(): void {

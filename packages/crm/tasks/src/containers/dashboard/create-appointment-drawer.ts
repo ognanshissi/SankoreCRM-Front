@@ -30,6 +30,8 @@ export interface CreateAppointmentDrawerData {
   day?: string | null;
   /** L'heure du créneau cliqué dans le Calendrier (« 14:30 ») ; sinon l'heure pleine suivante. */
   time?: string | null;
+  /** Un sujet déjà choisi — le rendez-vous est pris depuis sa fiche (lead ou client) : il n'est plus à chercher. */
+  subject?: { type: 'lead' | 'client'; id: string; label: string };
 }
 
 type SubjectType = 'none' | 'lead' | 'client';
@@ -83,7 +85,11 @@ class CreateAppointmentFormModel {
   public participantIds!: string[];
   public description!: string;
 
-  public static instantiate(day?: string | null, time?: string | null): CreateAppointmentFormModel {
+  public static instantiate(
+    day?: string | null,
+    time?: string | null,
+    subject?: CreateAppointmentDrawerData['subject'],
+  ): CreateAppointmentFormModel {
     const m = new CreateAppointmentFormModel();
     // L'heure pleine suivante : un rendez-vous se pose rarement à 14 h 37.
     const next = new Date();
@@ -95,9 +101,9 @@ class CreateAppointmentFormModel {
     m.mode = 'InPerson';
     m.meetingUrl = '';
     m.location = '';
-    m.subjectType = 'none';
-    m.subjectId = '';
-    m.subjectLabel = '';
+    m.subjectType = subject?.type ?? 'none';
+    m.subjectId = subject?.id ?? '';
+    m.subjectLabel = subject?.label ?? '';
     m.participantIds = [];
     m.description = '';
     return m;
@@ -151,7 +157,10 @@ export class CreateAppointmentDrawer {
   public readonly subjectOptions = SUBJECT_OPTIONS;
   public readonly minDate = dayKey(Date.now());
 
-  public model = signal(CreateAppointmentFormModel.instantiate(this._data?.day, this._data?.time));
+  /** Pris depuis une fiche : le sujet est imposé, ni changeable ni retirable. */
+  public readonly subjectLocked = !!this._data?.subject;
+
+  public model = signal(CreateAppointmentFormModel.instantiate(this._data?.day, this._data?.time, this._data?.subject));
 
   public formSchema = form(this.model, (schema) => {
     required(schema.title, { message: 'L’objet est obligatoire' });
@@ -284,7 +293,7 @@ export class CreateAppointmentDrawer {
   }
 
   public setSubjectType(type: SubjectType): void {
-    if (this.subjectType() === type) return;
+    if (this.subjectLocked || this.subjectType() === type) return;
     this.formSchema.subjectType().value.set(type);
     this.clearSubject();
     this.searchTerm.set('');
@@ -306,6 +315,7 @@ export class CreateAppointmentDrawer {
   }
 
   public clearSubject(): void {
+    if (this.subjectLocked) return;
     this.formSchema.subjectId().value.set('');
     this.formSchema.subjectLabel().value.set('');
   }

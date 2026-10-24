@@ -205,7 +205,7 @@ export class LeadConformite {
   public readonly principalPepLinkLabel = computed(() =>
     pepLinkLabel(this.principalPep().link),
   );
-  public readonly foyerLink = computed(() => ['/leads', this.compliance.leadId() ?? '', 'foyer']);
+  public readonly foyerLink = computed(() => ['/leads', this.compliance.leadId() ?? '', 'identite']);
 
   /**
    * Pagination désactivée : un dossier tient sur un écran et l'API renvoie

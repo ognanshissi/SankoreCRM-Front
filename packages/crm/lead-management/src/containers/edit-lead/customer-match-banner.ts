@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input, output, signal } from '@angular/core';
 import { TasCard } from '@talisoft/ui/card';
 import { TasIcon } from '@talisoft/ui/icon';
 import { Severity, TasTag } from '@talisoft/ui/tag';
@@ -85,7 +85,9 @@ const MATCHED_ON_LABELS: Record<string, string> = {
  */
 export function customerMatchedOnLabel(code: string | null | undefined): string {
   if (!code) return 'Correspondance';
-  return MATCHED_ON_LABELS[code] ?? code;
+  // Le serveur envoie selon les cas « Email » ou « email » : la casse ne change pas le critère.
+  const key = Object.keys(MATCHED_ON_LABELS).find((k) => k.toLowerCase() === code.toLowerCase());
+  return key ? MATCHED_ON_LABELS[key] : code;
 }
 
 function holdingView(holding: HoldingDto): CustomerMatchProductView {
@@ -407,136 +409,106 @@ export function customerMatchViewFromClient(
       </tas-card>
     } @else if (candidates().length > 0) {
       <!-- ===== Encart « Client existant » : candidats au rattachement (BNF-F-18) ===== -->
+      <!--
+        Compact (2026-10-24) : une ligne de résumé, et une ligne par client. Plusieurs
+        candidats occupaient un écran entier, « Aucun produit détenu » et « Correspond sur »
+        répétés sur chacun. Replié par défaut quand il y a un choix à faire ; déplié quand un
+        seul client correspond exactement, puisqu'il est alors proposé.
+      -->
       <tas-card class="block">
-        <div class="p-4 border-l-4 border-amber-400">
-          <div class="flex items-start gap-2">
-            <tas-icon
-              iconName="feather:user-check"
-              class="text-amber-600 shrink-0 mt-0.5"
-              style="font-size:14px"
-            ></tas-icon>
-            <div class="min-w-0">
-              <p class="text-sm font-semibold text-slate-800">Client existant</p>
-              <p class="text-xs text-slate-500 mt-0.5">
-                @if (exactProposal()) {
-                  Ce contact correspond exactement à un client. Le rattachement est
-                  proposé : l'identité ne sera pas ressaisie.
-                } @else {
-                  {{ candidates().length }} client(s) peuvent correspondre. Choisissez
-                  explicitement avant de continuer.
-                }
-              </p>
-            </div>
+        <div class="border-l-4 border-amber-400 px-4 py-3">
+          <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
+            <tas-icon iconName="feather:user-check" class="shrink-0 text-amber-600" style="font-size:14px"></tas-icon>
+            <p class="min-w-0 flex-1 text-sm text-slate-700">
+              <span class="font-semibold text-slate-800">Client existant</span>
+              —
+              @if (exactProposal()) {
+                ce contact correspond exactement à un client : le rattachement est proposé.
+              } @else {
+                {{ candidates().length }} client{{ candidates().length > 1 ? 's' : '' }} peuvent correspondre
+                @if (sharedMatchedOn(); as on) { <span class="text-slate-500">sur {{ on }}</span> }
+              }
+            </p>
+            <button tas-text-button color="primary" type="button" class="text-xs"
+                    [attr.aria-expanded]="isOpen()" (click)="expanded.set(!isOpen())">
+              {{ isOpen() ? 'Masquer' : 'Voir et choisir' }}
+              <tas-icon [iconName]="isOpen() ? 'feather:chevron-up' : 'feather:chevron-down'" style="font-size:12px"></tas-icon>
+            </button>
           </div>
 
-          <ul class="mt-3 divide-y divide-slate-100 rounded-lg border border-slate-200">
-            @for (item of candidates(); track item.customerId) {
-              <li
-                class="p-3 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"
-                [class]="item.customerId === selectedCustomerId() ? 'bg-primary/5' : ''"
-              >
-                <div class="min-w-0 flex flex-col gap-1">
-                  <div class="flex items-center gap-2 flex-wrap">
-                    <span class="text-sm font-medium text-slate-800">{{ item.displayName }}</span>
-                    @if (item.customerId === selectedCustomerId()) {
-                      <tas-tag severity="success">Retenu</tas-tag>
-                    }
+          @if (isOpen()) {
+            <ul class="mt-2 divide-y divide-slate-100 rounded-lg border border-slate-200">
+              @for (item of candidates(); track item.customerId) {
+                <li class="px-3 py-2" [class]="item.customerId === selectedCustomerId() ? 'bg-primary/5' : ''">
+                  <div class="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+                    <div class="min-w-48 flex-1">
+                      <p class="truncate text-sm">
+                        <span class="font-medium text-slate-800">{{ item.displayName }}</span>
+                        @if (item.customerId === selectedCustomerId()) {
+                          <tas-tag severity="success" class="ms-1">Retenu</tas-tag>
+                        }
+                      </p>
+                      <p class="truncate text-xs text-slate-500">
+                        @if (item.clientNumber) { <span class="tabular-nums">N° {{ item.clientNumber }}</span> }
+                        @if (item.agencyLabel) { · {{ item.agencyLabel }} }
+                        @if (item.statusLabel) { · {{ item.statusLabel }} }
+                        @if (!sharedMatchedOn() && item.matchedOnLabels.length > 0) {
+                          · sur {{ item.matchedOnLabels.join(', ').toLowerCase() }}
+                        }
+                      </p>
+                    </div>
+                    <!-- Un libellé accompagne toujours le badge : la couleur ne porte jamais seule l'information (WCAG 2.1 AA). -->
+                    <span class="inline-flex shrink-0 items-center gap-1.5">
+                      <span class="text-xs text-slate-400">KYC</span>
+                      <tas-tag [severity]="kycSeverity(item.kycStatus)">{{ kycLabel(item.kycStatus) }}</tas-tag>
+                    </span>
+                    <div class="flex shrink-0 items-center gap-1">
+                      @if (canAct()) {
+                        <button tas-outlined-button color="primary" type="button" class="text-xs"
+                                [disabled]="item.customerId === selectedCustomerId()"
+                                (click)="matchSelected.emit(item)">
+                          {{ selectLabel() }}
+                        </button>
+                      }
+                      @if (canOpenCustomer()) {
+                        <button tas-button iconButton type="button"
+                                [attr.aria-label]="'Ouvrir la fiche de ' + item.displayName" title="Fiche client"
+                                (click)="openCustomer.emit(item.customerId)">
+                          <tas-icon iconName="feather:external-link" class="text-primary" style="font-size:14px"></tas-icon>
+                        </button>
+                      }
+                    </div>
                   </div>
-                  <p class="text-xs text-slate-500">
-                    @if (item.clientNumber) {
-                      <span class="tabular-nums">N° {{ item.clientNumber }}</span>
-                    }
-                    @if (item.agencyLabel) { · {{ item.agencyLabel }} }
-                    @if (item.statusLabel) { · {{ item.statusLabel }} }
-                  </p>
-                  @if (item.matchedOnLabels.length > 0) {
-                    <p class="text-xs text-slate-400">
-                      Correspond sur : {{ item.matchedOnLabels.join(', ') }}
-                    </p>
-                  }
 
                   @if (item.products && item.products.length > 0) {
-                    <div class="flex flex-wrap gap-1.5 mt-1">
+                    <div class="mt-1.5 flex flex-wrap gap-1.5">
                       @for (p of item.products; track p.holdingId) {
-                        <span
-                          class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-100 text-xs text-slate-600"
-                        >
+                        <span class="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600">
                           {{ p.label }} <span class="text-slate-400">— {{ p.statusLabel }}</span>
                         </span>
                       }
                     </div>
-                  } @else if (item.products) {
-                    <p class="text-xs text-slate-400">Aucun produit détenu</p>
                   }
-
                   @for (conflict of item.conflicts; track conflict) {
-                    <p class="text-xs text-amber-700 flex items-start gap-1.5">
-                      <tas-icon
-                        iconName="feather:alert-triangle"
-                        class="text-amber-600 shrink-0 mt-0.5"
-                        style="font-size:12px"
-                      ></tas-icon>
+                    <p class="mt-1 flex items-start gap-1.5 text-xs text-amber-700">
+                      <tas-icon iconName="feather:alert-triangle" class="mt-0.5 shrink-0 text-amber-600" style="font-size:12px"></tas-icon>
                       {{ conflict }}
                     </p>
                   }
-                </div>
+                </li>
+              }
+            </ul>
 
-                <div class="flex flex-col items-start sm:items-end gap-2 shrink-0">
-                  <!-- Un libellé accompagne toujours le badge : la couleur ne porte
-                       jamais seule l'information (WCAG 2.1 AA). -->
-                  <span class="inline-flex items-center gap-1.5">
-                    <span class="text-xs text-slate-400">KYC</span>
-                    <tas-tag [severity]="kycSeverity(item.kycStatus)">
-                      {{ kycLabel(item.kycStatus) }}
-                    </tas-tag>
-                  </span>
-                  <div class="flex flex-wrap items-center gap-2">
-                    @if (canAct()) {
-                      <button
-                        tas-outlined-button
-                        color="primary"
-                        type="button"
-                        class="text-xs"
-                        [disabled]="item.customerId === selectedCustomerId()"
-                        (click)="matchSelected.emit(item)"
-                      >
-                        {{ selectLabel() }}
-                      </button>
-                    }
-                    @if (canOpenCustomer()) {
-                      <button
-                        tas-text-button
-                        color="primary"
-                        type="button"
-                        class="text-xs"
-                        [attr.aria-label]="'Ouvrir la fiche de ' + item.displayName"
-                        (click)="openCustomer.emit(item.customerId)"
-                      >
-                        <tas-icon iconName="feather:external-link" style="font-size:12px"></tas-icon>
-                        Fiche client
-                      </button>
-                    }
-                  </div>
-                </div>
-              </li>
-            }
-          </ul>
-
-          <div class="mt-3 flex flex-wrap items-center gap-2">
             @if (canAct() && showRejectAction()) {
-              <button
-                tas-text-button
-                color="primary"
-                type="button"
-                class="text-xs"
-                (click)="reject.emit()"
-              >
-                {{ selectedCustomerId() ? 'Finalement, nouveau prospect' : 'Nouveau prospect' }}
-              </button>
+              <div class="mt-2">
+                <button tas-text-button color="primary" type="button" class="text-xs" (click)="reject.emit()">
+                  {{ selectedCustomerId() ? 'Finalement, nouveau prospect' : 'Nouveau prospect' }}
+                </button>
+              </div>
             } @else if (actionsDisabledReason()) {
-              <span class="text-xs text-slate-400">{{ actionsDisabledReason() }}</span>
+              <p class="mt-2 text-xs text-slate-400">{{ actionsDisabledReason() }}</p>
             }
-          </div>
+          }
         </div>
       </tas-card>
     }
@@ -608,6 +580,17 @@ export class CustomerMatchBanner {
   public readonly exactProposal = computed(() => {
     const list = this.candidates();
     return list.length === 1 && list[0].isExact;
+  });
+
+  /** Ouvert ou replié à la main ; à défaut, ouvert seulement pour une proposition exacte. */
+  public readonly expanded = signal<boolean | null>(null);
+  public readonly isOpen = computed(() => this.expanded() ?? (this.exactProposal() || !!this.selectedCustomerId()));
+
+  /** Le critère commun à tous les candidats (« l'e-mail ») : dit une fois dans le résumé plutôt que sur chaque ligne. */
+  public readonly sharedMatchedOn = computed(() => {
+    const keys = this.candidates().map((c) => c.matchedOnLabels.join(', '));
+    const first = keys[0];
+    return first && keys.every((k) => k === first) ? first.toLowerCase() : null;
   });
 
   public kycLabel(status: string | null): string {

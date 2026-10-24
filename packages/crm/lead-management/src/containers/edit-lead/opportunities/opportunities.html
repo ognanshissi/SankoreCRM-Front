@@ -1,41 +1,28 @@
 <div class="pb-6 flex flex-col gap-4">
   <converted-lead-notice></converted-lead-notice>
 
-  <!-- En-tête : le potentiel du lead -->
-  <tas-card class="block">
-    <div class="p-5 flex items-center gap-6 flex-wrap">
-      <div class="flex-1 min-w-48">
-        <h2 class="text-xl font-bold text-slate-900">Projets</h2>
-        <p class="text-sm text-slate-500 mt-0.5">
-          @if (openOpportunities().length === 0) {
-            Aucun projet ouvert
-          } @else {
-            {{ openOpportunities().length }} projet{{ openOpportunities().length > 1 ? 's' : '' }} ouvert{{ openOpportunities().length > 1 ? 's' : '' }}
-          }
-          @if (closedOpportunities().length > 0) {
-            · <button type="button" class="text-primary hover:underline" (click)="showClosed.set(!showClosed())">
-              {{ showClosed() ? 'masquer' : 'voir' }} les {{ closedOpportunities().length }} clos
-            </button>
-          }
-        </p>
-      </div>
-      @for (t of totalsByKind(); track t.kind) {
-        <div>
-          <p class="text-xs text-slate-500">{{ t.label }}</p>
-          <p class="text-xl font-bold text-slate-900 tabular-nums">{{ formatAmount(t.amount, 'XOF') }}</p>
-          @if (t.tracked) {
-            <p class="text-xs text-slate-500">dont <span class="font-semibold text-primary tabular-nums">{{ formatAmount(t.weighted, 'XOF') }}</span> pondérés</p>
-          }
-        </div>
-      }
-      @if (canManage()) {
-        <button tas-outlined-button color="primary" type="button" class="rounded-full bg-white" (click)="openCreateDrawer()">
-          <tas-icon iconName="feather:plus" style="font-size:14px"></tas-icon>
-          &nbsp;Nouveau projet
-        </button>
-      }
-    </div>
-  </tas-card>
+  <!-- En-tête sans cadre : le potentiel du lead s'il y en a, les clos à déplier, et la création -->
+  <div class="flex items-center justify-end gap-6 flex-wrap">
+    @for (t of totalsByKind(); track t.kind) {
+      <p class="text-xs text-slate-500">
+        {{ t.label }} <span class="text-sm font-bold text-slate-900 tabular-nums">{{ formatAmount(t.amount, 'XOF') }}</span>
+        @if (t.tracked) {
+          · dont <span class="font-semibold text-primary tabular-nums">{{ formatAmount(t.weighted, 'XOF') }}</span> pondérés
+        }
+      </p>
+    }
+    @if (closedOpportunities().length > 0) {
+      <button type="button" class="text-sm text-primary hover:underline" (click)="showClosed.set(!showClosed())">
+        {{ showClosed() ? 'Masquer' : 'Voir' }} les {{ closedOpportunities().length }} clos
+      </button>
+    }
+    @if (canManage()) {
+      <button tas-outlined-button color="primary" type="button" class="rounded-full bg-white" (click)="openCreateDrawer()">
+        <tas-icon iconName="feather:plus" style="font-size:14px"></tas-icon>
+        &nbsp;Nouveau projet
+      </button>
+    }
+  </div>
 
   <!-- Deux besoins différents ? -->
   @if (mismatch(); as m) {

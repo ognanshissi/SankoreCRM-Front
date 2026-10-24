@@ -11,8 +11,8 @@ import {
   DuplicateMatchResult,
   FormFieldReferenceTargetEnum,
   LeadDto,
-  LeadIntentLevelDto,
   LeadsApiService,
+  SetIntentLevelRequestIntentLevelEnum,
   LogActivityRequestTypeEnum,
   LeadNextStepDtoActionTypeEnum,
   LeadNextStepDtoKindEnum,
@@ -27,6 +27,8 @@ import {
 } from '@sankore/crm/common';
 import { SnackbarService } from '@talisoft/ui/snackbar';
 import { SideDrawerService } from '@talisoft/ui/side-drawer';
+import { CreateAppointmentDrawer, CreateAppointmentDrawerData, NewTaskDrawer, NewTaskDrawerData } from '@sankore/crm/tasks';
+import { CallButton } from '@sankore/crm/telephony';
 import { ReassignLeadDrawer } from './reassign-lead-drawer';
 import { EditLeadInfoDrawer } from './edit-lead-info-drawer';
 import { ConvertLeadWizard } from './convert-lead-wizard';
@@ -43,10 +45,14 @@ import { nextStepDue, nextStepDueClass, nextStepIcon } from '../../components/le
 import { form, FormField, FormRoot, required, submit, validate } from '@angular/forms/signals';
 import {
   displayName,
+  formatAmount,
   formatDay,
   initials,
-  intentOption,
+  INTENT_OPTIONS,
   isConsentGap,
+  journeyIndex,
+  journeyOffTrack,
+  LEAD_JOURNEY,
   leadStatusMeta,
   missingAddressParts,
   originLabel,
@@ -58,87 +64,27 @@ interface LeadMenuItem {
   route: string;
 }
 
-interface LeadMenuGroup {
-  title: string;
-  icon: string;
-  items: LeadMenuItem[];
+/** Le compteur d'un onglet : un nombre, ou un mot (« À faire »), dans le ton de son urgence. */
+interface MenuBadge {
+  text: string;
+  tone: 'red' | 'amber' | 'slate';
 }
-
-type MenuBadge = { text: string; tone: 'red' | 'amber' | 'slate' };
 
 /**
- * Les onglets de la fiche, regroupés comme le parcours d'un agent : qui est le prospect, ce qui
- * a été fait avec lui, ce que son dossier demande encore.
+ * Les onglets de la fiche, à plat et par usage (refonte du 2026-10-24) : ce qu'il faut savoir du
+ * lead, ce qu'il pourrait signer, ce qui a été fait avec lui, qui il est, ce que la conformité
+ * demande. Avant, huit rubriques se cachaient dans deux menus déroulants, et « Projets » — le
+ * cœur de la vente — était rangé dans « Dossier ». Doublons n'apparaît que s'il y en a.
  */
-const MENU: ReadonlyArray<LeadMenuGroup> = [
-  {
-    title: 'Le prospect',
-    icon: 'feather:user',
-    items: [
-      { label: 'Informations', icon: 'feather:user', route: 'informations' },
-      { label: 'Identité', icon: 'feather:user-check', route: 'identite' },
-      { label: 'Foyer', icon: 'feather:users', route: 'foyer' },
-      { label: 'Doublons', icon: 'feather:copy', route: 'doublons' },
-    ],
-  },
-  {
-    title: 'Suivi',
-    icon: 'feather:activity',
-    items: [
-      // Une seule page, dont les quatre sous-pages (activités, rappels, tâches, chronologie) sont
-      // des onglets — voir `suivi/suivi.ts`.
-      { label: 'Suivi', icon: 'feather:activity', route: 'suivi' },
-    ],
-  },
-  {
-    title: 'Dossier',
-    icon: 'feather:folder',
-    items: [
-      { label: 'Score', icon: 'feather:bar-chart-2', route: 'score' },
-      { label: 'Conformité', icon: 'feather:flag', route: 'conformite' },
-      { label: 'Consentements', icon: 'feather:shield', route: 'consentement' },
-      { label: 'Projets', icon: 'feather:briefcase', route: 'projets' },
-    ],
-  },
+const MENU: ReadonlyArray<LeadMenuItem> = [
+  { label: "Vue d'ensemble", icon: 'feather:grid', route: 'informations' },
+  { label: 'Projets', icon: 'feather:briefcase', route: 'projets' },
+  // Activités, rappels, tâches, chronologie et WhatsApp : les onglets de la page Suivi.
+  { label: 'Suivi', icon: 'feather:activity', route: 'suivi' },
+  { label: 'Identité & foyer', icon: 'feather:user', route: 'identite' },
+  { label: 'Conformité', icon: 'feather:shield', route: 'conformite' },
+  { label: 'Doublons', icon: 'feather:copy', route: 'doublons' },
 ];
-
-interface ScoreFactor {
-  label: string;
-  value: string;
-  impact: string;
-}
-
-/** Les dimensions que `LeadScoreCalculator` sérialise, en français. */
-const FACTOR_LABELS: Record<string, string> = {
-  profileCompleteness: 'Profil renseigné',
-  sourceQuality: 'Qualité de la source',
-  interactions: 'Échanges',
-  behaviour: 'Engagement',
-  declarativeCoherence: 'Cohérence déclarative',
-  location: 'Localisation',
-  address: 'Adresse',
-};
-
-function parseFactors(factorsJson: string | null | undefined): ScoreFactor[] {
-  if (!factorsJson) return [];
-  try {
-    const parsed = JSON.parse(factorsJson);
-    if (Array.isArray(parsed)) return parsed;
-    return Object.entries(parsed).filter(([key]) => key !== 'total').map(([key, val]: [string, any]) => ({
-      label: FACTOR_LABELS[key] ?? key,
-      value: typeof val === 'object' ? (val.value ?? val.detail ?? JSON.stringify(val)) : String(val),
-      impact: typeof val === 'object' ? (val.impact ?? '') : '',
-    }));
-  } catch {
-    return [];
-  }
-}
-
-function scoreBarClass(score: number, threshold: number): string {
-  if (score >= threshold) return 'bg-green-600';
-  if (score >= 40) return 'bg-amber-500';
-  return 'bg-red-500';
-}
 
 /** Valeur par défaut du planificateur : demain, 9 h, au format d'un `<input type="datetime-local">`. */
 function defaultPlanDate(): string {
@@ -167,6 +113,7 @@ function defaultPlanDate(): string {
     Menu,
     MenuItem,
     TasMenuTrigger,
+    CallButton,
   ],
   templateUrl: './edit-lead-navigation.html',
   // En bloc : la barre des rubriques est `sticky`, et un hôte en ligne (le défaut d'un composant)
@@ -176,6 +123,10 @@ function defaultPlanDate(): string {
 export class EditLeadNavigation implements OnDestroy {
   private readonly _permissions = inject(PermissionsService);
   public readonly canUpdate = this._permissions.can('lead:update');
+  // Les actions rapides de l'en-tête : chacune n'apparaît qu'avec le droit qu'exige son écran.
+  public readonly canWhatsApp = this._permissions.can('WhatsApp.Send', 'WhatsApp.Supervise');
+  public readonly canScheduleAppointment = this._permissions.can('lead:activity:log');
+  public readonly canManageTasks = this._permissions.can('lead:task:manage');
 
   private readonly _leadsApiService = inject(LeadsApiService);
   private readonly _breadcrumbService = inject(BreadcrumbService);
@@ -190,7 +141,10 @@ export class EditLeadNavigation implements OnDestroy {
 
   public readonly id = input.required<string>();
 
-  public readonly menu = MENU;
+  /** Doublons n'est un onglet que s'il y en a, ou si l'on y est déjà (lien direct). */
+  public readonly menu = computed(() =>
+    MENU.filter((i) => i.route !== 'doublons' || this.duplicateCount() > 0 || this.activeRoute() === 'doublons'),
+  );
 
   /**
    * La rubrique affichée, lue dans l'URL (`/leads/{id}/foyer` → `foyer`), et son groupe : c'est lui
@@ -209,49 +163,38 @@ export class EditLeadNavigation implements OnDestroy {
     const at = segments.indexOf(this.id());
     return (at >= 0 ? segments[at + 1] : segments[segments.length - 1]) ?? '';
   });
-  public readonly activeGroup = computed(
-    () => MENU.find((g) => g.items.some((i) => i.route === this.activeRoute())) ?? MENU[0],
-  );
-
-  /** La rubrique affichée, quand elle appartient à ce groupe — le bouton du groupe la nomme. */
-  public activeItem(group: LeadMenuGroup): LeadMenuItem | null {
-    return group.items.find((i) => i.route === this.activeRoute()) ?? null;
-  }
-
-  /**
-   * Le résumé d'un groupe : la somme de ses compteurs, dans le ton le plus grave. Un badge
-   * sans nombre (« À faire ») devient un point — on sait qu'il y a quelque chose, sans le détail.
-   */
-  public groupBadge(group: LeadMenuGroup): MenuBadge | null {
-    const badges = group.items.map((i) => this.badgeFor(i.route)).filter((b): b is MenuBadge => !!b);
-    if (badges.length === 0) return null;
-    const tone = badges.some((b) => b.tone === 'red') ? 'red' : badges.some((b) => b.tone === 'amber') ? 'amber' : 'slate';
-    const counts = badges.map((b) => Number(b.text)).filter((n) => Number.isFinite(n));
-    const total = counts.reduce((sum, n) => sum + n, 0);
-    return { text: total > 0 ? String(total) : '•', tone };
-  }
   public readonly formatDay = formatDay;
+  public readonly formatAmount = formatAmount;
 
   public isLoading = signal(true);
   public lead = signal<LeadDto | null>(null);
   public notFound = signal(false);
-  public showFactors = signal(false);
   public isReopening = signal(false);
   public isReturningToQueue = signal(false);
-  public intentLevelDetail = signal<LeadIntentLevelDto | null>(null);
-  public latestFactorsJson = signal<string | null>(null);
   private readonly _duplicates = signal<DuplicateMatchResult[]>([]);
   private readonly _dismissed = signal<Set<string>>(new Set());
 
   /** Lu par le template : un lead converti n'offre plus d'action d'écriture. */
   public readonly isConverted = computed(() => this.lead()?.status === 'Converted');
+
+  // ——— Parcours et intérêt : dans l'en-tête, visibles depuis chaque onglet (choix du 2026-10-24) ———
+  public readonly journey = LEAD_JOURNEY;
+  public readonly journeyIndex = computed(() => journeyIndex(this.lead()));
+  public readonly journeyOffTrack = computed(() => journeyOffTrack(this.lead()));
+  public readonly intentOptions = INTENT_OPTIONS;
+  public readonly canSetIntent = computed(() => this.canUpdate() && !this.isConverted());
+
+  public setIntentLevel(level: SetIntentLevelRequestIntentLevelEnum): void {
+    if (!this.canSetIntent() || this.lead()?.intentLevel === level) return;
+    this._leadsApiService.setLeadIntentLevel(this.id(), { intentLevel: level }).pipe(
+      catchError(() => { this._snackbar.error('Erreur', 'Impossible de modifier l\'intérêt ressenti.'); return EMPTY; }),
+    ).subscribe(() => this.reload());
+  }
   public readonly productLabel = computed(() => interestedProductLabel(this.lead()?.interestedProduct));
   public readonly name = computed(() => displayName(this.lead()));
   public readonly avatar = computed(() => initials(this.name()));
   public readonly statusMeta = computed(() => leadStatusMeta(this.lead()?.status));
-  public readonly intent = computed(() => intentOption(this.lead()?.intentLevel));
   public readonly origin = computed(() => originLabel(this.lead()));
-  public readonly scoreFactors = computed(() => parseFactors(this.latestFactorsJson()));
 
   /** « suivi par Fatou Diallo » — l'agent qui a le lead, ou son responsable à défaut. */
   private readonly _users = toSignal(
@@ -293,23 +236,6 @@ export class EditLeadNavigation implements OnDestroy {
         : undefined,
     );
   });
-
-  /**
-   * « Pas encore qualifié » tant qu'aucune réponse de qualification n'existe : le score calculé à
-   * la capture ne pèse que la source et les données saisies, et l'afficher comme un verdict fait
-   * lire 30/100 comme un mauvais prospect plutôt que comme un prospect pas encore interrogé.
-   */
-  public readonly isUnqualified = computed(() => {
-    const lead = this.lead();
-    return !!lead && (lead.qualificationCompleteness ?? 0) === 0
-      && lead.status !== 'Qualified' && lead.status !== 'Converted';
-  });
-
-  /** Le seuil de qualification du serveur ; 60, la valeur historique, s'il ne l'a pas envoyé. */
-  public readonly threshold = computed(() => this.lead()?.qualificationThreshold ?? 60);
-  public readonly scoreValue = computed(() => Math.max(0, Math.min(100, this.lead()?.score ?? 0)));
-  public readonly pointsToThreshold = computed(() => Math.max(0, this.threshold() - this.scoreValue()));
-  public readonly scoreBar = computed(() => scoreBarClass(this.scoreValue(), this.threshold()));
 
   // ——— Ce que les compteurs du menu et l'en-tête signalent ———
 
@@ -353,7 +279,7 @@ export class EditLeadNavigation implements OnDestroy {
         return this.hasNoActivity() ? { text: '0', tone: 'amber' } : null;
       case 'doublons':
         return this.duplicateCount() > 0 ? { text: String(this.duplicateCount()), tone: 'red' } : null;
-      case 'consentement':
+      case 'conformite':
         return this.missingConsents() > 0 ? { text: String(this.missingConsents()), tone: 'amber' } : null;
       case 'qualification': {
         const badge = this.qualificationBadge();
@@ -413,30 +339,6 @@ export class EditLeadNavigation implements OnDestroy {
     return status === 'Lost' || status === 'Disqualified' || status === 'Recycled';
   });
 
-  // ——— Cycle de vie ———
-
-  public readonly lifecycleSteps = [
-    { status: 'New', label: 'Nouveau', bar: 'bg-primary', text: 'text-primary' },
-    { status: 'Open', label: 'Contacté', bar: 'bg-amber-500', text: 'text-amber-700' },
-    { status: 'Qualified', label: 'Qualifié', bar: 'bg-violet-500', text: 'text-violet-700' },
-    { status: 'Converted', label: 'Converti', bar: 'bg-green-600', text: 'text-green-700' },
-  ];
-
-  private readonly _lifecycleOrder: Record<string, number> = {
-    New: 0, Open: 1, Qualifying: 1, Qualified: 2, Converted: 3,
-    Nurturing: 1, Recycled: 1, Lost: -1, Disqualified: -1, Archived: -1,
-  };
-
-  public isLifecycleReached(stepStatus: string): boolean {
-    const currentOrder = this._lifecycleOrder[this.lead()?.status ?? ''] ?? -1;
-    return (this._lifecycleOrder[stepStatus] ?? -1) <= currentOrder;
-  }
-
-  public isLifecycleCurrent(stepStatus: string): boolean {
-    const current = this._lifecycleOrder[this.lead()?.status ?? ''] ?? -1;
-    return current === this._lifecycleOrder[stepStatus];
-  }
-
   constructor() {
     // Le lead est rechargé à une dizaine d'endroits (actions du menu, polling).
     // Un effet de recopie évite d'avoir à penser au contexte partagé à chaque
@@ -467,8 +369,6 @@ export class EditLeadNavigation implements OnDestroy {
       ).subscribe((lead) => {
         this._setLead(lead);
         this.isLoading.set(false);
-        this._loadScoreFactors(id);
-        this._loadIntentLevel(id);
         this._loadDuplicates(lead);
         this._startPolling(id);
       });
@@ -483,8 +383,6 @@ export class EditLeadNavigation implements OnDestroy {
   public reload(): void {
     this._leadsApiService.getLead(this.id()).pipe(catchError(() => EMPTY)).subscribe((lead) => {
       this._setLead(lead);
-      // Un enrichissement de l'adresse ou un appel noté recalcule le score côté serveur.
-      this._loadScoreFactors(this.id());
     });
     this.compliance.reloadAfterWrite();
   }
@@ -495,6 +393,34 @@ export class EditLeadNavigation implements OnDestroy {
       { label: 'Leads', link: ['/leads'] },
       { label: displayName(lead) },
     ], this._breadcrumbOwner);
+  }
+
+  // ——— Actions rapides : joindre, planifier, confier ———
+
+  /** Un rendez-vous avec ce lead : le sujet est imposé, il n'y a plus qu'à choisir la date. */
+  public openNewAppointment(): void {
+    const ref = this._sideDrawerService.open<string, CreateAppointmentDrawerData, CreateAppointmentDrawer>(CreateAppointmentDrawer, {
+      width: '100%',
+      height: '100%',
+      panelClass: 'side-drawer-panel',
+      data: { subject: { type: 'lead', id: this.id(), label: this.name() } },
+    });
+    ref.closed.subscribe((id) => {
+      if (id) this.reload();
+    });
+  }
+
+  /** Une tâche sur ce lead : elle rejoint la journée de qui la porte et l'onglet Suivi › Tâches. */
+  public openNewTask(): void {
+    const ref = this._sideDrawerService.open<string, NewTaskDrawerData, NewTaskDrawer>(NewTaskDrawer, {
+      width: '100%',
+      height: '100%',
+      panelClass: 'side-drawer-panel',
+      data: { subject: { type: 'lead', id: this.id(), label: this.name() } },
+    });
+    ref.closed.subscribe((id) => {
+      if (id) this.reload();
+    });
   }
 
   public closeLead(): void {
@@ -658,25 +584,6 @@ export class EditLeadNavigation implements OnDestroy {
     });
   }
 
-  public toggleFactorsPanel(): void {
-    this.showFactors.update((v) => !v);
-  }
-
-  private _loadIntentLevel(leadId: string): void {
-    this._leadsApiService.getLeadIntentLevel(leadId).pipe(
-      catchError(() => EMPTY),
-    ).subscribe((detail) => this.intentLevelDetail.set(detail ?? null));
-  }
-
-  private _loadScoreFactors(leadId: string): void {
-    this._leadsApiService.getLeadScoreHistory(leadId).pipe(
-      catchError(() => EMPTY),
-    ).subscribe((history) => {
-      const latest = history?.[0];
-      this.latestFactorsJson.set(latest?.factorsJson ?? null);
-    });
-  }
-
   /**
    * Le compteur du menu « Doublons » : la même recherche que l'onglet, moins le lead lui-même et
    * les correspondances déjà écartées. Une panne laisse le compteur vide, pas l'écran.
@@ -709,7 +616,6 @@ export class EditLeadNavigation implements OnDestroy {
             || current.intentLevel !== lead.intentLevel
             || current.updatedAt !== lead.updatedAt)) {
           this.lead.set(lead);
-          this._loadScoreFactors(leadId);
         }
       });
     }, 30_000);
