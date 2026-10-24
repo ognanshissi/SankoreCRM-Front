@@ -86,13 +86,18 @@
             }
 
             @case (Type.Money) {
+              <!--
+                Pas de choix de devise : tout montant est dans la monnaie de l'institution
+                (Paramétrage › Entreprise). Le suffixe montre celle du montant — la sienne s'il a été
+                saisi avant un changement de monnaie, celle de l'institution sinon.
+              -->
               <tas-form-field>
                 <tas-label>{{ field.label }}@if (field.isRequired) {<span class="text-functional-error"> *</span>}</tas-label>
-                <div class="grid grid-cols-[1fr_7rem] gap-2">
-                  <input tasInput type="text" inputmode="decimal" class="tabular-nums"
-                         [placeholder]="placeholderOf(field)" [formField]="entry(field.key).text" />
-                  <tas-select [options]="currencies" [formField]="entry(field.key).currency"></tas-select>
-                </div>
+                <input tasInput type="text" inputmode="decimal" class="tabular-nums"
+                       [placeholder]="placeholderOf(field)" [formField]="entry(field.key).text" />
+                <button tasSuffix type="button" tabindex="-1" aria-hidden="true" class="cursor-default pr-3 text-sm text-slate-500">
+                  {{ currencyUnit(entry(field.key).currency().value()) }}
+                </button>
                 @if (errorOf(field.key); as error) {
                   <tas-error>{{ error }}</tas-error>
                 } @else if (field.helpText) {

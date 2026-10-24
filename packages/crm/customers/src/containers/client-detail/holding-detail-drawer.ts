@@ -43,6 +43,7 @@ import {
   designationStatusSeverity,
   holdingStatusLabel,
   holdingStatusSeverity,
+  institutionCurrency,
   isDesignationToReview,
   productCategoryLabel,
 } from '@sankore/crm/common';
@@ -747,7 +748,7 @@ class SpecificsFormModel {
     model.durationMonths = s.durationMonths != null ? String(s.durationMonths) : '';
     model.annualRatePercent = s.annualRatePercent != null ? String(s.annualRatePercent) : '';
     model.initialDeposit = s.initialDeposit != null ? String(s.initialDeposit) : '';
-    model.currency = s.currency ?? '';
+    model.currency = s.currency || institutionCurrency();
     model.effectiveFrom = s.effectiveFrom ? s.effectiveFrom.slice(0, 10) : '';
     model.notes = s.notes ?? '';
     return model;
@@ -1010,7 +1011,7 @@ export class HoldingDetailDrawer implements OnInit, OnDestroy {
             durationMonths: this._toInt(value.durationMonths),
             annualRatePercent: this._toNumber(value.annualRatePercent),
             initialDeposit: this._toNumber(value.initialDeposit),
-            currency: value.currency.trim() || null,
+            currency: value.currency || institutionCurrency(),
             effectiveFrom: value.effectiveFrom || null,
             notes: value.notes.trim() || null,
           })

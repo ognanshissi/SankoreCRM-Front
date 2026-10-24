@@ -15,13 +15,14 @@ interface PredefinedField {
   unit?: string;
 }
 
+// Pas de paramètre « Devise » : tous les montants d'un produit sont dans la monnaie de
+// l'institution (Paramétrage › Entreprise).
 const CATEGORY_FIELDS: Record<string, PredefinedField[]> = {
   Loan: [
     { key: 'tauxInteret', label: 'Taux d\'intérêt', type: 'number', placeholder: '5.5', unit: '%' },
     { key: 'dureeMaxMois', label: 'Durée maximale', type: 'number', placeholder: '60', unit: 'mois' },
     { key: 'montantMin', label: 'Montant minimum', type: 'number', placeholder: '50000' },
     { key: 'montantMax', label: 'Montant maximum', type: 'number', placeholder: '10000000' },
-    { key: 'devise', label: 'Devise', type: 'text', placeholder: 'XOF' },
     { key: 'fraisDossier', label: 'Frais de dossier', type: 'number', placeholder: '1.5', unit: '%' },
   ],
   Savings: [
@@ -29,13 +30,11 @@ const CATEGORY_FIELDS: Record<string, PredefinedField[]> = {
     { key: 'plafond', label: 'Plafond du compte', type: 'number', placeholder: '5000000' },
     { key: 'montantMinOuverture', label: 'Montant min. ouverture', type: 'number', placeholder: '10000' },
     { key: 'frequenceInterets', label: 'Fréquence des intérêts', type: 'text', placeholder: 'Mensuel' },
-    { key: 'devise', label: 'Devise', type: 'text', placeholder: 'XOF' },
   ],
   Tontine: [
     { key: 'nombreMembres', label: 'Nombre de membres', type: 'number', placeholder: '12' },
     { key: 'cycleSemaines', label: 'Durée du cycle', type: 'number', placeholder: '4', unit: 'semaines' },
     { key: 'contributionMontant', label: 'Contribution par cycle', type: 'number', placeholder: '25000' },
-    { key: 'devise', label: 'Devise', type: 'text', placeholder: 'XOF' },
     { key: 'penaliteRetard', label: 'Pénalité de retard', type: 'number', placeholder: '5', unit: '%' },
   ],
 };

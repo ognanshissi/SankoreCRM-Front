@@ -21,6 +21,7 @@ import {
 import {
   BreadcrumbService,
   EntityFormReferences,
+  institutionCurrency,
   PermissionsService,
   ProjectGateCode,
   projectGateCode,
@@ -458,7 +459,7 @@ export class ProjectDetail implements OnInit {
           title: v.title.trim(),
           product: v.product,
           description: v.description.trim(),
-          ...(amount !== null ? { estimatedAmount: amount, estimatedCurrency: this.project()?.estimatedAmount?.currency ?? 'XOF' } : {}),
+          ...(amount !== null ? { estimatedAmount: amount, estimatedCurrency: this.project()?.estimatedAmount?.currency ?? institutionCurrency() } : {}),
         },
         'Projet mis à jour',
       );

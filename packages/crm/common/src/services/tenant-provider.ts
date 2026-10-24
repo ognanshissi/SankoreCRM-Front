@@ -1,6 +1,7 @@
 import { computed, inject, Injectable, signal } from '@angular/core';
 import { DOCUMENT } from '@angular/common';
 import { TenantContextResponse } from '@sankore/crm-api';
+import { DEFAULT_INSTITUTION_CURRENCY, setInstitutionCurrency } from '../models/institution-currency';
 
 @Injectable({
   providedIn: 'root'
@@ -21,9 +22,20 @@ export class TenantProvider {
    */
   public readonly isLoaded = computed(() => this._context() !== null);
 
+  /** La monnaie de tous les montants de l'institution (Paramétrage › Entreprise). */
+  public readonly currency = computed(() => this._context()?.currency || DEFAULT_INSTITUTION_CURRENCY);
+
   public setContext(ctx: TenantContextResponse): void {
     this._context.set(ctx);
+    setInstitutionCurrency(ctx.currency);
     this._applyTheme(ctx);
+  }
+
+  /** Après un changement par l'administrateur : les écrans ouverts prennent la nouvelle monnaie. */
+  public setCurrency(code: string): void {
+    const ctx = this._context();
+    if (ctx) this._context.set({ ...ctx, currency: code });
+    setInstitutionCurrency(code);
   }
 
   public getFqdn(): string {

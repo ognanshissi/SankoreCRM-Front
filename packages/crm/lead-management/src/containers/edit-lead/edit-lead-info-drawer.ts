@@ -19,7 +19,7 @@ import { catchError, EMPTY, firstValueFrom, map } from 'rxjs';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { TasIcon } from '@talisoft/ui/icon';
 import { Button } from '@talisoft/ui/button';
-import { TasError, TasFormField, TasHint, TasLabel } from '@talisoft/ui/form-field';
+import { TasError, TasFormField, TasHint, TasLabel, TasSuffix } from '@talisoft/ui/form-field';
 import { TasInput } from '@talisoft/ui/input';
 import { TasSelect } from '@talisoft/ui/select';
 import { TasDatePicker } from '@talisoft/ui/date-picker';
@@ -38,7 +38,7 @@ import {
   UpdateLeadRequest,
   UpdateLeadRequestGenderEnum,
 } from '@sankore/crm-api';
-import { CURRENCY_OPTIONS } from '../create-lead/create-lead';
+import { currencyUnit, institutionCurrency } from '@sankore/crm/common';
 
 export interface EditLeadInfoDrawerData {
   lead: LeadDto;
@@ -130,7 +130,7 @@ export class EditLeadInfoFormModel {
     m.interestedProduct = lead.interestedProduct ?? '';
     m.desiredAmount =
       lead.desiredAmount?.amount != null ? String(lead.desiredAmount.amount) : '';
-    m.desiredCurrency = lead.desiredAmount?.currency ?? 'XOF';
+    m.desiredCurrency = lead.desiredAmount?.currency ?? institutionCurrency();
     m.preferredLanguage = lead.preferredLanguage ?? '';
     m.campaign = lead.campaign ?? '';
     m.preferredAgencyId = lead.preferredAgencyId ?? '';
@@ -144,6 +144,7 @@ export class EditLeadInfoFormModel {
   templateUrl: './edit-lead-info-drawer.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
+    TasSuffix,
     TasSideDrawer,
     TasDrawerTitle,
     TasDrawerContent,
@@ -171,7 +172,7 @@ export class EditLeadInfoDrawer {
 
   public readonly genderOptions = GENDER_OPTIONS;
   public readonly languageOptions = LANGUAGE_OPTIONS;
-  public readonly currencyOptions = CURRENCY_OPTIONS;
+  public readonly currencyUnit = currencyUnit;
 
   public agencies = signal<{ label: string; value: string }[]>([]);
 
@@ -219,13 +220,6 @@ export class EditLeadInfoDrawer {
         ? { kind: 'min', message: 'Le montant doit être un nombre positif' }
         : null;
     });
-
-    validate(schema.desiredCurrency, (ctx) => {
-      if (ctx.valueOf(schema.desiredAmount) && !ctx.value()) {
-        return { kind: 'required', message: 'La devise est obligatoire avec un montant' };
-      }
-      return null;
-    });
   });
 
   constructor() {
@@ -258,7 +252,7 @@ export class EditLeadInfoDrawer {
         dateOfBirth: value.dateOfBirth || null,
         interestedProduct: value.interestedProduct || null,
         desiredAmount: value.desiredAmount ? Number(value.desiredAmount) : null,
-        desiredCurrency: value.desiredAmount ? value.desiredCurrency || null : null,
+        desiredCurrency: value.desiredAmount ? value.desiredCurrency || institutionCurrency() : null,
         preferredLanguage: value.preferredLanguage || null,
         campaign: value.campaign || null,
         comment: value.comment || null,

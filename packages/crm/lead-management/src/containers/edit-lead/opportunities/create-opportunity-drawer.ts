@@ -17,7 +17,7 @@ import {
 import { SnackbarService } from '@talisoft/ui/snackbar';
 import { TasTitle } from '@talisoft/ui/title';
 import { FormFieldReferenceTargetEnum, LeadDto, OpportunitiesApiService } from '@sankore/crm-api';
-import { EntityFormReferences, projectCreationRules, projectSaveErrorMessage } from '@sankore/crm/common';
+import { currencyUnit, EntityFormReferences, projectCreationRules, projectSaveErrorMessage, TenantProvider } from '@sankore/crm/common';
 import { amountText, parseAmount } from '../lead-view.models';
 
 export interface CreateOpportunityDrawerData {
@@ -96,7 +96,7 @@ class CreateOpportunityFormModel {
 
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <tas-form-field>
-              <tas-label>{{ rules.amountLabel() }} (FCFA)</tas-label>
+              <tas-label>{{ rules.amountLabel() }} ({{ currencyUnit(currency()) }})</tas-label>
               <input tasInput type="text" inputmode="numeric" placeholder="Ex. 5 000 000" [formField]="formSchema.amount" />
               @if (formSchema.amount().touched() && formSchema.amount().invalid()) {
                 <tas-error>{{ formSchema.amount().errors()[0].message }}</tas-error>
@@ -148,6 +148,9 @@ export class CreateOpportunityDrawer {
   public readonly data: CreateOpportunityDrawerData = inject(DIALOG_DATA);
   private readonly _dialogRef = inject(DialogRef<string | false>);
   private readonly _opportunitiesApi = inject(OpportunitiesApiService);
+  /** La monnaie de l'institution : celle des totaux et des nouveaux montants. */
+  public readonly currency = inject(TenantProvider).currency;
+  public readonly currencyUnit = currencyUnit;
   private readonly _references = inject(EntityFormReferences);
   private readonly _snackbar = inject(SnackbarService);
 
@@ -204,7 +207,7 @@ export class CreateOpportunityDrawer {
           product: value.product || null,
           description: value.description.trim() || null,
           estimatedAmount: amount,
-          estimatedCurrency: amount !== null ? 'XOF' : null,
+          estimatedCurrency: amount !== null ? this.currency() : null,
           expectedCloseDate: value.expectedCloseDate && this.rules.tracksForecast() ? `${value.expectedCloseDate}T12:00:00Z` : null,
           ownerId: this.data.lead.currentAssignedId ?? this.data.lead.ownerId ?? null,
         }).pipe(

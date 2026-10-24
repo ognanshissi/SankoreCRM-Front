@@ -32,12 +32,6 @@ export const LANGUAGE_OPTIONS = [
   { label: 'Anglais', value: 'en' },
 ];
 
-export const CURRENCY_OPTIONS = [
-  { label: 'XOF', value: 'XOF' },
-  { label: 'EUR', value: 'EUR' },
-  { label: 'USD', value: 'USD' },
-];
-
 // ——— Conversions d'énumérations ———
 
 export function toGender(

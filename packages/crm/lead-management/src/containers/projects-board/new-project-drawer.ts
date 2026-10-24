@@ -11,7 +11,7 @@ import {
   LeadsApiService,
   OpportunitiesApiService,
 } from '@sankore/crm-api';
-import { EntityFormReferences, projectCreationRules, projectSaveErrorMessage } from '@sankore/crm/common';
+import { currencyUnit, EntityFormReferences, projectCreationRules, projectSaveErrorMessage, TenantProvider } from '@sankore/crm/common';
 import { Button } from '@talisoft/ui/button';
 import { TasError, TasFormField, TasHint, TasLabel } from '@talisoft/ui/form-field';
 import { TasIcon } from '@talisoft/ui/icon';
@@ -86,6 +86,9 @@ function parseAmount(text: string): number | null {
 export class NewProjectDrawer {
   private readonly _dialogRef = inject(DialogRef<string | false>);
   private readonly _leadsApi = inject(LeadsApiService);
+  /** La monnaie de l'institution : celle des totaux et des nouveaux montants. */
+  public readonly currency = inject(TenantProvider).currency;
+  public readonly currencyUnit = currencyUnit;
   private readonly _clientsApi = inject(ClientsApiService);
   private readonly _opportunitiesApi = inject(OpportunitiesApiService);
   private readonly _references = inject(EntityFormReferences);
@@ -261,7 +264,7 @@ export class NewProjectDrawer {
         title: v.title.trim(),
         description: v.description.trim() || null,
         estimatedAmount: amount,
-        estimatedCurrency: amount !== null ? 'XOF' : null,
+        estimatedCurrency: amount !== null ? this.currency() : null,
         expectedCloseDate: v.expectedCloseDate && this.rules.tracksForecast() ? `${v.expectedCloseDate}T12:00:00Z` : null,
         ownerId: this._owner,
       };

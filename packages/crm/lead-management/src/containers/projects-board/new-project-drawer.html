@@ -87,7 +87,7 @@
 
       <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <tas-form-field>
-          <tas-label>{{ rules.amountLabel() }} (XOF)</tas-label>
+          <tas-label>{{ rules.amountLabel() }} ({{ currencyUnit(currency()) }})</tas-label>
           <input tasInput type="text" inputmode="numeric" placeholder="Ex. 5 000 000" [formField]="formSchema.amount" />
           @if (formSchema.amount().touched() && formSchema.amount().invalid()) {
             <tas-error>{{ formSchema.amount().errors()[0].message }}</tas-error>

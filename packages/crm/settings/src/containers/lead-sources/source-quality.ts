@@ -14,7 +14,7 @@ import { SourceQualityDto } from '@sankore/crm-api';
 
 /** Valeur du statut « Doublon » attendue par le filtre des réceptions. */
 const DUPLICATE_STATUS = '2';
-import { BreadcrumbService } from '@sankore/crm/common';
+import { BreadcrumbService, currencyUnit, institutionCurrency } from '@sankore/crm/common';
 import { LeadSourcesService } from './lead-sources.service';
 
 /**
@@ -79,7 +79,7 @@ const PERIOD_OPTIONS = [
           <tas-card>
             <div class="p-4">
               <p class="text-xs text-slate-400 mb-1">Coût total</p>
-              <p class="text-xl font-semibold text-slate-800">{{ totals().totalCost | number:'1.0-0' }} {{ totals().currency }}</p>
+              <p class="text-xl font-semibold text-slate-800">{{ totals().totalCost | number:'1.0-0' }} {{ currencyUnit(totals().currency) }}</p>
             </div>
           </tas-card>
         </div>
@@ -174,13 +174,13 @@ const PERIOD_OPTIONS = [
                   <!-- FE-23 AC1 — coût total par source : sans lui, impossible de
                        comparer deux fournisseurs, ce qui est l'objet de l'écran. -->
                   <div class="w-[10%] text-right text-xs text-slate-700 tabular-nums">
-                    {{ src.totalCost ?? 0 | number:'1.0-0' }} {{ src.costCurrency ?? 'XOF' }}
+                    {{ src.totalCost ?? 0 | number:'1.0-0' }} {{ currencyUnit(src.costCurrency) }}
                   </div>
 
                   <!-- Cost per converted -->
                   <div class="w-[9%] text-right text-xs text-slate-700 tabular-nums">
                     @if (src.costPerConvertedLead != null) {
-                      {{ src.costPerConvertedLead | number:'1.0-0' }} {{ src.costCurrency ?? 'XOF' }}
+                      {{ src.costPerConvertedLead | number:'1.0-0' }} {{ currencyUnit(src.costCurrency) }}
                     } @else {
                       <span class="text-slate-400">—</span>
                     }
@@ -195,6 +195,7 @@ const PERIOD_OPTIONS = [
   `,
 })
 export class SourceQuality implements OnInit {
+  public readonly currencyUnit = currencyUnit;
   private readonly _sourcesService = inject(LeadSourcesService);
   private readonly _router = inject(Router);
   private readonly _breadcrumb = inject(BreadcrumbService);
@@ -210,7 +211,7 @@ export class SourceQuality implements OnInit {
     const contacted = list.reduce((s, r) => s + (r.contacted ?? 0), 0);
     const converted = list.reduce((s, r) => s + (r.converted ?? 0), 0);
     const totalCost = list.reduce((s, r) => s + (r.totalCost ?? 0), 0);
-    const currency = list.find((r) => r.costCurrency)?.costCurrency ?? 'XOF';
+    const currency = list.find((r) => r.costCurrency)?.costCurrency ?? institutionCurrency();
     return {
       received,
       contactRate: received > 0 ? (contacted / received) * 100 : 0,

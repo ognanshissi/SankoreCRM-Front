@@ -8,6 +8,7 @@ import { TasInput } from '@talisoft/ui/input';
 import { TasSelect } from '@talisoft/ui/select';
 import { TasSwitch } from '@talisoft/ui/switch';
 import { LeadSourceDetailDto } from '@sankore/crm-api';
+import { currencyUnit } from '@sankore/crm/common';
 
 /**
  * FE-19 + FE-21 — Assistant « API du fournisseur »
@@ -78,6 +79,8 @@ const VARIABLE_HINTS = TEMPLATE_VARIABLES.join(', ');
   templateUrl: 'pull-wizard.html',
 })
 export class PullWizard implements OnInit {
+  /** Le coût d'un lead est dans la monnaie de l'institution : pas de devise à saisir. */
+  public readonly costUnit = currencyUnit;
   public readonly initialConfig = input<PullConfig | null>(null);
   /**
    * FE-21 — le coût saisi à la création vit à la RACINE de la source

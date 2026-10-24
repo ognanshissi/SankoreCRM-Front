@@ -12,6 +12,7 @@
  */
 
 import { SourceSettings } from '@sankore/crm-api';
+import { institutionCurrency } from '@sankore/crm/common';
 import { assertNever, IntegrationMode } from './lead-source.types';
 import {
   emptyRule,
@@ -175,7 +176,7 @@ export function defaultPullConfig(): PullConfig {
     ackMethod: 'POST',
     ackPath: '/leads/ack',
     costPerLead: null,
-    costCurrency: 'XOF',
+    costCurrency: institutionCurrency(),
   };
 }
 

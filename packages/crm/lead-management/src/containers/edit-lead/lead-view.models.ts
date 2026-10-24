@@ -1,5 +1,6 @@
 import { ActivityDtoTypeEnum, LeadDto, SetIntentLevelRequestIntentLevelEnum } from '@sankore/crm-api';
 import { Severity } from '@talisoft/ui/tag';
+import { currencyUnit } from '@sankore/crm/common';
 
 /**
  * Libellés et petits calculs d'affichage partagés par la coque de la fiche lead et son onglet
@@ -174,8 +175,8 @@ const AMOUNT = new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 });
  */
 export function formatAmount(amount: number | null | undefined, currency: string | null | undefined): string {
   if (amount == null) return '';
-  const unit = !currency || currency === 'XOF' ? 'FCFA' : currency;
-  return `${AMOUNT.format(amount)} ${unit}`;
+  // Sans devise (un total, un montant d'avant les devises) : la monnaie de l'institution.
+  return `${AMOUNT.format(amount)} ${currencyUnit(currency)}`;
 }
 
 /** « 17 avril 2027 », ou « 14 oct. » en version courte — en français, pour la même raison. */

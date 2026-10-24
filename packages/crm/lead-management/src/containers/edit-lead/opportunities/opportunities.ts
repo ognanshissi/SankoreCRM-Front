@@ -11,7 +11,13 @@ import { SnackbarService } from '@talisoft/ui/snackbar';
 import { TasSpinner } from '@talisoft/ui/spinner';
 import { TableConfig, TasTable } from '@talisoft/ui/table';
 import { FormFieldReferenceTargetEnum, LeadsApiService, OpportunitiesApiService, OpportunityDto } from '@sankore/crm-api';
-import { EntityFormReferences, PermissionsService, projectAmountLabel, projectSaveErrorMessage } from '@sankore/crm/common';
+import {
+  EntityFormReferences,
+  PermissionsService,
+  projectAmountLabel,
+  projectSaveErrorMessage,
+  TenantProvider,
+} from '@sankore/crm/common';
 import { interestedProductLabel } from '../../../components/interested-product';
 import { ConvertedLeadNotice } from '../converted-lead-notice';
 import { LeadEditContext } from '../lead-edit-context';
@@ -48,6 +54,8 @@ import {
 export class LeadOpportunitiesPage {
   private readonly _permissions = inject(PermissionsService);
   private readonly _context = inject(LeadEditContext);
+  /** La monnaie de l'institution : celle des totaux et des nouveaux montants. */
+  public readonly currency = inject(TenantProvider).currency;
   private readonly _opportunitiesApi = inject(OpportunitiesApiService);
   private readonly _leadsApi = inject(LeadsApiService);
   private readonly _references = inject(EntityFormReferences);
@@ -176,7 +184,7 @@ export class LeadOpportunitiesPage {
     this.busyId.set(opp.id!);
     this._leadsApi.updateLead(lead.id, {
       desiredAmount: amount,
-      desiredCurrency: opp.estimatedAmount?.currency ?? 'XOF',
+      desiredCurrency: opp.estimatedAmount?.currency ?? this.currency(),
       expectedUpdatedAt: lead.updatedAt ?? null,
     }).pipe(
       catchError((error: HttpErrorResponse) => {
@@ -186,7 +194,7 @@ export class LeadOpportunitiesPage {
       }),
     ).subscribe(() => {
       this.busyId.set(null);
-      this._snackbar.success('Lead mis à jour', `Le lead porte désormais sur ${formatAmount(amount, 'XOF')}.`);
+      this._snackbar.success('Lead mis à jour', `Le lead porte désormais sur ${formatAmount(amount, opp.estimatedAmount?.currency ?? this.currency())}.`);
       this._context.reload();
     });
   }

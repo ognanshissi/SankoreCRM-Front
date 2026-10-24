@@ -23,11 +23,14 @@ import { TableConfig, TasTable } from '@talisoft/ui/table';
 import { Severity, TasTag } from '@talisoft/ui/tag';
 import { RouterLink } from '@angular/router';
 import {
+  currencyUnit,
+  institutionCurrency,
   PermissionsService,
   projectCreationRules,
   projectGateCode,
   projectGateMessage,
   projectSaveErrorMessage,
+  TenantProvider,
 } from '@sankore/crm/common';
 import {
   LeadDto,
@@ -116,7 +119,6 @@ class NewDemandeFormModel {
   public product!: string;
   public title!: string;
   public estimatedAmount!: string;
-  public estimatedCurrency!: string;
   public expectedCloseDate!: string;
   public description!: string;
 
@@ -125,7 +127,6 @@ class NewDemandeFormModel {
     m.product = '';
     m.title = '';
     m.estimatedAmount = '';
-    m.estimatedCurrency = 'XOF';
     m.expectedCloseDate = '';
     m.description = '';
     return m;
@@ -176,6 +177,9 @@ export class ClientDemandes {
   protected readonly clientStore = inject(ClientDetailStore);
   private readonly _opportunitiesApi = inject(OpportunitiesApiService);
   private readonly _leadsApi = inject(LeadsApiService);
+  /** La monnaie de l'institution : celle de tout montant saisi ici. */
+  public readonly currency = inject(TenantProvider).currency;
+  public readonly currencyUnit = currencyUnit;
   private readonly _holdingsApi = inject(ProductHoldingsApiService);
   private readonly _productsApi = inject(ProductsApiService);
   private readonly _usersApi = inject(UsersApiService);
@@ -507,7 +511,7 @@ export class ClientDemandes {
             // n'aurait pas d'agent assigné, qui est l'une des colonnes attendues.
             ownerId: this.clientStore.client()?.advisorUserId ?? null,
             estimatedAmount: hasAmount ? amount : null,
-            estimatedCurrency: hasAmount ? value.estimatedCurrency.trim() || null : null,
+            estimatedCurrency: hasAmount ? institutionCurrency() : null,
             expectedCloseDate: (this.rules.tracksForecast() && value.expectedCloseDate) || null,
             force: this._duplicateAcknowledged(),
           })

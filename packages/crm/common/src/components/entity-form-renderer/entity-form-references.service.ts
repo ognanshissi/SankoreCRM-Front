@@ -1,5 +1,6 @@
 import { inject, Injectable } from '@angular/core';
 import { catchError, map, Observable, of, shareReplay } from 'rxjs';
+import { INSTITUTION_CURRENCIES } from '../../models/institution-currency';
 import {
   AgenciesApiService,
   FormFieldReferenceTargetEnum,
@@ -34,14 +35,8 @@ const COUNTRIES: ReferenceOption[] = [
   { value: 'US', label: 'États-Unis' },
 ];
 
-const CURRENCIES: ReferenceOption[] = [
-  { value: 'XOF', label: 'XOF — Franc CFA (UEMOA)' },
-  { value: 'XAF', label: 'XAF — Franc CFA (CEMAC)' },
-  { value: 'EUR', label: 'EUR — Euro' },
-  { value: 'USD', label: 'USD — Dollar américain' },
-  { value: 'GHS', label: 'GHS — Cedi' },
-  { value: 'NGN', label: 'NGN — Naira' },
-];
+// Une liste « Devise » dans un formulaire propose les mêmes codes que la monnaie de l'institution.
+const CURRENCIES: ReferenceOption[] = INSTITUTION_CURRENCIES.map((c) => ({ ...c }));
 
 const LANGUAGES: ReferenceOption[] = [
   { value: 'fr', label: 'Français' },
@@ -127,5 +122,4 @@ export class EntityFormReferences {
     }
   }
 
-  public readonly currencies = CURRENCIES;
 }

@@ -11,6 +11,9 @@ const MESSAGES: Record<string, string> = {
   CUSTOM_FIELD_PATTERN_MISMATCH: 'le format n’est pas respecté.',
   CUSTOM_FIELD_UNKNOWN: 'ce champ n’existe plus, rechargez la page.',
   CUSTOM_FIELD_ARCHIVED: 'ce champ a été archivé entre-temps, rechargez la page.',
+  // Paramétrage › Entreprise : tout montant est dans la monnaie de l'institution.
+  CUSTOM_FIELD_CURRENCY_NOT_INSTITUTION: 'le montant doit être dans la monnaie de l’institution.',
+  CURRENCY_NOT_INSTITUTION: 'le montant doit être dans la monnaie de l’institution.',
   CUSTOM_FIELDS_UNAVAILABLE: 'les réglages du formulaire sont momentanément indisponibles, réessayez.',
   // Le jeton de version d'une fiche : quelqu'un l'a modifiée depuis son chargement.
   CONFLICT: 'la fiche a été modifiée entre-temps, rechargez-la avant d’enregistrer.',

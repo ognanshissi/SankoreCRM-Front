@@ -1,4 +1,5 @@
 import { EntityFormDto, FormField as EntityFormField, FormFieldTypeEnum, FormSection } from '@sankore/crm-api';
+import { institutionCurrency } from '../../models/institution-currency';
 
 /**
  * La valeur d'un champ telle que le contrat la transporte : ce que la fiche reçoit dans
@@ -23,7 +24,6 @@ export interface FieldEntry {
   currency: string;
 }
 
-export const DEFAULT_CURRENCY = 'XOF';
 
 export type RenderMode = 'quick' | 'full';
 
@@ -36,7 +36,7 @@ const NUMBER_TYPES: ReadonlyArray<FormFieldTypeEnum | undefined> = [
 // ── Contrat → modèle ────────────────────────────────────────────────────────
 
 export function toEntry(field: EntityFormField, value: WireValue | undefined): FieldEntry {
-  const entry: FieldEntry = { key: field.key ?? '', text: '', flag: false, list: [], currency: DEFAULT_CURRENCY };
+  const entry: FieldEntry = { key: field.key ?? '', text: '', flag: false, list: [], currency: institutionCurrency() };
   // `undefined` : enregistrement neuf, la valeur par défaut s'applique. `null` : une fiche existante
   // qui n'a rien pour ce champ — elle reste vide, la reprendre par défaut serait inventer une saisie.
   const v = value === undefined ? defaultOf(field) : value;
@@ -52,7 +52,9 @@ export function toEntry(field: EntityFormField, value: WireValue | undefined): F
     case FormFieldTypeEnum.Money:
       if (typeof v === 'object' && !Array.isArray(v)) {
         entry.text = v.amount?.toString() ?? '';
-        entry.currency = v.currency || DEFAULT_CURRENCY;
+        // Un montant déjà enregistré garde sa devise : la relabelliser à la monnaie actuelle
+        // changerait sa valeur sans que personne l'ait saisie.
+        entry.currency = v.currency || institutionCurrency();
       } else {
         entry.text = String(v);
       }
@@ -87,7 +89,7 @@ export function toWire(field: EntityFormField, entry: FieldEntry): WireValue {
       return entry.list.length ? [...entry.list] : null;
     case FormFieldTypeEnum.Money: {
       const amount = parseNumber(text);
-      return amount === null ? null : { amount, currency: entry.currency || DEFAULT_CURRENCY };
+      return amount === null ? null : { amount, currency: entry.currency || institutionCurrency() };
     }
     case FormFieldTypeEnum.Integer:
     case FormFieldTypeEnum.Decimal:

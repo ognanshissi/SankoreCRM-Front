@@ -6,7 +6,14 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { CdkDrag, CdkDragDrop, CdkDropList, CdkDropListGroup } from '@angular/cdk/drag-drop';
 import { catchError, debounceTime, EMPTY, finalize, Subject } from 'rxjs';
 import { OpportunitiesApiService, OpportunityDto } from '@sankore/crm-api';
-import { BreadcrumbService, PermissionsService, projectGateCode, projectGateMessage, projectFlowLabel } from '@sankore/crm/common';
+import {
+  BreadcrumbService,
+  PermissionsService,
+  projectFlowLabel,
+  projectGateCode,
+  projectGateMessage,
+  TenantProvider,
+} from '@sankore/crm/common';
 import { Button } from '@talisoft/ui/button';
 import { TasFormField, TasLabel } from '@talisoft/ui/form-field';
 import { TasIcon } from '@talisoft/ui/icon';
@@ -68,6 +75,8 @@ function searchText(p: OpportunityDto): string {
 export class ProjectsBoard implements OnInit {
   private readonly _api = inject(OpportunitiesApiService);
   private readonly _permissions = inject(PermissionsService);
+  /** La monnaie de l'institution : celle des totaux et des nouveaux montants. */
+  public readonly currency = inject(TenantProvider).currency;
   private readonly _breadcrumb = inject(BreadcrumbService);
   private readonly _snackbar = inject(SnackbarService);
   private readonly _sideDrawer = inject(SideDrawerService);

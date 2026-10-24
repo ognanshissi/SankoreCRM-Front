@@ -14,6 +14,7 @@ import { TasSpinner } from '@talisoft/ui/spinner';
 import { HouseholdResourcesDto, LeadsApiService } from '@sankore/crm-api';
 import {
   ComplianceConfigService,
+  currencyUnit,
   HouseholdMemberDrawer,
   HouseholdMemberDrawerData,
   householdMemberFromLead,
@@ -22,6 +23,7 @@ import {
   pepFromDto,
   PERMISSIONS,
   PermissionsService,
+  TenantProvider,
 } from '@sankore/crm/common';
 import { interestedProductLabel } from '../../components/interested-product';
 import { LeadComplianceStore } from './lead-compliance-store';
@@ -106,6 +108,7 @@ export class LeadFoyer {
   private readonly _sideDrawer = inject(SideDrawerService);
   private readonly _leadsApi = inject(LeadsApiService);
   private readonly _snackbar = inject(SnackbarService);
+  private readonly _tenant = inject(TenantProvider);
 
   public readonly formatAmount = formatAmount;
   public readonly formatDay = formatDay;
@@ -213,6 +216,9 @@ export class LeadFoyer {
   // ——— Ressources du foyer ———
 
   public readonly resources = computed(() => this.compliance.household()?.resources ?? null);
+  /** La devise des ressources déjà déclarées, sinon la monnaie de l'institution. */
+  public readonly resourcesCurrency = computed(() => this.resources()?.currency ?? this._tenant.currency());
+  public readonly resourcesUnit = computed(() => currencyUnit(this.resourcesCurrency()));
 
   public resourcesModel = signal(HouseholdResourcesFormModel.fromDto(null));
   public resourcesForm = form(this.resourcesModel, (schema) => {
@@ -266,7 +272,7 @@ export class LeadFoyer {
           monthlyIncome: parseAmount(value.monthlyIncome),
           housingCost: parseAmount(value.housingCost),
           otherDebts: parseAmount(value.otherDebts),
-          currency: this.resources()?.currency ?? 'XOF',
+          currency: this.resourcesCurrency(),
           expectedUpdatedAt: this.lead()?.updatedAt ?? null,
         }).pipe(
           map(() => true),

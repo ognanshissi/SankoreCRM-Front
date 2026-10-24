@@ -22,7 +22,7 @@
     <div class="flex items-end justify-between gap-3">
       <div>
         <p class="text-xs text-slate-500">Montant ouvert</p>
-        <p class="text-base font-bold text-slate-900 tabular-nums">{{ formatAmount(totalAmount(), 'XOF') }}</p>
+        <p class="text-base font-bold text-slate-900 tabular-nums">{{ formatAmount(totalAmount(), currency()) }}</p>
       </div>
       <button tas-button iconButton type="button" title="Actualiser" (click)="load()">
         <tas-icon iconName="feather:refresh-cw" style="font-size:16px"></tas-icon>
@@ -34,7 +34,7 @@
         @for (w of weightedByKind(); track w.kind) {
           <div>
             <p class="text-xs text-slate-500">Pondéré · {{ w.label }}</p>
-            <p class="text-base font-bold text-primary tabular-nums">{{ formatAmount(w.amount, 'XOF') }}</p>
+            <p class="text-base font-bold text-primary tabular-nums">{{ formatAmount(w.amount, currency()) }}</p>
           </div>
         }
       </div>
@@ -63,7 +63,7 @@
             <span class="ml-auto rounded-full bg-slate-200/70 px-2.5 py-0.5 text-xs font-semibold text-slate-700 tabular-nums">{{ col.projects.length }}</span>
           </div>
           <p class="mt-1 border-b border-slate-200 pb-2 text-xs text-slate-500">
-            {{ col.hint }}@if (col.amount) { @if (col.hint) { · }<span class="tabular-nums">{{ formatAmount(col.amount, 'XOF') }}</span> }
+            {{ col.hint }}@if (col.amount) { @if (col.hint) { · }<span class="tabular-nums">{{ formatAmount(col.amount, currency()) }}</span> }
           </p>
 
           <div

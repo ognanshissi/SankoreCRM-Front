@@ -150,15 +150,11 @@
               />
             </tas-form-field>
 
+            <!-- Dans la monnaie de l'institution : pas de devise à saisir. -->
             <tas-form-field>
-              <tas-label>{{ rules.amountLabel() }}</tas-label>
+              <tas-label>{{ rules.amountLabel() }} ({{ currencyUnit(currency()) }})</tas-label>
               <input tasInput type="text" placeholder="0" [formField]="formSchema.estimatedAmount" />
               <tas-hint>Facultatif.</tas-hint>
-            </tas-form-field>
-
-            <tas-form-field>
-              <tas-label>Devise</tas-label>
-              <input tasInput type="text" placeholder="XOF" [formField]="formSchema.estimatedCurrency" />
             </tas-form-field>
 
             @if (rules.tracksForecast()) {

@@ -32462,6 +32462,10 @@
           "defaultLanguage": {
             "type": "string",
             "nullable": true
+          },
+          "currency": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -37192,6 +37196,10 @@
             "items": {
               "$ref": "#/components/schemas/FormField"
             },
+            "nullable": true
+          },
+          "currency": {
+            "type": "string",
             "nullable": true
           }
         },
@@ -52580,6 +52588,10 @@
           "defaultLanguage": {
             "type": "string",
             "nullable": true
+          },
+          "currency": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -53306,6 +53318,10 @@
             ],
             "type": "string",
             "description": "One of: Fr, En"
+          },
+          "currency": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false

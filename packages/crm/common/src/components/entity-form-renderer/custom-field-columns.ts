@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, DestroyRef, effect, injec
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { catchError, EMPTY } from 'rxjs';
 import { FormField as EntityFormField, FormFieldTypeEnum, FormsApiService } from '@sankore/crm-api';
+import { institutionCurrency } from '../../models/institution-currency';
 
 /** Ce qu'une cellule peut contenir pour chaque type — ce que le serveur sait relire. */
 function formatHint(field: EntityFormField): string {
@@ -15,7 +16,7 @@ function formatHint(field: EntityFormField): string {
     case FormFieldTypeEnum.Date:
       return 'jj/mm/aaaa';
     case FormFieldTypeEnum.Money:
-      return 'montant et devise, ex. 1 500 000 XOF';
+      return `montant en ${institutionCurrency()}, ex. 1 500 000`;
     case FormFieldTypeEnum.Integer:
     case FormFieldTypeEnum.Decimal:
     case FormFieldTypeEnum.Percent:

@@ -18,5 +18,6 @@ export interface CompanyInfoDto {
     primaryColor?: string | null;
     secondaryColor?: string | null;
     defaultLanguage?: string | null;
+    currency?: string | null;
 }
 

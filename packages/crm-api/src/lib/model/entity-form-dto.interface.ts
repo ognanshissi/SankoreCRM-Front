@@ -21,6 +21,7 @@ export interface EntityFormDto {
     version?: number;
     sections?: Array<FormSection> | null;
     fields?: Array<FormField> | null;
+    currency?: string | null;
 }
 export enum EntityFormDtoEntityEnum {
     Lead = 'Lead',

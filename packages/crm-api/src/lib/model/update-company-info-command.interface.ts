@@ -21,6 +21,7 @@ export interface UpdateCompanyInfoCommand {
      * One of: Fr, En
      */
     defaultLanguage?: UpdateCompanyInfoCommandDefaultLanguageEnum;
+    currency?: string | null;
 }
 export enum UpdateCompanyInfoCommandDefaultLanguageEnum {
     Fr = 'Fr',

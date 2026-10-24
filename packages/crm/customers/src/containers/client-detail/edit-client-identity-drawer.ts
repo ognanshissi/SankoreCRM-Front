@@ -5,7 +5,7 @@ import { form, FormField, FormRoot, submit, validate } from '@angular/forms/sign
 import { catchError, EMPTY, firstValueFrom, map } from 'rxjs';
 import { TasIcon } from '@talisoft/ui/icon';
 import { Button } from '@talisoft/ui/button';
-import { TasError, TasFormField, TasHint, TasLabel } from '@talisoft/ui/form-field';
+import { TasError, TasFormField, TasHint, TasLabel, TasSuffix } from '@talisoft/ui/form-field';
 import { TasInput } from '@talisoft/ui/input';
 import { TasSelect } from '@talisoft/ui/select';
 import {
@@ -21,6 +21,7 @@ import {
   UpdateClientRequest,
   UpdateClientRequestMaritalStatusEnum,
 } from '@sankore/crm-api';
+import { currencyUnit, institutionCurrency } from '@sankore/crm/common';
 import { ClientDetailStore } from '../../models/client-detail.store';
 import { isLegalClient, MARITAL_STATUS_OPTIONS } from '../../models/client-labels';
 
@@ -44,12 +45,6 @@ export function preferredLanguageLabel(value: string | null | undefined): string
   return LANGUAGE_OPTIONS.find((o) => o.value === value)?.label ?? value;
 }
 
-const CURRENCY_OPTIONS = [
-  { label: 'XOF', value: 'XOF' },
-  { label: 'EUR', value: 'EUR' },
-  { label: 'USD', value: 'USD' },
-];
-
 export class EditClientIdentityFormModel {
   public profession!: string;
   public employer!: string;
@@ -72,7 +67,7 @@ export class EditClientIdentityFormModel {
     // Le revenu déclaré n'est lisible que masqué : le champ part vide et n'est envoyé que s'il
     // est renseigné, sinon un formulaire ouvert puis enregistré effacerait le montant.
     model.declaredIncome = '';
-    model.declaredIncomeCurrency = client.declaredIncomeCurrency ?? 'XOF';
+    model.declaredIncomeCurrency = client.declaredIncomeCurrency ?? institutionCurrency();
     model.preferredLanguage = client.preferredLanguage ?? '';
     return model;
   }
@@ -82,6 +77,7 @@ export class EditClientIdentityFormModel {
   selector: 'edit-client-identity-drawer',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
+    TasSuffix,
     TasSideDrawer,
     TasDrawerTitle,
     TasDrawerContent,
@@ -184,28 +180,15 @@ export class EditClientIdentityFormModel {
 
           <div [class.border-t]="!isLegal" [class.border-gray-200]="!isLegal" [class.pt-4]="!isLegal">
             <p class="text-sm font-medium text-slate-600 mb-3">Revenu déclaré</p>
-            <div class="grid grid-cols-2 gap-3">
-              <tas-form-field>
-                <tas-label>Montant</tas-label>
-                <input tasInput type="number" placeholder="0" [formField]="formSchema.declaredIncome" />
-                @if (formSchema.declaredIncome().touched() && formSchema.declaredIncome().invalid()) {
-                  <tas-error>{{ formSchema.declaredIncome().errors()[0].message }}</tas-error>
-                }
-                <tas-hint>Laissez vide pour conserver le montant actuel, qui n'est pas lisible ici.</tas-hint>
-              </tas-form-field>
-
-              <tas-form-field>
-                <tas-label>Devise</tas-label>
-                <tas-select
-                  [options]="currencyOptions"
-                  placeholder="Devise"
-                  [formField]="formSchema.declaredIncomeCurrency"
-                ></tas-select>
-                @if (formSchema.declaredIncomeCurrency().touched() && formSchema.declaredIncomeCurrency().invalid()) {
-                  <tas-error>{{ formSchema.declaredIncomeCurrency().errors()[0].message }}</tas-error>
-                }
-              </tas-form-field>
-            </div>
+            <tas-form-field>
+              <tas-label>Montant</tas-label>
+              <input tasInput type="number" placeholder="0" [formField]="formSchema.declaredIncome" />
+              <button tasSuffix type="button" tabindex="-1" aria-hidden="true" class="cursor-default pr-3 text-sm text-slate-500">{{ incomeUnit }}</button>
+              @if (formSchema.declaredIncome().touched() && formSchema.declaredIncome().invalid()) {
+                <tas-error>{{ formSchema.declaredIncome().errors()[0].message }}</tas-error>
+              }
+              <tas-hint>Laissez vide pour conserver le montant actuel, qui n'est pas lisible ici.</tas-hint>
+            </tas-form-field>
           </div>
 
           <div class="border-t border-gray-200 pt-4">
@@ -253,7 +236,8 @@ export class EditClientIdentityDrawer {
   private readonly _snackbar = inject(SnackbarService);
 
   public readonly maritalStatusOptions = MARITAL_STATUS_OPTIONS;
-  public readonly currencyOptions = CURRENCY_OPTIONS;
+  /** Un revenu saisi ici est dans la monnaie de l'institution : il n'y a pas de devise à choisir. */
+  public readonly incomeUnit = currencyUnit(institutionCurrency());
   public readonly languageOptions = LANGUAGE_OPTIONS;
 
   public readonly isLegal = isLegalClient(this.data.client.clientType);
@@ -283,13 +267,6 @@ export class EditClientIdentityDrawer {
       return Number.isNaN(amount) || amount < 0
         ? { kind: 'min', message: 'Le revenu doit être un nombre positif' }
         : null;
-    });
-
-    validate(schema.declaredIncomeCurrency, (ctx) => {
-      if (ctx.valueOf(schema.declaredIncome) && !ctx.value()) {
-        return { kind: 'required', message: 'La devise est obligatoire avec un montant' };
-      }
-      return null;
     });
   });
 
@@ -324,13 +301,12 @@ export class EditClientIdentityDrawer {
             : (value.maritalStatus as UpdateClientRequestMaritalStatusEnum);
         changed.push('maritalStatus');
       }
+      // Un nouveau revenu est dans la monnaie de l'institution ; sans nouveau montant, la devise
+      // de l'ancien ne bouge pas — la changer seule relabelliserait un montant sans le ressaisir.
       if (value.declaredIncome !== '') {
         request.declaredIncome = Number(value.declaredIncome);
-        request.declaredIncomeCurrency = value.declaredIncomeCurrency || null;
+        request.declaredIncomeCurrency = institutionCurrency();
         changed.push('declaredIncome');
-      } else if (value.declaredIncomeCurrency !== initial.declaredIncomeCurrency) {
-        request.declaredIncomeCurrency = value.declaredIncomeCurrency || null;
-        changed.push('declaredIncomeCurrency');
       }
       if (value.preferredLanguage !== initial.preferredLanguage) {
         request.preferredLanguage = value.preferredLanguage || null;
@@ -426,7 +402,7 @@ export class EditClientIdentityDrawer {
       {
         label: 'Revenu déclaré',
         value: value.declaredIncome
-          ? `${value.declaredIncome} ${value.declaredIncomeCurrency}`.trim()
+          ? `${value.declaredIncome} ${institutionCurrency()}`.trim()
           : 'Inchangé',
       },
       { label: 'Langue préférée', value: preferredLanguageLabel(value.preferredLanguage) },

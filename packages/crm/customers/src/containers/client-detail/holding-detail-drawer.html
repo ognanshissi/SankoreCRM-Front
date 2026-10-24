@@ -150,10 +150,8 @@
                 <tas-label>Dépôt initial</tas-label>
                 <input tasInput type="number" [formField]="specificsForm.initialDeposit" />
               </tas-form-field>
-              <tas-form-field>
-                <tas-label>Devise</tas-label>
-                <input tasInput type="text" [formField]="specificsForm.currency" />
-              </tas-form-field>
+              <!-- La devise du contrat ne se change pas ici : un nouveau contrat prend celle de l'institution. -->
+              <p class="self-end pb-2 text-xs text-slate-500">Montants en {{ specificsForm.currency().value() }}</p>
               <tas-form-field>
                 <tas-label>Prise d'effet</tas-label>
                 <input tasInput type="date" [formField]="specificsForm.effectiveFrom" />

@@ -76,27 +76,17 @@
             ></tas-select>
           </tas-form-field>
 
-          <div class="grid grid-cols-2 gap-3">
-            <tas-form-field>
-              <tas-label>Montant souhaité</tas-label>
-              <input tasInput type="number" placeholder="0" [formField]="formSchema.desiredAmount" />
-              @if (formSchema.desiredAmount().touched() && formSchema.desiredAmount().invalid()) {
-                <tas-error>{{ formSchema.desiredAmount().errors()[0].message }}</tas-error>
-              }
-            </tas-form-field>
-
-            <tas-form-field>
-              <tas-label>Devise</tas-label>
-              <tas-select
-                [options]="currencyOptions"
-                placeholder="Devise"
-                [formField]="formSchema.desiredCurrency"
-              ></tas-select>
-              @if (formSchema.desiredCurrency().touched() && formSchema.desiredCurrency().invalid()) {
-                <tas-error>{{ formSchema.desiredCurrency().errors()[0].message }}</tas-error>
-              }
-            </tas-form-field>
-          </div>
+          <!-- Pas de devise à choisir : celle du montant déjà saisi, sinon la monnaie de l'institution. -->
+          <tas-form-field>
+            <tas-label>Montant souhaité</tas-label>
+            <input tasInput type="number" placeholder="0" [formField]="formSchema.desiredAmount" />
+            <button tasSuffix type="button" tabindex="-1" aria-hidden="true" class="cursor-default pr-3 text-sm text-slate-500">
+              {{ currencyUnit(formSchema.desiredCurrency().value()) }}
+            </button>
+            @if (formSchema.desiredAmount().touched() && formSchema.desiredAmount().invalid()) {
+              <tas-error>{{ formSchema.desiredAmount().errors()[0].message }}</tas-error>
+            }
+          </tas-form-field>
 
           <tas-form-field>
             <tas-label>Campagne</tas-label>

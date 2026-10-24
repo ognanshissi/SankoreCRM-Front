@@ -23,5 +23,6 @@ export interface TenantContextResponse {
     primaryColor?: string | null;
     secondaryColor?: string | null;
     defaultLanguage?: string | null;
+    currency?: string | null;
 }
 

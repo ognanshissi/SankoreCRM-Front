@@ -138,10 +138,8 @@
           <tas-label>Dépôt initial</tas-label>
           <input tasInput type="number" [formField]="termsForm.initialDeposit" />
         </tas-form-field>
-        <tas-form-field>
-          <tas-label>Devise</tas-label>
-          <input tasInput type="text" [formField]="termsForm.currency" />
-        </tas-form-field>
+        <!-- Pas de devise à saisir : les montants sont dans la monnaie de l'institution. -->
+        <p class="self-end pb-2 text-xs text-slate-500">Montants en {{ termsForm.currency().value() }}</p>
         <tas-form-field>
           <tas-label>Prise d'effet</tas-label>
           <input tasInput type="date" [formField]="termsForm.effectiveFrom" />

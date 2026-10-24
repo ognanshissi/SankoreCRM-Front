@@ -108,12 +108,6 @@ export const PROSPECT_TYPE_OPTIONS = [
   { label: 'Entreprise', value: CaptureLeadRequestProspectTypeEnum.Corporate },
 ];
 
-export const CURRENCY_OPTIONS = [
-  { label: 'XOF', value: 'XOF' },
-  { label: 'EUR', value: 'EUR' },
-  { label: 'USD', value: 'USD' },
-];
-
 /** Les onze canaux de `CaptureLeadRequestChannelEnum`, dans l'ordre du contrat. */
 export const CHANNEL_OPTIONS = [
   { label: 'Agence', value: CaptureLeadRequestChannelEnum.Agency },

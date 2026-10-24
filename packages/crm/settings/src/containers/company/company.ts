@@ -12,7 +12,13 @@ import { TasSelect } from '@talisoft/ui/select';
 import { TasSpinner } from '@talisoft/ui/spinner';
 import { CompanyInfoApiService, CompanyInfoDto, UpdateCompanyInfoCommandDefaultLanguageEnum } from '@sankore/crm-api';
 import { SnackbarService } from '@talisoft/ui/snackbar';
-import { BreadcrumbService, TenantProvider, PermissionsService } from '@sankore/crm/common';
+import {
+  BreadcrumbService,
+  DEFAULT_INSTITUTION_CURRENCY,
+  INSTITUTION_CURRENCIES,
+  PermissionsService,
+  TenantProvider,
+} from '@sankore/crm/common';
 
 const LOGO_MAX_BYTES = 1024 * 1024;
 const LOGO_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
@@ -24,6 +30,7 @@ class CompanyFormModel {
   public primaryColor!: string;
   public secondaryColor!: string;
   public defaultLanguage!: string;
+  public currency!: string;
 
   public static fromDto(dto: CompanyInfoDto): CompanyFormModel {
     const m = new CompanyFormModel();
@@ -33,6 +40,7 @@ class CompanyFormModel {
     m.primaryColor = dto.primaryColor ?? '';
     m.secondaryColor = dto.secondaryColor ?? '';
     m.defaultLanguage = dto.defaultLanguage != null ? String(dto.defaultLanguage) : '0';
+    m.currency = dto.currency || DEFAULT_INSTITUTION_CURRENCY;
     return m;
   }
 }
@@ -82,6 +90,14 @@ export class CompanyPage {
     required(schema.name, { message: "Le nom de l'organisation est obligatoire" });
   });
 
+  public readonly currencyOptions = [...INSTITUTION_CURRENCIES];
+  /** La monnaie enregistrée, pour avertir avant de la changer. */
+  public readonly savedCurrency = signal<string | null>(null);
+  public readonly currencyChanged = computed(() => {
+    const saved = this.savedCurrency();
+    return saved !== null && this.formSchema.currency().value() !== saved;
+  });
+
   public readonly languageOptions = [
     { label: 'Français', value: '0' },
     { label: 'English', value: '1' },
@@ -95,6 +111,7 @@ export class CompanyPage {
     this._companyInfoApiService.getCompanyInfo().subscribe({
       next: (dto) => {
         this.updateModel.set(CompanyFormModel.fromDto(dto));
+        this.savedCurrency.set(dto.currency || DEFAULT_INSTITUTION_CURRENCY);
         this.isLoading.set(false);
       },
       error: () => {
@@ -117,6 +134,7 @@ export class CompanyPage {
             primaryColor: value.primaryColor || null,
             secondaryColor: value.secondaryColor || null,
             defaultLanguage: value.defaultLanguage as UpdateCompanyInfoCommandDefaultLanguageEnum || null,
+            currency: value.currency,
           })
           .pipe(
             catchError(() => {
@@ -126,6 +144,9 @@ export class CompanyPage {
             }),
           ),
       );
+      // Les écrans ouverts prennent la nouvelle monnaie sans recharger l'application.
+      this._tenantProvider.setCurrency(value.currency);
+      this.savedCurrency.set(value.currency);
       // Appliquer immédiatement les nouvelles couleurs au thème
       const ctx = this._tenantProvider.context();
       if (ctx) {

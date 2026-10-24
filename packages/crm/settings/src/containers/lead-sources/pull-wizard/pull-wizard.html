@@ -360,19 +360,14 @@
       <div class="p-4 border-b border-slate-100">
         <p class="text-sm font-semibold text-slate-700">Coût par lead</p>
       </div>
-      <div class="p-4 grid grid-cols-2 gap-3">
+      <div class="p-4">
         <tas-form-field>
-          <tas-label>Montant</tas-label>
+          <tas-label>Montant ({{ costUnit(config().costCurrency) }})</tas-label>
           <input tasInput type="number" min="0" placeholder="0"
                  [ngModel]="config().costPerLead" (ngModelChange)="set('costPerLead', $event)" [disabled]="readonly()" />
           @if (costInvalid()) {
             <tas-error>Le montant doit être positif.</tas-error>
           }
-        </tas-form-field>
-        <tas-form-field>
-          <tas-label>Devise</tas-label>
-          <input tasInput type="text" placeholder="XOF"
-                 [ngModel]="config().costCurrency" (ngModelChange)="set('costCurrency', $event)" [disabled]="readonly()" />
         </tas-form-field>
       </div>
     </tas-card>

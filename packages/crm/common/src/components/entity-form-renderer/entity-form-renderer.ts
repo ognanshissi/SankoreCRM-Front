@@ -24,11 +24,12 @@ import {
 } from '@sankore/crm-api';
 import { TasCard } from '@talisoft/ui/card';
 import { TasCheckbox } from '@talisoft/ui/checkbox';
-import { TasError, TasFormField, TasHint, TasLabel } from '@talisoft/ui/form-field';
+import { TasError, TasFormField, TasHint, TasLabel, TasSuffix } from '@talisoft/ui/form-field';
 import { TasInput } from '@talisoft/ui/input';
 import { TasSelect } from '@talisoft/ui/select';
 import { EntityFormFieldTemplate } from './entity-form-field-template.directive';
 import { EntityFormReferences, ReferenceOption } from './entity-form-references.service';
+import { currencyUnit } from '../../models/institution-currency';
 import {
   customPayload,
   FieldEntry,
@@ -75,6 +76,7 @@ interface RenderedGroup {
   templateUrl: './entity-form-renderer.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
+    TasSuffix,
     NgTemplateOutlet,
     FormField,
     TasCard,
@@ -129,7 +131,7 @@ export class EntityFormRenderer {
   private readonly _templates = contentChildren(EntityFormFieldTemplate);
 
   public readonly Type = FormFieldTypeEnum;
-  public readonly currencies = this._references.currencies;
+  public readonly currencyUnit = currencyUnit;
 
   // ── Modèle ──────────────────────────────────────────────────────────
 
@@ -359,7 +361,7 @@ export class EntityFormRenderer {
         return label(value as string);
       case FormFieldTypeEnum.Money: {
         const m = value as { amount: number; currency: string };
-        return `${m.amount.toLocaleString('fr-FR')} ${m.currency}`;
+        return `${m.amount.toLocaleString('fr-FR')} ${currencyUnit(m.currency)}`;
       }
       case FormFieldTypeEnum.Percent:
         return `${(value as number).toLocaleString('fr-FR')} %`;

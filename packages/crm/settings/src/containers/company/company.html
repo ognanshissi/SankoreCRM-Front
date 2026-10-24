@@ -96,6 +96,20 @@
             [formField]="formSchema.defaultLanguage"
           ></tas-select>
         </tas-form-field>
+
+        <!-- La monnaie de tous les montants : il n'y a pas de choix de devise dans les formulaires. -->
+        <tas-form-field>
+          <tas-label>Monnaie de l'institution</tas-label>
+          <tas-select [options]="currencyOptions" [formField]="formSchema.currency"></tas-select>
+        </tas-form-field>
+        @if (currencyChanged()) {
+          <p class="-mt-2 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-900" role="status">
+            Les nouveaux montants seront en {{ formSchema.currency().value() }}. Ceux déjà saisis gardent leur
+            devise ({{ savedCurrency() }}), sans conversion : les totaux mélangeront les deux monnaies.
+          </p>
+        } @else {
+          <p class="-mt-2 text-xs text-slate-500">Tous les montants saisis (besoin, projets, revenus…) sont dans cette monnaie.</p>
+        }
       </div>
     </tas-card>
 

@@ -37,6 +37,7 @@ import {
 import {
   holdingStatusLabel,
   holdingStatusSeverity,
+  institutionCurrency,
   productCategoryLabel,
 } from '@sankore/crm/common';
 import { DesignationsEditor } from './designations-editor';
@@ -88,7 +89,7 @@ class TermsFormModel {
     model.durationMonths = '';
     model.annualRatePercent = '';
     model.initialDeposit = '';
-    model.currency = '';
+    model.currency = institutionCurrency();
     model.effectiveFrom = new Date().toISOString().slice(0, 10);
     model.notes = '';
     return model;
@@ -315,7 +316,7 @@ export class SubscribeDrawer implements OnInit, OnDestroy {
               durationMonths: this._toInt(terms.durationMonths),
               annualRatePercent: this._toNumber(terms.annualRatePercent),
               initialDeposit: this._toNumber(terms.initialDeposit),
-              currency: terms.currency.trim() || null,
+              currency: terms.currency || institutionCurrency(),
               effectiveFrom: terms.effectiveFrom || null,
               notes: terms.notes.trim() || null,
             },

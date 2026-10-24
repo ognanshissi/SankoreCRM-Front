@@ -20,7 +20,7 @@ import {
   LeadSourceListDto,
   LeadSourceListDtoStatusEnum,
 } from '@sankore/crm-api';
-import { BreadcrumbService, PermissionsService } from '@sankore/crm/common';
+import { BreadcrumbService, currencyUnit, PermissionsService } from '@sankore/crm/common';
 import { LeadSourcesService } from './lead-sources.service';
 import { LeadSourceMetadataService } from './lead-source-metadata.service';
 import {
@@ -301,7 +301,7 @@ import { TimeagoPipe } from '@talisoft/ui/timeago';
                       @if (src.costPerLead?.amount != null) {
                         <span class="text-xs text-slate-700">
                           {{ (src.costPerLead?.amount ?? 0) | number: '1.0-0' }}
-                          {{ src.costPerLead?.currency ?? 'XOF' }}
+                          {{ currencyUnit(src.costPerLead?.currency) }}
                         </span>
                       } @else {
                         <span class="text-xs text-slate-400">—</span>
@@ -386,6 +386,7 @@ import { TimeagoPipe } from '@talisoft/ui/timeago';
   `,
 })
 export class LeadSourcesConfig implements OnInit {
+  public readonly currencyUnit = currencyUnit;
   private readonly _api = inject(LeadSourcesApiService);
   private readonly _destroyRef = inject(DestroyRef);
   private readonly _sourcesService = inject(LeadSourcesService);

@@ -5,9 +5,9 @@
   <div class="flex items-center justify-end gap-6 flex-wrap">
     @for (t of totalsByKind(); track t.kind) {
       <p class="text-xs text-slate-500">
-        {{ t.label }} <span class="text-sm font-bold text-slate-900 tabular-nums">{{ formatAmount(t.amount, 'XOF') }}</span>
+        {{ t.label }} <span class="text-sm font-bold text-slate-900 tabular-nums">{{ formatAmount(t.amount, currency()) }}</span>
         @if (t.tracked) {
-          · dont <span class="font-semibold text-primary tabular-nums">{{ formatAmount(t.weighted, 'XOF') }}</span> pondérés
+          · dont <span class="font-semibold text-primary tabular-nums">{{ formatAmount(t.weighted, currency()) }}</span> pondérés
         }
       </p>
     }

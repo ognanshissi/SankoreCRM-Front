@@ -18,7 +18,7 @@ import {
   CreateLeadSourceRequestChannelTypeEnum,
   CreateLeadSourceRequestIntegrationModeEnum,
 } from '@sankore/crm-api';
-import { BreadcrumbService } from '@sankore/crm/common';
+import { BreadcrumbService, currencyUnit, institutionCurrency } from '@sankore/crm/common';
 import { LeadSourcesService } from './lead-sources.service';
 import { writeSettings } from './lead-source-settings.types';
 import { LeadSourceMetadataService } from './lead-source-metadata.service';
@@ -312,16 +312,11 @@ const BUSINESS_CASES: BusinessCase[] = [
             <div class="p-4 border-b border-slate-100">
               <p class="text-sm font-semibold text-slate-700">Coût d'acquisition</p>
             </div>
-            <div class="p-4 grid grid-cols-2 gap-4">
+            <div class="p-4">
               <tas-form-field>
-                <tas-label>Coût par lead</tas-label>
+                <tas-label>Coût par lead ({{ costUnit }})</tas-label>
                 <input tasInput type="number" placeholder="0"
                        [ngModel]="costPerLead()" (ngModelChange)="costPerLead.set($event)" />
-              </tas-form-field>
-              <tas-form-field>
-                <tas-label>Devise</tas-label>
-                <input tasInput type="text" placeholder="XOF"
-                       [ngModel]="costCurrency()" (ngModelChange)="costCurrency.set($event)" />
               </tas-form-field>
             </div>
           </tas-card>
@@ -369,7 +364,9 @@ export class CreateLeadSourcePage implements OnInit {
   public integrationMode = signal<string | null>(null);
   public dedupWindowDays = signal<number>(DEFAULT_DEDUP_WINDOW_DAYS);
   public costPerLead = signal<number | null>(null);
-  public costCurrency = signal('XOF');
+  // Dans la monnaie de l'institution : pas de devise à saisir.
+  public costCurrency = signal(institutionCurrency());
+  public readonly costUnit = currencyUnit(institutionCurrency());
 
   // Orientation (FE-06)
   public defaultProductCode = signal<string | null>(null);
