@@ -507,10 +507,27 @@ export function defaultConnectionSettings(): ConnectionSettingsDefaults {
  */
 export function integrationErrorMessage(error: HttpErrorResponse, fallback: string): string {
   const body = error?.error as
-    | { code?: string; title?: string; detail?: string; errors?: Record<string, string[]> }
+    | { code?: string; error?: string; title?: string; detail?: string; errors?: Record<string, string[]> }
     | undefined;
 
-  switch (body?.code) {
+  // Les sinistres répondent `{ error }` et non `{ code }` ; le refus hors couverture porte en plus
+  // son côté (`…:BEFORE_COVER` / `…:AFTER_COVER`).
+  const code = body?.code ?? body?.error;
+  if (code?.startsWith('INSURANCE_LOSS_OUTSIDE_COVER')) {
+    return code.endsWith('BEFORE_COVER')
+      ? 'Le sinistre est antérieur au début de la couverture : ce contrat ne le couvre pas.'
+      : 'Le sinistre est postérieur à la fin de la couverture : ce contrat ne le couvre plus.';
+  }
+
+  switch (code) {
+    case 'INSURANCE_POLICY_NOT_FOUND':
+      return "Ce contrat d'assurance n'existe pas, ou plus.";
+    case 'INSURANCE_LOSS_IN_THE_FUTURE':
+      return 'La date du sinistre ne peut pas être dans le futur.';
+    case 'INSURANCE_CONNECTION_CANNOT_DECLARE_CLAIMS':
+      return "Cet assureur ne reçoit pas de déclarations par ce canal : déclarez le sinistre par votre canal habituel.";
+    case 'INSURANCE_CLAIM_INDEMNITY_CONFLICT':
+      return 'Ce dossier a déjà été indemnisé sous une autre référence.';
     case 'TENANT_MODULE_DISABLED':
       return "Ce type de connexion relève d'un module payant qui n'est pas activé pour votre institution (Paramétrage › Modules et abonnement).";
     case 'INTEGRATION_CONNECTION_NOT_HEALTHY':

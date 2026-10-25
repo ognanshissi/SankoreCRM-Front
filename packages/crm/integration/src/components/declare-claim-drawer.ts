@@ -9,8 +9,8 @@ import {
   submit,
   validate,
 } from '@angular/forms/signals';
+import { HttpErrorResponse } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
-import { TasAlert } from '@talisoft/ui/alert';
 import { Button } from '@talisoft/ui/button';
 import { TasError, TasFormField, TasHint, TasLabel } from '@talisoft/ui/form-field';
 import { TasFileUploader } from '@talisoft/ui/file-uploader';
@@ -30,7 +30,7 @@ import {
   CLAIM_DOCUMENT_MAX_SIZE_MB,
   CLAIM_NATURES,
 } from '../data-access/integration-referential';
-import { PendingIntegrationEndpoints } from '../data-access/pending-endpoints';
+import { IntegrationFacadeService, integrationErrorMessage } from '../data-access/integration-facade.service';
 
 export interface DeclareClaimDrawerData {
   policyId: string;
@@ -59,18 +59,16 @@ class DeclareClaimFormModel {
 }
 
 /**
- * Déclaration d'un sinistre — ASS-17.
+ * Déclaration d'un sinistre — ASS-17, sur l'endpoint ASS-09 (`POST integration/insurance/claims`).
  *
- * **Aucun endpoint de sinistre n'est déclaré dans le swagger** : le lot back ASS-09
- * n'est pas livré. L'envoi passe donc par `PendingIntegrationEndpoints.declareClaim()`,
- * qui répond `null`, et le drawer **n'annonce jamais un succès sur ce `null`** — c'est
- * exactement le travers que les conventions du dépôt interdisent (« un 200 ne prouve pas
- * que le serveur a tout enregistré »). La saisie, les contrôles de format et de poids et
- * la liste des pièces fonctionnent pour de vrai et resteront tels quels.
+ * La déclaration part d'abord, seule : le serveur ouvre le dossier et met l'envoi à l'assureur en
+ * file dans la même transaction. Les pièces sont déposées ENSUITE sur le dossier ouvert — elles ne
+ * voyagent jamais avec la déclaration, parce qu'aucune pièce ne quitte la plateforme avant le
+ * passage de l'antivirus. Une pièce refusée n'annule pas la déclaration : le dossier existe, l'agent
+ * la redépose depuis le détail du sinistre.
  *
- * À l'arrivée de l'endpoint : mettre à jour `swaggers/sankore-crm-api-swagger.json`,
- * lancer `npm run openapi-generator`, nommer la méthode dans `IntegrationFacadeService`,
- * puis remplacer l'appel ci-dessous et retirer le bandeau.
+ * Avant, ce tiroir appelait un bouchon (`PendingIntegrationEndpoints.declareClaim()`) qui
+ * répondait `null` : rien ne partait, alors que l'endpoint était livré.
  */
 @Component({
   selector: 'declare-claim-drawer',
@@ -84,7 +82,6 @@ class DeclareClaimFormModel {
     TasDrawerContent,
     TasDrawerAction,
     TasTitle,
-    TasAlert,
     Button,
     TasIcon,
     TasFormField,
@@ -110,17 +107,6 @@ class DeclareClaimFormModel {
               pièce.
             </p>
           </div>
-
-          @if (isPending) {
-            <tas-alert type="info">
-              <p class="text-sm font-medium">La transmission attend une livraison serveur</p>
-              <p class="text-xs mt-1">
-                Vous pouvez préparer la déclaration et vérifier les pièces, mais elle ne
-                partira pas encore à l'assureur. Déclarez le sinistre par votre canal
-                habituel en attendant.
-              </p>
-            </tas-alert>
-          }
 
           <form [formRoot]="formSchema" class="flex flex-col gap-5">
             <tas-form-field>
@@ -245,12 +231,10 @@ export class DeclareClaimDrawer {
   private readonly _dialogRef = inject<DialogRef<boolean>>(DialogRef);
   private readonly _snackbar = inject(SnackbarService);
 
-  /** `PendingIntegrationEndpoints` n'est pas un service Angular : il s'instancie. */
-  private readonly _pending = new PendingIntegrationEndpoints();
+  private readonly _integration = inject(IntegrationFacadeService);
 
   public readonly data = inject<DeclareClaimDrawerData>(DIALOG_DATA);
 
-  public readonly isPending = PendingIntegrationEndpoints.isPending;
   public readonly accept = CLAIM_DOCUMENT_ACCEPT;
   public readonly maxSizeMb = CLAIM_DOCUMENT_MAX_SIZE_MB;
   public readonly natureOptions = CLAIM_NATURES.map((n) => ({ ...n }));
@@ -312,23 +296,51 @@ export class DeclareClaimDrawer {
   }
 
   public handleSubmit(): void {
-    submit(this.formSchema, async () => {
-      const created = await firstValueFrom(this._pending.declareClaim());
-
-      // `declareClaim()` répond `null` tant que l'endpoint n'est pas livré. Annoncer
-      // « Sinistre déclaré » ici ferait croire à l'agent que l'assureur est au courant.
-      if (!created) {
-        this._snackbar.info(
+    submit(this.formSchema, async (field) => {
+      const value = field().value();
+      let result;
+      try {
+        result = await firstValueFrom(
+          this._integration.declareClaim({
+            policyId: this.data.policyId,
+            occurredOn: value.occurredOn,
+            nature: value.nature,
+            description: value.description.trim(),
+          }),
+        );
+      } catch (error) {
+        this._snackbar.error(
           'Déclaration non transmise',
-          "L'envoi à l'assureur attend une livraison serveur. Déclarez le sinistre par votre canal habituel.",
+          integrationErrorMessage(error as HttpErrorResponse, "Le sinistre n'a pas pu être déclaré."),
         );
         return;
       }
 
-      this._snackbar.success(
-        'Sinistre déclaré',
-        'La déclaration est partie à l’assureur. Son avancement se suit dans la fiche du client.',
-      );
+      // Les pièces sur le dossier ouvert (ou déjà ouvert, si ce sinistre était déclaré). Une par
+      // une : un refus ne fait pas perdre les autres, et la déclaration reste faite.
+      const refused: string[] = [];
+      for (const doc of this.documents()) {
+        try {
+          await firstValueFrom(this._integration.uploadClaimDocument(result.claimId!, 'Declaration', doc.file, false));
+        } catch (error) {
+          refused.push(`${doc.file.name} : ${integrationErrorMessage(error as HttpErrorResponse, 'refusée')}`);
+        }
+      }
+
+      if (result.alreadyExisted) {
+        this._snackbar.info(
+          'Sinistre déjà déclaré',
+          'Ce sinistre (même contrat, même jour, même nature) était déjà déclaré : les pièces ont été jointes à son dossier.',
+        );
+      } else {
+        this._snackbar.success(
+          'Sinistre déclaré',
+          "La déclaration part à l'assureur. Les pièces partent après l'antivirus ; l'avancement se suit dans la fiche du client.",
+        );
+      }
+      if (refused.length > 0) {
+        this._snackbar.error('Pièces non déposées', `${refused.join(' · ')} — redéposez-les depuis le détail du sinistre.`);
+      }
       this._dialogRef.close(true);
     });
   }
