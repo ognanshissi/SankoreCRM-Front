@@ -21,6 +21,8 @@ import { ConfirmDialogService } from '@talisoft/ui/confirm-dialog';
 import {
   BreadcrumbService,
   EntityFormReferences,
+  ErasureRequestDrawer,
+  ErasureRequestDrawerData,
   FatcaStatusBadge,
   PepExposureBadge,
   PermissionsService,
@@ -127,6 +129,7 @@ export class EditLeadNavigation implements OnDestroy {
   public readonly canWhatsApp = this._permissions.can('WhatsApp.Send', 'WhatsApp.Supervise');
   public readonly canScheduleAppointment = this._permissions.can('lead:activity:log');
   public readonly canManageTasks = this._permissions.can('lead:task:manage');
+  public readonly canRequestErasure = this._permissions.can('privacy:erasure:request');
 
   private readonly _leadsApiService = inject(LeadsApiService);
   private readonly _breadcrumbService = inject(BreadcrumbService);
@@ -520,6 +523,18 @@ export class EditLeadNavigation implements OnDestroy {
     });
     ref.closed.subscribe((result) => {
       if (result) this.reload();
+    });
+  }
+
+  /** La personne demande l'effacement de ses données : une autre personne décidera (purge, lot 3). */
+  public openErasureRequest(): void {
+    const lead = this.lead();
+    if (!lead?.id) return;
+    this._sideDrawerService.open<boolean, ErasureRequestDrawerData, ErasureRequestDrawer>(ErasureRequestDrawer, {
+      width: '100%',
+      height: '100%',
+      panelClass: 'side-drawer-panel',
+      data: { subjectType: 'Lead', subjectId: lead.id, label: this.name() },
     });
   }
 

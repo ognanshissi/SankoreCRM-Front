@@ -153,5 +153,8 @@
     <tenant-modules-section [tenantId]="t.id!" [tenantName]="t.name ?? ''" />
 
     <tenant-support-section [tenantId]="t.id!" />
+
+    <!-- Purge de données, lot 4 : vider une institution de recette ou de démo. -->
+    <tenant-test-data-section [tenantId]="t.id!" [tenantName]="t.name ?? ''" [isTest]="t.isTest ?? false" (changed)="load()" />
   }
 </div>

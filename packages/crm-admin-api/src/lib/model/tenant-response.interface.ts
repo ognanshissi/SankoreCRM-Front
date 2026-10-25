@@ -24,5 +24,6 @@ export interface TenantResponse {
     updatedAt?: string;
     activeModules?: Array<string> | null;
     readOnlyModules?: Array<string> | null;
+    isTest?: boolean;
 }
 

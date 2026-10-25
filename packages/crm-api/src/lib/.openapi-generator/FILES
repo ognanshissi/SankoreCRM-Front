@@ -26,6 +26,7 @@ api/delivery-logs.service.ts
 api/dispatching-rules.service.ts
 api/distribution-credentials.service.ts
 api/email-templates.service.ts
+api/erasure-requests.service.ts
 api/forms.service.ts
 api/health.service.ts
 api/holdings-endpoints.service.ts
@@ -233,6 +234,7 @@ model/create-connection-request.interface.ts
 model/create-connection-response.interface.ts
 model/create-dispatching-rule-request.interface.ts
 model/create-email-template-request.interface.ts
+model/create-erasure-request-body.interface.ts
 model/create-group-request.interface.ts
 model/create-group-result.interface.ts
 model/create-individual-client-request.interface.ts
@@ -279,6 +281,7 @@ model/customers-person-identity-dto.interface.ts
 model/customers-remove-household-member-request.interface.ts
 model/customers-update-household-member-request.interface.ts
 model/daily-breach-dto.interface.ts
+model/decide-erasure-request-body.interface.ts
 model/decide-kyc-approval-request.interface.ts
 model/decide-kyc-approval-response.interface.ts
 model/declare-beneficial-owners-request.interface.ts
@@ -325,6 +328,8 @@ model/embedded-script-settings.interface.ts
 model/end-sessions-result.interface.ts
 model/enrich-lead-request.interface.ts
 model/entity-form-dto.interface.ts
+model/erasure-eligibility-dto.interface.ts
+model/erasure-request-dto.interface.ts
 model/escalate-complaint-request.interface.ts
 model/exchange-enrolment-token-request.interface.ts
 model/execution-monitor-dto.interface.ts
@@ -506,6 +511,7 @@ model/paged-result-of-client-timeline-entry-dto.interface.ts
 model/paged-result-of-completed-task-dto.interface.ts
 model/paged-result-of-connection-list-dto.interface.ts
 model/paged-result-of-duplicate-candidate-dto.interface.ts
+model/paged-result-of-erasure-request-dto.interface.ts
 model/paged-result-of-group-list-item-dto.interface.ts
 model/paged-result-of-holding-dto.interface.ts
 model/paged-result-of-ingestion-dto.interface.ts

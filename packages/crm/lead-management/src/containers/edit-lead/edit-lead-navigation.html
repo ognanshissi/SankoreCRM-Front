@@ -184,6 +184,14 @@
                   </button>
                 </tas-menu-item>
               }
+              @if (canRequestErasure()) {
+                <tas-menu-item>
+                  <button type="button" class="flex w-full items-center gap-2 text-slate-700" (click)="openErasureRequest()">
+                    <tas-icon iconName="feather:user-x" class="text-slate-400" style="font-size:13px"></tas-icon>
+                    Demander l'effacement
+                  </button>
+                </tas-menu-item>
+              }
               @if (l.status !== 'Converted') {
                 <tas-menu-item>
                   <button type="button" class="flex w-full items-center gap-2 text-slate-700" (click)="openNurtureRecycleDrawer()">

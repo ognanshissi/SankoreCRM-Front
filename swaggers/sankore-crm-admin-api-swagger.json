@@ -854,6 +854,298 @@
         ]
       }
     },
+    "/api/v1/tenants/{tenantId}/test-flag": {
+      "put": {
+        "tags": [
+          "Tenant data wipes"
+        ],
+        "summary": "Mark an institution as a recette/demo one — the only kind whose data may be wiped",
+        "operationId": "SetTenantTestFlag",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetTenantTestFlagRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        },
+        "security": [
+          {
+            "ApiKey": [ ]
+          },
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/api/v1/tenants/{tenantId}/data-wipes": {
+      "post": {
+        "tags": [
+          "Tenant data wipes"
+        ],
+        "summary": "Empty a TEST institution of its business data; its configuration and users stay",
+        "operationId": "RequestTenantDataWipe",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RequestDataWipeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantDataWipeResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "409": {
+            "description": "Conflict"
+          }
+        },
+        "security": [
+          {
+            "ApiKey": [ ]
+          },
+          {
+            "Bearer": [ ]
+          }
+        ]
+      },
+      "get": {
+        "tags": [
+          "Tenant data wipes"
+        ],
+        "operationId": "ListTenantDataWipes",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TenantDataWipeResponse"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "ApiKey": [ ]
+          },
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/api/v1/data-wipes/pending": {
+      "get": {
+        "tags": [
+          "Tenant data wipes"
+        ],
+        "operationId": "ListPendingDataWipes",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PendingDataWipeResponse"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "ApiKey": [ ]
+          },
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/api/v1/data-wipes/{wipeId}/start": {
+      "post": {
+        "tags": [
+          "Tenant data wipes"
+        ],
+        "operationId": "StartDataWipe",
+        "parameters": [
+          {
+            "name": "wipeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "ApiKey": [ ]
+          },
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/api/v1/data-wipes/{wipeId}/complete": {
+      "post": {
+        "tags": [
+          "Tenant data wipes"
+        ],
+        "operationId": "CompleteDataWipe",
+        "parameters": [
+          {
+            "name": "wipeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CompleteDataWipeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "ApiKey": [ ]
+          },
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/api/v1/data-wipes/{wipeId}/fail": {
+      "post": {
+        "tags": [
+          "Tenant data wipes"
+        ],
+        "operationId": "FailDataWipe",
+        "parameters": [
+          {
+            "name": "wipeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FailDataWipeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "ApiKey": [ ]
+          },
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
     "/api/v1/tenants/{tenantId}/modules": {
       "get": {
         "tags": [
@@ -2059,6 +2351,16 @@
         },
         "additionalProperties": false
       },
+      "CompleteDataWipeRequest": {
+        "type": "object",
+        "properties": {
+          "summary": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "CreateTenantDomainRequest": {
         "type": "object",
         "properties": {
@@ -2161,6 +2463,16 @@
             "format": "uuid"
           },
           "email": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "FailDataWipeRequest": {
+        "type": "object",
+        "properties": {
+          "error": {
             "type": "string",
             "nullable": true
           }
@@ -2307,6 +2619,20 @@
         },
         "additionalProperties": false
       },
+      "PendingDataWipeResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "tenantId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "additionalProperties": false
+      },
       "PlatformSupportAssignRequest": {
         "type": "object",
         "properties": {
@@ -2433,6 +2759,16 @@
         },
         "additionalProperties": false
       },
+      "RequestDataWipeRequest": {
+        "type": "object",
+        "properties": {
+          "confirmationName": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "RequestTenantModuleRequest": {
         "type": "object",
         "properties": {
@@ -2451,6 +2787,15 @@
           "acceptedCurrency": {
             "type": "string",
             "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "SetTenantTestFlagRequest": {
+        "type": "object",
+        "properties": {
+          "isTest": {
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -2791,6 +3136,50 @@
         },
         "additionalProperties": false
       },
+      "TenantDataWipeResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "tenantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "requestedBy": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "requestedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "status": {
+            "type": "string",
+            "nullable": true
+          },
+          "startedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "finishedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "summary": {
+            "type": "string",
+            "nullable": true
+          },
+          "error": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "TenantDomainResponse": {
         "type": "object",
         "properties": {
@@ -3067,6 +3456,9 @@
               "type": "string"
             },
             "nullable": true
+          },
+          "isTest": {
+            "type": "boolean"
           }
         },
         "additionalProperties": false

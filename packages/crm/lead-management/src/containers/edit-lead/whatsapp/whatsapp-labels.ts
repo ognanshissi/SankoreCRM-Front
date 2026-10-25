@@ -7,6 +7,7 @@ import { HttpErrorResponse } from '@angular/common/http';
  */
 export const WHATSAPP_BLOCKER_LABELS: Record<string, string> = {
   WHATSAPP_LEAD_CLOSED: 'Ce lead est clôturé.',
+  CLIENT_PROCESSING_RESTRICTED: 'La personne a demandé l’effacement de ses données : nous ne la contactons plus à notre initiative.',
   WHATSAPP_CONSENT_MISSING: 'Le consentement WhatsApp n’est pas renseigné.',
   WHATSAPP_CONSENT_REVOKED: 'Le prospect a retiré son consentement WhatsApp.',
   WHATSAPP_PHONE_INVALID: 'Le numéro ne peut pas s’écrire au format international (indicatif manquant ?).',

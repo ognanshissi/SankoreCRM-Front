@@ -7,6 +7,7 @@ api/health.service.ts
 api/module-catalog.service.ts
 api/module-subscriptions.service.ts
 api/support.service.ts
+api/tenant-data-wipes.service.ts
 api/tenant-domains.service.ts
 api/tenant-modules.service.ts
 api/tenant-support.service.ts
@@ -17,11 +18,13 @@ git_push.sh
 index.ts
 model/admin-auth-tokens.interface.ts
 model/cancel-tenant-module-request-request.interface.ts
+model/complete-data-wipe-request.interface.ts
 model/create-tenant-domain-request.interface.ts
 model/create-tenant-domain-response.interface.ts
 model/create-tenant-request.interface.ts
 model/current-admin-response.interface.ts
 model/deactivate-tenant-module-request.interface.ts
+model/fail-data-wipe-request.interface.ts
 model/login-request.interface.ts
 model/logout-request.interface.ts
 model/models.ts
@@ -30,6 +33,7 @@ model/module-subscription-list-item.interface.ts
 model/module-subscription-source.interface.ts
 model/module-subscription-status.interface.ts
 model/open-support-ticket-request.interface.ts
+model/pending-data-wipe-response.interface.ts
 model/platform-support-assign-request.interface.ts
 model/platform-support-priority-request.interface.ts
 model/platform-support-reply-request.interface.ts
@@ -39,7 +43,9 @@ model/platform-support-ticket-list-item.interface.ts
 model/problem-details.interface.ts
 model/refresh-token-request.interface.ts
 model/reject-module-request-request.interface.ts
+model/request-data-wipe-request.interface.ts
 model/request-tenant-module-request.interface.ts
+model/set-tenant-test-flag-request.interface.ts
 model/support-activity-item.interface.ts
 model/support-assignee.interface.ts
 model/support-author-kind.interface.ts
@@ -53,6 +59,7 @@ model/support-ticket-page-support-ticket-summary.interface.ts
 model/support-ticket-priority.interface.ts
 model/support-ticket-status.interface.ts
 model/support-ticket-summary.interface.ts
+model/tenant-data-wipe-response.interface.ts
 model/tenant-domain-response.interface.ts
 model/tenant-module-response.interface.ts
 model/tenant-module-state.interface.ts

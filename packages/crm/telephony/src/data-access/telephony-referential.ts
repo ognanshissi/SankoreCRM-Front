@@ -444,6 +444,10 @@ export function telephonyErrorMessage(
     case 'UNKNOWN_SENSITIVE_FIELD':
       return 'Aucun numéro n’est enregistré dans cet emplacement de la fiche client. Essayez l’autre emplacement, ou complétez la fiche.';
 
+    // Purge de données, lot 3 : la personne a demandé l'effacement de ses données.
+    case 'CLIENT_PROCESSING_RESTRICTED':
+      return 'La personne a demandé l’effacement de ses données : nous ne l’appelons plus à notre initiative.';
+
     default:
       break;
   }

@@ -159,10 +159,21 @@ const PENDING_KYC_ALERT_DAYS = 15;
               <div class="min-w-0">
                 <div class="flex items-center gap-2 flex-wrap">
                   <tas-tag [severity]="statusSeverity()">{{ statusLabel() }}</tas-tag>
+                  @if (client()!.processingRestrictedAt) {
+                    <tas-tag severity="accent">Restreint</tas-tag>
+                  }
                 </div>
                 <p class="text-sm text-slate-500 mt-0.5">
                   {{ client()!.clientNumber || '—' }} — {{ typeLabel() }}
                 </p>
+                <!-- Purge de données, lot 3 : une demande d'effacement approuvée attend la fin de la conservation légale. -->
+                @if (client()!.processingRestrictedAt) {
+                  <p class="mt-2 flex items-start gap-1.5 text-xs text-slate-600">
+                    <tas-icon iconName="feather:lock" class="mt-0.5 shrink-0 text-slate-400" style="font-size:12px"></tas-icon>
+                    La personne a demandé l'effacement de ses données. Plus de prospection ni de contact à notre initiative ;
+                    elle sera effacée automatiquement au terme de la conservation légale.
+                  </p>
+                }
               </div>
               <div class="flex items-start gap-2 shrink-0">
                 <!--

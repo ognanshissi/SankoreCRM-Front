@@ -15,6 +15,7 @@ import {
   ClientsApiService,
   RevealSensitiveFieldRequestFieldEnum,
 } from '@sankore/crm-api';
+import { HttpErrorResponse } from '@angular/common/http';
 import { catchError, EMPTY } from 'rxjs';
 
 /** Délai au bout duquel la valeur révélée est remasquée (US-M01-FE-04). */
@@ -106,8 +107,11 @@ export class SensitiveField implements OnDestroy {
         contactPointId: this.contactPointId() || null,
       })
       .pipe(
-        catchError(() => {
-          this._snackbar.error('Erreur', "Impossible d'afficher cette valeur.");
+        catchError((err: HttpErrorResponse) => {
+          // Purge de données, lot 3 : une personne restreinte ne se lit plus en clair (sauf conformité).
+          this._snackbar.error('Erreur', err.error?.error === 'CLIENT_PROCESSING_RESTRICTED'
+            ? 'La personne a demandé l’effacement de ses données : elles ne sont plus consultables.'
+            : "Impossible d'afficher cette valeur.");
           this.isRevealing.set(false);
           return EMPTY;
         }),

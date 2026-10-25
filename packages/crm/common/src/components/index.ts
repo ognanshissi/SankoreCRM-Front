@@ -33,3 +33,6 @@ export * from './entity-form-renderer/custom-field-columns';
 export * from './notification-bell/notification-bell';
 export * from './notification-bell/notification-center.service';
 export * from './notification-bell/notification-sound';
+// Effacement à la demande (purge de données, lot 3) : le tiroir de demande, partagé lead / client.
+export * from './erasure/erasure-request-drawer';
+export * from './erasure/erasure-labels';

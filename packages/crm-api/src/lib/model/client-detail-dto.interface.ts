@@ -57,6 +57,7 @@ export interface ClientDetailDto {
     sourceLeadId?: string | null;
     mergedInto?: MergedIntoDto;
     isAnonymized?: boolean;
+    processingRestrictedAt?: string | null;
     archivedAt?: string | null;
     createdAt?: string;
     updatedAt?: string;

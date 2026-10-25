@@ -164,6 +164,11 @@ export const PERMISSIONS = {
   CUSTOMERS_REVEAL_SENSITIVE: 'customers:reveal_sensitive',
   CUSTOMERS_MERGE: 'customers:merge',
   CUSTOMERS_ARCHIVE: 'customers:archive',
+
+  // Effacement à la demande (purge de données, lot 2) : enregistrer et lire les demandes ;
+  // décider celles d'un AUTRE (jamais les siennes — le serveur le refuse).
+  PRIVACY_ERASURE_REQUEST: 'privacy:erasure:request',
+  PRIVACY_ERASURE_APPROVE: 'privacy:erasure:approve',
   CUSTOMERS_EXPORT: 'customers:export',
   CUSTOMERS_GROUPS_MANAGE: 'customers:groups_manage',
 

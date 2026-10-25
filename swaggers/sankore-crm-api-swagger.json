@@ -5613,6 +5613,276 @@
         }
       }
     },
+    "/api/v1/erasure-requests/eligibility": {
+      "get": {
+        "tags": [
+          "Erasure Requests"
+        ],
+        "summary": "Can this person be forgotten now — and if not, why and from when",
+        "operationId": "GetErasureEligibility",
+        "parameters": [
+          {
+            "name": "subjectType",
+            "in": "query",
+            "description": "One of: Lead, Client",
+            "required": true,
+            "schema": {
+              "enum": [
+                "Lead",
+                "Client"
+              ],
+              "type": "string",
+              "description": "One of: Lead, Client"
+            }
+          },
+          {
+            "name": "subjectId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErasureEligibilityDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/api/v1/erasure-requests": {
+      "get": {
+        "tags": [
+          "Erasure Requests"
+        ],
+        "summary": "Erasure requests, pending ones first",
+        "operationId": "ListErasureRequests",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "description": "One of: Pending, Completed, Restricted, Rejected",
+            "schema": {
+              "enum": [
+                "Pending",
+                "Completed",
+                "Restricted",
+                "Rejected"
+              ],
+              "type": "string",
+              "description": "One of: Pending, Completed, Restricted, Rejected"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PagedResultOfErasureRequestDto"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Erasure Requests"
+        ],
+        "summary": "Record that a person asked to be forgotten",
+        "description": "The reason and the evidence outlive the erasure, like the audit entry: they say why and on what basis (« courrier reçu le 12/10 »), never who. ERASURE_ALREADY_REQUESTED when an open request exists for the person, ERASURE_ALREADY_DONE when it was erased.",
+        "operationId": "CreateErasureRequest",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateErasureRequestBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErasureRequestDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "409": {
+            "description": "Conflict"
+          }
+        }
+      }
+    },
+    "/api/v1/erasure-requests/{requestId}": {
+      "get": {
+        "tags": [
+          "Erasure Requests"
+        ],
+        "operationId": "GetErasureRequest",
+        "parameters": [
+          {
+            "name": "requestId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErasureRequestDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/api/v1/erasure-requests/{requestId}/approve": {
+      "post": {
+        "tags": [
+          "Erasure Requests"
+        ],
+        "summary": "Approve: erase now, or restrict the client until its legal retention ends",
+        "description": "Never by the person who recorded the request (ERASURE_FOUR_EYES). A prospect is erased at once; a client still under its legal retention (LBC/FT) is RESTRICTED — no prospection, no contact — and erased by a daily job on the day it becomes possible.",
+        "operationId": "ApproveErasureRequest",
+        "parameters": [
+          {
+            "name": "requestId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DecideErasureRequestBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErasureRequestDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "409": {
+            "description": "Conflict"
+          }
+        }
+      }
+    },
+    "/api/v1/erasure-requests/{requestId}/reject": {
+      "post": {
+        "tags": [
+          "Erasure Requests"
+        ],
+        "summary": "Reject the request, with the reason",
+        "operationId": "RejectErasureRequest",
+        "parameters": [
+          {
+            "name": "requestId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DecideErasureRequestBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErasureRequestDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "409": {
+            "description": "Conflict"
+          }
+        }
+      }
+    },
     "/api/v1/forms/{entity}": {
       "get": {
         "tags": [
@@ -31672,6 +31942,11 @@
           "isAnonymized": {
             "type": "boolean"
           },
+          "processingRestrictedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
           "archivedAt": {
             "type": "string",
             "format": "date-time",
@@ -33784,6 +34059,32 @@
         },
         "additionalProperties": false
       },
+      "CreateErasureRequestBody": {
+        "type": "object",
+        "properties": {
+          "subjectType": {
+            "enum": [
+              "Lead",
+              "Client"
+            ],
+            "type": "string",
+            "description": "One of: Lead, Client"
+          },
+          "subjectId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "reason": {
+            "type": "string",
+            "nullable": true
+          },
+          "evidence": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "CreateGroupRequest": {
         "type": "object",
         "properties": {
@@ -35653,6 +35954,16 @@
         },
         "additionalProperties": false
       },
+      "DecideErasureRequestBody": {
+        "type": "object",
+        "properties": {
+          "note": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "DecideKycApprovalRequest": {
         "type": "object",
         "properties": {
@@ -37200,6 +37511,119 @@
           },
           "currency": {
             "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ErasureEligibilityDto": {
+        "type": "object",
+        "properties": {
+          "eligible": {
+            "type": "boolean"
+          },
+          "alreadyErased": {
+            "type": "boolean"
+          },
+          "reference": {
+            "type": "string",
+            "nullable": true
+          },
+          "isClient": {
+            "type": "boolean"
+          },
+          "blocker": {
+            "type": "string",
+            "nullable": true
+          },
+          "eligibleFrom": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ErasureRequestDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "subjectType": {
+            "enum": [
+              "Lead",
+              "Client"
+            ],
+            "type": "string",
+            "description": "One of: Lead, Client"
+          },
+          "subjectId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "subjectReference": {
+            "type": "string",
+            "nullable": true
+          },
+          "clientId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "reason": {
+            "type": "string",
+            "nullable": true
+          },
+          "evidence": {
+            "type": "string",
+            "nullable": true
+          },
+          "requestedBy": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "requestedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "status": {
+            "enum": [
+              "Pending",
+              "Completed",
+              "Restricted",
+              "Rejected"
+            ],
+            "type": "string",
+            "description": "One of: Pending, Completed, Restricted, Rejected"
+          },
+          "decidedBy": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "decidedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "decisionNote": {
+            "type": "string",
+            "nullable": true
+          },
+          "blocker": {
+            "type": "string",
+            "nullable": true
+          },
+          "eligibleFrom": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "completedAt": {
+            "type": "string",
+            "format": "date-time",
             "nullable": true
           }
         },
@@ -44226,6 +44650,44 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/DuplicateCandidateDto"
+            },
+            "nullable": true
+          },
+          "totalCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "page": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalPages": {
+            "type": "integer",
+            "format": "int32",
+            "readOnly": true
+          },
+          "hasNextPage": {
+            "type": "boolean",
+            "readOnly": true
+          },
+          "hasPreviousPage": {
+            "type": "boolean",
+            "readOnly": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "PagedResultOfErasureRequestDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ErasureRequestDto"
             },
             "nullable": true
           },

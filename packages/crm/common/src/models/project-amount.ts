@@ -37,6 +37,9 @@ export function projectSaveErrorMessage(error: HttpErrorResponse, fallback: stri
   if (body?.detail === 'PROJECT_CLOSE_DATE_REQUIRED') {
     return 'La date de clôture est obligatoire pour ce produit : au-delà, l’accord ne sert plus au client.';
   }
+  if (body?.detail === 'CLIENT_PROCESSING_RESTRICTED') {
+    return 'La personne a demandé l’effacement de ses données : elle est restreinte jusqu’à la fin de la conservation légale. Aucun nouveau projet ne peut être ouvert.';
+  }
   if (body?.detail === 'CURRENCY_NOT_INSTITUTION') {
     return 'Le montant doit être dans la monnaie de l’institution (Paramétrage › Entreprise).';
   }

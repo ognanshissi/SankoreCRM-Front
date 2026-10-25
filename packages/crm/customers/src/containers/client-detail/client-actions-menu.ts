@@ -9,7 +9,7 @@ import { Button } from '@talisoft/ui/button';
 import { TasIcon } from '@talisoft/ui/icon';
 import { Menu, MenuItem, TasMenuTrigger } from '@talisoft/ui/menu';
 import { SideDrawerService } from '@talisoft/ui/side-drawer';
-import { PermissionsService } from '@sankore/crm/common';
+import { ErasureRequestDrawer, ErasureRequestDrawerData, PermissionsService } from '@sankore/crm/common';
 import { ClientLifecycleStateDto } from '@sankore/crm-api';
 import { ClientDetailStore } from '../../models/client-detail.store';
 import { CLIENT_STATUS_ORDER } from '../../models/client-labels';
@@ -119,7 +119,7 @@ function canonicalStatus(value: string | number | null | undefined): string | nu
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [Button, TasIcon, Menu, MenuItem, TasMenuTrigger],
   template: `
-    @if (availableEntries().length > 0) {
+    @if (availableEntries().length > 0 || showErasure()) {
       <button tas-outlined-button type="button" TasMenuTrigger [panel]="actionsMenu">
         <tas-icon iconName="feather:more-horizontal" style="font-size:14px"></tas-icon>
         Actions
@@ -145,6 +145,15 @@ function canonicalStatus(value: string | number | null | undefined): string | nu
               </button>
             </tas-menu-item>
           }
+          <!-- Purge de données, lot 3 : la personne demande l'effacement — une autre personne décidera. -->
+          @if (showErasure()) {
+            <tas-menu-item>
+              <button type="button" class="w-full flex items-center gap-2 text-slate-700" (click)="openErasureRequest()">
+                <tas-icon iconName="feather:user-x" class="text-slate-400" style="font-size:13px"></tas-icon>
+                Demander l'effacement
+              </button>
+            </tas-menu-item>
+          }
         </tas-menu>
       </ng-template>
     } @else if (hasAnyLifecycleRight()) {
@@ -160,6 +169,13 @@ export class ClientActionsMenu {
   public readonly canUpdate = this._permissions.can('customers:update');
   public readonly canUpdateSensitive = this._permissions.can('customers:update_sensitive');
   public readonly canArchive = this._permissions.can('customers:archive');
+  public readonly canRequestErasure = this._permissions.can('privacy:erasure:request');
+
+  /** Pas pour une fiche déjà anonymisée, ni pour une personne déjà restreinte (sa demande est ouverte). */
+  protected readonly showErasure = computed(() => {
+    const client = this.store.client();
+    return !!client && this.canRequestErasure() && !client.isAnonymized && !client.processingRestrictedAt;
+  });
 
   /**
    * Un signal de droit par action, dérivé de `LIFECYCLE_ACTION_PERMISSIONS` pour qu'il n'y
@@ -207,6 +223,17 @@ export class ClientActionsMenu {
     }
     return 'Aucune action disponible pour ce statut.';
   });
+
+  public openErasureRequest(): void {
+    const client = this.store.client();
+    if (!client?.id) return;
+    this._sideDrawer.open<boolean, ErasureRequestDrawerData, ErasureRequestDrawer>(ErasureRequestDrawer, {
+      width: '100%',
+      height: '100%',
+      panelClass: 'side-drawer-panel',
+      data: { subjectType: 'Client', subjectId: client.id, label: client.displayName ?? client.clientNumber ?? 'Ce client' },
+    });
+  }
 
   public openAction(action: LifecycleActionKind): void {
     const client = this.store.client();

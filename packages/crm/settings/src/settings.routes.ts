@@ -294,6 +294,13 @@ const paneRoutes: Routes = [
     loadComponent: () => import('./containers/kyc-settings/kyc-settings'),
   },
   {
+    // Purge de données, lot 3 : lire et enregistrer sur `privacy:erasure:request` ; décider exige
+    // `privacy:erasure:approve`, vérifié dans l'écran (et par le serveur, qui refuse aussi le demandeur).
+    path: 'effacements',
+    canActivate: [hasPermissionGuard('privacy:erasure:request')],
+    loadComponent: () => import('./containers/erasure-requests/erasure-requests'),
+  },
+  {
     path: 'task-types',
     canActivate: [hasPermissionGuard('lead:task-type:read')],
     loadComponent: () => import('./containers/task-types/task-types'),
