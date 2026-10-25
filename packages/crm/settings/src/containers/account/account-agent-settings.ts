@@ -8,6 +8,7 @@ import { TasFormField, TasLabel, TasError } from '@talisoft/ui/form-field';
 import { TasIcon } from '@talisoft/ui/icon';
 import { TasInput } from '@talisoft/ui/input';
 import { TasSelect } from '@talisoft/ui/select';
+import { TasDatePicker } from '@talisoft/ui/date-picker';
 import { TasSpinner } from '@talisoft/ui/spinner';
 import { TasSwitch } from '@talisoft/ui/switch';
 import { SnackbarService } from '@talisoft/ui/snackbar';
@@ -110,6 +111,7 @@ class AgentSettingsFormModel {
     TasError,
     TasIcon,
     TasInput,
+    TasDatePicker,
     TasSelect,
     TasSpinner,
     TasSwitch,

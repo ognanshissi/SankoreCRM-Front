@@ -14,13 +14,14 @@
       </tas-form-field>
 
       <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <tas-form-field>
-          <tas-label>Date <span class="text-functional-error">*</span></tas-label>
-          <input tasInput type="date" [min]="minDate" [formField]="formSchema.date" />
+        <div>
+          <tas-date-picker mode="date" [min]="minDate" [formField]="formSchema.date">
+            Date <span class="text-functional-error">*</span>
+          </tas-date-picker>
           @if (formSchema.date().touched() && formSchema.date().invalid()) {
             <tas-error>{{ formSchema.date().errors()[0].message }}</tas-error>
           }
-        </tas-form-field>
+        </div>
         <tas-form-field>
           <tas-label>Heure <span class="text-functional-error">*</span></tas-label>
           <input tasInput type="time" step="300" [formField]="formSchema.time" />

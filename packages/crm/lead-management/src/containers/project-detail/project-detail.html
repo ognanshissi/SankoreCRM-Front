@@ -208,10 +208,7 @@
             <p class="text-xs text-slate-500">{{ criticalCloseDate() ? 'Date limite de clôture' : 'Clôture prévue' }}</p>
             @if (editor() === 'closeDate') {
               <form [formRoot]="closeDateForm" class="mt-1 flex items-end gap-2">
-                <tas-form-field class="flex-1">
-                  <tas-label class="sr-only">Date de clôture prévue</tas-label>
-                  <input tasInput type="date" [formField]="closeDateForm.date" />
-                </tas-form-field>
+                <tas-date-picker class="flex-1" mode="date" labelScreenOnly [formField]="closeDateForm.date">Date de clôture prévue</tas-date-picker>
                 <button tas-raised-button color="primary" type="button" [disabled]="closeDateForm().invalid() || closeDateForm().submitting()" (click)="saveCloseDate()">OK</button>
                 <button tas-text-button type="button" (click)="cancelEditor()">Annuler</button>
               </form>
@@ -254,10 +251,7 @@
                     <tas-error>{{ nextStepForm.text().errors()[0].message }}</tas-error>
                   }
                 </tas-form-field>
-                <tas-form-field>
-                  <tas-label class="sr-only">Échéance</tas-label>
-                  <input tasInput type="date" [formField]="nextStepForm.dueOn" />
-                </tas-form-field>
+                <tas-date-picker mode="date" labelScreenOnly [formField]="nextStepForm.dueOn">Échéance</tas-date-picker>
                 <div class="flex items-center gap-2">
                   <button tas-raised-button color="primary" type="button" [disabled]="nextStepForm().invalid() || nextStepForm().submitting()" (click)="saveNextStep()">Enregistrer</button>
                   <button tas-text-button type="button" (click)="cancelEditor()">Annuler</button>

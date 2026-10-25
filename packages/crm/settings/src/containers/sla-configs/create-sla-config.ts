@@ -8,6 +8,7 @@ import { Anchor, Button } from '@talisoft/ui/button';
 import { TasFormField, TasLabel } from '@talisoft/ui/form-field';
 import { TasInput } from '@talisoft/ui/input';
 import { TasSelect } from '@talisoft/ui/select';
+import { TasDatePicker } from '@talisoft/ui/date-picker';
 import { SnackbarService } from '@talisoft/ui/snackbar';
 import { SLAConfigsApiService, AgenciesApiService } from '@sankore/crm-api';
 import { BreadcrumbService } from '@sankore/crm/common';
@@ -41,6 +42,7 @@ function sampleDeadline(duration: string, holidays: string[]): string {
     TasLabel,
     TasInput,
     TasSelect,
+    TasDatePicker,
     Anchor,
   ],
   template: `
@@ -187,15 +189,14 @@ function sampleDeadline(duration: string, holidays: string[]): string {
           </p>
         </div>
         <div class="p-4">
-          <div class="flex items-end gap-2 mb-3">
-            <tas-form-field class="col-span-2">
-              <input
-                tasInput
-                type="date"
-                [ngModel]="newHoliday()"
-                (ngModelChange)="newHoliday.set($event)"
-              />
-            </tas-form-field>
+          <!-- items-start : le message d'une date mal saisie ne doit pas décaler le bouton. -->
+          <div class="flex items-start gap-2 mb-3">
+            <tas-date-picker
+              mode="date"
+              labelScreenOnly
+              [ngModel]="newHoliday()"
+              (ngModelChange)="newHoliday.set($event ?? '')"
+            >Jour férié</tas-date-picker>
             <div class="w-[200px]">
               <button
                 tas-outlined-button

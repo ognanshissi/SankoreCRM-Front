@@ -181,33 +181,38 @@
       }
 
       @if (showDefault()) {
-        <tas-form-field>
-          <tas-label>Valeur par défaut</tas-label>
-          @switch (type()) {
-            @case ('SingleChoice') {
-              <tas-select
-                [options]="formSchema.options().value()"
-                optionLabel="label"
-                optionValue="value"
-                placeholder="Aucune"
-                [formField]="formSchema.defaultValue"
-              ></tas-select>
+        <!-- Le sélecteur de date porte son propre champ et son libellé : il ne s'emboîte pas dans un autre. -->
+        @if (type() === 'Date') {
+          <div>
+            <tas-date-picker mode="date" [formField]="formSchema.defaultValue">Valeur par défaut</tas-date-picker>
+            <tas-hint>Préremplie à la création, modifiable par l'agent.</tas-hint>
+          </div>
+        } @else {
+          <tas-form-field>
+            <tas-label>Valeur par défaut</tas-label>
+            @switch (type()) {
+              @case ('SingleChoice') {
+                <tas-select
+                  [options]="formSchema.options().value()"
+                  optionLabel="label"
+                  optionValue="value"
+                  placeholder="Aucune"
+                  [formField]="formSchema.defaultValue"
+                ></tas-select>
+              }
+              @case ('Boolean') {
+                <tas-select
+                  [options]="[{ value: '', label: 'Aucune' }, { value: 'true', label: 'Oui' }, { value: 'false', label: 'Non' }]"
+                  [formField]="formSchema.defaultValue"
+                ></tas-select>
+              }
+              @default {
+                <input tasInput type="text" [formField]="formSchema.defaultValue" />
+              }
             }
-            @case ('Boolean') {
-              <tas-select
-                [options]="[{ value: '', label: 'Aucune' }, { value: 'true', label: 'Oui' }, { value: 'false', label: 'Non' }]"
-                [formField]="formSchema.defaultValue"
-              ></tas-select>
-            }
-            @case ('Date') {
-              <input tasInput type="date" [formField]="formSchema.defaultValue" />
-            }
-            @default {
-              <input tasInput type="text" [formField]="formSchema.defaultValue" />
-            }
-          }
-          <tas-hint>Préremplie à la création, modifiable par l'agent.</tas-hint>
-        </tas-form-field>
+            <tas-hint>Préremplie à la création, modifiable par l'agent.</tas-hint>
+          </tas-form-field>
+        }
       }
 
       <!-- Condition -->

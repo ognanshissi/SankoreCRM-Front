@@ -21,15 +21,14 @@
         }
       </tas-form-field>
 
-      <tas-form-field>
-        <tas-label>Fin de validité</tas-label>
-        <input tasInput type="date" [min]="today" [formField]="formSchema.validTo" />
+      <div>
+        <tas-date-picker mode="date" [min]="tomorrow" [formField]="formSchema.validTo">Fin de validité</tas-date-picker>
         @if (formSchema.validTo().touched() && formSchema.validTo().invalid()) {
           <tas-error>{{ formSchema.validTo().errors()[0].message }}</tas-error>
         } @else {
           <tas-hint>Facultatif. Laissez vide pour un domaine sans échéance.</tas-hint>
         }
-      </tas-form-field>
+      </div>
 
       @if (serverError()) {
         <p role="alert" class="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-800">{{ serverError() }}</p>

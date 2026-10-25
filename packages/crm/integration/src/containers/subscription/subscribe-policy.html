@@ -292,9 +292,10 @@
           <p class="text-sm font-medium text-slate-700">Date d'effet et montant assuré</p>
         </div>
         <div class="grid grid-cols-1 gap-4 p-4 sm:grid-cols-2">
-          <tas-form-field>
-            <tas-label>Date d'effet <span class="text-functional-error">*</span></tas-label>
-            <input tasInput type="date" [formField]="formSchema.effectiveFrom" />
+          <div>
+            <tas-date-picker mode="date" [formField]="formSchema.effectiveFrom">
+              Date d'effet <span class="text-functional-error">*</span>
+            </tas-date-picker>
             @if (formSchema.effectiveFrom().touched() && formSchema.effectiveFrom().invalid()) {
               <tas-error>{{ formSchema.effectiveFrom().errors()[0].message }}</tas-error>
             } @else {
@@ -309,7 +310,7 @@
                 }
               </tas-hint>
             }
-          </tas-form-field>
+          </div>
 
           <tas-form-field>
             <tas-label>Montant assuré</tas-label>
@@ -398,10 +399,7 @@
                       }
                     </tas-form-field>
 
-                    <tas-form-field>
-                      <tas-label>Date de naissance</tas-label>
-                      <input tasInput type="date" [formField]="beneficiary.birthDate" />
-                    </tas-form-field>
+                    <tas-date-picker mode="date" [formField]="beneficiary.birthDate">Date de naissance</tas-date-picker>
                   </div>
 
                   <div class="mt-2 flex justify-end">

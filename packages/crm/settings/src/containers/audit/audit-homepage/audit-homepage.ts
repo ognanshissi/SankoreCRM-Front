@@ -9,6 +9,7 @@ import { TasTable, TableConfig } from '@talisoft/ui/table';
 import { TasFormField, TasLabel } from '@talisoft/ui/form-field';
 import { TasInput } from '@talisoft/ui/input';
 import { TasSelect } from '@talisoft/ui/select';
+import { TasDatePicker } from '@talisoft/ui/date-picker';
 import { AuditApiService, AuditEntryDto } from '@sankore/crm-api';
 import { TimeagoPipe } from '@talisoft/ui/timeago';
 import { BreadcrumbService } from '@sankore/crm/common';
@@ -32,6 +33,7 @@ interface ActiveFilter {
     TasLabel,
     TasInput,
     TasSelect,
+    TasDatePicker,
     TimeagoPipe,
   ],
 })

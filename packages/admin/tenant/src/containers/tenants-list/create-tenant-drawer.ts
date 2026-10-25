@@ -8,6 +8,7 @@ import { TasTitle } from '@talisoft/ui/title';
 import { Button } from '@talisoft/ui/button';
 import { TasError, TasFormField, TasHint, TasLabel } from '@talisoft/ui/form-field';
 import { TasInput } from '@talisoft/ui/input';
+import { TasDatePicker } from '@talisoft/ui/date-picker';
 import { TasIcon } from '@talisoft/ui/icon';
 import { ModuleCatalogApiService, TenantProfile, TenantsApiService } from '@sankore/crm-admin-api';
 
@@ -47,7 +48,7 @@ class CreateTenantFormModel {
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     TasSideDrawer, TasDrawerTitle, TasDrawerContent, TasDrawerAction, TasTitle, Button,
-    TasFormField, TasLabel, TasHint, TasError, TasInput, TasIcon, FormRoot, FormField,
+    TasFormField, TasLabel, TasHint, TasError, TasInput, TasDatePicker, TasIcon, FormRoot, FormField,
   ],
 })
 export class CreateTenantDrawer implements OnInit {
@@ -59,6 +60,8 @@ export class CreateTenantDrawer implements OnInit {
   public readonly profilesError = signal(false);
   public readonly serverError = signal<string | null>(null);
   public readonly today = new Date().toISOString().slice(0, 10);
+  // Le validateur refuse aujourd'hui : le calendrier commence donc demain.
+  public readonly tomorrow = new Date(Date.now() + 86_400_000).toISOString().slice(0, 10);
 
   public readonly model = signal(CreateTenantFormModel.instantiate());
   public readonly formSchema = form(this.model, (schema) => {

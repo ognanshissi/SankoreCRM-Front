@@ -8,9 +8,9 @@ import { ConnectionListDto } from '@sankore/crm-api';
 import { Button } from '@talisoft/ui/button';
 import { TasAlert } from '@talisoft/ui/alert';
 import { TasCard } from '@talisoft/ui/card';
+import { TasDatePicker } from '@talisoft/ui/date-picker';
 import { TasFormField, TasHint, TasLabel } from '@talisoft/ui/form-field';
 import { TasIcon } from '@talisoft/ui/icon';
-import { TasInput } from '@talisoft/ui/input';
 import { TasSelect } from '@talisoft/ui/select';
 import { SideDrawerService } from '@talisoft/ui/side-drawer';
 import { TableConfig, TasTable } from '@talisoft/ui/table';
@@ -70,10 +70,10 @@ const DEFAULT_PAGE_SIZE = 20;
     Button,
     TasAlert,
     TasCard,
+    TasDatePicker,
     TasFormField,
     TasHint,
     TasIcon,
-    TasInput,
     TasLabel,
     TasSelect,
     TasTable,

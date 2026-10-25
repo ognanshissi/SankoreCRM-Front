@@ -17,6 +17,7 @@ import { Button } from '@talisoft/ui/button';
 import { TasError, TasFormField, TasHint, TasLabel } from '@talisoft/ui/form-field';
 import { TasIcon } from '@talisoft/ui/icon';
 import { TasInput } from '@talisoft/ui/input';
+import { TasDatePicker } from '@talisoft/ui/date-picker';
 import { TasMultiSelect } from '@talisoft/ui/multi-select';
 import { TasSelect } from '@talisoft/ui/select';
 import { TasDrawerAction, TasDrawerContent, TasDrawerTitle, TasSideDrawer } from '@talisoft/ui/side-drawer';
@@ -136,6 +137,7 @@ class CreateAppointmentFormModel {
     TasError,
     TasHint,
     TasInput,
+    TasDatePicker,
     TasSelect,
     TasMultiSelect,
     TasIcon,

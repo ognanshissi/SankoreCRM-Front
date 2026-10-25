@@ -79,28 +79,14 @@
 <tas-card class="mb-4 block">
   <div class="p-4">
     <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-      <tas-form-field>
-        <tas-label>Du</tas-label>
-        <input
-          tasInput
-          type="date"
-          [value]="filterFrom()"
-          (change)="onFromChange($any($event.target).value)"
-        />
-      </tas-form-field>
+      <tas-date-picker mode="date" [ngModel]="filterFrom()" (ngModelChange)="onFromChange($event)">Du</tas-date-picker>
 
-      <tas-form-field>
-        <tas-label>au</tas-label>
-        <input
-          tasInput
-          type="date"
-          [value]="filterTo()"
-          (change)="onToChange($any($event.target).value)"
-        />
+      <div>
+        <tas-date-picker mode="date" [ngModel]="filterTo()" (ngModelChange)="onToChange($event)">au</tas-date-picker>
         @if (periodDays(); as days) {
           <tas-hint>{{ days }} jour(s), bornes incluses.</tas-hint>
         }
-      </tas-form-field>
+      </div>
 
       <tas-form-field>
         <tas-label>Agence</tas-label>

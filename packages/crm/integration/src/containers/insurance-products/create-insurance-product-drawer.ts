@@ -9,6 +9,7 @@ import {
 } from '@sankore/crm-api';
 import { TasAlert } from '@talisoft/ui/alert';
 import { Button } from '@talisoft/ui/button';
+import { TasDatePicker } from '@talisoft/ui/date-picker';
 import { TasError, TasFormField, TasHint, TasLabel } from '@talisoft/ui/form-field';
 import { TasInput } from '@talisoft/ui/input';
 import { TasSelect } from '@talisoft/ui/select';
@@ -69,6 +70,7 @@ class CreateInsuranceProductFormModel {
     TasAlert,
     Button,
     TasError,
+    TasDatePicker,
     TasFormField,
     TasHint,
     TasInput,

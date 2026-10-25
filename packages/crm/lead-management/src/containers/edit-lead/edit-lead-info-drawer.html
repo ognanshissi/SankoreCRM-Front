@@ -80,7 +80,7 @@
           <tas-form-field>
             <tas-label>Montant souhaité</tas-label>
             <input tasInput type="number" placeholder="0" [formField]="formSchema.desiredAmount" />
-            <button tasSuffix type="button" tabindex="-1" aria-hidden="true" class="cursor-default pr-3 text-sm text-slate-500">
+            <button tasSuffix type="button" tabindex="-1" aria-hidden="true" class="cursor-default whitespace-nowrap pr-3 text-sm text-slate-500">
               {{ currencyUnit(formSchema.desiredCurrency().value()) }}
             </button>
             @if (formSchema.desiredAmount().touched() && formSchema.desiredAmount().invalid()) {

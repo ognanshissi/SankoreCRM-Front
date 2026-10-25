@@ -1,6 +1,19 @@
-:host {
+// Not `:host`: with ViewEncapsulation.None it matches nothing, and the element stayed inline —
+// shrunk to its content inside a tas-form-field instead of filling the field.
+tas-input-phone {
   display: block;
+  flex: 1;
   width: 100%;
+  min-width: 0;
+}
+
+// Inside a tas-form-field, the field draws the box (border, radius, focus ring): the phone input
+// drawing its own too gave a box in a box.
+tas-form-field .input__container .tas-phone-input {
+  border: none;
+  border-radius: inherit;
+  box-shadow: none;
+  background: transparent;
 }
 
 .tas-phone-input {

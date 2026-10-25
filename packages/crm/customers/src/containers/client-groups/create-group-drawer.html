@@ -40,16 +40,17 @@
             }
           </tas-form-field>
 
-          <tas-form-field>
-            <tas-label>Date de constitution <span class="text-functional-error">*</span></tas-label>
-            <input tasInput type="date" [formField]="formSchema.constitutionDate" />
+          <div>
+            <tas-date-picker mode="date" [formField]="formSchema.constitutionDate">
+              Date de constitution <span class="text-functional-error">*</span>
+            </tas-date-picker>
             @if (
               formSchema.constitutionDate().touched() &&
               formSchema.constitutionDate().invalid()
             ) {
               <tas-error>{{ formSchema.constitutionDate().errors()[0].message }}</tas-error>
             }
-          </tas-form-field>
+          </div>
         </div>
 
         <tas-form-field>

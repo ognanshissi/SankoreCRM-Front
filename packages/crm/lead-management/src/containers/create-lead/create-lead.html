@@ -18,7 +18,8 @@
           s'affichent juste sous lui, où que la mise en page le place.
         -->
         <ng-template entityFormField="phoneNumber" let-entry let-field="field" let-error="error">
-          <div class="flex flex-col gap-4">
+          <!-- [&>:empty]:hidden : un bandeau sans contenu ne doit pas prendre sa part d'espacement. -->
+          <div class="flex flex-col gap-4 [&>:empty]:hidden">
             <tas-form-field>
               <tas-label>{{ field.label }} <span class="text-functional-error">*</span></tas-label>
               <tas-input-phone defaultCountry="CI" [formField]="entry.text"></tas-input-phone>

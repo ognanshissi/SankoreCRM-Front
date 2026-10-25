@@ -140,10 +140,7 @@
         </tas-form-field>
         <!-- Pas de devise à saisir : les montants sont dans la monnaie de l'institution. -->
         <p class="self-end pb-2 text-xs text-slate-500">Montants en {{ termsForm.currency().value() }}</p>
-        <tas-form-field>
-          <tas-label>Prise d'effet</tas-label>
-          <input tasInput type="date" [formField]="termsForm.effectiveFrom" />
-        </tas-form-field>
+        <tas-date-picker mode="date" [formField]="termsForm.effectiveFrom">Prise d'effet</tas-date-picker>
         <tas-form-field class="sm:col-span-2">
           <tas-label>Remarques</tas-label>
           <input tasInput type="text" [formField]="termsForm.notes" />

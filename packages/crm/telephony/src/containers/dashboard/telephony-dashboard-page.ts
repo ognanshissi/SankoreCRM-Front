@@ -19,7 +19,7 @@ import { TasCard } from '@talisoft/ui/card';
 import { ConfirmDialogService } from '@talisoft/ui/confirm-dialog';
 import { TasFormField, TasHint, TasLabel } from '@talisoft/ui/form-field';
 import { TasIcon } from '@talisoft/ui/icon';
-import { TasInput } from '@talisoft/ui/input';
+import { TasDatePicker } from '@talisoft/ui/date-picker';
 import { TasSelect } from '@talisoft/ui/select';
 import { SnackbarService } from '@talisoft/ui/snackbar';
 import { TasSpinner } from '@talisoft/ui/spinner';
@@ -97,7 +97,7 @@ const UTF8_BOM = String.fromCharCode(0xfeff);
     TasFormField,
     TasHint,
     TasIcon,
-    TasInput,
+    TasDatePicker,
     TasLabel,
     TasSelect,
     TasSpinner,
@@ -295,12 +295,12 @@ export class TelephonyDashboardPage implements OnInit {
 
   // ——— Filtres ———
 
-  public onFromChange(value: string): void {
+  public onFromChange(value: string | null): void {
     this.filterFrom.set(dayFilterValue(value) ?? '');
     this._applyFilters();
   }
 
-  public onToChange(value: string): void {
+  public onToChange(value: string | null): void {
     this.filterTo.set(dayFilterValue(value) ?? '');
     this._applyFilters();
   }

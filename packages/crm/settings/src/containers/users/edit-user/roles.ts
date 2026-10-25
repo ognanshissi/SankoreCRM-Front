@@ -7,6 +7,7 @@ import { TasIcon } from '@talisoft/ui/icon';
 import { TasFormField, TasLabel } from '@talisoft/ui/form-field';
 import { TasSelect } from '@talisoft/ui/select';
 import { TasInput } from '@talisoft/ui/input';
+import { TasDatePicker } from '@talisoft/ui/date-picker';
 import { TasSpinner } from '@talisoft/ui/spinner';
 import { TasTag } from '@talisoft/ui/tag';
 import {
@@ -35,6 +36,7 @@ import { PermissionsService } from '@sankore/crm/common';
     TasLabel,
     TasSelect,
     TasInput,
+    TasDatePicker,
     TasSpinner,
     TasTag,
     TimeagoPipe,
@@ -215,24 +217,12 @@ import { PermissionsService } from '@sankore/crm/common';
                   (ngModelChange)="newScopeId.set($event)"
                 />
               </tas-form-field>
-              <tas-form-field>
-                <tas-label>Date de début (optionnel)</tas-label>
-                <input
-                  tasInput
-                  type="date"
-                  [ngModel]="newStartDate()"
-                  (ngModelChange)="newStartDate.set($event)"
-                />
-              </tas-form-field>
-              <tas-form-field>
-                <tas-label>Date de fin (optionnel)</tas-label>
-                <input
-                  tasInput
-                  type="date"
-                  [ngModel]="newEndDate()"
-                  (ngModelChange)="newEndDate.set($event)"
-                />
-              </tas-form-field>
+              <tas-date-picker mode="date" [ngModel]="newStartDate()" (ngModelChange)="newStartDate.set($event ?? '')">
+                Date de début (optionnel)
+              </tas-date-picker>
+              <tas-date-picker mode="date" [ngModel]="newEndDate()" (ngModelChange)="newEndDate.set($event ?? '')">
+                Date de fin (optionnel)
+              </tas-date-picker>
             </div>
             <div class="flex justify-end">
               @if (canAssignPermission()) {

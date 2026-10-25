@@ -16,6 +16,7 @@ import { Button } from '@talisoft/ui/button';
 import { TasError, TasFormField, TasHint, TasLabel } from '@talisoft/ui/form-field';
 import { TasIcon } from '@talisoft/ui/icon';
 import { TasInput } from '@talisoft/ui/input';
+import { TasDatePicker } from '@talisoft/ui/date-picker';
 import { TasSelect } from '@talisoft/ui/select';
 import { TasDrawerAction, TasDrawerContent, TasDrawerTitle, TasSideDrawer } from '@talisoft/ui/side-drawer';
 import { SnackbarService } from '@talisoft/ui/snackbar';
@@ -80,7 +81,7 @@ function parseAmount(text: string): number | null {
   imports: [
     FormsModule, FormRoot, FormField,
     TasSideDrawer, TasDrawerTitle, TasDrawerContent, TasDrawerAction, TasTitle, Button,
-    TasFormField, TasLabel, TasError, TasHint, TasInput, TasSelect, TasIcon, TasSpinner,
+    TasFormField, TasLabel, TasError, TasHint, TasInput, TasDatePicker, TasSelect, TasIcon, TasSpinner,
   ],
 })
 export class NewProjectDrawer {

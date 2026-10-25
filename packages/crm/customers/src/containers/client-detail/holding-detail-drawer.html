@@ -152,10 +152,7 @@
               </tas-form-field>
               <!-- La devise du contrat ne se change pas ici : un nouveau contrat prend celle de l'institution. -->
               <p class="self-end pb-2 text-xs text-slate-500">Montants en {{ specificsForm.currency().value() }}</p>
-              <tas-form-field>
-                <tas-label>Prise d'effet</tas-label>
-                <input tasInput type="date" [formField]="specificsForm.effectiveFrom" />
-              </tas-form-field>
+              <tas-date-picker mode="date" [formField]="specificsForm.effectiveFrom">Prise d'effet</tas-date-picker>
               <tas-form-field class="sm:col-span-2">
                 <tas-label>Remarques</tas-label>
                 <input tasInput type="text" [formField]="specificsForm.notes" />

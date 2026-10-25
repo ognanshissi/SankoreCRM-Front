@@ -8,6 +8,7 @@ import { Severity, TasTag } from '@talisoft/ui/tag';
 import { Button } from '@talisoft/ui/button';
 import { TasFormField, TasLabel } from '@talisoft/ui/form-field';
 import { TasInput } from '@talisoft/ui/input';
+import { TasDatePicker } from '@talisoft/ui/date-picker';
 import { TimeagoPipe } from '@talisoft/ui/timeago';
 import { SideDrawerService } from '@talisoft/ui/side-drawer';
 import { DeliveryLogsApiService } from '@sankore/crm-api';
@@ -17,7 +18,7 @@ import { DeliveryLogDetailDrawer } from './delivery-log-detail-drawer';
   selector: 'notification-journal',
   imports: [
     FormsModule, TasCard, TasSpinner, TasIcon, TasTag, Button,
-    TasFormField, TasLabel, TasInput, TimeagoPipe,
+    TasFormField, TasLabel, TasInput, TasDatePicker, TimeagoPipe,
   ],
   template: `
     <div class="pb-6">
@@ -46,11 +47,7 @@ import { DeliveryLogDetailDrawer } from './delivery-log-detail-drawer';
               <input tasInput type="text" placeholder="Ex : LeadCaptured"
                 [ngModel]="filterEventType()" (ngModelChange)="filterEventType.set($event)" />
             </tas-form-field>
-            <tas-form-field>
-              <tas-label>Depuis</tas-label>
-              <input tasInput type="date"
-                [ngModel]="filterFrom()" (ngModelChange)="filterFrom.set($event)" />
-            </tas-form-field>
+            <tas-date-picker mode="date" [ngModel]="filterFrom()" (ngModelChange)="filterFrom.set($event ?? '')">Depuis</tas-date-picker>
             <div class="flex items-end">
               <button tas-outlined-button color="primary" type="button" class="text-xs" (click)="loadLogs()">
                 <tas-icon iconName="feather:search" style="font-size:12px"></tas-icon> Filtrer

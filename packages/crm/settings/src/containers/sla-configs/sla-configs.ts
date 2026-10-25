@@ -11,6 +11,7 @@ import { TasSwitch } from '@talisoft/ui/switch';
 import { TasFormField, TasLabel } from '@talisoft/ui/form-field';
 import { TasInput } from '@talisoft/ui/input';
 import { TasSelect } from '@talisoft/ui/select';
+import { TasDatePicker } from '@talisoft/ui/date-picker';
 import { SnackbarService } from '@talisoft/ui/snackbar';
 import {
   SLAConfigsApiService, SlaConfigDto,
@@ -55,7 +56,7 @@ function sampleDeadline(duration: string, holidays: string[]): string {
   selector: 'sla-configs',
   imports: [
     FormsModule, TasCard, TasSpinner, TasIcon, TasTag, Button, TasSwitch,
-    TasFormField, TasLabel, TasInput, TasSelect,
+    TasFormField, TasLabel, TasInput, TasSelect, TasDatePicker,
   ],
   template: `
     <ng-container>
@@ -196,10 +197,9 @@ function sampleDeadline(duration: string, holidays: string[]): string {
               <p class="text-xs text-slate-400 mt-0.5">Jours fériés à exclure du calcul SLA.</p>
             </div>
             <div class="p-4">
-              <div class="flex gap-2 mb-3">
-                <tas-form-field>
-                  <input tasInput type="date" [ngModel]="newHoliday()" (ngModelChange)="newHoliday.set($event)" />
-                </tas-form-field>
+              <!-- items-start : le message d'une date mal saisie ne doit pas étirer le bouton. -->
+              <div class="flex items-start gap-2 mb-3">
+                <tas-date-picker mode="date" labelScreenOnly [ngModel]="newHoliday()" (ngModelChange)="newHoliday.set($event ?? '')">Jour férié</tas-date-picker>
                 <button tas-outlined-button type="button" [disabled]="!newHoliday()" (click)="addHoliday()">Ajouter</button>
               </div>
               @if (holidays().length > 0) {

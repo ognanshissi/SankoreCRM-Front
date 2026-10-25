@@ -8,6 +8,7 @@ import { TasTag } from '@talisoft/ui/tag';
 import { Button } from '@talisoft/ui/button';
 import { TasFormField, TasLabel, TasError } from '@talisoft/ui/form-field';
 import { TasInput } from '@talisoft/ui/input';
+import { TasDatePicker } from '@talisoft/ui/date-picker';
 import { TasSelect } from '@talisoft/ui/select';
 import {
   TasSideDrawer,
@@ -46,7 +47,7 @@ const RECYCLE_REASON_OPTIONS = [
     FormsModule,
     TasSideDrawer, TasDrawerTitle, TasDrawerContent, TasDrawerAction,
     TasIcon, TasSpinner, TasTag, Button,
-    TasFormField, TasLabel, TasError, TasInput, TasSelect, TasTitle,
+    TasFormField, TasLabel, TasError, TasInput, TasDatePicker, TasSelect, TasTitle,
   ],
   template: `
     <tas-side-drawer>
@@ -173,18 +174,14 @@ const RECYCLE_REASON_OPTIONS = [
 
           <!-- Reactivation date -->
           <div class="mt-3">
-            <tas-form-field>
-              <tas-label>Date cible de réactivation <span class="text-red-500">*</span></tas-label>
-              <input
-                tasInput
-                type="date"
-                [ngModel]="reactivationDate()"
-                (ngModelChange)="reactivationDate.set($event)"
-              />
-              @if (submitted() && !reactivationDate()) {
-                <tas-error>La date de réactivation est obligatoire.</tas-error>
-              }
-            </tas-form-field>
+            <tas-date-picker
+              mode="date"
+              [ngModel]="reactivationDate()"
+              (ngModelChange)="reactivationDate.set($event ?? '')"
+            >Date cible de réactivation <span class="text-red-500">*</span></tas-date-picker>
+            @if (submitted() && !reactivationDate()) {
+              <tas-error>La date de réactivation est obligatoire.</tas-error>
+            }
           </div>
 
           @if (reactivationDate()) {

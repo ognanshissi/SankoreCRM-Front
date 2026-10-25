@@ -8,6 +8,7 @@ import { TasTitle } from '@talisoft/ui/title';
 import { Button } from '@talisoft/ui/button';
 import { TasError, TasFormField, TasHint, TasLabel } from '@talisoft/ui/form-field';
 import { TasInput } from '@talisoft/ui/input';
+import { TasDatePicker } from '@talisoft/ui/date-picker';
 import { TenantDomainsApiService } from '@sankore/crm-admin-api';
 
 export interface AddDomainDrawerData {
@@ -48,6 +49,7 @@ class AddDomainFormModel {
     TasHint,
     TasError,
     TasInput,
+    TasDatePicker,
     FormRoot,
     FormField,
   ],
@@ -60,6 +62,8 @@ export class AddDomainDrawer {
   /** Refus du serveur (doublon, adresse principale d'un autre tenant) : affiché sur place. */
   public serverError = signal<string | null>(null);
   public readonly today = new Date().toISOString().slice(0, 10);
+  // Le validateur refuse aujourd'hui : le calendrier commence donc demain.
+  public readonly tomorrow = new Date(Date.now() + 86_400_000).toISOString().slice(0, 10);
 
   public model = signal(AddDomainFormModel.instantiate());
   public formSchema = form(this.model, (schema) => {

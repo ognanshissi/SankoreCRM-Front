@@ -30,20 +30,18 @@
           @if (isAbsent()) {
             <div class="mt-4 p-4 rounded-lg bg-slate-50 border border-slate-200 flex flex-col gap-3">
               <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <tas-form-field>
-                  <tas-label>Du</tas-label>
-                  <input tasInput type="date" [formField]="formSchema.absenceFrom" />
+                <div>
+                  <tas-date-picker mode="date" [formField]="formSchema.absenceFrom">Du</tas-date-picker>
                   @if (formSchema.absenceFrom().touched() && formSchema.absenceFrom().invalid()) {
                     <tas-error>{{ formSchema.absenceFrom().errors()[0].message }}</tas-error>
                   }
-                </tas-form-field>
-                <tas-form-field>
-                  <tas-label>Au</tas-label>
-                  <input tasInput type="date" [formField]="formSchema.absenceTo" />
+                </div>
+                <div>
+                  <tas-date-picker mode="date" [formField]="formSchema.absenceTo">Au</tas-date-picker>
                   @if (formSchema.absenceTo().touched() && formSchema.absenceTo().invalid()) {
                     <tas-error>{{ formSchema.absenceTo().errors()[0].message }}</tas-error>
                   }
-                </tas-form-field>
+                </div>
                 <tas-form-field>
                   <tas-label>Remplaçant</tas-label>
                   <tas-select [options]="replacementOptions()" placeholder="Aucun" [formField]="formSchema.replacementUserId"></tas-select>

@@ -11,6 +11,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { form, FormField, FormRoot, required, submit, validate } from '@angular/forms/signals';
 import { ConnectionSecretStatusDto } from '@sankore/crm-api';
 import { Button } from '@talisoft/ui/button';
+import { TasDatePicker } from '@talisoft/ui/date-picker';
 import { TasError, TasFormField, TasHint, TasLabel } from '@talisoft/ui/form-field';
 import { TasIcon } from '@talisoft/ui/icon';
 import { TasInput } from '@talisoft/ui/input';
@@ -68,6 +69,7 @@ class SecretFormModel {
     TasIcon,
     TasTable,
     TasTag,
+    TasDatePicker,
     TasFormField,
     TasLabel,
     TasError,
@@ -142,15 +144,14 @@ class SecretFormModel {
                     }
                   </tas-form-field>
 
-                  <tas-form-field>
-                    <tas-label>Expire le</tas-label>
-                    <input tasInput type="date" [formField]="formSchema.expiresAt" />
+                  <div>
+                    <tas-date-picker mode="date" [formField]="formSchema.expiresAt">Expire le</tas-date-picker>
                     @if (formSchema.expiresAt().touched() && formSchema.expiresAt().invalid()) {
                       <tas-error>{{ formSchema.expiresAt().errors()[0].message }}</tas-error>
                     } @else {
                       <tas-hint>Facultatif. Sert à prévenir avant une rotation.</tas-hint>
                     }
-                  </tas-form-field>
+                  </div>
                 </div>
 
                 <div class="flex items-center justify-end gap-2">

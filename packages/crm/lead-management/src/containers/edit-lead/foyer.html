@@ -223,7 +223,7 @@
           <tas-form-field>
             <tas-label>Revenus nets du foyer</tas-label>
             <input tasInput type="text" inputmode="numeric" autocomplete="off" placeholder="0" [formField]="resourcesForm.monthlyIncome" />
-            <button tasSuffix type="button" tabindex="-1" aria-hidden="true" class="pr-3 text-sm text-slate-500 cursor-default">{{ resourcesUnit() }}</button>
+            <button tasSuffix type="button" tabindex="-1" aria-hidden="true" class="pr-3 text-sm text-slate-500 cursor-default whitespace-nowrap">{{ resourcesUnit() }}</button>
             @if (resourcesForm.monthlyIncome().touched() && resourcesForm.monthlyIncome().invalid()) {
               <tas-error>{{ resourcesForm.monthlyIncome().errors()[0].message }}</tas-error>
             }
@@ -231,7 +231,7 @@
           <tas-form-field>
             <tas-label>Loyer ou crédit logement</tas-label>
             <input tasInput type="text" inputmode="numeric" autocomplete="off" placeholder="0" [formField]="resourcesForm.housingCost" />
-            <button tasSuffix type="button" tabindex="-1" aria-hidden="true" class="pr-3 text-sm text-slate-500 cursor-default">{{ resourcesUnit() }}</button>
+            <button tasSuffix type="button" tabindex="-1" aria-hidden="true" class="pr-3 text-sm text-slate-500 cursor-default whitespace-nowrap">{{ resourcesUnit() }}</button>
             @if (resourcesForm.housingCost().touched() && resourcesForm.housingCost().invalid()) {
               <tas-error>{{ resourcesForm.housingCost().errors()[0].message }}</tas-error>
             }
@@ -239,7 +239,7 @@
           <tas-form-field>
             <tas-label>Autres crédits en cours</tas-label>
             <input tasInput type="text" inputmode="numeric" autocomplete="off" placeholder="0" [formField]="resourcesForm.otherDebts" />
-            <button tasSuffix type="button" tabindex="-1" aria-hidden="true" class="pr-3 text-sm text-slate-500 cursor-default">{{ resourcesUnit() }}</button>
+            <button tasSuffix type="button" tabindex="-1" aria-hidden="true" class="pr-3 text-sm text-slate-500 cursor-default whitespace-nowrap">{{ resourcesUnit() }}</button>
             @if (resourcesForm.otherDebts().touched() && resourcesForm.otherDebts().invalid()) {
               <tas-error>{{ resourcesForm.otherDebts().errors()[0].message }}</tas-error>
             }

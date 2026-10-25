@@ -96,6 +96,8 @@ import { COUNTRIES, CountryDef } from './countries';
 
       <input
         type="tel"
+        inputmode="numeric"
+        autocomplete="tel-national"
         class="tas-phone-input__number"
         [placeholder]="selectedCountry().placeholder"
         [formControl]="phoneControl"
@@ -148,7 +150,14 @@ export class TasInputPhone extends AbstractControlValueAccessor<string> {
 
     this.phoneControl.valueChanges
       .pipe(takeUntilDestroyed(this._destroyRef))
-      .subscribe(() => this._emitValue());
+      .subscribe((value) => {
+        // Une lettre, un tiret, une parenthèse disparaissent au moment où ils sont tapés ou collés :
+        // un numéro n'en contient pas, et laisser le validateur les refuser après coup obligeait
+        // l'agent à chercher ce qui n'allait pas.
+        const clean = this._digitsOnly(value ?? '');
+        if (clean !== (value ?? '')) this.phoneControl.setValue(clean, { emitEvent: false });
+        this._emitValue();
+      });
 
     fromEvent(document, 'click')
       .pipe(takeUntilDestroyed(this._destroyRef))
@@ -184,7 +193,7 @@ export class TasInputPhone extends AbstractControlValueAccessor<string> {
         emitEvent: false,
       });
     } else {
-      this.phoneControl.patchValue(obj, { emitEvent: false });
+      this.phoneControl.patchValue(this._digitsOnly(obj), { emitEvent: false });
     }
   }
 
@@ -207,6 +216,27 @@ export class TasInputPhone extends AbstractControlValueAccessor<string> {
       };
     }
     return null;
+  }
+
+  /**
+   * Chiffres et espaces seulement — les espaces sont la mise en forme que l'agent tape
+   * (« 07 12 34 56 78 ») et ne partent pas dans la valeur. Un numéro collé au format international
+   * (« +225 07 12 34 56 78 ») prend son indicatif au lieu de garder « 225 » devant le numéro.
+   */
+  private _digitsOnly(value: string): string {
+    let text = value;
+    if (text.trimStart().startsWith('+')) {
+      const compact = text.replace(/[^\d+]/g, '');
+      // Le plus long indicatif d'abord : « +1 » ne doit pas avaler « +1242 ».
+      const match = [...COUNTRIES]
+        .sort((a, b) => b.dial.length - a.dial.length)
+        .find((c) => compact.startsWith(c.dial));
+      if (match) {
+        this.selectedCountry.set(match);
+        text = compact.slice(match.dial.length);
+      }
+    }
+    return text.replace(/[^\d ]/g, '').replace(/ {2,}/g, ' ');
   }
 
   private _emitValue(): void {

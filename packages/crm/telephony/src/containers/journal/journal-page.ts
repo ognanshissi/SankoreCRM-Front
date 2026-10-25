@@ -27,6 +27,7 @@ import {
 } from '@sankore/crm-api';
 import { Button } from '@talisoft/ui/button';
 import { TasCard } from '@talisoft/ui/card';
+import { TasDatePicker } from '@talisoft/ui/date-picker';
 import { TasError, TasFormField, TasHint, TasLabel } from '@talisoft/ui/form-field';
 import { TasIcon } from '@talisoft/ui/icon';
 import { TasInput } from '@talisoft/ui/input';
@@ -127,6 +128,7 @@ const REFERENCE_MAX_PAGES = 5;
     RouterLink,
     Button,
     TasCard,
+    TasDatePicker,
     TasError,
     TasFormField,
     TasHint,
@@ -414,12 +416,12 @@ export class JournalPage implements OnInit {
     this._applyFilters();
   }
 
-  public onFromChange(value: string): void {
+  public onFromChange(value: string | null): void {
     this.filterFrom.set(value || null);
     this._applyFilters();
   }
 
-  public onToChange(value: string): void {
+  public onToChange(value: string | null): void {
     this.filterTo.set(value || null);
     this._applyFilters();
   }

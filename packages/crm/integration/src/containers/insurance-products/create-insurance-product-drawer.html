@@ -87,14 +87,15 @@
             }
           </tas-form-field>
 
-          <tas-form-field>
-            <tas-label>Entrée en vigueur <span class="text-functional-error">*</span></tas-label>
-            <input tasInput type="date" [formField]="formSchema.effectiveFrom" />
+          <div>
+            <tas-date-picker mode="date" [formField]="formSchema.effectiveFrom">
+              Entrée en vigueur <span class="text-functional-error">*</span>
+            </tas-date-picker>
             <tas-hint>Avant cette date, le produit n'est pas proposable.</tas-hint>
             @if (formSchema.effectiveFrom().touched() && formSchema.effectiveFrom().invalid()) {
               <tas-error>{{ formSchema.effectiveFrom().errors()[0].message }}</tas-error>
             }
-          </tas-form-field>
+          </div>
         </div>
 
         <tas-form-field>

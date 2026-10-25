@@ -24,7 +24,7 @@ import {
   DateRangeValue,
 } from './date-picker.types';
 import { TasIcon } from '@talisoft/ui/icon';
-import { TasFormField, TasLabel, TasSuffix } from '@talisoft/ui/form-field';
+import { TasError, TasFormField, TasLabel, TasSuffix } from '@talisoft/ui/form-field';
 import { TasInput } from '@talisoft/ui/input';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -81,6 +81,36 @@ function formatDate(d: Date | null): string {
   ).padStart(2, '0')}/${d.getFullYear()}`;
 }
 
+/**
+ * What the agent typed, laid out as JJ/MM/AAAA. Digits only; a separator the agent typed after a
+ * single digit pads it (« 2/3/2026 » → « 02/03/2026 »), so both habits work.
+ */
+function maskDate(raw: string): string {
+  const parts = raw.split(/[^\d]+/);
+  let digits = raw;
+  if (parts.length > 1) {
+    const [d = '', m = '', ...rest] = parts;
+    const day = d.length === 1 ? `0${d}` : d.slice(0, 2);
+    const month = parts.length > 2 && m.length === 1 ? `0${m}` : m.slice(0, 2);
+    digits = day + month + rest.join('');
+  }
+  digits = digits.replace(/\D/g, '').slice(0, 8);
+  let out = digits.slice(0, 2);
+  if (digits.length > 2) out += `/${digits.slice(2, 4)}`;
+  if (digits.length > 4) out += `/${digits.slice(4)}`;
+  return out;
+}
+
+/** « 21/10/2026 » → the date, or null when incomplete or impossible (31/02, 00/13…). */
+function parseTyped(text: string): Date | null {
+  const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(text);
+  if (!m) return null;
+  const [day, month, year] = [Number(m[1]), Number(m[2]), Number(m[3])];
+  const d = new Date(year, month - 1, day);
+  // The Date constructor rolls 31/02 over to 03/03: a date that moved is a date that does not exist.
+  return d.getFullYear() === year && d.getMonth() === month - 1 && d.getDate() === day && year >= 1000 ? d : null;
+}
+
 function pad2(n: number): string {
   return String(n).padStart(2, '0');
 }
@@ -96,6 +126,7 @@ function pad2(n: number): string {
   imports: [
     TasFormField,
     TasLabel,
+    TasError,
     TasSuffix,
     TasIcon,
     TasInput,
@@ -125,6 +156,10 @@ export class TasDatePicker extends AbstractControlValueAccessor<DatePickerValue>
   readonly mode = input<DatePickerMode>('date');
   readonly placeholder = input<string>('');
   readonly labelScreenOnly = input(false, { transform: booleanAttribute });
+  /** Earliest selectable day, ISO (« 2026-10-25 »); the native input's `min`. */
+  readonly min = input<string | null | undefined>(null);
+  /** Latest selectable day, ISO; the native input's `max`. */
+  readonly max = input<string | null | undefined>(null);
 
   // ── Overlay ──────────────────────────────────────────────────────────────────
   readonly isOpen = signal(false);
@@ -146,6 +181,41 @@ export class TasDatePicker extends AbstractControlValueAccessor<DatePickerValue>
   // ── Reactive value (fixes displayValue reactivity) ────────────────────────
   // Instead of reading from a FormControl (non-signal), we keep our own signal.
   private readonly _rawValue = signal<DatePickerValue>(null);
+
+  // ── Typing (date mode) ────────────────────────────────────────────────────
+  /** What the input shows in date mode: the agent's text while typing, the value otherwise. */
+  readonly typedText = signal('');
+  private readonly _blurred = signal(false);
+
+  readonly typable = computed(() => this.mode() === 'date');
+
+  /** Text typed and left, which is not a date: said under the field, never silently dropped. */
+  readonly showInvalid = computed(() =>
+    this.typable() && this._blurred() && !!this.typedText() && this._typedProblem() !== null);
+
+  readonly invalidMessage = computed(() => {
+    switch (this._typedProblem()) {
+      case 'min': return `Date trop ancienne — au plus tôt le ${formatDate(parseDate(this.min()))}.`;
+      case 'max': return `Date trop lointaine — au plus tard le ${formatDate(parseDate(this.max()))}.`;
+      default: return 'Date invalide — attendue au format JJ/MM/AAAA.';
+    }
+  });
+
+  /** Why the typed text is not a value: unreadable, or outside min/max. */
+  private readonly _typedProblem = computed<'format' | 'min' | 'max' | null>(() => {
+    const date = parseTyped(this.typedText());
+    if (!date) return 'format';
+    return this._outOfRange(date);
+  });
+
+  private _outOfRange(date: Date): 'min' | 'max' | null {
+    const iso = toISODate(date);
+    const min = this.min();
+    const max = this.max();
+    if (min && iso < min) return 'min';
+    if (max && iso > max) return 'max';
+    return null;
+  }
 
   // ── Static data ───────────────────────────────────────────────────────────
   readonly weekDays = WEEK_DAYS;
@@ -171,6 +241,8 @@ export class TasDatePicker extends AbstractControlValueAccessor<DatePickerValue>
   });
 
   readonly effectivePlaceholder = computed(() => {
+    // Typing: the expected format is the only useful hint — « Sélectionnez une date » would hide it.
+    if (this.mode() === 'date') return 'JJ/MM/AAAA';
     const custom = this.placeholder();
     if (custom) return custom;
     switch (this.mode()) {
@@ -263,6 +335,7 @@ export class TasDatePicker extends AbstractControlValueAccessor<DatePickerValue>
           rangeStartDate && effectiveRangeEnd
             ? isInRange(cur, rangeStartDate, effectiveRangeEnd)
             : false,
+        outOfRange: this._outOfRange(cur) !== null,
       });
       cur.setDate(cur.getDate() + 1);
     }
@@ -275,6 +348,8 @@ export class TasDatePicker extends AbstractControlValueAccessor<DatePickerValue>
     // Set internal value without calling onChange (avoid feedback loop)
     this._value = obj;
     this._rawValue.set(obj);
+    this.typedText.set(typeof obj === 'string' ? formatDate(parseDate(obj.split('T')[0])) : '');
+    this._blurred.set(false);
 
     if (obj && typeof obj === 'object') {
       // daterange
@@ -300,7 +375,41 @@ export class TasDatePicker extends AbstractControlValueAccessor<DatePickerValue>
   }
 
   override validate(_control: AbstractControl): ValidationErrors | null {
-    return null;
+    return this.typable() && this.typedText() && this._typedProblem() !== null
+      ? { datePickerInvalid: { expected: 'JJ/MM/AAAA', min: this.min() ?? null, max: this.max() ?? null } }
+      : null;
+  }
+
+  // ── Typing ─────────────────────────────────────────────────────────────────
+
+  onType(event: Event): void {
+    if (!this.typable()) return;
+    const field = event.target as HTMLInputElement;
+    const masked = maskDate(field.value);
+    // Written back at once: a letter or an extra digit disappears as it is typed.
+    field.value = masked;
+    this.typedText.set(masked);
+    this._blurred.set(false);
+
+    const date = parseTyped(masked);
+    if (date && this._outOfRange(date) === null) {
+      this.viewYear.set(date.getFullYear());
+      this.viewMonth.set(date.getMonth());
+      this._emit(toISODate(date), false);
+    } else if (this._rawValue()) {
+      // Incomplete or impossible: the field holds no date until it does — never the previous one.
+      this._emit(null, false);
+    }
+  }
+
+  onBlur(): void {
+    if (!this.typable()) return;
+    this._blurred.set(true);
+    this.onTouched();
+  }
+
+  openCalendar(): void {
+    if (!this.disabled()) this.isOpen.set(true);
   }
 
   // ── Overlay ────────────────────────────────────────────────────────────────
@@ -318,7 +427,7 @@ export class TasDatePicker extends AbstractControlValueAccessor<DatePickerValue>
   // ── Calendar interactions ──────────────────────────────────────────────────
 
   selectDay(day: CalendarDay): void {
-    if (!day.currentMonth) return;
+    if (!day.currentMonth || day.outOfRange) return;
     const mode = this.mode();
 
     if (mode === 'daterange') {
@@ -436,6 +545,7 @@ export class TasDatePicker extends AbstractControlValueAccessor<DatePickerValue>
 
   selectToday(): void {
     const today = new Date();
+    if (this._outOfRange(today) !== null) return;
     const iso = toISODate(today);
     this.viewYear.set(today.getFullYear());
     this.viewMonth.set(today.getMonth());
@@ -456,9 +566,14 @@ export class TasDatePicker extends AbstractControlValueAccessor<DatePickerValue>
 
   // ── Private helpers ────────────────────────────────────────────────────────
 
-  private _emit(value: DatePickerValue): void {
+  /** @param syncText false while typing: the agent's text is what the input shows, not a reformat. */
+  private _emit(value: DatePickerValue, syncText = true): void {
     this._value = value;
     this._rawValue.set(value);
+    if (syncText) {
+      this.typedText.set(typeof value === 'string' ? formatDate(parseDate(value.split('T')[0])) : '');
+      this._blurred.set(false);
+    }
     this.onTouched();
     this.onChange(value);
   }

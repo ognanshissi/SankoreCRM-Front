@@ -19,4 +19,6 @@ export interface CalendarDay {
   isRangeStart: boolean;
   isRangeEnd: boolean;
   inRange: boolean;
+  /** Before `min` or after `max`: shown, not selectable. */
+  outOfRange: boolean;
 }

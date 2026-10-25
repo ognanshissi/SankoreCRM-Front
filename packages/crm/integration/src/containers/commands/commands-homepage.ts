@@ -9,6 +9,7 @@ import { ConnectionListDto, IntegrationCommandListItem } from '@sankore/crm-api'
 import { Button } from '@talisoft/ui/button';
 import { TasCard } from '@talisoft/ui/card';
 import { ConfirmDialogService } from '@talisoft/ui/confirm-dialog';
+import { TasDatePicker } from '@talisoft/ui/date-picker';
 import { TasError, TasFormField, TasHint, TasLabel } from '@talisoft/ui/form-field';
 import { TasIcon } from '@talisoft/ui/icon';
 import { TasInput } from '@talisoft/ui/input';
@@ -80,6 +81,7 @@ const DEFAULT_PAGE_SIZE = 20;
     Button,
     TasCard,
     TasError,
+    TasDatePicker,
     TasFormField,
     TasHint,
     TasIcon,

@@ -18,6 +18,7 @@ import { Button } from '@talisoft/ui/button';
 import { TasFormField, TasHint, TasLabel } from '@talisoft/ui/form-field';
 import { TasIcon } from '@talisoft/ui/icon';
 import { TasInput } from '@talisoft/ui/input';
+import { TasDatePicker } from '@talisoft/ui/date-picker';
 import { SnackbarService } from '@talisoft/ui/snackbar';
 import { TasSpinner } from '@talisoft/ui/spinner';
 import {
@@ -125,6 +126,7 @@ class TermsFormModel {
     Button,
     TasIcon,
     TasInput,
+    TasDatePicker,
     TasFormField,
     TasLabel,
     TasHint,

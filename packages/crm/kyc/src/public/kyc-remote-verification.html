@@ -191,20 +191,15 @@
                   }
                 </tas-form-field>
 
-                <tas-form-field>
-                  <tas-label>Date de naissance</tas-label>
-                  <!--
-                    `type=date` plutôt que trois champs : le clavier natif du téléphone
-                    gère l'ordre jour/mois/année selon la locale de l'appareil, ce qu'une
-                    saisie libre en JJ/MM/AAAA ferait forcément de travers pour une partie
-                    des utilisateurs.
-                  -->
-                  <input
-                    tasInput
-                    type="date"
-                    autocomplete="bday"
-                    [formField]="identifyForm.birthDate"
-                  />
+                <!--
+                  Un seul sélecteur plutôt que trois champs : la date se tape d'un trait
+                  en JJ/MM/AAAA ou se choisit au calendrier. Le composant ne relaie pas
+                  `autocomplete="bday"` : le remplissage automatique du navigateur est perdu.
+                -->
+                <div>
+                  <tas-date-picker mode="date" [formField]="identifyForm.birthDate">
+                    Date de naissance
+                  </tas-date-picker>
                   @if (
                     identifyForm.birthDate().touched() &&
                     identifyForm.birthDate().invalid()
@@ -213,7 +208,7 @@
                       {{ identifyForm.birthDate().errors()[0].message }}
                     </tas-error>
                   }
-                </tas-form-field>
+                </div>
 
                 <button
                   tas-raised-button

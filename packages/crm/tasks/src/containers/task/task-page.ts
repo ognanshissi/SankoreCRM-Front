@@ -19,6 +19,7 @@ import { ConfirmDialogService } from '@talisoft/ui/confirm-dialog';
 import { TasError, TasFormField, TasLabel } from '@talisoft/ui/form-field';
 import { TasIcon } from '@talisoft/ui/icon';
 import { TasInput } from '@talisoft/ui/input';
+import { TasDatePicker } from '@talisoft/ui/date-picker';
 import { TasMultiSelect } from '@talisoft/ui/multi-select';
 import { TasSelect } from '@talisoft/ui/select';
 import { SideDrawerService } from '@talisoft/ui/side-drawer';
@@ -79,7 +80,7 @@ class ParticipantsFormModel {
   templateUrl: './task-page.html',
   imports: [
     RouterLink, FormsModule, FormRoot, FormField, TimeagoPipe,
-    Button, TasIcon, TasSpinner, TasFormField, TasLabel, TasError, TasInput, TasSelect, TasMultiSelect,
+    Button, TasIcon, TasSpinner, TasFormField, TasLabel, TasError, TasInput, TasDatePicker, TasSelect, TasMultiSelect,
   ],
 })
 export class TaskPage implements OnInit {

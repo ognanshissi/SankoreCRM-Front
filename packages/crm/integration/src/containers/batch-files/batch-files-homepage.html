@@ -65,25 +65,9 @@
         <tas-hint>Sortant : envoyé par SANKORE. Entrant : reçu du système externe.</tas-hint>
       </tas-form-field>
 
-      <tas-form-field>
-        <tas-label>Produits du</tas-label>
-        <input
-          tasInput
-          type="date"
-          [value]="filterFrom() ?? ''"
-          (change)="onFromChange($any($event.target).value)"
-        />
-      </tas-form-field>
+      <tas-date-picker mode="date" [ngModel]="filterFrom()" (ngModelChange)="onFromChange($event ?? '')">Produits du</tas-date-picker>
 
-      <tas-form-field>
-        <tas-label>au</tas-label>
-        <input
-          tasInput
-          type="date"
-          [value]="filterTo() ?? ''"
-          (change)="onToChange($any($event.target).value)"
-        />
-      </tas-form-field>
+      <tas-date-picker mode="date" [ngModel]="filterTo()" (ngModelChange)="onToChange($event ?? '')">au</tas-date-picker>
     </div>
 
     <div class="mt-3 flex items-center justify-between gap-3">

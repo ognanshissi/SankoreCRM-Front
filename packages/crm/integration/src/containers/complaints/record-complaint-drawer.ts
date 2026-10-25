@@ -6,6 +6,7 @@ import { FormField, form, required, submit, validate } from '@angular/forms/sign
 import { firstValueFrom } from 'rxjs';
 import { TasAlert } from '@talisoft/ui/alert';
 import { Button } from '@talisoft/ui/button';
+import { TasDatePicker } from '@talisoft/ui/date-picker';
 import { TasError, TasFormField, TasHint, TasLabel } from '@talisoft/ui/form-field';
 import { TasInput } from '@talisoft/ui/input';
 import { TasSelect } from '@talisoft/ui/select';
@@ -82,6 +83,7 @@ class RecordComplaintFormModel {
     TasDrawerAction,
     TasAlert,
     Button,
+    TasDatePicker,
     TasFormField,
     TasLabel,
     TasHint,
@@ -120,14 +122,15 @@ class RecordComplaintFormModel {
             </div>
           }
 
-          <tas-form-field>
-            <tas-label>Reçue le <span class="text-functional-error">*</span></tas-label>
-            <input tasInput type="date" [formField]="formSchema.receivedAt" />
+          <div>
+            <tas-date-picker mode="date" [formField]="formSchema.receivedAt">
+              Reçue le <span class="text-functional-error">*</span>
+            </tas-date-picker>
             <tas-hint>La date à laquelle le client s'est plaint, pas celle de la saisie.</tas-hint>
             @if (formSchema.receivedAt().touched() && formSchema.receivedAt().invalid()) {
               <tas-error>{{ formSchema.receivedAt().errors()[0].message }}</tas-error>
             }
-          </tas-form-field>
+          </div>
 
           <tas-form-field>
             <tas-label>Canal <span class="text-functional-error">*</span></tas-label>

@@ -85,6 +85,24 @@
               </div>
             }
 
+            @case (Type.Date) {
+              <!--
+                Le sélecteur du kit, qui se tape au clavier (« 21102026 » → 21/10/2026) et s'ouvre en
+                calendrier : le champ natif du navigateur s'affichait différemment selon le poste et
+                ne se laissait pas saisir d'un trait. Il porte son propre libellé.
+              -->
+              <div>
+                <tas-date-picker mode="date" [formField]="entry(field.key).text">
+                  {{ field.label }}@if (field.isRequired) {<span class="text-functional-error"> *</span>}
+                </tas-date-picker>
+                @if (errorOf(field.key); as error) {
+                  <tas-error>{{ error }}</tas-error>
+                } @else if (field.helpText) {
+                  <tas-hint>{{ field.helpText }}</tas-hint>
+                }
+              </div>
+            }
+
             @case (Type.Money) {
               <!--
                 Pas de choix de devise : tout montant est dans la monnaie de l'institution
@@ -95,7 +113,7 @@
                 <tas-label>{{ field.label }}@if (field.isRequired) {<span class="text-functional-error"> *</span>}</tas-label>
                 <input tasInput type="text" inputmode="decimal" class="tabular-nums"
                        [placeholder]="placeholderOf(field)" [formField]="entry(field.key).text" />
-                <button tasSuffix type="button" tabindex="-1" aria-hidden="true" class="cursor-default pr-3 text-sm text-slate-500">
+                <button tasSuffix type="button" tabindex="-1" aria-hidden="true" class="cursor-default whitespace-nowrap pr-3 text-sm text-slate-500">
                   {{ currencyUnit(entry(field.key).currency().value()) }}
                 </button>
                 @if (errorOf(field.key); as error) {
@@ -120,9 +138,6 @@
                   @case (Type.Reference) {
                     <tas-select [options]="optionsOf(field)" [placeholder]="placeholderOf(field, 'Sélectionnez')"
                                 [formField]="entry(field.key).text"></tas-select>
-                  }
-                  @case (Type.Date) {
-                    <input tasInput type="date" [formField]="entry(field.key).text" />
                   }
                   @case (Type.DateTime) {
                     <input tasInput type="datetime-local" [formField]="entry(field.key).text" />

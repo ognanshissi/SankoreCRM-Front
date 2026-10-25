@@ -35,6 +35,7 @@ import { ConfirmDialogService } from '@talisoft/ui/confirm-dialog';
 import { TasError, TasFormField, TasLabel } from '@talisoft/ui/form-field';
 import { TasIcon } from '@talisoft/ui/icon';
 import { TasInput } from '@talisoft/ui/input';
+import { TasDatePicker } from '@talisoft/ui/date-picker';
 import { TasSelect } from '@talisoft/ui/select';
 import { SideDrawerService } from '@talisoft/ui/side-drawer';
 import { SnackbarService } from '@talisoft/ui/snackbar';
@@ -122,7 +123,7 @@ function parseAmount(text: string): number | null {
   selector: 'project-detail',
   imports: [
     RouterLink, DatePipe, LowerCasePipe, FormRoot, FormField, Anchor, Button, TasCard, TasFormField, TasLabel, TasError,
-    TasIcon, TasInput, TasSelect, TasSpinner, ProjectQuestionnaires,
+    TasIcon, TasInput, TasDatePicker, TasSelect, TasSpinner, ProjectQuestionnaires,
   ],
   templateUrl: './project-detail.html',
 })
@@ -288,7 +289,7 @@ export class ProjectDetail implements OnInit {
 
   public fixCloseDate(): void {
     this.editCloseDate();
-    this._reveal('exit-date', 'input[type="date"]');
+    this._reveal('exit-date', 'tas-date-picker input');
   }
 
   /** Après le rendu du formulaire ouvert : le montre et y place le curseur. */

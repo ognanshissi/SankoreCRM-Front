@@ -70,25 +70,9 @@
         ></tas-select>
       </tas-form-field>
 
-      <tas-form-field>
-        <tas-label>Du</tas-label>
-        <input
-          tasInput
-          type="date"
-          [value]="dateFrom()"
-          (change)="dateFrom.set($any($event.target).value)"
-        />
-      </tas-form-field>
+      <tas-date-picker mode="date" [ngModel]="dateFrom()" (ngModelChange)="dateFrom.set($event ?? '')">Du</tas-date-picker>
 
-      <tas-form-field>
-        <tas-label>Au</tas-label>
-        <input
-          tasInput
-          type="date"
-          [value]="dateTo()"
-          (change)="dateTo.set($any($event.target).value)"
-        />
-      </tas-form-field>
+      <tas-date-picker mode="date" [ngModel]="dateTo()" (ngModelChange)="dateTo.set($event ?? '')">Au</tas-date-picker>
     </div>
 
     <div class="flex items-center justify-between">

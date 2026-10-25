@@ -15,6 +15,7 @@ import { TasIcon } from '@talisoft/ui/icon';
 import { TasSpinner } from '@talisoft/ui/spinner';
 import { TasError, TasFormField, TasHint, TasLabel } from '@talisoft/ui/form-field';
 import { TasInput } from '@talisoft/ui/input';
+import { TasDatePicker } from '@talisoft/ui/date-picker';
 import { TenantProvider } from '@sankore/crm/common';
 import { KycCameraCapture } from '../capture/kyc-camera-capture';
 import { KycContinueOnPhone } from './kyc-continue-on-phone';
@@ -56,7 +57,7 @@ interface PendingDocument {
 
 class IdentifyFormModel {
   public clientNumber!: string;
-  /** Chaîne : l'`input[type=date]` rend du texte, converti à la soumission. */
+  /** Chaîne ISO rendue par le sélecteur de date (`null` une fois vidé), convertie à la soumission. */
   public birthDate!: string;
 
   public static empty(): IdentifyFormModel {
@@ -104,6 +105,7 @@ class IdentifyFormModel {
     TasHint,
     TasError,
     TasInput,
+    TasDatePicker,
     KycCameraCapture,
     KycContinueOnPhone,
   ],
@@ -177,8 +179,8 @@ export class KycRemoteVerificationPage implements OnInit {
       if (!raw) {
         return { kind: 'required', message: 'Votre date de naissance est obligatoire' };
       }
-      // `input[type=date]` ne produit que des dates valides, mais le champ peut être
-      // rempli au clavier sur certains navigateurs mobiles.
+      // Le sélecteur ne rend que des dates valides ; on revérifie quand même, et c'est
+      // ici qu'une date future est refusée.
       const parsed = Date.parse(raw);
       if (Number.isNaN(parsed) || parsed > Date.now()) {
         return { kind: 'invalid', message: 'Indiquez une date de naissance valide' };

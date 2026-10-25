@@ -9,6 +9,7 @@ import {
 } from '@angular/forms/signals';
 import { TasError, TasFormField, TasHint, TasLabel } from '@talisoft/ui/form-field';
 import { TasInput } from '@talisoft/ui/input';
+import { TasDatePicker } from '@talisoft/ui/date-picker';
 import { TasSelect } from '@talisoft/ui/select';
 import { CustomersPersonIdentityDto, LeadsPersonIdentityDto } from '@sankore/crm-api';
 import { GENDER_OPTIONS } from './compliance-labels';
@@ -44,8 +45,8 @@ export class PersonIdentityModel {
     m.firstName = dto?.firstName ?? '';
     m.lastName = dto?.lastName ?? '';
     m.usageName = dto?.usageName ?? '';
-    // Le contrat déclare `format: date` : l'API renvoie `yyyy-MM-dd`, ce qu'un
-    // `input type="date"` attend tel quel. On tronque quand même, parce qu'un
+    // Le contrat déclare `format: date` : l'API renvoie `yyyy-MM-dd`, ce que le
+    // sélecteur de date attend tel quel. On tronque quand même, parce qu'un
     // `date-time` renvoyé par erreur viderait le champ sans rien signaler.
     m.birthDate = (dto?.birthDate ?? '').slice(0, 10);
     m.gender = dto?.gender ?? '';
@@ -116,6 +117,7 @@ export const personIdentitySchema = schema<PersonIdentityModel>((path) => {
     TasError,
     TasHint,
     TasInput,
+    TasDatePicker,
     TasSelect,
   ],
   template: `
@@ -144,13 +146,12 @@ export const personIdentitySchema = schema<PersonIdentityModel>((path) => {
         }
       </tas-form-field>
 
-      <tas-form-field>
-        <tas-label>Date de naissance</tas-label>
-        <input tasInput type="date" [formField]="field().birthDate" />
+      <div>
+        <tas-date-picker mode="date" [formField]="field().birthDate">Date de naissance</tas-date-picker>
         @if (field().birthDate().touched() && field().birthDate().invalid()) {
           <tas-error>{{ field().birthDate().errors()[0].message }}</tas-error>
         }
-      </tas-form-field>
+      </div>
 
       <tas-form-field>
         <tas-label>Genre</tas-label>

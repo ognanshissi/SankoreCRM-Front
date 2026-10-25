@@ -7,6 +7,7 @@ import { catchError, EMPTY, firstValueFrom, map } from 'rxjs';
 import { Button } from '@talisoft/ui/button';
 import { TasError, TasFormField, TasHint, TasLabel } from '@talisoft/ui/form-field';
 import { TasInput } from '@talisoft/ui/input';
+import { TasDatePicker } from '@talisoft/ui/date-picker';
 import { TasSelect } from '@talisoft/ui/select';
 import {
   TasDrawerAction,
@@ -62,6 +63,7 @@ class CreateOpportunityFormModel {
     TasError,
     TasHint,
     TasInput,
+    TasDatePicker,
     TasSelect,
   ],
   template: `
@@ -103,18 +105,17 @@ class CreateOpportunityFormModel {
               }
             </tas-form-field>
             @if (rules.tracksForecast()) {
-              <tas-form-field>
-                <tas-label>
+              <div>
+                <tas-date-picker mode="date" [formField]="formSchema.expectedCloseDate">
                   {{ rules.criticalCloseDate() ? 'Date limite de clôture' : 'Clôture prévue' }}
                   @if (rules.criticalCloseDate()) { <span class="text-functional-error">*</span> }
-                </tas-label>
-                <input tasInput type="date" [formField]="formSchema.expectedCloseDate" />
+                </tas-date-picker>
                 @if (formSchema.expectedCloseDate().touched() && formSchema.expectedCloseDate().invalid()) {
                   <tas-error>{{ formSchema.expectedCloseDate().errors()[0].message }}</tas-error>
                 } @else if (rules.criticalCloseDate()) {
                   <tas-hint>Une échéance pour ce produit : au-delà, l'accord ne sert plus au client.</tas-hint>
                 }
-              </tas-form-field>
+              </div>
             }
           </div>
 

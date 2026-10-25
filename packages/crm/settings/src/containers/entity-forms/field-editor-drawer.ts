@@ -21,6 +21,7 @@ import { TasError, TasFormField, TasHint, TasLabel } from '@talisoft/ui/form-fie
 import { TasInput } from '@talisoft/ui/input';
 import { TasSelect } from '@talisoft/ui/select';
 import { TasCheckbox } from '@talisoft/ui/checkbox';
+import { TasDatePicker } from '@talisoft/ui/date-picker';
 import { TasIcon } from '@talisoft/ui/icon';
 import { ConditionPicker, ConditionValue } from './condition-picker';
 import {
@@ -116,7 +117,7 @@ const isNumberText = (text: string): boolean => text.trim() === '' || Number.isF
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     TasSideDrawer, TasDrawerTitle, TasDrawerContent, TasDrawerAction, TasTitle, Button,
-    TasFormField, TasLabel, TasError, TasHint, TasInput, TasSelect, TasCheckbox, TasIcon,
+    TasFormField, TasLabel, TasError, TasHint, TasInput, TasSelect, TasCheckbox, TasIcon, TasDatePicker,
     FormRoot, FormField, ConditionPicker,
   ],
 })
@@ -335,7 +336,8 @@ export class FieldEditorDrawer {
         max: NUMERIC_TYPES.includes(type) ? numberOrNull(v.max) : null,
         maxLength: TEXT_TYPES.includes(type) ? numberOrNull(v.maxLength) : null,
         pattern: TEXT_TYPES.includes(type) && v.pattern.trim() ? v.pattern.trim() : null,
-        defaultValue: this.showDefault() && v.defaultValue.trim() ? v.defaultValue.trim() : null,
+        // Le sélecteur de date rend null quand on l'efface.
+        defaultValue: this.showDefault() && v.defaultValue?.trim() ? v.defaultValue.trim() : null,
         visibleWhen: v.conditionField ? { fieldKey: v.conditionField, values: v.conditionValues } : undefined,
       });
     });

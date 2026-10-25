@@ -183,7 +183,7 @@ export class EditClientIdentityFormModel {
             <tas-form-field>
               <tas-label>Montant</tas-label>
               <input tasInput type="number" placeholder="0" [formField]="formSchema.declaredIncome" />
-              <button tasSuffix type="button" tabindex="-1" aria-hidden="true" class="cursor-default pr-3 text-sm text-slate-500">{{ incomeUnit }}</button>
+              <button tasSuffix type="button" tabindex="-1" aria-hidden="true" class="cursor-default whitespace-nowrap pr-3 text-sm text-slate-500">{{ incomeUnit }}</button>
               @if (formSchema.declaredIncome().touched() && formSchema.declaredIncome().invalid()) {
                 <tas-error>{{ formSchema.declaredIncome().errors()[0].message }}</tas-error>
               }

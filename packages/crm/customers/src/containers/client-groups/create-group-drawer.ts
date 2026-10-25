@@ -13,6 +13,7 @@ import {
 import { Button } from '@talisoft/ui/button';
 import { TasError, TasFormField, TasHint, TasLabel } from '@talisoft/ui/form-field';
 import { TasInput } from '@talisoft/ui/input';
+import { TasDatePicker } from '@talisoft/ui/date-picker';
 import { TasSelect } from '@talisoft/ui/select';
 import { TasSpinner } from '@talisoft/ui/spinner';
 import { SnackbarService } from '@talisoft/ui/snackbar';
@@ -58,6 +59,7 @@ class CreateGroupFormModel {
     TasError,
     TasHint,
     TasInput,
+    TasDatePicker,
     TasSelect,
     TasSpinner,
     FormRoot,

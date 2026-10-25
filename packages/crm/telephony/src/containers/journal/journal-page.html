@@ -62,24 +62,8 @@
   <div class="p-4">
     <div class="grid grid-cols-4 gap-3">
       <div class="grid grid-cols-2 gap-3">
-        <tas-form-field>
-          <tas-label>Appels du</tas-label>
-          <input
-            tasInput
-            type="date"
-            [value]="filterFrom() ?? ''"
-            (change)="onFromChange($any($event.target).value)"
-          />
-        </tas-form-field>
-        <tas-form-field>
-          <tas-label>au</tas-label>
-          <input
-            tasInput
-            type="date"
-            [value]="filterTo() ?? ''"
-            (change)="onToChange($any($event.target).value)"
-          />
-        </tas-form-field>
+        <tas-date-picker mode="date" [ngModel]="filterFrom()" (ngModelChange)="onFromChange($event)">Appels du</tas-date-picker>
+        <tas-date-picker mode="date" [ngModel]="filterTo()" (ngModelChange)="onToChange($event)">au</tas-date-picker>
       </div>
 
       <tas-form-field>

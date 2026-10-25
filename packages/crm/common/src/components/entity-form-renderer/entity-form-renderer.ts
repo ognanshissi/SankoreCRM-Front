@@ -27,6 +27,7 @@ import { TasCheckbox } from '@talisoft/ui/checkbox';
 import { TasError, TasFormField, TasHint, TasLabel, TasSuffix } from '@talisoft/ui/form-field';
 import { TasInput } from '@talisoft/ui/input';
 import { TasSelect } from '@talisoft/ui/select';
+import { TasDatePicker } from '@talisoft/ui/date-picker';
 import { EntityFormFieldTemplate } from './entity-form-field-template.directive';
 import { EntityFormReferences, ReferenceOption } from './entity-form-references.service';
 import { currencyUnit } from '../../models/institution-currency';
@@ -77,6 +78,7 @@ interface RenderedGroup {
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     TasSuffix,
+    TasDatePicker,
     NgTemplateOutlet,
     FormField,
     TasCard,

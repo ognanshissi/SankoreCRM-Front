@@ -3,15 +3,31 @@
     <ng-content></ng-content>
   </tas-label>
 
+  <!--
+    Mode date : saisie au clavier (« 21102026 » devient « 21/10/2026 »), le calendrier s'ouvre par
+    l'icône ou Alt+↓ et suit ce qui est tapé. Avant, le champ était en lecture seule : seul le
+    calendrier permettait de choisir, mois par mois, une date de naissance de 1975. Les autres modes
+    (heure, date et heure, période) restent un déclencheur du calendrier.
+    Un seul élément pour les deux usages : l'overlay s'y accroche (#trigger), et une référence
+    déclarée dans un @if ne serait pas visible de lui.
+  -->
   <input
     type="text"
     tasInput
-    readonly
-    class="cursor-pointer"
-    [value]="displayValue()"
+    [readOnly]="!typable()"
+    [class.cursor-pointer]="!typable()"
+    [attr.inputmode]="typable() ? 'numeric' : null"
+    [attr.maxlength]="typable() ? 10 : null"
+    autocomplete="off"
+    [value]="typable() ? typedText() : displayValue()"
     [placeholder]="effectivePlaceholder()"
     [disabled]="disabled()"
-    (click)="toggleCalendar()"
+    [attr.aria-invalid]="showInvalid() || null"
+    (click)="typable() ? null : toggleCalendar()"
+    (input)="onType($event)"
+    (blur)="onBlur()"
+    (keydown.alt.arrowdown)="openCalendar(); $event.preventDefault()"
+    (keydown.escape)="closeCalendar()"
     cdkOverlayOrigin
     #trigger="cdkOverlayOrigin"
   />
@@ -21,9 +37,13 @@
     <tas-icon iconName="feather:x" iconSize="md"></tas-icon>
   </button>
   } @else {
-  <button tasSuffix type="button" (click)="toggleCalendar()">
+  <button tasSuffix type="button" aria-label="Ouvrir le calendrier" (click)="toggleCalendar()">
     <tas-icon [iconName]="prefixIcon()" iconSize="md"></tas-icon>
   </button>
+  }
+
+  @if (showInvalid()) {
+  <tas-error>{{ invalidMessage() }}</tas-error>
   }
 </tas-form-field>
 
@@ -99,7 +119,7 @@
                 'tas-date-picker__day--range-end':   day.isRangeEnd,
                 'tas-date-picker__day--other-month': !day.currentMonth
               }"
-          [disabled]="!day.currentMonth"
+          [disabled]="!day.currentMonth || day.outOfRange"
           (click)="selectDay(day)"
         >
           {{ day.dayNumber }}

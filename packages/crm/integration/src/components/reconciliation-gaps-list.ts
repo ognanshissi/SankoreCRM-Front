@@ -31,6 +31,7 @@ import {
 import { TasAlert } from '@talisoft/ui/alert';
 import { Button } from '@talisoft/ui/button';
 import { TasCard } from '@talisoft/ui/card';
+import { TasDatePicker } from '@talisoft/ui/date-picker';
 import { TasFormField, TasLabel } from '@talisoft/ui/form-field';
 import { TasIcon } from '@talisoft/ui/icon';
 import { TasInput } from '@talisoft/ui/input';
@@ -84,6 +85,7 @@ const EXPORT_MAX_PAGES = 40;
     TasAlert,
     Button,
     TasCard,
+    TasDatePicker,
     TasFormField,
     TasLabel,
     TasIcon,
@@ -245,27 +247,21 @@ const EXPORT_MAX_PAGES = 40;
             />
           </tas-form-field>
 
-          <tas-form-field>
-            <tas-label>Détecté à partir du</tas-label>
-            <input
-              tasInput
-              type="date"
-              [ngModel]="filterFrom()"
-              [ngModelOptions]="{ standalone: true }"
-              (ngModelChange)="onDateChange('from', $event)"
-            />
-          </tas-form-field>
+          <tas-date-picker
+            mode="date"
+            [ngModel]="filterFrom()"
+            [ngModelOptions]="{ standalone: true }"
+            (ngModelChange)="onDateChange('from', $event)"
+            >Détecté à partir du</tas-date-picker
+          >
 
-          <tas-form-field>
-            <tas-label>Détecté jusqu'au</tas-label>
-            <input
-              tasInput
-              type="date"
-              [ngModel]="filterTo()"
-              [ngModelOptions]="{ standalone: true }"
-              (ngModelChange)="onDateChange('to', $event)"
-            />
-          </tas-form-field>
+          <tas-date-picker
+            mode="date"
+            [ngModel]="filterTo()"
+            [ngModelOptions]="{ standalone: true }"
+            (ngModelChange)="onDateChange('to', $event)"
+            >Détecté jusqu'au</tas-date-picker
+          >
         </div>
 
         <div class="mt-3 flex flex-wrap items-center justify-between gap-4">

@@ -23,10 +23,7 @@
               }
             </tas-form-field>
             <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
-              <tas-form-field>
-                <tas-label>Échéance</tas-label>
-                <input tasInput type="date" [formField]="detailsForm.date" />
-              </tas-form-field>
+              <tas-date-picker mode="date" [formField]="detailsForm.date">Échéance</tas-date-picker>
               <tas-form-field>
                 <tas-label>Heure</tas-label>
                 <input tasInput type="time" step="300" [formField]="detailsForm.time" />

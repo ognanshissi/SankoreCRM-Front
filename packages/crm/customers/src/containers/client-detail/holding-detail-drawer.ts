@@ -20,6 +20,7 @@ import { ConfirmDialogService } from '@talisoft/ui/confirm-dialog';
 import { TasError, TasFormField, TasHint, TasLabel } from '@talisoft/ui/form-field';
 import { TasIcon } from '@talisoft/ui/icon';
 import { TasInput } from '@talisoft/ui/input';
+import { TasDatePicker } from '@talisoft/ui/date-picker';
 import { SnackbarService } from '@talisoft/ui/snackbar';
 import { TasSpinner } from '@talisoft/ui/spinner';
 import {
@@ -377,6 +378,7 @@ class CloseFormModel {
     Button,
     TasIcon,
     TasInput,
+    TasDatePicker,
     TasFormField,
     TasLabel,
     TasError,
@@ -491,10 +493,7 @@ class CloseFormModel {
               }
             </tas-form-field>
 
-            <tas-form-field>
-              <tas-label>Date de signature</tas-label>
-              <input tasInput type="date" [formField]="signatureForm.signedAt" />
-            </tas-form-field>
+            <tas-date-picker mode="date" [formField]="signatureForm.signedAt">Date de signature</tas-date-picker>
 
             <div class="flex items-center justify-end gap-2">
               <button tas-outlined-button color="primary" type="button" (click)="signing.set(false)">
@@ -785,6 +784,7 @@ class SpecificsFormModel {
     Button,
     TasIcon,
     TasInput,
+    TasDatePicker,
     TasFormField,
     TasLabel,
     TasSpinner,

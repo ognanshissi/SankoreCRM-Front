@@ -12,6 +12,7 @@ import {
 import { HttpErrorResponse } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { Button } from '@talisoft/ui/button';
+import { TasDatePicker } from '@talisoft/ui/date-picker';
 import { TasError, TasFormField, TasHint, TasLabel } from '@talisoft/ui/form-field';
 import { TasFileUploader } from '@talisoft/ui/file-uploader';
 import { TasIcon } from '@talisoft/ui/icon';
@@ -84,6 +85,7 @@ class DeclareClaimFormModel {
     TasTitle,
     Button,
     TasIcon,
+    TasDatePicker,
     TasFormField,
     TasLabel,
     TasError,
@@ -109,15 +111,14 @@ class DeclareClaimFormModel {
           </div>
 
           <form [formRoot]="formSchema" class="flex flex-col gap-5">
-            <tas-form-field>
-              <tas-label>
+            <div>
+              <tas-date-picker mode="date" [formField]="formSchema.occurredOn">
                 Date du sinistre <span class="text-functional-error">*</span>
-              </tas-label>
-              <input tasInput type="date" [formField]="formSchema.occurredOn" />
+              </tas-date-picker>
               @if (formSchema.occurredOn().touched() && formSchema.occurredOn().invalid()) {
                 <tas-error>{{ formSchema.occurredOn().errors()[0].message }}</tas-error>
               }
-            </tas-form-field>
+            </div>
 
             <tas-form-field>
               <tas-label>Nature <span class="text-functional-error">*</span></tas-label>

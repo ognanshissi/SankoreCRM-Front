@@ -8,6 +8,7 @@ import {
 } from '@angular/forms/signals';
 import { TasError, TasFormField, TasHint, TasLabel } from '@talisoft/ui/form-field';
 import { TasInput } from '@talisoft/ui/input';
+import { TasDatePicker } from '@talisoft/ui/date-picker';
 import { TasSelect } from '@talisoft/ui/select';
 import { TasIcon } from '@talisoft/ui/icon';
 import { TasSwitch } from '@talisoft/ui/switch';
@@ -93,6 +94,7 @@ export const pepSchema = schema<PepFormModel>((path) => {
     TasError,
     TasHint,
     TasInput,
+    TasDatePicker,
     TasSelect,
     TasIcon,
     TasSwitch,
@@ -134,11 +136,10 @@ export const pepSchema = schema<PepFormModel>((path) => {
             <input tasInput type="text" placeholder="Code pays (ex. CI)" [formField]="field().countryCode" />
           </tas-form-field>
 
-          <tas-form-field>
-            <tas-label>Date de fin de fonction</tas-label>
-            <input tasInput type="date" [formField]="field().functionEndDate" />
+          <div>
+            <tas-date-picker mode="date" [formField]="field().functionEndDate">Date de fin de fonction</tas-date-picker>
             <tas-hint>Laissez vide si la fonction est toujours exercée.</tas-hint>
-          </tas-form-field>
+          </div>
 
           <tas-form-field>
             <tas-label>Lien</tas-label>
