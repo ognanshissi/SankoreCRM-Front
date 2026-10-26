@@ -8,6 +8,7 @@ api/audit.service.ts
 api/auth.service.ts
 api/bootstrap.service.ts
 api/client-contact-points.service.ts
+api/client-documents.service.ts
 api/client-duplicates.service.ts
 api/client-groups.service.ts
 api/client-household.service.ts
@@ -181,6 +182,8 @@ model/client-contact-point-dto.interface.ts
 model/client-contract-dto.interface.ts
 model/client-contracts-dto.interface.ts
 model/client-detail-dto.interface.ts
+model/client-document-dto.interface.ts
+model/client-documents-dto.interface.ts
 model/client-export-status-dto.interface.ts
 model/client-google-sheet-import-request.interface.ts
 model/client-household-dto.interface.ts
@@ -630,6 +633,7 @@ model/relay-agent-dto.interface.ts
 model/relay-agent-enrolment-dto.interface.ts
 model/relay-target-health-report.interface.ts
 model/reminder-dto.interface.ts
+model/remove-client-document-request.interface.ts
 model/remove-group-member-result.interface.ts
 model/remove-household-member-result.interface.ts
 model/rename-connected-account-request.interface.ts
@@ -865,6 +869,7 @@ model/update-template-request.interface.ts
 model/update-territory-request.interface.ts
 model/update-user-request.interface.ts
 model/upload-claim-document-response.interface.ts
+model/upload-client-document-response.interface.ts
 model/upload-kyc-document-response.interface.ts
 model/upsert-mapping-request.interface.ts
 model/upsert-mapping-response.interface.ts

@@ -1,0 +1,195 @@
+<div class="flex flex-col gap-4">
+  <!-- En-tête et action principale -->
+  <tas-card class="block">
+    <div class="flex flex-wrap items-start justify-between gap-3 p-4">
+      <div>
+        <p class="text-sm font-semibold text-slate-800">Documents</p>
+        <p class="mt-0.5 text-sm text-slate-500">
+          Ce que le client a donné et reçu : pièces KYC, documents d'assurance, pièces jointes,
+          médias WhatsApp, courriers, e-mails et SMS.
+        </p>
+      </div>
+
+      @if (canUpload()) {
+        <button tas-raised-button color="primary" type="button" (click)="upload()">
+          <tas-icon iconName="feather:upload" style="font-size:14px"></tas-icon>
+          Déposer un document
+        </button>
+      } @else if (store.isReadOnly()) {
+        <p class="text-xs text-slate-500">Fiche en lecture seule : aucun dépôt possible.</p>
+      }
+    </div>
+
+    @if (unavailableSources().length > 0) {
+      <div class="mx-4 mb-4 rounded-lg border border-amber-300 bg-amber-50 p-3">
+        <p class="text-sm font-medium text-amber-900">Liste incomplète</p>
+        <p class="mt-0.5 text-sm text-amber-800">
+          Les documents {{ unavailableLabel() }} n'ont pas pu être lus. Réessayez dans un instant.
+        </p>
+      </div>
+    }
+  </tas-card>
+
+  <!-- Filtres -->
+  <tas-card class="block">
+    <div class="grid grid-cols-1 gap-3 p-4 sm:grid-cols-2 lg:grid-cols-4">
+      <tas-form-field>
+        <tas-label>Sens</tas-label>
+        <tas-select
+          [options]="directionOptions"
+          placeholder="Reçus et remis"
+          clearable
+          [ngModel]="direction()"
+          (ngModelChange)="direction.set($event ?? '')"
+          [ngModelOptions]="{ standalone: true }"
+        ></tas-select>
+      </tas-form-field>
+
+      <tas-form-field>
+        <tas-label>Origine</tas-label>
+        <tas-select
+          [options]="sourceOptions"
+          placeholder="Toutes les origines"
+          clearable
+          [ngModel]="source()"
+          (ngModelChange)="source.set($event ?? '')"
+          [ngModelOptions]="{ standalone: true }"
+        ></tas-select>
+      </tas-form-field>
+
+      <div class="flex items-end">
+        @if (hasFilters()) {
+          <button tas-text-button color="primary" type="button" (click)="resetFilters()">Réinitialiser les filtres</button>
+        }
+      </div>
+    </div>
+  </tas-card>
+
+  <!-- Liste -->
+  @if (loadFailed()) {
+    <tas-card class="block">
+      <div class="p-10 text-center">
+        <tas-icon iconName="feather:alert-circle" class="text-slate-300" style="font-size:28px"></tas-icon>
+        <p class="mt-2 text-sm font-medium text-slate-700">Les documents n'ont pas pu être chargés</p>
+        <button tas-outlined-button color="primary" type="button" class="mt-4" (click)="reload()">Réessayer</button>
+      </div>
+    </tas-card>
+  } @else if (!isLoading() && rows().length === 0) {
+    <tas-card class="block">
+      <div class="flex flex-col items-center p-10 text-center">
+        <tas-icon iconName="feather:folder" class="text-slate-300" style="font-size:28px"></tas-icon>
+        <p class="mt-2 text-sm font-medium text-slate-700">
+          {{ hasFilters() ? 'Aucun document pour ces filtres' : 'Aucun document' }}
+        </p>
+        <p class="mt-1 text-sm text-slate-500">
+          {{
+            hasFilters()
+              ? 'Élargissez les filtres pour voir les autres documents du client.'
+              : "Rien n'a encore été collecté auprès de ce client ni ne lui a été remis."
+          }}
+        </p>
+      </div>
+    </tas-card>
+  } @else {
+    <tas-table [data]="rows()" identifierField="id" [config]="tableConfig()" [isLoading]="isLoading()">
+      <ng-template #header>
+        <tr>
+          <th class="hidden sm:table-cell">Document</th>
+          <th class="hidden sm:table-cell">Sens</th>
+          <th class="hidden sm:table-cell">Origine</th>
+          <th class="hidden sm:table-cell">Date</th>
+          <th class="hidden sm:table-cell">Statut</th>
+          <th class="hidden sm:table-cell"></th>
+        </tr>
+      </ng-template>
+
+      <ng-template #body let-item>
+        <tr>
+          <!-- Carte, sous 640 px -->
+          <td class="sm:hidden" [attr.colspan]="6">
+            <div class="flex flex-col gap-1.5 p-3">
+              <div class="flex items-start justify-between gap-2">
+                <div class="min-w-0">
+                  <p class="truncate text-sm font-medium text-slate-800">{{ item.kindLabel }}</p>
+                  @if (item.detail) {
+                    <p class="truncate text-xs text-slate-500">{{ item.detail }}</p>
+                  }
+                </div>
+                <tas-tag [severity]="item.isDelivered ? 'info' : 'neutral'">{{ item.directionLabel }}</tas-tag>
+              </div>
+              <p class="text-xs text-slate-500">{{ item.sourceLabel }} · {{ item.dateLabel }}</p>
+              <div class="flex flex-wrap gap-2">
+                @if (item.canOpen) {
+                  <button tas-outlined-button color="primary" type="button" class="text-xs" (click)="open(item)">Ouvrir</button>
+                }
+                @if (item.canRemove) {
+                  <button tas-text-button color="warn" type="button" class="text-xs" (click)="remove(item)">Retirer</button>
+                }
+              </div>
+            </div>
+          </td>
+
+          <!-- Colonnes, à partir de 640 px -->
+          <td class="hidden py-3 sm:table-cell">
+            <span class="text-sm font-medium text-slate-800">{{ item.kindLabel }}</span>
+            @if (item.detail) {
+              <span class="block text-xs text-slate-500">{{ item.detail }}</span>
+            }
+            @if (item.fileName) {
+              <span class="block text-xs text-slate-400">{{ item.fileName }}</span>
+            }
+          </td>
+
+          <td class="hidden sm:table-cell">
+            <tas-tag [severity]="item.isDelivered ? 'info' : 'neutral'">{{ item.directionLabel }}</tas-tag>
+          </td>
+
+          <td class="hidden sm:table-cell">
+            <span class="block text-sm text-slate-700">{{ item.sourceLabel }}</span>
+            @if (item.originLink) {
+              <a [routerLink]="item.originLink" class="text-xs text-primary hover:underline">{{ item.originLabel }}</a>
+            } @else if (item.originLabel !== item.sourceLabel) {
+              <span class="text-xs text-slate-500">{{ item.originLabel }}</span>
+            }
+          </td>
+
+          <td class="hidden sm:table-cell">
+            <span class="text-sm text-slate-700">{{ item.dateLabel }}</span>
+          </td>
+
+          <td class="hidden sm:table-cell">
+            @if (item.statusLabel) {
+              <tas-tag [severity]="item.statusSeverity">{{ item.statusLabel }}</tas-tag>
+            } @else {
+              <span class="text-sm text-slate-400">—</span>
+            }
+          </td>
+
+          <td class="hidden text-right sm:table-cell">
+            <div class="flex items-center justify-end gap-1">
+              @if (item.canOpen) {
+                <button
+                  tas-button
+                  iconButton
+                  type="button"
+                  [isLoading]="openingKey() === item.id"
+                  [attr.aria-label]="'Ouvrir ' + item.kindLabel"
+                  (click)="open(item)"
+                >
+                  <tas-icon iconName="feather:download" style="font-size:14px"></tas-icon>
+                </button>
+              } @else if (item.document.source !== 'Message' && item.document.kind !== 'ConsentProof') {
+                <span class="text-xs text-slate-400" title="Votre rôle ne donne pas accès à ce document, ou il n'est pas encore lisible.">Non accessible</span>
+              }
+              @if (item.canRemove) {
+                <button tas-button iconButton type="button" [attr.aria-label]="'Retirer ' + item.kindLabel" (click)="remove(item)">
+                  <tas-icon iconName="feather:trash-2" style="font-size:14px"></tas-icon>
+                </button>
+              }
+            </div>
+          </td>
+        </tr>
+      </ng-template>
+    </tas-table>
+  }
+</div>

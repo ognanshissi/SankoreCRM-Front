@@ -144,6 +144,11 @@ export const customersRoutes: Route[] = [
         loadComponent: () => import('./containers/client-detail/kyc'),
       },
       {
+        // Ce que le client a donné et reçu, toutes sources (2026-10-26).
+        path: 'documents',
+        loadComponent: () => import('./containers/client-detail/documents'),
+      },
+      {
         path: 'sinistres',
         canActivate: [canReadModuleGuard(TENANT_MODULES.INSURANCE)],
         loadComponent: () => import('./containers/client-detail/sinistres'),

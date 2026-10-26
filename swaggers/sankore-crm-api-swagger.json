@@ -1217,6 +1217,267 @@
         }
       }
     },
+    "/api/v1/clients/{clientId}/documents": {
+      "get": {
+        "tags": [
+          "Client Documents"
+        ],
+        "summary": "Every document the client gave or received",
+        "description": "KYC images, insurance documents (information sheets handed over, the insurer's policy documents, claim pieces, consent proofs), project and task attachments, WhatsApp media — newest first. Every line is listed; a line the caller may not open (canOpen false) comes without its file name and its content path. Each contentPath is the source's own route, which keeps its permission and access log. A module that cannot be read is named in unavailableSources.",
+        "operationId": "ListClientDocuments",
+        "parameters": [
+          {
+            "name": "clientId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClientDocumentsDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Client Documents"
+        ],
+        "summary": "File a document on the client record (PDF, image, Office, text; 10 MB), stored encrypted",
+        "description": "Form fields: file, kind (Correspondence | Proof | Other), title, direction (Collected = received from the client | Delivered = handed to them), documentDate (yyyy-MM-dd, the document's own date). The type is read from the file's bytes. 503 CLIENT_DOCUMENTS_UNAVAILABLE when no encryption key is configured.",
+        "operationId": "UploadClientDocument",
+        "parameters": [
+          {
+            "name": "clientId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "allOf": [
+                  {
+                    "required": [
+                      "file"
+                    ],
+                    "type": "object",
+                    "properties": {
+                      "file": {
+                        "type": "string",
+                        "format": "binary"
+                      }
+                    }
+                  },
+                  {
+                    "required": [
+                      "kind"
+                    ],
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  {
+                    "required": [
+                      "title"
+                    ],
+                    "type": "object",
+                    "properties": {
+                      "title": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  {
+                    "required": [
+                      "direction"
+                    ],
+                    "type": "object",
+                    "properties": {
+                      "direction": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  {
+                    "required": [
+                      "documentDate"
+                    ],
+                    "type": "object",
+                    "properties": {
+                      "documentDate": {
+                        "type": "string",
+                        "format": "date"
+                      }
+                    }
+                  }
+                ]
+              },
+              "encoding": {
+                "file": {
+                  "style": "form"
+                },
+                "kind": {
+                  "style": "form"
+                },
+                "title": {
+                  "style": "form"
+                },
+                "direction": {
+                  "style": "form"
+                },
+                "documentDate": {
+                  "style": "form"
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadClientDocumentResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "409": {
+            "description": "Conflict"
+          },
+          "422": {
+            "description": "Unprocessable Entity"
+          },
+          "503": {
+            "description": "Service Unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/clients/{clientId}/documents/{documentId}/content": {
+      "get": {
+        "tags": [
+          "Client Documents"
+        ],
+        "summary": "Open a document filed on the client record",
+        "operationId": "GetClientDocumentContent",
+        "parameters": [
+          {
+            "name": "clientId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "documentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "$ref": "#/components/schemas/Void"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/api/v1/clients/{clientId}/documents/{documentId}/removal": {
+      "post": {
+        "tags": [
+          "Client Documents"
+        ],
+        "summary": "Remove a document filed on the client record, with a reason (logical, audited)",
+        "operationId": "RemoveClientDocument",
+        "parameters": [
+          {
+            "name": "clientId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "documentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RemoveClientDocumentRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "409": {
+            "description": "Conflict"
+          },
+          "422": {
+            "description": "Unprocessable Entity"
+          }
+        }
+      }
+    },
     "/api/v1/clients/duplicates": {
       "get": {
         "tags": [
@@ -33888,6 +34149,95 @@
         },
         "additionalProperties": false
       },
+      "ClientDocumentDto": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string",
+            "nullable": true
+          },
+          "source": {
+            "type": "string",
+            "nullable": true
+          },
+          "direction": {
+            "type": "string",
+            "nullable": true
+          },
+          "kind": {
+            "type": "string",
+            "nullable": true
+          },
+          "fileName": {
+            "type": "string",
+            "nullable": true
+          },
+          "contentType": {
+            "type": "string",
+            "nullable": true
+          },
+          "sizeBytes": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "status": {
+            "type": "string",
+            "nullable": true
+          },
+          "detail": {
+            "type": "string",
+            "nullable": true
+          },
+          "originType": {
+            "type": "string",
+            "nullable": true
+          },
+          "originId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "originLabel": {
+            "type": "string",
+            "nullable": true
+          },
+          "contentPath": {
+            "type": "string",
+            "nullable": true
+          },
+          "canOpen": {
+            "type": "boolean"
+          },
+          "canRemove": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ClientDocumentsDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ClientDocumentDto"
+            },
+            "nullable": true
+          },
+          "unavailableSources": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "ClientExportStatusDto": {
         "type": "object",
         "properties": {
@@ -50694,6 +51044,16 @@
         },
         "additionalProperties": false
       },
+      "RemoveClientDocumentRequest": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "RemoveGroupMemberResult": {
         "type": "object",
         "properties": {
@@ -58037,6 +58397,16 @@
           },
           "requestedByInsurer": {
             "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "UploadClientDocumentResponse": {
+        "type": "object",
+        "properties": {
+          "documentId": {
+            "type": "string",
+            "format": "uuid"
           }
         },
         "additionalProperties": false

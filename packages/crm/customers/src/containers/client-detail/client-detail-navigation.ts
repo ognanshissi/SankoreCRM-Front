@@ -296,6 +296,7 @@ export class ClientDetailNavigation {
       permissions: ['Ins.Claim.View'],
       module: TENANT_MODULES.INSURANCE,
     },
+    { label: 'Documents', icon: 'feather:folder', route: 'documents' },
     { label: 'Relations', icon: 'feather:users', route: 'relations' },
     { label: 'Groupes', icon: 'feather:layers', route: 'groupes', module: TENANT_MODULES.BANKING_MICROFINANCE },
     { label: 'Bénéficiaires effectifs', icon: 'feather:pie-chart', route: 'beneficiaires', legalOnly: true },

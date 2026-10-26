@@ -237,7 +237,13 @@ export class ClientContratPage {
         finalize(() => this.isLoading.set(false)),
       )
       .subscribe((result) => {
-        const found = (result.items ?? []).find((c) => c.key === key) ?? null;
+        const items = result.items ?? [];
+        // Une police émise depuis un contrat du CRM est rangée sous ce contrat : un lien
+        // `policy:…` (l'onglet « Documents » en donne) mène alors à sa ligne.
+        const found =
+          items.find((c) => c.key === key) ??
+          (key.startsWith('policy:') ? items.find((c) => c.policyId === key.slice('policy:'.length)) : undefined) ??
+          null;
         this.contract.set(found);
         this.coreBankingAsOf.set(result.coreBankingAsOf ?? null);
         this.unavailableSources.set(result.unavailableSources ?? []);
