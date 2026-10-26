@@ -297,6 +297,12 @@ export class ClientDetailNavigation {
       module: TENANT_MODULES.INSURANCE,
     },
     { label: 'Documents', icon: 'feather:folder', route: 'documents' },
+    {
+      label: 'Réclamations',
+      icon: 'feather:message-square',
+      route: 'reclamations',
+      permissions: ['customers:complaints:read'],
+    },
     { label: 'Relations', icon: 'feather:users', route: 'relations' },
     { label: 'Groupes', icon: 'feather:layers', route: 'groupes', module: TENANT_MODULES.BANKING_MICROFINANCE },
     { label: 'Bénéficiaires effectifs', icon: 'feather:pie-chart', route: 'beneficiaires', legalOnly: true },

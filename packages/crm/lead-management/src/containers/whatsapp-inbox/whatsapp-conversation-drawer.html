@@ -105,6 +105,9 @@
   <tas-drawer-action>
     <div class="flex justify-end gap-3">
       <button tas-outlined-button type="button" (click)="close()">Fermer</button>
+      @if (detail()?.clientId && canReadComplaints()) {
+        <button tas-outlined-button color="primary" type="button" (click)="openComplaints()">Réclamations du client</button>
+      }
       @if (detail()?.route) {
         <button tas-raised-button color="primary" type="button" (click)="openLead()">Ouvrir la fiche</button>
       } @else if (detail()?.canAttach) {

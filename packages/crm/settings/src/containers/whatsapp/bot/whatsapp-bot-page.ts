@@ -12,6 +12,7 @@ import { TasSwitch } from '@talisoft/ui/switch';
 import { TableConfig, TasTable } from '@talisoft/ui/table';
 import { TasTag } from '@talisoft/ui/tag';
 import { botErrorMessage } from './whatsapp-bot-referential';
+import { ComplaintSettingsCard } from './complaint-settings-card';
 
 /**
  * Le chatbot WhatsApp (WA-FE-11) : l'interrupteur de l'institution, le modèle du déploiement,
@@ -25,7 +26,7 @@ import { botErrorMessage } from './whatsapp-bot-referential';
 @Component({
   selector: 'whatsapp-bot-page',
   templateUrl: './whatsapp-bot-page.html',
-  imports: [DatePipe, RouterLink, Anchor, Button, TasCard, TasIcon, TasSwitch, TasTable, TasTag],
+  imports: [DatePipe, RouterLink, Anchor, Button, TasCard, TasIcon, TasSwitch, TasTable, TasTag, ComplaintSettingsCard],
 })
 export class WhatsAppBotPage implements OnInit {
   private readonly _api = inject(WhatsAppApiService);

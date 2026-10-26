@@ -7,6 +7,7 @@ api/appointments.service.ts
 api/audit.service.ts
 api/auth.service.ts
 api/bootstrap.service.ts
+api/client-complaints.service.ts
 api/client-contact-points.service.ts
 api/client-documents.service.ts
 api/client-duplicates.service.ts
@@ -178,6 +179,8 @@ model/channel-metadata.interface.ts
 model/claim-document-dto.interface.ts
 model/claim-dto.interface.ts
 model/clear-duplicate-flag-request.interface.ts
+model/client-complaint-detail-dto.interface.ts
+model/client-complaint-summary-dto.interface.ts
 model/client-contact-point-dto.interface.ts
 model/client-contract-dto.interface.ts
 model/client-contracts-dto.interface.ts
@@ -200,6 +203,7 @@ model/client-search-item-dto.interface.ts
 model/client-status-history-dto.interface.ts
 model/client-status-history-summary-dto.interface.ts
 model/client-timeline-entry-dto.interface.ts
+model/close-client-complaint-request.interface.ts
 model/close-complaint-request.interface.ts
 model/close-credential-request.interface.ts
 model/close-holding-request.interface.ts
@@ -348,6 +352,7 @@ model/fatca-declaration-dto.interface.ts
 model/fatca-indicia-input.interface.ts
 model/field-changed-dto.interface.ts
 model/field-mapping-rule.interface.ts
+model/file-client-complaint-response.interface.ts
 model/forgot-password-request.interface.ts
 model/forgot-password-result.interface.ts
 model/form-condition.interface.ts
@@ -602,6 +607,7 @@ model/reconciliation-gap-row.interface.ts
 model/reconciliation-run-summary.interface.ts
 model/record-claim-indemnity-request.interface.ts
 model/record-client-answer-request.interface.ts
+model/record-client-complaint-request.interface.ts
 model/record-complaint-request.interface.ts
 model/record-consent-request.interface.ts
 model/record-consent-result.interface.ts
@@ -655,6 +661,7 @@ model/reschedule-reminder-request.interface.ts
 model/reschedule-tasks-request.interface.ts
 model/reset-password-request.interface.ts
 model/reset-password-result.interface.ts
+model/resolve-client-complaint-request.interface.ts
 model/resolve-complaint-request.interface.ts
 model/resolve-reconciliation-gap-request.interface.ts
 model/resolve-reconciliation-gap-result.interface.ts

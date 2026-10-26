@@ -1008,6 +1008,284 @@
         }
       }
     },
+    "/api/v1/clients/{clientId}/complaints": {
+      "get": {
+        "tags": [
+          "Client Complaints"
+        ],
+        "summary": "The client's complaints, newest first (without what the client wrote)",
+        "operationId": "ListClientComplaints",
+        "parameters": [
+          {
+            "name": "clientId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ClientComplaintSummaryDto"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Client Complaints"
+        ],
+        "summary": "Record a complaint; the deadlines come from the tenant settings",
+        "description": "channel: Branch | Telephone | Email | WhatsApp | Post. category: Other | Credit | Savings | FeesAndPricing | PaymentMeans | Service | DataProtection. The complaint is assigned to the client's advisor (else its creator, else the agency manager), who receives a task, a notification and an e-mail.",
+        "operationId": "FileClientComplaint",
+        "parameters": [
+          {
+            "name": "clientId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecordClientComplaintRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FileClientComplaintResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "409": {
+            "description": "Conflict"
+          },
+          "422": {
+            "description": "Unprocessable Entity"
+          }
+        }
+      }
+    },
+    "/api/v1/clients/{clientId}/complaints/{complaintId}": {
+      "get": {
+        "tags": [
+          "Client Complaints"
+        ],
+        "summary": "One complaint, with what the client said and the answer given, decrypted",
+        "operationId": "GetClientComplaint",
+        "parameters": [
+          {
+            "name": "clientId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "complaintId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClientComplaintDetailDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/api/v1/clients/{clientId}/complaints/{complaintId}/acknowledgement": {
+      "post": {
+        "tags": [
+          "Client Complaints"
+        ],
+        "summary": "Record that the client was told the complaint is in hand",
+        "operationId": "AcknowledgeClientComplaint",
+        "parameters": [
+          {
+            "name": "clientId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "complaintId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "409": {
+            "description": "Conflict"
+          }
+        }
+      }
+    },
+    "/api/v1/clients/{clientId}/complaints/{complaintId}/resolution": {
+      "post": {
+        "tags": [
+          "Client Complaints"
+        ],
+        "summary": "Record the answer given to the client (also acknowledges an unacknowledged complaint)",
+        "operationId": "ResolveClientComplaint",
+        "parameters": [
+          {
+            "name": "clientId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "complaintId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResolveClientComplaintRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "409": {
+            "description": "Conflict"
+          },
+          "422": {
+            "description": "Unprocessable Entity"
+          }
+        }
+      }
+    },
+    "/api/v1/clients/{clientId}/complaints/{complaintId}/closure": {
+      "post": {
+        "tags": [
+          "Client Complaints"
+        ],
+        "summary": "Close without an answer — withdrawn by the client, or outside the register's scope",
+        "operationId": "CloseClientComplaint",
+        "parameters": [
+          {
+            "name": "clientId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "complaintId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CloseClientComplaintRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "409": {
+            "description": "Conflict"
+          },
+          "422": {
+            "description": "Unprocessable Entity"
+          }
+        }
+      }
+    },
     "/api/v1/clients/{clientId}/contact-points": {
       "post": {
         "tags": [
@@ -33768,6 +34046,124 @@
         },
         "additionalProperties": false
       },
+      "ClientComplaintDetailDto": {
+        "type": "object",
+        "properties": {
+          "summary": {
+            "$ref": "#/components/schemas/ClientComplaintSummaryDto"
+          },
+          "holdingId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "receivedBy": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "sourceConversationId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "response": {
+            "type": "string",
+            "nullable": true
+          },
+          "acknowledgedBy": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "resolvedBy": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "closedBy": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "closureReason": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ClientComplaintSummaryDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "reference": {
+            "type": "string",
+            "nullable": true
+          },
+          "channel": {
+            "type": "string",
+            "nullable": true
+          },
+          "category": {
+            "type": "string",
+            "nullable": true
+          },
+          "subject": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "nullable": true
+          },
+          "receivedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "assignedTo": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "acknowledgementDueAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "resolutionDueAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "acknowledgedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "resolvedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "closedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "isOverdue": {
+            "type": "boolean"
+          },
+          "filedBySystem": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
       "ClientContactPointDto": {
         "type": "object",
         "properties": {
@@ -34847,6 +35243,16 @@
             "nullable": true
           },
           "referenceId": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "CloseClientComplaintRequest": {
+        "type": "object",
+        "properties": {
+          "reason": {
             "type": "string",
             "nullable": true
           }
@@ -40326,6 +40732,20 @@
             "nullable": true
           },
           "concatSeparator": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "FileClientComplaintResponse": {
+        "type": "object",
+        "properties": {
+          "complaintId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "reference": {
             "type": "string",
             "nullable": true
           }
@@ -50208,6 +50628,33 @@
         },
         "additionalProperties": false
       },
+      "RecordClientComplaintRequest": {
+        "type": "object",
+        "properties": {
+          "channel": {
+            "type": "string",
+            "nullable": true
+          },
+          "category": {
+            "type": "string",
+            "nullable": true
+          },
+          "subject": {
+            "type": "string",
+            "nullable": true
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "holdingId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "RecordComplaintRequest": {
         "type": "object",
         "properties": {
@@ -51457,6 +51904,16 @@
         "type": "object",
         "properties": {
           "message": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ResolveClientComplaintRequest": {
+        "type": "object",
+        "properties": {
+          "response": {
             "type": "string",
             "nullable": true
           }

@@ -22,6 +22,7 @@ import { TasDrawerAction, TasDrawerContent, TasDrawerTitle, TasSideDrawer } from
 import { SnackbarService } from '@talisoft/ui/snackbar';
 import { TasSpinner } from '@talisoft/ui/spinner';
 import { TasTitle } from '@talisoft/ui/title';
+import { PermissionsService } from '@sankore/crm/common';
 import { CONVERSATION_STATUS, whatsAppActionError } from '../edit-lead/whatsapp/whatsapp-labels';
 
 export interface WhatsAppConversationDrawerData {
@@ -77,9 +78,13 @@ export class WhatsAppConversationDrawer implements OnInit {
   private readonly _leads = inject(LeadsApiService);
   private readonly _snackbar = inject(SnackbarService);
   private readonly _router = inject(Router);
+  private readonly _permissions = inject(PermissionsService);
   private readonly _ref = inject(DialogRef<boolean>);
   private readonly _destroyRef = inject(DestroyRef);
   public readonly data = inject<WhatsAppConversationDrawerData>(DIALOG_DATA);
+
+  /** Une réclamation recueillie par le bot est sur la fiche du client, pas dans ce fil (2026-10-26). */
+  public readonly canReadComplaints = this._permissions.can('customers:complaints:read');
 
   public readonly isLoading = signal(true);
   public readonly loadError = signal<string | null>(null);
@@ -164,6 +169,13 @@ export class WhatsAppConversationDrawer implements OnInit {
       link.click();
       setTimeout(() => URL.revokeObjectURL(url), 10_000);
     });
+  }
+
+  public openComplaints(): void {
+    const clientId = this.detail()?.clientId;
+    if (!clientId) return;
+    this._ref.close(false);
+    this._router.navigate(['/customers', clientId, 'reclamations']);
   }
 
   public openLead(): void {

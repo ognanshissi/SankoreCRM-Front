@@ -149,6 +149,13 @@ export const customersRoutes: Route[] = [
         loadComponent: () => import('./containers/client-detail/documents'),
       },
       {
+        // Le registre des réclamations du client, tous produits (2026-10-26). Lien des
+        // notifications de réclamation : /customers/{id}/reclamations.
+        path: 'reclamations',
+        canActivate: [hasPermissionGuard('customers:complaints:read')],
+        loadComponent: () => import('./containers/client-detail/reclamations'),
+      },
+      {
         path: 'sinistres',
         canActivate: [canReadModuleGuard(TENANT_MODULES.INSURANCE)],
         loadComponent: () => import('./containers/client-detail/sinistres'),

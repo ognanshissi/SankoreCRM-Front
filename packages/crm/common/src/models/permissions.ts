@@ -90,6 +90,8 @@ export const PERMISSIONS = {
   LEAD_QUALIFY: 'lead:qualify',
   LEAD_CONVERT: 'lead:convert',
   LEAD_CLOSE: 'lead:close',
+  // Les paramètres de l'institution pour les leads (dont WhatsApp) : PUT /lead-settings/{key}.
+  LEAD_SETTINGS_MANAGE: 'lead:settings:manage',
   LEAD_RECYCLE: 'lead:recycle',
   LEAD_NURTURE: 'lead:nurture',
   LEAD_PIPELINE: 'lead:pipeline',
@@ -182,6 +184,11 @@ export const PERMISSIONS = {
   // visible ». C'est le seul droit de lecture *partielle* du catalogue — sans lui, la
   // fiche affiche le badge d'exposition mais pas la fonction exercée (BNF-F-04).
   CUSTOMERS_PEP_READ: 'customers:pep_read',
+
+  // Registre des réclamations du client (2026-10-26), tous produits ; celui de l'assurance
+  // (CIMA) reste à part.
+  CUSTOMERS_COMPLAINTS_READ: 'customers:complaints:read',
+  CUSTOMERS_COMPLAINTS_MANAGE: 'customers:complaints:manage',
 
   // ——— Prêts ———
   LOAN_CREATE: 'loan:create',
