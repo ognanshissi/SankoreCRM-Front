@@ -344,6 +344,25 @@ export class SubscribePolicyPage implements OnInit {
     return mode ? INSURANCE_PRICING_MODE_LABELS[mode] : '—';
   });
 
+  /**
+   * La prime écrite dans les termes du contrat, que le client signe. La police est émise au tarif de
+   * l'assureur : un écart voulait dire un bulletin signé à 25 000 et une prime encaissée à 15 000,
+   * sans que rien ne le dise. Le tarif est donc demandé dès le choix du produit, et le contrat doit
+   * le reprendre avant la fiche et la signature.
+   */
+  public readonly termsPremium = computed(() => this.selectedHolding()?.specifics?.premium ?? null);
+  public readonly termsPremiumLabel = computed(() =>
+    formatAmount(this.termsPremium(), this.selectedHolding()?.specifics?.currency ?? this.premiumCurrency()),
+  );
+  public readonly premiumMismatch = computed(() => {
+    const terms = this.termsPremium();
+    const tariff = this.premiumAmount();
+    return terms !== null && tariff !== null && terms !== tariff;
+  });
+  /** Pas de prime dans les termes : rien à corriger, mais le contrat peut la reprendre. */
+  public readonly premiumMissingInTerms = computed(() => this.termsPremium() === null && this.premiumAmount() !== null);
+  public readonly isAligningTerms = signal(false);
+
   /** Mandat d'encaissement de l'assureur : sans lui, l'assureur encaisse lui-même. */
   public readonly hasMandate = computed(() => this.selectedProduct()?.insurerCollectionMandate === true);
   public readonly derogationThreshold = computed(() => this.distributor()?.derogationThreshold ?? null);
@@ -494,7 +513,9 @@ export class SubscribePolicyPage implements OnInit {
   // ——— Navigation ———
 
   public readonly isStep1Complete = computed(() => this.holdingRows().find((r) => r.id === this.selectedHoldingId())?.ready === true);
-  public readonly isStep2Complete = computed(() => this.selectedProduct()?.isOfferable === true);
+  public readonly isStep2Complete = computed(
+    () => this.selectedProduct()?.isOfferable === true && !this.isQuoting() && !this.premiumMismatch(),
+  );
   public readonly isStep3Complete = computed(() => !!this.delivery() && !this.signedBeforeSheet());
   public readonly isStep4Complete = computed(() => this.isStep3Complete() && this.isSigned());
 
@@ -508,7 +529,7 @@ export class SubscribePolicyPage implements OnInit {
     if (step === 2) this._autoSelectProduct();
     if (step === 3) this._loadDeliveries();
     if (step === 5) {
-      this._loadQuote();
+      if (!this.quote()) this._loadQuote();
       const modes = this.availableModes();
       if (!modes.includes(this.model().paymentMode)) this.model.set(FinaliseFormModel.instantiate(modes[0]));
     }
@@ -522,11 +543,42 @@ export class SubscribePolicyPage implements OnInit {
     this.quote.set(null);
   }
 
-  public selectProduct(row: SubscriptionProductRow): void {
+  public selectProduct(row: SubscriptionProductRow, then?: () => void): void {
     if (!row.isOfferable) return;
     this.selectedProductId.set(row.id);
     this.quote.set(null);
     this.quoteError.set(null);
+    this._loadQuote(then);
+  }
+
+  /**
+   * Reporte le tarif de l'assureur (prime, périodicité, monnaie) dans les termes du contrat. Sur un
+   * contrat déjà signé, le serveur efface la signature : le client signe les nouveaux termes.
+   */
+  public alignTermsOnTariff(): void {
+    const holding = this.selectedHolding();
+    const premium = this.premiumAmount();
+    if (!holding?.holdingId || premium === null) return;
+    const periodicity = this.quote()?.periodicity ?? this.selectedProduct()?.periodicity ?? holding.specifics?.periodicity ?? null;
+    this.isAligningTerms.set(true);
+    this._holdings.updateHoldingSpecifics(holding.holdingId, {
+      ...(holding.specifics ?? {}),
+      premium,
+      periodicity,
+      currency: this.premiumCurrency() ?? holding.specifics?.currency ?? null,
+    }).pipe(catchError((err: HttpErrorResponse) => {
+      this.stepError.set(integrationErrorMessage(err, "Les termes du contrat n'ont pas pu être mis à jour."));
+      this.isAligningTerms.set(false);
+      return EMPTY;
+    })).subscribe(() => {
+      this._loadHoldings(holding.holdingId ?? undefined, () => {
+        this.isAligningTerms.set(false);
+        if (holding.signedAt && this.currentStep() === 5) this.currentStep.set(4);
+        this._snackbar.success('Contrat mis à jour', holding.signedAt
+          ? 'Les termes reprennent le tarif de l’assureur : le client doit signer à nouveau.'
+          : 'Les termes reprennent le tarif de l’assureur.');
+      });
+    });
   }
 
   // ——— Fiche d'information ———
@@ -641,7 +693,7 @@ export class SubscribePolicyPage implements OnInit {
   public handleSubmit(): void {
     const holdingId = this.selectedHoldingId();
     const product = this.selectedProduct();
-    if (!holdingId || !product?.id || this.distributorBlocked()) return;
+    if (!holdingId || !product?.id || this.distributorBlocked() || this.premiumMismatch()) return;
     const productId = product.id;
     this.stepError.set(null);
 
@@ -767,7 +819,10 @@ export class SubscribePolicyPage implements OnInit {
       const preselected = rows.find((r) => r.id === wanted && r.ready) ?? (ready.length === 1 ? ready[0] : undefined);
       if (preselected) {
         this.selectedHoldingId.set(preselected.id);
-        if (!keep && wanted === preselected.id) this.goToStep(2);
+        if (!keep && wanted === preselected.id) {
+          this._resumeRequested = true;
+          this._resume();
+        }
       }
       then?.();
     });
@@ -784,28 +839,54 @@ export class SubscribePolicyPage implements OnInit {
     ).subscribe((page) => {
       this.products.set(page.items ?? []);
       this.isLoadingProducts.set(false);
-      if (this.currentStep() === 2) this._autoSelectProduct();
+      if (this._resumeRequested) this._resume();
+      else if (this.currentStep() === 2) this._autoSelectProduct();
     });
   }
 
-  private _loadDeliveries(): void {
+  /**
+   * Reprend un contrat là où il en est : la page repartait toujours de l'étape 2, et l'agent qui
+   * revenait sur un contrat signé repassait par le produit et la fiche déjà remise. Attend le
+   * contrat ET le catalogue — le produit retenu se déduit du second.
+   */
+  private _resumeRequested = false;
+  private _resume(): void {
+    if (!this._resumeRequested || this.isLoadingProducts() || !this.selectedHoldingId()) return;
+    this._resumeRequested = false;
+    this.currentStep.set(2);
+    this._autoSelectProduct(() => this._loadDeliveries(() => {
+      // L'écart de prime retient à l'étape 2 : c'est là que le contrat s'aligne.
+      if (!this.isStep2Complete() || !this.isStep3Complete()) return;
+      if (this.isStep4Complete()) this.goToStep(5);
+      else this.goToStep(4);
+    }));
+  }
+
+  private _loadDeliveries(then?: () => void): void {
     const holdingId = this.selectedHoldingId();
     if (!holdingId) return;
     this._integration.listInformationSheetDeliveries(holdingId).pipe(catchError(() => of([])))
-      .subscribe((rows) => this.deliveries.set(rows ?? []));
+      .subscribe((rows) => {
+        this.deliveries.set(rows ?? []);
+        then?.();
+      });
   }
 
-  private _autoSelectProduct(): void {
-    if (this.selectedProductId()) return;
+  private _autoSelectProduct(then?: () => void): void {
+    if (this.selectedProductId()) {
+      then?.();
+      return;
+    }
     const offerable = this.productRows().filter((r) => r.isOfferable);
-    if (offerable.length === 1) this.selectProduct(offerable[0]);
+    if (offerable.length === 1) this.selectProduct(offerable[0], then);
   }
 
-  private _loadQuote(): void {
+  private _loadQuote(then?: () => void): void {
     const product = this.selectedProduct();
     if (!product?.id || product.pricingMode !== 'InsurerComputed') {
       this.quote.set(null);
       this.quoteError.set(null);
+      then?.();
       return;
     }
     this.isQuoting.set(true);
@@ -814,11 +895,13 @@ export class SubscribePolicyPage implements OnInit {
       catchError((err: HttpErrorResponse) => {
         this.quoteError.set(integrationErrorMessage(err, "L'assureur n'a pas renvoyé de tarif."));
         this.isQuoting.set(false);
+        then?.();
         return EMPTY;
       }),
     ).subscribe((q) => {
       this.quote.set(q);
       this.isQuoting.set(false);
+      then?.();
     });
   }
 

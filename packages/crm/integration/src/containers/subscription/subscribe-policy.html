@@ -171,6 +171,32 @@
         </ng-template>
       </tas-table>
       @if (selectedProduct()) {
+        @if (isQuoting()) {
+        <div class="flex items-center gap-2 text-sm text-slate-500">
+          <tas-spinner size="5" class="text-primary"></tas-spinner> Tarif demandé à l'assureur…
+        </div>
+      } @else if (premiumMismatch()) {
+        <tas-alert type="error">
+          <p class="text-sm font-medium">La prime du contrat ne correspond pas au tarif de l'assureur</p>
+          <p class="mt-1 text-sm">
+            Le contrat indique {{ termsPremiumLabel() }} ; l'assureur facture {{ premiumLabel() }} ({{ periodicityLabel() }}).
+            C'est le tarif de l'assureur qui sera encaissé et figurera sur la police : le contrat signé doit dire la même chose.
+            @if (isSigned()) { Le client devra signer à nouveau. }
+          </p>
+          <button tas-outlined-button color="primary" type="button" class="mt-2" [disabled]="isAligningTerms()" [isLoading]="isAligningTerms()" (click)="alignTermsOnTariff()">
+            Reprendre le tarif de l'assureur dans le contrat
+          </button>
+        </tas-alert>
+      } @else if (premiumMissingInTerms()) {
+        <tas-alert type="info">
+          <p class="text-sm">
+            Tarif de l'assureur : {{ premiumLabel() }} ({{ periodicityLabel() }}). Le contrat n'indique pas encore de prime.
+          </p>
+          <button tas-text-button color="primary" type="button" class="mt-1" [disabled]="isAligningTerms()" (click)="alignTermsOnTariff()">
+            Reporter ce tarif dans le contrat
+          </button>
+        </tas-alert>
+      }
         <insurance-product-preview [product]="selectedProduct()!"></insurance-product-preview>
       }
     }
@@ -336,6 +362,19 @@
         </div>
         @if (quoteError()) {
           <div class="border-t border-slate-100 p-4"><tas-alert type="error"><p class="text-sm">{{ quoteError() }}</p></tas-alert></div>
+        }
+        @if (premiumMismatch()) {
+          <div class="border-t border-slate-100 p-4">
+            <tas-alert type="error">
+              <p class="text-sm">
+                Le contrat indique {{ termsPremiumLabel() }} et l'assureur facture {{ premiumLabel() }} : l'envoi est bloqué
+                tant que le contrat ne reprend pas ce tarif (le client signera à nouveau).
+              </p>
+              <button tas-outlined-button color="primary" type="button" class="mt-2" [disabled]="isAligningTerms()" [isLoading]="isAligningTerms()" (click)="alignTermsOnTariff()">
+                Reprendre le tarif de l'assureur dans le contrat
+              </button>
+            </tas-alert>
+          </div>
         }
       </tas-card>
 
@@ -566,7 +605,7 @@
             tas-raised-button
             color="primary"
             type="button"
-            [disabled]="distributorBlocked() || formSchema().invalid() || formSchema().submitting() || isQuoting() || !premiumAmount()"
+            [disabled]="distributorBlocked() || formSchema().invalid() || formSchema().submitting() || isQuoting() || !premiumAmount() || premiumMismatch()"
             [isLoading]="formSchema().submitting()"
             (click)="handleSubmit()"
           >

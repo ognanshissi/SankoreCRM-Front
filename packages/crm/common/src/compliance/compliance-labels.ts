@@ -64,6 +64,25 @@ const HOLDING_STATUS: Record<string, CodeMeta> = {
 };
 
 /**
+ * Périodicité des termes d'un contrat : liste fermée, dans l'orthographe que le serveur stocke
+ * (`HoldingSpecifics.Periodicities`, celle de la prime chez l'assureur). Le champ était libre et
+ * « Mensuelle » s'enregistrait tel quel, puis s'affichait « Monthly » une fois corrigé.
+ */
+export const HOLDING_PERIODICITY_OPTIONS: { value: string; label: string }[] = [
+  { value: 'Single', label: 'Prime unique' },
+  { value: 'Monthly', label: 'Mensuelle' },
+  { value: 'Quarterly', label: 'Trimestrielle' },
+  { value: 'SemiAnnual', label: 'Semestrielle' },
+  { value: 'Annual', label: 'Annuelle' },
+];
+
+/** Libellé d'une périodicité ; une ancienne saisie libre s'affiche telle qu'enregistrée. */
+export function holdingPeriodicityLabel(code: string | null | undefined): string {
+  if (!code) return '—';
+  return HOLDING_PERIODICITY_OPTIONS.find((o) => o.value.toLowerCase() === code.toLowerCase())?.label ?? code;
+}
+
+/**
  * Un produit signé reste `PendingSignature` côté serveur jusqu'à son envoi : c'est la date de
  * signature qui fait foi, pas le statut. Sans `signedAt`, un contrat signé s'affichait « À signer ».
  */

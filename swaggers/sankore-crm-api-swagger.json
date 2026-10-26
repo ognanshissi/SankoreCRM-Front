@@ -19660,6 +19660,43 @@
         }
       }
     },
+    "/api/v1/leads/opportunities/{id}/holding": {
+      "post": {
+        "tags": [
+          "Opportunities"
+        ],
+        "operationId": "OpenProjectHolding",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CloseOpportunityResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "422": {
+            "description": "Unprocessable Entity"
+          }
+        }
+      }
+    },
     "/api/v1/permissions": {
       "get": {
         "tags": [

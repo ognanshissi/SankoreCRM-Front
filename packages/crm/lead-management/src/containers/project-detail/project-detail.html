@@ -319,6 +319,11 @@
           } @else if (p.stage === 'ClosedWon' && clientId()) {
             <a tas-text-button color="primary" [routerLink]="['/customers', clientId(), 'produits']">Produits du client</a>
           }
+          @if (canOpenHolding()) {
+            <button tas-outlined-button color="primary" type="button" [disabled]="busy()" [isLoading]="busy()" (click)="openHolding()">
+              Ouvrir le contrat
+            </button>
+          }
         </div>
       </tas-card>
     }

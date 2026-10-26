@@ -362,7 +362,7 @@ export class KycDecisionCard {
   }
 
   private _errorMessage(error: HttpErrorResponse): string {
-    const code = error.error?.detail ?? error.error?.title ?? '';
+    const code = error.error?.error ?? error.error?.detail ?? error.error?.title ?? '';
     if (String(code).includes('KYC_SELF_APPROVAL_FORBIDDEN')) {
       return 'Vous avez soumis ou validé à la main ce dossier : un autre valideur doit signer.';
     }

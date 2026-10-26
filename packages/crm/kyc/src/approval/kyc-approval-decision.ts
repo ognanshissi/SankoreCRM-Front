@@ -161,16 +161,33 @@ export class KycApprovalDecision implements OnInit {
    * Niveau auquel l'utilisateur connecté peut décider, déduit de ses rôles. Heuristique assumée : le
    * contrat ne donne aucune correspondance entre les rôles du tenant et les trois niveaux du circuit.
    */
-  public readonly myLevel = computed<DecideKycApprovalRequestLevelEnum | null>(() => {
+  public readonly myLevels = computed<Set<DecideKycApprovalRequestLevelEnum>>(() => {
     const roles = (this._auth.connectedUser()?.roles ?? []).map((r) => r.toLowerCase());
-    if (roles.some((r) => r.includes('compliance') || r.includes('conformit'))) {
-      return DecideKycApprovalRequestLevelEnum.ComplianceOfficer;
+    const levels = new Set<DecideKycApprovalRequestLevelEnum>();
+    // Les mêmes paliers que le serveur (`KycApproverLevels`) : l'administrateur répond de tous, et le
+    // chef d'agence signe aussi le palier Agent — un agent ne voit que ses propres dossiers, aucun
+    // collègue ne peut donc signer ce palier. Un seul niveau par personne laissait le dossier d'un
+    // agent sans signataire possible.
+    if (roles.some((r) => r === 'administrator' || r === 'system')) {
+      levels.add(DecideKycApprovalRequestLevelEnum.Agent);
+      levels.add(DecideKycApprovalRequestLevelEnum.BranchManager);
+      levels.add(DecideKycApprovalRequestLevelEnum.ComplianceOfficer);
+    }
+    if (roles.some((r) => r.includes('compliance') || r.includes('conformit') || r === 'regulationmanager')) {
+      levels.add(DecideKycApprovalRequestLevelEnum.ComplianceOfficer);
     }
     if (roles.some((r) => r.includes('manager') || r.includes('chef') || r.includes('agence'))) {
-      return DecideKycApprovalRequestLevelEnum.BranchManager;
+      levels.add(DecideKycApprovalRequestLevelEnum.Agent);
+      levels.add(DecideKycApprovalRequestLevelEnum.BranchManager);
     }
-    if (roles.length > 0) return DecideKycApprovalRequestLevelEnum.Agent;
-    return null;
+    if (roles.length > 0) levels.add(DecideKycApprovalRequestLevelEnum.Agent);
+    return levels;
+  });
+
+  /** Le niveau attendu, quand il fait partie des miens : c'est celui que la décision signe. */
+  public readonly myLevel = computed<DecideKycApprovalRequestLevelEnum | null>(() => {
+    const next = this.nextLevel() as DecideKycApprovalRequestLevelEnum | null;
+    return next && this.myLevels().has(next) ? next : null;
   });
 
   /**
@@ -341,6 +358,12 @@ export class KycApprovalDecision implements OnInit {
   }
 
   private _decisionError(error: HttpErrorResponse): string {
+    // Le serveur renvoie son code sous `error` (`{ error: 'KYC_SELF_APPROVAL_FORBIDDEN' }`) : lu
+    // sous `detail` seulement, le refus des quatre yeux sortait en « n'a pas pu être enregistrée ».
+    const code = String(error.error?.error ?? error.error?.detail ?? '');
+    if (code.includes('KYC_SELF_APPROVAL_FORBIDDEN')) {
+      return 'Vous avez soumis ou validé à la main ce dossier : un autre valideur doit signer.';
+    }
     switch (error.status) {
       case 409:
         // Le contrat : seul le prochain niveau en attente peut décider. Un 409 signifie donc que

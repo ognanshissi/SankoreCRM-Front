@@ -23,6 +23,7 @@ import { Router } from '@angular/router';
 import { TasInput } from '@talisoft/ui/input';
 import { TasDatePicker } from '@talisoft/ui/date-picker';
 import { SnackbarService } from '@talisoft/ui/snackbar';
+import { TasSelect } from '@talisoft/ui/select';
 import { TasSpinner } from '@talisoft/ui/spinner';
 import {
   TasDrawerAction,
@@ -43,6 +44,8 @@ import {
   designationRoleLabel,
   designationStatusLabel,
   designationStatusSeverity,
+  HOLDING_PERIODICITY_OPTIONS,
+  holdingPeriodicityLabel,
   holdingStatusLabel,
   holdingStatusSeverity,
   institutionCurrency,
@@ -176,6 +179,10 @@ export function holdingErrorMessage(error: HttpErrorResponse, fallback: string):
   switch (code) {
     case 'HOLDING_ALREADY_HELD':
       return "Ce client détient déjà ce produit et la ligne de produit n'autorise pas de doublon.";
+    case 'HOLDING_SPECIFICS_INVALID_PERIODICITY':
+      return 'Choisissez la périodicité dans la liste.';
+    case 'HOLDING_INSURANCE_REQUIRES_PROJECT':
+      return "Une assurance se souscrit depuis un projet : ouvrez-le dans l'onglet « Projets » de la fiche.";
     case 'DESIGNATION_REQUIRED_ROLE_MISSING':
       return "La clause ne satisfait pas un rôle exigé par la ligne de produit : complétez les désignations avant de demander la signature.";
     case 'DESIGNATION_SHARES_MUST_TOTAL_100':
@@ -617,6 +624,11 @@ export class HoldingSignatureActions {
 
   /** Émis après toute écriture réussie : l'appelant recharge le produit et la liste. */
   public readonly changed = output<void>();
+  /**
+   * Émis avant de quitter la fiche pour la page de souscription : le panneau qui porte ces actions
+   * se ferme, sinon il restait ouvert par-dessus la page d'arrivée.
+   */
+  public readonly leaving = output<void>();
 
   public readonly busy = signal<HoldingAction | null>(null);
   public readonly signing = signal(false);
@@ -658,6 +670,7 @@ export class HoldingSignatureActions {
 
   public finaliseInsurance(): void {
     const holding = this.holding();
+    this.leaving.emit();
     this._router.navigate(['/customers', holding.clientId, 'souscrire-assurance'], {
       queryParams: { holding: holding.holdingId },
     });
@@ -868,6 +881,7 @@ class SpecificsFormModel {
     HoldingTimeline,
     HoldingSignatureActions,
     DesignationsEditor,
+    TasSelect,
   ],
 })
 export class HoldingDetailDrawer implements OnInit, OnDestroy {
@@ -900,6 +914,8 @@ export class HoldingDetailDrawer implements OnInit, OnDestroy {
     pagination: { serverSide: false, pageIndex: 0, pageSize: 10, pageSizeOptions: [10, 30] },
   };
 
+  public readonly periodicityOptions = HOLDING_PERIODICITY_OPTIONS;
+  public readonly periodicityLabel = holdingPeriodicityLabel;
   public readonly statusLabel = computed(() => holdingStatusLabel(this.holding()?.status, this.holding()?.signedAt));
   public readonly statusSeverity = computed<Severity>(() =>
     holdingStatusSeverity(this.holding()?.status, this.holding()?.signedAt),

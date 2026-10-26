@@ -537,6 +537,36 @@ export class ProjectDetail implements OnInit {
     );
   }
 
+  /** Le projet est gagné et peut encore ouvrir son contrat : la clôture a pu échouer en silence. */
+  public readonly canOpenHolding = computed(
+    () => this._canManage() && this.project()?.stage === 'ClosedWon' && !this.holdingId(),
+  );
+
+  /**
+   * Ouvre — ou retrouve — le contrat du projet gagné. La clôture tente la même ouverture mais tait
+   * un échec pour ne pas défaire la vente ; sans ce bouton, un projet d'assurance gagné sans
+   * contrat n'avait plus aucun chemin vers une souscription (l'onglet Produits les refuse).
+   */
+  public openHolding(): void {
+    const p = this.project();
+    if (!p?.id) return;
+    this.busy.set(true);
+    this._api
+      .openProjectHolding(p.id)
+      .pipe(
+        catchError((error: HttpErrorResponse) => {
+          this._snackbar.error('Contrat non ouvert', holdingOpenErrorMessage(error));
+          this.busy.set(false);
+          return EMPTY;
+        }),
+      )
+      .subscribe((r) => {
+        this.busy.set(false);
+        this.holdingId.set(r?.holdingId ?? null);
+        this._snackbar.success('Contrat ouvert', 'Le contrat est en brouillon dans les produits du client.');
+      });
+  }
+
   public startLose(): void {
     this.loseForm().reset(LoseFormModel.instantiate());
     this.editor.set('lose');
@@ -605,6 +635,24 @@ export class ProjectDetail implements OnInit {
 
   public back(): void {
     void this._router.navigate(['/leads/projets']);
+  }
+}
+
+function holdingOpenErrorMessage(error: HttpErrorResponse): string {
+  const code = String(error.error?.error ?? error.error?.detail ?? '');
+  switch (code) {
+    case 'OPPORTUNITY_NO_CLIENT':
+      return "Ce projet n'est rattaché à aucun client : ouvrez d'abord le dossier client.";
+    case 'OPPORTUNITY_PRODUCT_NOT_IN_CATALOGUE':
+      return "Le produit du projet ne correspond à aucun produit actif du catalogue.";
+    case 'OPPORTUNITY_NOT_WON':
+      return "Seul un projet gagné ouvre un contrat.";
+    case 'HOLDING_ALREADY_HELD':
+      return "Le client détient déjà ce produit et il n'autorise pas un second contrat.";
+    case 'PRODUCT_LINE_UNAVAILABLE':
+      return 'Le catalogue est momentanément indisponible. Réessayez dans un instant.';
+    default:
+      return "Le contrat n'a pas pu être ouvert.";
   }
 }
 

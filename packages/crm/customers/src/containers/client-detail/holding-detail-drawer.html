@@ -104,6 +104,7 @@
           [holding]="h"
           [readOnly]="isReadOnly()"
           (changed)="onActionChanged()"
+          (leaving)="close()"
         ></holding-signature-actions>
 
         <!-- Termes -->
@@ -136,7 +137,7 @@
               </tas-form-field>
               <tas-form-field>
                 <tas-label>Périodicité</tas-label>
-                <input tasInput type="text" [formField]="specificsForm.periodicity" />
+                <tas-select [options]="periodicityOptions" placeholder="Non précisée" [formField]="specificsForm.periodicity"></tas-select>
               </tas-form-field>
               <tas-form-field>
                 <tas-label>Durée (mois)</tas-label>
@@ -191,7 +192,7 @@
               <div>
                 <dt class="text-xs text-slate-400">Périodicité</dt>
                 <dd class="text-sm font-medium text-slate-800">
-                  {{ h.specifics?.periodicity || '—' }}
+                  {{ periodicityLabel(h.specifics?.periodicity) }}
                 </dd>
               </div>
               <div>

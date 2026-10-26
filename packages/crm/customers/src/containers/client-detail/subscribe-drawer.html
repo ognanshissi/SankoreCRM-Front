@@ -38,6 +38,14 @@
           <p class="mt-1 text-sm text-slate-500">Fermez le panneau et réessayez.</p>
         </div>
       } @else {
+        @if (hiddenInsuranceCount() > 0) {
+          <tas-alert type="info" class="mb-3 block">
+            <p class="text-sm">
+              Les assurances ne se souscrivent pas ici : ouvrez un projet dans l'onglet
+              « Projets » de la fiche. Le contrat est créé quand le projet est gagné.
+            </p>
+          </tas-alert>
+        }
         <tas-form-field class="mb-3 block">
           <tas-label>Rechercher une ligne de produit</tas-label>
           <input
@@ -123,8 +131,7 @@
         </tas-form-field>
         <tas-form-field>
           <tas-label>Périodicité</tas-label>
-          <input tasInput type="text" [formField]="termsForm.periodicity" />
-          <tas-hint>Mensuelle, trimestrielle, annuelle…</tas-hint>
+          <tas-select [options]="periodicityOptions" placeholder="Non précisée" [formField]="termsForm.periodicity"></tas-select>
         </tas-form-field>
         <tas-form-field>
           <tas-label>Durée (mois)</tas-label>
@@ -202,6 +209,7 @@
           <holding-signature-actions
             [holding]="h"
             (changed)="onHoldingChanged()"
+            (leaving)="close()"
           ></holding-signature-actions>
 
           <p class="text-xs text-slate-500">

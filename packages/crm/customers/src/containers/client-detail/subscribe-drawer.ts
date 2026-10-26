@@ -15,11 +15,12 @@ import { form, FormField, FormRoot, submit } from '@angular/forms/signals';
 import { EMPTY, catchError, firstValueFrom } from 'rxjs';
 import { TasAlert } from '@talisoft/ui/alert';
 import { Button } from '@talisoft/ui/button';
-import { TasFormField, TasHint, TasLabel } from '@talisoft/ui/form-field';
+import { TasFormField, TasLabel } from '@talisoft/ui/form-field';
 import { TasIcon } from '@talisoft/ui/icon';
 import { TasInput } from '@talisoft/ui/input';
 import { TasDatePicker } from '@talisoft/ui/date-picker';
 import { SnackbarService } from '@talisoft/ui/snackbar';
+import { TasSelect } from '@talisoft/ui/select';
 import { TasSpinner } from '@talisoft/ui/spinner';
 import {
   TasDrawerAction,
@@ -36,6 +37,7 @@ import {
   ProductsApiService,
 } from '@sankore/crm-api';
 import {
+  HOLDING_PERIODICITY_OPTIONS,
   holdingStatusLabel,
   holdingStatusSeverity,
   institutionCurrency,
@@ -51,6 +53,12 @@ import {
 /** Cadence et borne du suivi d'un produit tout juste envoyé au back-office. */
 const SYNC_POLL_INTERVAL_MS = 10_000;
 const SYNC_POLL_MAX_TICKS = 18;
+
+/**
+ * Une assurance se souscrit depuis un projet gagné, jamais d'ici : le serveur refuse
+ * (`HOLDING_INSURANCE_REQUIRES_PROJECT`), donc le catalogue ne les propose pas.
+ */
+const INSURANCE_CATEGORIES = ['Insurance', 'HealthInsurance', 'ForecastInsurance'];
 
 export interface SubscribeDrawerData {
   clientId: string;
@@ -129,13 +137,13 @@ class TermsFormModel {
     TasDatePicker,
     TasFormField,
     TasLabel,
-    TasHint,
     TasSpinner,
     TasTable,
     TasTag,
     DesignationsEditor,
     HoldingTimeline,
     HoldingSignatureActions,
+    TasSelect,
   ],
 })
 export class SubscribeDrawer implements OnInit, OnDestroy {
@@ -156,6 +164,7 @@ export class SubscribeDrawer implements OnInit, OnDestroy {
   public readonly isSubscribing = signal(false);
   public readonly submitError = signal<string | null>(null);
   public readonly holding = signal<HoldingDto | null>(null);
+  public readonly hiddenInsuranceCount = signal(0);
 
   private _pollTimer: ReturnType<typeof setInterval> | null = null;
   private _pollTicks = 0;
@@ -175,6 +184,7 @@ export class SubscribeDrawer implements OnInit, OnDestroy {
     () => this.selectedProduct()?.beneficiaryPolicy?.requiredFieldsBeforeConversion ?? [],
   );
 
+  public readonly periodicityOptions = HOLDING_PERIODICITY_OPTIONS;
   public readonly statusLabel = computed(() => holdingStatusLabel(this.holding()?.status, this.holding()?.signedAt));
   public readonly statusSeverity = computed<Severity>(() =>
     holdingStatusSeverity(this.holding()?.status, this.holding()?.signedAt),
@@ -247,7 +257,10 @@ export class SubscribeDrawer implements OnInit, OnDestroy {
         }),
       )
       .subscribe((products) => {
-        this.products.set(products ?? []);
+        const all = products ?? [];
+        const offered = all.filter((p) => !INSURANCE_CATEGORIES.includes(p.category ?? ''));
+        this.hiddenInsuranceCount.set(all.length - offered.length);
+        this.products.set(offered);
         this.isLoadingProducts.set(false);
       });
   }

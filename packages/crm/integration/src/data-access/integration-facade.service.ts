@@ -563,8 +563,10 @@ export function integrationErrorMessage(error: HttpErrorResponse, fallback: stri
     | undefined;
 
   // Les sinistres répondent `{ error }` et non `{ code }` ; le refus hors couverture porte en plus
-  // son côté (`…:BEFORE_COVER` / `…:AFTER_COVER`).
-  const code = body?.code ?? body?.error;
+  // son côté (`…:BEFORE_COVER` / `…:AFTER_COVER`). Les contrats (`HoldingHttp`) mettent le code
+  // dans le `detail` d'un ProblemDetails : sans le lire, la signature affichait le code brut.
+  const detailCode = body?.detail && /^[A-Z][A-Z0-9_]+(:.*)?$/.test(body.detail) ? body.detail : undefined;
+  const code = body?.code ?? body?.error ?? detailCode;
   if (code?.startsWith('INSURANCE_LOSS_OUTSIDE_COVER')) {
     return code.endsWith('BEFORE_COVER')
       ? 'Le sinistre est antérieur au début de la couverture : ce contrat ne le couvre pas.'
