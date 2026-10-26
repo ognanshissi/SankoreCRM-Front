@@ -48,6 +48,11 @@ export {
   InsurancePoliciesBlock,
   isPolicyAtRisk,
 } from './components/insurance-policies-block';
+export { InsuranceSubscriptionsBlock } from './components/insurance-subscriptions-block';
+export {
+  InsurancePolicyDrawer,
+  type InsurancePolicyDrawerData,
+} from './components/insurance-policy-drawer';
 export { CustomerClaimsList } from './containers/claims/customer-claims-list';
 
 /**

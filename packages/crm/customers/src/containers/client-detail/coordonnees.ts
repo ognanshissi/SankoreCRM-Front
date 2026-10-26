@@ -31,6 +31,7 @@ import {
   AddContactPointDrawer,
   AddContactPointDrawerData,
 } from './add-contact-point-drawer';
+import { ClientPaymentInstrumentsCard } from './payment-instruments-card';
 
 interface GroupDefinition {
   type: ContactPointDtoTypeEnum;
@@ -104,7 +105,7 @@ function byPrimaryThenDate(a: ContactPointDto, b: ContactPointDto): number {
 @Component({
   selector: 'client-coordonnees',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [DatePipe, TasCard, TasIcon, TasTag, TasSpinner, Button, SensitiveField],
+  imports: [DatePipe, TasCard, TasIcon, TasTag, TasSpinner, Button, SensitiveField, ClientPaymentInstrumentsCard],
   template: `
     <div class="flex flex-col gap-4">
       <div class="flex items-start justify-between gap-3 flex-wrap">
@@ -299,6 +300,8 @@ function byPrimaryThenDate(a: ContactPointDto, b: ContactPointDto): number {
           </tas-card>
         }
       }
+
+      <client-payment-instruments-card></client-payment-instruments-card>
     </div>
   `,
 })

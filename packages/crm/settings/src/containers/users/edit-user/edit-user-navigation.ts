@@ -206,6 +206,7 @@ export class EditUserNavigation {
         danger: false,
       },
       { route: 'parametrage', label: 'Paramétrage agent', hint: 'Produits, plafond de leads', danger: false },
+      { route: 'carte-professionnelle', label: 'Carte professionnelle', hint: "Intermédiaire d'assurance (CIMA)", danger: false },
       {
         route: 'connexions',
         label: 'Connexions et sécurité',

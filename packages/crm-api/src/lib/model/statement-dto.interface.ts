@@ -29,5 +29,12 @@ export interface StatementDto {
     transmittedAt?: string | null;
     transmitFailureDetail?: string | null;
     isRebuildable?: boolean;
+    remittanceDueBy?: string | null;
+    remittedOn?: string | null;
+    remittanceReference?: string | null;
+    remittedAmount?: number | null;
+    insurerDeclaredCommission?: number | null;
+    insurerCommissionReference?: string | null;
+    commissionGap?: number | null;
 }
 

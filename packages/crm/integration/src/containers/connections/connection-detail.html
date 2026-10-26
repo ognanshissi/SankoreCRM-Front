@@ -149,6 +149,23 @@
     </div>
   </tas-card>
 
+  @if (family() === 'Insurance') {
+    <tas-card class="block mt-4">
+      <div class="p-4">
+        <h2 class="text-sm font-semibold text-slate-700">Mandats de l'assureur</h2>
+        <p class="text-sm text-slate-500 mt-1 mb-4">
+          Ce que l'assureur confie à votre institution, avec la référence du document qui
+          l'accorde.
+        </p>
+        <insurer-mandates-panel
+          [connection]="dto"
+          [canManage]="canManage()"
+          (saved)="onMandatesSaved()"
+        ></insurer-mandates-panel>
+      </div>
+    </tas-card>
+  }
+
   @if (isTelephony()) {
     <tas-card class="block mt-4">
       <div class="p-4">

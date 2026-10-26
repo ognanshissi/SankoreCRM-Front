@@ -134,7 +134,9 @@ export const SETTINGS_CATALOG: ReadonlyArray<SettingsGroup> = [
       { id: 'audit', title: 'Journal d’audit', icon: 'feather:activity', link: '/settings/audit', permission: 'audit:read', description: 'Qui a fait quoi, quand.' },
       { id: 'kyc', title: 'Règles KYC', icon: 'feather:user-check', link: '/settings/kyc', permission: 'kyc:read', description: 'Plafonds du KYC simplifié, seuils d’alerte, revue et comparaison faciale.' },
       { id: 'compliance', title: 'FATCA et conformité', icon: 'feather:flag', link: '/settings/conformite', permission: 'kyc:read', description: 'FATCA, régime de l’institution, GIIN et maintien du statut PPE.' },
+      { id: 'insurance-distribution', title: 'Distribution d’assurance', icon: 'feather:umbrella', link: '/settings/distribution-assurance', description: 'Statut de distributeur, mention légale, SMIG et pièces (agrément, garantie, RC) qui autorisent les souscriptions.', modules: [TENANT_MODULES.INSURANCE] },
       { id: 'erasure', title: 'Demandes d’effacement', icon: 'feather:user-x', link: '/settings/effacements', permission: 'privacy:erasure:request', description: 'Personnes demandant l’effacement de leurs données : décision, restriction et effacement.' },
+      { id: 'suspicion-alerts', title: 'Alertes LBC/FT', icon: 'feather:alert-octagon', link: '/settings/alertes-lbc', permission: 'compliance:suspicion:manage', description: 'Soupçons signalés par les agents : examen, déclaration à la CENTIF ou classement. Confidentiel.' },
     ],
   },
   {

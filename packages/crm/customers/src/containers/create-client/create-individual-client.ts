@@ -151,8 +151,17 @@ export class CreateIndividualClient {
     };
   });
 
-  /** Lu par la page hôte avant de quitter l'assistant ou de changer de type de client. */
-  public readonly isDirty = computed(() => this._renderer()?.formSchema().dirty() ?? false);
+  /** Posé juste avant la navigation vers la fiche créée : la saisie n'est plus à protéger. */
+  private readonly _created = signal(false);
+
+  /**
+   * Lu par la page hôte avant de quitter l'assistant ou de changer de type de client. Faux une
+   * fois le client créé : sinon la garde de sortie demandait « Quitter sans créer ? » sur la
+   * navigation vers la fiche qui venait d'être créée.
+   */
+  public readonly isDirty = computed(
+    () => !this._created() && (this._renderer()?.formSchema().dirty() ?? false),
+  );
 
   public readonly fullName = computed(() => {
     const v = this._renderer()?.wireValues() ?? {};
@@ -369,6 +378,7 @@ export class CreateIndividualClient {
           'Client créé',
           `${this.fullName() || 'Le client'} est créé — KYC initié, en attente de validation.`,
         );
+        this._created.set(true);
         // La fiche n'a pas à connaître ce paramètre : s'il est ignoré, seul le bandeau manque.
         this._router.navigate(['/customers', result.clientId], { queryParams: { kyc: 'initie' } });
         return;

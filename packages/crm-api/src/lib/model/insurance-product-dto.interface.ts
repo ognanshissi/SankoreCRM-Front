@@ -55,6 +55,11 @@ export interface InsuranceProductDto {
     notOfferableReasons?: Array<string> | null;
     createdAt?: string;
     updatedAt?: string;
+    exclusions?: string | null;
+    informationSheetVersion?: number;
+    informationSheetId?: string | null;
+    insurerCollectionMandate?: boolean;
+    isLifeInsurance?: boolean;
 }
 export enum InsuranceProductDtoConnectionKindEnum {
     Temenos = 'Temenos',

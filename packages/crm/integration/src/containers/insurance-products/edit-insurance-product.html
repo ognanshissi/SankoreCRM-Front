@@ -332,6 +332,24 @@
 
           <div class="grid grid-cols-2 gap-4 mt-4">
             <tas-form-field>
+              <tas-label>Produit du catalogue</tas-label>
+              <tas-select
+                clearable
+                [options]="catalogueProductOptions()"
+                optionLabel="label"
+                optionValue="value"
+                placeholder="Aucun"
+                [formField]="formSchema.crmProductCode"
+              ></tas-select>
+              <tas-hint>
+                La ligne d'assurance de votre catalogue que ce produit réalise : c'est par elle qu'un
+                contrat du client retrouve cet assureur à la souscription.
+              </tas-hint>
+            </tas-form-field>
+          </div>
+
+          <div class="grid grid-cols-2 gap-4 mt-4">
+            <tas-form-field>
               <tas-label>Produit de crédit associé</tas-label>
               <tas-select
                 clearable
@@ -430,6 +448,17 @@
         </div>
       </tas-card>
     </form>
+
+    <!-- Fiche d'information : hors du formulaire principal, elle a ses propres
+         enregistrements (dépôt de PDF, exclusions). -->
+    <div class="mt-4">
+      <insurance-information-sheet-panel
+        [productId]="id()"
+        [product]="loaded"
+        [canManage]="canManage()"
+        (changed)="refreshProductStatus()"
+      ></insurance-information-sheet-panel>
+    </div>
 
     <!-- Aperçu côté agent -->
     @if (previewProduct(); as preview) {

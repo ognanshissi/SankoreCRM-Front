@@ -377,9 +377,18 @@ export class CreateLegalClient {
     });
   });
 
-  /** Lu par la page hôte avant de quitter l'assistant ou de changer de type de client. */
+  /** Posé juste avant la navigation vers la fiche créée : la saisie n'est plus à protéger. */
+  private readonly _created = signal(false);
+
+  /**
+   * Lu par la page hôte avant de quitter l'assistant ou de changer de type de client. Faux une
+   * fois le client créé : sinon la garde de sortie demandait « Quitter sans créer ? » sur la
+   * navigation vers la fiche qui venait d'être créée.
+   */
   public readonly isDirty = computed(
-    () => this.formSchema().dirty() || (this._renderer()?.formSchema().dirty() ?? false),
+    () =>
+      !this._created() &&
+      (this.formSchema().dirty() || (this._renderer()?.formSchema().dirty() ?? false)),
   );
 
   private _isStepInvalid(key: string): boolean {
@@ -635,6 +644,7 @@ export class CreateLegalClient {
         'Client créé',
         `${legalName || 'Le client'} est créé — KYC initié, en attente de validation.`,
       );
+      this._created.set(true);
       // La fiche n'a pas à connaître ce paramètre : s'il est ignoré, seul le bandeau manque.
       this._router.navigate(['/customers', clientId], {
         queryParams: { kyc: 'initie' },

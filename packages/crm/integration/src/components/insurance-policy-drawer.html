@@ -1,0 +1,352 @@
+<tas-side-drawer>
+  <tas-drawer-title>
+    <span class="text-lg font-semibold text-slate-800">Contrat d'assurance</span>
+  </tas-drawer-title>
+
+  <tas-drawer-content>
+    <div class="flex flex-col gap-6">
+      <!-- Résumé du contrat -->
+      <div class="flex flex-wrap items-start gap-x-8 gap-y-3">
+        <div>
+          <p class="text-sm font-medium text-slate-800">{{ policy.productName }}</p>
+          <p class="text-xs text-slate-500">{{ policy.insurer }}</p>
+          @if (policy.policyNumber) {
+            <p class="font-mono text-xs text-slate-400">{{ policy.policyNumber }}</p>
+          }
+        </div>
+        <div>
+          <p class="text-xs text-slate-500">Statut</p>
+          <tas-tag class="mt-1" [severity]="statusMeta.severity">{{ statusMeta.label }}</tas-tag>
+        </div>
+        <div>
+          <p class="text-xs text-slate-500">Date d'effet</p>
+          <p class="mt-1 text-sm text-slate-800">{{ formatDate(policy.effectiveDate) }}</p>
+        </div>
+        <div>
+          <p class="text-xs text-slate-500">Prime</p>
+          <p class="mt-1 text-sm text-slate-800 tabular-nums">{{ premiumLabel }}</p>
+        </div>
+      </div>
+
+      <!-- ——— Opérations ——— -->
+      <section class="flex flex-col gap-3">
+        <div class="flex items-center justify-between gap-3">
+          <div>
+            <p class="text-sm font-medium text-slate-800">Opérations</p>
+            <p class="text-xs text-slate-500">Renonciation, rachat ou avance demandés par le client.</p>
+          </div>
+          @if (canWrite()) {
+            <button tas-outlined-button color="primary" type="button" (click)="toggleRequestForm()">
+              <tas-icon [iconName]="showRequestForm() ? 'feather:x' : 'feather:plus'" style="font-size:14px"></tas-icon>
+              {{ showRequestForm() ? 'Fermer' : 'Nouvelle demande' }}
+            </button>
+          }
+        </div>
+
+        @if (showRequestForm()) {
+          <div class="rounded-lg border border-slate-200 bg-slate-50 p-4">
+            <form [formRoot]="requestForm" class="flex flex-col gap-4">
+              <tas-form-field>
+                <tas-label>Type de demande <span class="text-functional-error">*</span></tas-label>
+                <tas-select
+                  [options]="operationKindOptions"
+                  optionLabel="label"
+                  optionValue="value"
+                  placeholder="Choisissez le type de demande"
+                  [formField]="requestForm.kind"
+                ></tas-select>
+                @if (requestKind() === KINDS.Renunciation) {
+                  <tas-hint>
+                    Assurance vie seulement, dans les 30 jours suivant le premier paiement de la prime.
+                    L'assureur rembourse ensuite sous 30 jours ; sans montant, la prime payée est retenue.
+                  </tas-hint>
+                }
+                @if (requestForm.kind().touched() && requestForm.kind().invalid()) {
+                  <tas-error>{{ requestForm.kind().errors()[0].message }}</tas-error>
+                }
+              </tas-form-field>
+
+              <tas-form-field>
+                <tas-label>
+                  Montant
+                  @if (requestKind() === KINDS.Advance) {
+                    <span class="text-functional-error">*</span>
+                  }
+                </tas-label>
+                <input tasInput type="text" inputmode="decimal" [formField]="requestForm.amount" />
+                @if (requestForm.amount().touched() && requestForm.amount().invalid()) {
+                  <tas-error>{{ requestForm.amount().errors()[0].message }}</tas-error>
+                }
+              </tas-form-field>
+
+              <tas-form-field>
+                <tas-label>Verser sur</tas-label>
+                <tas-select
+                  [options]="payoutOptions()"
+                  placeholder="Moyen de paiement du client"
+                  [formField]="requestForm.payoutInstrumentId"
+                ></tas-select>
+                <tas-hint>
+                  @if (payoutOptions().length === 0) {
+                    Aucun moyen de paiement actif : ajoutez-en un dans l'onglet Coordonnées du client.
+                  } @else {
+                    Facultatif. Le numéro est enregistré chiffré ; seuls ses derniers chiffres s'affichent.
+                  }
+                </tas-hint>
+              </tas-form-field>
+
+              <tas-form-field>
+                <tas-label>Motif</tas-label>
+                <textarea tasInput rows="2" [formField]="requestForm.reason"></textarea>
+              </tas-form-field>
+
+              <div class="flex justify-end">
+                <button
+                  tas-raised-button
+                  color="primary"
+                  type="button"
+                  [disabled]="requestForm().invalid() || requestForm().submitting()"
+                  [isLoading]="requestForm().submitting()"
+                  (click)="submitRequest()"
+                >
+                  Enregistrer la demande
+                </button>
+              </div>
+            </form>
+          </div>
+        }
+
+        @if (operationsError()) {
+          <tas-alert type="error">
+            <p class="text-sm">{{ operationsError() }}</p>
+            <button tas-outlined-button color="primary" type="button" class="mt-2" (click)="loadOperations()">
+              Réessayer
+            </button>
+          </tas-alert>
+        } @else if (!operationsLoading() && operationRows().length === 0) {
+          <p class="rounded-lg border border-dashed border-slate-200 p-4 text-center text-xs text-slate-500">
+            Aucune demande sur ce contrat.
+          </p>
+        } @else {
+          <tas-table [data]="operationRows()" identifierField="id" [isLoading]="operationsLoading()" [hasCaption]="false">
+            <ng-template #header>
+              <tr>
+                <th>Demande</th>
+                <th>Statut</th>
+                <th class="text-right">Montant</th>
+              </tr>
+            </ng-template>
+            <ng-template #body let-row>
+              <tr>
+                <td class="py-3 align-top">
+                  <p class="text-sm font-medium text-slate-800">{{ row.kindLabel }}</p>
+                  <p class="text-xs text-slate-500">Reçue le {{ formatInstant(row.op.requestedAt) }}</p>
+                  @if (payoutLabel(row.op); as payout) {
+                    <p class="mt-1 text-xs text-slate-500">Versement sur {{ payout }}</p>
+                  }
+                  @if (row.op.reason) {
+                    <p class="mt-1 max-w-xs text-xs text-slate-600">{{ row.op.reason }}</p>
+                  }
+                  @if (row.op.refundDueBy) {
+                    <p class="mt-1 text-xs text-slate-600">
+                      Remboursement dû par l'assureur avant le {{ formatDate(row.op.refundDueBy) }}
+                    </p>
+                  }
+                  @if (row.op.refundBlocked) {
+                    <p class="mt-1 max-w-xs text-xs font-medium text-functional-error">{{ refundBlockedMessage }}</p>
+                  }
+                  <!-- Sous la demande et non dans une 4e colonne : le panneau est trop étroit, les
+                       boutons sortaient du cadre. -->
+                  @if (canWrite() && row.nextSteps.length > 0) {
+                    <div class="mt-2 flex flex-wrap gap-x-3 gap-y-1">
+                      @for (step of row.nextSteps; track step.status) {
+                        <button
+                          tas-text-button
+                          [color]="step.status === 'Cancelled' || step.status === 'Refused' ? 'warn' : 'primary'"
+                          type="button"
+                          [disabled]="cancellingId() === row.id"
+                          (click)="moveOperation(row, step)"
+                        >
+                          {{ step.label }}
+                        </button>
+                      }
+                    </div>
+                  }
+                </td>
+                <td class="py-3 align-top">
+                  <tas-tag [severity]="row.statusSeverity">{{ row.statusLabel }}</tas-tag>
+                  @if (row.op.statusChangedAt) {
+                    <p class="mt-1 text-xs text-slate-500">le {{ formatInstant(row.op.statusChangedAt) }}</p>
+                  }
+                  @if (row.op.insurerReference) {
+                    <p class="text-xs text-slate-400">Réf. {{ row.op.insurerReference }}</p>
+                  }
+                </td>
+                <td class="py-3 text-right align-top">
+                  <p class="text-sm text-slate-800 tabular-nums">{{ amountLabel(row.op) }}</p>
+                  @if (row.op.paidOn) {
+                    <p class="text-xs text-slate-500">Payée le {{ formatDate(row.op.paidOn) }}</p>
+                  }
+                </td>
+              </tr>
+            </ng-template>
+          </tas-table>
+        }
+      </section>
+
+      <!-- ——— Documents ——— -->
+      <section class="flex flex-col gap-3">
+        <div class="flex items-center justify-between gap-3">
+          <div>
+            <p class="text-sm font-medium text-slate-800">Documents</p>
+            <p class="text-xs text-slate-500">Les documents de l'assureur, et leur remise au client.</p>
+          </div>
+          @if (canWrite()) {
+            <button tas-outlined-button color="primary" type="button" (click)="toggleUploadForm()">
+              <tas-icon [iconName]="showUploadForm() ? 'feather:x' : 'feather:upload'" style="font-size:14px"></tas-icon>
+              {{ showUploadForm() ? 'Fermer' : 'Déposer un document' }}
+            </button>
+          }
+        </div>
+
+        <tas-alert type="info">
+          <p class="text-xs">
+            L'information annuelle (art. 75) est produite par l'assureur : elle est déposée ici telle
+            qu'il l'a émise, puis remise au client par l'institution.
+          </p>
+        </tas-alert>
+
+        @if (showUploadForm()) {
+          <div class="rounded-lg border border-slate-200 bg-slate-50 p-4">
+            <form [formRoot]="uploadForm" class="flex flex-col gap-4">
+              <tas-form-field>
+                <tas-label>Type de document <span class="text-functional-error">*</span></tas-label>
+                <tas-select
+                  [options]="documentKindOptions"
+                  optionLabel="label"
+                  optionValue="value"
+                  placeholder="Choisissez le type de document"
+                  [formField]="uploadForm.kind"
+                ></tas-select>
+                @if (uploadForm.kind().touched() && uploadForm.kind().invalid()) {
+                  <tas-error>{{ uploadForm.kind().errors()[0].message }}</tas-error>
+                }
+              </tas-form-field>
+
+              <tas-form-field>
+                <tas-label>Titre</tas-label>
+                <input tasInput type="text" placeholder="Ex. Avenant n° 2 — changement de bénéficiaire" [formField]="uploadForm.title" />
+              </tas-form-field>
+
+              <div>
+                <p class="mb-1 text-xs text-slate-500">PDF uniquement, {{ maxSizeMb }} Mo au plus.</p>
+                <tas-file-uploader accept=".pdf,application/pdf" [maxSizeMb]="maxSizeMb" [formField]="uploadForm.file"></tas-file-uploader>
+                @if (uploadForm.file().touched() && uploadForm.file().invalid()) {
+                  <tas-error>{{ uploadForm.file().errors()[0].message }}</tas-error>
+                }
+              </div>
+
+              <div class="flex justify-end">
+                <button
+                  tas-raised-button
+                  color="primary"
+                  type="button"
+                  [disabled]="uploadForm().invalid() || uploadForm().submitting()"
+                  [isLoading]="uploadForm().submitting()"
+                  (click)="submitUpload()"
+                >
+                  Déposer
+                </button>
+              </div>
+            </form>
+          </div>
+        }
+
+        @if (documentsError()) {
+          <tas-alert type="error">
+            <p class="text-sm">{{ documentsError() }}</p>
+            <button tas-outlined-button color="primary" type="button" class="mt-2" (click)="loadDocuments()">
+              Réessayer
+            </button>
+          </tas-alert>
+        } @else if (!documentsLoading() && documentRows().length === 0) {
+          <p class="rounded-lg border border-dashed border-slate-200 p-4 text-center text-xs text-slate-500">
+            Aucun document déposé pour ce contrat.
+          </p>
+        } @else {
+          <tas-table [data]="documentRows()" identifierField="id" [isLoading]="documentsLoading()" [hasCaption]="false">
+            <ng-template #header>
+              <tr>
+                <th>Document</th>
+                <th>Remise au client</th>
+                <th class="text-right"></th>
+              </tr>
+            </ng-template>
+            <ng-template #body let-row>
+              <tr>
+                <td class="py-3 align-top">
+                  <p class="text-sm font-medium text-slate-800">{{ row.doc.title || row.kindLabel }}</p>
+                  <p class="text-xs text-slate-500">
+                    {{ row.kindLabel }} · déposé le {{ formatInstant(row.doc.uploadedAt) }}
+                  </p>
+                  <p class="truncate text-xs text-slate-400" [title]="row.doc.sha256 ?? ''">{{ row.doc.fileName }}</p>
+                </td>
+                <td class="py-3 align-top">
+                  @if (row.sentLabel) {
+                    <tas-tag severity="success">Remis</tas-tag>
+                    <p class="mt-1 text-xs text-slate-500">{{ row.sentLabel }}</p>
+                  } @else {
+                    <tas-tag severity="warning">Pas encore remis</tas-tag>
+                  }
+                </td>
+                <td class="py-3 text-right align-top">
+                  <div class="flex items-center justify-end gap-2">
+                    <button
+                      tas-button
+                      iconButton
+                      type="button"
+                      title="Ouvrir le document"
+                      [disabled]="openingId() === row.id"
+                      [isLoading]="openingId() === row.id"
+                      (click)="openDocument(row)"
+                    >
+                      <tas-icon iconName="feather:external-link" style="font-size:14px"></tas-icon>
+                    </button>
+                    @if (canWrite() && !row.sentLabel) {
+                      <button
+                        tas-text-button
+                        color="primary"
+                        type="button"
+                        TasMenuTrigger
+                        [panel]="channelMenu"
+                        [disabled]="markingId() === row.id"
+                      >
+                        Remis au client
+                        <tas-icon iconName="feather:chevron-down" style="font-size:10px"></tas-icon>
+                      </button>
+                      <ng-template #channelMenu>
+                        <tas-menu>
+                          @for (channel of channelOptions; track channel.value) {
+                            <tas-menu-item>
+                              <button type="button" class="w-full text-left text-slate-700" (click)="markSent(row, channel.value)">
+                                {{ channel.label }}
+                              </button>
+                            </tas-menu-item>
+                          }
+                        </tas-menu>
+                      </ng-template>
+                    }
+                  </div>
+                </td>
+              </tr>
+            </ng-template>
+          </tas-table>
+        }
+      </section>
+    </div>
+  </tas-drawer-content>
+
+  <tas-drawer-action>
+    <button tas-button type="button" (click)="close()">Fermer</button>
+  </tas-drawer-action>
+</tas-side-drawer>

@@ -39,6 +39,12 @@ export interface ConnectionDetailDto {
     updatedAt?: string;
     updatedBy?: string | null;
     version?: number;
+    hasCollectionMandate?: boolean;
+    collectionMandateReference?: string | null;
+    hasCoverNoteMandate?: boolean;
+    coverNoteMandateReference?: string | null;
+    hasCommissionNettingAgreement?: boolean;
+    commissionNettingReference?: string | null;
 }
 export enum ConnectionDetailDtoFamilyEnum {
     CoreBanking = 'CoreBanking',

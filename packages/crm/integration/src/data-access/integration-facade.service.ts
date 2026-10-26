@@ -24,7 +24,11 @@ import {
   PagedResultOfInsuranceProductDto,
   InsuranceProductWriteRequest,
   InsuranceQuoteDto,
+  InsurancePolicyDto,
+  InsuranceSubscriptionDto,
   IntegrationApiService,
+  SubscribeInsurancePolicyRequest,
+  SubscribeInsurancePolicyResult,
   IntegrationCommandDto,
   IntegrationCommandListPage,
   IntegrationReferenceDto,
@@ -349,6 +353,30 @@ export class IntegrationFacadeService {
       .pipe(map((rows) => rows ?? []));
   }
 
+  /** Les polices d'un client, dans le périmètre d'agence de l'appelant. */
+  public listPolicies(crmCustomerId: string): Observable<InsurancePolicyDto[]> {
+    return this._api.listInsurancePolicies(crmCustomerId).pipe(map((rows) => rows ?? []));
+  }
+
+  /** L'attestation, demandée à l'assureur au moment du clic. */
+  public getPolicyCertificate(policyId: string): Observable<Blob> {
+    return this._api.getInsurancePolicyCertificate(policyId) as unknown as Observable<Blob>;
+  }
+
+  /**
+   * Prépare la souscription d'un produit détenu signé : produit de l'assureur, prime, paiement et
+   * consentement. Rien n'est prélevé ni envoyé tant que le produit détenu n'est pas envoyé.
+   */
+  public prepareInsuranceSubscription(
+    request: SubscribeInsurancePolicyRequest,
+  ): Observable<SubscribeInsurancePolicyResult> {
+    return this._api.subscribeInsurancePolicy(request);
+  }
+
+  public getInsuranceSubscription(subscriptionId: string): Observable<InsuranceSubscriptionDto> {
+    return this._api.getInsuranceSubscription(subscriptionId);
+  }
+
   public getClaim(claimId: string): Observable<ClaimDto> {
     return this._api.getInsuranceClaim(claimId);
   }
@@ -505,6 +533,30 @@ export function defaultConnectionSettings(): ConnectionSettingsDefaults {
  * métier documentés par le contrat sont traduits ; le reste retombe sur `errors` puis
  * `title` de `ProblemDetails`.
  */
+/** Les motifs d'inéligibilité renvoyés par le serveur, en clair. */
+function eligibilityReasonLabel(reason: string): string {
+  switch (reason) {
+    case 'AGE_BELOW_MINIMUM':
+      return "âge inférieur au minimum du produit";
+    case 'AGE_ABOVE_MAXIMUM':
+      return "âge supérieur au maximum du produit";
+    case 'AGE_UNKNOWN':
+      return 'date de naissance non renseignée';
+    case 'KYC_LEVEL_INSUFFICIENT':
+      return 'niveau KYC insuffisant';
+    case 'KYC_LEVEL_UNKNOWN':
+      return 'niveau KYC inconnu';
+    case 'NO_CBS_ACCOUNT':
+    case 'CBS_ACCOUNT_UNKNOWN':
+      return 'le produit exige un compte au système bancaire, débité pour la prime';
+    case 'NO_ACTIVE_LOAN':
+    case 'ACTIVE_LOAN_UNKNOWN':
+      return 'le produit exige un prêt en cours';
+    default:
+      return reason;
+  }
+}
+
 export function integrationErrorMessage(error: HttpErrorResponse, fallback: string): string {
   const body = error?.error as
     | { code?: string; error?: string; title?: string; detail?: string; errors?: Record<string, string[]> }
@@ -519,7 +571,62 @@ export function integrationErrorMessage(error: HttpErrorResponse, fallback: stri
       : 'Le sinistre est postérieur à la fin de la couverture : ce contrat ne le couvre plus.';
   }
 
+  if (code?.startsWith('INSURANCE_NOT_ELIGIBLE')) {
+    const reasons = code.split(':')[1]?.split(',').filter(Boolean) ?? [];
+    return `Le client ne remplit pas les conditions du produit : ${reasons.map(eligibilityReasonLabel).join(' ; ')}.`;
+  }
+  if (code?.startsWith('INSURANCE_QUESTIONNAIRES_INCOMPLETE')) {
+    const missing = code.split(':')[1] ?? '';
+    return `${missing ? missing + ' questionnaire(s)' : 'Des questionnaires'} du projet ne sont pas remplis : complétez-les sur le projet avant de souscrire.`;
+  }
+  if (code?.startsWith('INSURANCE_DISTRIBUTOR_NOT_IN_GOOD_STANDING')) {
+    return "Les pièces de distribution de l'institution (agrément, garantie financière, RC professionnelle) sont absentes ou échues : les nouvelles souscriptions sont refusées jusqu'à leur renouvellement (Paramétrage › Distribution d'assurance).";
+  }
+  // Le code arrive suivi d'un détail technique en anglais (« : No Product mapping for CRM code … »),
+  // qui s'affichait tel quel à l'agent.
+  if (code?.startsWith('INTEGRATION_MAPPING_MISSING') || body?.detail?.startsWith('INTEGRATION_MAPPING_MISSING')) {
+    return "Ce produit n'est pas encore relié au catalogue de l'assureur : un administrateur doit ajouter sa correspondance « Produit » (Paramétrage › Intégrations › Correspondances).";
+  }
+  if (code?.startsWith('INSURANCE_PAYMENT_INVALID')) {
+    return 'Le paiement de la prime est incomplet : mode, référence et date sont nécessaires.';
+  }
+
   switch (code) {
+    case 'INSURANCE_PAYER_NOT_FOUND':
+      return "Le payeur choisi n'est pas un client de l'institution.";
+    case 'INSURANCE_PAYER_KYC_NOT_APPROVED':
+      return "Le KYC du payeur n'est pas approuvé : il ne peut pas payer la prime d'un tiers (LBC/FT).";
+    case 'INSURANCE_NO_COLLECTION_MANDATE':
+      return "Cet assureur n'a pas donné de mandat d'encaissement : la prime ne peut être ni prélevée ni encaissée ici. Choisissez « Encaissée par l'assureur ».";
+    case 'INSURANCE_INFORMATION_SHEET_NOT_DELIVERED':
+    case 'HOLDING_INFORMATION_SHEET_NOT_DELIVERED':
+      return "La fiche d'information du produit doit être remise au client avant sa signature.";
+    case 'INSURANCE_INFORMATION_SHEET_MISSING':
+      return "Aucune fiche d'information n'a été déposée pour ce produit : un administrateur doit la déposer.";
+    case 'INSURANCE_DEROGATION_NOT_ALLOWED':
+      return 'Le paiement sous 60 jours est réservé aux primes de plus de 80 fois le SMIG annuel.';
+    case 'INSURANCE_PREMIUM_NOT_OUTSTANDING':
+      return "Aucune prime n'est due sur cette souscription.";
+    case 'DISTRIBUTION_CREDENTIAL_REQUIRED':
+      return "Votre carte professionnelle d'intermédiaire d'assurance est absente ou échue : vous ne pouvez pas présenter ce contrat.";
+    case 'DESIGNATION_REQUIRED_ROLE_MISSING':
+      return 'La clause bénéficiaire du contrat est incomplète : complétez-la depuis la fiche client.';
+    case 'INSURANCE_HOLDING_NOT_FOUND':
+      return "Ce contrat n'existe pas, ou n'est pas dans votre périmètre.";
+    case 'INSURANCE_HOLDING_NOT_SIGNED':
+      return "Le contrat doit être signé par le client et pas encore envoyé : enregistrez la signature depuis la fiche client.";
+    case 'INSURANCE_PRODUCT_NOT_FOR_HOLDING':
+      return "Ce produit de l'assureur ne correspond pas au produit du contrat.";
+    case 'INSURANCE_EFFECTIVE_DATE_REQUIRED':
+      return "Le contrat n'a pas de date d'effet : renseignez-la dans ses termes avant de souscrire.";
+    case 'INSURANCE_PAYMENT_CBS_UNAVAILABLE':
+      return "Aucune connexion au système bancaire n'est active : la prime ne peut pas être prélevée. Enregistrez une prime encaissée.";
+    case 'INSURANCE_PAYMENT_DATE_IN_FUTURE':
+      return "La date d'encaissement ne peut pas être dans le futur.";
+    case 'INSURANCE_SUBSCRIPTION_IN_FLIGHT':
+      return 'Un autre contrat de ce client souscrit déjà ce produit à cette date.';
+    case 'INSURANCE_PREMIUM_UNKNOWN':
+      return "La prime n'est pas connue : demandez le tarif à l'assureur.";
     case 'INSURANCE_POLICY_NOT_FOUND':
       return "Ce contrat d'assurance n'existe pas, ou plus.";
     case 'INSURANCE_LOSS_IN_THE_FUTURE':

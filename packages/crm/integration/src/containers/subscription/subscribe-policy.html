@@ -1,5 +1,5 @@
 <div class="flex flex-col gap-4">
-  <!-- ——— En-tête et indicateur d'étapes ——— -->
+  <!-- ——— En-tête et étapes ——— -->
   <tas-card class="block">
     <div class="flex flex-wrap items-start justify-between gap-3 p-4">
       <div class="min-w-0">
@@ -15,201 +15,151 @@
           </p>
         }
       </div>
-      <div class="flex items-center gap-2">
-        <button tas-text-button color="primary" type="button" (click)="saveDraft()">
-          Enregistrer le brouillon
-        </button>
-        <button tas-outlined-button color="warn" type="button" (click)="abandon()">
-          Abandonner
-        </button>
-      </div>
+      <button tas-outlined-button color="primary" type="button" (click)="backToClient()">Retour à la fiche client</button>
     </div>
 
-    <!--
-      La numérotation 1 / 2 / 3 est ici justifiée : le contenu EST une séquence, et
-      l'agent annonce au client où il en est.
-    -->
+    <!-- La numérotation est justifiée : l'ordre EST la règle (fiche avant signature, prime avant vigueur). -->
     <ol class="flex flex-wrap items-center gap-2 border-t border-slate-100 p-4">
       @for (step of steps; track step.index) {
         <li class="flex items-center gap-2">
           <button
             type="button"
             class="flex items-center gap-2 rounded-lg px-2 py-1 text-sm transition-colors"
-            [class]="
-              currentStep() === step.index
-                ? 'text-primary font-medium'
-                : 'text-slate-500 hover:text-slate-700'
-            "
+            [class]="currentStep() === step.index ? 'text-primary font-medium' : 'text-slate-500 hover:text-slate-700'"
             (click)="goToStep(step.index)"
           >
             <span
               class="flex h-6 w-6 items-center justify-center rounded-full border text-xs tabular-nums"
-              [class]="
-                currentStep() === step.index
-                  ? 'border-primary text-primary'
-                  : 'border-slate-300 text-slate-500'
-              "
-            >
-              {{ step.index }}
-            </span>
+              [class]="currentStep() === step.index ? 'border-primary text-primary' : 'border-slate-300 text-slate-500'"
+            >{{ step.index }}</span>
             {{ step.label }}
           </button>
-          @if (step.index < 3) {
-            <tas-icon
-              iconName="feather:chevron-right"
-              class="text-slate-300"
-              style="font-size:14px"
-            ></tas-icon>
+          @if (step.index < 5) {
+            <tas-icon iconName="feather:chevron-right" class="text-slate-300" style="font-size:14px"></tas-icon>
           }
         </li>
       }
     </ol>
   </tas-card>
 
-  <!-- ——— Reprise d'un brouillon ——— -->
-  @if (draftOffer()) {
-    <tas-alert type="info">
-      <div class="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <p class="text-sm">
-            Un brouillon du {{ draftOfferLabel() }} est disponible pour ce client. Le reprendre ?
-          </p>
-          <p class="mt-1 text-xs">
-            Les réponses au questionnaire ne sont jamais conservées dans un brouillon : elles
-            devront être resaisies.
-          </p>
-        </div>
-        <div class="flex items-center gap-2">
-          <button tas-outlined-button color="primary" type="button" (click)="dismissDraft()">
-            Ignorer
-          </button>
-          <button tas-raised-button color="primary" type="button" (click)="resumeDraft()">
-            Reprendre le brouillon
-          </button>
-        </div>
-      </div>
-    </tas-alert>
-  }
-
-  @if (clientError()) {
+  @if (distributorBlocked()) {
     <tas-alert type="error">
-      <p class="text-sm">{{ clientError() }}</p>
+      <p class="text-sm font-medium">Les nouvelles souscriptions sont suspendues pour l'institution</p>
+      <p class="mt-1 text-sm">
+        @for (problem of distributorProblems(); track problem; let last = $last) {
+          {{ problem }}{{ last ? '.' : ' ; ' }}
+        }
+        Un administrateur les renouvelle dans Paramétrage › Distribution d'assurance.
+      </p>
     </tas-alert>
   }
 
-  <!-- ——— Étape 1 — choix du produit ——— -->
+  @if (stepError()) {
+    <tas-alert type="error"><p class="text-sm">{{ stepError() }}</p></tas-alert>
+  }
+
+  <!-- ——— 1. Contrat ——— -->
   @if (currentStep() === 1) {
-    @if (productsForbidden()) {
+    @if (holdingsError()) {
+      <tas-alert type="error"><p class="text-sm">{{ holdingsError() }}</p></tas-alert>
+    } @else if (!isLoadingHoldings() && holdingRows().length === 0) {
       <tas-alert type="info">
-        <p class="text-sm font-medium">Catalogue des produits inaccessible</p>
+        <p class="text-sm font-medium">Aucun contrat d'assurance en préparation pour ce client</p>
         <p class="mt-1 text-sm">
-          La lecture du catalogue d'assurance demande le droit de gestion des produits, que
-          votre profil ne porte pas. Demandez-le à votre administrateur pour pouvoir souscrire
-          depuis cet écran.
+          Le contrat se crée depuis la fiche client, onglet Produits › Souscrire (produit, termes, bénéficiaires), ou
+          s'ouvre quand un projet est gagné. Revenez ensuite ici pour l'assureur, la fiche d'information, la signature
+          et le paiement.
         </p>
-      </tas-alert>
-    } @else if (productsError()) {
-      <tas-alert type="error">
-        <p class="text-sm">{{ productsError() }}</p>
-      </tas-alert>
-    } @else if (!isLoadingProducts() && productRows().length === 0) {
-      <tas-alert type="info">
-        <p class="text-sm font-medium">Aucun produit au catalogue</p>
-        <p class="mt-1 text-sm">
-          Aucun produit d'assurance actif n'est déclaré pour votre institution. Un
-          administrateur les ajoute depuis le paramétrage des produits d'assurance.
-        </p>
+        <button tas-raised-button color="primary" type="button" class="mt-3" (click)="backToClient()">Ouvrir les produits du client</button>
       </tas-alert>
     } @else {
-      <div class="flex items-center justify-between gap-3">
-        <p class="text-sm text-slate-600">
-          {{ offerableCount() }} produit(s) proposable(s) sur {{ productRows().length }}. Les
-          produits non proposables restent affichés, avec le motif.
-        </p>
-      </div>
-
-      <!--
-        Rendu « carte dans un tableau » : un <tr> d'une seule cellule et pas de #header.
-        La règle du dépôt est que toute collection venue du serveur passe par tas-table,
-        même quand le rendu voulu ressemble à des cartes.
-      -->
-      <tas-table
-        [data]="productRows()"
-        identifierField="id"
-        [config]="productTableConfig()"
-        [isLoading]="isLoadingProducts()"
-        [hasCaption]="false"
-      >
+      <!-- Rendu « carte dans un tableau » : toute collection venue du serveur passe par tas-table. -->
+      <tas-table [data]="holdingRows()" identifierField="id" [config]="holdingTableConfig()" [isLoading]="isLoadingHoldings()" [hasCaption]="false">
         <ng-template #body let-row>
           <tr>
-            <td [attr.colspan]="1" class="p-0">
+            <td class="p-0">
               <div
                 class="m-2 rounded-lg border p-4 transition-colors"
-                [class]="
-                  selectedProductId() === row.id
-                    ? 'border-primary bg-primary/5'
-                    : row.isOfferable
-                      ? 'border-slate-200 hover:border-slate-300'
-                      : 'border-slate-200 bg-slate-50'
-                "
+                [class]="selectedHoldingId() === row.id ? 'border-primary bg-primary/5' : row.ready ? 'border-slate-200 hover:border-slate-300' : 'border-slate-200 bg-slate-50'"
               >
                 <div class="flex flex-wrap items-start justify-between gap-3">
                   <div class="min-w-0">
-                    <p class="text-sm font-semibold text-slate-800">
-                      {{ row.product.name || 'Produit sans nom' }}
+                    <p class="text-sm font-semibold text-slate-800">{{ row.holding.productCode }}</p>
+                    <p class="mt-0.5 text-xs text-slate-500">
+                      Effet au {{ formatDate(row.holding.specifics?.effectiveFrom) }}
+                      @if (row.holding.specifics?.insuredCapital) {
+                        · capital {{ formatAmountLabel(row.holding.specifics?.insuredCapital, row.holding.specifics?.currency) }}
+                      }
+                      · {{ row.holding.designations?.length ?? 0 }} bénéficiaire(s)
                     </p>
+                    <p class="mt-1 text-xs text-slate-500">{{ row.hint }}</p>
+                  </div>
+                  @if (row.ready) {
+                    <button tas-raised-button color="primary" type="button" (click)="selectHolding(row)">
+                      {{ selectedHoldingId() === row.id ? 'Contrat retenu' : 'Choisir ce contrat' }}
+                    </button>
+                  } @else {
+                    <tas-tag severity="warning">À reprendre</tas-tag>
+                  }
+                </div>
+              </div>
+            </td>
+          </tr>
+        </ng-template>
+      </tas-table>
+    }
+    <div class="flex justify-end">
+      <button tas-raised-button color="primary" type="button" [disabled]="!isStep1Complete()" (click)="goToStep(2)">Choisir l'assureur</button>
+    </div>
+  }
+
+  <!-- ——— 2. Produit de l'assureur ——— -->
+  @if (currentStep() === 2) {
+    @if (productsForbidden()) {
+      <tas-alert type="info"><p class="text-sm">La lecture du catalogue d'assurance demande un droit que votre profil ne porte pas.</p></tas-alert>
+    } @else if (productsError()) {
+      <tas-alert type="error"><p class="text-sm">{{ productsError() }}</p></tas-alert>
+    } @else if (!isLoadingProducts() && productRows().length === 0) {
+      <tas-alert type="info">
+        <p class="text-sm font-medium">Aucun assureur pour ce produit</p>
+        <p class="mt-1 text-sm">
+          Aucun produit d'assureur n'est rattaché au produit « {{ selectedHolding()?.productCode }} » (paramétrage des
+          produits d'assurance, champ « Produit du catalogue »).
+        </p>
+      </tas-alert>
+    } @else {
+      <tas-table [data]="productRows()" identifierField="id" [config]="productTableConfig()" [isLoading]="isLoadingProducts()" [hasCaption]="false">
+        <ng-template #body let-row>
+          <tr>
+            <td class="p-0">
+              <div
+                class="m-2 rounded-lg border p-4 transition-colors"
+                [class]="selectedProductId() === row.id ? 'border-primary bg-primary/5' : row.isOfferable ? 'border-slate-200 hover:border-slate-300' : 'border-slate-200 bg-slate-50'"
+              >
+                <div class="flex flex-wrap items-start justify-between gap-3">
+                  <div class="min-w-0">
+                    <p class="text-sm font-semibold text-slate-800">{{ row.product.name || 'Produit sans nom' }}</p>
                     <p class="mt-0.5 text-xs text-slate-500">
                       {{ row.product.connectionName || 'Assureur inconnu' }}
+                      · {{ row.product.insurerCollectionMandate ? "mandat d'encaissement" : "encaissement par l'assureur" }}
                     </p>
-                    @if (row.product.insurerProductCode) {
-                      <p class="mt-1 font-mono text-xs text-slate-400">
-                        {{ row.product.insurerProductCode }}
-                      </p>
-                    }
                   </div>
-
                   <div class="text-right">
-                    <p class="text-sm font-semibold text-slate-800 tabular-nums">
-                      {{ priceOf(row.product) }}
-                    </p>
+                    <p class="text-sm font-semibold text-slate-800 tabular-nums">{{ priceOf(row.product) }}</p>
                     <p class="mt-0.5 text-xs text-slate-500">{{ periodicityOf(row.product) }}</p>
                   </div>
                 </div>
-
-                @if (row.product.description) {
-                  <p class="mt-2 text-sm text-slate-600">{{ row.product.description }}</p>
-                }
-
                 @if (row.isOfferable) {
-                  <div class="mt-3 flex items-center gap-2">
-                    <button
-                      tas-raised-button
-                      color="primary"
-                      type="button"
-                      (click)="selectProduct(row)"
-                    >
-                      @if (selectedProductId() === row.id) {
-                        Produit retenu
-                      } @else {
-                        Choisir ce produit
-                      }
-                    </button>
-                    @if (selectedProductId() === row.id) {
-                      <tas-icon
-                        iconName="feather:check"
-                        class="text-functional-success"
-                        style="font-size:16px"
-                      ></tas-icon>
-                    }
-                  </div>
+                  <button tas-raised-button color="primary" type="button" class="mt-3" (click)="selectProduct(row)">
+                    {{ selectedProductId() === row.id ? 'Produit retenu' : 'Choisir ce produit' }}
+                  </button>
                 } @else {
                   <div class="mt-3">
                     <tas-tag severity="warning">Non proposable</tas-tag>
                     <ul class="mt-2 list-disc pl-5 text-sm text-slate-600">
                       @for (reason of row.reasonLabels; track reason) {
                         <li>{{ reason }}</li>
-                      }
-                      @if (row.reasonLabels.length === 0) {
+                      } @empty {
                         <li>Le serveur n'a pas précisé de motif.</li>
                       }
                     </ul>
@@ -220,263 +170,147 @@
           </tr>
         </ng-template>
       </tas-table>
-
       @if (selectedProduct()) {
-        <div class="flex flex-col gap-2">
-          <p class="text-sm font-medium text-slate-700">Ce que couvre ce produit</p>
-          <p class="text-xs text-slate-500">
-            Les conditions d'éligibilité (âge, niveau KYC, compte ou prêt exigé) sont à
-            vérifier avec le client : le serveur ne les évalue pas encore pour lui.
-          </p>
-          <insurance-product-preview [product]="selectedProduct()!"></insurance-product-preview>
-        </div>
+        <insurance-product-preview [product]="selectedProduct()!"></insurance-product-preview>
       }
     }
+    <div class="flex items-center justify-between">
+      <button tas-outlined-button color="primary" type="button" (click)="goToStep(1)">Revenir au contrat</button>
+      <button tas-raised-button color="primary" type="button" [disabled]="!isStep2Complete()" (click)="goToStep(3)">Remettre la fiche d'information</button>
+    </div>
+  }
 
-    <div class="flex justify-end">
-      <button
-        tas-raised-button
-        color="primary"
-        type="button"
-        [disabled]="!isStep1Complete()"
-        (click)="goToStep(2)"
-      >
-        Renseigner le contrat
+  <!-- ——— 3. Fiche d'information ——— -->
+  @if (currentStep() === 3) {
+    <tas-card class="block">
+      <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 p-4">
+        <div>
+          <p class="text-sm font-medium text-slate-700">Fiche d'information de l'assureur</p>
+          <p class="mt-0.5 text-xs text-slate-500">
+            {{ selectedProduct()?.name }} · version {{ selectedProduct()?.informationSheetVersion }}. Prix, garanties et
+            exclusions : c'est le document de l'assureur qui fait foi.
+          </p>
+        </div>
+        <button tas-outlined-button color="primary" type="button" [isLoading]="isOpeningSheet()" (click)="openSheet()">
+          <tas-icon iconName="feather:file-text" style="font-size:14px"></tas-icon>
+          Ouvrir la fiche (PDF)
+        </button>
+      </div>
+      @if (exclusions().length) {
+        <div class="border-b border-slate-100 p-4">
+          <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Exclusions à lire avec le client</p>
+          <ul class="mt-2 list-disc pl-5 text-sm text-slate-700">
+            @for (line of exclusions(); track $index) {
+              <li>{{ line }}</li>
+            }
+          </ul>
+        </div>
+      }
+
+      @if (delivery() && !signedBeforeSheet()) {
+        <div class="flex items-center gap-3 p-4">
+          <tas-icon iconName="feather:check-circle" class="text-functional-success" style="font-size:18px"></tas-icon>
+          <p class="text-sm text-slate-700">
+            Remise le {{ formatDate(delivery()?.deliveredAt) }} ({{ delivery()?.deliveredAt | dateTimeAgo }}),
+            {{ channelLabel(delivery()?.channel) }}, version {{ delivery()?.sheetVersion }} · accusé
+            <span class="font-mono text-xs">{{ delivery()?.acknowledgementReference }}</span>
+          </p>
+        </div>
+      } @else if (signedBeforeSheet()) {
+        <div class="p-4">
+          <tas-alert type="info">
+            <p class="text-sm font-medium">Le contrat a été signé avant la remise de la fiche</p>
+            <p class="mt-1 text-sm">
+              La fiche doit précéder la signature. Annulez la signature, remettez la fiche, puis faites signer à nouveau.
+            </p>
+            <button tas-outlined-button color="primary" type="button" class="mt-2" [disabled]="busy()" (click)="cancelSignature()">
+              Annuler la signature
+            </button>
+          </tas-alert>
+        </div>
+      }
+
+      @if (!delivery() || signedBeforeSheet()) {
+        @if (!signedBeforeSheet()) {
+          <form [formRoot]="deliveryForm" class="grid grid-cols-1 gap-4 p-4 sm:grid-cols-2">
+            <tas-form-field>
+              <tas-label>Remise par</tas-label>
+              <tas-select [options]="deliveryChannelOptions" [formField]="deliveryForm.channel"></tas-select>
+            </tas-form-field>
+            <tas-form-field>
+              <tas-label>Accusé de réception du client <span class="text-functional-error">*</span></tas-label>
+              <input tasInput type="text" placeholder="N° du reçu signé, référence de l'e-mail…" [formField]="deliveryForm.acknowledgementReference" />
+              @if (deliveryForm.acknowledgementReference().touched() && deliveryForm.acknowledgementReference().invalid()) {
+                <tas-error>{{ deliveryForm.acknowledgementReference().errors()[0].message }}</tas-error>
+              } @else {
+                <tas-hint>La version et son empreinte sont enregistrées avec la remise.</tas-hint>
+              }
+            </tas-form-field>
+            <div class="sm:col-span-2 flex justify-end">
+              <button tas-raised-button color="primary" type="button" [disabled]="busy() || deliveryForm().invalid()" [isLoading]="busy()" (click)="recordDelivery()">
+                Enregistrer la remise
+              </button>
+            </div>
+          </form>
+        }
+      }
+    </tas-card>
+    <div class="flex items-center justify-between">
+      <button tas-outlined-button color="primary" type="button" (click)="goToStep(2)">Revenir au produit</button>
+      <button tas-raised-button color="primary" type="button" [disabled]="!isStep3Complete()" (click)="goToStep(isSigned() ? 5 : 4)">
+        {{ isSigned() ? 'Paiement et envoi' : 'Faire signer' }}
       </button>
     </div>
   }
 
-  <!-- ——— Étape 2 — informations du contrat ——— -->
-  @if (currentStep() === 2) {
-    <form [formRoot]="formSchema" class="flex flex-col gap-4">
-      <tas-card class="block">
-        <div class="flex items-center gap-2 border-b border-slate-200 p-4">
-          <tas-icon
-            iconName="feather:user-check"
-            style="font-size:16px"
-            class="text-primary"
-          ></tas-icon>
-          <p class="text-sm font-medium text-slate-700">Identité de l'assuré</p>
-        </div>
-        <div class="p-4">
-          <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
-            <div>
-              <p class="text-xs text-slate-400">Nom</p>
-              <p class="text-sm text-slate-800">{{ clientDisplayName() }}</p>
-            </div>
-            <div>
-              <p class="text-xs text-slate-400">Identifiant client</p>
-              <p class="font-mono text-xs text-slate-700">
-                {{ client()?.clientNumber || '—' }}
-              </p>
-            </div>
-            <div>
-              <p class="text-xs text-slate-400">Dossier KYC</p>
-              <p class="text-sm text-slate-800">{{ client()?.kycStatus || '—' }}</p>
-            </div>
-          </div>
-          <p class="mt-3 text-xs text-slate-500">
-            Ces informations viennent du dossier KYC et ne sont pas modifiables ici. Une
-            correction se fait depuis la fiche du client.
-          </p>
-        </div>
-      </tas-card>
-
-      <tas-card class="block">
-        <div class="flex items-center gap-2 border-b border-slate-200 p-4">
-          <tas-icon
-            iconName="feather:calendar"
-            style="font-size:16px"
-            class="text-primary"
-          ></tas-icon>
-          <p class="text-sm font-medium text-slate-700">Date d'effet et montant assuré</p>
-        </div>
-        <div class="grid grid-cols-1 gap-4 p-4 sm:grid-cols-2">
-          <div>
-            <tas-date-picker mode="date" [formField]="formSchema.effectiveFrom">
-              Date d'effet <span class="text-functional-error">*</span>
-            </tas-date-picker>
-            @if (formSchema.effectiveFrom().touched() && formSchema.effectiveFrom().invalid()) {
-              <tas-error>{{ formSchema.effectiveFrom().errors()[0].message }}</tas-error>
-            } @else {
-              <tas-hint>
-                @if (selectedProduct()?.effectiveTo) {
-                  Ce produit est en vigueur du
-                  {{ formatDate(selectedProduct()?.effectiveFrom) }} au
-                  {{ formatDate(selectedProduct()?.effectiveTo) }}.
-                } @else {
-                  Ce produit est en vigueur depuis le
-                  {{ formatDate(selectedProduct()?.effectiveFrom) }}.
-                }
-              </tas-hint>
-            }
-          </div>
-
-          <tas-form-field>
-            <tas-label>Montant assuré</tas-label>
-            <input tasInput type="number" placeholder="ex: 2 000 000" [formField]="formSchema.insuredAmount" />
-            @if (formSchema.insuredAmount().touched() && formSchema.insuredAmount().invalid()) {
-              <tas-error>{{ formSchema.insuredAmount().errors()[0].message }}</tas-error>
-            } @else {
-              <tas-hint>
-                Repris du catalogue quand le produit en fixe un. Il sert au calcul du tarif de
-                l'assureur.
-              </tas-hint>
-            }
-          </tas-form-field>
-        </div>
-      </tas-card>
-
-      <tas-card class="block">
-        <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 p-4">
-          <div class="flex items-center gap-2">
-            <tas-icon
-              iconName="feather:users"
-              style="font-size:16px"
-              class="text-primary"
-            ></tas-icon>
-            <p class="text-sm font-medium text-slate-700">Bénéficiaires</p>
-            <span class="text-xs text-slate-500 tabular-nums">
-              ({{ formSchema.beneficiaries().value().length }})
-            </span>
-          </div>
-          <button tas-outlined-button color="primary" type="button" (click)="addBeneficiary()">
-            <tas-icon iconName="feather:plus" style="font-size:14px"></tas-icon>
-            Ajouter un bénéficiaire
-          </button>
-        </div>
-
-        <!--
-          Éditeur de collection dynamique, et non un tas-table : l'édition en place est
-          ici le sujet même du bloc. C'est l'une des deux exceptions prévues à la règle
-          « toute liste passe par tas-table » — ce n'est pas un oubli.
-        -->
-        <div class="p-4">
-          @if (formSchema.beneficiaries().value().length === 0) {
-            <p class="text-sm text-slate-500">
-              Aucun bénéficiaire désigné. Ajoutez-en un si le produit le demande ; la somme
-              des parts devra faire 100 %.
-            </p>
-          } @else {
-            <div class="flex flex-col gap-3">
-              @for (beneficiary of formSchema.beneficiaries; track $index) {
-                <div class="rounded-lg border border-slate-200 p-3">
-                  <div class="grid grid-cols-1 gap-3 sm:grid-cols-4">
-                    <tas-form-field>
-                      <tas-label>Nom <span class="text-functional-error">*</span></tas-label>
-                      <input tasInput type="text" [formField]="beneficiary.fullName" />
-                      @if (beneficiary.fullName().touched() && beneficiary.fullName().invalid()) {
-                        <tas-error>{{ beneficiary.fullName().errors()[0].message }}</tas-error>
-                      }
-                    </tas-form-field>
-
-                    <tas-form-field>
-                      <tas-label>
-                        Lien avec le client <span class="text-functional-error">*</span>
-                      </tas-label>
-                      <input
-                        tasInput
-                        type="text"
-                        placeholder="ex: conjoint, enfant"
-                        [formField]="beneficiary.relationship"
-                      />
-                      @if (
-                        beneficiary.relationship().touched() &&
-                        beneficiary.relationship().invalid()
-                      ) {
-                        <tas-error>{{ beneficiary.relationship().errors()[0].message }}</tas-error>
-                      }
-                    </tas-form-field>
-
-                    <tas-form-field>
-                      <tas-label>Part (%) <span class="text-functional-error">*</span></tas-label>
-                      <input tasInput type="number" [formField]="beneficiary.sharePercent" />
-                      @if (
-                        beneficiary.sharePercent().touched() &&
-                        beneficiary.sharePercent().invalid()
-                      ) {
-                        <tas-error>{{ beneficiary.sharePercent().errors()[0].message }}</tas-error>
-                      }
-                    </tas-form-field>
-
-                    <tas-date-picker mode="date" [formField]="beneficiary.birthDate">Date de naissance</tas-date-picker>
-                  </div>
-
-                  <div class="mt-2 flex justify-end">
-                    <button
-                      tas-text-button
-                      color="warn"
-                      type="button"
-                      (click)="removeBeneficiary($index)"
-                    >
-                      Retirer ce bénéficiaire
-                    </button>
-                  </div>
-                </div>
-              }
-            </div>
-
-            @if (formSchema.beneficiaries().errors().length) {
-              <p class="mt-3 text-sm text-functional-error">
-                {{ formSchema.beneficiaries().errors()[0].message }}
-              </p>
-            }
+  <!-- ——— 4. Signature ——— -->
+  @if (currentStep() === 4) {
+    <tas-card class="block">
+      @if (distributor()?.legalMention) {
+        <!-- Art. 540 : la mention du distributeur figure sur ce que le client signe. -->
+        <div class="border-b border-slate-100 bg-slate-50 p-4 text-xs leading-relaxed text-slate-600">
+          {{ distributor()?.legalMention }}
+          @if (distributor()?.registrationNumber) {
+            <span class="font-mono"> · {{ distributor()?.registrationNumber }}</span>
           }
         </div>
-      </tas-card>
-
-      <tas-card class="block">
-        <div class="flex items-center gap-2 border-b border-slate-200 p-4">
-          <tas-icon
-            iconName="feather:clipboard"
-            style="font-size:16px"
-            class="text-primary"
-          ></tas-icon>
-          <p class="text-sm font-medium text-slate-700">Questionnaire du produit</p>
+      }
+      @if (isSigned()) {
+        <div class="flex items-center gap-3 p-4">
+          <tas-icon iconName="feather:check-circle" class="text-functional-success" style="font-size:18px"></tas-icon>
+          <p class="text-sm text-slate-700">Signé {{ selectedHolding()?.signedAt | dateTimeAgo }}.</p>
         </div>
-        <div class="p-4">
+      } @else {
+        <form [formRoot]="signatureForm" class="flex flex-col gap-4 p-4">
           <p class="text-sm text-slate-600">
-            Ce produit ne requiert pas de questionnaire : aucune question n'est rattachée aux
-            produits d'assurance côté serveur. Si l'assureur en exige un, il reste à remplir
-            sur son propre support en attendant.
+            Le client signe le bulletin de souscription après avoir reçu la fiche d'information. Reportez la référence du
+            bulletin signé.
           </p>
-        </div>
-      </tas-card>
-    </form>
-
+          <tas-form-field class="max-w-md">
+            <tas-label>Référence du bulletin signé <span class="text-functional-error">*</span></tas-label>
+            <input tasInput type="text" [formField]="signatureForm.signatureReference" />
+            @if (signatureForm.signatureReference().touched() && signatureForm.signatureReference().invalid()) {
+              <tas-error>{{ signatureForm.signatureReference().errors()[0].message }}</tas-error>
+            }
+          </tas-form-field>
+          <div class="flex justify-end">
+            <button tas-raised-button color="primary" type="button" [disabled]="busy() || signatureForm().invalid()" [isLoading]="busy()" (click)="sign()">
+              Enregistrer la signature
+            </button>
+          </div>
+        </form>
+      }
+    </tas-card>
     <div class="flex items-center justify-between">
-      <button tas-outlined-button color="primary" type="button" (click)="goToStep(1)">
-        Revenir au produit
-      </button>
-      <button
-        tas-raised-button
-        color="primary"
-        type="button"
-        [disabled]="!isStep2Complete()"
-        (click)="goToStep(3)"
-      >
-        Voir le récapitulatif
-      </button>
+      <button tas-outlined-button color="primary" type="button" (click)="goToStep(3)">Revenir à la fiche</button>
+      <button tas-raised-button color="primary" type="button" [disabled]="!isStep4Complete()" (click)="goToStep(5)">Paiement et envoi</button>
     </div>
   }
 
-  <!-- ——— Étape 3 — récapitulatif, consentement, signature ——— -->
-  @if (currentStep() === 3) {
+  <!-- ——— 5. Paiement et envoi ——— -->
+  @if (currentStep() === 5) {
     <form [formRoot]="formSchema" class="flex flex-col gap-4">
-      <!--
-        Ce que le client confirme à voix haute : la prime, sa périodicité et le compte
-        débité. C'est le seul endroit de cet écran où la typographie monte.
-      -->
       <tas-card class="block">
-        <div class="border-b border-slate-200 p-4">
-          <p class="text-sm font-medium text-slate-700">
-            {{ selectedProduct()?.name || 'Produit retenu' }}
-          </p>
-          <p class="mt-0.5 text-xs text-slate-500">
-            {{ selectedProduct()?.connectionName || 'Assureur inconnu' }}
-          </p>
-        </div>
-
         <div class="grid grid-cols-1 gap-6 p-4 sm:grid-cols-3">
           <div>
             <p class="text-xs text-slate-400">Prime</p>
@@ -486,265 +320,259 @@
                 <span class="text-sm text-slate-500">Tarif demandé à l'assureur…</span>
               </div>
             } @else {
-              <p class="mt-1 text-2xl font-semibold text-slate-900 tabular-nums">
-                {{ premiumLabel() }}
-              </p>
-              <p class="mt-1 text-xs text-slate-500">
-                {{ priceSourceLabel() }}
-                @if (quotedAt()) {
-                  · devis du {{ quotedAt() | dateTimeAgo }}
-                }
-              </p>
+              <p class="mt-1 text-2xl font-semibold text-slate-900 tabular-nums">{{ premiumLabel() }}</p>
+              <p class="mt-1 text-xs text-slate-500">{{ priceSourceLabel() }}</p>
             }
           </div>
-
           <div>
             <p class="text-xs text-slate-400">Périodicité</p>
             <p class="mt-1 text-lg font-medium text-slate-800">{{ periodicityLabel() }}</p>
-            <p class="mt-1 text-xs text-slate-500">
-              Date d'effet : {{ formatDate(formSchema.effectiveFrom().value()) }}
-            </p>
           </div>
-
           <div>
-            <p class="text-xs text-slate-400">Compte débité</p>
-            <p class="mt-1 font-mono text-sm text-slate-800">
-              {{ formSchema.debitAccountRef().value() || '—' }}
-            </p>
-            @if (balance()) {
-              <p class="mt-1 text-sm text-slate-700 tabular-nums">
-                Solde disponible : {{ availableBalanceLabel() }}
-              </p>
-              @if (balance()?.isStale) {
-                <!--
-                  « Never show a stale figure as current » : le chiffre est le dernier
-                  synchronisé, pas le solde de maintenant. On le marque, sans bloquer.
-                -->
-                <div class="mt-1 flex items-center gap-2">
-                  <tas-tag severity="warning">Solde non rafraîchi</tas-tag>
-                  <span class="text-xs text-slate-500" [title]="balance()?.asOf">
-                    arrêté {{ balance()?.asOf | dateTimeAgo }}
-                  </span>
-                </div>
-              } @else {
-                <p class="mt-1 text-xs text-slate-400" [title]="balance()?.asOf">
-                  arrêté {{ balance()?.asOf | dateTimeAgo }}
-                </p>
-              }
-            } @else if (balanceUnavailable()) {
-              <p class="mt-1 text-sm text-slate-500">
-                Aucun solde n'est disponible pour ce compte.
-              </p>
-            } @else if (balanceError()) {
-              <p class="mt-1 text-sm text-functional-error">{{ balanceError() }}</p>
-            }
+            <p class="text-xs text-slate-400">Contrat</p>
+            <p class="mt-1 text-sm text-slate-800">Effet au {{ formatDate(selectedHolding()?.specifics?.effectiveFrom) }}</p>
+            <p class="mt-1 text-xs text-slate-500">{{ selectedProduct()?.connectionName }} · signé {{ selectedHolding()?.signedAt | dateTimeAgo }}</p>
           </div>
         </div>
-
         @if (quoteError()) {
-          <div class="border-t border-slate-100 p-4">
-            <tas-alert type="error">
-              <p class="text-sm">{{ quoteError() }}</p>
-            </tas-alert>
-          </div>
+          <div class="border-t border-slate-100 p-4"><tas-alert type="error"><p class="text-sm">{{ quoteError() }}</p></tas-alert></div>
         }
-
-        <div class="grid grid-cols-1 gap-4 border-t border-slate-100 p-4 sm:grid-cols-2">
-          <tas-form-field>
-            <tas-label>
-              Référence du compte à débiter <span class="text-functional-error">*</span>
-            </tas-label>
-            <input
-              tasInput
-              type="text"
-              placeholder="Numéro du compte au système bancaire"
-              [formField]="formSchema.debitAccountRef"
-            />
-            @if (
-              formSchema.debitAccountRef().touched() && formSchema.debitAccountRef().invalid()
-            ) {
-              <tas-error>{{ formSchema.debitAccountRef().errors()[0].message }}</tas-error>
-            } @else {
-              <tas-hint>
-                Le compte sur lequel la prime sera prélevée. La liste des comptes du client
-                n'est pas lisible depuis le CRM : saisissez la référence.
-              </tas-hint>
-            }
-          </tas-form-field>
-
-          <div class="flex items-end">
-            @if (canViewBalance()) {
-              <button
-                tas-outlined-button
-                color="primary"
-                type="button"
-                [disabled]="!formSchema.debitAccountRef().value() || isLoadingBalance()"
-                [isLoading]="isLoadingBalance()"
-                (click)="loadBalance()"
-              >
-                Afficher le solde du compte
-              </button>
-            } @else {
-              <p class="text-xs text-slate-500">
-                L'affichage du solde en direct demande un droit que votre profil ne porte pas.
-              </p>
-            }
-          </div>
-        </div>
       </tas-card>
 
-      <!-- Bénéficiaires, pour relecture avant signature -->
-      @if (formSchema.beneficiaries().value().length) {
-        <tas-card class="block">
-          <div class="flex items-center gap-2 border-b border-slate-200 p-4">
-            <tas-icon
-              iconName="feather:users"
-              style="font-size:16px"
-              class="text-primary"
-            ></tas-icon>
-            <p class="text-sm font-medium text-slate-700">Bénéficiaires désignés</p>
-          </div>
-          <ul class="divide-y divide-slate-100">
-            @for (beneficiary of formSchema.beneficiaries().value(); track $index) {
-              <li class="flex items-center justify-between gap-3 p-4">
-                <div>
-                  <p class="text-sm text-slate-800">{{ beneficiary.fullName }}</p>
-                  <p class="text-xs text-slate-500">{{ beneficiary.relationship }}</p>
-                </div>
-                <p class="text-sm text-slate-700 tabular-nums">{{ beneficiary.sharePercent }} %</p>
-              </li>
-            }
-          </ul>
-        </tas-card>
-      }
-
-      <!-- ——— Mentions obligatoires ——— -->
+      <!-- ——— Paiement de la prime ——— -->
       <tas-card class="block">
         <div class="flex items-center gap-2 border-b border-slate-200 p-4">
-          <tas-icon
-            iconName="feather:file-text"
-            style="font-size:16px"
-            class="text-slate-400"
-          ></tas-icon>
-          <p class="text-sm font-medium text-slate-700">Mentions remises au client</p>
+          <tas-icon iconName="feather:credit-card" style="font-size:16px" class="text-primary"></tas-icon>
+          <p class="text-sm font-medium text-slate-700">Paiement de la prime</p>
         </div>
-        <!--
-          À FAIRE VALIDER PAR LE MÉTIER ET LA CONFORMITÉ. Le contrat ne fournit aucun texte
-          de mentions légales par produit ou par assureur : ce bloc est un texte d'attente,
-          il ne prétend pas être conforme à la réglementation applicable.
-        -->
-        <div class="p-4 text-xs leading-relaxed text-slate-500">
-          <p>
-            Le contrat prend effet à la date indiquée ci-dessus, sous réserve de l'encaissement
-            effectif de la première prime. La prime est prélevée sur le compte désigné selon la
-            périodicité indiquée ; un prélèvement rejeté peut entraîner la suspension puis la
-            résiliation des garanties.
+        <div class="flex flex-col gap-4 p-4">
+          <p class="text-xs text-slate-500">
+            Le contrat n'entre en vigueur qu'une fois la prime payée.
+            @if (!hasMandate()) {
+              Cet assureur n'a pas donné de mandat d'encaissement : c'est lui qui encaisse la prime, et le contrat reste
+              « en attente de paiement » jusqu'à ce qu'il la confirme.
+            }
           </p>
-          <p class="mt-2">
-            Les garanties, plafonds et franchises sont ceux du produit présenté au client, dont
-            les conditions générales de l'assureur fixent les termes exacts. Les informations
-            d'identité proviennent du dossier du client et ne sont pas modifiables lors de la
-            souscription.
-          </p>
-          <p class="mt-2">
-            Les données collectées sont utilisées pour la gestion du contrat et transmises à
-            l'assureur partenaire. Le client peut demander à y accéder et à les faire rectifier.
-          </p>
+          <div class="flex flex-wrap gap-2" role="radiogroup" aria-label="Mode de paiement">
+            @for (mode of availableModes(); track mode) {
+              <button
+                type="button"
+                role="radio"
+                [attr.aria-checked]="formSchema.paymentMode().value() === mode"
+                class="rounded-full border px-4 py-2 text-sm"
+                [class]="formSchema.paymentMode().value() === mode ? 'border-primary bg-primary/5 font-semibold text-primary' : 'border-slate-200 text-slate-600 hover:bg-slate-50'"
+                (click)="setPaymentMode(mode)"
+              >{{ modeLabel(mode) }}</button>
+            }
+          </div>
+
+          @switch (formSchema.paymentMode().value()) {
+            @case (modes.CoreBankingDebit) {
+              <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <tas-form-field>
+                  <tas-label>Compte à débiter <span class="text-functional-error">*</span></tas-label>
+                  <input tasInput type="text" placeholder="Numéro du compte au système bancaire" [formField]="formSchema.accountRef" />
+                  @if (formSchema.accountRef().touched() && formSchema.accountRef().invalid()) {
+                    <tas-error>{{ formSchema.accountRef().errors()[0].message }}</tas-error>
+                  }
+                </tas-form-field>
+                <div class="flex flex-col justify-end gap-1">
+                  @if (canViewBalance()) {
+                    <button tas-outlined-button color="primary" type="button" class="self-start"
+                            [disabled]="!formSchema.accountRef().value() || isLoadingBalance()" [isLoading]="isLoadingBalance()" (click)="loadBalance()">
+                      Afficher le solde
+                    </button>
+                  }
+                  @if (balance()) {
+                    <p class="text-sm text-slate-700 tabular-nums">Solde disponible : {{ availableBalanceLabel() }}</p>
+                  } @else if (balanceUnavailable()) {
+                    <p class="text-sm text-slate-500">Aucun solde n'est disponible pour ce compte.</p>
+                  } @else if (balanceError()) {
+                    <p class="text-sm text-functional-error">{{ balanceError() }}</p>
+                  }
+                </div>
+              </div>
+            }
+            @case (modes.RecordedByAgent) {
+              <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                <tas-form-field>
+                  <tas-label>Moyen de paiement <span class="text-functional-error">*</span></tas-label>
+                  <tas-select [options]="paymentMethodOptions" placeholder="Choisir" [formField]="formSchema.paymentMethod"></tas-select>
+                  @if (formSchema.paymentMethod().touched() && formSchema.paymentMethod().invalid()) {
+                    <tas-error>{{ formSchema.paymentMethod().errors()[0].message }}</tas-error>
+                  }
+                </tas-form-field>
+                <tas-form-field>
+                  <tas-label>Référence <span class="text-functional-error">*</span></tas-label>
+                  <input tasInput type="text" placeholder="N° de reçu, de transaction…" [formField]="formSchema.paymentReference" />
+                  @if (formSchema.paymentReference().touched() && formSchema.paymentReference().invalid()) {
+                    <tas-error>{{ formSchema.paymentReference().errors()[0].message }}</tas-error>
+                  }
+                </tas-form-field>
+                <div>
+                  <tas-date-picker mode="date" [max]="today" [formField]="formSchema.paidOn">Encaissée le <span class="text-functional-error">*</span></tas-date-picker>
+                  @if (formSchema.paidOn().touched() && formSchema.paidOn().invalid()) {
+                    <tas-error>{{ formSchema.paidOn().errors()[0].message }}</tas-error>
+                  }
+                </div>
+              </div>
+            }
+            @case (modes.DeferredByDerogation) {
+              <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <p class="text-xs text-slate-500 sm:col-span-2">
+                  Prime supérieure à {{ formatAmountLabel(derogationThreshold(), premiumCurrency()) }} (80 × SMIG annuel) :
+                  elle peut être payée dans les 60 jours de l'émission de la police, sur engagement écrit du souscripteur.
+                  Une alerte est envoyée 7 jours avant l'échéance.
+                </p>
+                <tas-form-field>
+                  <tas-label>Engagement écrit — référence <span class="text-functional-error">*</span></tas-label>
+                  <input tasInput type="text" [formField]="formSchema.commitmentReference" />
+                  @if (formSchema.commitmentReference().touched() && formSchema.commitmentReference().invalid()) {
+                    <tas-error>{{ formSchema.commitmentReference().errors()[0].message }}</tas-error>
+                  }
+                </tas-form-field>
+                <div>
+                  <tas-date-picker mode="date" [max]="today" [formField]="formSchema.commitmentSignedOn">Signé le <span class="text-functional-error">*</span></tas-date-picker>
+                  @if (formSchema.commitmentSignedOn().touched() && formSchema.commitmentSignedOn().invalid()) {
+                    <tas-error>{{ formSchema.commitmentSignedOn().errors()[0].message }}</tas-error>
+                  }
+                </div>
+              </div>
+            }
+          }
         </div>
       </tas-card>
 
-      <!-- ——— Consentement et signature ——— -->
+      <!-- ——— Qui paie la prime ——— -->
+      <tas-card class="block">
+        <div class="flex items-center gap-2 border-b border-slate-200 p-4">
+          <tas-icon iconName="feather:user-check" style="font-size:16px" class="text-primary"></tas-icon>
+          <p class="text-sm font-medium text-slate-700">Payeur de la prime</p>
+        </div>
+        <div class="flex flex-col gap-3 p-4">
+          <div class="flex flex-wrap gap-2" role="radiogroup" aria-label="Payeur de la prime">
+            <button type="button" role="radio" [attr.aria-checked]="!payerIsOther()" class="rounded-full border px-4 py-2 text-sm"
+                    [class]="!payerIsOther() ? 'border-primary bg-primary/5 font-semibold text-primary' : 'border-slate-200 text-slate-600 hover:bg-slate-50'"
+                    (click)="payerIsOther.set(false)">Le souscripteur</button>
+            <button type="button" role="radio" [attr.aria-checked]="payerIsOther()" class="rounded-full border px-4 py-2 text-sm"
+                    [class]="payerIsOther() ? 'border-primary bg-primary/5 font-semibold text-primary' : 'border-slate-200 text-slate-600 hover:bg-slate-50'"
+                    (click)="payerIsOther.set(true)">Un autre client</button>
+          </div>
+          @if (payerIsOther()) {
+            <p class="text-xs text-slate-500">
+              Le payeur doit être un client de l'institution dont le KYC est approuvé : l'origine des fonds est vérifiée au titre de la LBC/FT.
+            </p>
+            <div class="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_auto_1fr] sm:items-end">
+              <tas-form-field>
+                <tas-label>Rechercher un client</tas-label>
+                <input tasInput type="text" placeholder="Nom ou numéro de client" [value]="payerQuery()"
+                       (input)="payerQuery.set($any($event.target).value)" (keydown.enter)="searchPayer(); $event.preventDefault()" />
+              </tas-form-field>
+              <button tas-outlined-button color="primary" type="button" [isLoading]="isSearchingPayer()" (click)="searchPayer()">Rechercher</button>
+              <tas-form-field>
+                <tas-label>Payeur</tas-label>
+                <tas-select [options]="payerOptions()" placeholder="Choisir" [formField]="payerForm.payerId"></tas-select>
+              </tas-form-field>
+            </div>
+            @if (payerSearchedEmpty()) {
+              <p class="text-xs text-slate-500">Aucun autre client ne correspond à cette recherche (le souscripteur est exclu).</p>
+            }
+          }
+        </div>
+      </tas-card>
+
+      <!-- ——— Consentement ——— -->
       <tas-card class="block">
         <div class="flex items-center gap-2 border-b border-slate-200 p-4">
           <tas-icon iconName="feather:edit-3" style="font-size:16px" class="text-primary"></tas-icon>
-          <p class="text-sm font-medium text-slate-700">Consentement et signature</p>
+          <p class="text-sm font-medium text-slate-700">Consentement du client</p>
+          <span class="ml-auto font-mono text-xs text-slate-400">{{ noticeVersion }}</span>
         </div>
-        <div class="flex flex-col gap-3 p-4">
-          <label class="flex cursor-pointer items-start gap-2">
-            <input
-              type="checkbox"
-              class="form-checkbox accent-primary mt-0.5"
-              [checked]="formSchema.consentGiven().value()"
-              (change)="toggleConsent()"
-            />
-            <span class="text-sm text-slate-700">
-              Le client a reçu les mentions ci-dessus et consent à la souscription.
-            </span>
-          </label>
-          @if (formSchema.consentGiven().touched() && formSchema.consentGiven().invalid()) {
-            <p class="text-sm text-functional-error">
-              {{ formSchema.consentGiven().errors()[0].message }}
-            </p>
+        <div class="flex flex-col gap-2 p-4 text-xs leading-relaxed text-slate-500">
+          @for (paragraph of notice; track $index) {
+            <p>{{ paragraph }}</p>
           }
-
-          <label class="flex cursor-pointer items-start gap-2">
-            <input
-              type="checkbox"
-              class="form-checkbox accent-primary mt-0.5"
-              [checked]="formSchema.clientSigned().value()"
-              (change)="toggleSigned()"
-            />
-            <span class="text-sm text-slate-700">Le client a signé le bulletin de souscription.</span>
-          </label>
-          @if (formSchema.clientSigned().touched() && formSchema.clientSigned().invalid()) {
-            <p class="text-sm text-functional-error">
-              {{ formSchema.clientSigned().errors()[0].message }}
-            </p>
-          }
-
-          <tas-form-field class="max-w-md">
-            <tas-label>Référence de la signature</tas-label>
-            <input
-              tasInput
-              type="text"
-              placeholder="ex: numéro du bulletin signé"
-              [formField]="formSchema.signatureReference"
-            />
-            <tas-hint>
-              Reportez ici la référence du document signé, pour retrouver la pièce papier.
-            </tas-hint>
+        </div>
+        <div class="grid grid-cols-1 gap-4 border-t border-slate-100 p-4 sm:grid-cols-2">
+          <tas-form-field>
+            <tas-label>Recueilli par</tas-label>
+            <tas-select [options]="consentChannelOptions" [formField]="formSchema.consentChannel"></tas-select>
           </tas-form-field>
+          <tas-form-field>
+            <tas-label>Référence de la preuve <span class="text-functional-error">*</span></tas-label>
+            <input tasInput type="text" placeholder="N° du bulletin signé, de l'enregistrement…" [formField]="formSchema.consentEvidence" />
+            @if (formSchema.consentEvidence().touched() && formSchema.consentEvidence().invalid()) {
+              <tas-error>{{ formSchema.consentEvidence().errors()[0].message }}</tas-error>
+            }
+          </tas-form-field>
+          <label class="flex cursor-pointer items-start gap-2 sm:col-span-2">
+            <input type="checkbox" class="form-checkbox accent-primary mt-0.5" [checked]="formSchema.consentGiven().value()" (change)="toggleConsent()" />
+            <span class="text-sm text-slate-700">Le client a pris connaissance de ces mentions et consent à la souscription.</span>
+          </label>
         </div>
       </tas-card>
 
-      <!-- ——— Soumission ——— -->
-      @if (submissionAcknowledged()) {
-        <tas-alert type="info">
-          <p class="text-sm font-medium">La souscription attend une livraison serveur</p>
-          <p class="mt-1 text-sm">
-            Rien n'a été envoyé à l'assureur et aucun prélèvement n'a été déclenché. Le
-            récapitulatif reste consultable sur cet écran, et le brouillon est conservé sur ce
-            poste pour reprendre la saisie une fois la mise en service faite.
-          </p>
-        </tas-alert>
+      @if (subscription(); as s) {
+        <tas-card class="block">
+          <div class="flex items-center gap-3 p-4">
+            @if (isTracking() && !isTerminal(s.status)) {
+              <tas-spinner size="6" class="text-primary"></tas-spinner>
+            } @else {
+              <tas-icon [iconName]="s.status === 'Issued' && !premiumOutstanding() ? 'feather:check-circle' : 'feather:info'"
+                        [class]="s.status === 'Issued' && !premiumOutstanding() ? 'text-functional-success' : 'text-slate-400'" style="font-size:18px"></tas-icon>
+            }
+            <div class="min-w-0">
+              <p class="text-sm font-semibold text-slate-800">{{ subscriptionStatusLabel() }}</p>
+              @if (s.insurerPolicyReference) {
+                <p class="text-xs text-slate-500">Police n° {{ s.insurerPolicyReference }}</p>
+              }
+              @if (s.failureDetail && s.status !== 'Issued') {
+                <p class="text-xs text-slate-500">{{ s.failureDetail }}</p>
+              }
+              @if (premiumOutstanding()) {
+                <p class="text-xs text-slate-500">
+                  Le contrat reste « en attente de paiement » jusqu'à la confirmation de la prime
+                  {{ hasMandate() ? '(enregistrez-la ci-dessous si vous l’encaissez)' : "par l'assureur" }}.
+                </p>
+              }
+            </div>
+          </div>
+          @if (premiumOutstanding() && hasMandate()) {
+            <form [formRoot]="lateForm" class="grid grid-cols-1 gap-4 border-t border-slate-100 p-4 sm:grid-cols-4">
+              <tas-form-field>
+                <tas-label>Moyen de paiement</tas-label>
+                <tas-select [options]="paymentMethodOptions" placeholder="Choisir" [formField]="lateForm.paymentMethod"></tas-select>
+              </tas-form-field>
+              <tas-form-field>
+                <tas-label>Référence</tas-label>
+                <input tasInput type="text" [formField]="lateForm.paymentReference" />
+              </tas-form-field>
+              <tas-date-picker mode="date" [max]="today" [formField]="lateForm.paidOn">Encaissée le</tas-date-picker>
+              <div class="flex items-end">
+                <button tas-outlined-button color="primary" type="button" [disabled]="busy() || lateForm().invalid()" [isLoading]="busy()" (click)="recordLatePayment()">
+                  Enregistrer l'encaissement
+                </button>
+              </div>
+            </form>
+          }
+        </tas-card>
+        <div class="flex justify-end">
+          <button tas-raised-button color="primary" type="button" (click)="backToClient()">Revenir à la fiche client</button>
+        </div>
       } @else {
-        <tas-alert type="info">
-          <p class="text-sm">
-            L'enregistrement de la souscription n'est pas encore disponible côté serveur : le
-            bouton ci-dessous prépare le dossier mais ne conclut pas la vente. Le tarif, le
-            solde et le récapitulatif affichés, eux, sont réels.
-          </p>
-        </tas-alert>
-      }
-
-      <div class="flex items-center justify-between">
-        <button tas-outlined-button color="primary" type="button" (click)="goToStep(2)">
-          Revenir au contrat
-        </button>
-        <button
-          tas-raised-button
-          color="primary"
-          type="button"
-          [disabled]="formSchema().invalid() || formSchema().submitting()"
-          [isLoading]="formSchema().submitting()"
-          (click)="handleSubmit()"
-        >
-          Enregistrer la souscription
-        </button>
-      </div>
-
-      @if (submittedPolicyId()) {
-        <lib-subscription-tracking [policyId]="submittedPolicyId()!"></lib-subscription-tracking>
+        <div class="flex items-center justify-between">
+          <button tas-outlined-button color="primary" type="button" (click)="goToStep(isSigned() ? 3 : 4)">Revenir</button>
+          <button
+            tas-raised-button
+            color="primary"
+            type="button"
+            [disabled]="distributorBlocked() || formSchema().invalid() || formSchema().submitting() || isQuoting() || !premiumAmount()"
+            [isLoading]="formSchema().submitting()"
+            (click)="handleSubmit()"
+          >
+            Envoyer à l'assureur
+          </button>
+        </div>
       }
     </form>
   }

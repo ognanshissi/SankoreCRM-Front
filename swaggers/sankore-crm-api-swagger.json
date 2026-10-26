@@ -3308,6 +3308,34 @@
         }
       }
     },
+    "/api/v1/payment-instruments/{instrumentId}/deactivation": {
+      "post": {
+        "tags": [
+          "Clients"
+        ],
+        "summary": "Stop using a payment instrument (kept for the history)",
+        "operationId": "DeactivateClientPaymentInstrument",
+        "parameters": [
+          {
+            "name": "instrumentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
     "/api/v1/clients": {
       "post": {
         "tags": [
@@ -3872,6 +3900,91 @@
         }
       }
     },
+    "/api/v1/clients/{clientId}/payment-instruments": {
+      "get": {
+        "tags": [
+          "Clients"
+        ],
+        "summary": "The client's Mobile Money numbers and bank accounts (masked)",
+        "operationId": "ListClientPaymentInstruments",
+        "parameters": [
+          {
+            "name": "clientId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PaymentInstrumentDto"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Clients"
+        ],
+        "summary": "Record a Mobile Money number or a bank account (RIB) for the client",
+        "operationId": "RegisterClientPaymentInstrument",
+        "parameters": [
+          {
+            "name": "clientId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterPaymentInstrumentRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
     "/api/v1/company-info": {
       "get": {
         "tags": [
@@ -4026,6 +4139,130 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/api/v1/clients/{clientId}/suspicion-alerts": {
+      "post": {
+        "tags": [
+          "Compliance"
+        ],
+        "summary": "File a confidential LBC/FT suspicion alert",
+        "description": "Answers 202 and nothing else: from now on only the compliance officer reads it. Nothing appears on the client's record and nothing is said to the client. Requires permission: compliance:suspicion:raise.",
+        "operationId": "RaiseSuspicionAlert",
+        "parameters": [
+          {
+            "name": "clientId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RaiseSuspicionAlertRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Accepted"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/api/v1/suspicion-alerts": {
+      "get": {
+        "tags": [
+          "Compliance"
+        ],
+        "summary": "The suspicion alerts — the compliance officer only",
+        "operationId": "ListSuspicionAlerts",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "description": "One of: Open, UnderReview, Declared, ClosedWithoutDeclaration",
+            "schema": {
+              "enum": [
+                "Open",
+                "UnderReview",
+                "Declared",
+                "ClosedWithoutDeclaration"
+              ],
+              "type": "string",
+              "description": "One of: Open, UnderReview, Declared, ClosedWithoutDeclaration"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SuspicionAlertDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/suspicion-alerts/{alertId}/handling": {
+      "post": {
+        "tags": [
+          "Compliance"
+        ],
+        "summary": "Examine, declare to the CENTIF (date, reference) or close with a reason",
+        "operationId": "HandleSuspicionAlert",
+        "parameters": [
+          {
+            "name": "alertId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HandleSuspicionAlertRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "description": "Bad Request"
           },
           "404": {
             "description": "Not Found"
@@ -6355,6 +6592,208 @@
         }
       }
     },
+    "/api/v1/insurance-distribution": {
+      "get": {
+        "tags": [
+          "Insurance distribution"
+        ],
+        "summary": "The institution's distributor profile, its pieces and its standing",
+        "operationId": "GetInsuranceDistributor",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InsuranceDistributorDto"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Insurance distribution"
+        ],
+        "summary": "Set the distributor status, registration number, legal mention and annual SMIG",
+        "description": "A broker must carry the legal mention of art. 540, printed on every document handed to a client. The annual SMIG enables the 60-day payment derogation for premiums above 80 times it. Requires permission: admin:compliance:manage.",
+        "operationId": "UpdateInsuranceDistributor",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateInsuranceDistributorRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "description": "Bad Request"
+          }
+        }
+      }
+    },
+    "/api/v1/insurance-distribution/documents": {
+      "post": {
+        "tags": [
+          "Insurance distribution"
+        ],
+        "summary": "Record a piece (agrément, garantie financière, RC pro), optionally with its scan",
+        "description": "A new piece supersedes the current one of the same kind; the old one stays, it covered the contracts signed while in force. PDF, JPEG or PNG, 10 MB at most. Requires permission: admin:compliance:manage.",
+        "operationId": "AddInsuranceDistributorDocument",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "allOf": [
+                  {
+                    "required": [
+                      "kind"
+                    ],
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "enum": [
+                          "Approval",
+                          "FinancialGuarantee",
+                          "ProfessionalLiability"
+                        ],
+                        "type": "string",
+                        "description": "One of: Approval, FinancialGuarantee, ProfessionalLiability"
+                      }
+                    }
+                  },
+                  {
+                    "required": [
+                      "reference"
+                    ],
+                    "type": "object",
+                    "properties": {
+                      "reference": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "issuer": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "issuedOn": {
+                        "type": "string",
+                        "format": "date"
+                      }
+                    }
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "expiresOn": {
+                        "type": "string",
+                        "format": "date"
+                      }
+                    }
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "file": {
+                        "type": "string",
+                        "format": "binary"
+                      }
+                    }
+                  }
+                ]
+              },
+              "encoding": {
+                "kind": {
+                  "style": "form"
+                },
+                "reference": {
+                  "style": "form"
+                },
+                "issuer": {
+                  "style": "form"
+                },
+                "issuedOn": {
+                  "style": "form"
+                },
+                "expiresOn": {
+                  "style": "form"
+                },
+                "file": {
+                  "style": "form"
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request"
+          }
+        }
+      }
+    },
+    "/api/v1/insurance-distribution/documents/{documentId}/content": {
+      "get": {
+        "tags": [
+          "Insurance distribution"
+        ],
+        "summary": "The scan of a piece",
+        "operationId": "GetInsuranceDistributorDocumentContent",
+        "parameters": [
+          {
+            "name": "documentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "$ref": "#/components/schemas/Void"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
     "/integration/webhooks/{connectionId}": {
       "post": {
         "tags": [
@@ -6584,6 +7023,90 @@
           },
           "422": {
             "description": "Unprocessable Entity"
+          }
+        }
+      }
+    },
+    "/api/v1/integration/connections/{connectionId}/mandates": {
+      "put": {
+        "tags": [
+          "Integration"
+        ],
+        "summary": "Record the insurer's collection and cover-note mandates",
+        "description": "Insurance connections only. Each mandate granted carries the reference of the document that grants it (400 INTEGRATION_MANDATE_REFERENCE_REQUIRED otherwise). Requires permission: Integration.Connection.Manage.",
+        "operationId": "SetIntegrationConnectionMandates",
+        "parameters": [
+          {
+            "name": "connectionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetConnectionMandatesRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/api/v1/integration/connections/{connectionId}/commission-netting": {
+      "put": {
+        "tags": [
+          "Integration"
+        ],
+        "summary": "Record the insurer's agreement that commissions are deducted from remitted premiums",
+        "description": "Without it the full premiums are remitted and the commission paid on the insurer's statement. The agreement carries its reference. Requires permission: Integration.Connection.Manage.",
+        "operationId": "SetIntegrationConnectionCommissionNetting",
+        "parameters": [
+          {
+            "name": "connectionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetCommissionNettingRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "404": {
+            "description": "Not Found"
           }
         }
       }
@@ -8478,8 +9001,8 @@
         "tags": [
           "Integration"
         ],
-        "summary": "Subscribe a customer to an insurance product",
-        "description": "Starts the three-step chain of ASS-05: the premium is debited FIRST, then the insurer is asked, and the debit is reversed if the insurer refuses. That order is deliberate — a premium collected against a refused policy can be put right, a policy issued against a premium never collected cannot. The consent proof required by the 2024 CIMA regulation on distribution by electronic means is written in the SAME transaction as the subscription: `consentTextVersion` plus either `consentEvidence` (encrypted inline) or `consentEvidenceStorageRef`. A request for a customer, product and effective date already in flight answers 200 with `alreadyExisted: true` rather than debiting twice. Requires permission: Ins.Policy.Subscribe.",
+        "summary": "Prepare the insurance subscription of a signed holding",
+        "description": "The holding is the contract: it must be signed (PendingSignature with a signature) and its catalogue line must be the one the insurer's product realises. This call checks the product, the client's eligibility (age, KYC level, account, loan) and the won project's questionnaires, then records the subscription, how the premium is paid (`paymentMode`: a core banking debit on `accountRef`, or a premium the agent collected — `paymentMethod`, `paymentReference`, `paidOn`) and the consent proof, in ONE transaction. Nothing is debited and nothing reaches the insurer until the holding is sent (`POST holdings/{id}/submission`): the premium is collected first, then the insurer asked, and the holding becomes Active when the policy is issued. Preparing again before sending replaces the previous preparation; after sending it answers `alreadyExisted: true`. Requires permission: Ins.Policy.Subscribe.",
         "operationId": "SubscribeInsurancePolicy",
         "requestBody": {
           "content": {
@@ -8510,6 +9033,85 @@
           },
           "403": {
             "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "409": {
+            "description": "Conflict"
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Integration"
+        ],
+        "summary": "A client's subscriptions, newest first",
+        "description": "What the client record follows after sending: payment, the insurer's answer, the client's answer, the 15 days. Within the agent's perimeter. Requires permission: Ins.Policy.View.",
+        "operationId": "ListInsuranceSubscriptions",
+        "parameters": [
+          {
+            "name": "crmCustomerId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/InsuranceSubscriptionDto"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/api/v1/integration/insurance/subscriptions/{subscriptionId}/payment": {
+      "post": {
+        "tags": [
+          "Integration"
+        ],
+        "summary": "Record a premium collected after the contract was sent",
+        "description": "For a subscription sent without its premium (the 60-day derogation, or an insurer that collects) when the distributor holds the insurer's collection mandate. The holding becomes Active once the policy is issued. 409 without the mandate or when no premium is outstanding. Requires permission: Ins.Policy.Subscribe.",
+        "operationId": "RecordInsurancePremiumPayment",
+        "parameters": [
+          {
+            "name": "subscriptionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecordPremiumPaymentRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
           },
           "404": {
             "description": "Not Found"
@@ -8555,6 +9157,841 @@
           },
           "403": {
             "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/api/v1/integration/insurance/policies": {
+      "get": {
+        "tags": [
+          "Integration"
+        ],
+        "summary": "A client's insurance policies",
+        "description": "Every policy of `crmCustomerId`, newest effective date first, with its insurer, product, status and premium. Policies are recorded when the insurer issues them and then follow the insurer's synchronisation. A client outside the caller's agency perimeter answers 404. Requires permission: Ins.Policy.View.",
+        "operationId": "ListInsurancePolicies",
+        "parameters": [
+          {
+            "name": "crmCustomerId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/InsurancePolicyDto"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/api/v1/integration/insurance/policies/{policyId}/certificate": {
+      "get": {
+        "tags": [
+          "Integration"
+        ],
+        "summary": "The insurer's attestation of a policy",
+        "description": "Asked of the insurer at the moment of the request — the attestation is the insurer's document and may change with an avenant. 502 when the insurer cannot produce it (its connector does not issue attestations, or it is unreachable). Requires permission: Ins.Policy.View.",
+        "operationId": "GetInsurancePolicyCertificate",
+        "parameters": [
+          {
+            "name": "policyId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/pdf": {
+                "schema": {
+                  "$ref": "#/components/schemas/Void"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "502": {
+            "description": "Bad Gateway"
+          }
+        }
+      }
+    },
+    "/api/v1/integration/insurance/products/{productId}/information-sheet": {
+      "post": {
+        "tags": [
+          "Integration"
+        ],
+        "summary": "Upload a new version of the product's information sheet (the insurer's PDF)",
+        "description": "PDF only, 15 MB at most. Becomes the version every new delivery hands over; earlier versions stay readable, deliveries name theirs. A product with no sheet is not offerable. Requires permission: Ins.Product.Manage.",
+        "operationId": "UploadInsuranceInformationSheet",
+        "parameters": [
+          {
+            "name": "productId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "required": [
+                  "file"
+                ],
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                }
+              },
+              "encoding": {
+                "file": {
+                  "style": "form"
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InformationSheetDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/api/v1/integration/insurance/products/{productId}/information-sheets": {
+      "get": {
+        "tags": [
+          "Integration"
+        ],
+        "summary": "Every version of the product's information sheet, newest first",
+        "operationId": "ListInsuranceInformationSheets",
+        "parameters": [
+          {
+            "name": "productId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/InformationSheetDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/integration/insurance/information-sheets/{sheetId}/content": {
+      "get": {
+        "tags": [
+          "Integration"
+        ],
+        "summary": "The PDF of one version",
+        "operationId": "GetInsuranceInformationSheetContent",
+        "parameters": [
+          {
+            "name": "sheetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/pdf": {
+                "schema": {
+                  "$ref": "#/components/schemas/Void"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/api/v1/integration/insurance/products/{productId}/exclusions": {
+      "put": {
+        "tags": [
+          "Integration"
+        ],
+        "summary": "The exclusions shown on screen next to the sheet, one per line",
+        "operationId": "SetInsuranceProductExclusions",
+        "parameters": [
+          {
+            "name": "productId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetExclusionsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/api/v1/integration/insurance/holdings/{holdingId}/information-sheet-deliveries": {
+      "post": {
+        "tags": [
+          "Integration"
+        ],
+        "summary": "Record that the client received the product's current information sheet",
+        "description": "Before the signature: a holding on an insurance line cannot be signed without a delivery. Records the version, its fingerprint, the channel and the client's acknowledgement. Within the agent's perimeter. Requires permission: Ins.Policy.Subscribe.",
+        "operationId": "RecordInformationSheetDelivery",
+        "parameters": [
+          {
+            "name": "holdingId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecordDeliveryRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InformationSheetDeliveryDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "409": {
+            "description": "Conflict"
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Integration"
+        ],
+        "summary": "The information sheets handed over for a holding",
+        "operationId": "ListInformationSheetDeliveries",
+        "parameters": [
+          {
+            "name": "holdingId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/InformationSheetDeliveryDto"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/api/v1/integration/insurance/subscriptions/{subscriptionId}/underwriting": {
+      "post": {
+        "tags": [
+          "Integration"
+        ],
+        "summary": "Record the insurer's underwriting answer",
+        "description": "Read from the insurer's letter or portal: accepted, with a surcharge (amount), with exclusions (wording), medical exams required (list), refused, or — once 15 days have passed without answer — deemed accepted by silence. A refusal ends the subscription (a premium collected is owed back) and the contract. A surcharge or exclusions then need the client's answer. Requires permission: Ins.Policy.Subscribe.",
+        "operationId": "RecordInsuranceUnderwriting",
+        "parameters": [
+          {
+            "name": "subscriptionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecordUnderwritingRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/api/v1/integration/insurance/subscriptions/{subscriptionId}/client-answer": {
+      "post": {
+        "tags": [
+          "Integration"
+        ],
+        "summary": "Record the client's answer to a surcharge or exclusions",
+        "operationId": "RecordInsuranceClientAnswer",
+        "parameters": [
+          {
+            "name": "subscriptionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecordClientAnswerRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/api/v1/integration/insurance/policies/{policyId}/operations": {
+      "post": {
+        "tags": [
+          "Integration"
+        ],
+        "summary": "Receive a renunciation, surrender or advance request",
+        "description": "Timestamped on receipt. A renunciation is for a life product and within 30 days of the first premium; the insurer then refunds within 30 days. Requires permission: Ins.Policy.Subscribe.",
+        "operationId": "RequestInsurancePolicyOperation",
+        "parameters": [
+          {
+            "name": "policyId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RequestOperationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "409": {
+            "description": "Conflict"
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Integration"
+        ],
+        "summary": "The requests on a policy, newest first",
+        "operationId": "ListInsurancePolicyOperations",
+        "parameters": [
+          {
+            "name": "policyId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PolicyOperationDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/integration/insurance/policy-operations/{operationId}/status": {
+      "put": {
+        "tags": [
+          "Integration"
+        ],
+        "summary": "Report what the insurer did with a request",
+        "description": "Sent to the insurer, accepted, refused, paid (with its date), or cancelled before sending. A renunciation refund is never recorded paid while the client's KYC is incomplete (409 INSURANCE_REFUND_BLOCKED_KYC). Requires permission: Ins.Policy.Subscribe.",
+        "operationId": "UpdateInsurancePolicyOperationStatus",
+        "parameters": [
+          {
+            "name": "operationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MoveOperationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "409": {
+            "description": "Conflict"
+          }
+        }
+      }
+    },
+    "/api/v1/integration/insurance/policies/{policyId}/documents": {
+      "post": {
+        "tags": [
+          "Integration"
+        ],
+        "summary": "File one of the insurer's documents for a policy (CG, CP, attestation, avenant, annual information)",
+        "operationId": "UploadInsurancePolicyDocument",
+        "parameters": [
+          {
+            "name": "policyId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "allOf": [
+                  {
+                    "required": [
+                      "kind"
+                    ],
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "enum": [
+                          "GeneralConditions",
+                          "SpecialConditions",
+                          "Certificate",
+                          "Endorsement",
+                          "AnnualStatement",
+                          "Other"
+                        ],
+                        "type": "string",
+                        "description": "One of: GeneralConditions, SpecialConditions, Certificate, Endorsement, AnnualStatement, Other"
+                      }
+                    }
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "title": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  {
+                    "required": [
+                      "file"
+                    ],
+                    "type": "object",
+                    "properties": {
+                      "file": {
+                        "type": "string",
+                        "format": "binary"
+                      }
+                    }
+                  }
+                ]
+              },
+              "encoding": {
+                "kind": {
+                  "style": "form"
+                },
+                "title": {
+                  "style": "form"
+                },
+                "file": {
+                  "style": "form"
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Integration"
+        ],
+        "summary": "The insurer's documents filed for a policy",
+        "operationId": "ListInsurancePolicyDocuments",
+        "parameters": [
+          {
+            "name": "policyId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PolicyDocumentDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/integration/insurance/policy-documents/{documentId}/content": {
+      "get": {
+        "tags": [
+          "Integration"
+        ],
+        "summary": "The file of a policy document",
+        "operationId": "GetInsurancePolicyDocumentContent",
+        "parameters": [
+          {
+            "name": "documentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/pdf": {
+                "schema": {
+                  "$ref": "#/components/schemas/Void"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/api/v1/integration/insurance/policy-documents/{documentId}/sent": {
+      "post": {
+        "tags": [
+          "Integration"
+        ],
+        "summary": "Record that the document was handed to the client (channel, now)",
+        "operationId": "MarkInsurancePolicyDocumentSent",
+        "parameters": [
+          {
+            "name": "documentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MarkDocumentSentRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/api/v1/integration/insurance/products/{productId}/life-insurance": {
+      "put": {
+        "tags": [
+          "Integration"
+        ],
+        "summary": "Whether the product is life insurance (30-day renunciation)",
+        "operationId": "SetInsuranceProductLifeInsurance",
+        "parameters": [
+          {
+            "name": "productId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetLifeInsuranceRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/api/v1/integration/insurance/holdings/{holdingId}/evidence": {
+      "get": {
+        "tags": [
+          "Integration"
+        ],
+        "summary": "The evidence journal of a subscription: every step, timestamped",
+        "description": "Assembled from the records themselves — information sheet deliveries, signature, consent, payment, sending, the insurer's answer, the client's answer, issue, documents handed over, requests on the policy. What proves a digital sale. Requires permission: Ins.Policy.View.",
+        "operationId": "GetInsuranceSubscriptionEvidence",
+        "parameters": [
+          {
+            "name": "holdingId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/EvidenceEventDto"
+                  }
+                }
+              }
+            }
           },
           "404": {
             "description": "Not Found"
@@ -9117,6 +10554,120 @@
           },
           "409": {
             "description": "Conflict"
+          }
+        }
+      }
+    },
+    "/api/v1/integration/insurance/statements/{statementId}/transmission": {
+      "post": {
+        "tags": [
+          "Integration"
+        ],
+        "summary": "Record that the finalised bordereau was sent to the insurer",
+        "operationId": "RecordInsurerStatementTransmission",
+        "parameters": [
+          {
+            "name": "statementId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "409": {
+            "description": "Conflict"
+          }
+        }
+      }
+    },
+    "/api/v1/integration/insurance/statements/{statementId}/remittance": {
+      "post": {
+        "tags": [
+          "Integration"
+        ],
+        "summary": "Record the premiums handed over to the insurer",
+        "description": "Due within 30 days of the oldest premium collected in the insurer's name (alert at D-5). Without the insurer's commission-netting agreement, the full premiums are remitted — no commission may be deducted. Requires permission: Ins.Statement.Finalise.",
+        "operationId": "RecordInsurerStatementRemittance",
+        "parameters": [
+          {
+            "name": "statementId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecordRemittanceRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/api/v1/integration/insurance/statements/{statementId}/insurer-commission": {
+      "post": {
+        "tags": [
+          "Integration"
+        ],
+        "summary": "Record the commission the insurer's own statement reports, to compare with ours",
+        "operationId": "RecordInsurerDeclaredCommission",
+        "parameters": [
+          {
+            "name": "statementId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecordInsurerCommissionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "404": {
+            "description": "Not Found"
           }
         }
       }
@@ -33369,6 +34920,27 @@
           "version": {
             "type": "integer",
             "format": "int32"
+          },
+          "hasCollectionMandate": {
+            "type": "boolean"
+          },
+          "collectionMandateReference": {
+            "type": "string",
+            "nullable": true
+          },
+          "hasCoverNoteMandate": {
+            "type": "boolean"
+          },
+          "coverNoteMandateReference": {
+            "type": "string",
+            "nullable": true
+          },
+          "hasCommissionNettingAgreement": {
+            "type": "boolean"
+          },
+          "commissionNettingReference": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -37071,6 +38643,57 @@
         },
         "additionalProperties": false
       },
+      "DistributorDocumentDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kind": {
+            "type": "string",
+            "nullable": true
+          },
+          "reference": {
+            "type": "string",
+            "nullable": true
+          },
+          "issuer": {
+            "type": "string",
+            "nullable": true
+          },
+          "issuedOn": {
+            "type": "string",
+            "format": "date",
+            "nullable": true
+          },
+          "expiresOn": {
+            "type": "string",
+            "format": "date",
+            "nullable": true
+          },
+          "daysLeft": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "hasFile": {
+            "type": "boolean"
+          },
+          "fileName": {
+            "type": "string",
+            "nullable": true
+          },
+          "isCurrent": {
+            "type": "boolean"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false
+      },
       "DryRunLeadPreview": {
         "type": "object",
         "properties": {
@@ -37634,6 +39257,33 @@
         "properties": {
           "escalatedTo": {
             "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "EvidenceEventDto": {
+        "type": "object",
+        "properties": {
+          "at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "kind": {
+            "type": "string",
+            "nullable": true
+          },
+          "label": {
+            "type": "string",
+            "nullable": true
+          },
+          "detail": {
+            "type": "string",
+            "nullable": true
+          },
+          "actorId": {
+            "type": "string",
+            "format": "uuid",
             "nullable": true
           }
         },
@@ -38494,6 +40144,35 @@
         },
         "additionalProperties": false
       },
+      "HandleSuspicionAlertRequest": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "enum": [
+              "Open",
+              "UnderReview",
+              "Declared",
+              "ClosedWithoutDeclaration"
+            ],
+            "type": "string",
+            "description": "One of: Open, UnderReview, Declared, ClosedWithoutDeclaration"
+          },
+          "declaredOn": {
+            "type": "string",
+            "format": "date",
+            "nullable": true
+          },
+          "declarationReference": {
+            "type": "string",
+            "nullable": true
+          },
+          "notes": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "HealthAnswer": {
         "type": "object",
         "properties": {
@@ -38855,6 +40534,89 @@
         },
         "additionalProperties": false
       },
+      "InformationSheetDeliveryDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "holdingId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "productId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "sheetId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "sheetVersion": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "sheetSha256": {
+            "type": "string",
+            "nullable": true
+          },
+          "channel": {
+            "type": "string",
+            "nullable": true
+          },
+          "acknowledgementReference": {
+            "type": "string",
+            "nullable": true
+          },
+          "deliveredAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "deliveredBy": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "additionalProperties": false
+      },
+      "InformationSheetDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "productId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "version": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "fileName": {
+            "type": "string",
+            "nullable": true
+          },
+          "sizeBytes": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "sha256": {
+            "type": "string",
+            "nullable": true
+          },
+          "uploadedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "isCurrent": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
       "IngestionDto": {
         "type": "object",
         "properties": {
@@ -38905,6 +40667,65 @@
         },
         "additionalProperties": false
       },
+      "InsuranceDistributorDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "nullable": true
+          },
+          "registrationNumber": {
+            "type": "string",
+            "nullable": true
+          },
+          "legalMention": {
+            "type": "string",
+            "nullable": true
+          },
+          "annualSmig": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "derogationThreshold": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "requiredDocuments": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "inGoodStanding": {
+            "type": "boolean"
+          },
+          "missingDocuments": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "expiredDocuments": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "documents": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DistributorDocumentDto"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "InsuranceGuarantee": {
         "type": "object",
         "properties": {
@@ -38925,6 +40746,84 @@
             "type": "number",
             "format": "double",
             "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "InsurancePolicyDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "policyNumber": {
+            "type": "string",
+            "nullable": true
+          },
+          "insurer": {
+            "type": "string",
+            "nullable": true
+          },
+          "productId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "productName": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "nullable": true
+          },
+          "statusDetail": {
+            "type": "string",
+            "nullable": true
+          },
+          "effectiveDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "expiryDate": {
+            "type": "string",
+            "format": "date",
+            "nullable": true
+          },
+          "nextDueDate": {
+            "type": "string",
+            "format": "date",
+            "nullable": true
+          },
+          "premiumAmount": {
+            "type": "number",
+            "format": "double"
+          },
+          "currency": {
+            "type": "string",
+            "nullable": true
+          },
+          "periodicity": {
+            "type": "string",
+            "nullable": true
+          },
+          "insuredAmount": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "holdingId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "lastSyncedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "premiumOutstanding": {
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -39084,6 +40983,25 @@
           "updatedAt": {
             "type": "string",
             "format": "date-time"
+          },
+          "exclusions": {
+            "type": "string",
+            "nullable": true
+          },
+          "informationSheetVersion": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "informationSheetId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "insurerCollectionMandate": {
+            "type": "boolean"
+          },
+          "isLifeInsurance": {
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -39346,6 +41264,77 @@
           "updatedAt": {
             "type": "string",
             "format": "date-time"
+          },
+          "holdingId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "paymentMode": {
+            "type": "string",
+            "nullable": true
+          },
+          "premiumPaidAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "premiumOutstanding": {
+            "type": "boolean"
+          },
+          "paymentDueBy": {
+            "type": "string",
+            "format": "date",
+            "nullable": true
+          },
+          "sentToInsurerAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "issuedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "underwriting": {
+            "type": "string",
+            "nullable": true
+          },
+          "surchargeAmount": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "underwritingExclusions": {
+            "type": "string",
+            "nullable": true
+          },
+          "medicalExamsRequested": {
+            "type": "string",
+            "nullable": true
+          },
+          "underwritingReference": {
+            "type": "string",
+            "nullable": true
+          },
+          "awaitsClientAnswer": {
+            "type": "boolean"
+          },
+          "clientAnswer": {
+            "type": "string",
+            "nullable": true
+          },
+          "surchargeOutstanding": {
+            "type": "boolean"
+          },
+          "silenceMayBeConfirmed": {
+            "type": "boolean"
+          },
+          "premiumPayerClientId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -43035,6 +45024,22 @@
         },
         "additionalProperties": false
       },
+      "MarkDocumentSentRequest": {
+        "type": "object",
+        "properties": {
+          "channel": {
+            "enum": [
+              "HandedOnPaper",
+              "ShownOnScreen",
+              "SentByEmail",
+              "CustomerSpace"
+            ],
+            "type": "string",
+            "description": "One of: HandedOnPaper, ShownOnScreen, SentByEmail, CustomerSpace"
+          }
+        },
+        "additionalProperties": false
+      },
       "MatchReason": {
         "type": "object",
         "properties": {
@@ -43258,6 +45263,38 @@
           "newParentAgencyId": {
             "type": "string",
             "format": "uuid",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "MoveOperationRequest": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "enum": [
+              "Requested",
+              "SentToInsurer",
+              "Accepted",
+              "Refused",
+              "Paid",
+              "Cancelled"
+            ],
+            "type": "string",
+            "description": "One of: Requested, SentToInsurer, Accepted, Refused, Paid, Cancelled"
+          },
+          "insurerReference": {
+            "type": "string",
+            "nullable": true
+          },
+          "amount": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "paidOn": {
+            "type": "string",
+            "format": "date",
             "nullable": true
           }
         },
@@ -45137,6 +47174,39 @@
         },
         "additionalProperties": false
       },
+      "PaymentInstrumentDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kind": {
+            "type": "string",
+            "nullable": true
+          },
+          "provider": {
+            "type": "string",
+            "nullable": true
+          },
+          "maskedIdentifier": {
+            "type": "string",
+            "nullable": true
+          },
+          "holderName": {
+            "type": "string",
+            "nullable": true
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false
+      },
       "PerfectVisionSettings": {
         "required": [
           "$kind"
@@ -45537,6 +47607,115 @@
             ],
             "type": "string",
             "description": "Discriminator. Must be \"PlatformConnection\" for these settings."
+          }
+        },
+        "additionalProperties": false
+      },
+      "PolicyDocumentDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "policyId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kind": {
+            "type": "string",
+            "nullable": true
+          },
+          "title": {
+            "type": "string",
+            "nullable": true
+          },
+          "fileName": {
+            "type": "string",
+            "nullable": true
+          },
+          "sha256": {
+            "type": "string",
+            "nullable": true
+          },
+          "uploadedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "sentToClientAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "sentChannel": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "PolicyOperationDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "policyId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kind": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "nullable": true
+          },
+          "requestedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "reason": {
+            "type": "string",
+            "nullable": true
+          },
+          "amount": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "currency": {
+            "type": "string",
+            "nullable": true
+          },
+          "refundDueBy": {
+            "type": "string",
+            "format": "date",
+            "nullable": true
+          },
+          "payoutInstrumentId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "insurerReference": {
+            "type": "string",
+            "nullable": true
+          },
+          "statusChangedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "paidOn": {
+            "type": "string",
+            "format": "date",
+            "nullable": true
+          },
+          "refundBlocked": {
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -46887,6 +49066,16 @@
         },
         "additionalProperties": false
       },
+      "RaiseSuspicionAlertRequest": {
+        "type": "object",
+        "properties": {
+          "facts": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "ReassignTaskRequest": {
         "type": "object",
         "properties": {
@@ -47126,6 +49315,24 @@
         },
         "additionalProperties": false
       },
+      "RecordClientAnswerRequest": {
+        "type": "object",
+        "properties": {
+          "answer": {
+            "enum": [
+              "Accepted",
+              "Declined"
+            ],
+            "type": "string",
+            "description": "One of: Accepted, Declined"
+          },
+          "reference": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "RecordComplaintRequest": {
         "type": "object",
         "properties": {
@@ -47253,6 +49460,30 @@
         },
         "additionalProperties": false
       },
+      "RecordDeliveryRequest": {
+        "type": "object",
+        "properties": {
+          "productId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "channel": {
+            "enum": [
+              "HandedOnPaper",
+              "ShownOnScreen",
+              "SentByEmail",
+              "CustomerSpace"
+            ],
+            "type": "string",
+            "description": "One of: HandedOnPaper, ShownOnScreen, SentByEmail, CustomerSpace"
+          },
+          "acknowledgementReference": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "RecordFirstContactRequest": {
         "type": "object",
         "properties": {
@@ -47301,6 +49532,24 @@
         },
         "additionalProperties": false
       },
+      "RecordInsurerCommissionRequest": {
+        "type": "object",
+        "properties": {
+          "declaredCommission": {
+            "type": "number",
+            "format": "double"
+          },
+          "reference": {
+            "type": "string",
+            "nullable": true
+          },
+          "receivedOn": {
+            "type": "string",
+            "format": "date"
+          }
+        },
+        "additionalProperties": false
+      },
       "RecordKycAutoApprovalControlRequest": {
         "type": "object",
         "properties": {
@@ -47333,6 +49582,30 @@
             "type": "string",
             "format": "uuid",
             "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "RecordPremiumPaymentRequest": {
+        "type": "object",
+        "properties": {
+          "paymentMethod": {
+            "enum": [
+              "Cash",
+              "MobileMoney",
+              "BankTransfer",
+              "Cheque"
+            ],
+            "type": "string",
+            "description": "One of: Cash, MobileMoney, BankTransfer, Cheque"
+          },
+          "paymentReference": {
+            "type": "string",
+            "nullable": true
+          },
+          "paidOn": {
+            "type": "string",
+            "format": "date"
           }
         },
         "additionalProperties": false
@@ -47400,6 +49673,63 @@
             "items": {
               "$ref": "#/components/schemas/RelayTargetHealthReport"
             },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "RecordRemittanceRequest": {
+        "type": "object",
+        "properties": {
+          "remittedOn": {
+            "type": "string",
+            "format": "date"
+          },
+          "reference": {
+            "type": "string",
+            "nullable": true
+          },
+          "amount": {
+            "type": "number",
+            "format": "double"
+          }
+        },
+        "additionalProperties": false
+      },
+      "RecordUnderwritingRequest": {
+        "type": "object",
+        "properties": {
+          "outcome": {
+            "enum": [
+              "Accepted",
+              "AcceptedWithSurcharge",
+              "AcceptedWithExclusions",
+              "MedicalExamsRequired",
+              "Refused",
+              "DeemedAcceptedBySilence"
+            ],
+            "type": "string",
+            "description": "One of: Accepted, AcceptedWithSurcharge, AcceptedWithExclusions, MedicalExamsRequired, Refused, DeemedAcceptedBySilence"
+          },
+          "reference": {
+            "type": "string",
+            "nullable": true
+          },
+          "receivedOn": {
+            "type": "string",
+            "format": "date"
+          },
+          "surchargeAmount": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "exclusions": {
+            "type": "string",
+            "nullable": true
+          },
+          "medicalExams": {
+            "type": "string",
             "nullable": true
           }
         },
@@ -47481,6 +49811,32 @@
         "type": "object",
         "properties": {
           "token": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "RegisterPaymentInstrumentRequest": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "enum": [
+              "MobileMoney",
+              "BankAccount"
+            ],
+            "type": "string",
+            "description": "One of: MobileMoney, BankAccount"
+          },
+          "provider": {
+            "type": "string",
+            "nullable": true
+          },
+          "identifier": {
+            "type": "string",
+            "nullable": true
+          },
+          "holderName": {
             "type": "string",
             "nullable": true
           }
@@ -48102,6 +50458,35 @@
             "nullable": true
           },
           "workflowInstanceId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "RequestOperationRequest": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "enum": [
+              "Renunciation",
+              "Surrender",
+              "Advance"
+            ],
+            "type": "string",
+            "description": "One of: Renunciation, Surrender, Advance"
+          },
+          "amount": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "reason": {
+            "type": "string",
+            "nullable": true
+          },
+          "payoutInstrumentId": {
             "type": "string",
             "format": "uuid",
             "nullable": true
@@ -49935,6 +52320,39 @@
         },
         "additionalProperties": false
       },
+      "SetCommissionNettingRequest": {
+        "type": "object",
+        "properties": {
+          "agreed": {
+            "type": "boolean"
+          },
+          "reference": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "SetConnectionMandatesRequest": {
+        "type": "object",
+        "properties": {
+          "hasCollectionMandate": {
+            "type": "boolean"
+          },
+          "collectionMandateReference": {
+            "type": "string",
+            "nullable": true
+          },
+          "hasCoverNoteMandate": {
+            "type": "boolean"
+          },
+          "coverNoteMandateReference": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "SetConnectionSecretRequest": {
         "type": "object",
         "properties": {
@@ -49945,6 +52363,16 @@
           "expiresAt": {
             "type": "string",
             "format": "date-time",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "SetExclusionsRequest": {
+        "type": "object",
+        "properties": {
+          "exclusions": {
+            "type": "string",
             "nullable": true
           }
         },
@@ -50044,6 +52472,15 @@
           "reason": {
             "type": "string",
             "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "SetLifeInsuranceRequest": {
+        "type": "object",
+        "properties": {
+          "isLifeInsurance": {
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -51022,6 +53459,39 @@
           },
           "isRebuildable": {
             "type": "boolean"
+          },
+          "remittanceDueBy": {
+            "type": "string",
+            "format": "date",
+            "nullable": true
+          },
+          "remittedOn": {
+            "type": "string",
+            "format": "date",
+            "nullable": true
+          },
+          "remittanceReference": {
+            "type": "string",
+            "nullable": true
+          },
+          "remittedAmount": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "insurerDeclaredCommission": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "insurerCommissionReference": {
+            "type": "string",
+            "nullable": true
+          },
+          "commissionGap": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -51448,21 +53918,23 @@
       "SubscribeInsurancePolicyRequest": {
         "type": "object",
         "properties": {
+          "holdingId": {
+            "type": "string",
+            "format": "uuid"
+          },
           "productId": {
             "type": "string",
             "format": "uuid"
           },
-          "crmCustomerId": {
+          "paymentMode": {
+            "enum": [
+              "CoreBankingDebit",
+              "RecordedByAgent",
+              "InsurerCollects",
+              "DeferredByDerogation"
+            ],
             "type": "string",
-            "format": "uuid"
-          },
-          "effectiveDate": {
-            "type": "string",
-            "format": "date"
-          },
-          "accountRef": {
-            "type": "string",
-            "nullable": true
+            "description": "One of: CoreBankingDebit, RecordedByAgent, InsurerCollects, DeferredByDerogation"
           },
           "consentChannel": {
             "enum": [
@@ -51481,6 +53953,30 @@
           "consentedAt": {
             "type": "string",
             "format": "date-time"
+          },
+          "accountRef": {
+            "type": "string",
+            "nullable": true
+          },
+          "paymentMethod": {
+            "enum": [
+              "Cash",
+              "MobileMoney",
+              "BankTransfer",
+              "Cheque"
+            ],
+            "type": "string",
+            "description": "One of: Cash, MobileMoney, BankTransfer, Cheque",
+            "nullable": true
+          },
+          "paymentReference": {
+            "type": "string",
+            "nullable": true
+          },
+          "paidOn": {
+            "type": "string",
+            "format": "date",
+            "nullable": true
           },
           "premiumAmount": {
             "type": "number",
@@ -51511,19 +54007,18 @@
             "type": "string",
             "nullable": true
           },
-          "medicalQuestionnaireCode": {
+          "commitmentReference": {
             "type": "string",
             "nullable": true
           },
-          "medicalAnswers": {
+          "commitmentSignedOn": {
             "type": "string",
+            "format": "date",
             "nullable": true
           },
-          "requiresMedicalUnderwriting": {
-            "type": "boolean"
-          },
-          "beneficiaries": {
+          "premiumPayerClientId": {
             "type": "string",
+            "format": "uuid",
             "nullable": true
           }
         },
@@ -51830,6 +54325,75 @@
           "activeMemberCount": {
             "type": "integer",
             "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "SuspicionAlertDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "clientId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "clientName": {
+            "type": "string",
+            "nullable": true
+          },
+          "clientNumber": {
+            "type": "string",
+            "nullable": true
+          },
+          "facts": {
+            "type": "string",
+            "nullable": true
+          },
+          "raisedBy": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "raisedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "status": {
+            "type": "string",
+            "nullable": true
+          },
+          "handledBy": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "handledAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "declaredOn": {
+            "type": "string",
+            "format": "date",
+            "nullable": true
+          },
+          "declarationReference": {
+            "type": "string",
+            "nullable": true
+          },
+          "notes": {
+            "type": "string",
+            "nullable": true
+          },
+          "raisedByName": {
+            "type": "string",
+            "nullable": true
+          },
+          "handledByName": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -53936,6 +56500,34 @@
           },
           "textBody": {
             "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "UpdateInsuranceDistributorRequest": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "enum": [
+              "Broker",
+              "GeneralAgent",
+              "BancassurancePartner"
+            ],
+            "type": "string",
+            "description": "One of: Broker, GeneralAgent, BancassurancePartner"
+          },
+          "registrationNumber": {
+            "type": "string",
+            "nullable": true
+          },
+          "legalMention": {
+            "type": "string",
+            "nullable": true
+          },
+          "annualSmig": {
+            "type": "number",
+            "format": "double",
             "nullable": true
           }
         },

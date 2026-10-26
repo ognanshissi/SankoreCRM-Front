@@ -175,9 +175,9 @@ export class SubscribeDrawer implements OnInit, OnDestroy {
     () => this.selectedProduct()?.beneficiaryPolicy?.requiredFieldsBeforeConversion ?? [],
   );
 
-  public readonly statusLabel = computed(() => holdingStatusLabel(this.holding()?.status));
+  public readonly statusLabel = computed(() => holdingStatusLabel(this.holding()?.status, this.holding()?.signedAt));
   public readonly statusSeverity = computed<Severity>(() =>
-    holdingStatusSeverity(this.holding()?.status),
+    holdingStatusSeverity(this.holding()?.status, this.holding()?.signedAt),
   );
 
   /**

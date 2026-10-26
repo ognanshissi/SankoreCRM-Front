@@ -4,7 +4,7 @@ import AgenciesHomePage from './containers/agencies/agencies-homepage/agencies-h
 import EditRoleNavigation from './containers/roles/edit-role/edit-role-navigation';
 import EditUserNavigation from './containers/users/edit-user/edit-user-navigation';
 import EditWorkflowTemplateNavigation from './containers/workflows/edit-workflow-template/edit-workflow-template-navigation';
-import { hasPermissionGuard } from '@sankore/crm/common';
+import { canReadModuleGuard, hasPermissionGuard, TENANT_MODULES } from '@sankore/crm/common';
 
 const paneRoutes: Routes = [
   {
@@ -90,6 +90,13 @@ const paneRoutes: Routes = [
         path: 'connexions',
         canActivate: [hasPermissionGuard('user:read')],
         loadComponent: () => import('./containers/users/edit-user/connexions'),
+      },
+      {
+        // Lecture avec la fiche (`GET users/{id}/credentials` exige user:read) ; enregistrer ou
+        // retirer exige user:credential:manage, vérifié par l'écran et par le serveur.
+        path: 'carte-professionnelle',
+        canActivate: [hasPermissionGuard('user:read')],
+        loadComponent: () => import('./containers/users/edit-user/carte-professionnelle'),
       },
       {
         path: 'journal',
@@ -299,6 +306,20 @@ const paneRoutes: Routes = [
     path: 'effacements',
     canActivate: [hasPermissionGuard('privacy:erasure:request')],
     loadComponent: () => import('./containers/erasure-requests/erasure-requests'),
+  },
+  {
+    // Réservé au responsable conformité : un agent qui signale un soupçon n'en revoit rien.
+    path: 'alertes-lbc',
+    canActivate: [hasPermissionGuard('compliance:suspicion:manage')],
+    loadComponent: () => import('./containers/suspicion-alerts/suspicion-alerts'),
+  },
+  {
+    // Sans garde de permission : le statut de distributeur et ses pièces conditionnent toute
+    // souscription, chacun doit pouvoir voir pourquoi elle est refusée. L'écriture exige
+    // `admin:compliance:manage`, vérifié dans l'écran (et par le serveur).
+    path: 'distribution-assurance',
+    canActivate: [canReadModuleGuard(TENANT_MODULES.INSURANCE)],
+    loadComponent: () => import('./containers/insurance-distribution/insurance-distribution'),
   },
   {
     path: 'task-types',

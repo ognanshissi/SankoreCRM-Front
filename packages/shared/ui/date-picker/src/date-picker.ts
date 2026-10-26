@@ -85,13 +85,15 @@ function formatDate(d: Date | null): string {
  * What the agent typed, laid out as JJ/MM/AAAA. Digits only; a separator the agent typed after a
  * single digit pads it (« 2/3/2026 » → « 02/03/2026 »), so both habits work.
  */
-function maskDate(raw: string): string {
+export function maskDate(raw: string): string {
   const parts = raw.split(/[^\d]+/);
   let digits = raw;
   if (parts.length > 1) {
     const [d = '', m = '', ...rest] = parts;
-    const day = d.length === 1 ? `0${d}` : d.slice(0, 2);
-    const month = parts.length > 2 && m.length === 1 ? `0${m}` : m.slice(0, 2);
+    const day = d.length === 1 ? `0${d}` : d;
+    const month = parts.length > 2 && m.length === 1 ? `0${m}` : m;
+    // The digits beyond a part's two are KEPT, not cut: « 15/032 » is « 15/03 » plus the year's
+    // first digit. Cutting them made the year impossible to type after the second slash.
     digits = day + month + rest.join('');
   }
   digits = digits.replace(/\D/g, '').slice(0, 8);

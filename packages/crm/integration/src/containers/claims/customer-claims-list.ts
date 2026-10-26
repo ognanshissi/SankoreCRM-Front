@@ -3,6 +3,7 @@ import {
   Component,
   computed,
   inject,
+  OnInit,
   input,
   signal,
 } from '@angular/core';
@@ -21,7 +22,13 @@ import {
   formatAmount,
   formatContractDate,
 } from '../../data-access/integration-referential';
-import { ClaimRow, PendingIntegrationEndpoints } from '../../data-access/pending-endpoints';
+import { HttpErrorResponse } from '@angular/common/http';
+import { ClaimDto } from '@sankore/crm-api';
+import { catchError, EMPTY, forkJoin, of } from 'rxjs';
+import { IntegrationFacadeService, integrationErrorMessage } from '../../data-access/integration-facade.service';
+
+/** Un sinistre tel que la liste le rend : le dossier, avec le produit de sa police. */
+type ClaimRow = ClaimDto & { id: string; productName: string };
 import {
   ClaimDetailDrawer,
   ClaimDetailDrawerData,
@@ -33,15 +40,8 @@ import {
  * Section posée sous le bloc « Assurances » de la fiche client : un sinistre se lit en
  * regard des contrats, et l'agent y arrive depuis un contrat.
  *
- * **Aucun endpoint de sinistre n'est déclaré dans le swagger** (lot back ASS-09 non
- * livré) : `PendingIntegrationEndpoints.listCustomerClaims()` répond l'état vide, et la
- * section affiche un vide **expliqué** — pas un « Aucun sinistre » qui laisserait croire
- * que ce client n'en a déclaré aucun. Colonnes, statuts, mise en évidence et
- * permissions sont écrits pour de vrai et resteront tels quels.
- *
- * À l'arrivée de l'endpoint : mettre à jour le swagger, lancer
- * `npm run openapi-generator`, nommer la méthode dans `IntegrationFacadeService`, puis
- * remplacer l'appel et retirer le bandeau.
+ * Les dossiers viennent de `GET integration/insurance/claims?crmCustomerId=`, le nom du produit
+ * des polices du client (`GET integration/insurance/policies`), lues ensemble.
  */
 @Component({
   selector: 'customer-claims-list',
@@ -67,18 +67,11 @@ import {
           }
         </div>
 
-        @if (isPending) {
+        @if (loadError()) {
           <div class="p-4">
-            <tas-alert type="info">
-              <p class="text-sm font-medium">Le suivi des sinistres attend une livraison serveur</p>
-              <p class="text-xs mt-1">
-                Les sinistres déjà déclarés chez vos assureurs ne remontent pas encore ici.
-                Déclarez un sinistre depuis un contrat pour préparer le dossier, et suivez-le
-                auprès de l'assureur en attendant.
-              </p>
-            </tas-alert>
+            <tas-alert type="error"><p class="text-sm">{{ loadError() }}</p></tas-alert>
           </div>
-        } @else if (rows().length === 0) {
+        } @else if (!isLoading() && rows().length === 0) {
           <div class="p-6 text-center">
             <p class="text-sm font-medium text-slate-700">Aucun sinistre déclaré</p>
             <p class="mt-1 text-xs text-slate-500">
@@ -86,7 +79,7 @@ import {
             </p>
           </div>
         } @else {
-          <tas-table [data]="rows()" identifierField="claimId" [config]="tableConfig()">
+          <tas-table [data]="rows()" identifierField="id" [config]="tableConfig()" [isLoading]="isLoading()" [hasCaption]="false">
             <ng-template #header>
               <tr>
                 <th>Contrat</th>
@@ -110,13 +103,13 @@ import {
                   <tas-tag [severity]="statusSeverity(claim)">{{ statusLabel(claim) }}</tas-tag>
                 </td>
                 <td class="font-mono text-xs text-slate-600">
-                  {{ claim.insurerClaimRef || '—' }}
+                  {{ claim.claimNumber || '—' }}
                 </td>
                 <td class="text-sm text-slate-600">{{ formatDate(claim.occurredOn) }}</td>
                 <td class="text-sm text-slate-800 tabular-nums">
                   {{ settlementLabel(claim) }}
                 </td>
-                <td class="text-sm text-slate-600">{{ claim.updatedAt | dateTimeAgo }}</td>
+                <td class="text-sm text-slate-600">{{ claim.statusChangedAt | dateTimeAgo }}</td>
                 <td class="text-right" (click)="$event.stopPropagation()">
                   <button
                     tas-button
@@ -136,20 +129,18 @@ import {
     }
   `,
 })
-export class CustomerClaimsList {
+export class CustomerClaimsList implements OnInit {
   private readonly _permissions = inject(PermissionsService);
   private readonly _sideDrawer = inject(SideDrawerService);
 
-  /** `PendingIntegrationEndpoints` n'est pas un service Angular : il s'instancie. */
-  private readonly _pending = new PendingIntegrationEndpoints();
+  private readonly _facade = inject(IntegrationFacadeService);
 
   public readonly customerId = input.required<string>();
 
   public readonly canViewClaims = this._permissions.can('Ins.Claim.View', 'Ins.Claim.Declare');
 
-  public readonly isPending = PendingIntegrationEndpoints.isPending;
-
   public readonly isLoading = signal(true);
+  public readonly loadError = signal<string | null>(null);
   public readonly rows = signal<ClaimRow[]>([]);
 
   public readonly needsActionCount = computed(
@@ -158,7 +149,7 @@ export class CustomerClaimsList {
 
   /** Collection reçue en entier : pagination locale, donc pas de `(pageEventChange)`. */
   public readonly tableConfig = computed<TableConfig>(() => ({
-    property: 'claimId',
+    property: 'id',
     pagination: {
       serverSide: false,
       pageIndex: 0,
@@ -168,11 +159,38 @@ export class CustomerClaimsList {
     },
   }));
 
-  constructor() {
-    this._pending.listCustomerClaims().subscribe((rows) => {
-      this.rows.set(rows);
-      this.isLoading.set(false);
-    });
+  public ngOnInit(): void {
+    this.load();
+  }
+
+  public load(): void {
+    if (!this.canViewClaims()) return;
+
+    this.isLoading.set(true);
+    this.loadError.set(null);
+    forkJoin({
+      claims: this._facade.listClaims({ crmCustomerId: this.customerId() }),
+      // Le nom du produit seulement : une police illisible ne doit pas cacher les dossiers.
+      policies: this._facade.listPolicies(this.customerId()).pipe(catchError(() => of([]))),
+    })
+      .pipe(
+        catchError((err: HttpErrorResponse) => {
+          this.loadError.set(integrationErrorMessage(err, "Les sinistres n'ont pas pu être lus."));
+          this.isLoading.set(false);
+          return EMPTY;
+        }),
+      )
+      .subscribe(({ claims, policies }) => {
+        const products = new Map(policies.map((p) => [p.id, p.productName ?? p.policyNumber ?? '—']));
+        this.rows.set(
+          claims.map((claim) => ({
+            ...claim,
+            id: claim.id ?? '',
+            productName: products.get(claim.policyId) ?? 'Contrat',
+          })),
+        );
+        this.isLoading.set(false);
+      });
   }
 
   public statusLabel(claim: ClaimRow): string {
@@ -192,13 +210,13 @@ export class CustomerClaimsList {
   }
 
   public settlementLabel(claim: ClaimRow): string {
-    return formatAmount(claim.settlementAmount, claim.settlementCurrency);
+    return formatAmount(claim.indemnityAmount, claim.indemnityCurrency);
   }
 
   public openDetail(claim: ClaimRow): void {
     this._sideDrawer.open(ClaimDetailDrawer, {
       data: {
-        claimId: claim.claimId,
+        claimId: claim.id,
         productName: claim.productName,
       } satisfies ClaimDetailDrawerData,
     });

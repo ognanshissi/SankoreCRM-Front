@@ -19,6 +19,7 @@ import { Button } from '@talisoft/ui/button';
 import { ConfirmDialogService } from '@talisoft/ui/confirm-dialog';
 import { TasError, TasFormField, TasHint, TasLabel } from '@talisoft/ui/form-field';
 import { TasIcon } from '@talisoft/ui/icon';
+import { Router } from '@angular/router';
 import { TasInput } from '@talisoft/ui/input';
 import { TasDatePicker } from '@talisoft/ui/date-picker';
 import { SnackbarService } from '@talisoft/ui/snackbar';
@@ -62,7 +63,10 @@ const SYNC_POLL_MAX_TICKS = 18;
  */
 export function holdingOriginLabel(origin: string | null | undefined): string {
   if (!origin) return 'Saisi au CRM';
+  // Les deux valeurs de `HoldingOrigin` côté serveur ; les autres sont gardées par prudence.
+  // « CrmSubscription » s'affichait tel quel, faute d'être dans la liste.
   switch (origin) {
+    case 'CrmSubscription':
     case 'Crm':
     case 'Manual':
     case 'Agent':
@@ -70,6 +74,7 @@ export function holdingOriginLabel(origin: string | null | undefined): string {
     case 'Lead':
     case 'LeadConversion':
       return 'Repris du lead';
+    case 'ImportedFromBackOffice':
     case 'BackOffice':
     case 'Import':
     case 'CoreBanking':
@@ -152,32 +157,57 @@ export function isHoldingActionAvailable(
 }
 
 /**
- * Message français utile à partir d'une réponse d'erreur. Les codes traduits sont ceux
- * que le contrat documente (`HOLDING_ALREADY_HELD`,
- * `DESIGNATION_REQUIRED_ROLE_MISSING`) ; les autres remontent le `title` ou le `detail`
- * du serveur, qui en dit toujours plus qu'un message générique.
+ * Message français utile à partir d'une réponse d'erreur.
+ *
+ * Le serveur (`HoldingHttp`) renvoie le code sous `error` (`{ error: 'HOLDING_ALREADY_HELD' }`), ou
+ * dans le `detail` d'un ProblemDetails pour les 400 et les 503. La lecture se faisait sur `code`,
+ * qu'aucune réponse ne porte : aucun code n'était traduit et l'agent voyait l'identifiant brut.
+ * Un code inconnu remonte le `title` ou le `detail` du serveur, qui en dit toujours plus qu'un
+ * message générique.
  */
 export function holdingErrorMessage(error: HttpErrorResponse, fallback: string): string {
   const body = error.error as
-    | { code?: string; title?: string; detail?: string; errors?: Record<string, string[]> }
+    | { code?: string; error?: string; title?: string; detail?: string; errors?: Record<string, string[]> }
     | undefined;
 
-  switch (body?.code) {
+  const detailCode = body?.detail && /^[A-Z0-9_]+$/.test(body.detail) ? body.detail : undefined;
+  const code = body?.code ?? body?.error ?? detailCode;
+
+  switch (code) {
     case 'HOLDING_ALREADY_HELD':
       return "Ce client détient déjà ce produit et la ligne de produit n'autorise pas de doublon.";
     case 'DESIGNATION_REQUIRED_ROLE_MISSING':
       return "La clause ne satisfait pas un rôle exigé par la ligne de produit : complétez les désignations avant de demander la signature.";
-    case 'DESIGNATION_SHARES_INVALID':
+    case 'DESIGNATION_SHARES_MUST_TOTAL_100':
       return 'Les quotes-parts d\'un rang ne totalisent pas 100 %.';
-    case 'HOLDING_INVALID_STATE':
+    case 'HOLDING_INVALID_TRANSITION':
+    case 'HOLDING_NOT_EDITABLE':
+    case 'HOLDING_READ_ONLY':
       return "Le statut du produit ne permet plus cette action. Rechargez l'écran pour voir son état réel.";
+    case 'HOLDING_SYNC_IN_PROGRESS':
+      return "Le produit est en cours d'envoi au système partenaire : attendez sa réponse avant de le modifier.";
+    case 'HOLDING_SIGNATURE_REQUIRED':
+      return 'Indiquez la date et le mode de signature.';
+    case 'HOLDING_INFORMATION_SHEET_NOT_DELIVERED':
+      return "Remettez d'abord la fiche d'information de l'assureur au client (écran de souscription assurance), puis enregistrez la signature.";
+    case 'PRODUCT_LINE_NOT_FOUND':
+      return "Cette ligne de produit n'existe plus dans le catalogue.";
+    case 'PRODUCT_LINE_UNAVAILABLE':
+      return 'Le catalogue des produits est momentanément illisible. Réessayez dans un instant.';
+    case 'CLIENT_READ_ONLY':
+      return 'Ce client est en lecture seule (archivé ou anonymisé) : aucun produit ne peut être modifié.';
+    case 'CONCURRENCY_CONFLICT':
+      return "Le produit a été modifié entre-temps. Rechargez l'écran puis recommencez.";
+    case 'CLIENT_NOT_FOUND':
+    case 'HOLDING_NOT_FOUND':
+      return "Ce produit ou ce client n'est pas accessible.";
     default:
       break;
   }
 
   const fieldErrors = Object.values(body?.errors ?? {}).flat();
   if (fieldErrors.length > 0) return fieldErrors.join(' ');
-  return body?.detail || body?.title || fallback;
+  return body?.detail || body?.title || code || fallback;
 }
 
 /** Une position de la frise de suivi. */
@@ -194,7 +224,7 @@ interface TimelineStep {
  * horodatage (BNF-F-12).
  *
  * Quatre positions d'un état d'avancement, pas une collection d'entités : elle reste
- * du HTML ordinaire, comme `subscription-tracking` du module Intégration.
+ * du HTML ordinaire.
  */
 @Component({
   selector: 'holding-timeline',
@@ -234,6 +264,8 @@ export class HoldingTimeline {
     const isActive = status === 'Active';
     const isClosed = status === 'Closed';
     const isPendingSync = status === 'PendingSync';
+    // Accepté par l'assureur, prime pas encore payée : l'accusé est là, la vigueur non.
+    const isAwaitingPayment = status === 'AwaitingPayment';
 
     const steps: TimelineStep[] = [
       {
@@ -255,7 +287,7 @@ export class HoldingTimeline {
         label: 'Envoi au back-office',
         state: isPendingSync
           ? 'current'
-          : isActive || isRejected || h.syncedAt
+          : isActive || isAwaitingPayment || isRejected || h.syncedAt
             ? 'done'
             : 'waiting',
         at: null,
@@ -264,7 +296,7 @@ export class HoldingTimeline {
       {
         key: 'acknowledgement',
         label: isRejected ? 'Rejet du back-office' : 'Accusé du back-office',
-        state: isRejected ? 'failed' : isActive ? 'done' : isPendingSync ? 'current' : 'waiting',
+        state: isRejected ? 'failed' : isActive || isAwaitingPayment ? 'done' : isPendingSync ? 'current' : 'waiting',
         at: h.syncedAt ?? null,
         detail: isRejected
           ? h.rejectionReason || 'Motif non communiqué par le back-office.'
@@ -273,6 +305,16 @@ export class HoldingTimeline {
             : null,
       },
     ];
+
+    if (isAwaitingPayment || (isActive && h.productCategory && ['Insurance', 'HealthInsurance', 'ForecastInsurance'].includes(h.productCategory))) {
+      steps.push({
+        key: 'payment',
+        label: 'Paiement de la prime',
+        state: isAwaitingPayment ? 'current' : 'done',
+        at: null,
+        detail: isAwaitingPayment ? "Le contrat entre en vigueur dès que la prime est confirmée." : null,
+      });
+    }
 
     if (isClosed) {
       steps.push({
@@ -409,45 +451,65 @@ class CloseFormModel {
         </p>
       } @else {
         <div class="mt-3 flex flex-wrap items-center gap-2">
-          @if (can('requestSignature')) {
-            <button
-              tas-outlined-button
-              color="primary"
-              type="button"
-              [isLoading]="busy() === 'requestSignature'"
-              [disabled]="busy() !== null"
-              (click)="requestSignature()"
-            >
-              <tas-icon iconName="feather:edit-3" style="font-size:13px"></tas-icon>
-              Demander la signature
-            </button>
-          }
+          @if (isInsurance()) {
+            <!--
+              Un contrat d'assurance suit un ordre imposé (lot 2) : fiche d'information remise,
+              puis signature, puis paiement de la prime et envoi. Le parcours « Souscrire une
+              assurance » les enchaîne ; signé ou envoyé d'ici, le serveur le refuserait.
+            -->
+            @if (can('requestSignature') || can('sign') || can('submit')) {
+              <button
+                tas-raised-button
+                color="primary"
+                type="button"
+                [disabled]="busy() !== null"
+                (click)="finaliseInsurance()"
+              >
+                <tas-icon iconName="feather:shield" style="font-size:13px"></tas-icon>
+                Poursuivre la souscription
+              </button>
+            }
+          } @else {
+            @if (can('requestSignature')) {
+              <button
+                tas-outlined-button
+                color="primary"
+                type="button"
+                [isLoading]="busy() === 'requestSignature'"
+                [disabled]="busy() !== null"
+                (click)="requestSignature()"
+              >
+                <tas-icon iconName="feather:edit-3" style="font-size:13px"></tas-icon>
+                Demander la signature
+              </button>
+            }
 
-          @if (can('sign') && !signing()) {
-            <button
-              tas-raised-button
-              color="primary"
-              type="button"
-              [disabled]="busy() !== null"
-              (click)="signing.set(true)"
-            >
-              <tas-icon iconName="feather:pen-tool" style="font-size:13px"></tas-icon>
-              Signer électroniquement
-            </button>
-          }
+            @if (can('sign') && !signing()) {
+              <button
+                tas-raised-button
+                color="primary"
+                type="button"
+                [disabled]="busy() !== null"
+                (click)="signing.set(true)"
+              >
+                <tas-icon iconName="feather:pen-tool" style="font-size:13px"></tas-icon>
+                Signer électroniquement
+              </button>
+            }
 
-          @if (can('submit')) {
-            <button
-              tas-raised-button
-              color="primary"
-              type="button"
-              [isLoading]="busy() === 'submit'"
-              [disabled]="busy() !== null"
-              (click)="submitToBackOffice()"
-            >
-              <tas-icon iconName="feather:send" style="font-size:13px"></tas-icon>
-              Envoyer au back-office
-            </button>
+            @if (can('submit')) {
+              <button
+                tas-raised-button
+                color="primary"
+                type="button"
+                [isLoading]="busy() === 'submit'"
+                [disabled]="busy() !== null"
+                (click)="submitToBackOffice()"
+              >
+                <tas-icon iconName="feather:send" style="font-size:13px"></tas-icon>
+                Envoyer au back-office
+              </button>
+            }
           }
 
           @if (can('returnToDraft')) {
@@ -545,6 +607,7 @@ class CloseFormModel {
 })
 export class HoldingSignatureActions {
   private readonly _holdingsApi = inject(ProductHoldingsApiService);
+  private readonly _router = inject(Router);
   private readonly _snackbar = inject(SnackbarService);
   private readonly _confirm = inject(ConfirmDialogService);
 
@@ -560,9 +623,14 @@ export class HoldingSignatureActions {
   public readonly closing = signal(false);
   public readonly errorMessage = signal<string | null>(null);
 
-  public readonly statusLabel = computed(() => holdingStatusLabel(this.holding().status));
+  public readonly statusLabel = computed(() => holdingStatusLabel(this.holding().status, this.holding().signedAt));
+
+  /** Un produit d'assurance : son envoi passe par le paiement de la prime et le consentement. */
+  public readonly isInsurance = computed(() =>
+    ['Insurance', 'HealthInsurance', 'ForecastInsurance'].includes(this.holding().productCategory ?? ''),
+  );
   public readonly statusSeverity = computed<Severity>(() =>
-    holdingStatusSeverity(this.holding().status),
+    holdingStatusSeverity(this.holding().status, this.holding().signedAt),
   );
 
   public signatureModel = signal(SignatureFormModel.instantiate());
@@ -586,6 +654,13 @@ export class HoldingSignatureActions {
     this._run('requestSignature', 'Impossible de demander la signature.', () =>
       this._holdingsApi.requestHoldingSignature(this.holding().holdingId ?? ''),
     );
+  }
+
+  public finaliseInsurance(): void {
+    const holding = this.holding();
+    this._router.navigate(['/customers', holding.clientId, 'souscrire-assurance'], {
+      queryParams: { holding: holding.holdingId },
+    });
   }
 
   public submitToBackOffice(): void {
@@ -825,9 +900,9 @@ export class HoldingDetailDrawer implements OnInit, OnDestroy {
     pagination: { serverSide: false, pageIndex: 0, pageSize: 10, pageSizeOptions: [10, 30] },
   };
 
-  public readonly statusLabel = computed(() => holdingStatusLabel(this.holding()?.status));
+  public readonly statusLabel = computed(() => holdingStatusLabel(this.holding()?.status, this.holding()?.signedAt));
   public readonly statusSeverity = computed<Severity>(() =>
-    holdingStatusSeverity(this.holding()?.status),
+    holdingStatusSeverity(this.holding()?.status, this.holding()?.signedAt),
   );
   public readonly categoryLabel = computed(() =>
     productCategoryLabel(this.holding()?.productCategory),

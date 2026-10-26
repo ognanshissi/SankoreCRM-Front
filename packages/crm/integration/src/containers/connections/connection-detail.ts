@@ -33,6 +33,7 @@ import {
 } from '../../components/connection-settings-form';
 import { RelayAgentPanelComponent } from '../../components/relay-agent-panel';
 import { TelephonyWebhookPanel } from './telephony-webhook-panel';
+import { InsurerMandatesPanel } from './insurer-mandates-panel';
 import {
   integrationErrorMessage,
   IntegrationFacadeService,
@@ -125,6 +126,7 @@ class EditConnectionFormModel {
     ConnectionSettingsFormComponent,
     RelayAgentPanelComponent,
     TelephonyWebhookPanel,
+    InsurerMandatesPanel,
   ],
 })
 export class ConnectionDetailPage {
@@ -529,6 +531,15 @@ export class ConnectionDetailPage {
 
   public reload(): void {
     this._load(this.id());
+  }
+
+  /**
+   * Les mandats changent la version de la connexion : il faut la relire, sinon le prochain
+   * enregistrement des réglages répond 409. Le formulaire des réglages n'est repoussé que
+   * s'il est intact, comme après un test.
+   */
+  public onMandatesSaved(): void {
+    this._load(this.id(), !this.formSchema().dirty());
   }
 
   private _askDeactivation(message: string): void {

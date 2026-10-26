@@ -13,6 +13,7 @@ import { ErasureRequestDrawer, ErasureRequestDrawerData, PermissionsService } fr
 import { ClientLifecycleStateDto } from '@sankore/crm-api';
 import { ClientDetailStore } from '../../models/client-detail.store';
 import { CLIENT_STATUS_ORDER } from '../../models/client-labels';
+import { RaiseSuspicionAlertDrawer, RaiseSuspicionAlertDrawerData } from './raise-suspicion-alert-drawer';
 import {
   LIFECYCLE_ACTION_PERMISSIONS,
   LifecycleActionDrawer,
@@ -119,7 +120,7 @@ function canonicalStatus(value: string | number | null | undefined): string | nu
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [Button, TasIcon, Menu, MenuItem, TasMenuTrigger],
   template: `
-    @if (availableEntries().length > 0 || showErasure()) {
+    @if (availableEntries().length > 0 || showErasure() || showSuspicion()) {
       <button tas-outlined-button type="button" TasMenuTrigger [panel]="actionsMenu">
         <tas-icon iconName="feather:more-horizontal" style="font-size:14px"></tas-icon>
         Actions
@@ -154,6 +155,15 @@ function canonicalStatus(value: string | number | null | undefined): string | nu
               </button>
             </tas-menu-item>
           }
+          <!-- Volontairement discret : rien sur la fiche ne doit trahir un signalement. -->
+          @if (showSuspicion()) {
+            <tas-menu-item>
+              <button type="button" class="w-full flex items-center gap-2 text-slate-700" (click)="openSuspicionAlert()">
+                <tas-icon iconName="feather:flag" class="text-slate-400" style="font-size:13px"></tas-icon>
+                Signaler un soupçon (LBC/FT)
+              </button>
+            </tas-menu-item>
+          }
         </tas-menu>
       </ng-template>
     } @else if (hasAnyLifecycleRight()) {
@@ -170,6 +180,10 @@ export class ClientActionsMenu {
   public readonly canUpdateSensitive = this._permissions.can('customers:update_sensitive');
   public readonly canArchive = this._permissions.can('customers:archive');
   public readonly canRequestErasure = this._permissions.can('privacy:erasure:request');
+
+  public readonly canRaiseSuspicion = this._permissions.can('compliance:suspicion:raise');
+
+  protected readonly showSuspicion = computed(() => !!this.store.client() && this.canRaiseSuspicion());
 
   /** Pas pour une fiche déjà anonymisée, ni pour une personne déjà restreinte (sa demande est ouverte). */
   protected readonly showErasure = computed(() => {
@@ -232,6 +246,18 @@ export class ClientActionsMenu {
       height: '100%',
       panelClass: 'side-drawer-panel',
       data: { subjectType: 'Client', subjectId: client.id, label: client.displayName ?? client.clientNumber ?? 'Ce client' },
+    });
+  }
+
+  /** Ni rechargement ni trace locale après l'envoi : l'agent ne revoit pas son signalement. */
+  public openSuspicionAlert(): void {
+    const clientId = this.store.client()?.id;
+    if (!clientId) return;
+    this._sideDrawer.open<boolean, RaiseSuspicionAlertDrawerData, RaiseSuspicionAlertDrawer>(RaiseSuspicionAlertDrawer, {
+      width: '560px',
+      height: '100%',
+      panelClass: 'side-drawer-panel',
+      data: { clientId },
     });
   }
 

@@ -1,0 +1,255 @@
+<div class="flex flex-col gap-4 pb-6">
+  <div>
+    <h1 class="text-xl font-bold text-slate-900">Distribution d’assurance</h1>
+    <p class="mt-1 text-sm text-slate-500">
+      L’institution en tant que distributeur d’assurance : son statut, la mention imprimée sur ses documents, le SMIG
+      dont dépend le paiement différé des grosses primes, et les pièces qui l’autorisent à distribuer.
+    </p>
+  </div>
+
+  @if (isLoading() && !profile()) {
+    <div class="flex justify-center py-16">
+      <tas-spinner size="10" class="text-primary"></tas-spinner>
+    </div>
+  } @else if (loadFailed() && !profile()) {
+    <tas-card class="block">
+      <div class="flex flex-col items-center gap-3 p-8 text-center">
+        <tas-icon iconName="feather:alert-circle" class="text-functional-error" style="font-size:22px"></tas-icon>
+        <p class="text-sm text-slate-700">Le profil de distributeur n’a pas pu être chargé.</p>
+        <button tas-outlined-button color="primary" type="button" class="rounded-full" (click)="reload()">Réessayer</button>
+      </div>
+    </tas-card>
+  } @else {
+    <!-- Situation : c'est le serveur qui en décide, sur le statut ENREGISTRÉ. -->
+    @if (!profile()?.status) {
+      <div class="flex gap-3 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900" role="status">
+        <tas-icon iconName="feather:alert-triangle" class="mt-0.5 shrink-0" style="font-size:16px"></tas-icon>
+        <div>
+          <p class="font-semibold">Profil non renseigné</p>
+          <p class="mt-1">
+            Les nouvelles souscriptions d’assurance sont refusées tant que le statut de distributeur de l’institution
+            n’est pas enregistré et que les pièces qu’il exige ne sont pas fournies.
+          </p>
+        </div>
+      </div>
+    } @else if (profile()?.inGoodStanding) {
+      <div class="flex gap-3 rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900" role="status">
+        <tas-icon iconName="feather:check-circle" class="mt-0.5 shrink-0" style="font-size:16px"></tas-icon>
+        <div>
+          <p class="font-semibold">En règle — {{ savedStatusLabel() }}</p>
+          <p class="mt-1">Les pièces exigées sont présentes et en cours de validité : les souscriptions sont ouvertes.</p>
+          @if (expiringSoon().length) {
+            <ul class="mt-2 list-disc pl-5 text-amber-800">
+              @for (doc of expiringSoon(); track doc.id) {
+                <li>{{ kindLabel(doc.kind) }} : {{ expiry(doc).label.toLowerCase() }}, à renouveler.</li>
+              }
+            </ul>
+          }
+        </div>
+      </div>
+    } @else {
+      <div class="flex gap-3 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-900" role="alert">
+        <tas-icon iconName="feather:slash" class="mt-0.5 shrink-0" style="font-size:16px"></tas-icon>
+        <div>
+          <p class="font-semibold">Souscriptions bloquées — {{ savedStatusLabel() }}</p>
+          <p class="mt-1">Les nouvelles souscriptions d’assurance sont refusées tant que ces pièces ne sont pas à jour :</p>
+          <ul class="mt-2 list-disc pl-5">
+            @for (blocker of blockers(); track blocker) {
+              <li>{{ blocker }}</li>
+            } @empty {
+              <li>Pièces exigées incomplètes.</li>
+            }
+          </ul>
+        </div>
+      </div>
+    }
+
+    <div class="grid grid-cols-1 gap-4 lg:grid-cols-3">
+      <!-- Profil -->
+      <tas-card class="block lg:col-span-2">
+        <div class="p-4">
+          <div class="mb-4 flex items-start justify-between gap-3">
+            <div>
+              <h2 class="text-base font-semibold text-slate-900">Profil de distributeur</h2>
+              @if (!canEdit()) {
+                <p class="mt-1 text-xs text-slate-500">
+                  @if (moduleReadOnly()) {
+                    Module Assurance désactivé : consultation seule.
+                  } @else {
+                    Consultation seule : la modification exige le droit de gérer la conformité.
+                  }
+                </p>
+              }
+            </div>
+          </div>
+
+          <form [formRoot]="formSchema" class="flex flex-col gap-5">
+            <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <tas-form-field>
+                <tas-label>Statut <span class="text-functional-error">*</span></tas-label>
+                <tas-select [options]="statusOptions" placeholder="Choisir le statut" [formField]="formSchema.status"></tas-select>
+                @if (formSchema.status().touched() && formSchema.status().invalid()) {
+                  <tas-error>{{ formSchema.status().errors()[0].message }}</tas-error>
+                }
+              </tas-form-field>
+
+              <tas-form-field>
+                <tas-label>N° d’immatriculation</tas-label>
+                <input tasInput type="text" placeholder="Tel qu’imprimé sur les documents" [formField]="formSchema.registrationNumber" />
+              </tas-form-field>
+            </div>
+
+            <tas-form-field>
+              <tas-label>Mention légale (art. 540)@if (isBroker()) {<span class="text-functional-error"> *</span>}</tas-label>
+              <textarea tasInput rows="3" [formField]="formSchema.legalMention"
+                        [placeholder]="isBroker() ? 'Obligatoire pour un courtier' : 'Facultative'"></textarea>
+              @if (formSchema.legalMention().touched() && formSchema.legalMention().invalid()) {
+                <tas-error>{{ formSchema.legalMention().errors()[0].message }}</tas-error>
+              } @else {
+                <tas-hint>Imprimée sur les documents remis au client.</tas-hint>
+              }
+            </tas-form-field>
+
+            <tas-form-field>
+              <tas-label>SMIG annuel</tas-label>
+              <input tasInput type="text" inputmode="decimal" class="tabular-nums" placeholder="Ex. : 900 000"
+                     [formField]="formSchema.annualSmig" />
+              <button tasSuffix type="button" tabindex="-1" aria-hidden="true"
+                      class="cursor-default whitespace-nowrap pr-3 text-sm text-slate-500">{{ currency() }}</button>
+              @if (formSchema.annualSmig().touched() && formSchema.annualSmig().invalid()) {
+                <tas-error>{{ formSchema.annualSmig().errors()[0].message }}</tas-error>
+              } @else if (derogationThreshold(); as threshold) {
+                <tas-hint>
+                  Seuil de dérogation (80 × SMIG) : <span class="font-semibold tabular-nums">{{ formatAmount(threshold) }}</span>.
+                  Au-delà de ce montant de prime, le paiement peut intervenir sous 60 jours (engagement écrit du souscripteur).
+                </tas-hint>
+              } @else {
+                <tas-hint>Vide : aucune dérogation au paiement comptant de la prime n’est possible.</tas-hint>
+              }
+            </tas-form-field>
+          </form>
+
+          @if (canEdit()) {
+            <div class="mt-5 flex justify-end">
+              <button tas-raised-button color="primary" type="button" class="rounded-full" (click)="handleSubmit()"
+                      [disabled]="formSchema().invalid() || formSchema().submitting()"
+                      [isLoading]="formSchema().submitting()">Enregistrer</button>
+            </div>
+          }
+        </div>
+      </tas-card>
+
+      <!-- Pièces exigées par le statut choisi : trois lignes au plus, un résumé et non une liste. -->
+      <tas-card class="block">
+        <div class="p-4">
+          <h2 class="text-base font-semibold text-slate-900">Pièces exigées</h2>
+          @if (statusChangedUnsaved() && formSchema.status().value()) {
+            <p class="mt-1 text-xs text-amber-700">Selon le statut choisi, pas encore enregistré.</p>
+          }
+          @if (requiredPieces().length) {
+            <ul class="mt-3 flex flex-col gap-3">
+              @for (piece of requiredPieces(); track piece.kind) {
+                <li class="flex items-start gap-3">
+                  @switch (piece.state) {
+                    @case ('present') {
+                      <tas-icon iconName="feather:check-circle" class="mt-0.5 shrink-0 text-emerald-600" style="font-size:16px"></tas-icon>
+                    }
+                    @case ('expiring') {
+                      <tas-icon iconName="feather:clock" class="mt-0.5 shrink-0 text-amber-600" style="font-size:16px"></tas-icon>
+                    }
+                    @case ('expired') {
+                      <tas-icon iconName="feather:x-circle" class="mt-0.5 shrink-0 text-functional-error" style="font-size:16px"></tas-icon>
+                    }
+                    @default {
+                      <tas-icon iconName="feather:circle" class="mt-0.5 shrink-0 text-slate-400" style="font-size:16px"></tas-icon>
+                    }
+                  }
+                  <div class="min-w-0 flex-1">
+                    <p class="text-sm font-medium text-slate-900">{{ piece.label }}</p>
+                    <p class="text-xs text-slate-500">
+                      @switch (piece.state) {
+                        @case ('present') { {{ piece.document!.daysLeft == null ? 'Sans échéance' : 'Valide jusqu’au ' + day(piece.document!.expiresOn) }} }
+                        @case ('expiring') { {{ expiry(piece.document!).label }} }
+                        @case ('expired') { Échue le {{ day(piece.document!.expiresOn) }} }
+                        @default { Non fournie }
+                      }
+                    </p>
+                  </div>
+                  @if (canEdit() && piece.state !== 'present') {
+                    <button tas-text-button color="primary" type="button" class="shrink-0 text-sm" (click)="addDocument(piece.kind)">
+                      {{ piece.state === 'missing' ? 'Ajouter' : 'Renouveler' }}
+                    </button>
+                  }
+                </li>
+              }
+            </ul>
+          } @else {
+            <p class="mt-3 text-sm text-slate-500">Choisissez un statut pour voir les pièces qu’il exige.</p>
+          }
+        </div>
+      </tas-card>
+    </div>
+
+    <!-- Pièces au dossier, remplacées comprises -->
+    <tas-card class="block">
+      <div class="flex items-center justify-between gap-3 p-4">
+        <div>
+          <h2 class="text-base font-semibold text-slate-900">Pièces au dossier</h2>
+          <p class="mt-1 text-xs text-slate-500">
+            Une nouvelle pièce remplace celle de même nature ; l’ancienne reste au dossier, elle couvrait les contrats
+            signés pendant sa validité.
+          </p>
+        </div>
+        @if (canEdit()) {
+          <button tas-raised-button color="primary" type="button" class="shrink-0 rounded-full" (click)="addDocument()">
+            <tas-icon iconName="feather:plus" style="font-size:14px"></tas-icon>
+            Ajouter une pièce
+          </button>
+        }
+      </div>
+      <tas-table [data]="documents()" [config]="tableConfig" [isLoading]="isLoading()" [hasCaption]="false">
+        <ng-template #header>
+          <tr>
+            <th>Pièce</th>
+            <th>Référence</th>
+            <th>Émetteur</th>
+            <th>Délivrée le</th>
+            <th>Échéance</th>
+            <th></th>
+          </tr>
+        </ng-template>
+        <ng-template #body let-item>
+          <tr class="align-top" [class.opacity-60]="!item.isCurrent">
+            <td class="py-3">
+              <p class="text-sm font-semibold text-slate-900">{{ kindLabel(item.kind) }}</p>
+              @if (!item.isCurrent) {
+                <tas-tag severity="neutral" class="mt-1 inline-block">Remplacée</tas-tag>
+              }
+            </td>
+            <td class="py-3 text-sm text-slate-800">{{ item.reference }}</td>
+            <td class="py-3 text-sm text-slate-800">{{ item.issuer || '—' }}</td>
+            <td class="py-3 text-sm text-slate-800 tabular-nums">{{ day(item.issuedOn) }}</td>
+            <td class="py-3">
+              @if (item.expiresOn) {
+                <p class="text-sm text-slate-800 tabular-nums">{{ day(item.expiresOn) }}</p>
+              }
+              <tas-tag [severity]="expiry(item).severity" class="mt-1 inline-block">{{ expiry(item).label }}</tas-tag>
+            </td>
+            <td class="py-3 text-right whitespace-nowrap">
+              @if (item.hasFile) {
+                <button tas-text-button color="primary" type="button" class="text-sm"
+                        [isLoading]="downloadingId() === item.id" [disabled]="downloadingId() === item.id"
+                        [attr.title]="item.fileName" (click)="download(item)">
+                  <tas-icon iconName="feather:download" style="font-size:14px"></tas-icon>
+                  Télécharger
+                </button>
+              } @else {
+                <span class="text-xs text-slate-400">Sans fichier</span>
+              }
+            </td>
+          </tr>
+        </ng-template>
+      </tas-table>
+    </tas-card>
+  }
+</div>

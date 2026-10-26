@@ -1,14 +1,19 @@
+import { HttpErrorResponse } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, OnInit, computed, inject, input, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { PermissionsService, TENANT_MODULES, TenantModulesService } from '@sankore/crm/common';
+import { InsurancePolicyDto } from '@sankore/crm-api';
 import { TasAlert } from '@talisoft/ui/alert';
 import { Anchor, Button } from '@talisoft/ui/button';
 import { TasCard } from '@talisoft/ui/card';
 import { TasIcon } from '@talisoft/ui/icon';
 import { SideDrawerService } from '@talisoft/ui/side-drawer';
+import { SnackbarService } from '@talisoft/ui/snackbar';
 import { TableConfig, TasTable } from '@talisoft/ui/table';
 import { Severity, TasTag } from '@talisoft/ui/tag';
 import { TimeagoPipe } from '@talisoft/ui/timeago';
+import { catchError, EMPTY } from 'rxjs';
+import { IntegrationFacadeService, integrationErrorMessage } from '../data-access/integration-facade.service';
 import {
   formatAmount,
   formatContractDate,
@@ -16,33 +21,25 @@ import {
   InsurancePeriodicity,
   policyStatusMeta,
 } from '../data-access/integration-referential';
-import { PendingIntegrationEndpoints, PolicyRow } from '../data-access/pending-endpoints';
 import { DeclareClaimDrawer, DeclareClaimDrawerData } from './declare-claim-drawer';
+import { InsurancePolicyDrawer, InsurancePolicyDrawerData } from './insurance-policy-drawer';
 
-/**
- * Un contrat demande attention quand il est suspendu, résilié pour impayé, ou quand sa
- * dernière échéance n'a pas été payée. C'est ce qui doit sauter aux yeux dans ce bloc.
- */
-export function isPolicyAtRisk(row: PolicyRow): boolean {
-  return row.status === 'Suspended' || row.status === 'Lapsed' || row.lastInstalmentPaid === false;
+/** Un contrat suspendu demande attention : c'est ce qui doit sauter aux yeux dans ce bloc. */
+export function isPolicyAtRisk(row: InsurancePolicyDto): boolean {
+  return row.status === 'Suspended';
 }
+
+type PolicyRow = InsurancePolicyDto & { id: string };
 
 /**
  * Bloc « Assurances » de la fiche client — ASS-16.
  *
- * **Aucun endpoint ne liste les contrats d'un client** : les lots back ASS-07/ASS-08 ne
- * sont pas livrés, et le swagger ne déclare côté assurance que le catalogue des produits
- * et le devis. Le bloc appelle donc `PendingIntegrationEndpoints.listCustomerPolicies()`,
- * qui répond l'état vide, et affiche un vide **expliqué** — pas un « Aucun contrat » qui
- * laisserait croire que ce client n'en a pas. Le précédent de ce choix est
- * `customers/.../groupes.ts`.
+ * Les polices viennent de `GET integration/insurance/policies?crmCustomerId=` : enregistrées à
+ * l'émission par l'assureur, puis tenues à jour par sa synchronisation. Le serveur filtre sur le
+ * périmètre d'agence de l'agent. L'attestation est demandée à l'assureur au moment du clic.
  *
- * Tout le reste est écrit pour de vrai et fonctionnera tel quel le jour où l'endpoint
- * arrive : la mise en évidence des contrats suspendus ou en impayé, la date de fraîcheur,
- * les colonnes, les permissions.
- *
- * Le bloc reçoit l'identifiant du client en entrée et n'injecte pas le store des clients,
- * qui vit dans une autre bibliothèque.
+ * Le bloc reçoit l'identifiant du client en entrée et n'injecte pas le store des clients, qui vit
+ * dans une autre bibliothèque.
  */
 @Component({
   selector: 'insurance-policies-block',
@@ -55,9 +52,8 @@ export class InsurancePoliciesBlock implements OnInit {
   private readonly _moduleReadOnly = inject(TenantModulesService).readOnly(TENANT_MODULES.INSURANCE);
   private readonly _permissions = inject(PermissionsService);
   private readonly _sideDrawer = inject(SideDrawerService);
-
-  /** `PendingIntegrationEndpoints` n'est pas un service Angular : il s'instancie. */
-  private readonly _pending = new PendingIntegrationEndpoints();
+  private readonly _facade = inject(IntegrationFacadeService);
+  private readonly _snackbar = inject(SnackbarService);
 
   public readonly customerId = input.required<string>();
 
@@ -67,38 +63,56 @@ export class InsurancePoliciesBlock implements OnInit {
   public readonly canDeclareClaim = computed(() => this._canDeclareClaimPermission() && !this._moduleReadOnly());
 
   public readonly isLoading = signal(true);
+  public readonly loadError = signal<string | null>(null);
   public readonly rows = signal<PolicyRow[]>([]);
-  public readonly asOf = signal<string | null>(null);
+  public readonly downloadingId = signal<string | null>(null);
 
-  public readonly isPending = PendingIntegrationEndpoints.isPending;
+  /** La plus ancienne synchronisation : la fraîcheur du bloc est celle de sa ligne la moins fraîche. */
+  public readonly asOf = computed(() =>
+    this.rows()
+      .map((row) => row.lastSyncedAt ?? '')
+      .filter(Boolean)
+      .sort()[0] ?? null,
+  );
 
   public readonly atRiskCount = computed(() => this.rows().filter(isPolicyAtRisk).length);
 
-  /** Collection reçue en entier : pagination locale, donc pas de `(pageEventChange)`. */
+  /** Collection reçue en entier : pagination locale. */
   public readonly tableConfig = signal<TableConfig>({
-    property: 'policyId',
-    pagination: {
-      serverSide: false,
-      pageIndex: 0,
-      pageSize: 10,
-      pageSizeOptions: [10, 25, 50],
-    },
+    property: 'id',
+    pagination: { serverSide: false, pageIndex: 0, pageSize: 10, pageSizeOptions: [10, 25, 50] },
   });
 
   public ngOnInit(): void {
-    this._pending.listCustomerPolicies().subscribe((result) => {
-      this.rows.set(result.rows);
-      this.asOf.set(result.asOf);
-      this.isLoading.set(false);
-    });
+    this.load();
   }
 
+  public load(): void {
+    this.isLoading.set(true);
+    this.loadError.set(null);
+    this._facade
+      .listPolicies(this.customerId())
+      .pipe(
+        catchError((err: HttpErrorResponse) => {
+          this.loadError.set(integrationErrorMessage(err, "Les contrats d'assurance n'ont pas pu être lus."));
+          this.isLoading.set(false);
+          return EMPTY;
+        }),
+      )
+      .subscribe((policies) => {
+        this.rows.set(policies.map((policy) => ({ ...policy, id: policy.id ?? '' })));
+        this.isLoading.set(false);
+      });
+  }
+
+  // Émise n'est pas en vigueur : le contrat ne prend effet qu'au paiement de la prime, et le statut
+  // de l'assureur l'ignore jusqu'à sa prochaine synchronisation. Il s'affichait « En vigueur ».
   public statusLabel(row: PolicyRow): string {
-    return policyStatusMeta(row.status).label;
+    return row.premiumOutstanding ? 'Émise — prime à payer' : policyStatusMeta(row.status).label;
   }
 
   public statusSeverity(row: PolicyRow): Severity {
-    return policyStatusMeta(row.status).severity;
+    return row.premiumOutstanding ? 'info' : policyStatusMeta(row.status).severity;
   }
 
   public isAtRisk(row: PolicyRow): boolean {
@@ -115,19 +129,45 @@ export class InsurancePoliciesBlock implements OnInit {
     return formatContractDate(value);
   }
 
-  /** « payée » / « impayée » / « — » : le texte porte l'information, pas la couleur seule. */
-  public lastInstalmentLabel(row: PolicyRow): string {
-    if (!row.lastInstalmentDate) return '—';
-    const date = formatContractDate(row.lastInstalmentDate);
-    if (row.lastInstalmentPaid === null) return date;
-    return row.lastInstalmentPaid ? `${date} · payée` : `${date} · impayée`;
+  public downloadCertificate(row: PolicyRow): void {
+    this.downloadingId.set(row.id);
+    this._facade
+      .getPolicyCertificate(row.id)
+      .pipe(
+        catchError((err: HttpErrorResponse) => {
+          this._snackbar.error(
+            'Attestation indisponible',
+            err.status === 502
+              ? "L'assureur n'a pas pu produire l'attestation. Réessayez plus tard ou demandez-la par votre canal habituel."
+              : integrationErrorMessage(err, "L'attestation n'a pas pu être téléchargée."),
+          );
+          this.downloadingId.set(null);
+          return EMPTY;
+        }),
+      )
+      .subscribe((blob) => {
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `attestation-${row.policyNumber || row.id}.pdf`;
+        link.click();
+        URL.revokeObjectURL(url);
+        this.downloadingId.set(null);
+      });
+  }
+
+  /** Opérations et documents du contrat ; les deux actions de la ligne restent sur la ligne. */
+  public openDetails(row: PolicyRow): void {
+    this._sideDrawer.open(InsurancePolicyDrawer, {
+      data: { policy: row, customerId: this.customerId() } satisfies InsurancePolicyDrawerData,
+    });
   }
 
   public declareClaim(row: PolicyRow): void {
     this._sideDrawer.open(DeclareClaimDrawer, {
       data: {
-        policyId: row.policyId,
-        productName: row.productName,
+        policyId: row.id,
+        productName: row.productName ?? '',
       } satisfies DeclareClaimDrawerData,
     });
   }

@@ -18,26 +18,14 @@
       -->
       @if (asOf()) {
         <p class="mt-1 text-xs text-slate-500" [title]="asOf()">
-          Données arrêtées {{ asOf() | dateTimeAgo }}
+          Synchronisé avec l'assureur {{ asOf() | dateTimeAgo }}
         </p>
       } @else {
-        <p class="mt-1 text-xs text-slate-500">Fraîcheur inconnue</p>
+        <p class="mt-1 text-xs text-slate-500">Polices émises par les assureurs</p>
       }
     </div>
 
     <div class="flex flex-wrap items-center gap-2">
-      @if (canDeclareClaim()) {
-        <button
-          tas-outlined-button
-          color="primary"
-          type="button"
-          [disabled]="rows().length === 0"
-          title="Un sinistre se déclare depuis un contrat : utilisez l'action de la ligne concernée."
-        >
-          <tas-icon iconName="feather:alert-circle" style="font-size:14px"></tas-icon>
-          Déclarer un sinistre
-        </button>
-      }
       @if (canSubscribe()) {
         <a
           tas-raised-button
@@ -51,27 +39,25 @@
     </div>
   </div>
 
-  @if (!isLoading() && rows().length === 0) {
+  @if (loadError()) {
     <div class="border-t border-slate-100 p-4">
-      <tas-alert type="info">
-        <p class="text-sm font-medium">La liste des contrats attend une livraison serveur</p>
-        <p class="mt-1 text-sm">
-          Les contrats d'assurance d'un client ne sont pas encore lisibles : l'endpoint
-          correspondant n'est pas en service. Ce bloc n'affiche donc rien, et cela ne veut pas
-          dire que ce client n'a aucun contrat.
-        </p>
-        <p class="mt-2 text-sm">
-          Ce qui est disponible dès maintenant : le catalogue des produits d'assurance et le
-          parcours de souscription, qui donne le tarif de l'assureur et le solde du compte à
-          débiter.
-        </p>
+      <tas-alert type="error">
+        <p class="text-sm">{{ loadError() }}</p>
+        <button tas-outlined-button color="primary" type="button" class="mt-2" (click)="load()">Réessayer</button>
       </tas-alert>
+    </div>
+  } @else if (!isLoading() && rows().length === 0) {
+    <div class="border-t border-slate-100 p-6 text-center">
+      <p class="text-sm font-medium text-slate-600">Aucun contrat d'assurance</p>
+      <p class="mt-1 text-sm text-slate-400">
+        Un contrat apparaît ici quand l'assureur émet la police, après l'encaissement de la prime.
+      </p>
     </div>
   } @else {
     <div class="border-t border-slate-100">
       <tas-table
         [data]="rows()"
-        identifierField="policyId"
+        identifierField="id"
         [config]="tableConfig()"
         [isLoading]="isLoading()"
         [hasCaption]="false"
@@ -83,64 +69,50 @@
             <th>Date d'effet</th>
             <th class="text-right">Prime</th>
             <th>Prochaine échéance</th>
-            <th>Dernière échéance</th>
             <th class="text-right"></th>
           </tr>
         </ng-template>
 
         <ng-template #body let-row>
-          <!-- Un contrat suspendu ou en impayé est signalé par la ligne entière. -->
+          <!-- Un contrat suspendu est signalé par la ligne entière. -->
           <tr [class]="isAtRisk(row) ? 'bg-red-50' : ''">
             <td class="py-3">
               <p class="text-sm font-medium text-slate-800">{{ row.productName }}</p>
-              <p class="text-xs text-slate-500">{{ row.insurerName }}</p>
+              <p class="text-xs text-slate-500">{{ row.insurer }}</p>
               @if (row.policyNumber) {
                 <p class="font-mono text-xs text-slate-400">{{ row.policyNumber }}</p>
               }
             </td>
-
             <td>
               <tas-tag [severity]="statusSeverity(row)">{{ statusLabel(row) }}</tas-tag>
+              @if (row.statusDetail) {
+                <p class="mt-1 text-xs text-slate-500">{{ row.statusDetail }}</p>
+              }
             </td>
-
-            <td class="text-sm text-slate-700">{{ formatDate(row.effectiveFrom) }}</td>
-
-            <td class="text-right text-sm text-slate-800 tabular-nums">
-              {{ premiumLabel(row) }}
-            </td>
-
-            <td class="text-sm text-slate-700">{{ formatDate(row.nextInstalmentDate) }}</td>
-
-            <td class="text-sm" [class]="row.lastInstalmentPaid === false ? 'text-functional-error' : 'text-slate-700'">
-              {{ lastInstalmentLabel(row) }}
-            </td>
-
+            <td class="text-sm text-slate-700">{{ formatDate(row.effectiveDate) }}</td>
+            <td class="text-right text-sm text-slate-800 tabular-nums">{{ premiumLabel(row) }}</td>
+            <td class="text-sm text-slate-700">{{ formatDate(row.nextDueDate) }}</td>
             <td class="text-right" (click)="$event.stopPropagation()">
               <div class="flex items-center justify-end gap-2">
-                @if (row.certificateAvailable) {
-                  <!--
-                    L'attestation est annoncée disponible par le serveur, mais aucun endpoint
-                    ne la renvoie encore : le bouton reste visible et désactivé, avec le motif
-                    dans son infobulle, plutôt que de disparaître.
-                  -->
+                <button tas-text-button color="primary" type="button" (click)="openDetails(row)">
+                  Détails
+                </button>
+                <!-- Ni attestation ni sinistre tant que la prime est due : le contrat n'est pas en vigueur. -->
+                @if (!row.premiumOutstanding) {
                   <button
                     tas-outlined-button
                     color="primary"
                     type="button"
-                    disabled
-                    title="Le téléchargement de l'attestation attend une livraison serveur."
+                    [disabled]="downloadingId() === row.id"
+                    [isLoading]="downloadingId() === row.id"
+                    (click)="downloadCertificate(row)"
                   >
                     <tas-icon iconName="feather:download" style="font-size:14px"></tas-icon>
                     Attestation
                   </button>
                 }
-                @if (canDeclareClaim()) {
-                  <button
-                    tas-text-button
-                    color="primary"
-                    type="button"
-                    (click)="declareClaim(row)"
-                  >
+                @if (canDeclareClaim() && !row.premiumOutstanding) {
+                  <button tas-text-button color="primary" type="button" (click)="declareClaim(row)">
                     Déclarer un sinistre
                   </button>
                 }

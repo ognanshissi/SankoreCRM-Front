@@ -36,6 +36,9 @@ export const PERMISSIONS = {
   USER_REVOKE_ROLE: 'user:revoke-role',
   USER_ASSIGN_PERMISSION: 'user:assign-permission',
   USER_REVOKE_PERMISSION: 'user:revoke-permission',
+  // Déclaré par `POST users/{id}/credentials` et `…/credentials/withdrawal` : la carte
+  // professionnelle d'intermédiaire d'assurance (CIMA art. 503, 510).
+  USER_CREDENTIAL_MANAGE: 'user:credential:manage',
 
   TERRITORY_READ: 'territory:read',
   TERRITORY_CREATE: 'territory:create',
@@ -169,6 +172,8 @@ export const PERMISSIONS = {
   // décider celles d'un AUTRE (jamais les siennes — le serveur le refuse).
   PRIVACY_ERASURE_REQUEST: 'privacy:erasure:request',
   PRIVACY_ERASURE_APPROVE: 'privacy:erasure:approve',
+  COMPLIANCE_SUSPICION_RAISE: 'compliance:suspicion:raise',
+  COMPLIANCE_SUSPICION_MANAGE: 'compliance:suspicion:manage',
   CUSTOMERS_EXPORT: 'customers:export',
   CUSTOMERS_GROUPS_MANAGE: 'customers:groups_manage',
 

@@ -38,6 +38,7 @@ import { TasTag } from '@talisoft/ui/tag';
 import { TasInput } from '@talisoft/ui/input';
 import { EMPTY, catchError, firstValueFrom, forkJoin, of } from 'rxjs';
 import { InsuranceProductPreview } from '../../components/insurance-product-preview';
+import { InsuranceInformationSheetPanel } from './insurance-information-sheet-panel';
 import {
   IntegrationFacadeService,
   integrationErrorMessage,
@@ -64,6 +65,9 @@ type GuaranteeRow = {
   deductible: string;
 };
 
+/** Les catégories du catalogue qu'un produit d'assureur peut réaliser. */
+const INSURANCE_CATALOGUE_CATEGORIES = ['Insurance', 'HealthInsurance', 'ForecastInsurance'];
+
 class EditInsuranceProductFormModel {
   public name!: string;
   public description!: string;
@@ -78,6 +82,7 @@ class EditInsuranceProductFormModel {
   public requiresCbsAccount!: boolean;
   public requiresActiveLoan!: boolean;
   public linkedCreditProductCode!: string;
+  public crmProductCode!: string;
   public commissionRatePercent!: string;
   public premiumRetryLimit!: string;
   public premiumRetryIntervalDays!: string;
@@ -105,6 +110,7 @@ class EditInsuranceProductFormModel {
     model.requiresCbsAccount = dto.requiresCbsAccount ?? false;
     model.requiresActiveLoan = dto.requiresActiveLoan ?? false;
     model.linkedCreditProductCode = dto.linkedCreditProductCode ?? '';
+    model.crmProductCode = dto.crmProductCode ?? '';
     // Le contrat ne donne aucune unité pour `commissionRate` (ni bornes, ni exemple) :
     // la saisie est en pourcentage et le stockage en fraction 0–1, converti aux deux
     // bouts. Un taux dont on ne sait pas s'il vaut 0,05 ou 5 est un bug financier.
@@ -152,6 +158,7 @@ function isBlankOrPositiveInteger(raw: string | number | null | undefined, max: 
     FormRoot,
     FormField,
     InsuranceProductPreview,
+    InsuranceInformationSheetPanel,
     TasAlert,
     Button,
     TasCard,
@@ -197,6 +204,14 @@ export class EditInsuranceProductPage {
   public isChangingDistribution = signal(false);
   public product = signal<InsuranceProductDto | null>(null);
   public creditProducts = signal<ProductDto[]>([]);
+  /** Les lignes d'assurance du catalogue, que ce produit de l'assureur peut réaliser. */
+  public catalogueProducts = signal<ProductDto[]>([]);
+
+  public readonly catalogueProductOptions = computed(() =>
+    this.catalogueProducts()
+      .filter((p) => !!p.code)
+      .map((p) => ({ label: p.name ? `${p.name} (${p.code})` : (p.code as string), value: p.code as string })),
+  );
   public guarantees = signal<GuaranteeRow[]>([]);
 
   public model = signal(new EditInsuranceProductFormModel());
@@ -354,6 +369,7 @@ export class EditInsuranceProductPage {
       requiresCbsAccount: value.requiresCbsAccount,
       requiresActiveLoan: value.requiresActiveLoan,
       linkedCreditProductCode: value.linkedCreditProductCode || null,
+      crmProductCode: value.crmProductCode || null,
       effectiveFrom: asText(value.effectiveFrom),
       effectiveTo: asText(value.effectiveTo) || null,
     };
@@ -372,6 +388,9 @@ export class EditInsuranceProductPage {
         creditProducts: this._productsApi
           .listProducts(true, 'Loan')
           .pipe(catchError(() => of([] as ProductDto[]))),
+        catalogueProducts: this._productsApi
+          .listProducts(true)
+          .pipe(catchError(() => of([] as ProductDto[]))),
       })
         .pipe(
           catchError((error: HttpErrorResponse) => {
@@ -384,8 +403,11 @@ export class EditInsuranceProductPage {
             return EMPTY;
           }),
         )
-        .subscribe(({ product, creditProducts }) => {
+        .subscribe(({ product, creditProducts, catalogueProducts }) => {
           this.creditProducts.set(creditProducts ?? []);
+          this.catalogueProducts.set(
+            (catalogueProducts ?? []).filter((p) => INSURANCE_CATALOGUE_CATEGORIES.includes(p.category ?? '')),
+          );
           this._applyProduct(product);
           this.isLoading.set(false);
         });
@@ -506,6 +528,26 @@ export class EditInsuranceProductPage {
     });
   }
 
+  /**
+   * Après un dépôt de fiche ou un enregistrement d'exclusions : on relit le produit pour
+   * son offrabilité (INFORMATION_SHEET_MISSING), sans repousser le formulaire — des
+   * modifications en cours et non enregistrées seraient sinon perdues.
+   */
+  public refreshProductStatus(): void {
+    this._facade
+      .getInsuranceProduct(this.id())
+      .pipe(
+        catchError((error: HttpErrorResponse) => {
+          this._snackbar.error(
+            'Erreur',
+            integrationErrorMessage(error, "L'état du produit n'a pas pu être relu."),
+          );
+          return EMPTY;
+        }),
+      )
+      .subscribe((product) => this.product.set(product));
+  }
+
   public backToCatalogue(): void {
     this._router.navigate(['/settings/integrations/insurance-products']);
   }
@@ -617,6 +659,9 @@ export class EditInsuranceProductPage {
       requiresCbsAccount: value.requiresCbsAccount,
       requiresActiveLoan: value.requiresActiveLoan,
       linkedCreditProductCode: value.linkedCreditProductCode || null,
+      // Le PUT remplace tout : omis, le rattachement au catalogue serait effacé à chaque
+      // enregistrement — et la souscription ne retrouverait plus l'assureur du contrat.
+      crmProductCode: value.crmProductCode || null,
       // Saisie en pourcentage, envoi en fraction 0–1 (cf. `fromDto`).
       commissionRate: (toNumberOrNull(value.commissionRatePercent) ?? 0) / 100,
       premiumRetryLimit: toNumberOrNull(value.premiumRetryLimit) ?? 0,

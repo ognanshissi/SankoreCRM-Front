@@ -19,6 +19,7 @@ api/client-timeline-segments.service.ts
 api/clients.service.ts
 api/company-info.service.ts
 api/compliance-settings.service.ts
+api/compliance.service.ts
 api/connected-accounts.service.ts
 api/customer-compliance.service.ts
 api/customer-settings.service.ts
@@ -32,6 +33,7 @@ api/health.service.ts
 api/holdings-endpoints.service.ts
 api/ingest.service.ts
 api/ingestions.service.ts
+api/insurance-distribution.service.ts
 api/integration.service.ts
 api/kyc-public.service.ts
 api/kyc-settings.service.ts
@@ -316,6 +318,7 @@ model/dispatch-task-result.interface.ts
 model/dispatching-rule-dto.interface.ts
 model/dissolve-group-request.interface.ts
 model/dissolve-group-result.interface.ts
+model/distributor-document-dto.interface.ts
 model/dry-run-lead-preview.interface.ts
 model/dry-run-request-info.interface.ts
 model/dry-run-result.interface.ts
@@ -331,6 +334,7 @@ model/entity-form-dto.interface.ts
 model/erasure-eligibility-dto.interface.ts
 model/erasure-request-dto.interface.ts
 model/escalate-complaint-request.interface.ts
+model/evidence-event-dto.interface.ts
 model/exchange-enrolment-token-request.interface.ts
 model/execution-monitor-dto.interface.ts
 model/expiring-credential-dto.interface.ts
@@ -352,6 +356,7 @@ model/google-sheet-import-request.interface.ts
 model/group-detail-dto.interface.ts
 model/group-list-item-dto.interface.ts
 model/group-member-dto.interface.ts
+model/handle-suspicion-alert-request.interface.ts
 model/health-answer.interface.ts
 model/holding-dto.interface.ts
 model/holding-specifics-dto.interface.ts
@@ -363,9 +368,13 @@ model/impersonate-user-request.interface.ts
 model/impersonation-started-dto.interface.ts
 model/import-job-created-result.interface.ts
 model/import-leads-accepted.interface.ts
+model/information-sheet-delivery-dto.interface.ts
+model/information-sheet-dto.interface.ts
 model/ingestion-dto.interface.ts
 model/ingestion-payload-dto.interface.ts
+model/insurance-distributor-dto.interface.ts
 model/insurance-guarantee.interface.ts
+model/insurance-policy-dto.interface.ts
 model/insurance-product-dto.interface.ts
 model/insurance-product-write-request.interface.ts
 model/insurance-quote-dto.interface.ts
@@ -469,6 +478,7 @@ model/mapping-field-error.interface.ts
 model/mapping-import-report.interface.ts
 model/mapping-row-result.interface.ts
 model/mapping-validation-error.interface.ts
+model/mark-document-sent-request.interface.ts
 model/match-reason.interface.ts
 model/merge-field-preferences.interface.ts
 model/merge-lead-result.interface.ts
@@ -480,6 +490,7 @@ model/missing-fatca-declaration.interface.ts
 model/models.ts
 model/money.interface.ts
 model/move-agency-request.interface.ts
+model/move-operation-request.interface.ts
 model/move-opportunity-to-step-request.interface.ts
 model/my-agenda-dto.interface.ts
 model/my-calendar-event-dto.interface.ts
@@ -523,6 +534,7 @@ model/paged-result-of-retention-candidate-dto.interface.ts
 model/paged-result-of-run-dto.interface.ts
 model/paged-result-of-stalled-holding-dto.interface.ts
 model/paged-result-of-telephony-call-list-item-dto.interface.ts
+model/payment-instrument-dto.interface.ts
 model/perfect-vision-settings.interface.ts
 model/performance-factor.interface.ts
 model/performance-figures-dto.interface.ts
@@ -533,6 +545,8 @@ model/pipeline-column.interface.ts
 model/pipeline-stage-config-dto.interface.ts
 model/pipeline-view.interface.ts
 model/platform-settings.interface.ts
+model/policy-document-dto.interface.ts
+model/policy-operation-dto.interface.ts
 model/postal-address-input.interface.ts
 model/preview-mapping-request.interface.ts
 model/preview-mapping-result.interface.ts
@@ -569,6 +583,7 @@ model/questionnaire-respondent-dto.interface.ts
 model/quote-insurance-product-request.interface.ts
 model/raise-kyc-review-request.interface.ts
 model/raise-kyc-review-result.interface.ts
+model/raise-suspicion-alert-request.interface.ts
 model/reassign-task-request.interface.ts
 model/reassign-whats-app-conversation-request.interface.ts
 model/recalculate-lead-score-result.interface.ts
@@ -577,20 +592,27 @@ model/reconciliation-gap-page.interface.ts
 model/reconciliation-gap-row.interface.ts
 model/reconciliation-run-summary.interface.ts
 model/record-claim-indemnity-request.interface.ts
+model/record-client-answer-request.interface.ts
 model/record-complaint-request.interface.ts
 model/record-consent-request.interface.ts
 model/record-consent-result.interface.ts
+model/record-delivery-request.interface.ts
 model/record-first-contact-request.interface.ts
 model/record-health-consent-request.interface.ts
 model/record-health-consent-response.interface.ts
+model/record-insurer-commission-request.interface.ts
 model/record-kyc-auto-approval-control-request.interface.ts
 model/record-kyc-auto-approval-control-result.interface.ts
+model/record-premium-payment-request.interface.ts
 model/record-profile-notice-request.interface.ts
 model/record-profile-notice-response.interface.ts
 model/record-relay-heartbeat-request.interface.ts
+model/record-remittance-request.interface.ts
+model/record-underwriting-request.interface.ts
 model/recording-policy-dto.interface.ts
 model/recycle-lead-request.interface.ts
 model/refresh-token-request.interface.ts
+model/register-payment-instrument-request.interface.ts
 model/register-relay-agent-request.interface.ts
 model/register-request.interface.ts
 model/reject-client-merge-request.interface.ts
@@ -616,6 +638,7 @@ model/request-client-export-request.interface.ts
 model/request-client-export-result.interface.ts
 model/request-client-merge-request.interface.ts
 model/request-client-merge-result.interface.ts
+model/request-operation-request.interface.ts
 model/request-tenant-module-body.interface.ts
 model/reschedule-appointment-request.interface.ts
 model/reschedule-reminder-request.interface.ts
@@ -676,11 +699,15 @@ model/set-agent-capacity-ceiling-request.interface.ts
 model/set-appointment-target-request.interface.ts
 model/set-beneficiary-policy-request.interface.ts
 model/set-biometry-token-request.interface.ts
+model/set-commission-netting-request.interface.ts
+model/set-connection-mandates-request.interface.ts
 model/set-connection-secret-request.interface.ts
+model/set-exclusions-request.interface.ts
 model/set-household-resources-request.interface.ts
 model/set-intent-level-request.interface.ts
 model/set-kyc-remote-policy-request.interface.ts
 model/set-legal-hold-request.interface.ts
+model/set-life-insurance-request.interface.ts
 model/set-monthly-quota-command.interface.ts
 model/set-pep-status-request.interface.ts
 model/set-project-checklist-item-request.interface.ts
@@ -746,6 +773,7 @@ model/support-ticket-summary-dto.interface.ts
 model/suspend-client-request.interface.ts
 model/suspend-group-request.interface.ts
 model/suspend-group-result.interface.ts
+model/suspicion-alert-dto.interface.ts
 model/system-capture-lead-request.interface.ts
 model/tag-dto.interface.ts
 model/task-assignment-entry-dto.interface.ts
@@ -800,6 +828,7 @@ model/update-connection-request.interface.ts
 model/update-customer-setting-request.interface.ts
 model/update-dispatching-rule-request.interface.ts
 model/update-email-template-request.interface.ts
+model/update-insurance-distributor-request.interface.ts
 model/update-kyc-setting-request.interface.ts
 model/update-lead-owner-request.interface.ts
 model/update-lead-request.interface.ts

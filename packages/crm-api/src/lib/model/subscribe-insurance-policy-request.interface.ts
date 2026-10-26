@@ -12,16 +12,25 @@
 
 
 export interface SubscribeInsurancePolicyRequest { 
+    holdingId?: string;
     productId?: string;
-    crmCustomerId?: string;
-    effectiveDate?: string;
-    accountRef?: string | null;
+    /**
+     * One of: CoreBankingDebit, RecordedByAgent, InsurerCollects, DeferredByDerogation
+     */
+    paymentMode?: SubscribeInsurancePolicyRequestPaymentModeEnum;
     /**
      * One of: PaperAtCounter, ElectronicSignaturePad, OneTimeCode, CustomerChannel
      */
     consentChannel?: SubscribeInsurancePolicyRequestConsentChannelEnum;
     consentTextVersion?: string | null;
     consentedAt?: string;
+    accountRef?: string | null;
+    /**
+     * One of: Cash, MobileMoney, BankTransfer, Cheque
+     */
+    paymentMethod?: SubscribeInsurancePolicyRequestPaymentMethodEnum | null;
+    paymentReference?: string | null;
+    paidOn?: string | null;
     premiumAmount?: number | null;
     currency?: string | null;
     consentTextSha256?: string | null;
@@ -29,16 +38,27 @@ export interface SubscribeInsurancePolicyRequest {
     consentEvidenceStorageRef?: string | null;
     consentEvidenceSha256?: string | null;
     consentEvidenceContentType?: string | null;
-    medicalQuestionnaireCode?: string | null;
-    medicalAnswers?: string | null;
-    requiresMedicalUnderwriting?: boolean;
-    beneficiaries?: string | null;
+    commitmentReference?: string | null;
+    commitmentSignedOn?: string | null;
+    premiumPayerClientId?: string | null;
 }
+export enum SubscribeInsurancePolicyRequestPaymentModeEnum {
+    CoreBankingDebit = 'CoreBankingDebit',
+    RecordedByAgent = 'RecordedByAgent',
+    InsurerCollects = 'InsurerCollects',
+    DeferredByDerogation = 'DeferredByDerogation'
+};
 export enum SubscribeInsurancePolicyRequestConsentChannelEnum {
     PaperAtCounter = 'PaperAtCounter',
     ElectronicSignaturePad = 'ElectronicSignaturePad',
     OneTimeCode = 'OneTimeCode',
     CustomerChannel = 'CustomerChannel'
+};
+export enum SubscribeInsurancePolicyRequestPaymentMethodEnum {
+    Cash = 'Cash',
+    MobileMoney = 'MobileMoney',
+    BankTransfer = 'BankTransfer',
+    Cheque = 'Cheque'
 };
 
 

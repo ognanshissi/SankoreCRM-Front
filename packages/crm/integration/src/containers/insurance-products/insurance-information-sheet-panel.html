@@ -1,0 +1,218 @@
+<tas-card class="block">
+  <div class="p-4">
+    <div class="flex items-start justify-between gap-3">
+      <div>
+        <p class="text-sm font-semibold text-slate-700">Fiche d'information</p>
+        <p class="text-xs text-slate-500 mt-0.5">
+          Le document de l'assureur remis au client avant la souscription. Sans fiche, le
+          produit ne peut pas être proposé. Chaque nouvelle version est celle que les
+          prochaines remises transmettront ; les remises déjà faites gardent la leur.
+        </p>
+      </div>
+      @if (canManage()) {
+        <input
+          #sheetInput
+          type="file"
+          accept="application/pdf"
+          class="hidden"
+          (change)="onFileSelected($event)"
+        />
+        <button
+          tas-outlined-button
+          color="primary"
+          type="button"
+          class="shrink-0"
+          [disabled]="isUploading()"
+          [isLoading]="isUploading()"
+          (click)="sheetInput.click()"
+        >
+          <tas-icon iconName="feather:upload" style="font-size:14px"></tas-icon>
+          Déposer une nouvelle version
+        </button>
+      }
+    </div>
+
+    <!-- Assurance vie : enregistrée à part, dès la bascule. -->
+    <div class="mt-4 flex items-start justify-between gap-4 rounded-lg border border-slate-200 p-3">
+      <div>
+        <p class="text-sm font-medium text-slate-700">
+          Assurance vie — droit de renonciation de 30 jours
+        </p>
+        <p class="text-xs text-slate-500 mt-0.5">
+          Le souscripteur peut renoncer au contrat dans les 30 jours qui suivent le paiement de
+          la première prime. L'assureur rembourse alors dans les 30 jours, et jamais tant que le
+          KYC du client est incomplet.
+        </p>
+      </div>
+      <tas-switch
+        class="shrink-0"
+        ariaLabel="Assurance vie — droit de renonciation de 30 jours"
+        [checked]="isLifeInsurance()"
+        [disabled]="!canManage()"
+        [isLoading]="isSavingLifeInsurance()"
+        (toggle)="setLifeInsurance($event)"
+      ></tas-switch>
+    </div>
+
+    <div class="grid grid-cols-2 gap-4 mt-4">
+      <!-- Version en vigueur -->
+      <div class="rounded-lg border border-slate-200 p-3">
+        @if (currentSheet(); as current) {
+          <div class="flex items-center gap-2">
+            <tas-tag severity="success">Version {{ current.version }}</tas-tag>
+            <span class="text-xs text-slate-500">en vigueur</span>
+          </div>
+          <p class="text-sm text-slate-800 mt-2 truncate" [title]="current.fileName ?? ''">
+            {{ current.fileName || 'Fiche sans nom' }}
+          </p>
+          <dl class="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+            <dt class="text-slate-400">Déposée le</dt>
+            <dd class="text-slate-700 tabular-nums">
+              {{ current.uploadedAt | date: 'dd/MM/yyyy HH:mm' }}
+            </dd>
+            <dt class="text-slate-400">Empreinte</dt>
+            <dd class="font-mono text-slate-700" [title]="current.sha256 ?? ''">
+              {{ shortHash(current.sha256) }}
+            </dd>
+            <dt class="text-slate-400">Taille</dt>
+            <dd class="text-slate-700 tabular-nums">{{ formatSize(current.sizeBytes) }}</dd>
+          </dl>
+          <div class="flex items-center gap-2 mt-3">
+            <button
+              tas-text-button
+              type="button"
+              class="-ml-2"
+              [disabled]="openingId() === current.id"
+              (click)="openSheet(current)"
+            >
+              <tas-icon iconName="feather:external-link" style="font-size:14px"></tas-icon>
+              Ouvrir
+            </button>
+            <button
+              tas-text-button
+              type="button"
+              [disabled]="openingId() === current.id"
+              (click)="openSheet(current, true)"
+            >
+              <tas-icon iconName="feather:download" style="font-size:14px"></tas-icon>
+              Télécharger
+            </button>
+          </div>
+        } @else if (!isLoading()) {
+          <div class="flex items-center gap-2">
+            <tas-tag severity="warning">Aucune fiche</tas-tag>
+          </div>
+          <p class="text-sm text-slate-600 mt-2">
+            Ce produit n'a pas encore de fiche d'information : il ne peut pas être proposé
+            aux clients tant qu'elle n'est pas déposée.
+          </p>
+        }
+      </div>
+
+      <!-- Exclusions -->
+      <form [formRoot]="exclusionsForm" class="flex flex-col">
+        <tas-form-field>
+          <tas-label>Exclusions</tas-label>
+          <textarea
+            tasInput
+            rows="6"
+            placeholder="Une exclusion par ligne"
+            [formField]="exclusionsForm.exclusions"
+          ></textarea>
+          <tas-hint>
+            Une exclusion par ligne, affichée à côté de la fiche pour l'agent. C'est la fiche
+            PDF qui fait foi.
+          </tas-hint>
+        </tas-form-field>
+        @if (canManage()) {
+          <div class="flex items-center justify-between gap-2 mt-2">
+            <span class="text-xs text-slate-400">
+              {{ exclusionLines().length }} exclusion(s)
+            </span>
+            <button
+              tas-outlined-button
+              color="primary"
+              type="button"
+              [disabled]="!exclusionsForm().dirty() || exclusionsForm().submitting()"
+              [isLoading]="exclusionsForm().submitting()"
+              (click)="saveExclusions()"
+            >
+              Enregistrer les exclusions
+            </button>
+          </div>
+        }
+      </form>
+    </div>
+
+    <!-- Historique des versions -->
+    <div class="mt-4">
+      <p class="text-xs font-medium text-slate-500 mb-2">Historique des versions</p>
+      <tas-table
+        [data]="sheets()"
+        identifierField="id"
+        [config]="tableConfig()"
+        [isLoading]="isLoading()"
+        [hasCaption]="false"
+      >
+        <ng-template #header>
+          <tr>
+            <th>Version</th>
+            <th>Fichier</th>
+            <th>Déposée le</th>
+            <th>Empreinte</th>
+            <th class="text-right">Taille</th>
+            <th class="text-right"></th>
+          </tr>
+        </ng-template>
+        <ng-template #body let-sheet>
+          <tr>
+            <td class="py-3">
+              <div class="flex items-center gap-2">
+                <span class="text-sm font-medium text-slate-800 tabular-nums">
+                  v{{ sheet.version }}
+                </span>
+                @if (sheet.isCurrent) {
+                  <tas-tag severity="success">En vigueur</tas-tag>
+                }
+              </div>
+            </td>
+            <td class="text-sm text-slate-700 max-w-64 truncate" [title]="sheet.fileName ?? ''">
+              {{ sheet.fileName || '—' }}
+            </td>
+            <td class="text-sm text-slate-700 tabular-nums">
+              {{ sheet.uploadedAt | date: 'dd/MM/yyyy HH:mm' }}
+            </td>
+            <td class="font-mono text-xs text-slate-600" [title]="sheet.sha256 ?? ''">
+              {{ shortHash(sheet.sha256) }}
+            </td>
+            <td class="text-sm text-slate-700 tabular-nums text-right">
+              {{ formatSize(sheet.sizeBytes) }}
+            </td>
+            <td class="text-right whitespace-nowrap">
+              <button
+                tas-button
+                iconButton
+                type="button"
+                title="Ouvrir dans un nouvel onglet"
+                [disabled]="openingId() === sheet.id"
+                (click)="openSheet(sheet)"
+              >
+                <tas-icon iconName="feather:external-link" style="font-size:14px"></tas-icon>
+              </button>
+              <button
+                tas-button
+                iconButton
+                type="button"
+                title="Télécharger"
+                [disabled]="openingId() === sheet.id"
+                (click)="openSheet(sheet, true)"
+              >
+                <tas-icon iconName="feather:download" style="font-size:14px"></tas-icon>
+              </button>
+            </td>
+          </tr>
+        </ng-template>
+      </tas-table>
+    </div>
+  </div>
+</tas-card>

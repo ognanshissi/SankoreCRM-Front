@@ -57,17 +57,24 @@ const HOLDING_STATUS: Record<string, CodeMeta> = {
   Draft:            { label: 'Brouillon',          severity: 'neutral' },
   PendingSignature: { label: 'À signer',           severity: 'warning' },
   PendingSync:      { label: 'En synchronisation', severity: 'info' },
+  AwaitingPayment:  { label: 'En attente de paiement', severity: 'warning' },
   Active:           { label: 'Actif',              severity: 'success' },
   Rejected:         { label: 'Rejeté',             severity: 'error' },
   Closed:           { label: 'Clôturé',            severity: 'neutral' },
 };
 
-export function holdingStatusLabel(code: string | null | undefined): string {
-  return meta(HOLDING_STATUS, code).label;
+/**
+ * Un produit signé reste `PendingSignature` côté serveur jusqu'à son envoi : c'est la date de
+ * signature qui fait foi, pas le statut. Sans `signedAt`, un contrat signé s'affichait « À signer ».
+ */
+const SIGNED_NOT_SENT: CodeMeta = { label: 'Signé — à envoyer', severity: 'info' };
+
+export function holdingStatusLabel(code: string | null | undefined, signedAt?: string | null): string {
+  return code === 'PendingSignature' && signedAt ? SIGNED_NOT_SENT.label : meta(HOLDING_STATUS, code).label;
 }
 
-export function holdingStatusSeverity(code: string | null | undefined): Severity {
-  return meta(HOLDING_STATUS, code).severity;
+export function holdingStatusSeverity(code: string | null | undefined, signedAt?: string | null): Severity {
+  return code === 'PendingSignature' && signedAt ? SIGNED_NOT_SENT.severity : meta(HOLDING_STATUS, code).severity;
 }
 
 // ——— Catégories de produit ———

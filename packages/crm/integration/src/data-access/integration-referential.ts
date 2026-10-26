@@ -666,8 +666,7 @@ export const INSURANCE_MIN_KYC_LEVEL_LABELS: Record<InsuranceMinKycLevel, string
 };
 
 /**
- * `notOfferableReasons` de `listInsuranceProducts`. Ces six valeurs sont celles que la
- * description de l'endpoint énumère ; elles expliquent à l'agent pourquoi un produit
+ * `notOfferableReasons` de `listInsuranceProducts`, tels que le serveur les énumère ; elles expliquent à l'agent pourquoi un produit
  * n'apparaît pas, au lieu de le faire disparaître sans mot dire.
  */
 export function notOfferableReasonLabel(reason: string | null | undefined): string {
@@ -684,19 +683,26 @@ export function notOfferableReasonLabel(reason: string | null | undefined): stri
       return "Le produit n'est plus en vigueur";
     case 'INSURER_PRICING_UNAVAILABLE':
       return "L'assureur ne renvoie pas de tarif";
+    case 'CRM_PRODUCT_WITHDRAWN':
+      return 'Le produit du catalogue est retiré';
+    case 'CRM_PRODUCT_UNKNOWN':
+      return 'Le produit du catalogue est introuvable';
+    case 'INFORMATION_SHEET_MISSING':
+      return "Aucune fiche d'information n'a été déposée";
     default:
       return reason || 'Indisponible';
   }
 }
 
-/** Statut d'un contrat, tel qu'un agent le lit. Valeurs de `PolicyRow.status`. */
+/** Statut d'une police, tel qu'un agent le lit. Valeurs de `InsurancePolicyDto.status`. */
 export function policyStatusMeta(status: string | null | undefined): {
   label: string;
   severity: Severity;
 } {
   switch (status) {
     case 'Pending':
-      return { label: 'En cours de souscription', severity: 'info' };
+      return { label: "En attente d'émission", severity: 'info' };
+    case 'Issued':
     case 'Active':
       return { label: 'En vigueur', severity: 'success' };
     case 'Suspended':
@@ -712,7 +718,6 @@ export function policyStatusMeta(status: string | null | undefined): {
   }
 }
 
-/** Statut d'un sinistre. Valeurs de `ClaimRow.status`. */
 /**
  * Les six valeurs de `ClaimStatus` du serveur.
  *

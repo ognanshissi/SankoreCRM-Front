@@ -37,5 +37,22 @@ export interface InsuranceSubscriptionDto {
     hasMedicalQuestionnaire?: boolean;
     createdAt?: string;
     updatedAt?: string;
+    holdingId?: string | null;
+    paymentMode?: string | null;
+    premiumPaidAt?: string | null;
+    premiumOutstanding?: boolean;
+    paymentDueBy?: string | null;
+    sentToInsurerAt?: string | null;
+    issuedAt?: string | null;
+    underwriting?: string | null;
+    surchargeAmount?: number | null;
+    underwritingExclusions?: string | null;
+    medicalExamsRequested?: string | null;
+    underwritingReference?: string | null;
+    awaitsClientAnswer?: boolean;
+    clientAnswer?: string | null;
+    surchargeOutstanding?: boolean;
+    silenceMayBeConfirmed?: boolean;
+    premiumPayerClientId?: string | null;
 }
 
