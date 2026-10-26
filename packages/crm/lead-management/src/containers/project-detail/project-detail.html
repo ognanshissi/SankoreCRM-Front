@@ -82,6 +82,8 @@
           <button tas-raised-button color="primary" type="button" (click)="scrollToQuestionnaires()">Remplir les questionnaires</button>
         } @else if (g.code === 'PROJECT_CHECKLIST_INCOMPLETE' || g.code === 'PROJECT_WORKFLOW_PENDING' || g.code === 'PROJECT_WORKFLOW_REJECTED') {
           <button tas-raised-button color="primary" type="button" (click)="scrollToExitConditions()">Voir ce qu'il reste</button>
+        } @else if (g.code === 'PROJECT_FIELDS_REQUIRED') {
+          <button tas-raised-button color="primary" type="button" (click)="scrollToFields()">Renseigner les champs</button>
         } @else if (g.code === 'PROJECT_AMOUNT_REQUIRED' && canManage()) {
           <button tas-raised-button color="primary" type="button" (click)="fixAmount()">Renseigner le montant</button>
         } @else if (g.code === 'PROJECT_CLOSE_DATE_REQUIRED' && canManage()) {
@@ -315,9 +317,9 @@
             @if (p.closeReason) { Motif : {{ p.closeReason }} }
           </p>
           @if (holdingId() && clientId()) {
-            <a tas-outlined-button color="primary" [routerLink]="['/customers', clientId(), 'produits']" [queryParams]="{ holding: holdingId() }">Voir la souscription</a>
+            <a tas-outlined-button color="primary" [routerLink]="['/customers', clientId(), 'contrats']" [queryParams]="{ holding: holdingId() }">Voir le contrat</a>
           } @else if (p.stage === 'ClosedWon' && clientId()) {
-            <a tas-text-button color="primary" [routerLink]="['/customers', clientId(), 'produits']">Produits du client</a>
+            <a tas-text-button color="primary" [routerLink]="['/customers', clientId(), 'contrats']">Contrats du client</a>
           }
           @if (canOpenHolding()) {
             <button tas-outlined-button color="primary" type="button" [disabled]="busy()" [isLoading]="busy()" (click)="openHolding()">
@@ -327,6 +329,9 @@
         </div>
       </tas-card>
     }
+
+    <!-- Champs du gabarit et pièces du projet -->
+    <project-fields [project]="p" [canEdit]="canManage()" (changed)="onFieldsChanged()"></project-fields>
 
     <!-- Questionnaires du produit : celui du dossier et ceux de chaque personne -->
     <!-- Validations : les circuits lancés par les étapes, relances comprises, et qui a décidé -->

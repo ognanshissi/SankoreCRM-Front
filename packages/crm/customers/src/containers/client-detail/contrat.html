@@ -1,0 +1,190 @@
+<div class="flex flex-col gap-4">
+  <!-- Retour à la liste -->
+  <div>
+    <a
+      tas-text-button
+      color="primary"
+      class="text-sm"
+      [routerLink]="['/customers', clientId(), 'contrats']"
+    >
+      <span class="inline-flex items-center gap-1.5">
+        <tas-icon iconName="feather:arrow-left" style="font-size:14px"></tas-icon>
+        Contrats du client
+      </span>
+    </a>
+  </div>
+
+  @if (isLoading() && !contract()) {
+    <div class="flex justify-center py-16">
+      <tas-spinner size="10" class="text-primary"></tas-spinner>
+    </div>
+  } @else if (notFound()) {
+    <tas-card class="block">
+      <div class="p-10 text-center">
+        <tas-icon iconName="feather:search" class="text-slate-300" style="font-size:28px"></tas-icon>
+        <p class="mt-2 text-sm font-medium text-slate-700">Contrat introuvable</p>
+        <p class="mt-1 text-sm text-slate-500">
+          Ce contrat n'apparaît plus parmi ceux du client. Il a peut-être été rattaché à un contrat
+          du CRM depuis, ou retiré par l'assureur ou la banque.
+        </p>
+      </div>
+    </tas-card>
+  } @else if (loadFailed() && !holdingId()) {
+    <tas-card class="block">
+      <div class="p-10 text-center">
+        <tas-icon iconName="feather:alert-circle" class="text-slate-300" style="font-size:28px"></tas-icon>
+        <p class="mt-2 text-sm font-medium text-slate-700">Le contrat n'a pas pu être chargé</p>
+        <button tas-outlined-button color="primary" type="button" class="mt-4" (click)="reload()">Réessayer</button>
+      </div>
+    </tas-card>
+  } @else {
+    <!-- En-tête : ce que le CRM et le back-office disent du contrat -->
+    @if (contract(); as c) {
+      <tas-card class="block">
+        <div class="flex flex-wrap items-start justify-between gap-4 p-4">
+          <div class="min-w-0">
+            <div class="flex flex-wrap items-center gap-2">
+              <p class="text-base font-semibold text-slate-800">{{ title() }}</p>
+              @if (externalStatus(); as s) {
+                <tas-tag [severity]="s.severity">
+                  {{ c.source === 'Crm' ? (c.nature === 'Insurance' ? 'Police : ' : 'Banque : ') : '' }}{{ s.label }}
+                </tas-tag>
+              }
+              @if (isExternal()) {
+                <tas-tag severity="neutral">Lecture seule</tas-tag>
+              }
+            </div>
+            @if (c.insurer) {
+              <p class="mt-0.5 text-xs text-slate-500">{{ c.insurer }}</p>
+            }
+          </div>
+
+          <dl class="grid grid-cols-2 gap-x-8 gap-y-2 sm:grid-cols-3">
+            <div>
+              <dt class="text-xs text-slate-400">Référence</dt>
+              <dd class="text-sm font-medium text-slate-800">{{ c.reference || '—' }}</dd>
+            </div>
+            <div>
+              <dt class="text-xs text-slate-400">{{ amountCaption() }}</dt>
+              <dd class="text-sm font-medium tabular-nums text-slate-800">{{ amountLabel() }}</dd>
+            </div>
+            <div>
+              <dt class="text-xs text-slate-400">Depuis le</dt>
+              <dd class="text-sm font-medium text-slate-800">{{ formatDate(c.startDate) }}</dd>
+            </div>
+          </dl>
+        </div>
+
+        @if (sourceNotice(); as notice) {
+          <p class="mx-4 mb-4 text-sm text-slate-500">{{ notice }}</p>
+        }
+        @if (unavailableSources().length > 0) {
+          <p class="mx-4 mb-4 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800">
+            Une partie des informations de l'assureur ou de la banque n'a pas pu être lue. Ce qui est
+            affiché est juste, mais peut-être incomplet.
+          </p>
+        }
+      </tas-card>
+    }
+
+    <!-- Le contrat saisi ici : suivi, termes, bénéficiaires, signature et envoi -->
+    @if (holdingId(); as id) {
+      <tas-card class="block">
+        <div class="p-4">
+          <holding-detail-panel [holdingId]="id" (changed)="reload()"></holding-detail-panel>
+        </div>
+      </tas-card>
+    }
+
+    <!-- La police chez l'assureur -->
+    @if (isInsurance() && contract()?.policyId) {
+      <tas-card class="block">
+        <div class="p-4">
+          <p class="mb-3 text-sm font-semibold text-slate-800">Police chez l'assureur</p>
+          @if (policy(); as p) {
+            <insurance-policy-panel [policy]="p" [customerId]="clientId()" (claimDeclared)="reloadClaims()"></insurance-policy-panel>
+          } @else if (policyFailed()) {
+            <p class="text-sm text-slate-500">La police n'a pas pu être lue. Rechargez la page dans un instant.</p>
+          } @else {
+            <div class="flex justify-center py-6">
+              <tas-spinner size="8" class="text-primary"></tas-spinner>
+            </div>
+          }
+        </div>
+      </tas-card>
+    } @else if (isInsurance() && holdingId() && !isExternal()) {
+      <tas-card class="block">
+        <p class="p-4 text-sm text-slate-500">
+          Pas encore de police : elle apparaîtra ici quand l'assureur aura émis le contrat.
+        </p>
+      </tas-card>
+    }
+
+    <!-- Le suivi de l'envoi à l'assureur -->
+    @if (showSubscriptions() && holdingId(); as id) {
+      <insurance-subscriptions-block [customerId]="clientId()" [holdingId]="id"></insurance-subscriptions-block>
+    }
+
+    <!-- Les sinistres de la police -->
+    @if (showClaims()) {
+      <customer-claims-list [customerId]="clientId()" [policyId]="contract()?.policyId ?? null"></customer-claims-list>
+    }
+
+    <!-- Ce que la banque dit du compte ou du prêt -->
+    @if (isBanking() && contract(); as c) {
+      <tas-card class="block">
+        <div class="flex flex-col gap-3 p-4">
+          <p class="text-sm font-semibold text-slate-800">{{ c.loanRef ? 'Le prêt à la banque' : 'Le compte à la banque' }}</p>
+          <dl class="grid grid-cols-2 gap-x-8 gap-y-3 sm:grid-cols-4">
+            <div>
+              <dt class="text-xs text-slate-400">Numéro</dt>
+              <dd class="text-sm font-medium text-slate-800">{{ c.source === 'Crm' ? (c.accountRef ?? c.loanRef) : c.reference }}</dd>
+            </div>
+            <div>
+              <dt class="text-xs text-slate-400">Statut à la banque</dt>
+              <dd class="text-sm font-medium text-slate-800">{{ (c.source === 'Crm' ? c.externalStatus : c.status) || '—' }}</dd>
+            </div>
+            <div>
+              <dt class="text-xs text-slate-400">{{ amountCaption() }}</dt>
+              <dd class="text-sm font-medium tabular-nums text-slate-800">{{ amountLabel() }}</dd>
+            </div>
+            <div>
+              <dt class="text-xs text-slate-400">Chiffres au</dt>
+              <dd class="text-sm font-medium text-slate-800">{{ formatDate(coreBankingAsOf()) }}</dd>
+            </div>
+          </dl>
+
+          @if (canRefreshBalance()) {
+            <div class="flex flex-wrap items-center gap-3 border-t border-slate-100 pt-3">
+              <button
+                tas-outlined-button
+                color="primary"
+                type="button"
+                [isLoading]="isRefreshing()"
+                [disabled]="isRefreshing()"
+                (click)="refreshBalance()"
+              >
+                <tas-icon iconName="feather:refresh-cw" style="font-size:14px"></tas-icon>
+                Actualiser le solde
+              </button>
+              @if (liveBalance(); as b) {
+                <p class="text-sm text-slate-700">
+                  Solde : <span class="font-medium tabular-nums">{{ (b.balance ?? 0).toLocaleString('fr-FR') }} {{ b.currency }}</span>
+                  @if (b.availableBalance != null) {
+                    · disponible <span class="tabular-nums">{{ b.availableBalance.toLocaleString('fr-FR') }} {{ b.currency }}</span>
+                  }
+                </p>
+                @if (b.isStale) {
+                  <tas-tag severity="warning">Dernière valeur connue</tas-tag>
+                }
+              }
+              @if (balanceNotice(); as notice) {
+                <p class="text-sm text-slate-500">{{ notice }}</p>
+              }
+            </div>
+          }
+        </div>
+      </tas-card>
+    }
+  }
+</div>

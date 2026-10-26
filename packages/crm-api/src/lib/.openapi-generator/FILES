@@ -178,6 +178,8 @@ model/claim-document-dto.interface.ts
 model/claim-dto.interface.ts
 model/clear-duplicate-flag-request.interface.ts
 model/client-contact-point-dto.interface.ts
+model/client-contract-dto.interface.ts
+model/client-contracts-dto.interface.ts
 model/client-detail-dto.interface.ts
 model/client-export-status-dto.interface.ts
 model/client-google-sheet-import-request.interface.ts
@@ -556,9 +558,13 @@ model/product-factor.interface.ts
 model/product-performance-dto.interface.ts
 model/product-routing-dto.interface.ts
 model/product-routing-line-dto.interface.ts
+model/project-attachment-dto.interface.ts
 model/project-checklist-item-input.interface.ts
 model/project-checklist-item.interface.ts
 model/project-contact-dto.interface.ts
+model/project-field-definition.interface.ts
+model/project-field-option.interface.ts
+model/project-field-request.interface.ts
 model/project-questionnaire-item-dto.interface.ts
 model/project-questionnaires-dto.interface.ts
 model/project-step-dto.interface.ts
@@ -711,6 +717,7 @@ model/set-life-insurance-request.interface.ts
 model/set-monthly-quota-command.interface.ts
 model/set-pep-status-request.interface.ts
 model/set-project-checklist-item-request.interface.ts
+model/set-project-fields-request.interface.ts
 model/set-qualification-completeness-request.interface.ts
 model/set-recording-policy-request.interface.ts
 model/set-secret-request.interface.ts
@@ -763,8 +770,6 @@ model/submit-fatca-declaration-response.interface.ts
 model/submit-project-questionnaire-response-request.interface.ts
 model/subscribe-insurance-policy-request.interface.ts
 model/subscribe-insurance-policy-result.interface.ts
-model/subscribe-request.interface.ts
-model/subscribe-response.interface.ts
 model/support-message-dto.interface.ts
 model/support-ticket-dto.interface.ts
 model/support-ticket-opened-dto.interface.ts

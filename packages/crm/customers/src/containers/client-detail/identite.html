@@ -278,5 +278,9 @@
       (saved)="store.reload().subscribe()"
     ></custom-fields-card>
 
+    @if (showCoreBanking()) {
+      <cbs-provisioning-status [customerId]="store.clientId() ?? ''" appearance="card"></cbs-provisioning-status>
+    }
+
   </div>
 }

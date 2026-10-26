@@ -287,31 +287,19 @@ export class ClientDetailNavigation {
     { label: 'Identité', icon: 'feather:user', route: 'identite' },
     { label: 'Coordonnées', icon: 'feather:phone', route: 'coordonnees' },
     { label: 'Foyer', icon: 'feather:home', route: 'foyer' },
-    { label: 'Produits détenus', icon: 'feather:package', route: 'produits' },
+    { label: 'Contrats', icon: 'feather:package', route: 'contrats' },
     { label: 'Projets', icon: 'feather:briefcase', route: 'projets' },
+    {
+      label: 'Sinistres',
+      icon: 'feather:life-buoy',
+      route: 'sinistres',
+      permissions: ['Ins.Claim.View'],
+      module: TENANT_MODULES.INSURANCE,
+    },
     { label: 'Relations', icon: 'feather:users', route: 'relations' },
     { label: 'Groupes', icon: 'feather:layers', route: 'groupes', module: TENANT_MODULES.BANKING_MICROFINANCE },
     { label: 'Bénéficiaires effectifs', icon: 'feather:pie-chart', route: 'beneficiaires', legalOnly: true },
     { label: 'KYC', icon: 'feather:shield', route: 'kyc' },
-    {
-      label: 'Core banking',
-      icon: 'feather:database',
-      route: 'core-banking',
-      // `Integration.Command.View` est le droit qu'exigent les références et les
-      // commandes d'intégration, d'où vient l'état de création du client ;
-      // `CoreBanking.Balance.ViewLive` celui du solde en temps réel. L'un suffit pour
-      // que l'onglet ait quelque chose à montrer. Le contrat ne déclare pas encore de
-      // droit de lecture propre au core banking — à revoir si le back en ajoute un.
-      permissions: ['Integration.Command.View', 'CoreBanking.Balance.ViewLive'],
-      module: TENANT_MODULES.BANKING_MICROFINANCE,
-    },
-    {
-      label: 'Assurances',
-      icon: 'feather:umbrella',
-      route: 'assurances',
-      permissions: ['Ins.Policy.View', 'Ins.Policy.Subscribe', 'Ins.Claim.View'],
-      module: TENANT_MODULES.INSURANCE,
-    },
     { label: 'Historique', icon: 'feather:clock', route: 'historique' },
   ];
 

@@ -110,7 +110,13 @@ export class CustomFieldsCard {
   private readonly _snackbar = inject(SnackbarService);
   private readonly _destroyRef = inject(DestroyRef);
 
-  public readonly entity = input.required<CustomFieldsEntity>();
+  /** L'entité dont la mise en page est lue ; inutile quand l'hôte fournit `formDefinition`. */
+  public readonly entity = input<CustomFieldsEntity | null>(null);
+  /**
+   * Un formulaire déjà connu de l'hôte, à la place de celui de l'entité : les champs d'un gabarit
+   * de projet, que la page du projet reçoit avec lui et qui ne sont pas une mise en page du tenant.
+   */
+  public readonly formDefinition = input<EntityFormDto | null>(null);
   /** `customFields` de la fiche, tel que le serveur l'a renvoyé. */
   public readonly values = input<Record<string, unknown> | null | undefined>(null);
   /** Les valeurs natives que les conditions lisent : `{ prospectType: 'Corporate' }`. */
@@ -181,7 +187,16 @@ export class CustomFieldsCard {
   });
 
   constructor() {
-    effect(() => this._load(this.entity()));
+    effect(() => {
+      const given = this.formDefinition();
+      if (given) {
+        this.form.set(given);
+        this.loading.set(false);
+        return;
+      }
+      const entity = this.entity();
+      if (entity) this._load(entity);
+    });
   }
 
   private _load(entity: CustomFieldsEntity): void {

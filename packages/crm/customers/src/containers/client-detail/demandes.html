@@ -307,10 +307,10 @@
                       tas-button
                       color="primary"
                       class="text-xs"
-                      [routerLink]="['/customers', clientId(), 'produits']"
+                      [routerLink]="['/customers', clientId(), 'contrats']"
                       [queryParams]="{ holding: item.holdingId }"
                     >
-                      Voir la souscription
+                      Voir le contrat
                     </a>
                   }
                 </div>
@@ -351,23 +351,22 @@
               @if (item.holdingId) {
                 <a
                   class="text-sm text-primary hover:underline"
-                  [routerLink]="['/customers', clientId(), 'produits']"
+                  [routerLink]="['/customers', clientId(), 'contrats']"
                   [queryParams]="{ holding: item.holdingId }"
                 >
-                  Voir la souscription
+                  Voir le contrat
                 </a>
               } @else if (item.isWon) {
                 <!--
-                  Gagné sans contrat : le produit du projet est du texte libre et ne
-                  correspond à aucune ligne active du catalogue, donc le serveur n'a rien pu
-                  ouvrir. C'est ici que le rattrapage à la main se propose, plutôt que de laisser
-                  l'agent deviner qu'il doit aller dans un autre onglet.
+                  Gagné sans contrat : la clôture n'a rien pu ouvrir (produit introuvable au
+                  catalogue au moment du gain). Le rattrapage est « Ouvrir le contrat » sur la page
+                  du projet — un contrat ne s'ouvre plus depuis la fiche client (2026-10-26).
                 -->
                 <a
                   class="text-sm text-primary hover:underline"
-                  [routerLink]="['/customers', clientId(), 'produits']"
+                  [routerLink]="['/leads/projets', item.opportunityId]"
                 >
-                  Souscrire le produit
+                  Ouvrir le contrat
                 </a>
               } @else if (item.leadId && canReadLead()) {
                 <a

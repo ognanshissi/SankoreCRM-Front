@@ -10,7 +10,6 @@ import {
   signal,
   viewChild,
 } from '@angular/core';
-import { DIALOG_DATA, DialogRef } from '@angular/cdk/dialog';
 import { HttpErrorResponse } from '@angular/common/http';
 import { form, FormField, FormRoot, required, submit } from '@angular/forms/signals';
 import { EMPTY, Observable, catchError, firstValueFrom } from 'rxjs';
@@ -25,12 +24,6 @@ import { TasDatePicker } from '@talisoft/ui/date-picker';
 import { SnackbarService } from '@talisoft/ui/snackbar';
 import { TasSelect } from '@talisoft/ui/select';
 import { TasSpinner } from '@talisoft/ui/spinner';
-import {
-  TasDrawerAction,
-  TasDrawerContent,
-  TasDrawerTitle,
-  TasSideDrawer,
-} from '@talisoft/ui/side-drawer';
 import { TableConfig, TasTable } from '@talisoft/ui/table';
 import { Severity, TasTag } from '@talisoft/ui/tag';
 import {
@@ -414,7 +407,7 @@ class CloseFormModel {
  * Actions de cycle de vie d'un produit détenu : demande de signature, signature
  * électronique, envoi au back-office, correction après rejet, clôture.
  *
- * Partagé par le drawer de détail (BNF-F-12) et par la dernière étape du parcours de
+ * Partagé par le bloc de détail du contrat (BNF-F-12) et par la dernière étape du parcours de
  * souscription (BNF-F-11) : « signature puis envoi » est exactement la même séquence
  * des deux côtés, et la dupliquer ferait diverger les messages d'erreur.
  */
@@ -461,7 +454,7 @@ class CloseFormModel {
           @if (isInsurance()) {
             <!--
               Un contrat d'assurance suit un ordre imposé (lot 2) : fiche d'information remise,
-              puis signature, puis paiement de la prime et envoi. Le parcours « Souscrire une
+              puis signature, puis paiement de la prime et envoi. La page « Souscrire une
               assurance » les enchaîne ; signé ou envoyé d'ici, le serveur le refuserait.
             -->
             @if (can('requestSignature') || can('sign') || can('submit')) {
@@ -473,7 +466,7 @@ class CloseFormModel {
                 (click)="finaliseInsurance()"
               >
                 <tas-icon iconName="feather:shield" style="font-size:13px"></tas-icon>
-                Poursuivre la souscription
+                Envoyer à l'assureur
               </button>
             }
           } @else {
@@ -624,11 +617,6 @@ export class HoldingSignatureActions {
 
   /** Émis après toute écriture réussie : l'appelant recharge le produit et la liste. */
   public readonly changed = output<void>();
-  /**
-   * Émis avant de quitter la fiche pour la page de souscription : le panneau qui porte ces actions
-   * se ferme, sinon il restait ouvert par-dessus la page d'arrivée.
-   */
-  public readonly leaving = output<void>();
 
   public readonly busy = signal<HoldingAction | null>(null);
   public readonly signing = signal(false);
@@ -670,7 +658,6 @@ export class HoldingSignatureActions {
 
   public finaliseInsurance(): void {
     const holding = this.holding();
-    this.leaving.emit();
     this._router.navigate(['/customers', holding.clientId, 'souscrire-assurance'], {
       queryParams: { holding: holding.holdingId },
     });
@@ -810,10 +797,6 @@ export type DesignationRow = {
   statusReason: string | null;
 };
 
-export interface HoldingDetailDrawerData {
-  holdingId: string;
-  clientId: string;
-}
 
 class SpecificsFormModel {
   public insuredCapital!: string;
@@ -843,10 +826,11 @@ class SpecificsFormModel {
 }
 
 /**
- * Détail d'un produit détenu : frise de suivi, termes, clause en vigueur, versions
- * précédentes et actions (BNF-F-12).
+ * Détail d'un contrat saisi ici : frise de suivi, termes, clause en vigueur, versions
+ * précédentes et actions (BNF-F-12). Bloc de la page du contrat ; c'était un tiroir ouvert
+ * depuis la liste, avant que le contrat n'ait sa page (2026-10-26).
  *
- * Deux règles de ce drawer méritent d'être dites :
+ * Deux règles de ce bloc méritent d'être dites :
  *
  * - **Les versions de clause sont dérivées, pas lues.** Le contrat n'expose aucun
  *   endpoint d'historique de clause : `GetHolding` renvoie les désignations avec leur
@@ -854,20 +838,16 @@ class SpecificsFormModel {
  *   consultables que dans la mesure où le serveur renvoie les désignations fermées.
  * - **Le suivi « temps réel » est borné.** On n'interroge le serveur que lorsque le
  *   produit est en synchronisation, toutes les dix secondes, trois minutes au plus, et
- *   le minuteur meurt avec le drawer. Un polling permanent sur une fiche ouverte toute
+ *   le minuteur meurt avec le bloc. Un polling permanent sur une fiche ouverte toute
  *   la journée, c'est un appel toutes les dix secondes pour rien.
  */
 @Component({
-  selector: 'holding-detail-drawer',
+  selector: 'holding-detail-panel',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  templateUrl: './holding-detail-drawer.html',
+  templateUrl: './holding-detail-panel.html',
   imports: [
     FormRoot,
     FormField,
-    TasSideDrawer,
-    TasDrawerTitle,
-    TasDrawerContent,
-    TasDrawerAction,
     TasAlert,
     Button,
     TasIcon,
@@ -884,9 +864,10 @@ class SpecificsFormModel {
     TasSelect,
   ],
 })
-export class HoldingDetailDrawer implements OnInit, OnDestroy {
-  public readonly data: HoldingDetailDrawerData = inject(DIALOG_DATA);
-  private readonly _dialogRef = inject(DialogRef<boolean>);
+export class HoldingDetailPanel implements OnInit, OnDestroy {
+  public readonly holdingId = input.required<string>();
+  /** Après toute écriture, et quand le suivi voit le statut bouger : la page relit le contrat. */
+  public readonly changed = output<void>();
   private readonly _holdingsApi = inject(ProductHoldingsApiService);
   private readonly _productsApi = inject(ProductsApiService);
   private readonly _snackbar = inject(SnackbarService);
@@ -903,8 +884,6 @@ export class HoldingDetailDrawer implements OnInit, OnDestroy {
   public readonly savingSpecifics = signal(false);
   public readonly selectedVersion = signal<number | null>(null);
   public readonly designationError = signal<string | null>(null);
-  /** Vrai dès qu'une écriture a abouti : la liste de l'onglet doit se recharger. */
-  private readonly _dirty = signal(false);
 
   private _pollTimer: ReturnType<typeof setInterval> | null = null;
   private _pollTicks = 0;
@@ -1020,10 +999,6 @@ export class HoldingDetailDrawer implements OnInit, OnDestroy {
     this._stopPolling();
   }
 
-  public close(): void {
-    this._dialogRef.close(this._dirty());
-  }
-
   public selectVersion(version: number): void {
     this.selectedVersion.set(version);
   }
@@ -1080,7 +1055,7 @@ export class HoldingDetailDrawer implements OnInit, OnDestroy {
         );
         this.mode.set('view');
         this.selectedVersion.set(null);
-        this._dirty.set(true);
+        this.changed.emit();
         // Un 200 ne prouve pas que la clause imbriquée est enregistrée : on relit.
         this._load(false);
       });
@@ -1120,14 +1095,14 @@ export class HoldingDetailDrawer implements OnInit, OnDestroy {
       if (result !== undefined) {
         this._snackbar.success('Termes enregistrés', 'Les termes du produit ont été mis à jour.');
         this.mode.set('view');
-        this._dirty.set(true);
+        this.changed.emit();
         this._load(false);
       }
     });
   }
 
   public onActionChanged(): void {
-    this._dirty.set(true);
+    this.changed.emit();
     this._load(false);
   }
 
@@ -1153,7 +1128,7 @@ export class HoldingDetailDrawer implements OnInit, OnDestroy {
       this.loadFailed.set(false);
     }
     this._holdingsApi
-      .getHolding(this.data.holdingId)
+      .getHolding(this.holdingId())
       .pipe(
         catchError(() => {
           if (initial) this.loadFailed.set(true);
@@ -1194,13 +1169,13 @@ export class HoldingDetailDrawer implements OnInit, OnDestroy {
         return;
       }
       this._holdingsApi
-        .getHolding(this.data.holdingId)
+        .getHolding(this.holdingId())
         .pipe(catchError(() => EMPTY))
         .subscribe((holding) => {
           const previous = this.holding();
           if (previous?.status !== holding.status || previous?.updatedAt !== holding.updatedAt) {
             this.holding.set(holding);
-            this._dirty.set(true);
+            this.changed.emit();
           }
           this._syncPolling(holding);
         });

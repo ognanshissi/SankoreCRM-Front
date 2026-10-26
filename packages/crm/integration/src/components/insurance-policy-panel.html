@@ -1,9 +1,3 @@
-<tas-side-drawer>
-  <tas-drawer-title>
-    <span class="text-lg font-semibold text-slate-800">Contrat d'assurance</span>
-  </tas-drawer-title>
-
-  <tas-drawer-content>
     <div class="flex flex-col gap-6">
       <!-- Résumé du contrat -->
       <div class="flex flex-wrap items-start gap-x-8 gap-y-3">
@@ -26,6 +20,19 @@
           <p class="text-xs text-slate-500">Prime</p>
           <p class="mt-1 text-sm text-slate-800 tabular-nums">{{ premiumLabel }}</p>
         </div>
+        @if (!policyInput().premiumOutstanding) {
+          <div class="ml-auto flex flex-wrap items-center gap-2">
+            <button tas-outlined-button color="primary" type="button" [isLoading]="isDownloading()" [disabled]="isDownloading()" (click)="downloadCertificate()">
+              <tas-icon iconName="feather:download" style="font-size:14px"></tas-icon>
+              Attestation
+            </button>
+            @if (canDeclareClaim()) {
+              <button tas-raised-button color="primary" type="button" (click)="declareClaim()">
+                Déclarer un sinistre
+              </button>
+            }
+          </div>
+        }
       </div>
 
       <!-- ——— Opérations ——— -->
@@ -344,9 +351,4 @@
         }
       </section>
     </div>
-  </tas-drawer-content>
 
-  <tas-drawer-action>
-    <button tas-button type="button" (click)="close()">Fermer</button>
-  </tas-drawer-action>
-</tas-side-drawer>

@@ -757,7 +757,7 @@ export class SubscribePolicyPage implements OnInit {
   }
 
   public backToClient(): void {
-    this._router.navigate(['/customers', this.customerId(), 'produits']);
+    this._router.navigate(['/customers', this.customerId(), 'contrats']);
   }
 
   // ——— Affichage ———

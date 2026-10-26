@@ -75,7 +75,11 @@ import {
           <div class="p-6 text-center">
             <p class="text-sm font-medium text-slate-700">Aucun sinistre déclaré</p>
             <p class="mt-1 text-xs text-slate-500">
-              Déclarez un sinistre depuis l'un des contrats du client.
+              {{
+                policyId()
+                  ? "Déclarez-le avec « Déclarer un sinistre », dans le bloc de la police ci-dessus."
+                  : "Déclarez un sinistre depuis la page du contrat concerné (onglet « Contrats »)."
+              }}
             </p>
           </div>
         } @else {
@@ -136,6 +140,8 @@ export class CustomerClaimsList implements OnInit {
   private readonly _facade = inject(IntegrationFacadeService);
 
   public readonly customerId = input.required<string>();
+  /** Sur la page d'un contrat : seuls les sinistres de cette police. */
+  public readonly policyId = input<string | null>(null);
 
   public readonly canViewClaims = this._permissions.can('Ins.Claim.View', 'Ins.Claim.Declare');
 
@@ -182,8 +188,9 @@ export class CustomerClaimsList implements OnInit {
       )
       .subscribe(({ claims, policies }) => {
         const products = new Map(policies.map((p) => [p.id, p.productName ?? p.policyNumber ?? '—']));
+        const policyId = this.policyId();
         this.rows.set(
-          claims.map((claim) => ({
+          claims.filter((claim) => !policyId || claim.policyId === policyId).map((claim) => ({
             ...claim,
             id: claim.id ?? '',
             productName: products.get(claim.policyId) ?? 'Contrat',

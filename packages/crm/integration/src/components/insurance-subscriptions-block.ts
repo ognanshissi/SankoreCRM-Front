@@ -80,6 +80,8 @@ export class InsuranceSubscriptionsBlock implements OnInit {
   private readonly _snackbar = inject(SnackbarService);
 
   public readonly customerId = input.required<string>();
+  /** Sur la page d'un contrat : seules les souscriptions de ce contrat. */
+  public readonly holdingId = input<string | null>(null);
 
   public readonly canView = this._permissions.can('Ins.Policy.View');
   private readonly _canSubscribePermission = this._permissions.can('Ins.Policy.Subscribe');
@@ -103,7 +105,10 @@ export class InsuranceSubscriptionsBlock implements OnInit {
   public readonly rows = computed<SubscriptionRow[]>(() => {
     const names = this._productNames();
     const now = Date.now();
-    return this.subscriptions().map((dto) => toRow(dto, names, now));
+    const holdingId = this.holdingId();
+    return this.subscriptions()
+      .filter((dto) => !holdingId || dto.holdingId === holdingId)
+      .map((dto) => toRow(dto, names, now));
   });
 
   public readonly awaitingActionCount = computed(

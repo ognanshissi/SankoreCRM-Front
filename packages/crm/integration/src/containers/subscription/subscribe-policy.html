@@ -66,11 +66,10 @@
       <tas-alert type="info">
         <p class="text-sm font-medium">Aucun contrat d'assurance en préparation pour ce client</p>
         <p class="mt-1 text-sm">
-          Le contrat se crée depuis la fiche client, onglet Produits › Souscrire (produit, termes, bénéficiaires), ou
-          s'ouvre quand un projet est gagné. Revenez ensuite ici pour l'assureur, la fiche d'information, la signature
-          et le paiement.
+          Un contrat d'assurance s'ouvre quand un projet est gagné : créez-le depuis l'onglet « Projets » de la fiche
+          client. Revenez ensuite ici pour l'assureur, la fiche d'information, la signature et le paiement.
         </p>
-        <button tas-raised-button color="primary" type="button" class="mt-3" (click)="backToClient()">Ouvrir les produits du client</button>
+        <button tas-raised-button color="primary" type="button" class="mt-3" (click)="backToClient()">Ouvrir les contrats du client</button>
       </tas-alert>
     } @else {
       <!-- Rendu « carte dans un tableau » : toute collection venue du serveur passe par tas-table. -->

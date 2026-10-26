@@ -168,7 +168,71 @@ const ERRORS: Record<string, string> = {
   PROJECT_TEMPLATE_CRITICAL_DATE_WITHOUT_FORECAST: 'Une date de clôture critique demande de suivre la prévision.',
   PROJECT_TEMPLATE_AMOUNT_KIND_INVALID: 'Choisissez ce que représente le montant.',
   PROJECT_TEMPLATE_APPROVAL_BEFORE_CLIENT_FILE: 'L’approbation ne peut pas précéder l’ouverture du dossier client.',
+  PROJECT_STEP_QUESTIONNAIRE_FORM_MISSING:
+    'Aucun formulaire de qualification publié ne s’applique à ce produit ou à sa famille : publiez-en un (Paramétrage › Formulaires de qualification) ou retirez « Questionnaires du produit remplis ».',
+  PROJECT_STEP_FIELD_UNKNOWN: 'Une étape exige un champ que le gabarit ne déclare plus.',
+  PROJECT_TEMPLATE_TOO_MANY_FIELDS: '30 champs au plus par gabarit.',
+  PROJECT_FIELD_LABEL_REQUIRED: 'Chaque champ doit avoir un libellé.',
+  PROJECT_FIELD_LABEL_TOO_LONG: 'Un libellé de champ ne peut pas dépasser 100 caractères.',
+  PROJECT_FIELD_LABEL_DUPLICATE: 'Deux champs portent le même libellé.',
+  PROJECT_FIELD_KEY_DUPLICATE: 'Deux champs ont la même clé : renommez l’un d’eux.',
+  PROJECT_FIELD_TYPE_INVALID: 'Choisissez le type de chaque champ.',
+  PROJECT_FIELD_TYPE_CHANGED: 'Le type d’un champ déjà enregistré ne change pas : créez un autre champ.',
+  PROJECT_FIELD_HELP_TOO_LONG: 'Une aide ne peut pas dépasser 300 caractères.',
+  PROJECT_FIELD_OPTIONS_REQUIRED: 'Une liste de choix doit proposer au moins une option.',
+  PROJECT_FIELD_OPTIONS_TOO_MANY: '50 options au plus par liste.',
+  PROJECT_FIELD_OPTIONS_DUPLICATE: 'Deux options d’une liste sont identiques.',
 };
+
+/**
+ * Les types d'un champ de gabarit : les 14 des champs personnalisés, plus la pièce jointe
+ * (propriétaire, 2026-10-26). Même orthographe que le serveur (`ProjectFieldType`).
+ */
+export const PROJECT_FIELD_TYPES: { value: string; label: string }[] = [
+  { value: 'Text', label: 'Texte court' },
+  { value: 'LongText', label: 'Texte long' },
+  { value: 'Integer', label: 'Nombre entier' },
+  { value: 'Decimal', label: 'Nombre décimal' },
+  { value: 'Money', label: 'Montant' },
+  { value: 'Percent', label: 'Pourcentage' },
+  { value: 'Date', label: 'Date' },
+  { value: 'DateTime', label: 'Date et heure' },
+  { value: 'Boolean', label: 'Oui / non' },
+  { value: 'SingleChoice', label: 'Liste (un choix)' },
+  { value: 'MultiChoice', label: 'Liste (plusieurs choix)' },
+  { value: 'Email', label: 'E-mail' },
+  { value: 'Phone', label: 'Téléphone' },
+  { value: 'Url', label: 'Lien web' },
+  { value: 'Attachment', label: 'Pièce jointe' },
+];
+
+export function isChoiceType(type: string): boolean {
+  return type === 'SingleChoice' || type === 'MultiChoice';
+}
+
+/**
+ * La clé d'un nouveau champ, tirée de son libellé comme le fait le serveur (« Nombre de personnes »
+ * → nombreDePersonnes). Calculée ici pour qu'une étape enregistrée en même temps puisse exiger le
+ * champ ; le serveur garde une clé valide telle qu'envoyée.
+ */
+export function fieldKeyOf(label: string, taken: Set<string>): string {
+  const words = label
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^A-Za-z0-9]+/g, ' ')
+    .trim()
+    .toLowerCase()
+    .split(' ')
+    .filter(Boolean);
+  let base = words.length
+    ? words[0] + words.slice(1).map((w) => w[0].toUpperCase() + w.slice(1)).join('')
+    : 'champ';
+  if (/^[0-9]/.test(base)) base = 'f' + base;
+  base = base.slice(0, 46);
+  let key = base;
+  for (let i = 2; taken.has(key); i++) key = `${base}${i}`;
+  return key;
+}
 
 export function projectTemplateError(error: HttpErrorResponse, fallback: string): string {
   if (error.status === 403) return "Vous n'avez pas le droit de modifier les étapes des projets.";

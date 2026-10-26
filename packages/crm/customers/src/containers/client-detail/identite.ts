@@ -11,7 +11,16 @@ import { Severity, TasTag } from '@talisoft/ui/tag';
 import { Button } from '@talisoft/ui/button';
 import { SideDrawerService } from '@talisoft/ui/side-drawer';
 import { map } from 'rxjs';
-import { CustomFieldsCard, PermissionsService, WireValue } from '@sankore/crm/common';
+import {
+  CustomFieldsCard,
+  PermissionsService,
+  TENANT_MODULES,
+  TenantModulesService,
+  WireValue,
+} from '@sankore/crm/common';
+// L'état du client à la banque vient du module Intégration ; on reprend son composant.
+// eslint-disable-next-line @nx/enforce-module-boundaries
+import { CbsProvisioningStatusComponent } from '@sankore/crm/integration';
 import { ClientsApiService, RevealSensitiveFieldRequestFieldEnum } from '@sankore/crm-api';
 import { ClientDetailStore } from '../../models/client-detail.store';
 import {
@@ -41,7 +50,7 @@ function todayISODate(): string {
   selector: 'client-identite',
   templateUrl: './identite.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [TasCard, TasIcon, TasTag, Button, SensitiveField, CustomFieldsCard],
+  imports: [TasCard, TasIcon, TasTag, Button, SensitiveField, CustomFieldsCard, CbsProvisioningStatusComponent],
 })
 export class ClientIdentityPage {
   protected readonly store = inject(ClientDetailStore);
@@ -50,6 +59,16 @@ export class ClientIdentityPage {
   private readonly _permissions = inject(PermissionsService);
   private readonly _clientsApi = inject(ClientsApiService);
   protected readonly canReveal = this._permissions.can('customers:reveal_sensitive');
+
+  private readonly _modules = inject(TenantModulesService);
+  private readonly _canViewCbs = this._permissions.can('Integration.Command.View');
+  /**
+   * Le numéro du client à la banque et l'état de sa création, qu'affichait l'onglet
+   * « Core banking » avant que ses comptes ne rejoignent l'onglet « Contrats » (2026-10-26).
+   */
+  protected readonly showCoreBanking = computed(
+    () => this._modules.readable().has(TENANT_MODULES.BANKING_MICROFINANCE) && this._canViewCbs(),
+  );
 
   private readonly _canUpdate = this._permissions.can('customers:update');
   private readonly _canUpdateSensitive = this._permissions.can(

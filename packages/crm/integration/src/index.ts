@@ -37,29 +37,15 @@ export {
   CbsBatchNoticeComponent,
 } from './components/cbs-provisioning-status';
 export type { CbsProvisioningAppearance } from './components/cbs-provisioning-status';
-export { CoreBankingBlockComponent } from './components/core-banking-block';
-export type {
-  CbsAccountRow,
-  CbsLoanRow,
-  CbsMonthlyFlow,
-} from './components/core-banking-block';
-
-export {
-  InsurancePoliciesBlock,
-  isPolicyAtRisk,
-} from './components/insurance-policies-block';
 export { InsuranceSubscriptionsBlock } from './components/insurance-subscriptions-block';
-export {
-  InsurancePolicyDrawer,
-  type InsurancePolicyDrawerData,
-} from './components/insurance-policy-drawer';
+export { InsurancePolicyPanel } from './components/insurance-policy-panel';
 export { CustomerClaimsList } from './containers/claims/customer-claims-list';
 
 /**
  * Exception à la règle « pas d'écran dans la barrique » : le parcours de souscription
  * est lancé depuis la fiche client (lib `customers`), pas depuis une route de ce
- * module. La fiche charge déjà cette barrique pour ses blocs Core banking et
- * Assurances, donc l'écran n'ajoute pas de téléchargement.
+ * module. La fiche charge déjà cette barrique pour ses blocs de contrat, donc l'écran
+ * n'ajoute pas de téléchargement.
  */
 export { SubscribePolicyPage } from './containers/subscription/subscribe-policy';
 export {

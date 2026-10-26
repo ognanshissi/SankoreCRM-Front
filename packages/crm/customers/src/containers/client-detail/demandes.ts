@@ -4,7 +4,9 @@ import {
   computed,
   effect,
   inject,
+  input,
   signal,
+  untracked,
 } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
@@ -203,6 +205,13 @@ export class ClientDemandes {
     () => this.canManage() && !this.clientStore.isReadOnly(),
   );
 
+  /**
+   * `?nouveau=1` : l'onglet « Contrats » envoie ici pour ouvrir un contrat, puisque tout
+   * contrat naît d'un projet gagné. Le formulaire ne s'ouvre qu'une fois par visite.
+   */
+  public readonly nouveau = input<string | undefined>(undefined);
+  private _newFormOpened = false;
+
   private readonly _opportunities = signal<OpportunityDto[]>([]);
   private readonly _leadsById = signal<Map<string, LeadDto>>(new Map());
   private readonly _ownerNames = signal<Map<string, string>>(new Map());
@@ -324,6 +333,12 @@ export class ClientDemandes {
   });
 
   constructor() {
+    effect(() => {
+      if (!this.nouveau() || !this.canCreate() || this._newFormOpened) return;
+      this._newFormOpened = true;
+      untracked(() => this.openForm());
+    });
+
     effect(() => {
       const clientId = this.clientId();
       if (!clientId || !this.canRead()) {

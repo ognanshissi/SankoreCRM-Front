@@ -1,4 +1,5 @@
-import { Route } from '@angular/router';
+import { inject } from '@angular/core';
+import { CanActivateFn, Route, Router } from '@angular/router';
 import { canReadModuleGuard, hasAllPermissionsGuard, hasModuleGuard, hasPermissionGuard, TENANT_MODULES } from '@sankore/crm/common';
 import ImportClientsPage from './containers/import-clients/import-clients';
 
@@ -8,11 +9,21 @@ import ImportClientsPage from './containers/import-clients/import-clients';
  * L'ordre compte : les segments fixes (`nouveau`, `groupes`, `doublons`, `fusions`)
  * doivent précéder `:id`, sinon le joker les capturerait comme identifiants.
  *
- * Groupes et core banking relèvent du module payant « Banking - Microfinance », assurances et
- * souscription du module « Assurance » : sans le module, le serveur répond 403 et ces écrans
+ * Groupes relèvent du module payant « Banking - Microfinance », sinistres et souscription du
+ * module « Assurance » : sans le module, le serveur répond 403 et ces écrans
  * n'auraient que des erreurs à montrer. Un module désactivé garde ses écrans en consultation
  * (`canReadModuleGuard`) ; la souscription, qui crée, exige le module actif.
  */
+/**
+ * Les trois onglets que « Contrats » a remplacés (2026-10-26). Un `redirectTo` relatif perd ici
+ * les query params — constaté en recette : `assurances?holding=…` arrivait sur la liste sans
+ * ouvrir le contrat. Ce garde reconstruit l'adresse en les gardant.
+ */
+const toContrats: CanActivateFn = (route) =>
+  inject(Router).createUrlTree(['/customers', route.parent?.paramMap.get('id') ?? '', 'contrats'], {
+    queryParams: route.queryParams,
+  });
+
 export const customersRoutes: Route[] = [
   {
     path: '',
@@ -96,9 +107,19 @@ export const customersRoutes: Route[] = [
         loadComponent: () => import('./containers/client-detail/foyer'),
       },
       {
-        path: 'produits',
-        loadComponent: () => import('./containers/client-detail/produits'),
+        path: 'contrats',
+        loadComponent: () => import('./containers/client-detail/contrats'),
       },
+      {
+        // La page d'un contrat (clé de la liste : `holding:…`, `policy:…`, `account:…`, `loan:…`).
+        // Enfant de la fiche, pour garder l'en-tête du client et l'onglet « Contrats » actif.
+        path: 'contrats/:contractKey',
+        loadComponent: () => import('./containers/client-detail/contrat'),
+      },
+      // Les anciennes adresses, `?holding=` compris : voir `toContrats`.
+      { path: 'produits', canActivate: [toContrats], children: [] },
+      { path: 'assurances', canActivate: [toContrats], children: [] },
+      { path: 'core-banking', canActivate: [toContrats], children: [] },
       {
         path: 'projets',
         loadComponent: () => import('./containers/client-detail/demandes'),
@@ -123,14 +144,9 @@ export const customersRoutes: Route[] = [
         loadComponent: () => import('./containers/client-detail/kyc'),
       },
       {
-        path: 'core-banking',
-        canActivate: [canReadModuleGuard(TENANT_MODULES.BANKING_MICROFINANCE)],
-        loadComponent: () => import('./containers/client-detail/core-banking'),
-      },
-      {
-        path: 'assurances',
+        path: 'sinistres',
         canActivate: [canReadModuleGuard(TENANT_MODULES.INSURANCE)],
-        loadComponent: () => import('./containers/client-detail/assurances'),
+        loadComponent: () => import('./containers/client-detail/sinistres'),
       },
       {
         path: 'historique',

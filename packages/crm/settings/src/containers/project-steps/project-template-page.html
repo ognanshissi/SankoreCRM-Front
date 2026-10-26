@@ -94,6 +94,82 @@
       </div>
     </tas-card>
 
+    <!-- Champs du projet : éditeur de collection, pas une liste (tas-table) -->
+    <tas-card class="block">
+      <div class="flex flex-col gap-3 p-5">
+        <div class="flex flex-wrap items-start justify-between gap-2">
+          <div>
+            <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Champs du projet</p>
+            <p class="mt-1 text-xs text-slate-500">
+              Ce que ce type de projet doit consigner, saisi sur la page du projet. Une étape peut en exiger
+              certains pour être atteinte.
+            </p>
+          </div>
+          <span class="text-xs text-slate-400 tabular-nums">{{ model().fields.length }} / {{ maxFields }}</span>
+        </div>
+
+        @for (f of model().fields; track f.rowId; let i = $index) {
+          @if (formSchema.fields[i]; as row) {
+            <div class="rounded-xl border border-slate-200 p-3">
+              <div class="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_13rem_auto]">
+                <tas-form-field>
+                  <tas-label>Libellé <span class="text-functional-error">*</span></tas-label>
+                  <input tasInput type="text" placeholder="Ex. Nombre de personnes couvertes" [formField]="row.label" />
+                  @if (row.label().touched() && row.label().invalid()) {
+                    <tas-error>{{ row.label().errors()[0].message }}</tas-error>
+                  }
+                </tas-form-field>
+                <tas-form-field>
+                  <tas-label>Type</tas-label>
+                  <!-- Un champ enregistré garde son type : ses valeurs sont écrites dans ce type. -->
+                  @if (isSavedField(i)) {
+                    <input tasInput type="text" [value]="fieldTypeLabel(f.type)" disabled />
+                  } @else {
+                    <tas-select [options]="fieldTypes" [formField]="row.type"></tas-select>
+                  }
+                  @if (isSavedField(i)) {
+                    <tas-hint>Le type ne change plus.</tas-hint>
+                  }
+                </tas-form-field>
+                @if (canManage()) {
+                  <button tas-button iconButton type="button" class="self-center" (click)="removeField(i)" aria-label="Retirer le champ" title="Retirer">
+                    <tas-icon iconName="feather:trash-2" style="font-size:14px" class="text-slate-400"></tas-icon>
+                  </button>
+                }
+              </div>
+              <tas-form-field class="mt-3 block">
+                <tas-label>Aide</tas-label>
+                <input tasInput type="text" placeholder="Facultatif — affichée sous le champ" [formField]="row.helpText" />
+                @if (row.helpText().touched() && row.helpText().invalid()) {
+                  <tas-error>{{ row.helpText().errors()[0].message }}</tas-error>
+                }
+              </tas-form-field>
+              @if (isChoiceType(f.type)) {
+                <tas-form-field class="mt-3 block">
+                  <tas-label>Options <span class="text-functional-error">*</span></tas-label>
+                  <textarea tasInput rows="3" placeholder="Une option par ligne" [formField]="row.options"></textarea>
+                  @if (row.options().touched() && row.options().invalid()) {
+                    <tas-error>{{ row.options().errors()[0].message }}</tas-error>
+                  }
+                </tas-form-field>
+              }
+            </div>
+          }
+        } @empty {
+          <p class="text-sm text-slate-400">Aucun champ : les projets n'ont que le montant et la date de clôture.</p>
+        }
+
+        @if (formSchema.fields().errors().length) {
+          <p class="text-xs text-functional-error" role="alert">{{ formSchema.fields().errors()[0].message }}</p>
+        }
+        @if (canManage() && model().fields.length < maxFields) {
+          <button tas-text-button color="primary" type="button" class="self-start" (click)="addField()">
+            <tas-icon iconName="feather:plus" style="font-size:14px"></tas-icon> &nbsp; Ajouter un champ
+          </button>
+        }
+      </div>
+    </tas-card>
+
     <!-- Parcours + étape sélectionnée -->
     <div class="grid grid-cols-1 items-start gap-4 lg:grid-cols-[20rem_minmax(0,1fr)]">
       <!-- Parcours -->
@@ -144,6 +220,7 @@
                     @if (row.opensClientFile) { <tas-icon iconName="feather:user-plus" style="font-size:12px" title="Ouvre le dossier client"></tas-icon> }
                     @if (row.isApproval) { <tas-icon iconName="feather:shield" style="font-size:12px" title="Étape d'approbation"></tas-icon> }
                     @if (row.requiresQuestionnaires) { <tas-icon iconName="feather:clipboard" style="font-size:12px" title="Questionnaires complets"></tas-icon> }
+                    @if (row.requiredFields.length) { <tas-icon iconName="feather:edit-3" style="font-size:12px" [title]="row.requiredFields.length + ' champ(s) à renseigner'"></tas-icon> }
                     @if (row.requiresAmount || row.requiresCloseDate) { <tas-icon iconName="feather:edit-3" style="font-size:12px" title="Montant ou date exigés"></tas-icon> }
                     @if (row.checklist.length) {
                       <span class="inline-flex items-center gap-0.5 text-[11px]" title="Points à vérifier"><tas-icon iconName="feather:check-square" style="font-size:12px"></tas-icon>{{ row.checklist.length }}</span>
@@ -251,9 +328,19 @@
                   </div>
                   <div class="flex items-center justify-between gap-3">
                     <span>Questionnaires du produit remplis</span>
-                    <tas-switch [checked]="step.requiresQuestionnaires().value()" [disabled]="step.requiresQuestionnaires().disabled()" ariaLabel="Questionnaires du produit remplis"
+                    <tas-switch [checked]="step.requiresQuestionnaires().value()"
+                          [disabled]="step.requiresQuestionnaires().disabled() || (isDefault() && !step.requiresQuestionnaires().value())"
+                          ariaLabel="Questionnaires du produit remplis"
                           (toggle)="step.requiresQuestionnaires().value.set($event)"></tas-switch>
                   </div>
+                  <p class="-mt-1.5 text-xs text-slate-400">
+                    @if (isDefault()) {
+                      Réservé aux gabarits d'une famille ou d'un produit : le parcours par défaut ne désigne aucun produit.
+                    } @else {
+                      Exige un formulaire de qualification publié pour ce produit ou sa famille
+                      (<a routerLink="/settings/qualification-templates" class="text-primary underline">Formulaires de qualification</a>).
+                    }
+                  </p>
                   <div class="flex items-center justify-between gap-3">
                     <span>Montant du projet renseigné</span>
                     <tas-switch [checked]="step.requiresAmount().value()" [disabled]="step.requiresAmount().disabled()" ariaLabel="Montant du projet renseigné"
@@ -264,6 +351,22 @@
                     <tas-switch [checked]="step.requiresCloseDate().value()" [disabled]="step.requiresCloseDate().disabled()" ariaLabel="Date de clôture prévue renseignée"
                           (toggle)="step.requiresCloseDate().value.set($event)"></tas-switch>
                   </div>
+                  @if (model().fields.length) {
+                    <div class="mt-1 border-t border-slate-100 pt-2.5">
+                      <p class="mb-1.5 text-xs font-semibold text-slate-600">Champs renseignés</p>
+                      <div class="flex flex-col gap-1.5">
+                        @for (f of model().fields; track f.rowId) {
+                          <tas-checkbox
+                            [checked]="step.requiredFields().value().includes(f.rowId)"
+                            (valueChange)="toggleRequiredField(selected(), f.rowId, $event)"
+                          >
+                            {{ f.label || 'Champ sans libellé' }}
+                            <span class="text-xs text-slate-400">— {{ fieldTypeLabel(f.type) }}</span>
+                          </tas-checkbox>
+                        }
+                      </div>
+                    </div>
+                  }
                 </div>
               </div>
 

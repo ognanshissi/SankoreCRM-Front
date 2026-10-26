@@ -16,6 +16,8 @@ export type ProjectGateCode =
   | 'PROJECT_AMOUNT_REQUIRED'
   | 'PROJECT_CLOSE_DATE_REQUIRED'
   | 'PROJECT_CHECKLIST_INCOMPLETE'
+  // Les champs du gabarit qu'une étape exige (propriétaire, 2026-10-26).
+  | 'PROJECT_FIELDS_REQUIRED'
   | 'PROJECT_WORKFLOW_PENDING'
   | 'PROJECT_WORKFLOW_REJECTED'
   | 'PROJECT_WORKFLOW_UNAVAILABLE';
@@ -28,6 +30,7 @@ const GATE_CODES: ReadonlySet<string> = new Set<ProjectGateCode>([
   'PROJECT_AMOUNT_REQUIRED',
   'PROJECT_CLOSE_DATE_REQUIRED',
   'PROJECT_CHECKLIST_INCOMPLETE',
+  'PROJECT_FIELDS_REQUIRED',
   'PROJECT_WORKFLOW_PENDING',
   'PROJECT_WORKFLOW_REJECTED',
   'PROJECT_WORKFLOW_UNAVAILABLE',
@@ -57,6 +60,8 @@ export function projectGateMessage(code: ProjectGateCode, target: string | null)
       return `${reach}, la date de clôture prévue doit être renseignée.`;
     case 'PROJECT_CHECKLIST_INCOMPLETE':
       return `${reach}, tous les points à vérifier de l'étape en cours doivent être cochés.`;
+    case 'PROJECT_FIELDS_REQUIRED':
+      return `${reach}, les champs du projet que cette étape exige doivent être renseignés.`;
     case 'PROJECT_WORKFLOW_PENDING':
       return `${reach}, le circuit de validation de l'étape doit être approuvé — il est en attente.`;
     case 'PROJECT_WORKFLOW_REJECTED':

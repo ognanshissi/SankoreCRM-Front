@@ -28,6 +28,7 @@ export interface ProjectStepRequest {
     requiresCloseDate?: boolean;
     checklist?: Array<ProjectChecklistItemInput> | null;
     workflowCircuit?: string | null;
+    requiredFieldKeys?: Array<string> | null;
 }
 export enum ProjectStepRequestPhaseEnum {
     Prospecting = 'Prospecting',

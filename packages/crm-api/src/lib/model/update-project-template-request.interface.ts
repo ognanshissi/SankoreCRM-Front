@@ -9,6 +9,7 @@
  * https://openapi-generator.tech
  * Do not edit the class manually.
  */
+import { ProjectFieldRequest } from './project-field-request.interface';
 import { ProjectStepRequest } from './project-step-request.interface';
 
 
@@ -21,6 +22,7 @@ export interface UpdateProjectTemplateRequest {
      */
     amountKind?: UpdateProjectTemplateRequestAmountKindEnum;
     criticalCloseDate?: boolean;
+    fields?: Array<ProjectFieldRequest> | null;
 }
 export enum UpdateProjectTemplateRequestAmountKindEnum {
     Generic = 'Generic',

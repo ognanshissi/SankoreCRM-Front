@@ -19697,6 +19697,208 @@
         }
       }
     },
+    "/api/v1/leads/opportunities/{id}/fields": {
+      "put": {
+        "tags": [
+          "Opportunities"
+        ],
+        "operationId": "SetProjectFields",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetProjectFieldsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "422": {
+            "description": "Unprocessable Entity"
+          }
+        }
+      }
+    },
+    "/api/v1/leads/opportunities/{id}/attachments": {
+      "post": {
+        "tags": [
+          "Opportunities"
+        ],
+        "summary": "Attaches a file (PDF, image, Office document, text; 10 MB) to an Attachment field: stored encrypted",
+        "operationId": "AddProjectAttachment",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "allOf": [
+                  {
+                    "required": [
+                      "fieldKey"
+                    ],
+                    "type": "object",
+                    "properties": {
+                      "fieldKey": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  {
+                    "required": [
+                      "file"
+                    ],
+                    "type": "object",
+                    "properties": {
+                      "file": {
+                        "type": "string",
+                        "format": "binary"
+                      }
+                    }
+                  }
+                ]
+              },
+              "encoding": {
+                "fieldKey": {
+                  "style": "form"
+                },
+                "file": {
+                  "style": "form"
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectAttachmentDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "422": {
+            "description": "Unprocessable Entity"
+          }
+        }
+      }
+    },
+    "/api/v1/leads/opportunities/{id}/attachments/{attachmentId}/content": {
+      "get": {
+        "tags": [
+          "Opportunities"
+        ],
+        "operationId": "DownloadProjectAttachment",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "attachmentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "$ref": "#/components/schemas/Void"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/api/v1/leads/opportunities/{id}/attachments/{attachmentId}": {
+      "delete": {
+        "tags": [
+          "Opportunities"
+        ],
+        "operationId": "RemoveProjectAttachment",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "attachmentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "422": {
+            "description": "Unprocessable Entity"
+          }
+        }
+      }
+    },
     "/api/v1/permissions": {
       "get": {
         "tags": [
@@ -19941,6 +20143,42 @@
         }
       }
     },
+    "/api/v1/clients/{clientId}/contracts": {
+      "get": {
+        "tags": [
+          "Product Holdings"
+        ],
+        "summary": "Everything a client holds, in one list",
+        "description": "The contracts captured here, with the policy or the account that realises each one folded in, plus the policies and the core banking accounts and loans no contract here accounts for (source Insurer / CoreBanking, read-only). Each back office is read only when the caller may read it (Ins.Policy.View; CoreBanking.Balance.ViewLive or Integration.Command.View) and the tenant has its module; one that cannot be read is named in unavailableSources and the rest of the list stands.",
+        "operationId": "ListClientContracts",
+        "parameters": [
+          {
+            "name": "clientId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClientContractsDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
     "/api/v1/clients/{clientId}/holdings": {
       "get": {
         "tags": [
@@ -20003,56 +20241,6 @@
           },
           "404": {
             "description": "Not Found"
-          }
-        }
-      },
-      "post": {
-        "tags": [
-          "Product Holdings"
-        ],
-        "summary": "Open a draft subscription",
-        "description": "Refuses with HOLDING_ALREADY_HELD when the product line forbids multiple holdings and the client already has a live one. Designations may be supplied with the subscription; an invalid clause refuses the whole request.",
-        "operationId": "SubscribeClientToProduct",
-        "parameters": [
-          {
-            "name": "clientId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/SubscribeRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "201": {
-            "description": "Created",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/SubscribeResponse"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not Found"
-          },
-          "409": {
-            "description": "Conflict"
-          },
-          "422": {
-            "description": "Unprocessable Entity"
           }
         }
       }
@@ -33356,6 +33544,125 @@
         },
         "additionalProperties": false
       },
+      "ClientContractDto": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string",
+            "nullable": true
+          },
+          "source": {
+            "type": "string",
+            "nullable": true
+          },
+          "nature": {
+            "type": "string",
+            "nullable": true
+          },
+          "label": {
+            "type": "string",
+            "nullable": true
+          },
+          "productCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "category": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "nullable": true
+          },
+          "externalStatus": {
+            "type": "string",
+            "nullable": true
+          },
+          "reference": {
+            "type": "string",
+            "nullable": true
+          },
+          "amount": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "amountKind": {
+            "type": "string",
+            "nullable": true
+          },
+          "currency": {
+            "type": "string",
+            "nullable": true
+          },
+          "startDate": {
+            "type": "string",
+            "format": "date",
+            "nullable": true
+          },
+          "holdingId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "policyId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "accountRef": {
+            "type": "string",
+            "nullable": true
+          },
+          "loanRef": {
+            "type": "string",
+            "nullable": true
+          },
+          "insurer": {
+            "type": "string",
+            "nullable": true
+          },
+          "premiumOutstanding": {
+            "type": "boolean"
+          },
+          "designationsToReview": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "signedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ClientContractsDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ClientContractDto"
+            },
+            "nullable": true
+          },
+          "unavailableSources": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "coreBankingAsOf": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "ClientDetailDto": {
         "type": "object",
         "properties": {
@@ -36434,6 +36741,13 @@
           },
           "criticalCloseDate": {
             "type": "boolean"
+          },
+          "fields": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProjectFieldRequest"
+            },
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -46143,6 +46457,23 @@
               "$ref": "#/components/schemas/ProjectWorkflowRunDto"
             },
             "nullable": true
+          },
+          "fields": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProjectFieldDefinition"
+            },
+            "nullable": true
+          },
+          "customFields": {
+            "nullable": true
+          },
+          "attachments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProjectAttachmentDto"
+            },
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -48040,6 +48371,36 @@
         },
         "additionalProperties": false
       },
+      "ProjectAttachmentDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "fieldKey": {
+            "type": "string",
+            "nullable": true
+          },
+          "fileName": {
+            "type": "string",
+            "nullable": true
+          },
+          "contentType": {
+            "type": "string",
+            "nullable": true
+          },
+          "sizeBytes": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "uploadedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false
+      },
       "ProjectChecklistItem": {
         "type": "object",
         "properties": {
@@ -48094,6 +48455,112 @@
           },
           "clientNumber": {
             "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ProjectFieldDefinition": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string",
+            "nullable": true
+          },
+          "label": {
+            "type": "string",
+            "nullable": true
+          },
+          "type": {
+            "enum": [
+              "Text",
+              "LongText",
+              "Integer",
+              "Decimal",
+              "Money",
+              "Percent",
+              "Date",
+              "DateTime",
+              "Boolean",
+              "SingleChoice",
+              "MultiChoice",
+              "Email",
+              "Phone",
+              "Url",
+              "Attachment"
+            ],
+            "type": "string",
+            "description": "One of: Text, LongText, Integer, Decimal, Money, Percent, Date, DateTime, Boolean, SingleChoice, MultiChoice, Email, Phone, Url, Attachment"
+          },
+          "helpText": {
+            "type": "string",
+            "nullable": true
+          },
+          "options": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProjectFieldOption"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ProjectFieldOption": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "type": "string",
+            "nullable": true
+          },
+          "label": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ProjectFieldRequest": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string",
+            "nullable": true
+          },
+          "label": {
+            "type": "string",
+            "nullable": true
+          },
+          "type": {
+            "enum": [
+              "Text",
+              "LongText",
+              "Integer",
+              "Decimal",
+              "Money",
+              "Percent",
+              "Date",
+              "DateTime",
+              "Boolean",
+              "SingleChoice",
+              "MultiChoice",
+              "Email",
+              "Phone",
+              "Url",
+              "Attachment"
+            ],
+            "type": "string",
+            "description": "One of: Text, LongText, Integer, Decimal, Money, Percent, Date, DateTime, Boolean, SingleChoice, MultiChoice, Email, Phone, Url, Attachment"
+          },
+          "helpText": {
+            "type": "string",
+            "nullable": true
+          },
+          "options": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProjectFieldOption"
+            },
             "nullable": true
           }
         },
@@ -48276,6 +48743,13 @@
           "workflowCircuit": {
             "type": "string",
             "nullable": true
+          },
+          "requiredFieldKeys": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -48337,6 +48811,13 @@
           },
           "workflowCircuit": {
             "type": "string",
+            "nullable": true
+          },
+          "requiredFieldKeys": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
             "nullable": true
           }
         },
@@ -48413,6 +48894,13 @@
           },
           "criticalCloseDate": {
             "type": "boolean"
+          },
+          "fields": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProjectFieldDefinition"
+            },
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -52556,6 +53044,17 @@
         },
         "additionalProperties": false
       },
+      "SetProjectFieldsRequest": {
+        "type": "object",
+        "properties": {
+          "values": {
+            "type": "object",
+            "additionalProperties": { },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "SetQualificationCompletenessRequest": {
         "type": "object",
         "properties": {
@@ -54079,36 +54578,6 @@
             "type": "string",
             "format": "uuid",
             "nullable": true
-          }
-        },
-        "additionalProperties": false
-      },
-      "SubscribeRequest": {
-        "type": "object",
-        "properties": {
-          "productLineId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "specifics": {
-            "$ref": "#/components/schemas/HoldingSpecificsDto"
-          },
-          "designations": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/DesignationInput"
-            },
-            "nullable": true
-          }
-        },
-        "additionalProperties": false
-      },
-      "SubscribeResponse": {
-        "type": "object",
-        "properties": {
-          "holdingId": {
-            "type": "string",
-            "format": "uuid"
           }
         },
         "additionalProperties": false
@@ -57077,6 +57546,13 @@
           },
           "criticalCloseDate": {
             "type": "boolean"
+          },
+          "fields": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProjectFieldRequest"
+            },
+            "nullable": true
           }
         },
         "additionalProperties": false

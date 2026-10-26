@@ -1,0 +1,237 @@
+<div class="flex flex-col gap-4">
+  <!-- En-tête et action principale -->
+  <tas-card class="block">
+    <div class="flex flex-wrap items-start justify-between gap-3 p-4">
+      <div>
+        <p class="text-sm font-semibold text-slate-800">Contrats</p>
+        <p class="mt-0.5 text-sm text-slate-500">
+          Tout ce que le client détient : assurances, comptes, épargne et crédits, quel que soit le
+          système qui les gère.
+        </p>
+      </div>
+
+      @if (canCreateProject()) {
+        <button tas-raised-button color="primary" type="button" (click)="newProject()">
+          <tas-icon iconName="feather:plus" style="font-size:14px"></tas-icon>
+          Nouveau projet
+        </button>
+      } @else if (store.isReadOnly()) {
+        <p class="text-xs text-slate-500">Fiche en lecture seule : aucun nouveau projet possible.</p>
+      }
+    </div>
+
+    <p class="mx-4 mb-4 text-xs text-slate-500">
+      Un contrat s'ouvre en gagnant un projet : c'est là que se vérifient les questionnaires et le
+      KYC que le produit exige.
+    </p>
+
+    @if (unavailableSources().length > 0) {
+      <div class="mx-4 mb-4 rounded-lg border border-amber-300 bg-amber-50 p-3">
+        <p class="text-sm font-medium text-amber-900">Liste incomplète</p>
+        <p class="mt-0.5 text-sm text-amber-800">
+          Les contrats {{ unavailableLabel() }} n'ont pas pu être lus. Ceux saisis ici sont bien
+          affichés ; réessayez dans un instant pour voir les autres.
+        </p>
+      </div>
+    }
+
+    @if (toReviewCount() > 0) {
+      <div class="mx-4 mb-4 rounded-lg border border-amber-300 bg-amber-50 p-3">
+        <p class="text-sm font-medium text-amber-900">{{ toReviewCount() }} désignation(s) à revoir</p>
+        <p class="mt-0.5 text-sm text-amber-800">
+          Action attendue : ouvrez le contrat concerné, puis « Modifier les bénéficiaires » pour
+          confirmer le rôle et la quote-part de chaque personne signalée.
+        </p>
+      </div>
+    }
+
+    @if (pendingSyncCount() > 0) {
+      <div class="mx-4 mb-4 rounded-lg border border-primary/30 bg-primary/5 p-3">
+        <p class="text-sm text-slate-700">
+          {{ pendingSyncCount() }} contrat(s) en cours d'envoi au back-office. Les statuts se
+          mettent à jour automatiquement sur cet écran.
+        </p>
+      </div>
+    }
+  </tas-card>
+
+  <!-- Filtre -->
+  <tas-card class="block">
+    <div class="grid grid-cols-1 gap-3 p-4 sm:grid-cols-2 lg:grid-cols-4">
+      <tas-form-field>
+        <tas-label>Nature</tas-label>
+        <tas-select
+          [options]="natureOptions"
+          placeholder="Tous les contrats"
+          clearable
+          [ngModel]="nature()"
+          (ngModelChange)="setNature($event)"
+          [ngModelOptions]="{ standalone: true }"
+        ></tas-select>
+      </tas-form-field>
+
+      @if (coreBankingAsOf(); as asOf) {
+        <div class="flex items-end lg:col-span-3">
+          <p class="text-xs text-slate-500">
+            Soldes et encours de la banque au {{ asOf.slice(0, 10).split('-').reverse().join('/') }}.
+          </p>
+        </div>
+      }
+    </div>
+  </tas-card>
+
+  <!-- Liste -->
+  @if (loadFailed()) {
+    <tas-card class="block">
+      <div class="p-10 text-center">
+        <tas-icon iconName="feather:alert-circle" class="text-slate-300" style="font-size:28px"></tas-icon>
+        <p class="mt-2 text-sm font-medium text-slate-700">Les contrats n'ont pas pu être chargés</p>
+        <p class="mt-1 text-sm text-slate-500">Le service n'a pas répondu. Réessayez dans un instant.</p>
+        <button tas-outlined-button color="primary" type="button" class="mt-4" (click)="reload()">
+          Réessayer
+        </button>
+      </div>
+    </tas-card>
+  } @else if (!isLoading() && rows().length === 0) {
+    <tas-card class="block">
+      <div class="flex flex-col items-center p-10 text-center">
+        <tas-icon iconName="feather:package" class="text-slate-300" style="font-size:28px"></tas-icon>
+        <p class="mt-2 text-sm font-medium text-slate-700">
+          {{ nature() ? 'Aucun contrat de cette nature' : 'Aucun contrat' }}
+        </p>
+        <p class="mt-1 text-sm text-slate-500">
+          {{
+            nature()
+              ? 'Retirez le filtre pour voir les autres contrats du client.'
+              : "Ce client ne détient aucun contrat. Ouvrez un projet pour lui en proposer un."
+          }}
+        </p>
+        @if (nature()) {
+          <button tas-outlined-button color="primary" type="button" class="mt-4" (click)="setNature('')">
+            Retirer le filtre
+          </button>
+        } @else if (canCreateProject()) {
+          <button tas-raised-button color="primary" type="button" class="mt-4" (click)="newProject()">
+            Nouveau projet
+          </button>
+        }
+      </div>
+    </tas-card>
+  } @else {
+    <tas-table
+      [data]="rows()"
+      identifierField="id"
+      [config]="tableConfig()"
+      [isLoading]="isLoading()"
+    >
+      <ng-template #header>
+        <tr>
+          <th class="hidden sm:table-cell">Contrat</th>
+          <th class="hidden sm:table-cell">Statut</th>
+          <th class="hidden sm:table-cell">Référence</th>
+          <th class="hidden sm:table-cell">Montant</th>
+          <th class="hidden sm:table-cell">Depuis le</th>
+          <th class="hidden sm:table-cell"></th>
+        </tr>
+      </ng-template>
+
+      <ng-template #body let-item>
+        @if (item.kind === 'group') {
+          <tr class="bg-slate-50">
+            <td [attr.colspan]="6">
+              <div class="flex items-center gap-2 px-3 py-2">
+                <tas-icon iconName="feather:folder" class="text-slate-400" style="font-size:13px"></tas-icon>
+                <span class="text-xs font-semibold uppercase tracking-wide text-slate-500">{{ item.groupLabel }}</span>
+                <span class="tabular-nums text-xs text-slate-400">({{ item.count }})</span>
+              </div>
+            </td>
+          </tr>
+        } @else {
+          <tr class="cursor-pointer hover:bg-slate-50" [class.bg-amber-50]="item.toReview > 0" (click)="open(item.contract)">
+            <!-- Carte, sous 640 px -->
+            <td class="sm:hidden" [attr.colspan]="6">
+              <div class="flex flex-col gap-2 p-3">
+                <div class="flex items-start justify-between gap-2">
+                  <div class="min-w-0">
+                    <p class="truncate text-sm font-medium text-slate-800">{{ item.label }}</p>
+                    @if (item.caption) {
+                      <p class="text-xs text-slate-500">{{ item.caption }}</p>
+                    }
+                  </div>
+                  <div class="flex shrink-0 flex-col items-end gap-1">
+                    <tas-tag [severity]="item.statusSeverity">{{ item.statusLabel }}</tas-tag>
+                    @if (item.isExternal) {
+                      <tas-tag severity="neutral">Lecture seule</tas-tag>
+                    }
+                  </div>
+                </div>
+                <p class="text-xs text-slate-500">
+                  {{ item.amountCaption || 'Montant' }} : {{ item.amountLabel }} · Réf. {{ item.reference }}
+                </p>
+                @if (item.externalLabel) {
+                  <p class="text-xs text-slate-500">{{ item.externalLabel }}</p>
+                }
+                @if (item.toReview > 0) {
+                  <p class="text-xs text-amber-800">
+                    {{ item.toReview }} désignation(s) à revoir — confirmez le rôle et la quote-part.
+                  </p>
+                }
+              </div>
+            </td>
+
+            <!-- Colonnes, à partir de 640 px -->
+            <td class="hidden py-3 sm:table-cell">
+              <div class="flex flex-wrap items-center gap-2">
+                <span class="text-sm font-medium text-slate-800">{{ item.label }}</span>
+                @if (item.isExternal) {
+                  <tas-tag severity="neutral">Lecture seule</tas-tag>
+                }
+              </div>
+              @if (item.caption) {
+                <span class="block text-xs text-slate-400">{{ item.caption }}</span>
+              }
+            </td>
+
+            <td class="hidden sm:table-cell">
+              <tas-tag [severity]="item.statusSeverity">{{ item.statusLabel }}</tas-tag>
+              @if (item.externalLabel) {
+                <span class="block text-xs text-slate-500">{{ item.externalLabel }}</span>
+              }
+              @if (item.toReview > 0) {
+                <span class="block text-xs text-amber-800">{{ item.toReview }} désignation(s) à revoir</span>
+              }
+            </td>
+
+            <td class="hidden sm:table-cell">
+              <span class="text-sm text-slate-700">{{ item.reference }}</span>
+            </td>
+
+            <td class="hidden sm:table-cell">
+              <span class="tabular-nums text-sm text-slate-700">{{ item.amountLabel }}</span>
+              @if (item.amountCaption) {
+                <span class="block text-xs text-slate-400">{{ item.amountCaption }}</span>
+              }
+            </td>
+
+            <td class="hidden sm:table-cell">
+              <span class="text-sm text-slate-700">{{ item.dateLabel }}</span>
+            </td>
+
+            <td class="hidden text-right sm:table-cell">
+              <button
+                tas-button
+                iconButton
+                type="button"
+                [attr.aria-label]="'Ouvrir le contrat ' + item.label"
+                (click)="$event.stopPropagation(); open(item.contract)"
+              >
+                <tas-icon iconName="feather:chevron-right" style="font-size:14px"></tas-icon>
+              </button>
+            </td>
+          </tr>
+        }
+      </ng-template>
+    </tas-table>
+  }
+
+</div>

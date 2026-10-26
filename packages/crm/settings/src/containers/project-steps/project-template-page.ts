@@ -7,6 +7,8 @@ import {
   CreateProjectTemplateRequestAmountKindEnum,
   CreateProjectTemplateRequestCategoryEnum,
   ProductDto,
+  ProjectFieldRequest,
+  ProjectFieldRequestTypeEnum,
   ProductsApiService,
   ProjectStepRequest,
   ProjectStepRequestPhaseEnum,
@@ -22,13 +24,17 @@ import { TasIcon } from '@talisoft/ui/icon';
 import { TasInput } from '@talisoft/ui/input';
 import { TasSelect } from '@talisoft/ui/select';
 import { TasCard } from '@talisoft/ui/card';
+import { TasCheckbox } from '@talisoft/ui/checkbox';
 import { SnackbarService } from '@talisoft/ui/snackbar';
 import { TasSpinner } from '@talisoft/ui/spinner';
 import { TasSwitch } from '@talisoft/ui/switch';
 import { BreadcrumbService, PermissionsService, PROJECT_AMOUNT_KINDS } from '@sankore/crm/common';
 import {
   FAMILY_AMOUNT_KIND,
+  fieldKeyOf,
+  isChoiceType,
   PHASE_OPTIONS,
+  PROJECT_FIELD_TYPES,
   phaseLabel,
   phaseIndex,
   PRESETS,
@@ -66,6 +72,25 @@ interface StepRow {
   checklist: { id: string | null; label: string }[];
   /** La clé du circuit de validation lancé à l'arrivée sur l'étape, ou NO_CIRCUIT. */
   workflowCircuit: string;
+  /** Les champs du gabarit à renseigner pour l'atteindre, par `rowId` de champ. */
+  requiredFields: string[];
+}
+
+interface FieldRow {
+  /**
+   * Repère de la ligne dans l'écran : la clé d'un champ enregistré, un repère local pour un
+   * nouveau — une étape doit pouvoir l'exiger avant que sa clé existe.
+   */
+  rowId: string;
+  /** La clé enregistrée ; null pour un nouveau champ (calculée à l'envoi). */
+  key: string | null;
+  label: string;
+  type: string;
+  helpText: string;
+  /** Une option par ligne, pour les deux types « liste ». */
+  options: string;
+  /** Les options enregistrées : une option gardée garde sa valeur, et les choix déjà faits avec. */
+  savedOptions: { value: string; label: string }[];
 }
 
 class TemplateFormModel {
@@ -76,6 +101,7 @@ class TemplateFormModel {
   public tracksForecast!: boolean;
   public amountKind!: string;
   public criticalCloseDate!: boolean;
+  public fields!: FieldRow[];
   public steps!: StepRow[];
 
   public static instantiate(template: ProjectTemplateDto | null): TemplateFormModel {
@@ -87,6 +113,15 @@ class TemplateFormModel {
     m.tracksForecast = template?.tracksForecast ?? true;
     m.amountKind = template?.amountKind ?? 'Generic';
     m.criticalCloseDate = !!template?.criticalCloseDate;
+    m.fields = (template?.fields ?? []).map((f) => ({
+      rowId: f.key ?? '',
+      key: f.key ?? null,
+      label: f.label ?? '',
+      type: f.type ?? 'Text',
+      helpText: f.helpText ?? '',
+      options: (f.options ?? []).map((o) => o.label ?? '').join('\n'),
+      savedOptions: (f.options ?? []).map((o) => ({ value: o.value ?? '', label: o.label ?? '' })),
+    }));
     m.steps = (template?.steps ?? []).map((s) => ({
       id: s.id ?? null,
       label: s.label ?? '',
@@ -100,6 +135,7 @@ class TemplateFormModel {
       requiresCloseDate: !!s.requiresCloseDate,
       checklist: (s.checklist ?? []).map((i) => ({ id: i.id ?? null, label: i.label ?? '' })),
       workflowCircuit: s.workflowCircuit || NO_CIRCUIT,
+      requiredFields: [...(s.requiredFieldKeys ?? [])],
     }));
     return m;
   }
@@ -119,8 +155,11 @@ function fromPreset(steps: StepPreset[]): StepRow[] {
     requiresCloseDate: !!s.requiresCloseDate,
     checklist: (s.checklist ?? []).map((label) => ({ id: null, label })),
     workflowCircuit: NO_CIRCUIT,
+    requiredFields: [],
   }));
 }
+
+let localRowSeed = 0;
 
 function probabilityOf(text: string): number | null {
   const n = Number(text.trim());
@@ -139,7 +178,7 @@ function probabilityOf(text: string): number | null {
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './project-template-page.html',
   imports: [
-    RouterLink, TasCard, TasSpinner, TasSwitch, Button,
+    RouterLink, TasCard, TasCheckbox, TasSpinner, TasSwitch, Button,
     TasFormField, TasLabel, TasError, TasHint, TasInput, TasSelect, TasIcon, FormRoot, FormField,
   ],
 })
@@ -179,6 +218,12 @@ export class ProjectTemplatePage implements OnInit {
   public readonly presets = PRESETS;
   public readonly amountKindOptions = PROJECT_AMOUNT_KINDS.map((k) => ({ value: k.value, label: k.label }));
   public readonly maxSteps = 12;
+  public readonly maxFields = 30;
+  public readonly fieldTypes = PROJECT_FIELD_TYPES;
+  public readonly isChoiceType = isChoiceType;
+  public fieldTypeLabel(type: string): string {
+    return PROJECT_FIELD_TYPES.find((t) => t.value === type)?.label ?? type;
+  }
 
   public readonly scopeOptions = [
     { value: 'Category', label: 'Une famille de produits' },
@@ -230,6 +275,23 @@ export class ProjectTemplatePage implements OnInit {
         }
       }
       return null;
+    });
+
+    validate(schema.fields, (ctx) => {
+      const labels = ctx.value().map((f) => f.label.trim().toLowerCase()).filter(Boolean);
+      if (new Set(labels).size !== labels.length) return { kind: 'fields', message: 'Deux champs portent le même libellé' };
+      return null;
+    });
+
+    applyEach(schema.fields, (row) => {
+      required(row.label, { message: 'Libellé obligatoire' });
+      maxLength(row.label, 100, { message: '100 caractères au plus' });
+      maxLength(row.helpText, 300, { message: '300 caractères au plus' });
+      validate(row.options, ({ value, valueOf }) =>
+        isChoiceType(valueOf(row.type)) && !value().split('\n').some((l) => l.trim())
+          ? { kind: 'options', message: 'Une option au moins, une par ligne' }
+          : null,
+      );
     });
 
     applyEach(schema.steps, (row) => {
@@ -326,6 +388,7 @@ export class ProjectTemplatePage implements OnInit {
           id: null, label: '', phase: last?.phase ?? 'Prospecting', probability: '', suggestion: '',
           opensClientFile: false, isApproval: false, requiresQuestionnaires: false,
           requiresAmount: false, requiresCloseDate: false, checklist: [], workflowCircuit: NO_CIRCUIT,
+          requiredFields: [],
         },
       ];
     });
@@ -372,6 +435,40 @@ export class ProjectTemplatePage implements OnInit {
     if (this.selected() === index) this.selected.set(Math.max(0, Math.min(index + delta, this.model().steps.length - 1)));
   }
 
+  // ——— Champs ———
+
+  /** Un champ déjà enregistré garde son type : ses valeurs sont écrites dans ce type. */
+  public isSavedField(index: number): boolean {
+    return !!this.model().fields[index]?.key;
+  }
+
+  public addField(): void {
+    this.formSchema.fields().value.update((rows) => [
+      ...rows,
+      { rowId: `new-${++localRowSeed}`, key: null, label: '', type: 'Text', helpText: '', options: '', savedOptions: [] },
+    ]);
+  }
+
+  /** Retirer un champ le retire aussi des étapes qui l'exigeaient. */
+  public removeField(index: number): void {
+    const rowId = this.model().fields[index]?.rowId;
+    this.formSchema.fields().value.update((rows) => rows.filter((_, i) => i !== index));
+    this.formSchema.steps().value.update((rows) =>
+      rows.map((r) => ({ ...r, requiredFields: r.requiredFields.filter((k) => k !== rowId) })),
+    );
+  }
+
+  public toggleRequiredField(stepIndex: number, rowId: string, on: boolean): void {
+    if (!this.canManage()) return;
+    this.formSchema.steps().value.update((rows) =>
+      rows.map((r, i) =>
+        i !== stepIndex
+          ? r
+          : { ...r, requiredFields: on ? [...new Set([...r.requiredFields, rowId])] : r.requiredFields.filter((k) => k !== rowId) },
+      ),
+    );
+  }
+
   public applyPreset(key: string): void {
     const preset = PRESETS.find((p) => p.key === key);
     if (!preset) return;
@@ -388,6 +485,29 @@ export class ProjectTemplatePage implements OnInit {
   public handleSubmit(): void {
     submit(this.formSchema, async (field) => {
       const v = field().value();
+
+      // Les nouveaux champs reçoivent ici leur clé, tirée du libellé ; les étapes qui les exigent
+      // sont réécrites avec, au lieu du repère local.
+      const taken = new Set(v.fields.filter((f) => f.key).map((f) => f.key as string));
+      const keyOf = new Map<string, string>();
+      const fields: ProjectFieldRequest[] = v.fields.map((f) => {
+        const key = f.key ?? fieldKeyOf(f.label, taken);
+        taken.add(key);
+        keyOf.set(f.rowId, key);
+        return {
+          key,
+          label: f.label.trim(),
+          type: f.type as ProjectFieldRequestTypeEnum,
+          helpText: f.helpText.trim() || null,
+          options: isChoiceType(f.type)
+            ? f.options.split('\n').map((l) => l.trim()).filter(Boolean).map((label) => ({
+                value: f.savedOptions.find((o) => o.label.toLowerCase() === label.toLowerCase())?.value ?? '',
+                label,
+              }))
+            : null,
+        };
+      });
+
       // Les deux requêtes déclarent chacune leur enum : même valeurs, types distincts.
       const forecast = { tracksForecast: v.tracksForecast, criticalCloseDate: v.tracksForecast && v.criticalCloseDate };
       const steps: ProjectStepRequest[] = v.steps.map((s) => ({
@@ -404,6 +524,7 @@ export class ProjectTemplatePage implements OnInit {
         // Un point laissé vide est un point qu'on n'a pas fini d'écrire : il n'est pas envoyé.
         checklist: s.checklist.filter((i) => i.label.trim()).map((i) => ({ id: i.id, label: i.label.trim() })),
         workflowCircuit: s.workflowCircuit === NO_CIRCUIT ? null : s.workflowCircuit || null,
+        requiredFieldKeys: s.requiredFields.map((rowId) => keyOf.get(rowId)).filter((k): k is string => !!k),
       }));
 
       // Le parcours intégré n'est pas stocké : l'enregistrer en crée la copie du tenant, avec les
@@ -411,13 +532,14 @@ export class ProjectTemplatePage implements OnInit {
       const template = this.template();
       const call: Observable<unknown> = template?.id
         ? this._api.updateProjectTemplate(template.id, {
-            name: v.name.trim(), steps, ...forecast, amountKind: v.amountKind as UpdateProjectTemplateRequestAmountKindEnum,
+            name: v.name.trim(), steps, fields, ...forecast, amountKind: v.amountKind as UpdateProjectTemplateRequestAmountKindEnum,
           })
         : this._api.createProjectTemplate({
             name: v.name.trim(),
             category: !this.isDefault() && v.scope === 'Category' ? (v.category as CreateProjectTemplateRequestCategoryEnum) : null,
             productCode: !this.isDefault() && v.scope === 'Product' ? v.productCode : null,
             steps,
+            fields,
             ...forecast,
             amountKind: v.amountKind as CreateProjectTemplateRequestAmountKindEnum,
           });

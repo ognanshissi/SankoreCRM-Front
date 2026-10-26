@@ -57,6 +57,7 @@ import {
   weightedAmount,
 } from '../edit-lead/opportunities/opportunity.model';
 import { ProjectQuestionnaires } from './project-questionnaires';
+import { ProjectFields } from './project-fields';
 
 class InfoFormModel {
   public title!: string;
@@ -123,7 +124,7 @@ function parseAmount(text: string): number | null {
   selector: 'project-detail',
   imports: [
     RouterLink, DatePipe, LowerCasePipe, FormRoot, FormField, Anchor, Button, TasCard, TasFormField, TasLabel, TasError,
-    TasIcon, TasInput, TasDatePicker, TasSelect, TasSpinner, ProjectQuestionnaires,
+    TasIcon, TasInput, TasDatePicker, TasSelect, TasSpinner, ProjectQuestionnaires, ProjectFields,
   ],
   templateUrl: './project-detail.html',
 })
@@ -342,6 +343,37 @@ export class ProjectDetail implements OnInit {
     document.getElementById('exit-conditions')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }
 
+  public scrollToFields(): void {
+    const target = document.getElementById('project-fields') ?? document.getElementById('project-files');
+    target?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  /** Une valeur ou un fichier enregistré peut lever le refus « champs à renseigner ». */
+  public onFieldsChanged(): void {
+    if (this.gate()?.code === 'PROJECT_FIELDS_REQUIRED') this.gate.set(null);
+    this.load();
+  }
+
+  /**
+   * Les champs encore vides que l'étape visée (ou le gain) exige, jusqu'à elle comprise : le
+   * serveur ne renvoie qu'un code, la page a le projet en main pour les nommer.
+   */
+  private _missingFields(p: OpportunityDto): string[] {
+    const steps = p.steps ?? [];
+    const index = this._target ? steps.findIndex((s) => s.label === this._target) : steps.length - 1;
+    const keys = new Set(steps.slice(0, index + 1).flatMap((s) => s.requiredFieldKeys ?? []));
+    const values = (p.customFields ?? {}) as Record<string, unknown>;
+    const withFiles = new Set((p.attachments ?? []).map((a) => a.fieldKey));
+    return (p.fields ?? [])
+      .filter((f) => keys.has(f.key ?? ''))
+      .filter((f) => {
+        if (f.type === 'Attachment') return !withFiles.has(f.key);
+        const v = values[f.key ?? ''];
+        return v === null || v === undefined || v === '' || (Array.isArray(v) && v.length === 0);
+      })
+      .map((f) => f.label ?? f.key ?? '');
+  }
+
   public scrollToQuestionnaires(): void {
     document.getElementById('questionnaires')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
@@ -545,7 +577,7 @@ export class ProjectDetail implements OnInit {
   /**
    * Ouvre — ou retrouve — le contrat du projet gagné. La clôture tente la même ouverture mais tait
    * un échec pour ne pas défaire la vente ; sans ce bouton, un projet d'assurance gagné sans
-   * contrat n'avait plus aucun chemin vers une souscription (l'onglet Produits les refuse).
+   * contrat n'avait plus aucun chemin vers une souscription (aucun contrat ne s'ouvre depuis la fiche client).
    */
   public openHolding(): void {
     const p = this.project();
@@ -563,7 +595,7 @@ export class ProjectDetail implements OnInit {
       .subscribe((r) => {
         this.busy.set(false);
         this.holdingId.set(r?.holdingId ?? null);
-        this._snackbar.success('Contrat ouvert', 'Le contrat est en brouillon dans les produits du client.');
+        this._snackbar.success('Contrat ouvert', 'Le contrat est en brouillon dans les contrats du client.');
       });
   }
 
@@ -608,7 +640,9 @@ export class ProjectDetail implements OnInit {
         catchError((error: HttpErrorResponse) => {
           const code = projectGateCode(error);
           if (code) {
-            this.gate.set({ code, message: projectGateMessage(code, this._target) });
+            const missing = code === 'PROJECT_FIELDS_REQUIRED' && this.project() ? this._missingFields(this.project()!) : [];
+            const message = projectGateMessage(code, this._target);
+            this.gate.set({ code, message: missing.length ? `${message.replace(/\.$/, '')} : ${missing.join(', ')}.` : message });
           } else {
             this._snackbar.error('Erreur', this._errorMessage(error));
           }

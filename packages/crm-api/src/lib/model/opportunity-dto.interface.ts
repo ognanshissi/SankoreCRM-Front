@@ -11,7 +11,9 @@
  */
 import { ProjectWorkflowRunDto } from './project-workflow-run-dto.interface';
 import { Money } from './money.interface';
+import { ProjectFieldDefinition } from './project-field-definition.interface';
 import { ProjectContactDto } from './project-contact-dto.interface';
+import { ProjectAttachmentDto } from './project-attachment-dto.interface';
 import { ProjectStepDto } from './project-step-dto.interface';
 
 
@@ -52,6 +54,9 @@ export interface OpportunityDto {
     criticalCloseDate?: boolean;
     checkedChecklistItemIds?: Array<string> | null;
     workflowRuns?: Array<ProjectWorkflowRunDto> | null;
+    fields?: Array<ProjectFieldDefinition> | null;
+    customFields?: any | null;
+    attachments?: Array<ProjectAttachmentDto> | null;
 }
 export enum OpportunityDtoStageEnum {
     Prospecting = 'Prospecting',

@@ -1,5 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject, OnInit, signal } from '@angular/core';
-import { DIALOG_DATA, DialogRef } from '@angular/cdk/dialog';
+import { ChangeDetectionStrategy, Component, computed, inject, input, OnInit, output, signal } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { FormField, FormRoot, form, required, submit, validate } from '@angular/forms/signals';
 import { catchError, EMPTY, firstValueFrom } from 'rxjs';
@@ -23,17 +22,13 @@ import { TasIcon } from '@talisoft/ui/icon';
 import { TasInput } from '@talisoft/ui/input';
 import { Menu, MenuItem, TasMenuTrigger } from '@talisoft/ui/menu';
 import { TasSelect } from '@talisoft/ui/select';
-import {
-  SideDrawerService,
-  TasDrawerAction,
-  TasDrawerContent,
-  TasDrawerTitle,
-  TasSideDrawer,
-} from '@talisoft/ui/side-drawer';
+import { SideDrawerService } from '@talisoft/ui/side-drawer';
 import { SnackbarService } from '@talisoft/ui/snackbar';
 import { TasTable } from '@talisoft/ui/table';
 import { Severity, TasTag } from '@talisoft/ui/tag';
 import { formatAmount, formatContractDate, policyStatusMeta } from '../data-access/integration-referential';
+import { IntegrationFacadeService, integrationErrorMessage } from '../data-access/integration-facade.service';
+import { DeclareClaimDrawer, DeclareClaimDrawerData } from './declare-claim-drawer';
 import {
   afterSaleErrorMessage,
   DOCUMENT_CHANNEL_LABELS,
@@ -52,11 +47,6 @@ import {
 } from './insurance-after-sale-labels';
 import { PolicyOperationStatusDrawer, PolicyOperationStatusDrawerData } from './policy-operation-status-drawer';
 
-export interface InsurancePolicyDrawerData {
-  policy: InsurancePolicyDto;
-  /** Le client du contrat : ses moyens de paiement sont ceux où l'assureur peut verser. */
-  customerId: string;
-}
 
 interface OperationRow {
   id: string;
@@ -107,23 +97,21 @@ class UploadDocumentFormModel {
 }
 
 /**
- * Détail d'un contrat d'assurance : demandes du client sur la police (renonciation, rachat,
- * avance) et documents de l'assureur (conditions, attestation, avenants, information annuelle).
+ * La police d'un contrat d'assurance, sur la page du contrat : attestation, déclaration de
+ * sinistre, demandes du client sur la police (renonciation, rachat, avance) et documents de
+ * l'assureur (conditions, attestation, avenants, information annuelle). C'était un tiroir ouvert
+ * depuis la liste des polices, devenu un bloc de la page du contrat (2026-10-26).
  *
  * L'information annuelle (art. 75) est produite par l'assureur ; l'institution la relaie et
  * consigne sa remise au client, comme pour les autres documents.
  */
 @Component({
-  selector: 'insurance-policy-drawer',
-  templateUrl: './insurance-policy-drawer.html',
+  selector: 'insurance-policy-panel',
+  templateUrl: './insurance-policy-panel.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     FormRoot,
     FormField,
-    TasSideDrawer,
-    TasDrawerTitle,
-    TasDrawerContent,
-    TasDrawerAction,
     TasAlert,
     Button,
     TasFileUploader,
@@ -141,8 +129,8 @@ class UploadDocumentFormModel {
     TasMenuTrigger,
   ],
 })
-export class InsurancePolicyDrawer implements OnInit {
-  private readonly _dialogRef = inject<DialogRef<void>>(DialogRef);
+export class InsurancePolicyPanel implements OnInit {
+  private readonly _facade = inject(IntegrationFacadeService);
   private readonly _api = inject(IntegrationApiService);
   private readonly _clientsApi = inject(ClientsApiService);
   private readonly _sideDrawer = inject(SideDrawerService);
@@ -151,16 +139,31 @@ export class InsurancePolicyDrawer implements OnInit {
   private readonly _moduleReadOnly = inject(TenantModulesService).readOnly(TENANT_MODULES.INSURANCE);
   private readonly _canSubscribePermission = inject(PermissionsService).can('Ins.Policy.Subscribe');
 
-  public readonly data = inject<InsurancePolicyDrawerData>(DIALOG_DATA);
-  public readonly policy = this.data.policy;
-  private readonly _policyId = this.policy.id ?? '';
+  /** La police telle que la liste du client la donne. */
+  public readonly policyInput = input.required<InsurancePolicyDto>({ alias: 'policy' });
+  /** Le client du contrat : ses moyens de paiement sont ceux où l'assureur peut verser. */
+  public readonly customerId = input.required<string>();
+  /** Un sinistre vient d'être déclaré : la page recharge la liste des sinistres du contrat. */
+  public readonly claimDeclared = output<void>();
+
+  // Lus une fois les entrées posées (ngOnInit précède le premier rendu) : la page recrée le
+  // bloc quand elle change de contrat.
+  public policy!: InsurancePolicyDto;
+  private _policyId = '';
+  public statusMeta!: { label: string; severity: Severity };
+  public premiumLabel = '';
+
+  private readonly _canDeclareClaimPermission = inject(PermissionsService).can('Ins.Claim.Declare');
+  /** Ni attestation ni sinistre tant que la prime est due : le contrat n'est pas en vigueur. */
+  public readonly canDeclareClaim = computed(
+    () => this._canDeclareClaimPermission() && !this._moduleReadOnly() && !this.policyInput().premiumOutstanding,
+  );
+  public readonly isDownloading = signal(false);
 
   /** Toutes les écritures de l'après-vente relèvent du droit de souscrire. */
   public readonly canWrite = computed(() => this._canSubscribePermission() && !this._moduleReadOnly());
 
   public readonly KINDS = KINDS;
-  public readonly statusMeta = policyStatusMeta(this.policy.status);
-  public readonly premiumLabel = formatAmount(this.policy.premiumAmount, this.policy.currency);
   public readonly operationKindOptions = OPERATION_KIND_OPTIONS;
   public readonly documentKindOptions = POLICY_DOCUMENT_KIND_OPTIONS;
   public readonly channelOptions = DOCUMENT_CHANNEL_OPTIONS;
@@ -249,6 +252,10 @@ export class InsurancePolicyDrawer implements OnInit {
   });
 
   public ngOnInit(): void {
+    this.policy = this.policyInput();
+    this._policyId = this.policy.id ?? '';
+    this.statusMeta = policyStatusMeta(this.policy.status);
+    this.premiumLabel = formatAmount(this.policy.premiumAmount, this.policy.currency);
     this.loadOperations();
     this.loadDocuments();
     this._loadInstruments();
@@ -262,7 +269,7 @@ export class InsurancePolicyDrawer implements OnInit {
 
   private _loadInstruments(): void {
     this._clientsApi
-      .listClientPaymentInstruments(this.data.customerId)
+      .listClientPaymentInstruments(this.customerId())
       .pipe(catchError(() => EMPTY))
       .subscribe((rows) =>
         this._instruments.set(
@@ -482,7 +489,40 @@ export class InsurancePolicyDrawer implements OnInit {
       });
   }
 
-  public close(): void {
-    this._dialogRef.close();
+  public downloadCertificate(): void {
+    this.isDownloading.set(true);
+    this._facade
+      .getPolicyCertificate(this._policyId)
+      .pipe(
+        catchError((err: HttpErrorResponse) => {
+          this._snackbar.error(
+            'Attestation indisponible',
+            err.status === 502
+              ? "L'assureur n'a pas pu produire l'attestation. Réessayez plus tard ou demandez-la par votre canal habituel."
+              : integrationErrorMessage(err, "L'attestation n'a pas pu être téléchargée."),
+          );
+          this.isDownloading.set(false);
+          return EMPTY;
+        }),
+      )
+      .subscribe((blob) => {
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `attestation-${this.policy.policyNumber || this._policyId}.pdf`;
+        link.click();
+        URL.revokeObjectURL(url);
+        this.isDownloading.set(false);
+      });
+  }
+
+  public declareClaim(): void {
+    this._sideDrawer
+      .open<boolean, DeclareClaimDrawerData, DeclareClaimDrawer>(DeclareClaimDrawer, {
+        data: { policyId: this._policyId, productName: this.policy.productName ?? '' },
+      })
+      .closed.subscribe((declared) => {
+        if (declared) this.claimDeclared.emit();
+      });
   }
 }

@@ -9,6 +9,7 @@
  * https://openapi-generator.tech
  * Do not edit the class manually.
  */
+import { ProjectFieldDefinition } from './project-field-definition.interface';
 import { ProjectStepDto } from './project-step-dto.interface';
 
 
@@ -31,6 +32,7 @@ export interface ProjectTemplateDto {
      */
     amountKind?: ProjectTemplateDtoAmountKindEnum;
     criticalCloseDate?: boolean;
+    fields?: Array<ProjectFieldDefinition> | null;
 }
 export enum ProjectTemplateDtoCategoryEnum {
     Loan = 'Loan',

@@ -9,6 +9,7 @@
  * https://openapi-generator.tech
  * Do not edit the class manually.
  */
+import { ProjectFieldRequest } from './project-field-request.interface';
 import { ProjectStepRequest } from './project-step-request.interface';
 
 
@@ -26,6 +27,7 @@ export interface CreateProjectTemplateRequest {
      */
     amountKind?: CreateProjectTemplateRequestAmountKindEnum;
     criticalCloseDate?: boolean;
+    fields?: Array<ProjectFieldRequest> | null;
 }
 export enum CreateProjectTemplateRequestCategoryEnum {
     Loan = 'Loan',
