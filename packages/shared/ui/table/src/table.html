@@ -77,7 +77,8 @@
       #paginator
       [pageSize]="5"
       (page)="pageEvent($event)"
-      aria-label="Select page"
+      [selectConfig]="{ panelClass: 'tas-paginator-panel' }"
+      aria-label="Pagination"
     >
     </mat-paginator>
     <br/>

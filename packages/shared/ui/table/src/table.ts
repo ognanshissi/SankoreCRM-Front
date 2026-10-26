@@ -15,6 +15,7 @@ import {
   ViewEncapsulation,
 } from '@angular/core';
 import { MatPaginator, PageEvent } from '@angular/material/paginator';
+import { provideTasPaginatorIntl } from './table-paginator-intl';
 import { SelectionModel } from '@angular/cdk/collections';
 import { TableColumn, TableConfig } from './table-types';
 import { TableDataSource } from './table-datasource';
@@ -62,6 +63,9 @@ export const DEFAULT_TABLE_CONFIG: TableConfig = {
     TasSpinner,
     TasCard,
   ],
+  // Fourni ici et non par l'application : chaque tas-table parle français, quelle que soit
+  // l'application qui l'affiche (CRM ou admin).
+  providers: [provideTasPaginatorIntl()],
   encapsulation: ViewEncapsulation.None,
   changeDetection: ChangeDetectionStrategy.OnPush,
 })

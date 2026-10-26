@@ -1,7 +1,43 @@
 @reference "../../tailwind-ref.css";
 
+// Le thème ne déclare aucune typographie Material (`--mat-sys-body-small-font` n'existe pas) :
+// sans ces jetons, le paginateur retombait sur la police par défaut du navigateur, en serif.
 .mat-mdc-paginator {
   background-color: var(--tas-color-white) !important;
+
+  --mat-paginator-container-text-font: var(--tas-font-family), sans-serif;
+  --mat-paginator-container-text-size: 0.875rem;
+  --mat-paginator-container-text-weight: 400;
+  --mat-paginator-container-text-line-height: 1.25rem;
+  --mat-paginator-container-text-tracking: normal;
+  --mat-paginator-container-text-color: var(--color-slate-600);
+  --mat-paginator-enabled-icon-color: var(--color-slate-600);
+  --mat-paginator-disabled-icon-color: var(--color-slate-300);
+  --mat-paginator-select-trigger-text-size: 0.875rem;
+
+  // Le sélecteur « Éléments par page » est un mat-select : même police, même couleur.
+  --mat-select-trigger-text-font: var(--tas-font-family), sans-serif;
+  --mat-select-trigger-text-size: 0.875rem;
+  --mat-select-trigger-text-weight: 500;
+  --mat-select-trigger-text-tracking: normal;
+  --mat-select-enabled-trigger-text-color: var(--color-slate-700);
+  --mat-select-enabled-arrow-color: var(--color-slate-500);
+  --mat-form-field-outlined-outline-color: var(--color-slate-300);
+  --mat-form-field-outlined-hover-outline-color: var(--color-slate-400);
+  --mat-form-field-outlined-focus-outline-color: rgb(var(--tas-color-primary));
+
+  font-family: var(--tas-font-family), sans-serif;
+}
+
+// La liste des tailles de page s'ouvre dans un overlay, hors du paginateur : sans sa propre classe
+// (`selectConfig.panelClass`), ses options restaient en Roboto, la police par défaut de Material.
+.tas-paginator-panel {
+  --mat-option-label-text-font: var(--tas-font-family), sans-serif;
+  --mat-option-label-text-size: 0.875rem;
+  --mat-option-label-text-weight: 400;
+  --mat-option-label-text-tracking: normal;
+  --mat-option-label-text-color: var(--color-slate-700);
+  --mat-option-selected-state-label-text-color: rgb(var(--tas-color-primary));
 }
 tas-table {
   thead > tr {
