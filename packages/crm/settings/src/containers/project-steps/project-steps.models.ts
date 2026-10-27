@@ -234,9 +234,12 @@ export function fieldKeyOf(label: string, taken: Set<string>): string {
   return key;
 }
 
-export function projectTemplateError(error: HttpErrorResponse, fallback: string): string {
+/** `questionnaireStep` : l'étape qui porte le marqueur, pour la nommer quand il est refusé. */
+export function projectTemplateError(error: HttpErrorResponse, fallback: string, questionnaireStep?: string): string {
   if (error.status === 403) return "Vous n'avez pas le droit de modifier les étapes des projets.";
   const code = (error.error as { detail?: string; error?: string } | null)?.detail
     ?? (error.error as { error?: string } | null)?.error;
+  if (code === 'PROJECT_STEP_QUESTIONNAIRE_FORM_MISSING' && questionnaireStep)
+    return `L’étape « ${questionnaireStep} » exige les questionnaires du produit. ${ERRORS[code]}`;
   return (code && ERRORS[code]) || fallback;
 }

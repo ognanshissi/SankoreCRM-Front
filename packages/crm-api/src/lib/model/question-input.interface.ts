@@ -26,6 +26,7 @@ export interface QuestionInput {
     minValue?: number | null;
     maxValue?: number | null;
     rules?: Array<RuleInput> | null;
+    id?: string | null;
 }
 export enum QuestionInputTypeEnum {
     YesNo = 'YesNo',

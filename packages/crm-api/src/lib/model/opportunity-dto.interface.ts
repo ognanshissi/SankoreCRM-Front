@@ -57,6 +57,9 @@ export interface OpportunityDto {
     fields?: Array<ProjectFieldDefinition> | null;
     customFields?: any | null;
     attachments?: Array<ProjectAttachmentDto> | null;
+    templateVersionId?: string | null;
+    templateVersion?: number | null;
+    latestTemplateVersion?: number | null;
 }
 export enum OpportunityDtoStageEnum {
     Prospecting = 'Prospecting',

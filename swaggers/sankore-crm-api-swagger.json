@@ -20236,6 +20236,36 @@
         }
       }
     },
+    "/api/v1/leads/opportunities/{id}/template-version": {
+      "post": {
+        "tags": [
+          "Opportunities"
+        ],
+        "operationId": "FollowLatestProjectTemplateVersion",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "422": {
+            "description": "Unprocessable Entity"
+          }
+        }
+      }
+    },
     "/api/v1/leads/opportunities/{id}/fields": {
       "put": {
         "tags": [
@@ -47244,6 +47274,21 @@
               "$ref": "#/components/schemas/ProjectAttachmentDto"
             },
             "nullable": true
+          },
+          "templateVersionId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "templateVersion": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "latestTemplateVersion": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -49671,6 +49716,11 @@
               "$ref": "#/components/schemas/ProjectFieldDefinition"
             },
             "nullable": true
+          },
+          "version": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -50271,6 +50321,11 @@
             "items": {
               "$ref": "#/components/schemas/RuleInput"
             },
+            "nullable": true
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid",
             "nullable": true
           }
         },

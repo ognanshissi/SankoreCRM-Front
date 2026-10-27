@@ -25,6 +25,7 @@ import { TasInput } from '@talisoft/ui/input';
 import { TasSelect } from '@talisoft/ui/select';
 import { TasCard } from '@talisoft/ui/card';
 import { TasCheckbox } from '@talisoft/ui/checkbox';
+import { TasAlert } from '@talisoft/ui/alert';
 import { SnackbarService } from '@talisoft/ui/snackbar';
 import { TasSpinner } from '@talisoft/ui/spinner';
 import { TasSwitch } from '@talisoft/ui/switch';
@@ -178,7 +179,7 @@ function probabilityOf(text: string): number | null {
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './project-template-page.html',
   imports: [
-    RouterLink, TasCard, TasCheckbox, TasSpinner, TasSwitch, Button,
+    RouterLink, TasAlert, TasCard, TasCheckbox, TasSpinner, TasSwitch, Button,
     TasFormField, TasLabel, TasError, TasHint, TasInput, TasSelect, TasIcon, FormRoot, FormField,
   ],
 })
@@ -547,7 +548,8 @@ export class ProjectTemplatePage implements OnInit {
       const saved = await firstValueFrom(
         call.pipe(
           catchError((error: HttpErrorResponse) => {
-            this._snackbar.error('Gabarit non enregistré', projectTemplateError(error, 'L’enregistrement a échoué.'));
+            const marked = steps.find((s) => s.requiresQuestionnaires)?.label ?? undefined;
+            this._snackbar.error('Gabarit non enregistré', projectTemplateError(error, 'L’enregistrement a échoué.', marked));
             return EMPTY;
           }),
         ),
@@ -555,7 +557,12 @@ export class ProjectTemplatePage implements OnInit {
       );
 
       if (saved === 'failed') return;
-      this._snackbar.success('Gabarit enregistré', `« ${v.name.trim()} » s'applique aux projets dès maintenant.`);
+      this._snackbar.success(
+        'Gabarit enregistré',
+        template?.id
+          ? `Les nouveaux projets suivent « ${v.name.trim()} » tel qu'enregistré ; les projets en cours gardent leur version.`
+          : `« ${v.name.trim()} » s'applique aux nouveaux projets.`,
+      );
       this.back();
     });
   }

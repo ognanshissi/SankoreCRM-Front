@@ -33,6 +33,7 @@ export interface ProjectTemplateDto {
     amountKind?: ProjectTemplateDtoAmountKindEnum;
     criticalCloseDate?: boolean;
     fields?: Array<ProjectFieldDefinition> | null;
+    version?: number | null;
 }
 export enum ProjectTemplateDtoCategoryEnum {
     Loan = 'Loan',

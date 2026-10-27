@@ -26,6 +26,7 @@ interface TemplateRow {
     requiresQuestionnaires: boolean; checklistCount: number; workflowCircuit: string | null;
   }[];
   updatedAt: string | null;
+  version: number | null;
 }
 
 /**
@@ -118,6 +119,9 @@ interface TemplateRow {
               </td>
               <td class="py-3 pr-4 text-right text-xs text-slate-500 tabular-nums">
                 {{ row.updatedAt ? (row.updatedAt | date: 'd MMM y') : '—' }}
+                @if (row.version) {
+                  <p class="text-[11px] text-slate-400">Version {{ row.version }}</p>
+                }
               </td>
             </tr>
           </ng-template>
@@ -174,6 +178,7 @@ export class ProjectStepsPage implements OnInit {
         workflowCircuit: s.workflowCircuit ?? null,
       })),
       updatedAt: t.updatedAt ?? null,
+      version: t.version ?? null,
     }));
   });
 

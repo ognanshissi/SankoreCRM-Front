@@ -143,8 +143,19 @@ export class ProjectsBoard implements OnInit {
       });
     }
 
-    const sample = visible[0] ?? this._open().find((p) => templateKey(p) === this.track());
-    const steps = sample ? projectSteps(sample) : [];
+    // Les projets d'un même parcours peuvent suivre des versions différentes (propriétaire,
+    // 2026-10-26) : les colonnes sont celles de la plus récente, complétées des étapes que seule une
+    // version antérieure a — sinon un projet posé sur une telle étape disparaîtrait du tableau.
+    const pool = visible.length ? visible : this._open().filter((p) => templateKey(p) === this.track());
+    const sample = [...pool].sort((a, b) => (b.templateVersion ?? 0) - (a.templateVersion ?? 0))[0];
+    const steps = sample ? [...projectSteps(sample)] : [];
+    for (const p of pool) {
+      projectSteps(p).forEach((step, i, own) => {
+        if (steps.some((s) => s.id === step.id)) return;
+        const before = own.slice(0, i).reverse().find((s) => steps.some((c) => c.id === s.id));
+        steps.splice(before ? steps.findIndex((c) => c.id === before.id) + 1 : 0, 0, step);
+      });
+    }
     return steps.map((step) => {
       const list = visible.filter((p) => currentStep(p)?.id === step.id);
       const hint = sample && tracksForecast(sample) ? `${step.probability ?? 0} %` : '';
@@ -236,7 +247,14 @@ export class ProjectsBoard implements OnInit {
 
     const previous = this.projects();
     const step = projectSteps(project).find((s) => s.id === target.id);
-    if (!step) return;
+    if (!step) {
+      this._snackbar.info(
+        'Étape absente de sa version',
+        `« ${target.label} » n'existe pas dans la version ${project.templateVersion ?? ''} du parcours que suit « ${project.title} ». ` +
+          'Ouvrez le projet pour le faire passer à la dernière version.',
+      );
+      return;
+    }
 
     // Optimiste : la carte change de colonne tout de suite, et revient si le serveur refuse.
     this.projects.update((list) =>

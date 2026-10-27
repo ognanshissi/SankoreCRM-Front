@@ -569,6 +569,58 @@ export class ProjectDetail implements OnInit {
     );
   }
 
+  /** La dernière version de son parcours, quand le projet en suit une plus ancienne et est encore ouvert. */
+  public readonly newerTemplateVersion = computed(() => {
+    const p = this.project();
+    if (!p || isClosed(p) || !p.templateVersion || !p.latestTemplateVersion) return null;
+    return p.latestTemplateVersion > p.templateVersion ? p.latestTemplateVersion : null;
+  });
+
+  /**
+   * Fait passer le projet à la dernière version de son parcours (propriétaire, 2026-10-26 : sur
+   * demande, jamais en modifiant le gabarit). Il garde son étape si elle existe encore, sinon il
+   * prend celle de sa phase ; les conditions de la nouvelle version valent pour les étapes suivantes.
+   */
+  public followLatestTemplateVersion(latest: number): void {
+    const p = this.project();
+    if (!p?.id) return;
+    this._confirm.confirm({
+      title: `Passer à la version ${latest} ?`,
+      message:
+        `« ${p.title} » suivra les étapes, conditions et champs de la version ${latest} du parcours. ` +
+        `Il reste sur son étape si elle existe encore, sinon sur celle de sa phase. Ce choix est définitif.`,
+      closable: true,
+      showCancelButton: true,
+      acceptButtonProps: { label: `Passer à la version ${latest}`, theme: 'primary' },
+      rejectButtonProps: { label: 'Annuler' },
+      accept: () => {
+        this.busy.set(true);
+        this._api
+          .followLatestProjectTemplateVersion(p.id!)
+          .pipe(
+            catchError((error: HttpErrorResponse) => {
+              const code = String((error.error as { error?: string } | null)?.error ?? '');
+              this._snackbar.error(
+                'Version inchangée',
+                code === 'PROJECT_TEMPLATE_VERSION_ALREADY_LATEST'
+                  ? 'Le projet suit déjà la dernière version : rechargez la page.'
+                  : code === 'OPPORTUNITY_ALREADY_CLOSED'
+                    ? 'Le projet est clos : son parcours ne change plus.'
+                    : 'Le projet n’a pas pu changer de version.',
+              );
+              this.busy.set(false);
+              return EMPTY;
+            }),
+          )
+          .subscribe(() => {
+            this.busy.set(false);
+            this._snackbar.success('Parcours mis à jour', `Le projet suit la version ${latest}.`);
+            this.load();
+          });
+      },
+    });
+  }
+
   /** Le projet est gagné et peut encore ouvrir son contrat : la clôture a pu échouer en silence. */
   public readonly canOpenHolding = computed(
     () => this._canManage() && this.project()?.stage === 'ClosedWon' && !this.holdingId(),

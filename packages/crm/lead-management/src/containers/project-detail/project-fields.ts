@@ -32,6 +32,8 @@ type AttachmentRow = ProjectAttachmentDto & { id: string; fieldLabel: string };
 @Component({
   selector: 'project-fields',
   changeDetection: ChangeDetectionStrategy.OnPush,
+  // Les deux cartes prennent l'espacement de la page ; sans champ, rien n'occupe de place.
+  host: { class: 'contents' },
   imports: [DatePipe, Button, TasCard, TasIcon, TasTable, CustomFieldsCard],
   template: `
     @if (valueFields().length) {
@@ -66,13 +68,11 @@ type AttachmentRow = ProjectAttachmentDto & { id: string; fieldLabel: string };
                   </p>
                 </div>
                 @if (canEdit()) {
-                  <label class="cursor-pointer">
-                    <input type="file" class="hidden" (change)="upload(f, $event)" [disabled]="uploading() === f.key" />
-                    <span tas-outlined-button color="primary" class="pointer-events-none">
-                      <tas-icon iconName="feather:upload" style="font-size:14px"></tas-icon>&nbsp;
-                      {{ uploading() === f.key ? 'Envoi…' : 'Ajouter un fichier' }}
-                    </span>
-                  </label>
+                  <button tas-outlined-button type="button" [isLoading]="uploading() === f.key" [disabled]="!!uploading()" (click)="fileInput.click()">
+                    <tas-icon iconName="feather:upload" style="font-size:14px"></tas-icon> Ajouter un fichier
+                  </button>
+                  <input #fileInput type="file" class="hidden"
+                    accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx,.pptx,.txt,.csv" (change)="upload(f, $event)" />
                 }
               </div>
             }

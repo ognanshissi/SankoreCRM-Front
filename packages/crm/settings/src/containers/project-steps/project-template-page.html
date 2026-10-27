@@ -23,9 +23,19 @@
           } @else {
             Étapes des projets
           }
+          @if (template()?.version; as v) {
+            · version {{ v }}
+          }
         </p>
       </div>
     </div>
+
+    @if (template()?.version) {
+      <tas-alert type="info">
+        Enregistrer crée la version suivante dès qu'un projet suit la version actuelle : les projets en cours gardent la
+        leur, et passent à la nouvelle depuis leur page, sur demande.
+      </tas-alert>
+    }
 
     <!-- Réglages généraux -->
     <tas-card class="block">

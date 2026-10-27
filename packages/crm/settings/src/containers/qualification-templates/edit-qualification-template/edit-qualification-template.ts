@@ -326,6 +326,10 @@ export class EditQualificationTemplate implements OnInit {
       });
 
       return {
+        // L'API recrée chaque question sous un nouvel id : c'est cet id-ci, celui que les règles
+        // nomment, qui lui permet de les rebrancher. Sans lui, une règle enregistrée deux fois
+        // pointe vers une question disparue et masque la sienne pour de bon.
+        id: EditQualificationTemplate.UUID_PATTERN.test(q._uid) ? q._uid : null,
         label: q.label || null,
         type: q.type,
         // « Exclu du scoring » n'a aucun champ au contrat : le seul levier

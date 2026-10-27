@@ -52,7 +52,7 @@
             Produit :
             @if (p.product) { <span class="font-medium text-slate-700">{{ p.product }}</span> }
             @else { <span class="font-semibold text-red-700">À préciser</span> }
-            · Parcours : {{ p.templateName ?? 'Parcours standard' }}
+            · Parcours : {{ p.templateName ?? 'Parcours standard' }}@if (p.templateVersion) { <span class="text-slate-400"> (version {{ p.templateVersion }})</span> }
             @if (ownerName(); as owner) { · Suivi par {{ owner }} }
           </p>
         </div>
@@ -72,6 +72,22 @@
         </div>
       </div>
     </tas-card>
+
+    <!-- Une version plus récente du parcours existe : le projet reste sur la sienne jusqu'à ce qu'on l'y fasse passer -->
+    @if (newerTemplateVersion(); as latest) {
+      <div class="flex flex-wrap items-center gap-3 rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900">
+        <tas-icon iconName="feather:git-branch" class="shrink-0 text-sky-600" style="font-size:16px"></tas-icon>
+        <p class="min-w-56 flex-1">
+          Ce projet suit la version {{ p.templateVersion }} du parcours « {{ p.templateName }} ». La version {{ latest }} existe :
+          les projets créés depuis la suivent.
+        </p>
+        @if (canManage()) {
+          <button tas-outlined-button color="primary" type="button" [disabled]="busy()" (click)="followLatestTemplateVersion(latest)">
+            Passer à la version {{ latest }}
+          </button>
+        }
+      </div>
+    }
 
     <!-- Refus d'une étape marquée -->
     @if (gate(); as g) {
@@ -123,6 +139,9 @@
                 }
                 @if (step.requiresQuestionnaires) {
                   <span class="mt-1 inline-flex items-center gap-1 text-[11px] font-medium text-slate-600"><tas-icon iconName="feather:clipboard" style="font-size:11px"></tas-icon>Questionnaires</span>
+                }
+                @if (step.requiredFieldKeys?.length) {
+                  <span class="mt-1 inline-flex items-center gap-1 text-[11px] font-medium text-slate-600"><tas-icon iconName="feather:edit-3" style="font-size:11px"></tas-icon>{{ step.requiredFieldKeys!.length }} champ{{ step.requiredFieldKeys!.length > 1 ? 's' : '' }}</span>
                 }
                 @if (step.checklist?.length) {
                   <span class="mt-1 inline-flex items-center gap-1 text-[11px] font-medium text-slate-600"><tas-icon iconName="feather:check-square" style="font-size:11px"></tas-icon>{{ step.checklist!.length }} point{{ step.checklist!.length > 1 ? 's' : '' }}</span>
