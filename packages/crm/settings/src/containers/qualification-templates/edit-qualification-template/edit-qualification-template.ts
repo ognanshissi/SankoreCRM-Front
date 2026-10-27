@@ -1,6 +1,7 @@
-import { Component, computed, effect, inject, input, signal, OnInit } from '@angular/core';
+import { Component, computed, effect, inject, input, signal, untracked, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
+import { DatePipe } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import {
   disabled,
@@ -14,6 +15,7 @@ import { TasCard } from '@talisoft/ui/card';
 import { TasSpinner } from '@talisoft/ui/spinner';
 import { TasIcon } from '@talisoft/ui/icon';
 import { TasTag } from '@talisoft/ui/tag';
+import { TableConfig, TasTable } from '@talisoft/ui/table';
 import { Button } from '@talisoft/ui/button';
 import { TasFormField, TasHint, TasLabel } from '@talisoft/ui/form-field';
 import { TasInput } from '@talisoft/ui/input';
@@ -23,6 +25,7 @@ import { ConfirmDialogService } from '@talisoft/ui/confirm-dialog';
 
 import {
   LeadsApiService,
+  QualificationTemplateDto,
   QuestionInput,
   QuestionInputTypeEnum,
   SectionInput,
@@ -41,8 +44,19 @@ import {
   EditableQuestion, EditableSection,
   uid, QUESTION_TYPE_OPTIONS, RULE_ACTION_OPTIONS,
   questionTypeLabel, APPLIES_TO_OPTIONS, isInsuranceCategory,
-  statusLabel, statusSeverity,
+  statusLabel, statusSeverity, qualificationScopeKey, productVersionNumbers,
 } from '../qualification-template.models';
+
+/** Une version du formulaire, telle que l'encart « Versions » la liste. */
+interface VersionRow {
+  id: string;
+  name: string;
+  number: number | null;
+  status: string | null;
+  publishedAt: string | null;
+  createdAt: string | null;
+  current: boolean;
+}
 
 /**
  * BNF-F-16 — portée et santé du questionnaire.
@@ -70,12 +84,14 @@ class TemplateScopeFormModel {
 @Component({
   selector: 'edit-qualification-template',
   imports: [
+    DatePipe,
     FormsModule,
     DragDropModule,
     TasCard,
     TasSpinner,
     TasIcon,
     TasTag,
+    TasTable,
     Button,
     TasFormField,
     TasLabel,
@@ -143,7 +159,34 @@ export class EditQualificationTemplate implements OnInit {
   public editSections = signal<EditableSection[]>([]);
   public editQuestions = signal<EditableQuestion[]>([]);
   public templateStatus = signal<string | null>(null);
-  public templateVersion = signal<number>(1);
+
+  /**
+   * Les autres versions du formulaire — les formulaires de son produit (propriétaire, 2026-10-27),
+   * la plus récente d'abord, les brouillons jamais publiés en tête.
+   */
+  public readonly versions = signal<VersionRow[]>([]);
+  public readonly productVersion = computed(() => this.versions().find((v) => v.current)?.number ?? null);
+  /** Le numéro que prendra ce formulaire s'il est publié maintenant. */
+  public readonly nextProductVersion = computed(
+    () => this.versions().filter((v) => v.number !== null && !v.current).length + 1,
+  );
+  /** Une autre version de ce produit est publiée : la publication l'archivera. */
+  public readonly replacesPublished = computed(() => this.versions().some((v) => !v.current && v.status === 'Published'));
+  public readonly versionsTableConfig: TableConfig = {
+    property: 'id',
+    pagination: { serverSide: false, pageIndex: 0, pageSize: 10, pageSizeOptions: [10], totalElements: 0 },
+  };
+
+  private _loadedId: string | null = null;
+
+  /**
+   * Ouvrir une autre version garde cet écran — la route est la même — et change seulement son
+   * entrée `id` : sans ce rechargement, il afficherait toujours la version d'avant.
+   */
+  private readonly _reloadOnIdChange = effect(() => {
+    const id = this.id();
+    if (id && this._loadedId && id !== this._loadedId) untracked(() => this._loadTemplate(id));
+  });
 
   /** Un questionnaire santé n'est proposé que pour une catégorie d'assurance. */
   public readonly isInsurance = computed(() =>
@@ -202,11 +245,7 @@ export class EditQualificationTemplate implements OnInit {
   ]);
 
   ngOnInit(): void {
-    this._breadcrumbService.set([
-      { label: 'Paramétrage', link: ['/settings'] },
-      { label: 'Formulaires', link: ['/settings/qualification-templates'] },
-      { label: 'Modifier' },
-    ]);
+    this._setBreadcrumb();
 
     // La création passe désormais par le drawer de la liste : cet écran
     // n'édite qu'un formulaire existant.
@@ -442,7 +481,7 @@ export class EditQualificationTemplate implements OnInit {
 
     this._confirmDialog.confirm({
       title: 'Publier ce questionnaire ?',
-      message: `La publication crée la version ${this.templateVersion() + 1} du questionnaire « ${this.editName()} ». Les réponses déjà collectées restent rattachées à leur version et le questionnaire ne sera plus modifiable.`,
+      message: `La publication en fait la version ${this.nextProductVersion()} du questionnaire de ce produit, « ${this.editName()} ».${this.replacesPublished() ? " La version publiée jusqu'ici est archivée." : ''} Les réponses déjà collectées restent rattachées à leur version et le questionnaire ne sera plus modifiable.`,
       closable: true,
       showCancelButton: true,
       acceptButtonProps: { label: 'Publier', theme: 'primary' },
@@ -482,7 +521,51 @@ export class EditQualificationTemplate implements OnInit {
 
   // ——— Private ———
 
+  /** Ouvre une autre version, en lecture seule si elle est publiée ou archivée. */
+  public openVersion(row: VersionRow): void {
+    if (row.current) return;
+    this._router.navigate(['/settings/qualification-templates', row.id, 'edit']);
+  }
+
+  private _loadVersions(current: QualificationTemplateDto): void {
+    this._leadsApi
+      .listQualificationTemplates()
+      .pipe(catchError(() => EMPTY))
+      .subscribe((all) => {
+        const scope = qualificationScopeKey(current);
+        const numbers = productVersionNumbers(all ?? []);
+        const rows: VersionRow[] = (all ?? [])
+          .filter((t) => t.id && qualificationScopeKey(t) === scope)
+          .map((t) => ({
+            id: t.id!,
+            name: t.name ?? '',
+            number: numbers.get(t.id!) ?? null,
+            status: t.status ?? null,
+            publishedAt: t.publishedAt ?? null,
+            createdAt: t.createdAt ?? null,
+            current: t.id === current.id,
+          }));
+        rows.sort((a, b) =>
+          a.number === null && b.number === null
+            ? Date.parse(b.createdAt ?? '') - Date.parse(a.createdAt ?? '')
+            : a.number === null ? -1 : b.number === null ? 1 : b.number - a.number,
+        );
+        this.versions.set(rows);
+      });
+  }
+
+  /** Reposé à chaque chargement : passer à une autre version navigue, et la navigation le réinitialise. */
+  private _setBreadcrumb(): void {
+    this._breadcrumbService.set([
+      { label: 'Paramétrage', link: ['/settings'] },
+      { label: 'Formulaires', link: ['/settings/qualification-templates'] },
+      { label: 'Modifier' },
+    ]);
+  }
+
   private _loadTemplate(templateId: string): void {
+    if (this._loadedId) this._setBreadcrumb();
+    this._loadedId = templateId;
     this.isLoading.set(true);
     this.loadFailed.set(false);
     this._leadsApi
@@ -496,8 +579,8 @@ export class EditQualificationTemplate implements OnInit {
         }),
       )
       .subscribe((tpl) => {
+        this._loadVersions(tpl);
         this.templateStatus.set(tpl.status ?? null);
-        this.templateVersion.set(tpl.version ?? 1);
         // Published : figé pour ne pas modifier un formulaire déjà actif.
         // Archived : fin de vie, aucune transition ne permet de le
         // réactiver (voir qualification-templates.ts) — donc pas modifiable

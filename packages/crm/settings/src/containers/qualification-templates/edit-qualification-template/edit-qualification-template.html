@@ -47,7 +47,7 @@
               {{ statusLabel(templateStatus()) }}
             </tas-tag>
             <span class="text-xs text-slate-400 tabular-nums">
-              version {{ templateVersion() }}
+              @if (productVersion(); as n) { version {{ n }} } @else { jamais publiée }
             </span>
           </div>
         }
@@ -90,9 +90,10 @@
           style="font-size:14px"></tas-icon>
         <p class="text-xs text-amber-800">
           <span class="font-semibold">La publication crée une nouvelle version.</span>
-          La version {{ templateVersion() + 1 }} deviendra active pour le produit
-          associé ; les réponses déjà collectées restent rattachées à leur
-          version et ce questionnaire ne sera plus modifiable.
+          Il deviendra la version {{ nextProductVersion() }} active pour le produit
+          associé{{ replacesPublished() ? " et la version publiée jusqu'ici sera archivée" : '' }} ; les réponses déjà
+          collectées restent rattachées à leur version et ce questionnaire ne sera
+          plus modifiable.
         </p>
       </div>
     }
@@ -105,10 +106,49 @@
           class="text-slate-400"
           style="font-size:14px"></tas-icon>
         <p class="text-xs text-slate-500">
-          Ce formulaire est publié. Archivez-le pour en créer une nouvelle
-          version.
+          Ce formulaire {{ templateStatus() === 'Archived' ? 'est archivé' : 'est publié' }} et ne se modifie plus.
+          Dupliquez-le depuis la liste pour en préparer une nouvelle version.
         </p>
       </div>
+    }
+
+    <!-- Les versions : les formulaires du même produit (propriétaire, 2026-10-27) -->
+    @if (versions().length > 1) {
+      <tas-card class="mb-4 block">
+        <div class="p-4 border-b border-slate-100">
+          <p class="text-sm font-semibold text-slate-700">Versions</p>
+          <p class="text-xs text-slate-400 mt-0.5">
+            Les formulaires de ce produit, numérotés dans l'ordre de publication. Une version publiée ou archivée s'ouvre en lecture seule.
+          </p>
+        </div>
+        <tas-table [data]="versions()" identifierField="id" [config]="versionsTableConfig" [hasCaption]="false">
+          <ng-template #header>
+            <tr class="text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+              <th class="py-2 pl-4">Version</th>
+              <th class="py-2">Formulaire</th>
+              <th class="py-2">Statut</th>
+              <th class="py-2 pr-4 text-right">Publiée le</th>
+            </tr>
+          </ng-template>
+          <ng-template #body let-v>
+            <tr [class]="v.current ? 'bg-primary/5' : 'cursor-pointer transition-colors hover:bg-slate-50'" (click)="openVersion(v)">
+              <td class="py-2 pl-4 text-sm font-semibold text-slate-700 tabular-nums">
+                {{ v.number ?? '—' }}
+                @if (v.current) {
+                  <span class="ml-1 text-xs font-normal text-primary">affichée</span>
+                }
+              </td>
+              <td class="py-2 text-sm text-slate-700">{{ v.name }}</td>
+              <td class="py-2">
+                <tas-tag [severity]="statusSeverity(v.status)">{{ statusLabel(v.status) }}</tas-tag>
+              </td>
+              <td class="py-2 pr-4 text-right text-xs text-slate-500 tabular-nums">
+                {{ v.publishedAt ? (v.publishedAt | date: 'dd/MM/yyyy HH:mm') : 'Jamais publiée' }}
+              </td>
+            </tr>
+          </ng-template>
+        </tas-table>
+      </tas-card>
     }
 
     <!-- Meta -->

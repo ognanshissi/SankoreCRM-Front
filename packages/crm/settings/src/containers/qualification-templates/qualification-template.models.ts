@@ -119,3 +119,36 @@ export function productLabel(type: string | null | undefined): string {
 export function questionTypeLabel(type: string): string {
   return QUESTION_TYPE_OPTIONS.find((o) => o.value === type)?.label ?? type;
 }
+
+/**
+ * Les versions d'un formulaire (propriétaire, 2026-10-27) : tous les formulaires d'un même produit
+ * — ou d'une même famille quand aucun produit n'est précisé — sont les versions l'un de l'autre.
+ * Un formulaire en est rarement la suite par duplication : on en refait aussi de zéro.
+ */
+export function qualificationScopeKey(t: { productCategory?: string | null; productCode?: string | null }): string {
+  return `${t.productCategory ?? ''}|${(t.productCode ?? '').trim().toUpperCase()}`;
+}
+
+/**
+ * Le numéro de chaque formulaire publié au moins une fois, dans l'ordre de publication de son
+ * produit : 1 pour le premier publié, 2 pour le suivant… Le compteur propre à un formulaire
+ * (`version`) ne sert pas ici : chaque nouvelle version est un formulaire à part, qui repart à 1.
+ * Un brouillon jamais publié n'a pas de numéro.
+ */
+export function productVersionNumbers(
+  templates: readonly { id?: string; productCategory?: string | null; productCode?: string | null; publishedAt?: string | null }[],
+): Map<string, number> {
+  const numbers = new Map<string, number>();
+  const byScope = new Map<string, typeof templates[number][]>();
+  for (const t of templates) {
+    if (!t.id || !t.publishedAt) continue;
+    const key = qualificationScopeKey(t);
+    byScope.set(key, [...(byScope.get(key) ?? []), t]);
+  }
+  for (const list of byScope.values()) {
+    [...list]
+      .sort((a, b) => Date.parse(a.publishedAt!) - Date.parse(b.publishedAt!))
+      .forEach((t, i) => numbers.set(t.id!, i + 1));
+  }
+  return numbers;
+}
