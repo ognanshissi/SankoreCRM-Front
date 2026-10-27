@@ -58,18 +58,15 @@ export const QUESTION_TYPE_OPTIONS = [
 ];
 
 /**
- * BNF-F-16 — « S'applique à ». Aucun champ de portée n'existe au contrat :
- * ni `appliesTo` ni `scope` sur `QualificationTemplateDto`,
- * `CreateQualificationTemplateRequest` ou `UpdateQualificationTemplateRequest`.
- * Les codes proposés suivent la nomenclature du foyer déjà utilisée par le
- * socle (principal / conjoint / enfants) et restent à confirmer côté back.
+ * BNF-F-16 — « S'applique à » : les valeurs de `QualificationSubjectScope` côté serveur, par nom
+ * (`subjectScope` du DTO et de la requête de mise à jour).
  */
 export const APPLIES_TO_OPTIONS = [
-  { label: 'Lead', value: 'Lead' },
-  { label: 'Chaque assuré', value: 'EachInsured' },
-  { label: 'Principal seulement', value: 'PrincipalOnly' },
-  { label: 'Conjoint seulement', value: 'SpouseOnly' },
-  { label: 'Enfants seulement', value: 'ChildrenOnly' },
+  { label: 'Le dossier (une réponse)', value: 'Lead' },
+  { label: 'Chaque personne assurée', value: 'EachInsuredPerson' },
+  { label: 'Le souscripteur seulement', value: 'PrincipalOnly' },
+  { label: 'Le conjoint seulement', value: 'SpouseOnly' },
+  { label: 'Chaque enfant', value: 'ChildrenOnly' },
 ];
 
 /**

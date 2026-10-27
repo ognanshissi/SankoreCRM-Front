@@ -60,7 +60,7 @@
               <h2 class="text-xl font-bold text-slate-900">{{ t.title }}</h2>
               @if (t.subject) {
                 <p class="mt-1 flex items-center gap-1.5 text-sm text-slate-600">
-                  <tas-icon [iconName]="t.subject.type === 'Lead' ? 'feather:target' : t.subject.type === 'Client' ? 'feather:users' : 'feather:user-check'" style="font-size:14px"></tas-icon>
+                  <tas-icon [iconName]="t.subject.type === 'Lead' ? 'feather:target' : t.subject.type === 'Client' ? 'feather:users' : t.subject.type === 'Project' ? 'feather:briefcase' : 'feather:user-check'" style="font-size:14px"></tas-icon>
                   @if (subjectLink()) {
                     <a [routerLink]="subjectLink()" class="font-medium text-primary hover:underline">{{ t.subject.label }}</a>
                   } @else {

@@ -23,6 +23,9 @@ export interface UpdateQualificationTemplateRequest {
     productCode?: string | null;
     questions?: Array<QuestionInput> | null;
     sections?: Array<SectionInput> | null;
+    subjectScope?: string | null;
+    isHealthQuestionnaire?: boolean | null;
+    excludeFromScoring?: boolean | null;
 }
 export enum UpdateQualificationTemplateRequestProductCategoryEnum {
     Loan = 'Loan',

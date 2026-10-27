@@ -573,10 +573,12 @@ model/project-contact-dto.interface.ts
 model/project-field-definition.interface.ts
 model/project-field-option.interface.ts
 model/project-field-request.interface.ts
+model/project-history-dto.interface.ts
 model/project-questionnaire-item-dto.interface.ts
 model/project-questionnaires-dto.interface.ts
 model/project-step-dto.interface.ts
 model/project-step-request.interface.ts
+model/project-task-dto.interface.ts
 model/project-template-dto.interface.ts
 model/project-template-summary-dto.interface.ts
 model/project-validation-decision-dto.interface.ts

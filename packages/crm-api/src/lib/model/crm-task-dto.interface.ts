@@ -38,7 +38,7 @@ export interface CrmTaskDto {
     triggerEventType?: string | null;
     triggerEventId?: string | null;
     /**
-     * One of: Lead, Client, KycFile
+     * One of: Lead, Client, KycFile, Project
      */
     entityType?: CrmTaskDtoEntityTypeEnum | null;
     entityId?: string | null;
@@ -68,7 +68,8 @@ export enum CrmTaskDtoStatusEnum {
 export enum CrmTaskDtoEntityTypeEnum {
     Lead = 'Lead',
     Client = 'Client',
-    KycFile = 'KycFile'
+    KycFile = 'KycFile',
+    Project = 'Project'
 };
 
 

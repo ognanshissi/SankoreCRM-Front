@@ -10,7 +10,6 @@ import {
   FormRoot,
 } from '@angular/forms/signals';
 import { catchError, EMPTY, map } from 'rxjs';
-import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
 import { TasCard } from '@talisoft/ui/card';
 import { TasSpinner } from '@talisoft/ui/spinner';
 import { TasIcon } from '@talisoft/ui/icon';
@@ -37,11 +36,13 @@ import {
 } from '@sankore/crm-api';
 import {
   BreadcrumbService,
+  DynamicFormRendererComponent,
+  DynamicFormSchema,
   PermissionsService,
   ProductConfigService,
 } from '@sankore/crm/common';
 import {
-  EditableQuestion, EditableSection,
+  EditableQuestion, EditableRule, EditableSection,
   uid, QUESTION_TYPE_OPTIONS, RULE_ACTION_OPTIONS,
   questionTypeLabel, APPLIES_TO_OPTIONS, isInsuranceCategory,
   statusLabel, statusSeverity, qualificationScopeKey, productVersionNumbers,
@@ -56,6 +57,16 @@ interface VersionRow {
   publishedAt: string | null;
   createdAt: string | null;
   current: boolean;
+}
+
+/** Les onglets de la page — le plan et l'éditeur d'abord, c'est là qu'on travaille. */
+export type TemplateTab = 'questions' | 'infos' | 'apercu' | 'versions';
+
+/** Un groupe du plan : une section, ou les questions sans section. */
+interface PlanGroup {
+  section: EditableSection | null;
+  index: number;
+  questions: EditableQuestion[];
 }
 
 /**
@@ -86,12 +97,12 @@ class TemplateScopeFormModel {
   imports: [
     DatePipe,
     FormsModule,
-    DragDropModule,
     TasCard,
     TasSpinner,
     TasIcon,
     TasTag,
     TasTable,
+    DynamicFormRendererComponent,
     Button,
     TasFormField,
     TasLabel,
@@ -160,6 +171,21 @@ export class EditQualificationTemplate implements OnInit {
   public editQuestions = signal<EditableQuestion[]>([]);
   public templateStatus = signal<string | null>(null);
 
+  public readonly tab = signal<TemplateTab>('questions');
+  public readonly tabs: { id: TemplateTab; label: string }[] = [
+    { id: 'questions', label: 'Questions' },
+    { id: 'infos', label: 'Informations' },
+    { id: 'apercu', label: 'Aperçu' },
+    { id: 'versions', label: 'Versions' },
+  ];
+  /** Ce que l'éditeur de droite affiche : une question ou une section du plan. */
+  public readonly selected = signal<{ kind: 'question' | 'section'; uid: string } | null>(null);
+  /**
+   * Le schéma de l'aperçu, figé à l'ouverture de l'onglet : recalculé à chaque passage de la
+   * détection, il redonnerait au rendu un nouveau schéma et effacerait les réponses de test.
+   */
+  public readonly previewSchema = signal<DynamicFormSchema | null>(null);
+
   /**
    * Les autres versions du formulaire — les formulaires de son produit (propriétaire, 2026-10-27),
    * la plus récente d'abord, les brouillons jamais publiés en tête.
@@ -178,6 +204,8 @@ export class EditQualificationTemplate implements OnInit {
   };
 
   private _loadedId: string | null = null;
+  private _loadedTab: string | null = null;
+  private _reselectAt: number | null = null;
 
   /**
    * Ouvrir une autre version garde cet écran — la route est la même — et change seulement son
@@ -203,8 +231,7 @@ export class EditQualificationTemplate implements OnInit {
       when: () => this.isReadonly() || !this.isInsurance(),
     });
     // « Questionnaire santé » force « Exclu du scoring » : la case est à vrai
-    // et non modifiable. `disabled` ne retire pas la valeur du modèle, elle
-    // reste donc appliquée aux poids à l'enregistrement.
+    // et non modifiable, et le serveur la force aussi.
     disabled(schema.excludedFromScoring, {
       when: ({ valueOf }) =>
         this.isReadonly() || valueOf(schema.isHealthQuestionnaire),
@@ -261,9 +288,168 @@ export class EditQualificationTemplate implements OnInit {
   public questionUidOptions(
     excludeUid: string,
   ): { label: string; value: string }[] {
-    return this.editQuestions()
+    return this.orderedQuestions()
       .filter((q) => q._uid !== excludeUid)
-      .map((q, i) => ({ label: q.label || `Q${i + 1}`, value: q._uid }));
+      .map((q) => ({ label: `Q${this.questionNumber(q._uid)} · ${q.label || 'Question sans titre'}`, value: q._uid }));
+  }
+
+  // ——— Onglets, plan et sélection ———
+
+  public openTab(tab: TemplateTab): void {
+    if (tab === 'apercu') this.resetPreview();
+    this.tab.set(tab);
+  }
+
+  /** Recharge l'aperçu depuis le questionnaire tel qu'il est à l'écran, enregistré ou non. */
+  public resetPreview(): void {
+    const sections = this.editSections();
+    this.previewSchema.set({
+      sections: sections.map((sec, i) => ({ id: sec._uid, title: sec.title || `Section ${i + 1}`, description: sec.description || null, order: i })),
+      questions: this.orderedQuestions().map((q, i) => ({
+        id: q._uid,
+        sectionId: q.sectionIndex >= 0 && q.sectionIndex < sections.length ? sections[q.sectionIndex]._uid : null,
+        label: q.label || 'Question sans titre',
+        helpText: q.helpText || null,
+        placeholderText: q.placeholderText || null,
+        type: q.type,
+        options: this._optionsOf(q),
+        isRequired: q.isRequired,
+        order: i,
+        minValue: q.minValue,
+        maxValue: q.maxValue,
+        rules: q.rules
+          .filter((r) => r.triggerQuestionUid)
+          .map((r) => ({ triggerQuestionId: r.triggerQuestionUid, triggerValue: r.triggerValue ?? '', action: r.action })),
+      })),
+    } as DynamicFormSchema);
+  }
+
+  /**
+   * Le plan : les sections dans leur ordre, puis les questions sans section — l'ordre dans lequel
+   * le serveur les range, et donc celui de la saisie.
+   */
+  public groups(): PlanGroup[] {
+    const sections = this.editSections();
+    const questions = this.editQuestions();
+    const groups: PlanGroup[] = sections.map((section, index) => ({
+      section,
+      index,
+      questions: questions.filter((q) => q.sectionIndex === index),
+    }));
+    const loose = questions.filter((q) => q.sectionIndex < 0 || q.sectionIndex >= sections.length);
+    if (loose.length || sections.length === 0) groups.push({ section: null, index: -1, questions: loose });
+    return groups;
+  }
+
+  public orderedQuestions(): EditableQuestion[] {
+    return this.groups().flatMap((g) => g.questions);
+  }
+
+  /** Son numéro dans le plan : Q1, Q2… */
+  public questionNumber(uid: string): number {
+    return this.orderedQuestions().findIndex((q) => q._uid === uid) + 1;
+  }
+
+  public selectedQuestion(): EditableQuestion | null {
+    const sel = this.selected();
+    return sel?.kind === 'question' ? (this.editQuestions().find((q) => q._uid === sel.uid) ?? null) : null;
+  }
+
+  public selectedSection(): { section: EditableSection; index: number } | null {
+    const sel = this.selected();
+    if (sel?.kind !== 'section') return null;
+    const index = this.editSections().findIndex((x) => x._uid === sel.uid);
+    return index < 0 ? null : { section: this.editSections()[index], index };
+  }
+
+  public selectQuestion(q: EditableQuestion): void {
+    this.selected.set({ kind: 'question', uid: q._uid });
+  }
+
+  public selectSection(sec: EditableSection): void {
+    this.selected.set({ kind: 'section', uid: sec._uid });
+  }
+
+  public isSelected(uid: string): boolean {
+    return this.selected()?.uid === uid;
+  }
+
+  /** Les questions dont dépend celle-ci (ses règles), en numéros. */
+  public triggersOf(q: EditableQuestion): number[] {
+    return [...new Set(q.rules.map((r) => this.questionNumber(r.triggerQuestionUid)).filter((n) => n > 0))];
+  }
+
+  /** Les questions qui dépendent de celle-ci, en numéros. */
+  public dependentsOf(q: EditableQuestion): number[] {
+    return this.orderedQuestions()
+      .filter((other) => other.rules.some((r) => r.triggerQuestionUid === q._uid))
+      .map((other) => this.questionNumber(other._uid));
+  }
+
+  /** « Q1, Q4 » : de quoi dépend la question, pour le plan. */
+  public triggerLabel(q: EditableQuestion): string {
+    return this.triggersOf(q).map((n) => `Q${n}`).join(', ');
+  }
+
+  /** « Q2, Q5 dépendent de la réponse à cette question. » */
+  public dependentsLabel(q: EditableQuestion): string {
+    const deps = this.dependentsOf(q);
+    return `${deps.map((n) => `Q${n}`).join(', ')} ${deps.length > 1 ? 'dépendent' : 'dépend'} de la réponse à cette question.`;
+  }
+
+  /** « Afficher si Q1 (Le souscripteur…) = « Oui » » — la règle en clair. */
+  public ruleSummary(rule: EditableRule): string {
+    const action = RULE_ACTION_OPTIONS.find((o) => o.value === rule.action)?.label ?? rule.action;
+    const n = this.questionNumber(rule.triggerQuestionUid);
+    if (!n) return `${action} — question déclencheuse à choisir`;
+    return `${action} si Q${n} = « ${rule.triggerValue || '…'} »`;
+  }
+
+  /** Les réponses possibles de la question déclencheuse, pour proposer la valeur d'une règle. */
+  public triggerValues(rule: EditableRule): string[] {
+    const trigger = this.editQuestions().find((q) => q._uid === rule.triggerQuestionUid);
+    if (!trigger) return [];
+    if (trigger.type === QuestionInputTypeEnum.YesNo) return ['true', 'false'];
+    return this._optionsOf(trigger) ?? [];
+  }
+
+  /** Monte ou descend une question à l'intérieur de son groupe du plan. */
+  public moveQuestion(q: EditableQuestion, direction: -1 | 1): void {
+    const group = this.groups().find((g) => g.questions.includes(q));
+    if (!group) return;
+    const at = group.questions.indexOf(q);
+    const other = group.questions[at + direction];
+    if (!other) return;
+    this.editQuestions.update((list) => {
+      const next = [...list];
+      const a = next.indexOf(q);
+      const b = next.indexOf(other);
+      [next[a], next[b]] = [next[b], next[a]];
+      return next;
+    });
+  }
+
+  public canMove(q: EditableQuestion, direction: -1 | 1): boolean {
+    const group = this.groups().find((g) => g.questions.includes(q));
+    const at = group ? group.questions.indexOf(q) : -1;
+    return at >= 0 && !!group!.questions[at + direction];
+  }
+
+  public setQuestionSection(q: EditableQuestion, value: string): void {
+    q.sectionIndex = +value;
+    this.editQuestions.update((list) => [...list]);
+  }
+
+  public productSummary(): string {
+    const category = this.categoryOptions().find((o) => o.value === this.editProductType())?.label ?? '';
+    const product = this.productsOptions().find((o) => o.value === this.editProductCode())?.label ?? this.editProductCode();
+    return [category, product].filter(Boolean).join(' · ') || 'Aucun produit';
+  }
+
+  private _optionsOf(q: EditableQuestion): string[] | null {
+    return q.type === QuestionInputTypeEnum.SingleChoice || q.type === QuestionInputTypeEnum.MultiChoice
+      ? q.options.split(',').map((o) => o.trim()).filter(Boolean)
+      : null;
   }
 
   public goBack(): void {
@@ -273,13 +459,13 @@ export class EditQualificationTemplate implements OnInit {
   // ——— Section/Question editing ———
 
   public addSection(): void {
-    this.editSections.update((list) => [
-      ...list,
-      { _uid: uid(), title: '', description: '' },
-    ]);
+    const section = { _uid: uid(), title: '', description: '' };
+    this.editSections.update((list) => [...list, section]);
+    this.selectSection(section);
   }
 
   public removeSection(index: number): void {
+    this.selected.set(null);
     this.editSections.update((list) => list.filter((_, i) => i !== index));
     this.editQuestions.update((list) =>
       list.map((q) =>
@@ -292,10 +478,8 @@ export class EditQualificationTemplate implements OnInit {
     );
   }
 
-  public addQuestion(): void {
-    this.editQuestions.update((list) => [
-      ...list,
-      {
+  public addQuestion(sectionIndex = -1): void {
+    const question: EditableQuestion = {
         _uid: uid(),
         label: '',
         type: QuestionInputTypeEnum.Text,
@@ -306,16 +490,26 @@ export class EditQualificationTemplate implements OnInit {
         placeholderText: '',
         minValue: null,
         maxValue: null,
-        sectionIndex: -1,
+        sectionIndex,
         expanded: true,
         rules: [],
         isShareable: false,
-      },
-    ]);
+    };
+    this.editQuestions.update((list) => [...list, question]);
+    this.selectQuestion(question);
   }
 
-  public removeQuestion(index: number): void {
-    this.editQuestions.update((list) => list.filter((_, i) => i !== index));
+  /** Retire la question, et les règles des autres qui la prenaient pour déclencheur. */
+  public removeQuestion(q: EditableQuestion): void {
+    this.selected.set(null);
+    this.editQuestions.update((list) =>
+      list
+        .filter((x) => x !== q)
+        .map((x) => {
+          x.rules = x.rules.filter((r) => r.triggerQuestionUid !== q._uid);
+          return x;
+        }),
+    );
   }
 
   public addRule(q: EditableQuestion): void {
@@ -333,13 +527,6 @@ export class EditQualificationTemplate implements OnInit {
     q.rules = q.rules.filter((_, i) => i !== index);
   }
 
-  public onReorderQuestion(event: CdkDragDrop<void>): void {
-    this.editQuestions.update((list) => {
-      const reordered = [...list];
-      moveItemInArray(reordered, event.previousIndex, event.currentIndex);
-      return reordered;
-    });
-  }
 
   // ——— Save ———
 
@@ -371,9 +558,7 @@ export class EditQualificationTemplate implements OnInit {
         id: EditQualificationTemplate.UUID_PATTERN.test(q._uid) ? q._uid : null,
         label: q.label || null,
         type: q.type,
-        // « Exclu du scoring » n'a aucun champ au contrat : le seul levier
-        // disponible est le poids des questions, mis à zéro.
-        weight: this.excludedFromScoring() ? 0 : q.weight,
+        weight: q.weight,
         isRequired: q.isRequired,
         options:
           q.type === QuestionInputTypeEnum.SingleChoice ||
@@ -430,6 +615,9 @@ export class EditQualificationTemplate implements OnInit {
         null) as UpdateQualificationTemplateRequestProductCategoryEnum | null,
       sections: sections.length > 0 ? sections : null,
       questions: orphanQuestions.length > 0 ? orphanQuestions : null,
+      subjectScope: this.scopeModel().appliesTo,
+      isHealthQuestionnaire: this.scopeModel().isHealthQuestionnaire,
+      excludeFromScoring: this.scopeModel().excludedFromScoring,
     };
 
     const templateId = this.id();
@@ -437,6 +625,8 @@ export class EditQualificationTemplate implements OnInit {
       this.isSaving.set(false);
       return;
     }
+    const open = this.selectedQuestion();
+    this._reselectAt = open ? this.questionNumber(open._uid) : null;
 
     this._leadsApi
       .updateQualificationTemplate(
@@ -444,8 +634,17 @@ export class EditQualificationTemplate implements OnInit {
         base as UpdateQualificationTemplateRequest,
       )
       .pipe(
-        catchError(() => {
-          this._snackbar.error('Erreur', 'Sauvegarde échouée.');
+        catchError((err: HttpErrorResponse) => {
+          const code = (err.error as { detail?: string } | null)?.detail;
+          this._snackbar.error(
+            'Enregistrement refusé',
+            code === 'HEALTH_QUESTIONNAIRE_REQUIRES_INSURANCE_LINE'
+              ? 'Un questionnaire santé ne se rattache qu’à une famille d’assurance.'
+              : code === 'TEMPLATE_NOT_IN_DRAFT_STATUS'
+                ? 'Ce formulaire n’est plus un brouillon : rechargez la page.'
+                : 'Sauvegarde échouée.',
+          );
+          this.isSaving.set(false);
           return EMPTY;
         }),
       )
@@ -611,7 +810,7 @@ export class EditQualificationTemplate implements OnInit {
           (a, b) => (a.order ?? 0) - (b.order ?? 0),
         );
         this.editQuestions.set(
-          questions.map((q) => ({
+          questions.map((q): EditableQuestion => ({
             _uid: q.id ?? uid(),
             label: q.label ?? '',
             type:
@@ -638,12 +837,25 @@ export class EditQualificationTemplate implements OnInit {
           })),
         );
 
-        // « Exclu du scoring » se relit du seul champ qui le porte : des poids
-        // tous nuls. Le marquage santé, lui, n'a aucun champ et repart à faux.
         const scope = TemplateScopeFormModel.instantiate();
+        scope.appliesTo = tpl.subjectScope || 'Lead';
+        scope.isHealthQuestionnaire = !!tpl.isHealthQuestionnaire;
+        // Les formulaires d'avant ce champ s'excluaient du score par des poids tous nuls.
         scope.excludedFromScoring =
-          questions.length > 0 && questions.every((q) => (q.weight ?? 0) === 0);
+          !!tpl.excludeFromScoring || (questions.length > 0 && questions.every((q) => (q.weight ?? 0) === 0));
         this.scopeModel.set(scope);
+
+        // Un enregistrement recrée chaque question sous un nouvel id : la question ouverte se
+        // retrouve par sa place dans le plan, sinon on ouvre la première.
+        const ordered = this.orderedQuestions();
+        const again = this._reselectAt ? ordered[this._reselectAt - 1] : null;
+        this._reselectAt = null;
+        const pick = again ?? ordered[0];
+        this.selected.set(pick ? { kind: 'question', uid: pick._uid } : null);
+        if (this._loadedTab !== templateId) {
+          this.tab.set('questions');
+          this._loadedTab = templateId;
+        }
 
         this.isLoading.set(false);
       });

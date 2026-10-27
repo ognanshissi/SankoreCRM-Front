@@ -12,9 +12,9 @@
       <button tas-outlined-button color="primary" type="button" (click)="load()">Réessayer</button>
     </div>
   } @else if (project(); as p) {
-    <!-- En-tête -->
+    <!-- En-tête : quoi, où il en est, et l'issue -->
     <tas-card class="block">
-      <div class="flex flex-wrap items-start gap-6 p-5">
+      <div class="flex flex-wrap items-center gap-4 p-5">
         <div class="min-w-64 flex-1">
           <div class="flex flex-wrap items-center gap-2">
             <h1 class="text-xl font-bold text-slate-900">{{ p.title }}</h1>
@@ -23,54 +23,40 @@
               {{ statusLabel() }}
             </span>
           </div>
-          <p class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-slate-600">
-            <span class="inline-flex items-center gap-1">
-              <tas-icon iconName="feather:user" class="text-slate-400" style="font-size:13px"></tas-icon>
-              @if (lead(); as l) {
-                <a [routerLink]="['/leads', l.id]" class="font-semibold hover:text-primary">{{ personName() }}</a>
-              } @else if (clientId()) {
-                <a [routerLink]="['/customers', clientId()]" class="font-semibold hover:text-primary">{{ personName() }}</a>
-              } @else {
-                <span>{{ personName() }}</span>
-              }
-            </span>
-            @if (lead()?.phoneNumber) {
-              <span aria-hidden="true">·</span><span class="tabular-nums">{{ lead()!.phoneNumber }}</span>
-            }
-            @if (lead()?.email) {
-              <span aria-hidden="true">·</span><span>{{ lead()!.email }}</span>
-            }
-            @if (client()?.clientNumber) {
-              <span aria-hidden="true">·</span><span>{{ client()!.clientNumber }}</span>
-            }
-            @if (clientId() && lead()) {
-              <span aria-hidden="true">·</span>
-              <a [routerLink]="['/customers', clientId()]" class="font-semibold text-primary hover:underline">Fiche client</a>
-            }
-          </p>
-          <p class="mt-1 text-xs text-slate-500">
-            Produit :
-            @if (p.product) { <span class="font-medium text-slate-700">{{ p.product }}</span> }
-            @else { <span class="font-semibold text-red-700">À préciser</span> }
-            · Parcours : {{ p.templateName ?? 'Parcours standard' }}@if (p.templateVersion) { <span class="text-slate-400"> (version {{ p.templateVersion }})</span> }
-            @if (ownerName(); as owner) { · Suivi par {{ owner }} }
+          <p class="mt-1 text-sm text-slate-600">
+            {{ personName() }}
+            @if (p.product) { <span aria-hidden="true"> · </span>{{ p.product }} }
           </p>
         </div>
-        <div class="text-right">
-          @if (p.estimatedAmount?.amount) {
-            <p class="text-xs text-slate-500">{{ amountLabel() }}</p>
-            <p class="text-2xl font-bold text-slate-900 tabular-nums">{{ formatAmount(p.estimatedAmount!.amount, p.estimatedAmount!.currency) }}</p>
-            @if (!closed() && tracksForecast()) {
-              <p class="text-sm text-slate-500">
-                soit <span class="font-semibold text-primary tabular-nums">{{ formatAmount(weighted(), p.estimatedAmount!.currency) }}</span>
-                pondérés ({{ probability() }} %)
-              </p>
+
+        <div class="flex flex-wrap items-center gap-2">
+          @if (canManage()) {
+            <button tas-outlined-button color="primary" type="button" (click)="editInfo()">
+              <tas-icon iconName="feather:edit-2" style="font-size:14px"></tas-icon> Modifier
+            </button>
+            @if (!losing()) {
+              <button tas-outlined-button color="warn" type="button" [disabled]="busy()" (click)="startLose()">Marquer perdu</button>
+              <button tas-raised-button color="primary" type="button" [disabled]="busy()" (click)="markWon()">
+                <tas-icon iconName="feather:check" style="font-size:14px"></tas-icon> Marquer gagné
+              </button>
             }
-          } @else {
-            <p class="text-sm font-semibold text-red-700">{{ amountLabel() }} à préciser</p>
           }
         </div>
       </div>
+
+      @if (losing()) {
+        <form [formRoot]="loseForm" class="flex flex-wrap items-end gap-2 border-t border-slate-100 bg-slate-50/70 px-5 py-3">
+          <tas-form-field class="min-w-64 flex-1">
+            <tas-label>Pourquoi est-il perdu ? <span class="text-functional-error">*</span></tas-label>
+            <input tasInput type="text" placeholder="Ex. Financement obtenu ailleurs" [formField]="loseForm.reason" />
+            @if (loseForm.reason().touched() && loseForm.reason().invalid()) {
+              <tas-error>{{ loseForm.reason().errors()[0].message }}</tas-error>
+            }
+          </tas-form-field>
+          <button tas-raised-button color="warn" type="button" [disabled]="loseForm().invalid() || loseForm().submitting()" [isLoading]="loseForm().submitting()" (click)="confirmLose()">Marquer perdu</button>
+          <button tas-text-button type="button" (click)="losing.set(false)">Annuler</button>
+        </form>
+      }
     </tas-card>
 
     <!-- Une version plus récente du parcours existe : le projet reste sur la sienne jusqu'à ce qu'on l'y fasse passer -->
@@ -95,11 +81,11 @@
         <tas-icon iconName="feather:lock" class="shrink-0 text-amber-600" style="font-size:16px"></tas-icon>
         <p class="min-w-56 flex-1">{{ g.message }}</p>
         @if (g.code === 'PROJECT_QUESTIONNAIRES_INCOMPLETE') {
-          <button tas-raised-button color="primary" type="button" (click)="scrollToQuestionnaires()">Remplir les questionnaires</button>
+          <button tas-raised-button color="primary" type="button" (click)="scrollTo('questionnaires')">Remplir les questionnaires</button>
         } @else if (g.code === 'PROJECT_CHECKLIST_INCOMPLETE' || g.code === 'PROJECT_WORKFLOW_PENDING' || g.code === 'PROJECT_WORKFLOW_REJECTED') {
-          <button tas-raised-button color="primary" type="button" (click)="scrollToExitConditions()">Voir ce qu'il reste</button>
+          <button tas-raised-button color="primary" type="button" (click)="scrollTo('exit-conditions')">Voir ce qu'il reste</button>
         } @else if (g.code === 'PROJECT_FIELDS_REQUIRED') {
-          <button tas-raised-button color="primary" type="button" (click)="scrollToFields()">Renseigner les champs</button>
+          <button tas-raised-button color="primary" type="button" (click)="scrollTo('fields')">Renseigner les champs</button>
         } @else if (g.code === 'PROJECT_AMOUNT_REQUIRED' && canManage()) {
           <button tas-raised-button color="primary" type="button" (click)="fixAmount()">Renseigner le montant</button>
         } @else if (g.code === 'PROJECT_CLOSE_DATE_REQUIRED' && canManage()) {
@@ -115,363 +101,65 @@
       </div>
     }
 
-    <!-- Avancement -->
-    @if (!closed()) {
-      <tas-card class="block">
-        <div class="p-5">
-          <p class="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Avancement</p>
-          <div class="mt-2 grid grid-cols-2 gap-2 md:grid-cols-[repeat(auto-fit,minmax(9rem,1fr))]" role="radiogroup" [attr.aria-label]="'Étape de ' + p.title">
-            @for (step of steps(); track step.id; let i = $index) {
-              <button type="button" role="radio"
-                      class="rounded-xl border p-3 text-left transition-colors disabled:cursor-default"
-                      [class]="isCurrent(step) ? 'border-2 border-primary bg-primary/5' : 'border-slate-200 bg-white hover:border-primary/40'"
-                      [attr.aria-checked]="isCurrent(step)"
-                      [disabled]="!canManage() || busy()"
-                      (click)="moveTo(step)">
-                <span class="block h-1 rounded-full" [class]="i <= stepIndex() ? 'bg-primary' : 'bg-slate-100'"></span>
-                <span class="mt-2 block text-sm font-semibold" [class]="isCurrent(step) ? 'text-primary' : 'text-slate-800'">{{ step.label }}</span>
-                <span class="block text-xs text-slate-500">{{ phaseLabel(step.phase) }}@if (tracksForecast()) { · {{ step.probability }} %}</span>
-                @if (step.opensClientFile) {
-                  <span class="mt-1 inline-flex items-center gap-1 text-[11px] font-medium text-slate-600"><tas-icon iconName="feather:user-plus" style="font-size:11px"></tas-icon>Dossier client</span>
-                }
-                @if (step.isApproval) {
-                  <span class="mt-1 inline-flex items-center gap-1 text-[11px] font-medium text-slate-600"><tas-icon iconName="feather:shield" style="font-size:11px"></tas-icon>Approbation</span>
-                }
-                @if (step.requiresQuestionnaires) {
-                  <span class="mt-1 inline-flex items-center gap-1 text-[11px] font-medium text-slate-600"><tas-icon iconName="feather:clipboard" style="font-size:11px"></tas-icon>Questionnaires</span>
-                }
-                @if (step.requiredFieldKeys?.length) {
-                  <span class="mt-1 inline-flex items-center gap-1 text-[11px] font-medium text-slate-600"><tas-icon iconName="feather:edit-3" style="font-size:11px"></tas-icon>{{ step.requiredFieldKeys!.length }} champ{{ step.requiredFieldKeys!.length > 1 ? 's' : '' }}</span>
-                }
-                @if (step.checklist?.length) {
-                  <span class="mt-1 inline-flex items-center gap-1 text-[11px] font-medium text-slate-600"><tas-icon iconName="feather:check-square" style="font-size:11px"></tas-icon>{{ step.checklist!.length }} point{{ step.checklist!.length > 1 ? 's' : '' }}</span>
-                }
-                @if (step.workflowCircuit) {
-                  <span class="mt-1 inline-flex items-center gap-1 text-[11px] font-medium text-slate-600"><tas-icon iconName="feather:git-pull-request" style="font-size:11px"></tas-icon>Validation</span>
-                }
-              </button>
-            }
-          </div>
-        </div>
+    <!-- Deux colonnes : le travail à gauche, le résumé à droite (en tête sur mobile) -->
+    <div class="grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(0,1fr)_21rem]">
+      <aside class="flex flex-col gap-4 lg:sticky lg:top-4 lg:order-last">
+        <project-summary
+          [project]="p"
+          [lead]="lead()"
+          [client]="client()"
+          [clientId]="clientId()"
+          [ownerName]="ownerName()"
+          [canManage]="canManage()"
+          [busy]="busy()"
+          [holdingId]="holdingId()"
+          [canOpenHolding]="canOpenHolding()"
+          [update]="update"
+          (openHolding)="openHolding()"
+        ></project-summary>
+      </aside>
 
-        <!-- Ce que l'étape en cours demande avant qu'on la quitte -->
-        @if (exitConditions(); as ec) {
-          <div id="exit-conditions" class="grid grid-cols-1 gap-6 border-t border-slate-100 px-5 py-4 md:grid-cols-2">
-            @if (ec.checklist.length) {
-              <div>
-                <p class="text-xs text-slate-500">
-                  Points à vérifier avant de quitter l'étape
-                  <span class="font-semibold tabular-nums" [class]="ec.done === ec.checklist.length ? 'text-primary' : 'text-slate-700'">· {{ ec.done }}/{{ ec.checklist.length }}</span>
-                </p>
-                <ul class="mt-2 flex flex-col gap-1.5">
-                  @for (item of ec.checklist; track item.id) {
-                    <li>
-                      <label class="flex items-start gap-2 text-sm" [class]="item.done ? 'text-slate-500 line-through' : 'text-slate-800'">
-                        <input type="checkbox" class="mt-0.5 size-4 accent-current text-primary"
-                               [checked]="item.done" [disabled]="!canManage() || busy()"
-                               (change)="toggleChecklistItem(item.id, !item.done)" />
-                        {{ item.label }}
-                      </label>
-                    </li>
-                  }
-                </ul>
-              </div>
-            }
-            @if (ec.workflow; as wf) {
-              <div>
-                <p class="text-xs text-slate-500">Circuit de validation</p>
-                @switch (wf.state) {
-                  @case ('Approved') {
-                    <p class="mt-1 flex items-center gap-1.5 text-sm font-semibold text-primary">
-                      <tas-icon iconName="feather:check-circle" style="font-size:14px"></tas-icon> Approuvé — le projet peut passer à la suite
-                    </p>
-                  }
-                  @case ('Refused') {
-                    <p class="mt-1 flex items-center gap-1.5 text-sm font-semibold text-red-700">
-                      <tas-icon iconName="feather:x-circle" style="font-size:14px"></tas-icon> Refusé — le projet est bloqué sur cette étape
-                    </p>
-                    <p class="mt-1 text-xs text-slate-500">Relancez le circuit une fois le dossier repris, ou marquez le projet perdu.</p>
-                  }
-                  @case ('NotStarted') {
-                    <p class="mt-1 text-sm font-semibold text-amber-700">Pas encore lancé</p>
-                    <p class="mt-1 text-xs text-slate-500">Le circuit démarre quand le projet arrive sur l'étape ; lancez-le si l'étape a été atteinte autrement.</p>
-                  }
-                  @case ('Unknown') {
-                    <p class="mt-1 text-sm font-semibold text-amber-700">État illisible</p>
-                    <p class="mt-1 text-xs text-slate-500">Le module de validation ne répond pas : le projet reste sur l'étape tant que l'approbation n'est pas confirmée.</p>
-                  }
-                  @default {
-                    <p class="mt-1 flex items-center gap-1.5 text-sm font-semibold text-slate-800">
-                      <tas-icon iconName="feather:clock" style="font-size:14px" class="text-slate-500"></tas-icon> En attente de validation
-                    </p>
-                    @if (wf.startedAt) {
-                      <p class="mt-1 text-xs text-slate-500">Lancé le {{ wf.startedAt | date: 'd MMM y, HH:mm' }}. Les validateurs le traitent depuis leur file des workflows.</p>
-                    }
-                  }
-                }
-                @if (validations().length) {
-                  <button type="button" class="mt-1 block text-xs font-semibold text-primary hover:underline" (click)="scrollToValidations()">Voir les validations</button>
-                }
-                @if (canManage() && (wf.state === 'Refused' || wf.state === 'NotStarted')) {
-                  <button tas-outlined-button color="primary" type="button" class="mt-2" [disabled]="busy()" (click)="restartWorkflow()">
-                    {{ wf.state === 'Refused' ? 'Relancer le circuit' : 'Lancer le circuit' }}
-                  </button>
-                }
-              </div>
-            }
-          </div>
+      <div class="flex min-w-0 flex-col gap-4">
+        @if (!closed()) {
+          <project-progress
+            [project]="p"
+            [canManage]="canManage()"
+            [busy]="busy()"
+            [hasValidations]="validations().length > 0"
+            (move)="moveTo($event)"
+            (toggle)="toggleChecklistItem($event.itemId, $event.done)"
+            (restartWorkflow)="restartWorkflow()"
+            (showValidations)="scrollTo('validations')"
+          ></project-progress>
         }
 
-        <!-- Clôture, probabilité, prochaine étape -->
-        <div class="grid grid-cols-1 gap-6 border-t border-slate-100 px-5 py-4" [class.md:grid-cols-3]="tracksForecast()">
-          @if (tracksForecast()) {
-          <div id="exit-date">
-            <p class="text-xs text-slate-500">{{ criticalCloseDate() ? 'Date limite de clôture' : 'Clôture prévue' }}</p>
-            @if (editor() === 'closeDate') {
-              <form [formRoot]="closeDateForm" class="mt-1 flex items-end gap-2">
-                <tas-date-picker class="flex-1" mode="date" labelScreenOnly [formField]="closeDateForm.date">Date de clôture prévue</tas-date-picker>
-                <button tas-raised-button color="primary" type="button" [disabled]="closeDateForm().invalid() || closeDateForm().submitting()" (click)="saveCloseDate()">OK</button>
-                <button tas-text-button type="button" (click)="cancelEditor()">Annuler</button>
-              </form>
-            } @else {
-              @if (p.expectedCloseDate) {
-                <p class="mt-1 font-semibold" [class]="closeWarning() ? 'text-red-700' : 'text-slate-900'">{{ closeDateLabel(p.expectedCloseDate) }}</p>
-              } @else {
-                <p class="mt-1 font-semibold text-red-700">{{ criticalCloseDate() ? 'À fixer : obligatoire pour ce produit' : 'Non définie' }}</p>
-              }
-              @if (closeWarning(); as warning) {
-                <p class="mt-1 text-xs text-red-700">{{ warning }}</p>
-              }
-              @if (canManage()) {
-                <div class="mt-2 flex flex-wrap items-center gap-1.5">
-                  <button type="button" class="rounded-full border border-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50" [disabled]="busy()" (click)="setCloseInMonths(1)">Dans 1 mois</button>
-                  <button type="button" class="rounded-full border border-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50" [disabled]="busy()" (click)="setCloseInMonths(3)">Dans 3 mois</button>
-                  <button type="button" class="rounded-full px-2.5 py-1 text-xs font-semibold text-primary hover:bg-primary/5" (click)="editCloseDate()">Autre date</button>
-                </div>
-              }
-            }
-          </div>
+        <project-tasks [projectId]="p.id!" [projectTitle]="p.title ?? ''"></project-tasks>
 
-          <div>
-            <p class="text-xs text-slate-500">Probabilité de signature</p>
-            <p class="mt-1 text-slate-900"><span class="font-semibold tabular-nums">{{ probability() }} %</span> · fixée par l'étape</p>
-            <div class="mt-2 h-1.5 rounded-full bg-slate-100" role="meter" aria-label="Probabilité de signature" aria-valuemin="0" aria-valuemax="100" [attr.aria-valuenow]="probability()">
-              <div class="h-1.5 rounded-full bg-primary" [style.width.%]="probability()"></div>
-            </div>
-          </div>
-          }
+        <!-- Champs du gabarit et pièces du projet -->
+        <project-fields [project]="p" [canEdit]="canManage()" (changed)="onFieldsChanged()"></project-fields>
 
-          <div>
-            <p class="text-xs text-slate-500">Prochaine étape</p>
-            @if (editor() === 'nextStep') {
-              <form [formRoot]="nextStepForm" class="mt-1 flex flex-col gap-2">
-                <tas-form-field>
-                  <tas-label class="sr-only">Action à mener</tas-label>
-                  <input tasInput type="text" placeholder="Ex. Planifier la visite du chantier" [formField]="nextStepForm.text" />
-                  @if (nextStepForm.text().touched() && nextStepForm.text().invalid()) {
-                    <tas-error>{{ nextStepForm.text().errors()[0].message }}</tas-error>
-                  }
-                </tas-form-field>
-                <tas-date-picker mode="date" labelScreenOnly [formField]="nextStepForm.dueOn">Échéance</tas-date-picker>
-                <div class="flex items-center gap-2">
-                  <button tas-raised-button color="primary" type="button" [disabled]="nextStepForm().invalid() || nextStepForm().submitting()" (click)="saveNextStep()">Enregistrer</button>
-                  <button tas-text-button type="button" (click)="cancelEditor()">Annuler</button>
-                </div>
-              </form>
-            } @else if (p.nextStep) {
-              <p class="mt-1 font-semibold text-slate-900">{{ p.nextStep }}</p>
-              @if (p.nextStepDueOn) {
-                <p class="mt-0.5 text-xs text-slate-500">pour le {{ formatDay(p.nextStepDueOn, true) }}</p>
-              }
-              @if (canManage()) {
-                <div class="mt-2 flex items-center gap-1.5">
-                  <button type="button" class="rounded-full bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary hover:bg-primary/15" [disabled]="busy()" (click)="clearNextStep()">Fait</button>
-                  <button type="button" class="rounded-full px-2.5 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-100" (click)="editNextStep()">Modifier</button>
-                </div>
-              }
-            } @else {
-              <p class="mt-1 font-semibold text-red-700">Non définie</p>
-              @if (canManage()) {
-                <div class="mt-2 flex flex-wrap items-center gap-1.5">
-                  @if (suggestion(); as s) {
-                    <button type="button" class="rounded-full bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary hover:bg-primary/15" [disabled]="busy()" (click)="useSuggestion(s)">{{ s }}</button>
-                  }
-                  <button type="button" class="rounded-full px-2.5 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-100" (click)="editNextStep()">Autre</button>
-                </div>
-              }
-            }
-          </div>
-        </div>
+        <!-- Questionnaires du produit : celui du dossier et ceux de chaque personne -->
+        <project-questionnaires [projectId]="p.id!" [canEdit]="canManage()" (changed)="onQuestionnairesChanged()"></project-questionnaires>
 
-        <!-- Issue -->
-        @if (canManage()) {
-          <div class="flex flex-wrap items-center gap-3 border-t border-slate-100 bg-slate-50/70 px-5 py-3">
-            @if (editor() === 'lose') {
-              <form [formRoot]="loseForm" class="flex flex-1 flex-wrap items-end gap-2">
-                <tas-form-field class="min-w-64 flex-1">
-                  <tas-label>Pourquoi est-il perdu ?</tas-label>
-                  <input tasInput type="text" placeholder="Ex. Financement obtenu ailleurs" [formField]="loseForm.reason" />
-                  @if (loseForm.reason().touched() && loseForm.reason().invalid()) {
-                    <tas-error>{{ loseForm.reason().errors()[0].message }}</tas-error>
-                  }
-                </tas-form-field>
-                <button tas-raised-button color="warn" type="button" [disabled]="loseForm().invalid() || loseForm().submitting()" [isLoading]="loseForm().submitting()" (click)="confirmLose()">Marquer perdu</button>
-                <button tas-text-button type="button" (click)="cancelEditor()">Annuler</button>
-              </form>
-            } @else {
-              <p class="flex-1 text-sm text-slate-500">Dernière mise à jour le {{ formatDay(p.updatedAt, true) }}.</p>
-              <button type="button" class="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-red-700 hover:bg-red-50" [disabled]="busy()" (click)="startLose()">Marquer perdu</button>
-              <button type="button" class="rounded-full bg-green-700 px-4 py-2 text-sm font-semibold text-white hover:opacity-90" [disabled]="busy()" (click)="markWon()">Marquer gagné</button>
-            }
-          </div>
+        @if (validations().length) {
+          <project-validations [validations]="validations()"></project-validations>
         }
-      </tas-card>
-    } @else {
-      <tas-card class="block">
-        <div class="flex flex-wrap items-center gap-3 p-5">
-          <tas-icon [iconName]="p.stage === 'ClosedWon' ? 'feather:check-circle' : 'feather:x-circle'"
-                    [class]="p.stage === 'ClosedWon' ? 'text-green-700' : 'text-red-700'" style="font-size:20px"></tas-icon>
-          <p class="flex-1 text-sm text-slate-700">
-            {{ p.stage === 'ClosedWon' ? 'Gagné' : 'Perdu' }} le {{ formatDay(p.closedAt ?? p.updatedAt, true) }}.
-            @if (p.closeReason) { Motif : {{ p.closeReason }} }
-          </p>
-          @if (holdingId() && clientId()) {
-            <a tas-outlined-button color="primary" [routerLink]="['/customers', clientId(), 'contrats']" [queryParams]="{ holding: holdingId() }">Voir le contrat</a>
-          } @else if (p.stage === 'ClosedWon' && clientId()) {
-            <a tas-text-button color="primary" [routerLink]="['/customers', clientId(), 'contrats']">Contrats du client</a>
-          }
-          @if (canOpenHolding()) {
-            <button tas-outlined-button color="primary" type="button" [disabled]="busy()" [isLoading]="busy()" (click)="openHolding()">
-              Ouvrir le contrat
-            </button>
-          }
-        </div>
-      </tas-card>
-    }
 
-    <!-- Champs du gabarit et pièces du projet -->
-    <project-fields [project]="p" [canEdit]="canManage()" (changed)="onFieldsChanged()"></project-fields>
-
-    <!-- Questionnaires du produit : celui du dossier et ceux de chaque personne -->
-    <!-- Validations : les circuits lancés par les étapes, relances comprises, et qui a décidé -->
-    @if (validations().length) {
-      <tas-card class="block" id="validations">
-        <div class="p-5">
-          <h2 class="text-base font-semibold text-slate-900">Circuits de validation</h2>
-          <p class="mb-4 text-xs text-slate-500">Les circuits de validation lancés par les étapes du projet, le plus récent d'abord.</p>
-          <ol class="flex flex-col gap-4">
-            @for (v of validations(); track v.instanceId) {
-              @let st = validationStatus(v.status);
-              <li class="rounded-xl border border-slate-200 p-4">
-                <div class="flex flex-wrap items-start justify-between gap-2">
-                  <div>
-                    <p class="text-sm font-semibold text-slate-900">{{ v.stepLabel }} <span class="font-normal text-slate-500">· {{ v.workflowName }}</span></p>
-                    <p class="text-xs text-slate-500">
-                      Lancé le {{ v.startedAt | date: 'dd/MM/yyyy à HH:mm' }}
-                      @if (v.completedAt) { · clos le {{ v.completedAt | date: 'dd/MM/yyyy à HH:mm' }} }
-                    </p>
-                  </div>
-                  <span class="inline-flex items-center gap-1 text-sm font-semibold" [class]="st.tone">
-                    <tas-icon [iconName]="st.icon" style="font-size:14px"></tas-icon>{{ st.label }}
-                  </span>
-                </div>
-                @if (v.decisions?.length) {
-                  <ul class="mt-3 flex flex-col gap-2 border-t border-slate-100 pt-3">
-                    @for (d of v.decisions; track d.order) {
-                      @let ds = validationStatus(d.status);
-                      <li class="flex items-start gap-2 text-sm">
-                        <tas-icon [iconName]="ds.icon" style="font-size:14px" class="mt-0.5 shrink-0" [class]="ds.tone"></tas-icon>
-                        <div class="min-w-0">
-                          <p class="text-slate-800">
-                            <span class="font-medium">{{ d.name }}</span>
-                            @if (d.decidedBy) {
-                              — {{ ds.label | lowercase }} par <span class="font-medium">{{ d.decidedBy }}</span>
-                              @if (d.decidedAt) { le {{ d.decidedAt | date: 'dd/MM/yyyy à HH:mm' }} }
-                            } @else if (d.status === 'AwaitingApproval' || d.status === 'Pending') {
-                              — en attente
-                              @if (d.approverRole) { de : {{ d.approverRole }} }
-                              @if (d.dueAt) { · échéance le {{ d.dueAt | date: 'dd/MM/yyyy à HH:mm' }} }
-                            } @else {
-                              — {{ ds.label | lowercase }}
-                            }
-                          </p>
-                          @if (d.comment) {
-                            <p class="mt-0.5 text-xs text-slate-600">« {{ d.comment }} »</p>
-                          }
-                        </div>
-                      </li>
-                    }
-                  </ul>
-                }
-              </li>
-            }
-          </ol>
-        </div>
-      </tas-card>
-    }
-
-    <project-questionnaires [projectId]="p.id!" [canEdit]="canManage()" (changed)="onQuestionnairesChanged()"></project-questionnaires>
-
-    <!-- Informations -->
-    <tas-card class="block" id="project-info">
-      <div class="p-5">
-        <div class="mb-3 flex items-center justify-between">
-          <h2 class="text-base font-semibold text-slate-900">Informations</h2>
-          @if (canManage() && editor() !== 'info') {
-            <button tas-text-button color="primary" type="button" (click)="editInfo()">Modifier</button>
-          }
-        </div>
-
-        @if (editor() === 'info') {
-          <form [formRoot]="infoForm" class="flex flex-col gap-4">
-            <tas-form-field>
-              <tas-label>Titre <span class="text-functional-error">*</span></tas-label>
-              <input tasInput type="text" [formField]="infoForm.title" />
-              @if (infoForm.title().touched() && infoForm.title().invalid()) {
-                <tas-error>{{ infoForm.title().errors()[0].message }}</tas-error>
+        <tas-card class="block" id="project-info">
+          <div class="p-5">
+            <div class="mb-2 flex items-center justify-between">
+              <h2 class="text-base font-semibold text-slate-900">Besoin exprimé</h2>
+              @if (canManage()) {
+                <button tas-text-button color="primary" type="button" (click)="editInfo()">Modifier</button>
               }
-            </tas-form-field>
-            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <tas-form-field>
-                <tas-label>Produit</tas-label>
-                <tas-select [options]="productOptions()" [formField]="infoForm.product"></tas-select>
-              </tas-form-field>
-              <tas-form-field>
-                <tas-label>{{ amountLabel() }}</tas-label>
-                <input tasInput type="text" inputmode="numeric" [formField]="infoForm.amount" />
-                @if (infoForm.amount().touched() && infoForm.amount().invalid()) {
-                  <tas-error>{{ infoForm.amount().errors()[0].message }}</tas-error>
-                }
-              </tas-form-field>
             </div>
-            <tas-form-field>
-              <tas-label>Besoin exprimé</tas-label>
-              <textarea tasInput rows="3" [formField]="infoForm.description"></textarea>
-              @if (infoForm.description().touched() && infoForm.description().invalid()) {
-                <tas-error>{{ infoForm.description().errors()[0].message }}</tas-error>
-              }
-            </tas-form-field>
-            <p class="text-xs text-slate-500">Changer de produit peut changer le parcours du projet : il se replace alors sur l'étape de même phase.</p>
-            <div class="flex items-center gap-2">
-              <button tas-raised-button color="primary" type="button" [disabled]="infoForm().invalid() || infoForm().submitting()" [isLoading]="infoForm().submitting()" (click)="saveInfo()">Enregistrer</button>
-              <button tas-text-button type="button" (click)="cancelEditor()">Annuler</button>
-            </div>
-          </form>
-        } @else {
-          <dl class="grid grid-cols-1 gap-x-8 gap-y-3 text-sm sm:grid-cols-[auto_1fr]">
-            <dt class="text-slate-500">Besoin exprimé</dt>
-            <dd class="whitespace-pre-wrap text-slate-800">{{ p.description || '—' }}</dd>
-            <dt class="text-slate-500">Créé le</dt>
-            <dd class="text-slate-800 tabular-nums">{{ formatDay(p.createdAt, true) }}</dd>
-            <dt class="text-slate-500">Mis à jour le</dt>
-            <dd class="text-slate-800 tabular-nums">{{ formatDay(p.updatedAt, true) }}</dd>
-            @if (p.closedAt) {
-              <dt class="text-slate-500">Clos le</dt>
-              <dd class="text-slate-800 tabular-nums">{{ formatDay(p.closedAt, true) }}</dd>
-            }
-          </dl>
-        }
+            <!-- Sur une ligne : pre-wrap rendait l'indentation du gabarit -->
+            <p class="whitespace-pre-wrap text-sm" [class]="p.description ? 'text-slate-800' : 'text-slate-400'">{{ p.description || 'Aucun besoin noté.' }}</p>
+          </div>
+        </tas-card>
+
+        <project-history [projectId]="p.id!" [refreshKey]="p.updatedAt" [clientId]="clientId()" [amountKind]="p.amountKind"></project-history>
       </div>
-    </tas-card>
+    </div>
   }
 </div>

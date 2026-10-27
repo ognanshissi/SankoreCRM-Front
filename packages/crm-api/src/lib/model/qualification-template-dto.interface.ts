@@ -25,5 +25,8 @@ export interface QualificationTemplateDto {
     createdAt?: string;
     sections?: Array<QualificationSectionDto> | null;
     questions?: Array<QualificationQuestionDto> | null;
+    subjectScope?: string | null;
+    isHealthQuestionnaire?: boolean;
+    excludeFromScoring?: boolean;
 }
 

@@ -4,741 +4,458 @@
   </div>
 } @else if (loadFailed()) {
   <tas-card class="block max-w-xl">
-    <div class="p-6 flex flex-col items-center text-center gap-2">
-      <tas-icon
-        iconName="feather:alert-triangle"
-        class="text-functional-error"
-        style="font-size:22px"></tas-icon>
-      <p class="text-sm font-medium text-slate-700">
-        Impossible de charger ce questionnaire.
-      </p>
-      <p class="text-xs text-slate-400">
-        Il a peut-être été supprimé, ou la connexion a échoué.
-      </p>
-      <div class="flex gap-2 mt-2">
-        <button tas-raised-button color="primary" type="button" (click)="reload()">
-          Réessayer
-        </button>
-        <button tas-outlined-button type="button" (click)="goBack()">
-          Retour à la liste
-        </button>
+    <div class="flex flex-col items-center gap-2 p-6 text-center">
+      <tas-icon iconName="feather:alert-triangle" class="text-functional-error" style="font-size:22px"></tas-icon>
+      <p class="text-sm font-medium text-slate-700">Impossible de charger ce questionnaire.</p>
+      <p class="text-xs text-slate-400">Il a peut-être été supprimé, ou la connexion a échoué.</p>
+      <div class="mt-2 flex gap-2">
+        <button tas-raised-button color="primary" type="button" (click)="reload()">Réessayer</button>
+        <button tas-outlined-button type="button" (click)="goBack()">Retour à la liste</button>
       </div>
     </div>
   </tas-card>
 } @else {
-  <div class="pb-6">
-    <!-- Header -->
-    <div class="flex items-center gap-3 mb-6">
-      <button type="button"
-        class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center hover:bg-slate-200"
-        (click)="goBack()">
-        <tas-icon
-          iconName="feather:arrow-left"
-          style="font-size:14px"
-        ></tas-icon>
+  <div class="flex flex-col gap-4 pb-6">
+    <!-- En-tête : ce qu'est le formulaire, d'un coup d'œil -->
+    <div class="flex flex-wrap items-start gap-3">
+      <button tas-button iconButton type="button" aria-label="Retour aux formulaires" (click)="goBack()">
+        <tas-icon iconName="feather:chevron-left"></tas-icon>
       </button>
-      <div class="flex-1 min-w-0">
-        <h1 class="text-lg font-semibold text-slate-800">
-          {{ isReadonly() ? 'Formulaire (lecture seule)' : 'Modifier le formulaire' }}
-        </h1>
-        @if (templateStatus()) {
-          <div class="flex items-center gap-2 mt-0.5">
-            <tas-tag [severity]="statusSeverity(templateStatus())">
-              {{ statusLabel(templateStatus()) }}
-            </tas-tag>
-            <span class="text-xs text-slate-400 tabular-nums">
-              @if (productVersion(); as n) { version {{ n }} } @else { jamais publiée }
-            </span>
-          </div>
-        }
+      <div class="min-w-0 flex-1">
+        <h1 class="truncate text-lg font-semibold text-slate-800">{{ editName() || 'Formulaire sans nom' }}</h1>
+        <div class="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+          @if (templateStatus()) {
+            <tas-tag [severity]="statusSeverity(templateStatus())">{{ statusLabel(templateStatus()) }}</tas-tag>
+          }
+          <span class="tabular-nums">
+            @if (productVersion(); as n) { Version {{ n }} } @else { Jamais publiée }
+          </span>
+          <span>·</span>
+          <span>{{ productSummary() }}</span>
+          <span>·</span>
+          <span class="tabular-nums">{{ editQuestions().length }} question(s)</span>
+          @if (scopeModel().isHealthQuestionnaire) {
+            <tas-tag severity="warning">Santé</tas-tag>
+          }
+        </div>
       </div>
       @if (!isReadonly()) {
-        <button
-          tas-raised-button
-          color="primary"
-          type="button"
-          [disabled]="isSaving() || !editName()"
-          (click)="save()">
-          @if (isSaving()) {
-            <tas-spinner size="3" class="text-white"></tas-spinner>
-          }
-          Enregistrer
-        </button>
-        @if (isDraft() && canManage()) {
-          <button
-            tas-outlined-button
-            color="primary"
-            type="button"
-            [disabled]="isPublishing() || isSaving() || !editName()"
-            [isLoading]="isPublishing()"
-            (click)="publish()">
-            <tas-icon iconName="feather:upload-cloud" style="font-size:12px"></tas-icon>
-            Publier
+        <div class="flex items-center gap-2">
+          <button tas-raised-button color="primary" type="button" [disabled]="isSaving() || !editName()" [isLoading]="isSaving()" (click)="save()">
+            Enregistrer
           </button>
-        }
+          @if (isDraft() && canManage()) {
+            <button tas-outlined-button color="primary" type="button" [disabled]="isPublishing() || isSaving() || !editName()" [isLoading]="isPublishing()" (click)="publish()">
+              <tas-icon iconName="feather:upload-cloud" style="font-size:12px"></tas-icon>
+              Publier
+            </button>
+          }
+        </div>
       }
     </div>
 
-    @if (isDraft() && canManage()) {
-      <!-- BNF-F-16 : avertissement à la publication -->
-      <div
-        class="mb-4 p-3 rounded-lg bg-amber-50 border border-amber-200 flex items-start gap-2"
-        role="note">
-        <tas-icon
-          iconName="feather:alert-triangle"
-          class="text-amber-500 shrink-0 mt-0.5"
-          style="font-size:14px"></tas-icon>
-        <p class="text-xs text-amber-800">
-          <span class="font-semibold">La publication crée une nouvelle version.</span>
-          Il deviendra la version {{ nextProductVersion() }} active pour le produit
-          associé{{ replacesPublished() ? " et la version publiée jusqu'ici sera archivée" : '' }} ; les réponses déjà
-          collectées restent rattachées à leur version et ce questionnaire ne sera
-          plus modifiable.
-        </p>
-      </div>
-    }
-
     @if (isReadonly()) {
-      <div
-        class="mb-4 p-3 rounded-lg bg-slate-50 border border-slate-200 flex items-center gap-2">
-        <tas-icon
-          iconName="feather:lock"
-          class="text-slate-400"
-          style="font-size:14px"></tas-icon>
+      <div class="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+        <tas-icon iconName="feather:lock" class="text-slate-400" style="font-size:14px"></tas-icon>
         <p class="text-xs text-slate-500">
           Ce formulaire {{ templateStatus() === 'Archived' ? 'est archivé' : 'est publié' }} et ne se modifie plus.
           Dupliquez-le depuis la liste pour en préparer une nouvelle version.
         </p>
       </div>
-    }
-
-    <!-- Les versions : les formulaires du même produit (propriétaire, 2026-10-27) -->
-    @if (versions().length > 1) {
-      <tas-card class="mb-4 block">
-        <div class="p-4 border-b border-slate-100">
-          <p class="text-sm font-semibold text-slate-700">Versions</p>
-          <p class="text-xs text-slate-400 mt-0.5">
-            Les formulaires de ce produit, numérotés dans l'ordre de publication. Une version publiée ou archivée s'ouvre en lecture seule.
-          </p>
-        </div>
-        <tas-table [data]="versions()" identifierField="id" [config]="versionsTableConfig" [hasCaption]="false">
-          <ng-template #header>
-            <tr class="text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
-              <th class="py-2 pl-4">Version</th>
-              <th class="py-2">Formulaire</th>
-              <th class="py-2">Statut</th>
-              <th class="py-2 pr-4 text-right">Publiée le</th>
-            </tr>
-          </ng-template>
-          <ng-template #body let-v>
-            <tr [class]="v.current ? 'bg-primary/5' : 'cursor-pointer transition-colors hover:bg-slate-50'" (click)="openVersion(v)">
-              <td class="py-2 pl-4 text-sm font-semibold text-slate-700 tabular-nums">
-                {{ v.number ?? '—' }}
-                @if (v.current) {
-                  <span class="ml-1 text-xs font-normal text-primary">affichée</span>
-                }
-              </td>
-              <td class="py-2 text-sm text-slate-700">{{ v.name }}</td>
-              <td class="py-2">
-                <tas-tag [severity]="statusSeverity(v.status)">{{ statusLabel(v.status) }}</tas-tag>
-              </td>
-              <td class="py-2 pr-4 text-right text-xs text-slate-500 tabular-nums">
-                {{ v.publishedAt ? (v.publishedAt | date: 'dd/MM/yyyy HH:mm') : 'Jamais publiée' }}
-              </td>
-            </tr>
-          </ng-template>
-        </tas-table>
-      </tas-card>
-    }
-
-    <!-- Meta -->
-    <tas-card class="mb-4 block">
-      <div class="p-4 border-b border-slate-100">
-        <p class="text-sm font-semibold text-slate-700">
-          Informations générales
+    } @else if (isDraft()) {
+      <div class="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2" role="note">
+        <tas-icon iconName="feather:alert-triangle" class="mt-0.5 shrink-0 text-amber-500" style="font-size:14px"></tas-icon>
+        <p class="text-xs text-amber-800">
+          Publié, il deviendra la version {{ nextProductVersion() }} active pour son produit{{ replacesPublished() ? " et la version publiée jusqu'ici sera archivée" : '' }}.
+          Les réponses déjà collectées restent rattachées à leur version.
         </p>
       </div>
-      <div class="p-4 flex flex-col gap-3">
-        <tas-form-field>
-          <tas-label
-          >Nom du formulaire
-            <span class="text-red-500">*</span></tas-label
-          >
-          <input
-            tasInput
-            type="text"
-            placeholder="Ex : Qualification Prêt v2"
-            [ngModel]="editName()"
-            (ngModelChange)="editName.set($event)"
-            [disabled]="isReadonly()"
-          />
-        </tas-form-field>
-        <tas-form-field>
-          <tas-label>Description</tas-label>
-          <textarea
-            tasInput
-            rows="2"
-            placeholder="Description du formulaire"
-            [ngModel]="editDescription()"
-            (ngModelChange)="editDescription.set($event)"
-            [disabled]="isReadonly()"></textarea>
-        </tas-form-field>
-        <tas-form-field>
-          <tas-label>Catégorie de produit</tas-label>
-          <tas-select
-            [options]="categoryOptions()"
-            [readonly]="isReadonly()"
-            optionLabel="label"
-            optionValue="value"
-            placeholder="Sélectionnez"
-            [ngModel]="editProductType()"
-            (ngModelChange)="editProductType.set($event)"></tas-select>
-        </tas-form-field>
+    }
 
-        <tas-form-field>
-          <tas-label>Choisissez un produit</tas-label>
-          <tas-select
-            placeholder="Sélectionnez"
-          [options]="productsOptions()"
-          [ngModel]="editProductCode()"
-            [readonly]="isReadonly()"
-          (ngModelChange)="editProductCode.set($event)"></tas-select>
-        </tas-form-field>
-      </div>
-    </tas-card>
-
-    <!-- Portée et santé (BNF-F-16) -->
-    <tas-card class="mb-4 block">
-      <div class="p-4 border-b border-slate-100">
-        <h2 class="text-sm font-semibold text-slate-700">Portée et santé</h2>
-        <p class="text-xs text-slate-400 mt-0.5">
-          À qui s'applique ce questionnaire, et s'il porte sur la santé.
-        </p>
-      </div>
-
-      <form [formRoot]="scopeForm" class="p-4 flex flex-col gap-4">
-        <tas-form-field>
-          <tas-label>S'applique à</tas-label>
-          <tas-select
-            [options]="appliesToOptions"
-            optionLabel="label"
-            optionValue="value"
-            placeholder="Sélectionnez"
-            [readonly]="isReadonly()"
-            [formField]="scopeForm.appliesTo"></tas-select>
-          <tas-hint>
-            Détermine si le questionnaire est rempli une fois pour le lead ou
-            une fois par personne du foyer.
-          </tas-hint>
-        </tas-form-field>
-
-        <label class="flex items-start gap-2 text-sm"
-          [class.cursor-pointer]="!scopeForm.isHealthQuestionnaire().disabled()"
-          [class.opacity-60]="scopeForm.isHealthQuestionnaire().disabled()">
-          <input
-            type="checkbox"
-            class="mt-0.5 accent-primary"
-            [formField]="scopeForm.isHealthQuestionnaire" />
-          <span>
-            Questionnaire santé
-            <span class="block text-xs text-slate-400">
-              @if (isInsurance()) {
-                Les réponses sont des données de santé : elles ne participent
-                jamais au scoring et sont soumises au consentement santé.
-              } @else {
-                Disponible uniquement pour les catégories d'assurance
-                (Assurance, Assurance santé, Assurance prévoyance).
-              }
-            </span>
-          </span>
-        </label>
-
-        <label class="flex items-start gap-2 text-sm"
-          [class.cursor-pointer]="!scopeForm.excludedFromScoring().disabled()"
-          [class.opacity-60]="scopeForm.excludedFromScoring().disabled()">
-          <input
-            type="checkbox"
-            class="mt-0.5 accent-primary"
-            [formField]="scopeForm.excludedFromScoring" />
-          <span>
-            Exclu du scoring
-            <span class="block text-xs text-slate-400">
-              @if (scopeForm.isHealthQuestionnaire().value()) {
-                Forcé et non modifiable : un questionnaire santé est toujours
-                exclu du scoring.
-              } @else {
-                Les réponses ne pèsent pas dans le score de qualification.
-              }
-            </span>
-          </span>
-        </label>
-
-        @if (excludedFromScoring()) {
-          <p class="text-xs text-slate-500" role="note">
-            À l'enregistrement, le poids de toutes les questions sera remis à
-            zéro — c'est le seul champ dont dispose l'API pour exclure un
-            questionnaire du scoring.
-          </p>
-        }
-
-        <div class="rounded-lg border border-slate-200 bg-slate-50 p-3 flex gap-2.5">
-          <tas-icon
-            iconName="feather:info"
-            class="text-slate-400 shrink-0 mt-0.5"
-            style="font-size:14px"></tas-icon>
-          <p class="text-xs text-slate-500">
-            « S'applique à » et « Questionnaire santé » ne sont pas encore
-            enregistrés : l'API ne les expose pas sur un questionnaire de
-            qualification. Seule l'exclusion du scoring est persistée.
-          </p>
-        </div>
-      </form>
-    </tas-card>
-
-    <!-- Sections -->
-    <tas-card class="mb-4 block">
-      <div class="p-4 border-b border-slate-100 flex items-center justify-between">
-        <p class="text-sm font-semibold text-slate-700">Sections</p>
-        @if (!isReadonly()) {
-          <button
-            tas-outlined-button
-            type="button"
-            class="text-xs"
-            (click)="addSection()">
-            <tas-icon
-              iconName="feather:plus"
-              style="font-size:12px"></tas-icon>
-            Ajouter une section
-          </button>
-        }
-      </div>
-      @if (editSections().length === 0) {
-        <div class="p-4 text-center">
-          <p class="text-xs text-slate-400">
-            Aucune section. Les questions seront affichées sans
-            regroupement.
-          </p>
-        </div>
-      } @else {
-        <div class="divide-y divide-slate-100">
-          @for (sec of editSections(); track sec._uid; let si = $index) {
-            <div class="p-4 flex items-center gap-3">
-                  <span
-                    class="w-6 h-6 rounded-full bg-slate-100 text-[10px] font-semibold text-slate-500 flex items-center justify-center tabular-nums shrink-0"
-                  >{{ si + 1 }}</span
-                  >
-              <div class="flex-1 grid grid-cols-2 gap-2">
-                <tas-form-field>
-                  <input
-                    tasInput
-                    type="text"
-                    placeholder="Titre de la section"
-                    [ngModel]="sec.title"
-                    (ngModelChange)="sec.title = $event"
-                    [disabled]="isReadonly()"
-                  />
-                </tas-form-field>
-                <tas-form-field>
-                  <input
-                    tasInput
-                    type="text"
-                    placeholder="Description (optionnel)"
-                    [ngModel]="sec.description"
-                    (ngModelChange)="sec.description = $event"
-                    [disabled]="isReadonly()"
-                  />
-                </tas-form-field>
-              </div>
-              @if (!isReadonly()) {
-                <button
-                  type="button"
-                  class="text-slate-300 hover:text-red-500"
-                  (click)="removeSection(si)"
-                >
-                  <tas-icon
-                    iconName="feather:trash-2"
-                    style="font-size:14px"
-                  ></tas-icon>
-                </button>
-              }
-            </div>
+    <!-- Onglets -->
+    <div class="flex gap-1 border-b border-slate-200" role="tablist">
+      @for (t of tabs; track t.id) {
+        <button type="button" role="tab" [attr.aria-selected]="tab() === t.id"
+                class="-mb-px border-b-2 px-3 py-2 text-sm font-medium transition-colors"
+                [class]="tab() === t.id ? 'border-primary text-primary' : 'border-transparent text-slate-500 hover:text-slate-700'"
+                (click)="openTab(t.id)">
+          {{ t.label }}
+          @if (t.id === 'versions' && versions().length > 1) {
+            <span class="ml-1 rounded-full bg-slate-100 px-1.5 text-[10px] tabular-nums text-slate-500">{{ versions().length }}</span>
           }
-        </div>
+        </button>
       }
-    </tas-card>
+    </div>
 
-    <!-- Questions -->
-    <tas-card class="mb-4 block">
-      <div
-        class="p-4 border-b border-slate-100 flex items-center justify-between"
-      >
-        <div>
-          <p class="text-sm font-semibold text-slate-700">Questions</p>
-          <p class="text-xs text-slate-400 mt-0.5">
-            {{ editQuestions().length }} question(s) · Glissez pour
-            réordonner
-          </p>
-        </div>
-        @if (!isReadonly()) {
-          <button
-            tas-raised-button
-            color="primary"
-            type="button"
-            class="text-xs"
-            (click)="addQuestion()"
-          >
-            <tas-icon
-              iconName="feather:plus"
-              style="font-size:12px"
-            ></tas-icon>
-            Ajouter une question
-          </button>
-        }
-      </div>
-
-      @if (editQuestions().length === 0) {
-        <div
-          class="flex flex-col items-center justify-center py-12 text-center"
-        >
-          <tas-icon
-            iconName="feather:help-circle"
-            class="text-slate-300 mb-2"
-            style="font-size:28px"
-          ></tas-icon>
-          <p class="text-sm text-slate-400">Aucune question ajoutée</p>
-          @if (!isReadonly()) {
-            <button
-              type="button"
-              class="text-xs text-primary hover:underline mt-2"
-              (click)="addQuestion()"
-            >
-              Ajouter la première question
-            </button>
-          }
-        </div>
-      } @else {
-        <div
-          cdkDropList
-          (cdkDropListDropped)="onReorderQuestion($event)"
-          class="divide-y divide-slate-100"
-        >
-          @for (q of editQuestions(); track q._uid; let qi = $index) {
-            <div cdkDrag class="bg-white">
-              <div
-                cdkDragPlaceholder
-                class="bg-primary/5 border-2 border-dashed border-primary/30 rounded h-14 mx-4 my-2"
-              >
-                <!-- Summary row -->
-                <button
-                class="px-4 py-3 w-full flex items-center gap-3 hover:bg-slate-50 cursor-pointer"
-                (click)="q.expanded = !q.expanded"
-              >
-                @if (!isReadonly()) {
-                  <button
-                    cdkDragHandle
-                    class="cursor-grab text-slate-300 hover:text-slate-500"
-                    (click)="$event.stopPropagation()"
-                  >
-                    <tas-icon
-                      iconName="feather:menu"
-                      style="font-size:14px"
-                    ></tas-icon>
-                  </button>
-                }
-                  <span
-                    class="w-5 h-5 rounded bg-slate-100 text-[9px] font-bold text-slate-500 flex items-center justify-center tabular-nums shrink-0">{{ qi + 1 }}</span>
-                 <span class="text-sm font-medium text-slate-800 flex-1 truncate">
-                   {{ q.label || 'Question sans titre' }}
-                 </span>
-                <tas-tag severity="info">{{questionTypeLabel(q.type) }}</tas-tag>
-                @if (q.isRequired) {
-                  <tas-tag severity="error">Requis</tas-tag>
-                }
-                @if (q.rules.length > 0) {
-                  <tas-tag severity="warning">{{ q.rules.length }} règle(s)</tas-tag>
-                }
-                <span class="text-[10px] text-slate-400 tabular-nums">poids {{ q.weight }}</span>
-                <tas-icon
-                  [iconName]="
-                        q.expanded
-                          ? 'feather:chevron-up'
-                          : 'feather:chevron-down'
-                      "
-                  class="text-slate-400" style="font-size:14px"></tas-icon>
-              </button>
-              </div>
-
-              <!-- Expanded editor -->
-              @if (q.expanded) {
-                <div
-                  class="px-4 pb-4 pt-1 border-t border-slate-50 bg-slate-50"
-                >
-                  <div class="grid grid-cols-2 gap-3 mb-3">
-                    <tas-form-field>
-                      <tas-label
-                      >Libellé
-                        <span class="text-red-500">*</span></tas-label
-                      >
-                      <input
-                        tasInput
-                        type="text"
-                        placeholder="Ex : Avez-vous un compte ?"
-                        [ngModel]="q.label"
-                        (ngModelChange)="q.label = $event"
-                        [disabled]="isReadonly()"
-                      />
-                    </tas-form-field>
-                    <tas-form-field>
-                      <tas-label>Type de champ</tas-label>
-                      <tas-select
-                        [options]="questionTypeOptions"
-                        optionLabel="label"
-                        optionValue="value"
-                        [ngModel]="q.type"
-                        [readonly]="isReadonly()"
-                        (ngModelChange)="q.type = $event"
-                      ></tas-select>
-                    </tas-form-field>
-                  </div>
-
-                  <div class="grid grid-cols-3 gap-3 mb-3">
-                    <tas-form-field>
-                      <tas-label>Poids (scoring)</tas-label>
-                      <input
-                        tasInput
-                        type="number"
-                        min="0"
-                        max="100"
-                        [ngModel]="excludedFromScoring() ? 0 : q.weight"
-                        (ngModelChange)="q.weight = $event"
-                        [disabled]="isReadonly() || excludedFromScoring()"
-                      />
-                      @if (excludedFromScoring()) {
-                        <tas-hint>Questionnaire exclu du scoring.</tas-hint>
-                      }
-                    </tas-form-field>
-                    @if (editSections().length > 0) {
-                      <tas-form-field>
-                        <tas-label>Section</tas-label>
-                        <tas-select
-                          [readonly]="isReadonly()"
-                          [options]="sectionOptions()"
-                          optionLabel="label"
-                          optionValue="value"
-                          [ngModel]="String(q.sectionIndex)"
-                          (ngModelChange)="q.sectionIndex = +$event"
-                        ></tas-select>
-                      </tas-form-field>
-                    }
-                    <div class="flex items-end gap-2 pb-1">
-                      <label
-                        class="flex items-center gap-1.5 cursor-pointer text-sm"
-                      >
-                        <input
-                          type="checkbox"
-                          class="form-checkbox accent-primary"
-                          [checked]="q.isRequired"
-                          (change)="q.isRequired = !q.isRequired"
-                          [disabled]="isReadonly()"
-                        />
-                        Obligatoire
-                      </label>
-                    </div>
-                  </div>
-
-                  <!-- BNF-F-16 : marquage des questions non médicales partageables -->
-                  <label
-                    class="flex items-start gap-2 cursor-pointer text-sm mb-3"
-                  >
-                    <input
-                      type="checkbox"
-                      class="mt-0.5 accent-primary"
-                      [checked]="q.isShareable"
-                      (change)="q.isShareable = !q.isShareable"
-                      [disabled]="isReadonly()"
-                    />
-                    <span>
-                      Question non médicale, partageable pour le pré-remplissage
-                      <span class="block text-xs text-slate-400">
-                        Non enregistré : l'API ne porte pas encore ce marquage
-                        sur une question.
-                      </span>
-                    </span>
-                  </label>
-
-                  <!-- Choice options -->
-                  @if (
-                    q.type === 'SingleChoice' || q.type === 'MultiChoice'
-                    ) {
-                    <tas-form-field>
-                      <tas-label
-                      >Options (séparées par des virgules)</tas-label
-                      >
-                      <input
-                        tasInput
-                        type="text"
-                        placeholder="Oui, Non, Peut-être"
-                        [ngModel]="q.options"
-                        (ngModelChange)="q.options = $event"
-                        [disabled]="isReadonly()"
-                      />
-                    </tas-form-field>
+    @switch (tab()) {
+      <!-- ── Questions : le plan à gauche, la sélection à droite ── -->
+      @case ('questions') {
+        <div class="grid grid-cols-1 items-start gap-4 lg:grid-cols-[20rem_1fr]">
+          <tas-card class="block">
+            <div class="flex items-center justify-between border-b border-slate-100 px-4 py-3">
+              <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Plan</p>
+              <span class="text-xs tabular-nums text-slate-400">{{ editQuestions().length }} question(s)</span>
+            </div>
+            <div class="flex flex-col gap-3 p-3">
+              @for (g of groups(); track g.section?._uid ?? 'loose') {
+                <div class="flex flex-col gap-1">
+                  @if (g.section; as sec) {
+                    <button type="button"
+                            class="flex items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs font-semibold uppercase tracking-wide"
+                            [class]="isSelected(sec._uid) ? 'bg-primary/10 text-primary' : 'text-slate-500 hover:bg-slate-50'"
+                            (click)="selectSection(sec)">
+                      <tas-icon iconName="feather:folder" style="font-size:12px"></tas-icon>
+                      <span class="truncate">{{ sec.title || 'Section ' + (g.index + 1) }}</span>
+                    </button>
+                  } @else if (editSections().length) {
+                    <p class="px-2 py-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400">Sans section</p>
                   }
 
-                  <!-- Numeric bounds -->
-                  @if (q.type === 'Numeric') {
-                    <div class="grid grid-cols-2 gap-3 mt-3">
-                      <tas-form-field>
-                        <tas-label>Valeur min</tas-label>
-                        <input
-                          tasInput
-                          type="number"
-                          [ngModel]="q.minValue"
-                          (ngModelChange)="q.minValue = $event"
-                          [disabled]="isReadonly()"
-                        />
-                      </tas-form-field>
-                      <tas-form-field>
-                        <tas-label>Valeur max</tas-label>
-                        <input
-                          tasInput
-                          type="number"
-                          [ngModel]="q.maxValue"
-                          (ngModelChange)="q.maxValue = $event"
-                          [disabled]="isReadonly()"
-                        />
-                      </tas-form-field>
-                    </div>
-                  }
-
-                  <!-- Help / Placeholder -->
-                  <div class="grid grid-cols-2 gap-3 mt-3">
-                    <tas-form-field>
-                      <tas-label>Texte d'aide</tas-label>
-                      <input
-                        tasInput
-                        type="text"
-                        placeholder="Aide contextuelle"
-                        [ngModel]="q.helpText"
-                        (ngModelChange)="q.helpText = $event"
-                        [disabled]="isReadonly()"
-                      />
-                    </tas-form-field>
-                    <tas-form-field>
-                      <tas-label>Placeholder</tas-label>
-                      <input
-                        tasInput
-                        type="text"
-                        placeholder="Placeholder du champ"
-                        [ngModel]="q.placeholderText"
-                        (ngModelChange)="q.placeholderText = $event"
-                        [disabled]="isReadonly()"
-                      />
-                    </tas-form-field>
-                  </div>
-
-                  <!-- Conditional rules -->
-                  <div
-                    class="mt-3 p-3 rounded-lg bg-white border border-slate-200"
-                  >
-                    <div class="flex items-center justify-between mb-2">
-                      <p class="text-xs font-semibold text-slate-600">
-                        Règles conditionnelles
-                      </p>
-                      @if (!isReadonly()) {
-                        <button
-                          tas-text-button
-                          type="button"
-                          class="text-xs text-primary hover:underline"
-                          (click)="addRule(q)"
-                        >
-                          + Ajouter
-                        </button>
-                      }
-                    </div>
-                    @if (q.rules.length === 0) {
-                      <p class="text-[10px] text-slate-400">
-                        Aucune règle — la question est toujours visible.
-                      </p>
-                    } @else {
-                      @for (rule of q.rules; track $index; let ri = $index) {
-                        <div class="grid grid-cols-[1fr_auto_auto_auto] gap-2 mt-2 items-start">
-                          <tas-form-field>
-                            <tas-label>Question déclencheur</tas-label>
-                            <tas-select
-                              [readonly]="isReadonly()"
-                              [options]="questionUidOptions(q._uid)"
-                              optionLabel="label"
-                              optionValue="value"
-                              placeholder="Sélectionnez"
-                              [ngModel]="rule.triggerQuestionUid"
-                              (ngModelChange)="rule.triggerQuestionUid = $event"></tas-select>
-                          </tas-form-field>
-                          <tas-form-field>
-                            <tas-label>Valeur</tas-label>
-                            <input
-                              tasInput
-                              [disabled]="isReadonly()"
-                              type="text"
-                              placeholder="Ex : Oui"
-                              [ngModel]="rule.triggerValue"
-                              (ngModelChange)="rule.triggerValue = $event"
-                            />
-                          </tas-form-field>
-                          <tas-form-field>
-                            <tas-label>Action</tas-label>
-                            <tas-select
-                              [readonly]="isReadonly()"
-                              [options]="ruleActionOptions"
-                              optionLabel="label"
-                              optionValue="value"
-                              [ngModel]="rule.action"
-                              (ngModelChange)="rule.action = $event"
-                            ></tas-select>
-                          </tas-form-field>
-                          @if (!isReadonly()) {
-                            <div class="flex items-end pb-2">
-                              <button
-                                type="button"
-                                class="text-slate-300 hover:text-red-500 p-1"
-                                (click)="removeRule(q, ri)"
-                              >
-                                <tas-icon
-                                  iconName="feather:x"
-                                  style="font-size:14px"
-                                ></tas-icon>
-                              </button>
-                            </div>
+                  @for (q of g.questions; track q._uid) {
+                    <button type="button"
+                            class="flex items-start gap-2 rounded-lg border px-2.5 py-2 text-left transition-colors"
+                            [class]="isSelected(q._uid) ? 'border-primary bg-primary/5' : 'border-slate-200 bg-white hover:border-primary/40'"
+                            (click)="selectQuestion(q)">
+                      <span class="mt-0.5 flex h-5 w-7 shrink-0 items-center justify-center rounded bg-slate-100 text-[10px] font-bold tabular-nums text-slate-500">Q{{ questionNumber(q._uid) }}</span>
+                      <span class="min-w-0 flex-1">
+                        <span class="block truncate text-sm text-slate-800">{{ q.label || 'Question sans titre' }}</span>
+                        <span class="mt-0.5 flex flex-wrap items-center gap-x-2 text-[11px] text-slate-400">
+                          <span>{{ questionTypeLabel(q.type) }}</span>
+                          @if (q.isRequired) { <span class="text-red-600">requise</span> }
+                          @if (triggersOf(q).length) {
+                            <span class="inline-flex items-center gap-0.5 text-amber-700">
+                              <tas-icon iconName="feather:corner-down-right" style="font-size:10px"></tas-icon>
+                              si {{ triggerLabel(q) }}
+                            </span>
                           }
-                        </div>
-                      }
-                    }
-                  </div>
+                          @if (dependentsOf(q).length) {
+                            <span class="inline-flex items-center gap-0.5 text-sky-700" title="Des questions dépendent de celle-ci">
+                              <tas-icon iconName="feather:git-branch" style="font-size:10px"></tas-icon>
+                              {{ dependentsOf(q).length }}
+                            </span>
+                          }
+                        </span>
+                      </span>
+                    </button>
+                  } @empty {
+                    <p class="px-2 py-1 text-xs text-slate-400">Aucune question.</p>
+                  }
 
-                  @if (!isReadonly()) {
-                    <div class="mt-3 flex justify-end">
-                      <button
-                        tas-filled-button
-                        color="warn"
-                        type="button"
-                        class="text-xs text-red-400 hover:text-red-600"
-                        (click)="removeQuestion(qi)"
-                      >
-                        <tas-icon
-                          iconName="feather:trash-2"
-                          style="font-size:12px"
-                        ></tas-icon>
-                        Supprimer cette question
-                      </button>
-                    </div>
+                  @if (!isReadonly() && g.section) {
+                    <button type="button" class="self-start px-2 text-xs text-primary hover:underline" (click)="addQuestion(g.index)">
+                      + Question dans cette section
+                    </button>
                   }
                 </div>
               }
 
+              @if (!isReadonly()) {
+                <div class="flex flex-wrap gap-2 border-t border-slate-100 pt-3">
+                  <button tas-outlined-button color="primary" type="button" (click)="addQuestion()">
+                    <tas-icon iconName="feather:plus" style="font-size:12px"></tas-icon> Question
+                  </button>
+                  <button tas-outlined-button type="button" (click)="addSection()">
+                    <tas-icon iconName="feather:folder-plus" style="font-size:12px"></tas-icon> Section
+                  </button>
+                </div>
+              }
             </div>
-          }
+          </tas-card>
+
+          <!-- Éditeur de la sélection -->
+          <tas-card class="block">
+            @if (selectedQuestion(); as q) {
+              <div class="flex items-center justify-between border-b border-slate-100 px-5 py-3">
+                <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Question {{ questionNumber(q._uid) }}</p>
+                @if (!isReadonly()) {
+                  <div class="flex items-center gap-1">
+                    <button tas-button iconButton type="button" aria-label="Monter" title="Monter" [disabled]="!canMove(q, -1)" (click)="moveQuestion(q, -1)">
+                      <tas-icon iconName="feather:arrow-up" style="font-size:14px"></tas-icon>
+                    </button>
+                    <button tas-button iconButton type="button" aria-label="Descendre" title="Descendre" [disabled]="!canMove(q, 1)" (click)="moveQuestion(q, 1)">
+                      <tas-icon iconName="feather:arrow-down" style="font-size:14px"></tas-icon>
+                    </button>
+                    <button tas-text-button color="warn" type="button" (click)="removeQuestion(q)">
+                      <tas-icon iconName="feather:trash-2" style="font-size:12px"></tas-icon> Retirer
+                    </button>
+                  </div>
+                }
+              </div>
+
+              <div class="flex flex-col gap-4 p-5">
+                <tas-form-field>
+                  <tas-label>Libellé <span class="text-functional-error">*</span></tas-label>
+                  <input tasInput type="text" placeholder="Ex : Avez-vous un compte ?" [ngModel]="q.label" (ngModelChange)="q.label = $event" [disabled]="isReadonly()" />
+                </tas-form-field>
+
+                <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                  <tas-form-field>
+                    <tas-label>Type de réponse</tas-label>
+                    <tas-select [options]="questionTypeOptions" optionLabel="label" optionValue="value" [ngModel]="q.type" [readonly]="isReadonly()" (ngModelChange)="q.type = $event"></tas-select>
+                  </tas-form-field>
+                  <tas-form-field>
+                    <tas-label>Poids (score)</tas-label>
+                    <input tasInput type="number" min="0" max="100" [ngModel]="q.weight" (ngModelChange)="q.weight = $event" [disabled]="isReadonly() || scopeModel().excludedFromScoring" />
+                    @if (scopeModel().excludedFromScoring) {
+                      <tas-hint>Le questionnaire est exclu du score.</tas-hint>
+                    }
+                  </tas-form-field>
+                  @if (editSections().length > 0) {
+                    <tas-form-field>
+                      <tas-label>Section</tas-label>
+                      <tas-select [readonly]="isReadonly()" [options]="sectionOptions()" optionLabel="label" optionValue="value" [ngModel]="String(q.sectionIndex)" (ngModelChange)="setQuestionSection(q, $event)"></tas-select>
+                    </tas-form-field>
+                  }
+                </div>
+
+                <label class="flex items-center gap-2 text-sm" [class.cursor-pointer]="!isReadonly()">
+                  <input type="checkbox" class="accent-primary" [checked]="q.isRequired" (change)="q.isRequired = !q.isRequired" [disabled]="isReadonly()" />
+                  Réponse obligatoire
+                </label>
+
+                @if (q.type === 'SingleChoice' || q.type === 'MultiChoice') {
+                  <tas-form-field>
+                    <tas-label>Choix proposés (séparés par des virgules)</tas-label>
+                    <input tasInput type="text" placeholder="Oui, Non, Peut-être" [ngModel]="q.options" (ngModelChange)="q.options = $event" [disabled]="isReadonly()" />
+                  </tas-form-field>
+                }
+
+                @if (q.type === 'Numeric') {
+                  <div class="grid grid-cols-2 gap-3">
+                    <tas-form-field>
+                      <tas-label>Valeur min</tas-label>
+                      <input tasInput type="number" [ngModel]="q.minValue" (ngModelChange)="q.minValue = $event" [disabled]="isReadonly()" />
+                    </tas-form-field>
+                    <tas-form-field>
+                      <tas-label>Valeur max</tas-label>
+                      <input tasInput type="number" [ngModel]="q.maxValue" (ngModelChange)="q.maxValue = $event" [disabled]="isReadonly()" />
+                    </tas-form-field>
+                  </div>
+                }
+
+                <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <tas-form-field>
+                    <tas-label>Texte d'aide</tas-label>
+                    <input tasInput type="text" placeholder="Affiché sous la question" [ngModel]="q.helpText" (ngModelChange)="q.helpText = $event" [disabled]="isReadonly()" />
+                  </tas-form-field>
+                  <tas-form-field>
+                    <tas-label>Exemple de réponse</tas-label>
+                    <input tasInput type="text" placeholder="Affiché dans le champ vide" [ngModel]="q.placeholderText" (ngModelChange)="q.placeholderText = $event" [disabled]="isReadonly()" />
+                  </tas-form-field>
+                </div>
+
+                <!-- Règles : en clair, puis en détail -->
+                <div class="rounded-xl border border-slate-200">
+                  <div class="flex items-center justify-between border-b border-slate-100 px-4 py-2.5">
+                    <div>
+                      <p class="text-sm font-semibold text-slate-700">Règles</p>
+                      <p class="text-xs text-slate-400">Quand la question s'affiche, se masque ou devient obligatoire.</p>
+                    </div>
+                    @if (!isReadonly()) {
+                      <button tas-text-button color="primary" type="button" (click)="addRule(q)">+ Règle</button>
+                    }
+                  </div>
+                  <div class="flex flex-col gap-3 p-4">
+                    @for (rule of q.rules; track $index; let ri = $index) {
+                      <div class="rounded-lg bg-slate-50 p-3">
+                        <p class="mb-2 text-sm font-medium text-slate-700">{{ ruleSummary(rule) }}</p>
+                        <div class="grid grid-cols-1 items-end gap-2 sm:grid-cols-[1fr_10rem_9rem_auto]">
+                          <tas-form-field>
+                            <tas-label>Si la question</tas-label>
+                            <tas-select [readonly]="isReadonly()" [options]="questionUidOptions(q._uid)" optionLabel="label" optionValue="value" placeholder="Sélectionnez" [ngModel]="rule.triggerQuestionUid" (ngModelChange)="rule.triggerQuestionUid = $event"></tas-select>
+                          </tas-form-field>
+                          <tas-form-field>
+                            <tas-label>a pour réponse</tas-label>
+                            <input tasInput type="text" placeholder="Ex : Oui" [attr.list]="'rule-values-' + q._uid + '-' + ri" [ngModel]="rule.triggerValue" (ngModelChange)="rule.triggerValue = $event" [disabled]="isReadonly()" />
+                            <datalist [id]="'rule-values-' + q._uid + '-' + ri">
+                              @for (v of triggerValues(rule); track v) { <option [value]="v"></option> }
+                            </datalist>
+                          </tas-form-field>
+                          <tas-form-field>
+                            <tas-label>alors</tas-label>
+                            <tas-select [readonly]="isReadonly()" [options]="ruleActionOptions" optionLabel="label" optionValue="value" [ngModel]="rule.action" (ngModelChange)="rule.action = $event"></tas-select>
+                          </tas-form-field>
+                          @if (!isReadonly()) {
+                            <button tas-button iconButton type="button" aria-label="Retirer la règle" class="mb-1" (click)="removeRule(q, ri)">
+                              <tas-icon iconName="feather:x" style="font-size:14px" class="text-slate-400"></tas-icon>
+                            </button>
+                          }
+                        </div>
+                      </div>
+                    } @empty {
+                      <p class="text-xs text-slate-400">Aucune règle : la question est toujours affichée.</p>
+                    }
+                    @if (dependentsOf(q).length) {
+                      <p class="flex items-center gap-1.5 text-xs text-sky-700">
+                        <tas-icon iconName="feather:git-branch" style="font-size:12px"></tas-icon>
+                        {{ dependentsLabel(q) }}
+                      </p>
+                    }
+                  </div>
+                </div>
+              </div>
+            } @else if (selectedSection(); as s) {
+              <div class="flex items-center justify-between border-b border-slate-100 px-5 py-3">
+                <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Section {{ s.index + 1 }}</p>
+                @if (!isReadonly()) {
+                  <button tas-text-button color="warn" type="button" (click)="removeSection(s.index)">
+                    <tas-icon iconName="feather:trash-2" style="font-size:12px"></tas-icon> Retirer
+                  </button>
+                }
+              </div>
+              <div class="flex flex-col gap-4 p-5">
+                <tas-form-field>
+                  <tas-label>Titre</tas-label>
+                  <input tasInput type="text" placeholder="Ex : Situation familiale" [ngModel]="s.section.title" (ngModelChange)="s.section.title = $event" [disabled]="isReadonly()" />
+                </tas-form-field>
+                <tas-form-field>
+                  <tas-label>Description</tas-label>
+                  <input tasInput type="text" placeholder="Facultatif" [ngModel]="s.section.description" (ngModelChange)="s.section.description = $event" [disabled]="isReadonly()" />
+                </tas-form-field>
+                <p class="text-xs text-slate-400">Retirer la section garde ses questions : elles passent « sans section ».</p>
+              </div>
+            } @else {
+              <div class="flex flex-col items-center justify-center gap-2 py-16 text-center">
+                <tas-icon iconName="feather:help-circle" class="text-slate-300" style="font-size:28px"></tas-icon>
+                <p class="text-sm text-slate-500">
+                  @if (editQuestions().length) { Choisissez une question dans le plan. } @else { Aucune question pour l'instant. }
+                </p>
+                @if (!isReadonly() && !editQuestions().length) {
+                  <button tas-raised-button color="primary" type="button" (click)="addQuestion()">Ajouter la première question</button>
+                }
+              </div>
+            }
+          </tas-card>
         </div>
       }
-    </tas-card>
+
+      <!-- ── Informations : produit, portée, santé ── -->
+      @case ('infos') {
+        <div class="grid grid-cols-1 items-start gap-4 lg:grid-cols-2">
+          <tas-card class="block">
+            <div class="border-b border-slate-100 px-5 py-3">
+              <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Général</p>
+            </div>
+            <div class="flex flex-col gap-4 p-5">
+              <tas-form-field>
+                <tas-label>Nom du formulaire <span class="text-functional-error">*</span></tas-label>
+                <input tasInput type="text" placeholder="Ex : Qualification Prêt v2" [ngModel]="editName()" (ngModelChange)="editName.set($event)" [disabled]="isReadonly()" />
+              </tas-form-field>
+              <tas-form-field>
+                <tas-label>Description</tas-label>
+                <textarea tasInput rows="2" placeholder="À quoi sert ce formulaire ?" [ngModel]="editDescription()" (ngModelChange)="editDescription.set($event)" [disabled]="isReadonly()"></textarea>
+              </tas-form-field>
+              <tas-form-field>
+                <tas-label>Famille de produits</tas-label>
+                <tas-select [options]="categoryOptions()" [readonly]="isReadonly()" optionLabel="label" optionValue="value" placeholder="Sélectionnez" [ngModel]="editProductType()" (ngModelChange)="editProductType.set($event)"></tas-select>
+              </tas-form-field>
+              <tas-form-field>
+                <tas-label>Produit</tas-label>
+                <tas-select placeholder="Toute la famille" [options]="productsOptions()" [ngModel]="editProductCode()" [readonly]="isReadonly()" (ngModelChange)="editProductCode.set($event)"></tas-select>
+                <tas-hint>Un formulaire publié par produit ; sans produit, il vaut pour toute la famille.</tas-hint>
+              </tas-form-field>
+            </div>
+          </tas-card>
+
+          <tas-card class="block">
+            <div class="border-b border-slate-100 px-5 py-3">
+              <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Portée et santé</p>
+            </div>
+            <form [formRoot]="scopeForm" class="flex flex-col gap-4 p-5">
+              <tas-form-field>
+                <tas-label>Rempli pour</tas-label>
+                <tas-select [options]="appliesToOptions" optionLabel="label" optionValue="value" [readonly]="isReadonly()" [formField]="scopeForm.appliesTo"></tas-select>
+                <tas-hint>Une seule fois pour le dossier, ou une fois par personne du foyer.</tas-hint>
+              </tas-form-field>
+
+              <label class="flex items-start gap-2 text-sm" [class.cursor-pointer]="!scopeForm.isHealthQuestionnaire().disabled()" [class.opacity-60]="scopeForm.isHealthQuestionnaire().disabled()">
+                <input type="checkbox" class="mt-0.5 accent-primary" [formField]="scopeForm.isHealthQuestionnaire" />
+                <span>
+                  Questionnaire santé
+                  <span class="block text-xs text-slate-400">
+                    @if (isInsurance()) {
+                      Les réponses sont des données de santé : chiffrées, jamais comptées dans le score, et soumises au consentement santé de chaque personne.
+                    } @else {
+                      Réservé aux familles d'assurance (Assurance, Assurance santé, Prévoyance).
+                    }
+                  </span>
+                </span>
+              </label>
+
+              <label class="flex items-start gap-2 text-sm" [class.cursor-pointer]="!scopeForm.excludedFromScoring().disabled()" [class.opacity-60]="scopeForm.excludedFromScoring().disabled()">
+                <input type="checkbox" class="mt-0.5 accent-primary" [formField]="scopeForm.excludedFromScoring" />
+                <span>
+                  Exclu du score
+                  <span class="block text-xs text-slate-400">
+                    @if (scopeForm.isHealthQuestionnaire().value()) {
+                      Toujours, pour un questionnaire santé.
+                    } @else {
+                      Les réponses ne pèsent pas dans le score du projet.
+                    }
+                  </span>
+                </span>
+              </label>
+            </form>
+          </tas-card>
+        </div>
+      }
+
+      <!-- ── Aperçu : le formulaire de saisie, règles actives ── -->
+      @case ('apercu') {
+        <tas-card class="block">
+          <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-5 py-3">
+            <div>
+              <p class="text-sm font-semibold text-slate-700">Aperçu de la saisie</p>
+              <p class="text-xs text-slate-400">Tel que l'agent le remplira, avec les règles actives. Rien n'est enregistré ; les modifications non enregistrées sont prises en compte.</p>
+            </div>
+            <button tas-outlined-button type="button" (click)="resetPreview()">
+              <tas-icon iconName="feather:rotate-ccw" style="font-size:12px"></tas-icon> Recommencer
+            </button>
+          </div>
+          <div class="mx-auto max-w-2xl p-5">
+            @if (previewSchema(); as schema) {
+              @if (schema.questions.length) {
+                <dynamic-form-renderer [schema]="schema"></dynamic-form-renderer>
+              } @else {
+                <p class="py-10 text-center text-sm text-slate-400">Aucune question à afficher.</p>
+              }
+            }
+          </div>
+        </tas-card>
+      }
+
+      <!-- ── Versions : les formulaires du même produit ── -->
+      @case ('versions') {
+        <tas-card class="block">
+          <div class="border-b border-slate-100 px-5 py-3">
+            <p class="text-sm font-semibold text-slate-700">Versions</p>
+            <p class="text-xs text-slate-400">Les formulaires de ce produit, numérotés dans l'ordre de publication. Une version publiée ou archivée s'ouvre en lecture seule.</p>
+          </div>
+          <tas-table [data]="versions()" identifierField="id" [config]="versionsTableConfig" [hasCaption]="false">
+            <ng-template #header>
+              <tr class="text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                <th class="py-2 pl-4">Version</th>
+                <th class="py-2">Formulaire</th>
+                <th class="py-2">Statut</th>
+                <th class="py-2 pr-4 text-right">Publiée le</th>
+              </tr>
+            </ng-template>
+            <ng-template #body let-v>
+              <tr [class]="v.current ? 'bg-primary/5' : 'cursor-pointer transition-colors hover:bg-slate-50'" (click)="openVersion(v)">
+                <td class="py-2 pl-4 text-sm font-semibold tabular-nums text-slate-700">
+                  {{ v.number ?? '—' }}
+                  @if (v.current) { <span class="ml-1 text-xs font-normal text-primary">affichée</span> }
+                </td>
+                <td class="py-2 text-sm text-slate-700">{{ v.name }}</td>
+                <td class="py-2"><tas-tag [severity]="statusSeverity(v.status)">{{ statusLabel(v.status) }}</tas-tag></td>
+                <td class="py-2 pr-4 text-right text-xs tabular-nums text-slate-500">
+                  {{ v.publishedAt ? (v.publishedAt | date: 'dd/MM/yyyy HH:mm') : 'Jamais publiée' }}
+                </td>
+              </tr>
+            </ng-template>
+          </tas-table>
+        </tas-card>
+      }
+    }
   </div>
 }

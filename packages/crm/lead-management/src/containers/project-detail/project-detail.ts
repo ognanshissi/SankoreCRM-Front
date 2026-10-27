@@ -1,9 +1,8 @@
-import { DatePipe, LowerCasePipe } from '@angular/common';
-import { Component, computed, DestroyRef, inject, OnInit, signal } from '@angular/core';
+import { Component, computed, DestroyRef, inject, OnInit, signal, viewChild } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { HttpErrorResponse } from '@angular/common/http';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { form, FormField, FormRoot, maxLength, minLength, required, submit, validate } from '@angular/forms/signals';
+import { form, FormField, FormRoot, maxLength, minLength, required, submit } from '@angular/forms/signals';
 import { catchError, EMPTY, firstValueFrom, map, Observable, of } from 'rxjs';
 import {
   ClientDetailDto,
@@ -21,7 +20,6 @@ import {
 import {
   BreadcrumbService,
   EntityFormReferences,
-  institutionCurrency,
   PermissionsService,
   ProjectGateCode,
   projectGateCode,
@@ -35,68 +33,19 @@ import { ConfirmDialogService } from '@talisoft/ui/confirm-dialog';
 import { TasError, TasFormField, TasLabel } from '@talisoft/ui/form-field';
 import { TasIcon } from '@talisoft/ui/icon';
 import { TasInput } from '@talisoft/ui/input';
-import { TasDatePicker } from '@talisoft/ui/date-picker';
-import { TasSelect } from '@talisoft/ui/select';
 import { SideDrawerService } from '@talisoft/ui/side-drawer';
 import { SnackbarService } from '@talisoft/ui/snackbar';
 import { TasSpinner } from '@talisoft/ui/spinner';
 import { ConvertLeadWizard } from '../edit-lead/convert-lead-wizard';
-import { formatAmount, formatDay } from '../edit-lead/lead-view.models';
-import {
-  closeDateLabel,
-  closeDateWarning,
-  currentStep,
-  hasTemplateSteps,
-  isClosed,
-  monthsFromNow,
-  probabilityPercent,
-  projectSteps,
-  stageMeta,
-  stepLabel,
-  stepSuggestion,
-  weightedAmount,
-} from '../edit-lead/opportunities/opportunity.model';
-import { ProjectQuestionnaires } from './project-questionnaires';
+import { currentStep, hasTemplateSteps, isClosed, stepLabel } from '../edit-lead/opportunities/opportunity.model';
+import { EditProjectInfoDrawer, EditProjectInfoDrawerData } from './edit-project-info-drawer';
 import { ProjectFields } from './project-fields';
-
-class InfoFormModel {
-  public title!: string;
-  public product!: string;
-  public description!: string;
-  /** En texte, comme l'input le rend : converti à l'envoi. */
-  public amount!: string;
-
-  public static from(p: OpportunityDto | null): InfoFormModel {
-    const m = new InfoFormModel();
-    m.title = p?.title ?? '';
-    m.product = p?.product ?? '';
-    m.description = p?.description ?? '';
-    m.amount = p?.estimatedAmount?.amount ? String(p.estimatedAmount.amount) : '';
-    return m;
-  }
-}
-
-class NextStepFormModel {
-  public text!: string;
-  public dueOn!: string;
-
-  public static from(p: OpportunityDto | null): NextStepFormModel {
-    const m = new NextStepFormModel();
-    m.text = p?.nextStep ?? '';
-    m.dueOn = p?.nextStepDueOn ?? '';
-    return m;
-  }
-}
-
-class CloseDateFormModel {
-  public date!: string;
-
-  public static from(p: OpportunityDto | null): CloseDateFormModel {
-    const m = new CloseDateFormModel();
-    m.date = p?.expectedCloseDate ? p.expectedCloseDate.slice(0, 10) : '';
-    return m;
-  }
-}
+import { ProjectHistory } from './project-history';
+import { ProjectProgress } from './project-progress';
+import { ProjectQuestionnaires } from './project-questionnaires';
+import { ProjectSummary, ProjectUpdate } from './project-summary';
+import { ProjectTasks } from './project-tasks';
+import { ProjectValidations } from './project-validations';
 
 class LoseFormModel {
   public reason!: string;
@@ -108,23 +57,22 @@ class LoseFormModel {
   }
 }
 
-type Editor = 'info' | 'nextStep' | 'closeDate' | 'lose' | null;
-
-function parseAmount(text: string): number | null {
-  const cleaned = text.replace(/\s/g, '').replace(',', '.');
-  return cleaned ? Number(cleaned) : null;
-}
 
 /**
- * Le détail d'un projet : pour qui, sur quel produit et quel parcours, où il en est, ce qu'il
- * reste à faire. Les mêmes écritures que l'onglet Projets du lead — et les mêmes refus du serveur
- * aux étapes marquées (dossier client, approbation), avec l'action qui les lève.
+ * Le détail d'un projet, en deux colonnes depuis la refonte du 2026-10-27 (choix du
+ * propriétaire) : à gauche le travail — où il en est, ce que l'étape demande pour la quitter, le
+ * dossier, les questionnaires, les validations ; à droite ce qu'on veut voir sans faire défiler —
+ * pour qui, combien, quand, la prochaine action.
+ *
+ * Toutes les écritures passent par la page : elle relit le projet (le jeton de concurrence est
+ * périmé dès la réponse) et traduit les refus du serveur aux étapes marquées en bandeau, avec
+ * l'action qui les lève.
  */
 @Component({
   selector: 'project-detail',
   imports: [
-    RouterLink, DatePipe, LowerCasePipe, FormRoot, FormField, Anchor, Button, TasCard, TasFormField, TasLabel, TasError,
-    TasIcon, TasInput, TasDatePicker, TasSelect, TasSpinner, ProjectQuestionnaires, ProjectFields,
+    RouterLink, FormRoot, FormField, Anchor, Button, TasCard, TasFormField, TasLabel, TasError, TasIcon, TasInput, TasSpinner,
+    ProjectFields, ProjectHistory, ProjectProgress, ProjectQuestionnaires, ProjectSummary, ProjectTasks, ProjectValidations,
   ],
   templateUrl: './project-detail.html',
 })
@@ -142,9 +90,8 @@ export class ProjectDetail implements OnInit {
   private readonly _snackbar = inject(SnackbarService);
   private readonly _confirm = inject(ConfirmDialogService);
 
-  public readonly formatAmount = formatAmount;
-  public readonly formatDay = formatDay;
-  public readonly closeDateLabel = closeDateLabel;
+  private readonly _summary = viewChild(ProjectSummary);
+  private readonly _history = viewChild(ProjectHistory);
 
   public readonly projectId = signal('');
   public readonly project = signal<OpportunityDto | null>(null);
@@ -155,7 +102,8 @@ export class ProjectDetail implements OnInit {
   public readonly isLoading = signal(true);
   public readonly loadError = signal<string | null>(null);
   public readonly busy = signal(false);
-  public readonly editor = signal<Editor>(null);
+  /** Le formulaire « Marquer perdu », ouvert sous l'en-tête. */
+  public readonly losing = signal(false);
   /** La souscription qu'un « gagné » vient d'ouvrir, pour la proposer tout de suite. */
   public readonly holdingId = signal<string | null>(null);
   public readonly gate = signal<{ code: ProjectGateCode; message: string } | null>(null);
@@ -175,43 +123,8 @@ export class ProjectDetail implements OnInit {
   // ——— Lecture ———
 
   public readonly closed = computed(() => !!this.project() && isClosed(this.project()!));
-  public readonly steps = computed(() => (this.project() ? projectSteps(this.project()!) : []));
   public readonly current = computed(() => (this.project() ? currentStep(this.project()!) : null));
-  public readonly stepIndex = computed(() => {
-    const step = this.current();
-    return step ? this.steps().findIndex((s) => s.id === step.id) : -1;
-  });
   public readonly statusLabel = computed(() => (this.project() ? stepLabel(this.project()!) : ''));
-  public readonly suggestion = computed(() => (this.project() ? stepSuggestion(this.project()!) : null));
-  /** Faux pour un parcours vendu au rendez-vous : ni probabilité ni clôture prévue à l'écran. */
-  public readonly tracksForecast = computed(() => this.project()?.tracksForecast !== false);
-  /** « Montant du crédit », « Prime annuelle »… selon le gabarit. */
-  public readonly amountLabel = computed(() => projectAmountLabel(this.project()?.amountKind));
-  /** La clôture est une échéance (crédit de campagne) : « Date limite », et dépassée = urgence. */
-  public readonly criticalCloseDate = computed(() => !!this.project()?.criticalCloseDate);
-  public readonly probability = computed(() => (this.project() ? probabilityPercent(this.project()!) : 0));
-  public readonly weighted = computed(() => (this.project() ? weightedAmount(this.project()!) : 0));
-  public readonly closeWarning = computed(() => (this.project() ? closeDateWarning(this.project()!) : null));
-  /**
-   * Ce que l'étape en cours demande avant qu'on la quitte : ses points à cocher, et l'état de son
-   * circuit de validation — lancé à l'arrivée, approuvé avant de repartir.
-   */
-  public readonly exitConditions = computed(() => {
-    const step = this.current();
-    const project = this.project();
-    if (!step || !project || this.closed()) return null;
-
-    const ticked = new Set(project.checkedChecklistItemIds ?? []);
-    const checklist = (step.checklist ?? []).map((i) => ({ id: i.id ?? '', label: i.label ?? '', done: ticked.has(i.id ?? '') }));
-    const runs = (project.workflowRuns ?? []).filter((r) => r.stepId === step.id);
-    const run = runs.length ? runs[runs.length - 1] : null;
-    const workflow = step.workflowCircuit
-      ? { state: run?.state ?? 'NotStarted', startedAt: run?.startedAt ?? null, runs: runs.length }
-      : null;
-
-    if (checklist.length === 0 && !workflow) return null;
-    return { checklist, done: checklist.filter((i) => i.done).length, workflow };
-  });
 
   public readonly ownerName = computed(() => {
     const id = this.project()?.ownerId;
@@ -229,36 +142,25 @@ export class ProjectDetail implements OnInit {
       this.client()?.displayName?.trim() ||
       '—',
   );
-  public readonly productOptions = computed(() => [
+  private readonly _productOptions = computed(() => [
     ...(this.project()?.customerEntityId ? [] : [{ value: '', label: 'À préciser' }]),
     ...this._products().map((p) => ({ value: p.label, label: p.label })),
   ]);
 
-  // ——— Formulaires ———
+  /** Le projet est gagné et peut encore ouvrir son contrat : la clôture a pu échouer en silence. */
+  public readonly canOpenHolding = computed(
+    () => this._canManage() && this.project()?.stage === 'ClosedWon' && !this.holdingId(),
+  );
 
-  public infoModel = signal(InfoFormModel.from(null));
-  public infoForm = form(this.infoModel, (schema) => {
-    required(schema.title, { message: 'Le titre est obligatoire' });
-    maxLength(schema.title, 200, { message: '200 caractères au plus' });
-    maxLength(schema.description, 2000, { message: '2 000 caractères au plus' });
-    validate(schema.amount, (ctx) => {
-      const amount = parseAmount(ctx.value());
-      return amount !== null && (Number.isNaN(amount) || amount <= 0)
-        ? { kind: 'amount', message: 'Saisissez un montant positif, en chiffres' }
-        : null;
-    });
+  /** La dernière version de son parcours, quand le projet en suit une plus ancienne et est encore ouvert. */
+  public readonly newerTemplateVersion = computed(() => {
+    const p = this.project();
+    if (!p || isClosed(p) || !p.templateVersion || !p.latestTemplateVersion) return null;
+    return p.latestTemplateVersion > p.templateVersion ? p.latestTemplateVersion : null;
   });
 
-  public nextStepModel = signal(NextStepFormModel.from(null));
-  public nextStepForm = form(this.nextStepModel, (schema) => {
-    required(schema.text, { message: "Décrivez l'action à mener" });
-    maxLength(schema.text, 200, { message: "L'action ne peut pas dépasser 200 caractères" });
-  });
-
-  public closeDateModel = signal(CloseDateFormModel.from(null));
-  public closeDateForm = form(this.closeDateModel, (schema) => {
-    required(schema.date, { message: 'Choisissez une date' });
-  });
+  /** L'écriture que la colonne de droite reçoit : celle de la page, avec sa relecture et ses refus. */
+  public readonly update: ProjectUpdate = (patch, success) => this._update(patch, success);
 
   public loseModel = signal(LoseFormModel.instantiate());
   public loseForm = form(this.loseModel, (schema) => {
@@ -266,122 +168,6 @@ export class ProjectDetail implements OnInit {
     minLength(schema.reason, 3, { message: 'Précisez le motif' });
     maxLength(schema.reason, 500, { message: 'Le motif ne peut pas dépasser 500 caractères' });
   });
-
-  public toggleChecklistItem(itemId: string, done: boolean): void {
-    const p = this.project();
-    if (!p?.id || this.busy()) return;
-    void this._run(this._api.setProjectChecklistItem(p.id, itemId, { done }), done ? 'Point coché' : 'Point décoché');
-  }
-
-  public restartWorkflow(): void {
-    const p = this.project();
-    if (!p?.id || this.busy()) return;
-    void this._run(this._api.restartProjectWorkflow(p.id), 'Circuit de validation relancé');
-  }
-
-  /**
-   * Depuis un refus « montant obligatoire » : le formulaire s'ouvre plus bas, hors de l'écran —
-   * sans défilement, le bouton semblait ne rien faire.
-   */
-  public fixAmount(): void {
-    this.editInfo();
-    this._reveal('project-info', 'input[inputmode="numeric"]');
-  }
-
-  public fixCloseDate(): void {
-    this.editCloseDate();
-    this._reveal('exit-date', 'tas-date-picker input');
-  }
-
-  /** Après le rendu du formulaire ouvert : le montre et y place le curseur. */
-  private _reveal(id: string, field: string): void {
-    setTimeout(() => {
-      const host = document.getElementById(id);
-      host?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      host?.querySelector<HTMLInputElement>(field)?.focus({ preventScroll: true });
-    });
-  }
-
-  /** Libellé et couleur d'un statut de circuit ou de décision, tels que le moteur les nomme. */
-  public validationStatus(status: string | null | undefined): { label: string; tone: string; icon: string } {
-    switch (status) {
-      case 'Completed':
-      case 'Approved':
-        return { label: 'Approuvé', tone: 'text-primary', icon: 'feather:check-circle' };
-      case 'Rejected':
-        return { label: 'Refusé', tone: 'text-red-700', icon: 'feather:x-circle' };
-      case 'Cancelled':
-        return { label: 'Annulé', tone: 'text-slate-500', icon: 'feather:slash' };
-      case 'TimedOut':
-        return { label: 'Délai dépassé', tone: 'text-red-700', icon: 'feather:alert-circle' };
-      case 'Skipped':
-        return { label: 'Sans objet', tone: 'text-slate-400', icon: 'feather:minus-circle' };
-      case 'Unknown':
-        return { label: 'Illisible', tone: 'text-amber-700', icon: 'feather:help-circle' };
-      default:
-        return { label: 'En attente', tone: 'text-amber-700', icon: 'feather:clock' };
-    }
-  }
-
-  public scrollToValidations(): void {
-    document.getElementById('validations')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }
-
-  /** Lue à part : un moteur de validation qui ne répond pas ne doit pas empêcher d'ouvrir le projet. */
-  private _loadValidations(project: OpportunityDto): void {
-    if (!project.id || !(project.workflowRuns ?? []).length) {
-      this.validations.set([]);
-      return;
-    }
-    this._api
-      .getProjectValidations(project.id)
-      .pipe(catchError(() => of([] as ProjectValidationDto[])))
-      .subscribe((list) => this.validations.set(list ?? []));
-  }
-
-  public scrollToExitConditions(): void {
-    document.getElementById('exit-conditions')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  }
-
-  public scrollToFields(): void {
-    const target = document.getElementById('project-fields') ?? document.getElementById('project-files');
-    target?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }
-
-  /** Une valeur ou un fichier enregistré peut lever le refus « champs à renseigner ». */
-  public onFieldsChanged(): void {
-    if (this.gate()?.code === 'PROJECT_FIELDS_REQUIRED') this.gate.set(null);
-    this.load();
-  }
-
-  /**
-   * Les champs encore vides que l'étape visée (ou le gain) exige, jusqu'à elle comprise : le
-   * serveur ne renvoie qu'un code, la page a le projet en main pour les nommer.
-   */
-  private _missingFields(p: OpportunityDto): string[] {
-    const steps = p.steps ?? [];
-    const index = this._target ? steps.findIndex((s) => s.label === this._target) : steps.length - 1;
-    const keys = new Set(steps.slice(0, index + 1).flatMap((s) => s.requiredFieldKeys ?? []));
-    const values = (p.customFields ?? {}) as Record<string, unknown>;
-    const withFiles = new Set((p.attachments ?? []).map((a) => a.fieldKey));
-    return (p.fields ?? [])
-      .filter((f) => keys.has(f.key ?? ''))
-      .filter((f) => {
-        if (f.type === 'Attachment') return !withFiles.has(f.key);
-        const v = values[f.key ?? ''];
-        return v === null || v === undefined || v === '' || (Array.isArray(v) && v.length === 0);
-      })
-      .map((f) => f.label ?? f.key ?? '');
-  }
-
-  public scrollToQuestionnaires(): void {
-    document.getElementById('questionnaires')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }
-
-  /** Une réponse enregistrée peut lever le refus d'étape affiché. */
-  public onQuestionnairesChanged(): void {
-    if (this.gate()?.code === 'PROJECT_QUESTIONNAIRES_INCOMPLETE') this.gate.set(null);
-  }
 
   public ngOnInit(): void {
     this._route.paramMap.pipe(takeUntilDestroyed(this._destroyRef)).subscribe((params) => {
@@ -408,8 +194,8 @@ export class ProjectDetail implements OnInit {
         this._breadcrumb.set([{ label: 'Projets', link: ['/leads/projets'] }, { label: project.title ?? 'Projet' }]);
         this._loadPerson(project);
         this._loadValidations(project);
-        // Arrivée depuis « Remplir les questionnaires » d'un autre écran : la section est en bas.
-        if (this._route.snapshot.fragment === 'questionnaires') setTimeout(() => this.scrollToQuestionnaires());
+        // Arrivée depuis « Remplir les questionnaires » d'un autre écran.
+        if (this._route.snapshot.fragment === 'questionnaires') setTimeout(() => this.scrollTo('questionnaires'));
       });
   }
 
@@ -426,12 +212,72 @@ export class ProjectDetail implements OnInit {
     });
   }
 
-  public phaseLabel(phase: string | null | undefined): string {
-    return stageMeta(phase)?.label ?? '';
+  /** Lue à part : un moteur de validation qui ne répond pas ne doit pas empêcher d'ouvrir le projet. */
+  private _loadValidations(project: OpportunityDto): void {
+    if (!project.id || !(project.workflowRuns ?? []).length) {
+      this.validations.set([]);
+      return;
+    }
+    this._api
+      .getProjectValidations(project.id)
+      .pipe(catchError(() => of([] as ProjectValidationDto[])))
+      .subscribe((list) => this.validations.set(list ?? []));
   }
 
-  public isCurrent(step: ProjectStepDto): boolean {
-    return this.current()?.id === step.id;
+  public scrollTo(id: 'questionnaires' | 'validations' | 'exit-conditions' | 'fields'): void {
+    const target =
+      id === 'fields'
+        ? (document.getElementById('project-fields') ?? document.getElementById('project-files'))
+        : document.getElementById(id);
+    target?.scrollIntoView({ behavior: 'smooth', block: id === 'exit-conditions' ? 'center' : 'start' });
+  }
+
+  // ——— Refus d'étape ———
+
+  /** Depuis un refus « montant obligatoire » : le tiroir s'ouvre, le curseur sur le montant. */
+  public fixAmount(): void {
+    this.editInfo('amount');
+  }
+
+  /** La clôture prévue est dans la colonne de droite : on l'y ouvre, on la montre, on y place le curseur. */
+  public fixCloseDate(): void {
+    this._summary()?.editCloseDate();
+    setTimeout(() => {
+      const host = document.getElementById('exit-date');
+      host?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      host?.querySelector<HTMLInputElement>('tas-date-picker input')?.focus({ preventScroll: true });
+    });
+  }
+
+  /** Une valeur ou un fichier enregistré peut lever le refus « champs à renseigner ». */
+  public onFieldsChanged(): void {
+    if (this.gate()?.code === 'PROJECT_FIELDS_REQUIRED') this.gate.set(null);
+    this.load();
+  }
+
+  /** Une réponse enregistrée peut lever le refus d'étape affiché. */
+  public onQuestionnairesChanged(): void {
+    if (this.gate()?.code === 'PROJECT_QUESTIONNAIRES_INCOMPLETE') this.gate.set(null);
+  }
+
+  /**
+   * Les champs encore vides que l'étape visée (ou le gain) exige, jusqu'à elle comprise : le
+   * serveur ne renvoie qu'un code, la page a le projet en main pour les nommer.
+   */
+  private _missingFields(p: OpportunityDto): string[] {
+    const steps = p.steps ?? [];
+    const index = this._target ? steps.findIndex((s) => s.label === this._target) : steps.length - 1;
+    const keys = new Set(steps.slice(0, index + 1).flatMap((s) => s.requiredFieldKeys ?? []));
+    const values = (p.customFields ?? {}) as Record<string, unknown>;
+    const withFiles = new Set((p.attachments ?? []).map((a) => a.fieldKey));
+    return (p.fields ?? [])
+      .filter((f) => keys.has(f.key ?? ''))
+      .filter((f) => {
+        if (f.type === 'Attachment') return !withFiles.has(f.key);
+        const v = values[f.key ?? ''];
+        return v === null || v === undefined || v === '' || (Array.isArray(v) && v.length === 0);
+      })
+      .map((f) => f.label ?? f.key ?? '');
   }
 
   // ——— Étapes ———
@@ -441,13 +287,25 @@ export class ProjectDetail implements OnInit {
 
   public moveTo(step: ProjectStepDto): void {
     const p = this.project();
-    if (!p || !this.canManage() || this.isCurrent(step) || this.busy() || !hasTemplateSteps(p)) return;
+    if (!p || !this.canManage() || this.current()?.id === step.id || this.busy() || !hasTemplateSteps(p)) return;
     this._target = step.label ?? null;
     this._retry = () => this.moveTo(step);
     void this._run(
       this._api.moveOpportunityToStep(p.id!, { stepId: step.id!, expectedUpdatedAt: p.updatedAt ?? null }),
       `Étape : ${step.label} · probabilité ${step.probability} %`,
     );
+  }
+
+  public toggleChecklistItem(itemId: string, done: boolean): void {
+    const p = this.project();
+    if (!p?.id || this.busy()) return;
+    void this._run(this._api.setProjectChecklistItem(p.id, itemId, { done }), done ? 'Point coché' : 'Point décoché');
+  }
+
+  public restartWorkflow(): void {
+    const p = this.project();
+    if (!p?.id || this.busy()) return;
+    void this._run(this._api.restartProjectWorkflow(p.id), 'Circuit de validation relancé');
   }
 
   /**
@@ -477,104 +335,21 @@ export class ProjectDetail implements OnInit {
 
   // ——— Informations ———
 
-  public editInfo(): void {
-    this.infoModel.set(InfoFormModel.from(this.project()));
-    this.infoForm().reset();
-    this.editor.set('info');
-  }
-
-  public saveInfo(): void {
-    submit(this.infoForm, async (field) => {
-      const v = field().value();
-      const amount = parseAmount(v.amount);
-      await this._update(
-        {
-          title: v.title.trim(),
-          product: v.product,
-          description: v.description.trim(),
-          ...(amount !== null ? { estimatedAmount: amount, estimatedCurrency: this.project()?.estimatedAmount?.currency ?? institutionCurrency() } : {}),
-        },
-        'Projet mis à jour',
-      );
+  public editInfo(focus?: 'amount'): void {
+    const project = this.project();
+    if (!project) return;
+    this._sideDrawer.open<boolean, EditProjectInfoDrawerData, EditProjectInfoDrawer>(EditProjectInfoDrawer, {
+      data: {
+        project,
+        productOptions: this._productOptions(),
+        amountLabel: projectAmountLabel(project.amountKind),
+        save: (patch) => this._update(patch, 'Projet mis à jour'),
+        focus,
+      },
     });
   }
 
-  // ——— Clôture prévue ———
-
-  public setCloseInMonths(months: number): void {
-    void this._update({ expectedCloseDate: monthsFromNow(months) }, 'Clôture prévue mise à jour');
-  }
-
-  public editCloseDate(): void {
-    this.closeDateModel.set(CloseDateFormModel.from(this.project()));
-    this.closeDateForm().reset();
-    this.editor.set('closeDate');
-  }
-
-  public saveCloseDate(): void {
-    submit(this.closeDateForm, async (field) => {
-      await this._update({ expectedCloseDate: `${field().value().date}T12:00:00Z` }, 'Clôture prévue mise à jour');
-    });
-  }
-
-  // ——— Prochaine étape ———
-
-  public useSuggestion(text: string): void {
-    void this._update({ nextStep: text }, 'Prochaine étape définie');
-  }
-
-  public editNextStep(): void {
-    this.nextStepModel.set(NextStepFormModel.from(this.project()));
-    this.nextStepForm().reset();
-    this.editor.set('nextStep');
-  }
-
-  public saveNextStep(): void {
-    submit(this.nextStepForm, async (field) => {
-      const v = field().value();
-      await this._update({ nextStep: v.text.trim(), nextStepDueOn: v.dueOn || null }, 'Prochaine étape définie');
-    });
-  }
-
-  public clearNextStep(): void {
-    void this._update({ nextStep: '' }, 'Prochaine étape faite');
-  }
-
-  // ——— Issue ———
-
-  public markWon(): void {
-    const p = this.project();
-    if (!p) return;
-    this._confirm.confirm({
-      title: 'Marquer ce projet gagné ?',
-      message: `« ${p.title} » sera clos comme gagné. Il ne pourra plus changer d'étape.`,
-      closable: true,
-      showCancelButton: true,
-      acceptButtonProps: { label: 'Marquer gagné', theme: 'primary' },
-      rejectButtonProps: { label: 'Annuler' },
-      accept: () => this._win(),
-    });
-  }
-
-  private _win(): void {
-    const p = this.project();
-    if (!p) return;
-    this._target = null;
-    this._retry = () => this._win();
-    void this._run(
-      this._api
-        .closeOpportunity(p.id!, { outcome: CloseOpportunityRequestOutcomeEnum.ClosedWon, expectedUpdatedAt: p.updatedAt ?? null })
-        .pipe(map((r) => this.holdingId.set(r?.holdingId ?? null))),
-      'Projet gagné',
-    );
-  }
-
-  /** La dernière version de son parcours, quand le projet en suit une plus ancienne et est encore ouvert. */
-  public readonly newerTemplateVersion = computed(() => {
-    const p = this.project();
-    if (!p || isClosed(p) || !p.templateVersion || !p.latestTemplateVersion) return null;
-    return p.latestTemplateVersion > p.templateVersion ? p.latestTemplateVersion : null;
-  });
+  // ——— Parcours ———
 
   /**
    * Fait passer le projet à la dernière version de son parcours (propriétaire, 2026-10-26 : sur
@@ -621,10 +396,34 @@ export class ProjectDetail implements OnInit {
     });
   }
 
-  /** Le projet est gagné et peut encore ouvrir son contrat : la clôture a pu échouer en silence. */
-  public readonly canOpenHolding = computed(
-    () => this._canManage() && this.project()?.stage === 'ClosedWon' && !this.holdingId(),
-  );
+  // ——— Issue ———
+
+  public markWon(): void {
+    const p = this.project();
+    if (!p) return;
+    this._confirm.confirm({
+      title: 'Marquer ce projet gagné ?',
+      message: `« ${p.title} » sera clos comme gagné. Il ne pourra plus changer d'étape.`,
+      closable: true,
+      showCancelButton: true,
+      acceptButtonProps: { label: 'Marquer gagné', theme: 'primary' },
+      rejectButtonProps: { label: 'Annuler' },
+      accept: () => this._win(),
+    });
+  }
+
+  private _win(): void {
+    const p = this.project();
+    if (!p) return;
+    this._target = null;
+    this._retry = () => this._win();
+    void this._run(
+      this._api
+        .closeOpportunity(p.id!, { outcome: CloseOpportunityRequestOutcomeEnum.ClosedWon, expectedUpdatedAt: p.updatedAt ?? null })
+        .pipe(map((r) => this.holdingId.set(r?.holdingId ?? null))),
+      'Projet gagné',
+    );
+  }
 
   /**
    * Ouvre — ou retrouve — le contrat du projet gagné. La clôture tente la même ouverture mais tait
@@ -647,13 +446,15 @@ export class ProjectDetail implements OnInit {
       .subscribe((r) => {
         this.busy.set(false);
         this.holdingId.set(r?.holdingId ?? null);
+        // Le projet n'a pas changé — seul l'historique a une ligne de plus.
+        this._history()?.load();
         this._snackbar.success('Contrat ouvert', 'Le contrat est en brouillon dans les contrats du client.');
       });
   }
 
   public startLose(): void {
     this.loseForm().reset(LoseFormModel.instantiate());
-    this.editor.set('lose');
+    this.losing.set(true);
   }
 
   public confirmLose(): void {
@@ -669,10 +470,6 @@ export class ProjectDetail implements OnInit {
         'Projet perdu',
       );
     });
-  }
-
-  public cancelEditor(): void {
-    this.editor.set(null);
   }
 
   // ——— Écritures ———
@@ -706,7 +503,7 @@ export class ProjectDetail implements OnInit {
     this.busy.set(false);
     if (!done) return false;
     this.gate.set(null);
-    this.editor.set(null);
+    this.losing.set(false);
     this._snackbar.success(success, '');
     this.load();
     return true;

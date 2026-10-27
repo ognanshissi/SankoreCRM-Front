@@ -20119,6 +20119,80 @@
         }
       }
     },
+    "/api/v1/leads/opportunities/{id}/history": {
+      "get": {
+        "tags": [
+          "Opportunities"
+        ],
+        "operationId": "GetProjectHistory",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ProjectHistoryDto"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/api/v1/leads/opportunities/{id}/tasks": {
+      "get": {
+        "tags": [
+          "Opportunities"
+        ],
+        "operationId": "ListProjectTasks",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ProjectTaskDto"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
     "/api/v1/leads/opportunities/{id}/workflow/restart": {
       "post": {
         "tags": [
@@ -37808,10 +37882,11 @@
             "enum": [
               "Lead",
               "Client",
-              "KycFile"
+              "KycFile",
+              "Project"
             ],
             "type": "string",
-            "description": "One of: Lead, Client, KycFile",
+            "description": "One of: Lead, Client, KycFile, Project",
             "nullable": true
           },
           "entityId": {
@@ -38257,10 +38332,11 @@
             "enum": [
               "Lead",
               "Client",
-              "KycFile"
+              "KycFile",
+              "Project"
             ],
             "type": "string",
-            "description": "One of: Lead, Client, KycFile",
+            "description": "One of: Lead, Client, KycFile, Project",
             "nullable": true
           },
           "entityId": {
@@ -49381,6 +49457,65 @@
         },
         "additionalProperties": false
       },
+      "ProjectHistoryDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kind": {
+            "enum": [
+              "Created",
+              "StepChanged",
+              "AmountChanged",
+              "ProductChanged",
+              "CloseDateChanged",
+              "TemplateVersionChanged",
+              "Won",
+              "Lost",
+              "HoldingOpened",
+              "WorkflowRestarted"
+            ],
+            "type": "string",
+            "description": "One of: Created, StepChanged, AmountChanged, ProductChanged, CloseDateChanged, TemplateVersionChanged, Won, Lost, HoldingOpened, WorkflowRestarted"
+          },
+          "at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "actorId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "actorName": {
+            "type": "string",
+            "nullable": true
+          },
+          "from": {
+            "type": "string",
+            "nullable": true
+          },
+          "to": {
+            "type": "string",
+            "nullable": true
+          },
+          "detail": {
+            "type": "string",
+            "nullable": true
+          },
+          "relatedId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "reconstructed": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
       "ProjectQuestionnaireItemDto": {
         "type": "object",
         "properties": {
@@ -49633,6 +49768,75 @@
             "items": {
               "type": "string"
             },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ProjectTaskDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string",
+            "nullable": true
+          },
+          "type": {
+            "enum": [
+              "FirstContact",
+              "Qualification",
+              "SlaFollowUp",
+              "ScoreReview",
+              "OwnerHandover",
+              "ManualDispatch",
+              "Generic"
+            ],
+            "type": "string",
+            "description": "One of: FirstContact, Qualification, SlaFollowUp, ScoreReview, OwnerHandover, ManualDispatch, Generic"
+          },
+          "priority": {
+            "enum": [
+              "Low",
+              "Medium",
+              "High",
+              "Critical"
+            ],
+            "type": "string",
+            "description": "One of: Low, Medium, High, Critical"
+          },
+          "status": {
+            "enum": [
+              "Pending",
+              "InProgress",
+              "Completed",
+              "Cancelled"
+            ],
+            "type": "string",
+            "description": "One of: Pending, InProgress, Completed, Cancelled"
+          },
+          "dueAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "assignedAgentId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "assignedAgentName": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "completedAt": {
+            "type": "string",
+            "format": "date-time",
             "nullable": true
           }
         },
@@ -50186,6 +50390,16 @@
               "$ref": "#/components/schemas/QualificationQuestionDto"
             },
             "nullable": true
+          },
+          "subjectScope": {
+            "type": "string",
+            "nullable": true
+          },
+          "isHealthQuestionnaire": {
+            "type": "boolean"
+          },
+          "excludeFromScoring": {
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -58473,6 +58687,18 @@
             "items": {
               "$ref": "#/components/schemas/SectionInput"
             },
+            "nullable": true
+          },
+          "subjectScope": {
+            "type": "string",
+            "nullable": true
+          },
+          "isHealthQuestionnaire": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "excludeFromScoring": {
+            "type": "boolean",
             "nullable": true
           }
         },

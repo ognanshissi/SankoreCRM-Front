@@ -27,7 +27,7 @@ export interface CreateTaskRequest {
     slaDeadline?: string | null;
     description?: string | null;
     /**
-     * One of: Lead, Client, KycFile
+     * One of: Lead, Client, KycFile, Project
      */
     entityType?: CreateTaskRequestEntityTypeEnum | null;
     entityId?: string | null;
@@ -53,7 +53,8 @@ export enum CreateTaskRequestPriorityEnum {
 export enum CreateTaskRequestEntityTypeEnum {
     Lead = 'Lead',
     Client = 'Client',
-    KycFile = 'KycFile'
+    KycFile = 'KycFile',
+    Project = 'Project'
 };
 
 

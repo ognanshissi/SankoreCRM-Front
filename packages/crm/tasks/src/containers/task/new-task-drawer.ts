@@ -58,6 +58,7 @@ const ENTITY_TYPES: Record<Exclude<TaskSubjectType, 'none'>, CreateTaskRequestEn
   lead: CreateTaskRequestEntityTypeEnum.Lead,
   client: CreateTaskRequestEntityTypeEnum.Client,
   kyc: CreateTaskRequestEntityTypeEnum.KycFile,
+  project: CreateTaskRequestEntityTypeEnum.Project,
 };
 
 class NewTaskFormModel {
@@ -118,7 +119,9 @@ export class NewTaskDrawer {
   private readonly _data = inject<NewTaskDrawerData | null>(DIALOG_DATA, { optional: true });
   private readonly _me = inject(AuthenticationService).connectedUser()?.id ?? '';
 
-  public readonly subjectOptions = SUBJECT_OPTIONS;
+  /** « Un projet » seulement depuis la page d'un projet : aucune recherche de projet n'existe ici. */
+  public readonly subjectOptions =
+    this._data?.subject?.type === 'project' ? [...SUBJECT_OPTIONS, { label: 'Un projet', value: 'project' as const }] : SUBJECT_OPTIONS;
   public readonly priorityOptions = PRIORITY_OPTIONS;
   public readonly minDate = dayKey(Date.now());
   public readonly subjectLocked = !!this._data?.subject;

@@ -1,5 +1,5 @@
 /** Ce sur quoi porte une tâche, côté écran. */
-export type TaskSubjectType = 'none' | 'lead' | 'client' | 'kyc';
+export type TaskSubjectType = 'none' | 'lead' | 'client' | 'kyc' | 'project';
 
 /** Les refus du serveur, en clair. Un code inconnu tombe sur le message générique de l'écran. */
 export const TASK_ERRORS: Record<string, string> = {
@@ -26,6 +26,7 @@ export const TASK_ERRORS: Record<string, string> = {
   LEAD_NOT_FOUND: 'Ce lead n’existe pas, ou vous ne pouvez pas y travailler.',
   CLIENT_NOT_FOUND: 'Ce client n’existe pas, ou il est hors de votre périmètre.',
   KYC_FILE_NOT_FOUND: 'Ce dossier KYC n’existe pas, ou il est hors de votre périmètre.',
+  OPPORTUNITY_NOT_FOUND: 'Ce projet n’existe pas, ou il est hors de votre périmètre.',
   ALREADY_ASSIGNED_TO_AGENT: 'La tâche est déjà confiée à cette personne.',
 };
 
@@ -50,6 +51,7 @@ export function subjectRoute(type: string | null | undefined, id: string | null 
     case 'Lead': return ['/leads', id];
     case 'Client': return ['/customers', id];
     case 'KycFile': return ['/kyc', id];
+    case 'Project': return ['/leads/projets', id];
     default: return null;
   }
 }
