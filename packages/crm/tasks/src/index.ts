@@ -13,5 +13,7 @@ export type { NewTaskDrawerData } from './containers/task/new-task-drawer';
 export { CreateAppointmentDrawer } from './containers/dashboard/create-appointment-drawer';
 export type { CreateAppointmentDrawerData } from './containers/dashboard/create-appointment-drawer';
 export { PRIORITY_LABELS, STATUS_LABELS } from './containers/task/task-meta';
+export { MailComposeDrawer } from './containers/mail/mail-compose-drawer';
+export type { MailComposeDrawerData, MailComposeMode } from './containers/mail/mail-compose-drawer';
 
 export default tasksRoutes;

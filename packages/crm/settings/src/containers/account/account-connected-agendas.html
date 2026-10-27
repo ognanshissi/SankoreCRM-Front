@@ -1,8 +1,8 @@
 <div class="flex flex-col gap-6 pb-6">
   <div>
-    <h2 class="text-lg font-semibold text-slate-800">Agendas et contacts connectés</h2>
+    <h2 class="text-lg font-semibold text-slate-800">Agendas, contacts et messagerie</h2>
     <p class="text-sm text-slate-500 mt-0.5">
-      Ajoutez autant de comptes Microsoft et Google que nécessaire. Vous seul voyez leur contenu.
+      Ajoutez autant de comptes Microsoft, Google ou de boîtes mail que nécessaire. Vous seul voyez leur contenu.
     </p>
   </div>
 
@@ -129,13 +129,40 @@
                   </p>
                 }
 
+                <!-- Messagerie (lot 4) : activée par un nouveau consentement, pas par une case -->
+                <div class="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-slate-50 px-3 py-2">
+                  <div class="flex min-w-0 items-center gap-2 text-sm">
+                    <tas-icon iconName="feather:mail" iconClass="!size-4" [class]="a.mailEnabled ? 'text-primary' : 'text-slate-400'"></tas-icon>
+                    @if (a.mailEnabled) {
+                      <span class="font-medium text-slate-800">Messagerie</span>
+                      <span class="truncate text-xs" [class]="a.mailLastError ? 'text-functional-error' : 'text-slate-500'">
+                        @if (a.mailLastError) { {{ mailSyncErrorLabel(a.mailLastError) }} }
+                        @else if (a.mailSyncedAt) { lue {{ a.mailSyncedAt | dateTimeAgo }} }
+                        @else { première lecture en cours… }
+                      </span>
+                    } @else {
+                      <span class="text-slate-600">Messagerie non activée</span>
+                    }
+                  </div>
+                  @if (a.mailEnabled) {
+                    <div class="flex items-center gap-2">
+                      <button tas-text-button color="primary" type="button" [disabled]="busy() !== null || reconnect" [isLoading]="busy() === a.id" (click)="syncMail(a)">Lire maintenant</button>
+                      <button tas-text-button type="button" [disabled]="busy() !== null" (click)="disableMail(a)">Désactiver</button>
+                    </div>
+                  } @else {
+                    <button tas-outlined-button color="primary" type="button" [disabled]="busy() !== null" [isLoading]="busy() === a.id" (click)="enableMail(a)">
+                      Activer la messagerie
+                    </button>
+                  }
+                </div>
+
                 <div class="mt-auto flex items-center justify-between gap-3 border-t border-slate-100 pt-3 text-xs">
                   <span class="text-slate-500">
                     @if (a.lastSyncAt) { {{ a.lastSyncAt | dateTimeAgo }} } @else { Jamais synchronisé }
                   </span>
                   <div class="flex items-center gap-3">
                     @if (reconnect) {
-                      <button tas-text-button color="primary" type="button" [disabled]="busy() !== null" (click)="connect(p.code, a.label)">Reconnecter</button>
+                      <button tas-text-button color="primary" type="button" [disabled]="busy() !== null" (click)="connect(p.code, a)">Reconnecter</button>
                     } @else {
                       <button tas-text-button color="primary" type="button" [disabled]="busy() !== null" [isLoading]="busy() === a.id" (click)="sync(a)">Synchroniser</button>
                     }
@@ -148,6 +175,84 @@
         }
       </section>
     }
+
+    <!-- Toute autre boîte : IMAP/SMTP avec un mot de passe (messagerie connectée, lot 4) -->
+    <section class="flex flex-col gap-3" aria-label="Autres boîtes mail">
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <div class="flex items-center gap-3">
+          <span class="flex size-10 items-center justify-center rounded-xl bg-slate-100 text-slate-700" aria-hidden="true">
+            <tas-icon iconName="feather:mail" iconClass="!size-4"></tas-icon>
+          </span>
+          <div>
+            <h3 class="text-base font-semibold text-slate-900">Autres boîtes mail</h3>
+            <p class="text-xs text-slate-500">
+              {{ imapAccounts().length }} boîte{{ imapAccounts().length > 1 ? 's' : '' }} · hébergeur, nom de domaine, Yahoo… par IMAP et SMTP
+            </p>
+          </div>
+        </div>
+        <button tas-raised-button color="primary" type="button" [disabled]="busy() !== null" (click)="openImap(null)">
+          <tas-icon iconName="feather:plus" style="font-size:14px"></tas-icon>
+          Ajouter une boîte mail
+        </button>
+      </div>
+
+      @if (imapAccounts().length > 0) {
+        <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          @for (a of imapAccounts(); track a.id) {
+            @let reconnect = a.status === 'NeedsReconnect';
+            <article class="flex flex-col gap-3 rounded-2xl border bg-white p-4" [class]="reconnect ? 'border-amber-300' : 'border-slate-200'">
+              <div class="flex items-start justify-between gap-3">
+                <div class="min-w-0 flex-1">
+                  <p class="text-sm font-semibold text-slate-900">{{ a.label }}</p>
+                  <p class="truncate text-xs text-slate-500">{{ a.email }}</p>
+                  @if (a.mailServer; as server) {
+                    <p class="mt-1 truncate text-xs text-slate-400">{{ server.imapHost }}:{{ server.imapPort }} · {{ server.smtpHost }}:{{ server.smtpPort }}</p>
+                  }
+                </div>
+                @if (reconnect) {
+                  <span class="inline-flex shrink-0 items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-800">
+                    <tas-icon iconName="feather:alert-triangle" style="font-size:11px"></tas-icon> Mot de passe refusé
+                  </span>
+                } @else if (a.mailLastError) {
+                  <span class="inline-flex shrink-0 items-center gap-1 rounded-full bg-red-50 px-2 py-0.5 text-[11px] font-semibold text-red-700">
+                    {{ mailSyncErrorLabel(a.mailLastError) }}
+                  </span>
+                } @else {
+                  <span class="inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-800">
+                    <tas-icon iconName="feather:check" style="font-size:11px"></tas-icon> Connectée
+                  </span>
+                }
+              </div>
+
+              @if (reconnect) {
+                <p class="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-900">
+                  Le serveur refuse le mot de passe enregistré (changé, ou mot de passe d’application révoqué). Saisissez-le à nouveau.
+                </p>
+              }
+
+              <div class="mt-auto flex items-center justify-between gap-3 border-t border-slate-100 pt-3 text-xs">
+                <span class="text-slate-500">
+                  @if (a.mailSyncedAt) { Lue {{ a.mailSyncedAt | dateTimeAgo }} } @else { Première lecture en cours… }
+                </span>
+                <div class="flex items-center gap-3">
+                  @if (!reconnect) {
+                    <button tas-text-button color="primary" type="button" [disabled]="busy() !== null" [isLoading]="busy() === a.id" (click)="syncMail(a)">Lire maintenant</button>
+                  }
+                  <button tas-text-button color="primary" type="button" [disabled]="busy() !== null" (click)="openImap(a)">{{ reconnect ? 'Corriger' : 'Modifier' }}</button>
+                  <button tas-text-button color="warn" type="button" [disabled]="busy() !== null" (click)="remove(a)">Retirer</button>
+                </div>
+              </div>
+            </article>
+          }
+        </div>
+      }
+    </section>
+
+    <p class="flex items-start gap-2 text-xs text-slate-500">
+      <tas-icon iconName="feather:mail" class="mt-0.5 shrink-0" iconClass="!size-3"></tas-icon>
+      Messagerie : seuls les e-mails échangés avec vos leads et clients sont gardés dans SANKORÉ (30 derniers jours à la connexion), et vous seul les lisez.
+      Vos collègues voient seulement qu’un échange a eu lieu.
+    </p>
 
     <p class="flex items-start gap-2 text-xs text-slate-500">
       <tas-icon iconName="feather:info" class="mt-0.5 shrink-0" style="font-size:12px"></tas-icon>

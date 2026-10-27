@@ -4,16 +4,19 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { form, FormField, FormRoot, required, submit, validate } from '@angular/forms/signals';
 import { catchError, EMPTY, firstValueFrom, of } from 'rxjs';
-import { ConnectedAccountDto, ConnectedAccountsApiService, ConnectedCalendarDto } from '@sankore/crm-api';
+import { ConnectedAccountDto, ConnectedAccountsApiService, ConnectedCalendarDto, ConnectedMailboxApiService } from '@sankore/crm-api';
 import { Button } from '@talisoft/ui/button';
 import { ConfirmDialogService } from '@talisoft/ui/confirm-dialog';
 import { TasError, TasFormField, TasLabel } from '@talisoft/ui/form-field';
 import { TasIcon } from '@talisoft/ui/icon';
 import { TasInput } from '@talisoft/ui/input';
 import { TasSelect } from '@talisoft/ui/select';
+import { SideDrawerService } from '@talisoft/ui/side-drawer';
 import { SnackbarService } from '@talisoft/ui/snackbar';
 import { TasSpinner } from '@talisoft/ui/spinner';
 import { TimeagoPipe } from '@talisoft/ui/timeago';
+import { mailboxErrorMessage, mailSyncErrorLabel } from './connected-mailbox.labels';
+import { ImapMailboxDrawer, ImapMailboxDrawerData } from './imap-mailbox-drawer';
 
 type ProviderCode = 'Microsoft' | 'Google';
 
@@ -53,6 +56,12 @@ const OUTCOMES: Record<string, { kind: 'success' | 'info' | 'error'; title: stri
   erreur: { kind: 'error', title: 'Connexion impossible', message: 'Le fournisseur n’a pas accepté la connexion. Réessayez.' },
 };
 
+/** Le retour du fournisseur quand la connexion demandait aussi la messagerie (`&messagerie=…`). */
+const MAIL_OUTCOMES: Record<string, { kind: 'success' | 'info'; title: string; message: string }> = {
+  ok: { kind: 'success', title: 'Messagerie activée', message: 'Les e-mails échangés avec vos leads et clients des 30 derniers jours sont lus dans quelques instants.' },
+  refusee: { kind: 'info', title: 'Messagerie non activée', message: 'Le droit d’accès aux e-mails n’a pas été accordé : seuls les agendas sont connectés.' },
+};
+
 const ERRORS: Record<string, string> = {
   CONNECTED_ACCOUNT_PROVIDER_UNAVAILABLE: 'Ce fournisseur n’est pas configuré sur ce déploiement.',
   CONNECTED_ACCOUNT_ORIGIN_NOT_ALLOWED: 'Cette adresse du CRM n’est pas autorisée à connecter un compte.',
@@ -83,6 +92,10 @@ class RenameFormModel {
  * courts déjà admise ailleurs. Les cases à cocher (lot 2) choisissent les agendas affichés ;
  * l'agenda cible (lot 4) reçoit une copie des rendez-vous SANKORÉ ; l'import des contacts viendra
  * avec le lot 5.
+ *
+ * Messagerie connectée (lot 4) : un compte Microsoft ou Google ACTIVE sa messagerie en repassant
+ * par l'écran de consentement avec le droit mail ; toute autre boîte se connecte en IMAP/SMTP par
+ * un tiroir. Seuls les e-mails échangés avec des leads et clients sont gardés côté serveur.
  */
 @Component({
   selector: 'account-connected-agendas',
@@ -91,6 +104,8 @@ class RenameFormModel {
 })
 export class AccountConnectedAgendas implements OnInit {
   private readonly _api = inject(ConnectedAccountsApiService);
+  private readonly _mailApi = inject(ConnectedMailboxApiService);
+  private readonly _sideDrawer = inject(SideDrawerService);
   private readonly _snackbar = inject(SnackbarService);
   private readonly _confirm = inject(ConfirmDialogService);
   private readonly _route = inject(ActivatedRoute);
@@ -110,6 +125,10 @@ export class AccountConnectedAgendas implements OnInit {
   /** Le compte dont le fournisseur est en cours d'ouverture, ou en cours d'action. */
   public readonly busy = signal<string | null>(null);
   public readonly renaming = signal<string | null>(null);
+
+  public readonly imapAccounts = computed(() => this.accounts().filter((a) => a.provider === 'Imap'));
+
+  public readonly mailSyncErrorLabel = mailSyncErrorLabel;
 
   public readonly byProvider = computed(() => {
     const groups: Record<string, ConnectedAccountDto[]> = {};
@@ -143,9 +162,12 @@ export class AccountConnectedAgendas implements OnInit {
 
   ngOnInit(): void {
     const outcome = this._route.snapshot.queryParamMap.get('connexion');
+    const mailOutcome = this._route.snapshot.queryParamMap.get('messagerie');
 
     if (outcome && OUTCOMES[outcome]) {
-      const { kind, title, message } = OUTCOMES[outcome];
+      // Une connexion qui demandait la messagerie dit ce qu'il en est de la messagerie : c'est ce
+      // que l'utilisateur venait faire.
+      const { kind, title, message } = outcome === 'ok' && mailOutcome && MAIL_OUTCOMES[mailOutcome] ? MAIL_OUTCOMES[mailOutcome] : OUTCOMES[outcome];
       this._snackbar[kind](title, message);
       // Le paramètre a servi : un rechargement ne doit pas réafficher le message.
       this._router.navigate([], { relativeTo: this._route, queryParams: {}, replaceUrl: true });
@@ -180,11 +202,15 @@ export class AccountConnectedAgendas implements OnInit {
     return this.available().includes(provider);
   }
 
-  /** Part vers l'écran de consentement du fournisseur ; il renvoie ici une fois le compte choisi. */
-  public connect(provider: ProviderCode, label?: string | null): void {
-    this.busy.set(provider);
+  /**
+   * Part vers l'écran de consentement du fournisseur ; il renvoie ici une fois le compte choisi.
+   * `account` : reconnecter ce compte (son adresse est préremplie, sa messagerie redemandée si elle
+   * était active) ; `includeMail` : demander aussi le droit de lire et d'envoyer ses e-mails.
+   */
+  public connect(provider: ProviderCode, account?: ConnectedAccountDto | null, includeMail = false): void {
+    this.busy.set(account?.id ?? provider);
 
-    this._api.startConnectedAccount({ provider, label: label ?? null }).pipe(
+    this._api.startConnectedAccount({ provider, label: account?.label ?? null, includeMail, accountId: account?.id ?? null }).pipe(
       catchError((err: HttpErrorResponse) => {
         this._snackbar.error('Connexion impossible', this._message(err));
         this.busy.set(null);
@@ -216,7 +242,9 @@ export class AccountConnectedAgendas implements OnInit {
   public remove(account: ConnectedAccountDto): void {
     this._confirm.confirm({
       title: 'Retirer ce compte ?',
-      message: `« ${account.label} » (${account.email}) sera déconnecté de SANKORÉ. Ses agendas et ses contacts n’y apparaîtront plus.`,
+      message: account.provider === 'Imap'
+        ? `« ${account.label} » (${account.email}) sera déconnectée de SANKORÉ, et les e-mails qui en avaient été gardés effacés. Votre boîte elle-même n’est pas touchée.`
+        : `« ${account.label} » (${account.email}) sera déconnecté de SANKORÉ. Ses agendas, ses contacts et les e-mails qui en avaient été gardés n’y apparaîtront plus.`,
       closable: true,
       showCancelButton: true,
       acceptButtonProps: { label: 'Retirer', theme: 'warn' },
@@ -233,7 +261,9 @@ export class AccountConnectedAgendas implements OnInit {
             'Compte retiré',
             account.provider === 'Microsoft'
               ? 'Pour révoquer aussi l’accès chez Microsoft : myaccount.microsoft.com › Confidentialité › Applications.'
-              : 'L’accès a aussi été révoqué chez Google.',
+              : account.provider === 'Google'
+                ? 'L’accès a aussi été révoqué chez Google.'
+                : 'Le mot de passe enregistré a été effacé.',
           );
         });
       },
@@ -297,6 +327,66 @@ export class AccountConnectedAgendas implements OnInit {
           : 'Vos rendez-vous à venir sont retirés de l’agenda où ils avaient été copiés.',
       );
     });
+  }
+
+  // ── Messagerie (lot 4) ───────────────────────────────────────────────
+
+  public enableMail(account: ConnectedAccountDto): void {
+    this.connect(account.provider as ProviderCode, account, true);
+  }
+
+  public disableMail(account: ConnectedAccountDto): void {
+    this._confirm.confirm({
+      title: 'Désactiver la messagerie ?',
+      message: `SANKORÉ cessera de lire et d’envoyer les e-mails de « ${account.label} », et effacera ceux qu’il en avait gardés. Ses agendas restent connectés.`,
+      closable: true,
+      showCancelButton: true,
+      acceptButtonProps: { label: 'Désactiver', theme: 'warn' },
+      rejectButtonProps: { label: 'Annuler' },
+      accept: () => {
+        this._api.disableMailbox(account.id!).pipe(
+          catchError((err: HttpErrorResponse) => {
+            this._snackbar.error('Messagerie non désactivée', mailboxErrorMessage(err));
+            return EMPTY;
+          }),
+        ).subscribe(() => {
+          this.accounts.update((all) => all.map((a) => (a.id === account.id ? { ...a, mailEnabled: false, mailSyncedAt: null, mailLastError: null } : a)));
+          this._snackbar.success('Messagerie désactivée', 'Les e-mails gardés de ce compte ont été effacés.');
+        });
+      },
+    });
+  }
+
+  /** La lecture se fait en arrière-plan (202) : on relit l'état quelques secondes plus tard. */
+  public syncMail(account: ConnectedAccountDto): void {
+    this.busy.set(account.id ?? null);
+
+    this._mailApi.syncMyMailbox(account.id!).pipe(
+      catchError((err: HttpErrorResponse) => {
+        this._snackbar.error('Lecture impossible', mailboxErrorMessage(err));
+        this.busy.set(null);
+        return EMPTY;
+      }),
+    ).subscribe(() => {
+      this.busy.set(null);
+      this._snackbar.info('Lecture lancée', 'Les nouveaux e-mails apparaîtront dans quelques instants.');
+      setTimeout(() => this.reload(), 6000);
+    });
+  }
+
+  public openImap(account: ConnectedAccountDto | null): void {
+    this._sideDrawer
+      .open<ConnectedAccountDto | null, ImapMailboxDrawerData, ImapMailboxDrawer>(ImapMailboxDrawer, {
+        width: '100%',
+        height: '100%',
+        panelClass: 'side-drawer-panel',
+        data: { account },
+      })
+      .closed.subscribe((saved) => {
+        if (!saved) return;
+        this.accounts.update((all) => (all.some((a) => a.id === saved.id) ? all.map((a) => (a.id === saved.id ? saved : a)) : [...all, saved]));
+        setTimeout(() => this.reload(), 6000);
+      });
   }
 
   public eventsLabel(calendar: ConnectedCalendarDto): string {

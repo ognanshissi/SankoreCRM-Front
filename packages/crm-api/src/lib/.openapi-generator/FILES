@@ -23,6 +23,7 @@ api/company-info.service.ts
 api/compliance-settings.service.ts
 api/compliance.service.ts
 api/connected-accounts.service.ts
+api/connected-mailbox.service.ts
 api/customer-compliance.service.ts
 api/customer-settings.service.ts
 api/delivery-logs.service.ts
@@ -50,6 +51,7 @@ api/leads-bulk.service.ts
 api/leads.service.ts
 api/legal-entities.service.ts
 api/legal-forms.service.ts
+api/mail-templates.service.ts
 api/notification-settings.service.ts
 api/notifications.service.ts
 api/nurturing-sequences.service.ts
@@ -129,6 +131,7 @@ model/anonymize-client-request.interface.ts
 model/approve-client-merge-request.interface.ts
 model/approve-step-request.interface.ts
 model/archive-client-request.interface.ts
+model/archive-mail-template-request.interface.ts
 model/assign-advisor-request.interface.ts
 model/assign-agency-manager-request.interface.ts
 model/assign-agency-manager-result.interface.ts
@@ -374,6 +377,7 @@ model/hosted-form-config.interface.ts
 model/hosted-form-field.interface.ts
 model/household-resources-dto.interface.ts
 model/http-validation-problem-details.interface.ts
+model/imap-mailbox-request.interface.ts
 model/impersonate-user-request.interface.ts
 model/impersonation-started-dto.interface.ts
 model/import-job-created-result.interface.ts
@@ -480,6 +484,16 @@ model/login-history-dto.interface.ts
 model/login-request.interface.ts
 model/login-result.interface.ts
 model/loyalty-score-history-item-dto.interface.ts
+model/mail-attachment-dto.interface.ts
+model/mail-link-dto.interface.ts
+model/mail-message-dto.interface.ts
+model/mail-party-dto.interface.ts
+model/mail-server-dto.interface.ts
+model/mail-server-test-result.interface.ts
+model/mail-template-dto.interface.ts
+model/mail-template-variable-dto.interface.ts
+model/mail-thread-dto.interface.ts
+model/mail-thread-summary-dto.interface.ts
 model/manual-pull-result.interface.ts
 model/manually-validate-kyc-file-request.interface.ts
 model/manually-validate-kyc-file-result.interface.ts
@@ -539,6 +553,7 @@ model/paged-result-of-ingestion-dto.interface.ts
 model/paged-result-of-insurance-product-dto.interface.ts
 model/paged-result-of-lead-dto.interface.ts
 model/paged-result-of-lead-source-list-dto.interface.ts
+model/paged-result-of-mail-thread-summary-dto.interface.ts
 model/paged-result-of-overdue-profile-notice-dto.interface.ts
 model/paged-result-of-retention-candidate-dto.interface.ts
 model/paged-result-of-run-dto.interface.ts
@@ -645,6 +660,8 @@ model/remove-client-document-request.interface.ts
 model/remove-group-member-result.interface.ts
 model/remove-household-member-result.interface.ts
 model/rename-connected-account-request.interface.ts
+model/render-mail-template-request.interface.ts
+model/rendered-mail-template-dto.interface.ts
 model/replay-integration-command-result.interface.ts
 model/reply-support-ticket-body.interface.ts
 model/report-suspicious-login-request.interface.ts
@@ -688,6 +705,7 @@ model/run-kyc-verification-request.interface.ts
 model/run-kyc-verification-response.interface.ts
 model/sab-settings.interface.ts
 model/save-entity-form-request.interface.ts
+model/save-mail-template-request.interface.ts
 model/save-whats-app-bot-profile-request.interface.ts
 model/save-whats-app-channel-request.interface.ts
 model/schedule-appointment-request.interface.ts
@@ -727,6 +745,7 @@ model/set-intent-level-request.interface.ts
 model/set-kyc-remote-policy-request.interface.ts
 model/set-legal-hold-request.interface.ts
 model/set-life-insurance-request.interface.ts
+model/set-mail-thread-read-request.interface.ts
 model/set-monthly-quota-command.interface.ts
 model/set-pep-status-request.interface.ts
 model/set-project-checklist-item-request.interface.ts

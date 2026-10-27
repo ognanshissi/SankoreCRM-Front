@@ -1,0 +1,122 @@
+<div class="flex flex-col gap-4 pb-6">
+  <div class="flex flex-wrap items-center justify-between gap-3">
+    <div>
+      <h1 class="text-xl font-bold text-slate-900">Messagerie</h1>
+      <p class="text-sm text-slate-500">Vos échanges avec vos leads et vos clients, depuis vos boîtes connectées. Vous seul les lisez.</p>
+    </div>
+    @if (mailboxes().length > 0) {
+      <button tas-raised-button color="primary" type="button" (click)="compose()">
+        <tas-icon iconName="feather:edit" iconClass="!size-3.5"></tas-icon> Nouvel e-mail
+      </button>
+    }
+  </div>
+
+  @if (loadingAccounts()) {
+    <div class="flex justify-center py-16"><tas-spinner size="10" class="text-primary"></tas-spinner></div>
+  } @else if (mailboxes().length === 0) {
+    <div class="flex flex-col items-center gap-3 rounded-2xl bg-white px-6 py-16 text-center">
+      <span class="grid size-12 place-items-center rounded-full bg-primary/10 text-primary">
+        <tas-icon iconName="feather:mail" iconClass="!size-5"></tas-icon>
+      </span>
+      <p class="text-base font-semibold text-slate-900">Aucune boîte mail connectée</p>
+      <p class="max-w-md text-sm text-slate-500">
+        Activez la messagerie d’un compte Microsoft ou Google, ou connectez une autre boîte. Seuls les e-mails échangés avec vos leads et clients y seront gardés.
+      </p>
+      <a tas-raised-button color="primary" routerLink="/settings/account/agendas">Connecter une boîte</a>
+    </div>
+  } @else {
+    @if (brokenMailboxes().length > 0) {
+      <div class="flex flex-wrap items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm text-amber-900" role="alert">
+        <tas-icon iconName="feather:alert-triangle" iconClass="!size-4" class="shrink-0 text-amber-600"></tas-icon>
+        <p class="min-w-56 flex-1">
+          @for (b of brokenMailboxes(); track b.id; let last = $last) { « {{ b.label }} »{{ last ? '' : ', ' }} }
+          ne {{ brokenMailboxes().length > 1 ? 'sont' : 'est' }} plus lue{{ brokenMailboxes().length > 1 ? 's' : '' }} : les nouveaux e-mails n’arrivent pas.
+        </p>
+        <a tas-outlined-button color="primary" routerLink="/settings/account/agendas">Corriger</a>
+      </div>
+    }
+
+    <div class="grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(0,26rem)_minmax(0,1fr)]">
+      <!-- Les conversations : masquées sur mobile quand une conversation est ouverte -->
+      <section class="min-w-0 flex-col gap-3 rounded-2xl bg-white p-3" [class]="selected() ? 'hidden lg:flex' : 'flex'" aria-label="Conversations">
+        <div class="flex flex-wrap items-center gap-2">
+          @if (mailboxes().length > 1) {
+            <tas-select class="min-w-44 flex-1" [options]="accountOptions()" [ngModel]="accountFilter()" (ngModelChange)="setAccount($event)"></tas-select>
+          }
+          <label class="flex cursor-pointer items-center gap-2 text-sm text-slate-700">
+            <input type="checkbox" class="h-4 w-4 accent-primary" [checked]="unreadOnly()" (change)="setUnreadOnly($any($event.target).checked)" />
+            Non lus seulement
+          </label>
+          <button tas-button iconButton type="button" class="ms-auto" aria-label="Actualiser" [disabled]="isLoading()" (click)="load()">
+            <tas-icon iconName="feather:refresh-cw" iconClass="!size-3.5"></tas-icon>
+          </button>
+        </div>
+
+        @if (loadFailed()) {
+          <div class="flex flex-col items-center gap-2 py-10 text-center" role="alert">
+            <p class="text-sm text-slate-600">Les conversations n’ont pas pu être chargées.</p>
+            <button tas-outlined-button color="primary" type="button" (click)="load()">Réessayer</button>
+          </div>
+        } @else if (!isLoading() && threads().length === 0) {
+          <p class="px-2 py-10 text-center text-sm text-slate-400">
+            @if (unreadOnly()) { Aucune conversation non lue. }
+            @else { Aucun échange avec un lead ou un client pour le moment. Les e-mails des 30 derniers jours apparaissent après la première lecture de la boîte. }
+          </p>
+        } @else {
+          <tas-table [data]="threads()" identifierField="latestMessageId" [config]="config()" [isLoading]="isLoading()" [hasCaption]="false"
+                     (pageEventChange)="onPage($event)">
+            <ng-template #body let-t>
+              <tr>
+                <td class="!p-0">
+                  @let unread = (t.unreadCount ?? 0) > 0;
+                  <button type="button" class="flex w-full items-start gap-2.5 rounded-lg px-2.5 py-2.5 text-left transition-colors"
+                          [class]="isSelected(t) ? 'bg-primary/10' : 'hover:bg-slate-50'" [attr.aria-current]="isSelected(t) ? 'true' : null" (click)="open(t)">
+                    <span class="mt-1.5 size-2 shrink-0 rounded-full" [class]="unread ? 'bg-primary' : 'bg-transparent'" [attr.aria-label]="unread ? 'Non lu' : null"></span>
+                    <span class="min-w-0 flex-1">
+                      <span class="flex items-baseline justify-between gap-2">
+                        <span class="truncate text-sm" [class]="unread ? 'font-semibold text-slate-900' : 'text-slate-700'">
+                          {{ counterparts(t) }}
+                          @if ((t.messageCount ?? 0) > 1) { <span class="text-xs font-normal text-slate-400">({{ t.messageCount }})</span> }
+                        </span>
+                        <span class="shrink-0 text-xs tabular-nums" [class]="unread ? 'font-semibold text-primary' : 'text-slate-400'">{{ shortDate(t.lastAt) }}</span>
+                      </span>
+                      <span class="flex items-center gap-1 truncate text-sm" [class]="unread ? 'font-medium text-slate-900' : 'text-slate-600'">
+                        @if (t.hasAttachments) { <tas-icon iconName="feather:paperclip" iconClass="!size-3" class="shrink-0 text-slate-400"></tas-icon> }
+                        <span class="truncate">{{ t.subject || '(sans objet)' }}</span>
+                      </span>
+                      <span class="block truncate text-xs text-slate-500">{{ t.snippet }}</span>
+                      @if ((t.links ?? []).length > 0) {
+                        <span class="mt-1 flex flex-wrap gap-1">
+                          @for (l of t.links; track l.entityId) {
+                            <span class="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600">
+                              {{ l.name || (l.entityType === 'Client' ? 'Client' : 'Lead') }}
+                            </span>
+                          }
+                        </span>
+                      }
+                    </span>
+                  </button>
+                </td>
+              </tr>
+            </ng-template>
+          </tas-table>
+        }
+      </section>
+
+      <!-- La conversation ouverte -->
+      <section class="min-w-0 rounded-2xl bg-white p-4 sm:p-5" [class]="selected() ? 'block' : 'hidden lg:block'" aria-label="Conversation">
+        @if (selected(); as id) {
+          <button tas-text-button type="button" class="mb-2 lg:hidden" (click)="closeThread()">
+            <tas-icon iconName="feather:arrow-left" iconClass="!size-3.5"></tas-icon> Conversations
+          </button>
+          <mail-thread-view [messageId]="id" (changed)="load()"></mail-thread-view>
+        } @else {
+          <div class="flex flex-col items-center gap-2 py-24 text-center text-slate-400">
+            <tas-icon iconName="feather:mail" iconClass="!size-6"></tas-icon>
+            <p class="text-sm">Choisissez une conversation.</p>
+          </div>
+        }
+      </section>
+    </div>
+  }
+</div>

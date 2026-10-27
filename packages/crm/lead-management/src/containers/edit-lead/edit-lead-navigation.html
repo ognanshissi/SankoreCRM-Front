@@ -94,6 +94,13 @@
                 </a>
               }
             }
+            @if (l.email && canMail()) {
+              <button tas-outlined-button color="primary" type="button" class="rounded-full bg-white" (click)="openNewMail()"
+                      title="Écrire à ce lead depuis votre boîte mail">
+                <tas-icon iconName="feather:mail" style="font-size:14px"></tas-icon>
+                &nbsp;E-mail
+              </button>
+            }
             @if (canScheduleAppointment() && !isConverted()) {
               <button tas-outlined-button color="primary" type="button" class="rounded-full bg-white" (click)="openNewAppointment()"
                       title="Ajouter un rendez-vous avec ce lead">

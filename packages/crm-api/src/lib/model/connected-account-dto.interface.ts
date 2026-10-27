@@ -9,6 +9,7 @@
  * https://openapi-generator.tech
  * Do not edit the class manually.
  */
+import { MailServerDto } from './mail-server-dto.interface';
 import { ConnectedCalendarDto } from './connected-calendar-dto.interface';
 
 
@@ -23,5 +24,10 @@ export interface ConnectedAccountDto {
     lastSyncAt?: string | null;
     lastError?: string | null;
     calendars?: Array<ConnectedCalendarDto> | null;
+    mailEnabled?: boolean;
+    mailEnabledAt?: string | null;
+    mailServer?: MailServerDto;
+    mailSyncedAt?: string | null;
+    mailLastError?: string | null;
 }
 

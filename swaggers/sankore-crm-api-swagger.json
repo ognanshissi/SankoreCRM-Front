@@ -4941,7 +4941,7 @@
           "ConnectedAccounts"
         ],
         "summary": "Starts connecting a Microsoft or Google account: answers the provider's consent URL to navigate to",
-        "description": "The browser navigates to `authorizationUrl`; the provider sends it back to `/integration/oauth/{provider}/callback`, which redirects to `{origin}/settings/account/agendas?connexion=ok|refuse|expire|erreur`. The origin is the calling page's, checked against the CORS allow-list. Requires permission: ConnectedAccounts.Use.",
+        "description": "The browser navigates to `authorizationUrl`; the provider sends it back to `/integration/oauth/{provider}/callback`, which redirects to `{origin}/settings/account/agendas?connexion=ok|refuse|expire|erreur` (plus `&messagerie=ok|refusee` when `includeMail`). `accountId` reconnects one of the caller's accounts, keeping its mailbox if it is on. The origin is the calling page's, checked against the CORS allow-list. Requires permission: ConnectedAccounts.Use.",
         "operationId": "StartConnectedAccount",
         "requestBody": {
           "content": {
@@ -5145,6 +5145,459 @@
           },
           "422": {
             "description": "Unprocessable Entity"
+          }
+        }
+      }
+    },
+    "/api/v1/integration/me/connected-accounts/imap/test": {
+      "post": {
+        "tags": [
+          "ConnectedAccounts"
+        ],
+        "summary": "Logs into the IMAP then the SMTP server and says which step failed; saves nothing",
+        "description": "Answers 200 with `ok: false` and a code when a server refuses (`MAIL_IMAP_AUTH_FAILED`…), 422 when the settings themselves are invalid (port not allowed, bad host). With `accountId` and no password, the caller's stored password of that mailbox is used. Limited to 10 tries a minute per user.",
+        "operationId": "TestImapMailbox",
+        "parameters": [
+          {
+            "name": "accountId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImapMailboxRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MailServerTestResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          }
+        }
+      }
+    },
+    "/api/v1/integration/me/connected-accounts/imap": {
+      "post": {
+        "tags": [
+          "ConnectedAccounts"
+        ],
+        "summary": "Connects an IMAP/SMTP mailbox once both servers accept the login; the password goes to the vault",
+        "description": "Allowed ports: IMAP 993 or 143, SMTP 465, 587, 25 or 2525; security `Ssl` or `StartTls` (required, never optional). A server refusing answers 422 with the probe's code. The same login on the same server updates the existing mailbox. Limited to 10 tries a minute per user.",
+        "operationId": "ConnectImapMailbox",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImapMailboxRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectedAccountDto"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          }
+        }
+      }
+    },
+    "/api/v1/integration/me/connected-accounts/{id}/imap": {
+      "put": {
+        "tags": [
+          "ConnectedAccounts"
+        ],
+        "summary": "Changes an IMAP mailbox's servers, login or password (null keeps the stored one), after a new probe",
+        "operationId": "UpdateImapMailbox",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImapMailboxRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectedAccountDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "422": {
+            "description": "Unprocessable Entity"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          }
+        }
+      }
+    },
+    "/api/v1/integration/me/connected-accounts/{id}/mail": {
+      "delete": {
+        "tags": [
+          "ConnectedAccounts"
+        ],
+        "summary": "Stops reading and sending a Microsoft or Google account's mail; its agendas stay",
+        "description": "An IMAP mailbox is nothing but its mail: it answers 422 `CONNECTED_MAILBOX_IMAP_REMOVE_INSTEAD` — remove the account. Turning the mailbox back on goes through `authorize` with `includeMail`.",
+        "operationId": "DisableMailbox",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "422": {
+            "description": "Unprocessable Entity"
+          }
+        }
+      }
+    },
+    "/api/v1/integration/me/connected-accounts/{id}/mail/sync": {
+      "post": {
+        "tags": [
+          "ConnectedMailbox"
+        ],
+        "summary": "Reads the mailbox now, in the background (202); the account's mailSyncedAt moves when it is done",
+        "operationId": "SyncMyMailbox",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Accepted"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "409": {
+            "description": "Conflict"
+          }
+        }
+      }
+    },
+    "/api/v1/integration/me/mail/threads": {
+      "get": {
+        "tags": [
+          "ConnectedMailbox"
+        ],
+        "summary": "The caller's conversations kept from their mailboxes (only those with a lead or a client), latest first",
+        "operationId": "ListMyMailThreads",
+        "parameters": [
+          {
+            "name": "accountId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "unreadOnly",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PagedResultOfMailThreadSummaryDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/integration/me/mail/messages/{id}/thread": {
+      "get": {
+        "tags": [
+          "ConnectedMailbox"
+        ],
+        "summary": "Every kept message of the conversation this message belongs to, oldest first — the caller's own only",
+        "description": "An HTML body is returned as the sender wrote it, unsanitised: render it in a sandboxed frame.",
+        "operationId": "GetMyMailThread",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MailThreadDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/api/v1/integration/me/mail/send": {
+      "post": {
+        "tags": [
+          "ConnectedMailbox"
+        ],
+        "summary": "Sends an e-mail from one of the caller's mailboxes — new, reply or forward — with attachments",
+        "description": "multipart/form-data. `to`, `cc`, `bcc`: repeated fields, or one field separated by commas. `body`: HTML. `replyToMessageId`: a kept message of the same mailbox — the reply is threaded. `forwardMessageId` + repeated `forwardAttachmentIds`: the original's attachments, fetched now. `files`: up to 10 files, 20 MB in all, executables refused. Answers 202: the provider accepted it; it appears in the conversation after the sync that follows, when a lead or a client is among its recipients. Limited to 30 sends a minute per user.",
+        "operationId": "SendMail",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/SendMailForm"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Accepted"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "409": {
+            "description": "Conflict"
+          },
+          "422": {
+            "description": "Unprocessable Entity"
+          },
+          "502": {
+            "description": "Bad Gateway"
+          }
+        }
+      }
+    },
+    "/api/v1/integration/me/mail/messages/{id}/thread/read": {
+      "put": {
+        "tags": [
+          "ConnectedMailbox"
+        ],
+        "summary": "Marks the whole conversation read or unread — at the provider, then here",
+        "operationId": "SetMailThreadRead",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetMailThreadReadRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/api/v1/integration/me/mail/messages/{id}/attachments/{attachmentId}": {
+      "get": {
+        "tags": [
+          "ConnectedMailbox"
+        ],
+        "summary": "Opens an attachment of one of the caller's kept messages, fetched from the provider now",
+        "operationId": "GetMailAttachment",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "attachmentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "$ref": "#/components/schemas/Void"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/api/v1/integration/me/mail/templates/{id}/render": {
+      "post": {
+        "tags": [
+          "ConnectedMailbox"
+        ],
+        "summary": "Fills a template for one lead or client; the variables with no value are listed in `missing`",
+        "operationId": "RenderMailTemplate",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RenderMailTemplateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RenderedMailTemplateDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
           }
         }
       }
@@ -19200,6 +19653,179 @@
         }
       }
     },
+    "/api/v1/integration/mail-templates": {
+      "get": {
+        "tags": [
+          "MailTemplates"
+        ],
+        "summary": "The institution's e-mail templates; archived ones only for whoever may write them",
+        "operationId": "ListMailTemplates",
+        "parameters": [
+          {
+            "name": "includeArchived",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MailTemplateDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "MailTemplates"
+        ],
+        "operationId": "CreateMailTemplate",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveMailTemplateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MailTemplateDto"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity"
+          }
+        }
+      }
+    },
+    "/api/v1/integration/mail-templates/variables": {
+      "get": {
+        "tags": [
+          "MailTemplates"
+        ],
+        "summary": "The variables a template may use, written {{clé}}",
+        "operationId": "ListMailTemplateVariables",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MailTemplateVariableDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/integration/mail-templates/{id}": {
+      "put": {
+        "tags": [
+          "MailTemplates"
+        ],
+        "operationId": "UpdateMailTemplate",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveMailTemplateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MailTemplateDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "422": {
+            "description": "Unprocessable Entity"
+          }
+        }
+      }
+    },
+    "/api/v1/integration/mail-templates/{id}/archive": {
+      "put": {
+        "tags": [
+          "MailTemplates"
+        ],
+        "summary": "Archives a template (or brings it back); it is never deleted",
+        "operationId": "ArchiveMailTemplate",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ArchiveMailTemplateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
     "/api/v1/notification-settings": {
       "get": {
         "tags": [
@@ -32606,6 +33232,15 @@
         },
         "additionalProperties": false
       },
+      "ArchiveMailTemplateRequest": {
+        "type": "object",
+        "properties": {
+          "archived": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
       "AssignAdvisorRequest": {
         "type": "object",
         "properties": {
@@ -35962,6 +36597,26 @@
             "items": {
               "$ref": "#/components/schemas/ConnectedCalendarDto"
             },
+            "nullable": true
+          },
+          "mailEnabled": {
+            "type": "boolean"
+          },
+          "mailEnabledAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "mailServer": {
+            "$ref": "#/components/schemas/MailServerDto"
+          },
+          "mailSyncedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "mailLastError": {
+            "type": "string",
             "nullable": true
           }
         },
@@ -41709,6 +42364,56 @@
         },
         "additionalProperties": { }
       },
+      "ImapMailboxRequest": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "nullable": true
+          },
+          "displayName": {
+            "type": "string",
+            "nullable": true
+          },
+          "label": {
+            "type": "string",
+            "nullable": true
+          },
+          "imapHost": {
+            "type": "string",
+            "nullable": true
+          },
+          "imapPort": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "imapSecurity": {
+            "type": "string",
+            "nullable": true
+          },
+          "smtpHost": {
+            "type": "string",
+            "nullable": true
+          },
+          "smtpPort": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "smtpSecurity": {
+            "type": "string",
+            "nullable": true
+          },
+          "username": {
+            "type": "string",
+            "nullable": true
+          },
+          "password": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "ImpersonateUserRequest": {
         "type": "object",
         "properties": {
@@ -46087,6 +46792,314 @@
         },
         "additionalProperties": false
       },
+      "MailAttachmentDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "contentType": {
+            "type": "string",
+            "nullable": true
+          },
+          "size": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "isInline": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "MailLinkDto": {
+        "type": "object",
+        "properties": {
+          "entityType": {
+            "type": "string",
+            "nullable": true
+          },
+          "entityId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "MailMessageDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "accountId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "direction": {
+            "type": "string",
+            "nullable": true
+          },
+          "folder": {
+            "type": "string",
+            "nullable": true
+          },
+          "sentAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "isRead": {
+            "type": "boolean"
+          },
+          "from": {
+            "$ref": "#/components/schemas/MailPartyDto"
+          },
+          "to": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MailPartyDto"
+            },
+            "nullable": true
+          },
+          "cc": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MailPartyDto"
+            },
+            "nullable": true
+          },
+          "subject": {
+            "type": "string",
+            "nullable": true
+          },
+          "body": {
+            "type": "string",
+            "nullable": true
+          },
+          "bodyIsHtml": {
+            "type": "boolean"
+          },
+          "bodyTruncated": {
+            "type": "boolean"
+          },
+          "attachments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MailAttachmentDto"
+            },
+            "nullable": true
+          },
+          "links": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MailLinkDto"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "MailPartyDto": {
+        "type": "object",
+        "properties": {
+          "address": {
+            "type": "string",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "MailServerDto": {
+        "type": "object",
+        "properties": {
+          "imapHost": {
+            "type": "string",
+            "nullable": true
+          },
+          "imapPort": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "imapSecurity": {
+            "type": "string",
+            "nullable": true
+          },
+          "smtpHost": {
+            "type": "string",
+            "nullable": true
+          },
+          "smtpPort": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "smtpSecurity": {
+            "type": "string",
+            "nullable": true
+          },
+          "username": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "MailServerTestResult": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          },
+          "code": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "MailTemplateDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "subject": {
+            "type": "string",
+            "nullable": true
+          },
+          "body": {
+            "type": "string",
+            "nullable": true
+          },
+          "isArchived": {
+            "type": "boolean"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false
+      },
+      "MailTemplateVariableDto": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string",
+            "nullable": true
+          },
+          "label": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "MailThreadDto": {
+        "type": "object",
+        "properties": {
+          "accountId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "accountLabel": {
+            "type": "string",
+            "nullable": true
+          },
+          "subject": {
+            "type": "string",
+            "nullable": true
+          },
+          "messages": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MailMessageDto"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "MailThreadSummaryDto": {
+        "type": "object",
+        "properties": {
+          "latestMessageId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "accountId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "accountLabel": {
+            "type": "string",
+            "nullable": true
+          },
+          "subject": {
+            "type": "string",
+            "nullable": true
+          },
+          "snippet": {
+            "type": "string",
+            "nullable": true
+          },
+          "from": {
+            "$ref": "#/components/schemas/MailPartyDto"
+          },
+          "to": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MailPartyDto"
+            },
+            "nullable": true
+          },
+          "lastAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "lastDirection": {
+            "type": "string",
+            "nullable": true
+          },
+          "messageCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "unreadCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "hasAttachments": {
+            "type": "boolean"
+          },
+          "links": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MailLinkDto"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "ManualPullResult": {
         "type": "object",
         "properties": {
@@ -48212,6 +49225,44 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/LeadSourceListDto"
+            },
+            "nullable": true
+          },
+          "totalCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "page": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalPages": {
+            "type": "integer",
+            "format": "int32",
+            "readOnly": true
+          },
+          "hasNextPage": {
+            "type": "boolean",
+            "readOnly": true
+          },
+          "hasPreviousPage": {
+            "type": "boolean",
+            "readOnly": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "PagedResultOfMailThreadSummaryDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MailThreadSummaryDto"
             },
             "nullable": true
           },
@@ -51827,6 +52878,48 @@
         },
         "additionalProperties": false
       },
+      "RenderMailTemplateRequest": {
+        "type": "object",
+        "properties": {
+          "leadId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "clientId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "accountId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "RenderedMailTemplateDto": {
+        "type": "object",
+        "properties": {
+          "subject": {
+            "type": "string",
+            "nullable": true
+          },
+          "body": {
+            "type": "string",
+            "nullable": true
+          },
+          "missing": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "ReplayIntegrationCommandResult": {
         "type": "object",
         "properties": {
@@ -52981,6 +54074,24 @@
         },
         "additionalProperties": false
       },
+      "SaveMailTemplateRequest": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "subject": {
+            "type": "string",
+            "nullable": true
+          },
+          "body": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "SaveWhatsAppBotProfileRequest": {
         "type": "object",
         "properties": {
@@ -53706,6 +54817,75 @@
         },
         "additionalProperties": false
       },
+      "SendMailForm": {
+        "type": "object",
+        "properties": {
+          "accountId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "to": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "cc": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "bcc": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "subject": {
+            "type": "string",
+            "nullable": true
+          },
+          "body": {
+            "type": "string",
+            "nullable": true
+          },
+          "replyToMessageId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "forwardMessageId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "forwardAttachmentIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "files": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "binary"
+            },
+            "nullable": true
+          },
+          "toClientId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "SendSnippetRequest": {
         "type": "object",
         "properties": {
@@ -54091,6 +55271,15 @@
         "type": "object",
         "properties": {
           "isLifeInsurance": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "SetMailThreadReadRequest": {
+        "type": "object",
+        "properties": {
+          "isRead": {
             "type": "boolean"
           }
         },
@@ -54964,6 +56153,14 @@
           },
           "label": {
             "type": "string",
+            "nullable": true
+          },
+          "includeMail": {
+            "type": "boolean"
+          },
+          "accountId": {
+            "type": "string",
+            "format": "uuid",
             "nullable": true
           }
         },

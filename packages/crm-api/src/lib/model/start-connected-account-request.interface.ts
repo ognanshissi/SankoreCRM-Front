@@ -14,5 +14,7 @@
 export interface StartConnectedAccountRequest { 
     provider?: string | null;
     label?: string | null;
+    includeMail?: boolean;
+    accountId?: string | null;
 }
 

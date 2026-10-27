@@ -10,6 +10,7 @@ import { NavBadgeKey, PortalNavGroup, PortalNavItem, SETTINGS_NAV_ITEM } from '.
 /** Les teintes des compteurs, comme la maquette : chacun dit de quel genre de travail il s'agit. */
 const BADGE_TONES: Record<NavBadgeKey, string> = {
   whatsapp: 'bg-[#9fe3bf] text-primary',
+  mail: 'bg-sky-200 text-sky-900',
   leads: 'bg-white/15 text-white',
   kyc: 'bg-amber-400 text-amber-950',
   workflows: 'bg-red-400 text-white',

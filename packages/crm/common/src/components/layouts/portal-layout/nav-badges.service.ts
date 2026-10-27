@@ -2,7 +2,7 @@ import { isPlatformBrowser } from '@angular/common';
 import { DestroyRef, inject, Injectable, PLATFORM_ID, signal } from '@angular/core';
 import { NavigationEnd, Router } from '@angular/router';
 import { catchError, debounceTime, filter, forkJoin, map, Observable, of } from 'rxjs';
-import { KYCApiService, LeadsApiService, WhatsAppApiService, WorkflowAnalyticsApiService } from '@sankore/crm-api';
+import { ConnectedMailboxApiService, KYCApiService, LeadsApiService, WhatsAppApiService, WorkflowAnalyticsApiService } from '@sankore/crm-api';
 import { PERMISSIONS } from '../../../models/permissions';
 import { AuthenticationService } from '../../../services/authentification.service';
 import { PermissionsService } from '../../../services/permissions.service';
@@ -19,6 +19,7 @@ const REFRESH_MS = 120_000;
  * - WhatsApp : l'onglet « À traiter » de la boîte (`counts.ToHandle`), dans le périmètre de
  *   l'utilisateur — un client attend une personne ;
  * - Leads : les leads de l'utilisateur encore « Nouveau », pas encore contactés ;
+ * - Messagerie : les conversations où un e-mail d'un lead ou d'un client n'a pas été lu ;
  * - Dossiers KYC : ceux qui attendent SA décision (`awaitingMeCount`) ;
  * - Suivi des workflows : les instances bloquées et les étapes en retard.
  *
@@ -28,6 +29,7 @@ const REFRESH_MS = 120_000;
 @Injectable({ providedIn: 'root' })
 export class NavBadges {
   private readonly _whatsapp = inject(WhatsAppApiService);
+  private readonly _mail = inject(ConnectedMailboxApiService);
   private readonly _leads = inject(LeadsApiService);
   private readonly _kyc = inject(KYCApiService);
   private readonly _workflows = inject(WorkflowAnalyticsApiService);
@@ -78,6 +80,10 @@ export class NavBadges {
 
     if (this._permissions.has(PERMISSIONS.LEAD_READ)) {
       calls.leads = this._leads.listLeads(1, 1, 'New', undefined, undefined, me).pipe(map((page) => page.totalCount ?? 0));
+    }
+
+    if (this._permissions.has(PERMISSIONS.CONNECTED_ACCOUNTS_USE)) {
+      calls.mail = this._mail.listMyMailThreads(undefined, true, 1, 1).pipe(map((page) => page.totalCount ?? 0));
     }
 
     if (this._permissions.has(PERMISSIONS.KYC_READ)) {

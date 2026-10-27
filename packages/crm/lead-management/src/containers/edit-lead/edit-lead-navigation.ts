@@ -29,7 +29,14 @@ import {
 } from '@sankore/crm/common';
 import { SnackbarService } from '@talisoft/ui/snackbar';
 import { SideDrawerService } from '@talisoft/ui/side-drawer';
-import { CreateAppointmentDrawer, CreateAppointmentDrawerData, NewTaskDrawer, NewTaskDrawerData } from '@sankore/crm/tasks';
+import {
+  CreateAppointmentDrawer,
+  CreateAppointmentDrawerData,
+  MailComposeDrawer,
+  MailComposeDrawerData,
+  NewTaskDrawer,
+  NewTaskDrawerData,
+} from '@sankore/crm/tasks';
 import { CallButton } from '@sankore/crm/telephony';
 import { ReassignLeadDrawer } from './reassign-lead-drawer';
 import { EditLeadInfoDrawer } from './edit-lead-info-drawer';
@@ -129,6 +136,7 @@ export class EditLeadNavigation implements OnDestroy {
   public readonly canWhatsApp = this._permissions.can('WhatsApp.Send', 'WhatsApp.Supervise');
   public readonly canScheduleAppointment = this._permissions.can('lead:activity:log');
   public readonly canManageTasks = this._permissions.can('lead:task:manage');
+  public readonly canMail = this._permissions.can('ConnectedAccounts.Use');
   public readonly canRequestErasure = this._permissions.can('privacy:erasure:request');
 
   private readonly _leadsApiService = inject(LeadsApiService);
@@ -410,6 +418,18 @@ export class EditLeadNavigation implements OnDestroy {
     });
     ref.closed.subscribe((id) => {
       if (id) this.reload();
+    });
+  }
+
+  /** Un e-mail depuis la boîte connectée de l'agent ; un modèle s'y remplit avec ce lead. */
+  public openNewMail(): void {
+    const email = this.lead()?.email;
+    if (!email) return;
+    this._sideDrawerService.open<boolean, MailComposeDrawerData, MailComposeDrawer>(MailComposeDrawer, {
+      width: '100%',
+      height: '100%',
+      panelClass: 'side-drawer-panel',
+      data: { mode: 'new', to: [email], context: { leadId: this.id() } },
     });
   }
 

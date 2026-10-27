@@ -1,7 +1,7 @@
 import { PermissionCode, PERMISSIONS } from '../../../models/permissions';
 
 /** Le compteur qu'une entrée affiche, et sa teinte. Voir `NavBadges`. */
-export type NavBadgeKey = 'whatsapp' | 'leads' | 'kyc' | 'workflows';
+export type NavBadgeKey = 'whatsapp' | 'mail' | 'leads' | 'kyc' | 'workflows';
 
 export interface PortalNavItem {
   id: string;
@@ -30,6 +30,14 @@ export const PORTAL_NAVIGATION: PortalNavGroup[] = [
     items: [
       { id: 'my-day', label: 'Ma journée', icon: 'feather:sun', link: '/tasks/my-day' },
       { id: 'calendar', label: 'Calendrier', icon: 'feather:calendar', link: '/tasks/calendar' },
+      {
+        id: 'mail',
+        label: 'Messagerie',
+        icon: 'feather:mail',
+        link: '/tasks/mail',
+        anyOf: [PERMISSIONS.CONNECTED_ACCOUNTS_USE],
+        badge: 'mail',
+      },
       {
         id: 'whatsapp',
         label: 'WhatsApp',

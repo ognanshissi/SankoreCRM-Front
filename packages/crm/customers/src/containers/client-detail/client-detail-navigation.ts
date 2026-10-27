@@ -4,7 +4,8 @@ import { TasCard } from '@talisoft/ui/card';
 import { TasIcon } from '@talisoft/ui/icon';
 import { TasSpinner } from '@talisoft/ui/spinner';
 import { Severity, TasTag } from '@talisoft/ui/tag';
-import { Anchor } from '@talisoft/ui/button';
+import { Anchor, Button } from '@talisoft/ui/button';
+import { SideDrawerService } from '@talisoft/ui/side-drawer';
 import {
   BreadcrumbService,
   PermissionCode,
@@ -32,6 +33,8 @@ import {
 } from '../../models/client-labels';
 // eslint-disable-next-line @nx/enforce-module-boundaries
 import { CallButton } from '@sankore/crm/telephony';
+// eslint-disable-next-line @nx/enforce-module-boundaries
+import { MailComposeDrawer, MailComposeDrawerData } from '@sankore/crm/tasks';
 import { ClientActionsMenu } from './client-actions-menu';
 
 interface ClientTab {
@@ -66,6 +69,7 @@ const PENDING_KYC_ALERT_DAYS = 15;
     TasSpinner,
     TasTag,
     Anchor,
+    Button,
     ClientActionsMenu,
     CallButton,
   ],
@@ -182,6 +186,13 @@ const PENDING_KYC_ALERT_DAYS = 15;
                   la fiche et l'emplacement qui partent, le serveur compose.
                 -->
                 <lib-call-button entityType="Customer" [entityId]="id()"></lib-call-button>
+                @if (mailAddress(); as masked) {
+                  <!-- L'adresse reste masquée : la fiche part, le serveur lit l'adresse à l'envoi. -->
+                  <button tas-outlined-button type="button" class="text-xs" [title]="'Écrire à ' + masked" (click)="openMail(masked)">
+                    <tas-icon iconName="feather:mail" style="font-size:13px"></tas-icon>
+                    E-mail
+                  </button>
+                }
                 <client-actions-menu></client-actions-menu>
               </div>
             </div>
@@ -260,6 +271,8 @@ export class ClientDetailNavigation {
   private readonly _permissions = inject(PermissionsService);
   private readonly _tenantModules = inject(TenantModulesService);
   public readonly canReveal = this._permissions.can('customers:reveal_sensitive');
+  private readonly _canMail = this._permissions.can('ConnectedAccounts.Use');
+  private readonly _drawer = inject(SideDrawerService);
 
   public readonly id = input.required<string>();
 
@@ -356,6 +369,34 @@ export class ClientDetailNavigation {
     );
     return days >= PENDING_KYC_ALERT_DAYS ? days : null;
   });
+
+  /**
+   * L'adresse active (masquée) à qui écrire, ou `null` : pas de droit, pas d'adresse, fiche fusionnée,
+   * ou personne qui a demandé l'effacement — le serveur refuserait de toute façon.
+   */
+  protected readonly mailAddress = computed(() => {
+    const client = this.client();
+    if (!this._canMail() || !client || client.processingRestrictedAt || this.isMerged()) return null;
+    const emails = (client.contactPoints ?? [])
+      .filter((cp) => cp.type === 'Email' && cp.isActive)
+      .sort((a, b) => Number(!!b.isPrimary) - Number(!!a.isPrimary));
+    return emails[0] ? emails[0].valueMasked || 'adresse du dossier' : null;
+  });
+
+  protected openMail(maskedEmail: string): void {
+    const client = this.client();
+    if (!client) return;
+    this._drawer.open<boolean, MailComposeDrawerData, MailComposeDrawer>(MailComposeDrawer, {
+      width: '100%',
+      height: '100%',
+      panelClass: 'side-drawer-panel',
+      data: {
+        mode: 'new',
+        client: { id: this.id(), name: client.displayName ?? client.clientNumber ?? 'Client', maskedEmail },
+        context: { clientId: this.id() },
+      },
+    });
+  }
 
   protected dismissKycBanner(): void {
     this._kycBannerDismissed.set(true);

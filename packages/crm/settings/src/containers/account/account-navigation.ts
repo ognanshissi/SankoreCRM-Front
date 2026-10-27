@@ -80,7 +80,7 @@ export class AccountNavigation implements OnInit {
     { label: 'Sécurité', route: 'securite' },
     { label: 'Paramétrage agent', route: 'agent' },
     { label: 'Performance', route: 'performance' },
-    ...(this._canConnectAccounts() ? [{ label: 'Agendas et contacts', route: 'agendas' }] : []),
+    ...(this._canConnectAccounts() ? [{ label: 'Agendas et messagerie', route: 'agendas' }] : []),
   ]);
 
   public readonly userName = computed(() => {
