@@ -1,0 +1,167 @@
+<tas-form-field>
+  <tas-label [class.sr-only]="labelScreenOnly()">
+    <ng-content></ng-content>
+  </tas-label>
+
+  <!-- Le champ reste un vrai champ : on y tape la période, le calendrier ouvert suit. -->
+  <input
+    #field
+    type="text"
+    tasInput
+    inputmode="numeric"
+    autocomplete="off"
+    maxlength="23"
+    role="combobox"
+    aria-haspopup="dialog"
+    [attr.aria-expanded]="isOpen()"
+    [attr.aria-invalid]="showInvalid() || null"
+    [value]="text()"
+    [placeholder]="placeholder()"
+    [disabled]="disabled()"
+    (click)="open()"
+    (input)="onType($event)"
+    (blur)="onBlur()"
+    (keydown.arrowdown)="enterGrid($event)"
+    (keydown.escape)="close()"
+    cdkOverlayOrigin
+    #trigger="cdkOverlayOrigin"
+  />
+
+  @if (hasValue()) {
+    <button tasSuffix type="button" aria-label="Effacer la période" [disabled]="disabled()" (click)="clear()">
+      <tas-icon iconName="feather:x" iconSize="md"></tas-icon>
+    </button>
+  } @else {
+    <button tasSuffix type="button" aria-label="Ouvrir le calendrier" [disabled]="disabled()" (click)="toggle()">
+      <tas-icon iconName="feather:calendar" iconSize="md"></tas-icon>
+    </button>
+  }
+
+  @if (showInvalid()) {
+    <tas-error>{{ invalidMessage() }}</tas-error>
+  }
+</tas-form-field>
+
+<ng-template
+  cdkConnectedOverlay
+  [cdkConnectedOverlayOrigin]="trigger"
+  [cdkConnectedOverlayOpen]="isOpen()"
+  [cdkConnectedOverlayPositions]="positions"
+  [cdkConnectedOverlayPush]="true"
+  (overlayOutsideClick)="onOutsideClick($event)"
+  (detach)="onDetached()"
+>
+  <div
+    #popup
+    role="dialog"
+    aria-label="Choisir une période"
+    class="flex max-w-[calc(100vw-2rem)] select-none overflow-hidden rounded-2xl border border-slate-200 bg-white text-sm shadow-xl"
+    [class]="narrow() ? 'flex-col' : 'flex-row'"
+    (keydown.escape)="close(true)"
+  >
+    <!-- Raccourcis : à gauche, ou au-dessus sur téléphone -->
+    @if (presetItems().length > 0) {
+      <div
+        class="flex gap-2 border-slate-100 p-3"
+        [class]="narrow() ? 'flex-wrap border-b' : 'flex-col items-start border-r'"
+        role="group"
+        aria-label="Périodes courantes"
+      >
+        @for (p of presetItems(); track p.label) {
+          <button
+            type="button"
+            class="whitespace-nowrap rounded-full border px-3 py-1 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+            [class]="p.active ? 'border-primary bg-primary text-white' : 'border-slate-300 bg-white text-slate-700 hover:border-primary hover:text-primary'"
+            [disabled]="!p.range"
+            [attr.aria-pressed]="p.active"
+            (click)="applyPreset(p.range)"
+          >
+            {{ p.label }}
+          </button>
+        }
+      </div>
+    }
+
+    <div class="flex min-w-0 flex-col">
+      <div class="flex gap-8 px-4 pb-2 pt-4">
+        @for (m of months(); track m.key; let first = $first; let last = $last) {
+          <div class="w-[15.75rem] shrink-0">
+            <div class="mb-2 flex h-8 items-center justify-between">
+              @if (first) {
+                <button
+                  type="button"
+                  class="grid size-8 place-items-center rounded-full text-primary transition-colors hover:bg-primary/10 disabled:text-slate-300 disabled:hover:bg-transparent"
+                  aria-label="Mois précédent"
+                  [disabled]="!canGoBack()"
+                  (click)="previous()"
+                >
+                  <tas-icon iconName="feather:chevron-left" iconSize="sm"></tas-icon>
+                </button>
+              } @else {
+                <span class="size-8" aria-hidden="true"></span>
+              }
+
+              <span class="font-semibold text-slate-900" aria-live="polite">{{ m.label }}</span>
+
+              @if (last) {
+                <button
+                  type="button"
+                  class="grid size-8 place-items-center rounded-full text-primary transition-colors hover:bg-primary/10 disabled:text-slate-300 disabled:hover:bg-transparent"
+                  aria-label="Mois suivant"
+                  [disabled]="!canGoForward()"
+                  (click)="next()"
+                >
+                  <tas-icon iconName="feather:chevron-right" iconSize="sm"></tas-icon>
+                </button>
+              } @else {
+                <span class="size-8" aria-hidden="true"></span>
+              }
+            </div>
+
+            <div class="grid grid-cols-7" role="grid" [attr.aria-label]="m.label">
+              @for (wd of weekDays; track wd) {
+                <span class="pb-1 text-center text-xs font-medium text-slate-500" aria-hidden="true">{{ wd }}</span>
+              }
+
+              @for (c of m.cells; track $index) {
+                @if (c.iso; as iso) {
+                  @let b = band(iso);
+                  <div class="relative flex h-9 items-center justify-center" (mouseenter)="pendingStart() && hovered.set(iso)">
+                    @if (b !== 'none') {
+                      <!-- Le bandeau de la période, continu d'un jour à l'autre -->
+                      <span
+                        class="absolute inset-y-0.5 bg-primary/10"
+                        [class]="b === 'full' ? 'inset-x-0' : b === 'start' ? 'left-1/2 right-0' : 'left-0 right-1/2'"
+                        aria-hidden="true"
+                      ></span>
+                    }
+                    <button
+                      type="button"
+                      class="relative grid size-8 place-items-center rounded-full text-sm tabular-nums transition-colors focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-primary"
+                      [class]="dayClass(iso)"
+                      [attr.data-iso]="iso"
+                      [tabindex]="iso === focused() ? 0 : -1"
+                      [disabled]="isDisabled(iso)"
+                      [attr.aria-label]="dayLabel(iso)"
+                      [attr.aria-pressed]="isEdge(iso)"
+                      [attr.aria-current]="iso === todayIso() ? 'date' : null"
+                      (focus)="focused.set(iso)"
+                      (keydown)="onGridKey($event, iso)"
+                      (click)="select(iso)"
+                    >
+                      {{ c.day }}
+                    </button>
+                  </div>
+                } @else {
+                  <span class="h-9" aria-hidden="true"></span>
+                }
+              }
+            </div>
+          </div>
+        }
+      </div>
+
+      <p class="border-t border-slate-100 px-4 py-2 text-xs text-slate-500" aria-live="polite">{{ hint() }}</p>
+    </div>
+  </div>
+</ng-template>

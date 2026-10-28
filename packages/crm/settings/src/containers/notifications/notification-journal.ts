@@ -8,7 +8,7 @@ import { Severity, TasTag } from '@talisoft/ui/tag';
 import { Button } from '@talisoft/ui/button';
 import { TasFormField, TasLabel } from '@talisoft/ui/form-field';
 import { TasInput } from '@talisoft/ui/input';
-import { TasDatePicker } from '@talisoft/ui/date-picker';
+import { DateRangeValue, TasDateRangePicker } from '@talisoft/ui/date-range-picker';
 import { TimeagoPipe } from '@talisoft/ui/timeago';
 import { SideDrawerService } from '@talisoft/ui/side-drawer';
 import { DeliveryLogsApiService } from '@sankore/crm-api';
@@ -18,7 +18,7 @@ import { DeliveryLogDetailDrawer } from './delivery-log-detail-drawer';
   selector: 'notification-journal',
   imports: [
     FormsModule, TasCard, TasSpinner, TasIcon, TasTag, Button,
-    TasFormField, TasLabel, TasInput, TasDatePicker, TimeagoPipe,
+    TasFormField, TasLabel, TasInput, TasDateRangePicker, TimeagoPipe,
   ],
   template: `
     <div class="pb-6">
@@ -36,7 +36,8 @@ import { DeliveryLogDetailDrawer } from './delivery-log-detail-drawer';
 
         <!-- Filters -->
         <div class="p-4 border-b border-slate-100">
-          <div class="grid grid-cols-4 gap-3">
+          <!-- La période prend la place d'une date de plus : « 01/10/2026 – 27/10/2026 » ne tient pas dans un quart. -->
+          <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_minmax(16rem,1.3fr)_auto]">
             <tas-form-field>
               <tas-label>Destinataire</tas-label>
               <input tasInput type="text" placeholder="email@..."
@@ -47,7 +48,7 @@ import { DeliveryLogDetailDrawer } from './delivery-log-detail-drawer';
               <input tasInput type="text" placeholder="Ex : LeadCaptured"
                 [ngModel]="filterEventType()" (ngModelChange)="filterEventType.set($event)" />
             </tas-form-field>
-            <tas-date-picker mode="date" [ngModel]="filterFrom()" (ngModelChange)="filterFrom.set($event ?? '')">Depuis</tas-date-picker>
+            <tas-date-range-picker [max]="today" [ngModel]="filterPeriod()" (ngModelChange)="filterPeriod.set($event)">Période</tas-date-range-picker>
             <div class="flex items-end">
               <button tas-outlined-button color="primary" type="button" class="text-xs" (click)="loadLogs()">
                 <tas-icon iconName="feather:search" style="font-size:12px"></tas-icon> Filtrer
@@ -112,7 +113,9 @@ export class NotificationJournal implements OnInit {
   public hasMore = signal(false);
   public filterRecipient = signal('');
   public filterEventType = signal('');
-  public filterFrom = signal('');
+  public filterPeriod = signal<DateRangeValue | null>(null);
+  /** Un journal n'a pas d'avenir : les jours après aujourd'hui sont grisés. */
+  public readonly today = new Date().toLocaleDateString('sv-SE');
   private _page = 1;
 
   ngOnInit(): void { this.loadLogs(); }
@@ -137,13 +140,19 @@ export class NotificationJournal implements OnInit {
     switch (status) { case 'Delivered': return 'text-green-600'; case 'Bounced': case 'Failed': return 'text-red-500'; case 'Deferred': return 'text-amber-600'; case 'Sent': return 'text-blue-600'; default: return 'text-slate-400'; }
   }
 
+  /** Du premier jour à 00:00 au dernier à 23:59:59, heure locale, en UTC pour l'API. */
+  private _periodBounds(): [string | undefined, string | undefined] {
+    const p = this.filterPeriod();
+    if (!p?.start || !p.end) return [undefined, undefined];
+    return [new Date(`${p.start}T00:00:00`).toISOString(), new Date(`${p.end}T23:59:59.999`).toISOString()];
+  }
+
   public loadLogs(): void {
     this._page = 1;
     this.isLoading.set(true);
     this._api.apiV1DeliveryLogsGet(
       this.filterRecipient() || undefined, this.filterEventType() || undefined, undefined,
-      this.filterFrom() ? new Date(this.filterFrom()).toISOString() : undefined,
-      undefined, 1, 20,
+      ...this._periodBounds(), 1, 20,
     ).pipe(catchError(() => { this.isLoading.set(false); return EMPTY; }))
       .subscribe((data: any) => {
         const items = Array.isArray(data) ? data : (data?.items ?? []);
@@ -156,7 +165,8 @@ export class NotificationJournal implements OnInit {
     this.isLoadingMore.set(true);
     this._api.apiV1DeliveryLogsGet(
       this.filterRecipient() || undefined, this.filterEventType() || undefined,
-      undefined, undefined, undefined, this._page, 20,
+      // La même période que la première page : sans elle, « Voir plus » sortait de la période choisie.
+      undefined, ...this._periodBounds(), this._page, 20,
     ).pipe(catchError(() => { this.isLoadingMore.set(false); return EMPTY; }))
       .subscribe((data: any) => {
         const items = Array.isArray(data) ? data : (data?.items ?? []);

@@ -29,6 +29,9 @@
       "@talisoft/ui/container": ["./packages/shared/ui/container/index.ts"],
       "@talisoft/ui/core": ["./packages/shared/ui/core/index.ts"],
       "@talisoft/ui/date-picker": ["./packages/shared/ui/date-picker/index.ts"],
+      "@talisoft/ui/date-range-picker": [
+        "./packages/shared/ui/date-range-picker/index.ts"
+      ],
       "@talisoft/ui/file-uploader": [
         "./packages/shared/ui/file-uploader/index.ts"
       ],
