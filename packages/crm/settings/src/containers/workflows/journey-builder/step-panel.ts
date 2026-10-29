@@ -15,7 +15,9 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { HttpErrorResponse } from '@angular/common/http';
 import { disabled, form, FormField, FormRoot, required } from '@angular/forms/signals';
 import { catchError, concatMap, debounceTime, EMPTY, Subject, tap } from 'rxjs';
-import { TasFormField, TasLabel, TasError } from '@talisoft/ui/form-field';
+import { TasFormField, TasLabel, TasError, TasHint } from '@talisoft/ui/form-field';
+import { TasCheckbox } from '@talisoft/ui/checkbox';
+import { TasMultiSelect } from '@talisoft/ui/multi-select';
 import { TasIcon } from '@talisoft/ui/icon';
 import { TasInput } from '@talisoft/ui/input';
 import { TasSelect } from '@talisoft/ui/select';
@@ -31,7 +33,13 @@ import {
   KYC_CONTROLS,
   KYC_LEVEL_OPTIONS,
   KycLevel,
+  NOTIFICATION_VARIABLES,
+  NotificationRecipient,
+  notificationRecipients,
   parseStepConfig,
+  renderNotificationPreview,
+  smsSegments,
+  unknownVariables,
   serializeStepConfig,
   SLA_OPTIONS,
   STEP_KIND_META,
@@ -51,6 +59,12 @@ class StepFormModel {
   public channel!: string;
   public target!: string;
   public isBlocking!: boolean;
+  public notifySubject!: boolean;
+  public notifyAgent!: boolean;
+  public notifyRoles!: boolean;
+  public roleCodes!: string[];
+  public subject!: string;
+  public message!: string;
 
   public static fromStep(step: WorkflowStepDto): StepFormModel {
     const config = parseStepConfig(step.configJson);
@@ -64,6 +78,13 @@ class StepFormModel {
     m.channel = config.channel ?? 'Email';
     m.target = config.target ?? 'Insurance';
     m.isBlocking = !!step.isBlocking;
+    const recipients = notificationRecipients(config);
+    m.notifySubject = recipients.includes('subject');
+    m.notifyAgent = recipients.includes('assignedAgent');
+    m.notifyRoles = recipients.includes('role');
+    m.roleCodes = config.roleCodes ?? [];
+    m.subject = config.subject ?? '';
+    m.message = config.message ?? '';
     return m;
   }
 }
@@ -76,7 +97,7 @@ class StepFormModel {
 @Component({
   selector: 'journey-step-panel',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [TasFormField, TasLabel, TasError, TasInput, TasSelect, TasIcon, TasSpinner, TasSwitch, FormRoot, FormField],
+  imports: [TasFormField, TasLabel, TasError, TasHint, TasInput, TasSelect, TasMultiSelect, TasCheckbox, TasIcon, TasSpinner, TasSwitch, FormRoot, FormField],
   templateUrl: './step-panel.html',
 })
 export class JourneyStepPanel {
@@ -114,6 +135,32 @@ export class JourneyStepPanel {
   public readonly kind = computed(() => stepKind(this.step()));
   public readonly meta = computed(() => STEP_KIND_META[this.kind()]);
   public readonly withAssignee = computed(() => hasAssignee(this.kind()));
+  public readonly variables = NOTIFICATION_VARIABLES;
+  /** Le message tel qu'un destinataire le lirait, avec des valeurs d'exemple. */
+  public readonly preview = computed(() => renderNotificationPreview(this.model().message ?? ''));
+  public readonly unknownVariables = computed(() => unknownVariables(this.model().message ?? ''));
+  /** Le SMS est facturé par segment : on le montre au moment où on l'écrit. */
+  public readonly segments = computed(() => smsSegments(this.preview()));
+  public readonly noRecipient = computed(() => {
+    const m = this.model();
+    return !m.notifySubject && !m.notifyAgent && !m.notifyRoles;
+  });
+
+  /** « {{nom}} », écrit ici : dans une interpolation du gabarit, les accolades fermeraient l'expression. */
+  public token(key: string): string {
+    return `{{${key}}}`;
+  }
+
+  /** Ajoute une variable à la fin du message. */
+  public insertVariable(key: string): void {
+    if (this.readOnly()) return;
+    this.model.update((m) => {
+      const message = m.message ?? '';
+      const separator = message && !/\s$/.test(message) ? ' ' : '';
+      return { ...m, message: `${message}${separator}{{${key}}}` };
+    });
+  }
+
   public readonly controls = computed(() => KYC_CONTROLS[(this.model().kycLevel as KycLevel) || 'Full'] ?? []);
 
   private readonly _changes$ = new Subject<PendingSave>();
@@ -203,7 +250,18 @@ export class JourneyStepPanel {
     const config: StepConfig = { branch: parseStepConfig(step.configJson).branch };
     if (kind === StepKind.KycCheck) config.kycLevel = model.kycLevel as KycLevel;
     if (hasAssignee(kind)) config.escalation = model.escalation as Escalation;
-    if (kind === StepKind.Notification) config.channel = model.channel as StepConfig['channel'];
+    if (kind === StepKind.Notification) {
+      config.channel = model.channel as StepConfig['channel'];
+      // Toujours écrite, même vide : une liste ABSENTE vaut « la personne du dossier » côté serveur.
+      const recipients: NotificationRecipient[] = [];
+      if (model.notifySubject) recipients.push('subject');
+      if (model.notifyAgent) recipients.push('assignedAgent');
+      if (model.notifyRoles) recipients.push('role');
+      config.recipients = recipients;
+      if (model.notifyRoles && model.roleCodes.length) config.roleCodes = model.roleCodes;
+      config.subject = model.subject.trim() || undefined;
+      config.message = model.message.trim() || undefined;
+    }
     if (kind === StepKind.IntegrationAction) config.target = model.target as StepConfig['target'];
 
     return {
@@ -214,7 +272,8 @@ export class JourneyStepPanel {
       // Mêmes valeurs dans les deux énumérations générées (ajout et mise à jour) : seul le nom diffère.
       kind: kind as unknown as UpdateStepRequestKindEnum,
       configJson: serializeStepConfig(config),
-      isBlocking: model.isBlocking,
+      // Une notification est franchie à l'entrée : « bloquante » n'a pas de sens pour elle.
+      isBlocking: kind === StepKind.Notification ? false : model.isBlocking,
     };
   }
 }

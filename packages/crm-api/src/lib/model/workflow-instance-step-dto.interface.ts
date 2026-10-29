@@ -21,5 +21,7 @@ export interface WorkflowInstanceStepDto {
     comment?: string | null;
     createdAt?: string;
     completedAt?: string | null;
+    stepDefinitionId?: string;
+    kind?: string | null;
 }
 

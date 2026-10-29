@@ -7553,6 +7553,50 @@
           },
           "404": {
             "description": "Not Found"
+          },
+          "413": {
+            "description": "Payload Too Large"
+          }
+        }
+      }
+    },
+    "/api/ingest/hooks/{publicKey}/events": {
+      "post": {
+        "tags": [
+          "Ingest"
+        ],
+        "operationId": "ExternalEventIngest",
+        "parameters": [
+          {
+            "name": "publicKey",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Accepted"
+          },
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "413": {
+            "description": "Payload Too Large"
           }
         }
       }
@@ -28479,6 +28523,454 @@
         }
       }
     },
+    "/api/v1/integration/webhook-subscriptions": {
+      "get": {
+        "tags": [
+          "Webhooks"
+        ],
+        "summary": "The institution's outbound webhooks, with their delivery health and a masked secret",
+        "operationId": "ListWebhookSubscriptions",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/WebhookSubscriptionDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Webhooks"
+        ],
+        "summary": "Creates a webhook; the answer carries its signing secret, shown this once",
+        "operationId": "CreateWebhookSubscription",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveWebhookSubscriptionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreatedWebhookSubscriptionDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "422": {
+            "description": "Unprocessable Entity"
+          }
+        }
+      }
+    },
+    "/api/v1/integration/webhook-subscriptions/event-types": {
+      "get": {
+        "tags": [
+          "Webhooks"
+        ],
+        "summary": "The events a webhook may subscribe to, each with a sample payload",
+        "operationId": "ListWebhookEventTypes",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/WebhookEventTypeDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/integration/webhook-subscriptions/{id}": {
+      "get": {
+        "tags": [
+          "Webhooks"
+        ],
+        "operationId": "GetWebhookSubscription",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebhookSubscriptionDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Webhooks"
+        ],
+        "summary": "Changes the name, address, description or events; the secret is unchanged",
+        "operationId": "UpdateWebhookSubscription",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveWebhookSubscriptionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebhookSubscriptionDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Webhooks"
+        ],
+        "summary": "Deletes the webhook and its secrets",
+        "operationId": "DeleteWebhookSubscription",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/api/v1/integration/webhook-subscriptions/{id}/active": {
+      "put": {
+        "tags": [
+          "Webhooks"
+        ],
+        "summary": "Switches the webhook on or off; switching on clears its failure streak",
+        "operationId": "SetWebhookSubscriptionActive",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetWebhookSubscriptionActiveRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/api/v1/integration/webhook-subscriptions/{id}/secret/rotate": {
+      "post": {
+        "tags": [
+          "Webhooks"
+        ],
+        "summary": "Issues a new signing secret, shown this once; the previous one keeps signing for 7 days",
+        "operationId": "RotateWebhookSecret",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RotatedWebhookSecretDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/api/v1/integration/webhook-subscriptions/{id}/test": {
+      "post": {
+        "tags": [
+          "Webhooks"
+        ],
+        "summary": "Sends a signed sample of one event, marked test, and reports how the partner answered",
+        "operationId": "TestWebhookSubscription",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TestWebhookSubscriptionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebhookTestResultDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/api/v1/integration/webhook-subscriptions/{id}/deliveries": {
+      "get": {
+        "tags": [
+          "Webhooks"
+        ],
+        "summary": "The delivery log of a webhook, newest first; `status` = Pending | Succeeded | Failed | Cancelled",
+        "operationId": "ListWebhookDeliveries",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PagedResultOfWebhookDeliveryDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/api/v1/integration/webhook-subscriptions/{id}/deliveries/{deliveryId}": {
+      "get": {
+        "tags": [
+          "Webhooks"
+        ],
+        "summary": "One delivery, with the exact body that was signed and sent",
+        "operationId": "GetWebhookDelivery",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "deliveryId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebhookDeliveryDetailDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/api/v1/integration/webhook-subscriptions/{id}/deliveries/{deliveryId}/replay": {
+      "post": {
+        "tags": [
+          "Webhooks"
+        ],
+        "summary": "Sends a delivery again — same event id, a fresh round of attempts",
+        "operationId": "ReplayWebhookDelivery",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "deliveryId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "422": {
+            "description": "Unprocessable Entity"
+          }
+        }
+      }
+    },
     "/integration/webhooks/whatsapp/{provider}": {
       "post": {
         "tags": [
@@ -31751,6 +32243,39 @@
           },
           "400": {
             "description": "Bad Request"
+          }
+        }
+      }
+    },
+    "/api/v1/workflow/templates/trigger-events": {
+      "get": {
+        "tags": [
+          "WorkflowTemplates"
+        ],
+        "summary": "The internal events a workflow trigger can name, optionally for one entity type",
+        "operationId": "ListWorkflowTriggerEvents",
+        "parameters": [
+          {
+            "name": "entityType",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TriggerEventDto"
+                  }
+                }
+              }
+            }
           }
         }
       }
@@ -38865,6 +39390,19 @@
           "userId": {
             "type": "string",
             "format": "uuid"
+          }
+        },
+        "additionalProperties": false
+      },
+      "CreatedWebhookSubscriptionDto": {
+        "type": "object",
+        "properties": {
+          "subscription": {
+            "$ref": "#/components/schemas/WebhookSubscriptionDto"
+          },
+          "secret": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -46198,6 +46736,15 @@
               "$ref": "#/components/schemas/SecretHintDto"
             },
             "nullable": true
+          },
+          "lastRejectedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "lastRejectedReason": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -49617,6 +50164,44 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/TelephonyCallListItemDto"
+            },
+            "nullable": true
+          },
+          "totalCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "page": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalPages": {
+            "type": "integer",
+            "format": "int32",
+            "readOnly": true
+          },
+          "hasNextPage": {
+            "type": "boolean",
+            "readOnly": true
+          },
+          "hasPreviousPage": {
+            "type": "boolean",
+            "readOnly": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "PagedResultOfWebhookDeliveryDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WebhookDeliveryDto"
             },
             "nullable": true
           },
@@ -53867,6 +54452,20 @@
         },
         "additionalProperties": false
       },
+      "RotatedWebhookSecretDto": {
+        "type": "object",
+        "properties": {
+          "secret": {
+            "type": "string",
+            "nullable": true
+          },
+          "previousValidUntil": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false
+      },
       "RowValidationResult": {
         "type": "object",
         "properties": {
@@ -54251,6 +54850,31 @@
           },
           "body": {
             "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "SaveWebhookSubscriptionRequest": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "url": {
+            "type": "string",
+            "nullable": true
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
             "nullable": true
           }
         },
@@ -55246,6 +55870,9 @@
             "type": "string",
             "nullable": true
           },
+          "allowUpdates": {
+            "type": "boolean"
+          },
           "contentType": {
             "type": "string",
             "nullable": true
@@ -55679,6 +56306,15 @@
           "defaultCallerNumber": {
             "type": "string",
             "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "SetWebhookSubscriptionActiveRequest": {
+        "type": "object",
+        "properties": {
+          "isActive": {
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -58869,6 +59505,16 @@
         },
         "additionalProperties": false
       },
+      "TestWebhookSubscriptionRequest": {
+        "type": "object",
+        "properties": {
+          "eventCode": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "TimelineEvent": {
         "type": "object",
         "properties": {
@@ -59077,6 +59723,32 @@
           "createdAt": {
             "type": "string",
             "format": "date-time"
+          }
+        },
+        "additionalProperties": false
+      },
+      "TriggerEventDto": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "nullable": true
+          },
+          "label": {
+            "type": "string",
+            "nullable": true
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "family": {
+            "type": "string",
+            "nullable": true
+          },
+          "entityType": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -61179,6 +61851,213 @@
         },
         "additionalProperties": false
       },
+      "WebhookDeliveryDetailDto": {
+        "type": "object",
+        "properties": {
+          "delivery": {
+            "$ref": "#/components/schemas/WebhookDeliveryDto"
+          },
+          "body": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "WebhookDeliveryDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "eventId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "eventCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "nullable": true
+          },
+          "attempts": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "maxAttempts": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "nextAttemptAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "lastAttemptAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "lastStatusCode": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "lastFailureCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "lastDurationMs": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "deliveredAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false
+      },
+      "WebhookEventTypeDto": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "nullable": true
+          },
+          "version": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "family": {
+            "type": "string",
+            "nullable": true
+          },
+          "label": {
+            "type": "string",
+            "nullable": true
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "available": {
+            "type": "boolean"
+          },
+          "samplePayload": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "WebhookSubscriptionDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "url": {
+            "type": "string",
+            "nullable": true
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "consecutiveFailures": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "lastSuccessAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "lastFailureAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "lastFailureCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "disabledAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "secretHint": {
+            "type": "string",
+            "nullable": true
+          },
+          "previousSecretValidUntil": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false
+      },
+      "WebhookTestResultDto": {
+        "type": "object",
+        "properties": {
+          "eventCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "succeeded": {
+            "type": "boolean"
+          },
+          "statusCode": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "durationMs": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "failureCode": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "WeeklyConversionsDto": {
         "type": "object",
         "properties": {
@@ -62556,6 +63435,14 @@
           "completedAt": {
             "type": "string",
             "format": "date-time",
+            "nullable": true
+          },
+          "stepDefinitionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kind": {
+            "type": "string",
             "nullable": true
           }
         },

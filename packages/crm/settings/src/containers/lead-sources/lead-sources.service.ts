@@ -1,6 +1,6 @@
 import { inject, Injectable, signal } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
-import { catchError, Observable, throwError } from 'rxjs';
+import { catchError, Observable, throwError, switchMap } from 'rxjs';
 import { SnackbarService } from '@talisoft/ui/snackbar';
 import { IntegrationMode, LeadChannelType, LeadSourceStatus } from './lead-source.types';
 import {
@@ -123,6 +123,19 @@ export class LeadSourcesService {
     return this._api.archiveLeadSource(id).pipe(this._handleErrors());
   }
 
+  /**
+   * Active une source quel que soit son état de départ. Le serveur n'active qu'une source en test,
+   * en pause ou en erreur, et aucun écran ne passait une source « webhook serveur » en test : elle
+   * restait en brouillon pour toujours, et son adresse répondait 404. Depuis le brouillon, on la
+   * passe donc en test puis on l'active ; si l'activation est refusée (secret manquant…), elle
+   * reste en test et peut déjà recevoir des envois d'essai.
+   */
+  public activateFrom(id: string, status: string | null | undefined): Observable<any> {
+    return status === 'Draft'
+      ? this.startTesting(id).pipe(switchMap(() => this.activate(id)))
+      : this.activate(id);
+  }
+
   public startTesting(id: string): Observable<any> {
     return this._api.startTestingLeadSource(id).pipe(this._handleErrors());
   }
@@ -228,7 +241,7 @@ export class LeadSourcesService {
     const collected = Object.values(byPath).filter(Boolean).join(' ');
     this._snackbar.error(
       'Erreur de validation',
-      collected || body?.detail || body?.title || 'Les données envoyées sont invalides.',
+      collected || activationMessage(body?.detail) || body?.detail || body?.title || 'Les données envoyées sont invalides.',
     );
   }
 
@@ -262,4 +275,19 @@ export class LeadSourcesService {
   private _normalizePath(path: string): string {
     return path.replace(/\[(\d+)]/g, '.$1');
   }
+}
+
+const PREREQUISITE_LABELS: Record<string, string> = {
+  SecretMissing: 'générez le secret de signature (onglet Connexion)',
+  NoFieldMappingConfigured: 'configurez la correspondance des champs',
+  NoEndpointConfigured: 'renseignez l’adresse du fournisseur',
+  ConnectionNotConnected: 'connectez le compte de la plateforme',
+};
+
+/** `ACTIVATION_PREREQUISITES_NOT_MET:SecretMissing,…` en une phrase, ou null pour un autre refus. */
+function activationMessage(detail: string | null | undefined): string | null {
+  const prefix = 'ACTIVATION_PREREQUISITES_NOT_MET:';
+  if (!detail?.startsWith(prefix)) return null;
+  const steps = detail.slice(prefix.length).split(',').filter(Boolean).map((c) => PREREQUISITE_LABELS[c] ?? c);
+  return `La source ne peut pas être activée : ${steps.join(' ; ')}.`;
 }

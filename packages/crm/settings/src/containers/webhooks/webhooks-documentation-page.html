@@ -1,0 +1,90 @@
+<div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
+  <tas-card class="block">
+    <div class="flex flex-col gap-3 p-4 text-sm text-slate-600">
+      <h2 class="text-sm font-semibold text-slate-800">Ce que reçoit votre partenaire</h2>
+      <p>Un <code class="font-mono">POST</code> HTTPS, corps JSON, à chaque événement choisi :</p>
+      <pre class="overflow-auto rounded-lg bg-slate-900 p-3 font-mono text-xs leading-relaxed text-slate-100">{{ '{' }}
+  "id": "…",            // identifiant de l’événement : clé de dédoublonnage
+  "type": "lead.status_changed",
+  "version": 1,
+  "occurredAt": "2026-10-29T09:30:00Z",
+  "data": {{ '{' }} … {{ '}' }}        // voir chaque événement ci-dessous
+{{ '}' }}</pre>
+      <div>
+        <p class="mb-1 font-medium text-slate-700">En-têtes</p>
+        <ul class="list-disc space-y-0.5 pl-5 text-xs">
+          <li><code class="font-mono">X-Sankore-Signature</code> — <code class="font-mono">t=&lt;horodatage&gt;,v1=&lt;signature&gt;</code></li>
+          <li><code class="font-mono">X-Sankore-Event</code> — le type, par exemple <code class="font-mono">client.created</code></li>
+          <li><code class="font-mono">X-Sankore-Delivery</code> — l’identifiant de cette livraison</li>
+        </ul>
+      </div>
+      <div>
+        <p class="mb-1 font-medium text-slate-700">Garanties</p>
+        <ul class="list-disc space-y-0.5 pl-5 text-xs">
+          <li>Répondez par un code 2xx en moins de 10 secondes ; traitez ensuite en arrière-plan.</li>
+          <li>Un même événement peut arriver deux fois : dédoublonnez sur <code class="font-mono">id</code>.</li>
+          <li>L’ordre n’est pas garanti : triez sur <code class="font-mono">occurredAt</code>.</li>
+          <li>En cas d’échec : nouvel essai après 1 min, 5 min, 30 min, 2 h, 6 h, 12 h et 24 h.</li>
+          <li>Après 20 échecs d’affilée et 24 h sans succès, le webhook est coupé et l’administrateur prévenu.</li>
+          <li>Aucune donnée personnelle : identifiants, statuts, montants et dates. Relisez le CRM pour le reste.</li>
+          <li>À la réception de <code class="font-mono">lead.erased</code> ou <code class="font-mono">client.anonymized</code>, supprimez votre copie.</li>
+        </ul>
+      </div>
+    </div>
+  </tas-card>
+
+  <tas-card class="block">
+    <div class="flex flex-col gap-3 p-4 text-sm text-slate-600">
+      <div class="flex items-center justify-between">
+        <h2 class="text-sm font-semibold text-slate-800">Vérifier la signature</h2>
+        <button type="button" class="inline-flex items-center gap-1 text-xs text-primary hover:underline" (click)="copy(snippet)">
+          <tas-icon iconName="feather:copy" style="font-size:12px"></tas-icon>
+          Copier
+        </button>
+      </div>
+      <p class="text-xs">
+        HMAC-SHA256 de <code class="font-mono">horodatage + "." + corps brut</code>, avec le secret <code class="font-mono">whsec_…</code>
+        comme clé, en hexadécimal. Pendant 7 jours après un changement de secret, l’en-tête porte deux
+        <code class="font-mono">v1=</code> : acceptez l’envoi si l’une des deux correspond. Refusez un horodatage de plus de 5 minutes.
+      </p>
+      <pre class="overflow-auto rounded-lg bg-slate-900 p-3 font-mono text-xs leading-relaxed text-slate-100">{{ snippet }}</pre>
+    </div>
+  </tas-card>
+</div>
+
+<div class="mt-6">
+  <h2 class="mb-1 text-sm font-semibold text-slate-700">Événements</h2>
+  <p class="mb-3 text-xs text-slate-500">Cliquez sur un événement pour voir un exemple exact de ce qui est envoyé.</p>
+
+  <tas-table [data]="eventTypes()" [config]="tableConfig()" [isLoading]="isLoading()">
+    <ng-template #header>
+      <tr>
+        <th>Événement</th>
+        <th>Code</th>
+        <th>Famille</th>
+        <th></th>
+      </tr>
+    </ng-template>
+
+    <ng-template #body let-item>
+      <tr class="cursor-pointer transition-colors hover:bg-slate-50" (click)="toggle(item.code)">
+        <td class="py-2.5">
+          <div class="text-sm text-slate-800">{{ item.label }}</div>
+          <div class="text-xs text-slate-500">{{ item.description }}</div>
+        </td>
+        <td><code class="font-mono text-xs text-slate-600">{{ item.code }}</code></td>
+        <td class="text-sm text-slate-600">{{ item.family }}</td>
+        <td class="text-right">
+          <tas-icon [iconName]="expanded() === item.code ? 'feather:chevron-up' : 'feather:chevron-down'" class="text-slate-400" style="font-size:14px"></tas-icon>
+        </td>
+      </tr>
+      @if (expanded() === item.code) {
+        <tr>
+          <td colspan="4" class="bg-slate-50 px-4 py-3">
+            <pre class="overflow-auto rounded-lg bg-slate-900 p-3 font-mono text-xs leading-relaxed text-slate-100">{{ pretty(item.samplePayload) }}</pre>
+          </td>
+        </tr>
+      }
+    </ng-template>
+  </tas-table>
+</div>

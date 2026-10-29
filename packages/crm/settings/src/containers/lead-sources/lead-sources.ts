@@ -627,7 +627,7 @@ export class LeadSourcesConfig implements OnInit {
       showCancelButton: true,
       acceptButtonProps: { label: 'Activer', theme: 'primary' },
       rejectButtonProps: { label: 'Annuler' },
-      accept: () => this._doAction(src.id!, this._sourcesService.activate(src.id!), 'Activée', LeadSourceListDtoStatusEnum.Active),
+      accept: () => this._doAction(src.id!, this._sourcesService.activateFrom(src.id!, src.status), 'Activée', LeadSourceListDtoStatusEnum.Active),
     });
   }
 

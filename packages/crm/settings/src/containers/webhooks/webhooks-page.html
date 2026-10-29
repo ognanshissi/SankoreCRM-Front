@@ -1,0 +1,69 @@
+<div class="mb-5 flex flex-wrap items-start justify-between gap-3">
+  <div class="max-w-2xl">
+    <p class="text-sm text-slate-500">
+      Prévenez vos outils en temps réel quand un lead, un projet ou un client change : chaque événement est envoyé,
+      signé, à l’adresse de votre partenaire, et renvoyé automatiquement en cas d’échec.
+    </p>
+    <p class="mt-1 text-xs text-slate-400">
+      Pour recevoir des leads d’un partenaire, créez plutôt une
+      <a routerLink="/settings/lead-sources" class="text-primary hover:underline">source de leads</a>.
+    </p>
+  </div>
+  <div class="flex items-center gap-2">
+    <a tas-outlined-button routerLink="/settings/webhooks/documentation">
+      <tas-icon iconName="feather:book-open" style="font-size:14px"></tas-icon>
+      Documentation
+    </a>
+    @if (canManage()) {
+      <button tas-filled-button color="primary" type="button" (click)="create()">
+        <tas-icon iconName="feather:plus" style="font-size:14px"></tas-icon>
+        Nouveau webhook
+      </button>
+    }
+  </div>
+</div>
+
+<tas-table [data]="subscriptions()" [config]="tableConfig()" [isLoading]="isLoading()" (refresh)="load()">
+  <ng-template #header>
+    <tr>
+      <th>Webhook</th>
+      <th>Événements</th>
+      <th>Statut</th>
+      <th>Dernier envoi réussi</th>
+      <th>Dernier échec</th>
+    </tr>
+  </ng-template>
+
+  <ng-template #body let-item>
+    <tr class="cursor-pointer transition-colors hover:bg-slate-50" (click)="open(item)">
+      <td class="py-3">
+        <div class="min-w-0">
+          <div class="truncate font-medium text-slate-800">{{ item.name }}</div>
+          <div class="max-w-md truncate font-mono text-xs text-slate-400">{{ item.url }}</div>
+        </div>
+      </td>
+      <td class="text-sm text-slate-600 tabular-nums">{{ item.events?.length ?? 0 }}</td>
+      <td>
+        <tas-tag [severity]="state(item).severity">{{ state(item).label }}</tas-tag>
+      </td>
+      <td class="text-sm text-slate-600">
+        @if (item.lastSuccessAt) {
+          {{ item.lastSuccessAt | dateTimeAgo }}
+        } @else {
+          <span class="text-slate-400">—</span>
+        }
+      </td>
+      <td class="text-sm">
+        @if (item.lastFailureAt && item.consecutiveFailures > 0) {
+          <div class="text-slate-600">{{ item.lastFailureAt | dateTimeAgo }}</div>
+          <div class="text-xs text-functional-error">
+            {{ failureLabel(item.lastFailureCode) }} · {{ item.consecutiveFailures }} échec(s) d’affilée
+          </div>
+        } @else {
+          <span class="text-slate-400">—</span>
+        }
+      </td>
+    </tr>
+  </ng-template>
+
+</tas-table>

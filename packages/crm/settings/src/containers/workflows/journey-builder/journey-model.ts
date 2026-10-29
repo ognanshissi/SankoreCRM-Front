@@ -61,6 +61,11 @@ export interface StepConfig {
   branch?: Branch;
   channel?: 'Email' | 'Sms';
   target?: 'CoreBanking' | 'Insurance';
+  /** Notification : à qui. Absent = la personne du dossier (étapes enregistrées avant ce champ). */
+  recipients?: NotificationRecipient[];
+  roleCodes?: string[];
+  subject?: string;
+  message?: string;
 }
 
 export function parseStepConfig(json: string | null | undefined): StepConfig {
@@ -109,6 +114,63 @@ export const CHANNEL_OPTIONS = [
   { label: 'SMS', value: 'Sms' },
 ];
 
+// ——— Notification ———
+// Les mêmes chaînes que `WorkflowNotificationRecipients` côté serveur, qui les lit dans la configuration.
+
+export type NotificationRecipient = 'subject' | 'assignedAgent' | 'role';
+
+/** Le serveur lit une liste ABSENTE comme « la personne du dossier » : l'écran fait de même. */
+export function notificationRecipients(config: StepConfig): NotificationRecipient[] {
+  return config.recipients ?? ['subject'];
+}
+
+/** Variables du message, remplacées à l'envoi par `WorkflowNotificationText` (serveur). */
+export const NOTIFICATION_VARIABLES = [
+  { key: 'prenom', label: 'Prénom', sample: 'Awa' },
+  { key: 'nom', label: 'Nom', sample: 'Ndiaye' },
+  { key: 'agent', label: 'Agent', sample: 'Koffi Yao' },
+  { key: 'produit', label: 'Produit', sample: 'Crédit individuel' },
+  { key: 'institution', label: 'Institution', sample: 'Votre institution' },
+] as const;
+
+/** L'aperçu : la règle du serveur — variable connue remplacée, inconnue laissée telle quelle. */
+export function renderNotificationPreview(text: string): string {
+  return text
+    .replace(/\{\{\s*([A-Za-z_]+)\s*\}\}/g, (match, name: string) =>
+      NOTIFICATION_VARIABLES.find((v) => v.key === name.toLowerCase())?.sample ?? match)
+    .trim();
+}
+
+/** Les variables tapées que le serveur ne connaît pas : elles partiraient telles quelles. */
+export function unknownVariables(text: string): string[] {
+  const names = [...text.matchAll(/\{\{\s*([A-Za-z_]+)\s*\}\}/g)].map((m) => m[1]);
+  return [...new Set(names.filter((n) => !NOTIFICATION_VARIABLES.some((v) => v.key === n.toLowerCase())))];
+}
+
+const GSM7_BASIC =
+  '@£$¥èéùìòÇ\nØø\rÅåΔ_ΦΓΛΩΠΨΣΘΞÆæßÉ !"#¤%&\'()*+,-./0123456789:;<=>?¡ABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÑÜ§¿abcdefghijklmnopqrstuvwxyzäöñüà';
+const GSM7_EXTENSION = '^{}\\[~]|€\f';
+
+/**
+ * Segments facturés d'un SMS — le calcul de `SmsSegments` côté serveur. Un seul caractère hors
+ * GSM-7 (un « œ », un emoji) fait passer tout le message en UCS-2 : 70 caractères au lieu de 160.
+ * « é » est bien en GSM-7, « ê » ne l'est pas.
+ */
+export function smsSegments(text: string): { segments: number; length: number; perSegment: number; unicode: boolean } {
+  let septets = 0;
+  let unicode = false;
+  for (const char of text) {
+    if (GSM7_BASIC.includes(char)) septets += 1;
+    else if (GSM7_EXTENSION.includes(char)) septets += 2;
+    else { unicode = true; break; }
+  }
+  if (unicode) {
+    const units = text.length; // UTF-16 : un emoji compte pour deux
+    return { segments: units <= 70 ? 1 : Math.ceil(units / 67), length: units, perSegment: units <= 70 ? 70 : 67, unicode };
+  }
+  return { segments: septets <= 160 ? 1 : Math.ceil(septets / 153), length: septets, perSegment: septets <= 160 ? 160 : 153, unicode };
+}
+
 export const TARGET_OPTIONS = [
   { label: 'Core banking (CBS)', value: 'CoreBanking' },
   { label: 'Back office assurance', value: 'Insurance' },
@@ -128,11 +190,12 @@ export interface TriggerPreset {
 }
 
 /**
- * Événements proposés dans la palette. `LEAD_CAPTURED` est émis par la capture ; `LEAD_QUALIFIED`
- * est enregistré tel quel, et ne démarrera un parcours que lorsque le module Leads le publiera.
+ * Événements proposés dans la palette. `LEAD_CAPTURED` est émis par la capture, `lead.qualified`
+ * par le catalogue des événements internes. L'ancien `LEAD_QUALIFIED` n'était publié par rien et le
+ * serveur le refuse désormais.
  */
 export const TRIGGER_PRESETS: TriggerPreset[] = [
-  { eventName: 'LEAD_QUALIFIED', label: 'Lead qualifié (SQL)', hint: 'Passage en SQL' },
+  { eventName: 'lead.qualified', label: 'Lead qualifié (SQL)', hint: 'Passage en SQL' },
   { eventName: 'LEAD_CAPTURED', label: 'Nouveau lead', hint: 'À la capture' },
 ];
 
@@ -226,6 +289,13 @@ export function validateJourney(steps: WorkflowStepDto[], triggers: TriggerDto[]
   for (const step of steps) {
     const kind = stepKind(step);
     if (hasAssignee(kind) && !step.approverRoleCode) issues.push({ label: `« ${step.name} » n'a pas de responsable` });
+    if (kind === StepKind.Notification) {
+      const config = parseStepConfig(step.configJson);
+      const recipients = notificationRecipients(config);
+      if (!recipients.length) issues.push({ label: `« ${step.name} » n'a pas de destinataire` });
+      else if (recipients.includes('role') && !config.roleCodes?.length) issues.push({ label: `« ${step.name} » : choisissez au moins un rôle` });
+      if (!config.message?.trim()) issues.push({ label: `« ${step.name} » n'a pas de message` });
+    }
   }
   return issues;
 }

@@ -1,0 +1,205 @@
+@if (isLoading() && !subscription()) {
+  <div class="flex justify-center py-16"><tas-spinner size="10" class="text-primary"></tas-spinner></div>
+} @else if (subscription(); as s) {
+  <!-- En-tête -->
+  <div class="mb-5 flex flex-wrap items-start justify-between gap-3">
+    <div class="min-w-0">
+      <div class="flex items-center gap-2">
+        <h1 class="truncate text-lg font-semibold text-slate-800">{{ s.name }}</h1>
+        <tas-tag [severity]="state(s).severity">{{ state(s).label }}</tas-tag>
+      </div>
+      <p class="mt-0.5 break-all font-mono text-xs text-slate-500">{{ s.url }}</p>
+      @if (s.description) {
+        <p class="mt-1 text-sm text-slate-500">{{ s.description }}</p>
+      }
+    </div>
+    @if (canManage()) {
+      <div class="flex flex-wrap items-center gap-2">
+        <button tas-outlined-button type="button" (click)="edit()">
+          <tas-icon iconName="feather:edit-2" style="font-size:13px"></tas-icon>
+          Modifier
+        </button>
+        <button tas-outlined-button type="button" [disabled]="isToggling()" [isLoading]="isToggling()" (click)="toggleActive()">
+          <tas-icon [iconName]="s.isActive ? 'feather:pause' : 'feather:play'" style="font-size:13px"></tas-icon>
+          {{ s.isActive ? 'Désactiver' : 'Réactiver' }}
+        </button>
+        <button tas-outlined-button color="warn" type="button" (click)="remove()">
+          <tas-icon iconName="feather:trash-2" style="font-size:13px"></tas-icon>
+          Supprimer
+        </button>
+      </div>
+    }
+  </div>
+
+  @if (!s.isActive && s.disabledAt) {
+    <div class="mb-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-800" role="alert">
+      Coupé automatiquement {{ s.disabledAt | dateTimeAgo }} : le partenaire n’a accepté aucun envoi depuis plus de 24 h
+      ({{ failureLabel(s.lastFailureCode) }}). Vérifiez l’adresse avec lui, envoyez un test, puis réactivez-le.
+    </div>
+  }
+
+  <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
+    <!-- Événements -->
+    <tas-card class="block">
+      <div class="p-4">
+        <h2 class="mb-3 text-sm font-semibold text-slate-700">Événements envoyés</h2>
+        <div class="flex flex-wrap gap-1.5">
+          @for (e of subscribedEvents(); track e.code) {
+            <span class="inline-flex items-center gap-1 rounded-md bg-slate-100 px-2 py-0.5 text-xs text-slate-700" [title]="e.code ?? ''">
+              <span class="text-slate-400">{{ e.family }} ·</span> {{ e.label }}
+            </span>
+          }
+        </div>
+      </div>
+    </tas-card>
+
+    <!-- Santé -->
+    <tas-card class="block">
+      <div class="grid grid-cols-2 gap-3 p-4 text-sm">
+        <div>
+          <p class="text-xs text-slate-400">Dernier envoi réussi</p>
+          <p class="text-slate-700">{{ s.lastSuccessAt ? (s.lastSuccessAt | dateTimeAgo) : '—' }}</p>
+        </div>
+        <div>
+          <p class="text-xs text-slate-400">Échecs d’affilée</p>
+          <p class="tabular-nums" [class.text-functional-error]="(s.consecutiveFailures ?? 0) > 0">{{ s.consecutiveFailures ?? 0 }}</p>
+        </div>
+        <div class="col-span-2">
+          <p class="text-xs text-slate-400">Dernier échec</p>
+          @if (s.lastFailureAt) {
+            <p class="text-slate-700">{{ s.lastFailureAt | dateTimeAgo }} — {{ failureLabel(s.lastFailureCode) }}</p>
+          } @else {
+            <p class="text-slate-400">—</p>
+          }
+        </div>
+      </div>
+    </tas-card>
+
+    <!-- Secret -->
+    <tas-card class="block">
+      <div class="flex flex-col gap-3 p-4">
+        <div class="flex items-start justify-between gap-3">
+          <div>
+            <h2 class="text-sm font-semibold text-slate-700">Secret de signature</h2>
+            <p class="font-mono text-sm text-slate-600">{{ s.secretHint ?? '—' }}</p>
+            @if (s.previousSecretValidUntil) {
+              <p class="mt-0.5 text-xs text-slate-500">
+                L’ancien secret signe encore jusqu’au {{ s.previousSecretValidUntil | date: 'dd/MM/yyyy HH:mm' }}.
+              </p>
+            }
+          </div>
+          @if (canManage()) {
+            <button tas-outlined-button type="button" class="shrink-0" [disabled]="isRotating()" [isLoading]="isRotating()" (click)="rotateSecret()">
+              <tas-icon iconName="feather:refresh-cw" style="font-size:12px"></tas-icon>
+              Nouveau secret
+            </button>
+          }
+        </div>
+
+        @if (revealedSecret(); as secret) {
+          <div class="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-900" role="alert">
+            Copiez ce secret maintenant : il ne sera plus affiché.
+          </div>
+          <div class="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+            <code class="min-w-0 flex-1 break-all font-mono text-sm text-slate-800">{{ secret }}</code>
+            <button tas-outlined-button type="button" (click)="copy(secret)">
+              <tas-icon iconName="feather:copy" style="font-size:12px"></tas-icon>
+              Copier
+            </button>
+          </div>
+        }
+
+        <a tas-text-button color="primary" class="self-start text-xs" routerLink="/settings/webhooks/documentation">
+          Comment vérifier la signature
+        </a>
+      </div>
+    </tas-card>
+
+    <!-- Test -->
+    @if (canManage()) {
+      <tas-card class="block">
+        <div class="flex flex-col gap-3 p-4">
+          <div>
+            <h2 class="text-sm font-semibold text-slate-700">Envoyer un test</h2>
+            <p class="text-xs text-slate-500">
+              Un exemple signé de l’événement choisi, marqué <code class="font-mono">"test": true</code>. Il n’entre pas dans le journal.
+            </p>
+          </div>
+          <div class="flex items-center gap-2">
+            <tas-select class="min-w-0 flex-1" [options]="testOptions()" [ngModel]="testEvent()" (ngModelChange)="testEvent.set($event)"></tas-select>
+            <button tas-raised-button color="primary" type="button" [disabled]="isTesting() || !testEvent()" [isLoading]="isTesting()" (click)="sendTest()">
+              Envoyer
+            </button>
+          </div>
+          @if (testResult(); as r) {
+            <p class="rounded-lg px-3 py-2 text-sm"
+               [class.bg-emerald-50]="r.succeeded" [class.text-emerald-800]="r.succeeded"
+               [class.bg-red-50]="!r.succeeded" [class.text-red-800]="!r.succeeded"
+               role="status">
+              @if (r.succeeded) {
+                Reçu par le partenaire (HTTP {{ r.statusCode }}) en {{ r.durationMs }} ms.
+              } @else {
+                Échec : {{ failureLabel(r.failureCode) }}.
+              }
+            </p>
+          }
+        </div>
+      </tas-card>
+    }
+  </div>
+
+  <!-- Journal des livraisons -->
+  <div class="mt-6">
+    <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
+      <div>
+        <h2 class="text-sm font-semibold text-slate-700">Livraisons</h2>
+        <p class="text-xs text-slate-500">
+          Chaque événement est retenté jusqu’à 8 fois sur environ 45 heures. Conservées 30 jours.
+        </p>
+      </div>
+      <div class="flex items-center gap-2">
+        <tas-select class="w-48" [options]="statusOptions" [ngModel]="statusFilter()" (ngModelChange)="onStatusFilter($event)"></tas-select>
+        <button tas-button iconButton type="button" aria-label="Rafraîchir" (click)="loadDeliveries()">
+          <tas-icon iconName="feather:refresh-cw" style="font-size:14px"></tas-icon>
+        </button>
+      </div>
+    </div>
+
+    <tas-table [data]="deliveries()" [config]="deliveriesConfig()" [isLoading]="isLoadingDeliveries()" (pageEventChange)="onPageChange($event)">
+      <ng-template #header>
+        <tr>
+          <th>Événement</th>
+          <th>Statut</th>
+          <th>Essais</th>
+          <th>Dernière tentative</th>
+          <th>Réponse</th>
+          <th>Prochain essai</th>
+        </tr>
+      </ng-template>
+
+      <ng-template #body let-item>
+        <tr class="cursor-pointer transition-colors hover:bg-slate-50" (click)="openDelivery(item)">
+          <td class="py-2.5">
+            <div class="text-sm text-slate-800">{{ eventLabel(item.eventCode) }}</div>
+            <div class="text-xs text-slate-400">{{ item.createdAt | date: 'dd/MM/yyyy HH:mm:ss' }}</div>
+          </td>
+          <td><tas-tag [severity]="deliveryState(item).severity">{{ deliveryState(item).label }}</tas-tag></td>
+          <td class="text-sm text-slate-600 tabular-nums">{{ item.attempts }} / {{ item.maxAttempts }}</td>
+          <td class="text-sm text-slate-600">{{ item.lastAttemptAt ? (item.lastAttemptAt | dateTimeAgo) : '—' }}</td>
+          <td class="text-sm">
+            @if (item.lastStatusCode && !item.lastFailureCode) {
+              <span class="text-emerald-700 tabular-nums">HTTP {{ item.lastStatusCode }}</span>
+            } @else if (item.lastFailureCode) {
+              <span class="text-functional-error">{{ failureLabel(item.lastFailureCode) }}</span>
+            } @else {
+              <span class="text-slate-400">—</span>
+            }
+          </td>
+          <td class="text-sm text-slate-600">
+            {{ item.status === 'Pending' && item.nextAttemptAt ? (item.nextAttemptAt | date: 'dd/MM HH:mm') : '—' }}
+          </td>
+        </tr>
+      </ng-template>
+    </tas-table>
+  </div>
+}

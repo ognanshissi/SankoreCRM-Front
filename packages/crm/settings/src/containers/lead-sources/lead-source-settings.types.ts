@@ -351,6 +351,8 @@ export interface WebhookSourceSettings extends BaseSourceSettings {
   $mode: 'ServerWebhook';
   allowedIps: string[];
   externalIdPath: string | null;
+  /** Un identifiant externe déjà reçu met à jour les champs personnalisés du lead. */
+  allowUpdates: boolean;
 }
 
 export interface PullSourceSettings extends BaseSourceSettings {
@@ -486,6 +488,7 @@ export function readSettings(
         $mode: 'ServerWebhook',
         allowedIps: readStringArray(r['allowedIps']),
         externalIdPath: typeof r['externalIdPath'] === 'string' ? (r['externalIdPath'] as string) : null,
+        allowUpdates: r['allowUpdates'] === true,
       };
     case 'ScheduledPull':
       return { ...base, $mode: 'ScheduledPull', pull: readPull(r['pull']) };

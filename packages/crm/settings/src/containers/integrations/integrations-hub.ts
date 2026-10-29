@@ -94,11 +94,12 @@ const INTEGRATIONS: Integration[] = [
   {
     id: 'webhooks',
     name: 'Webhooks',
-    description: 'Recevoir ou envoyer des données en temps réel vers des services externes.',
+    description: 'Prévenir vos outils en temps réel quand un lead, un projet ou un client change.',
     icon: 'feather:zap',
     category: 'data',
     status: 'available',
     link: '/settings/webhooks',
+    permission: 'Integration.Webhook.View',
   },
   {
     id: 'cbs',

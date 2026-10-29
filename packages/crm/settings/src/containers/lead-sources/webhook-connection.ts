@@ -64,6 +64,43 @@ import { isWebhookSettings, readSettings, writeSettings } from './lead-source-se
         </div>
       </tas-card>
 
+      <!-- Événements partenaire (webhooks lot 6) -->
+      @if (webhookUrl(); as url) {
+        <tas-card class="block">
+          <div class="p-4 border-b border-slate-100">
+            <p class="text-sm font-semibold text-slate-700 flex items-center gap-2">
+              <tas-icon iconName="feather:activity" class="text-slate-400" style="font-size:14px"></tas-icon>
+              Événements du fournisseur
+            </p>
+            <p class="text-xs text-slate-400 mt-0.5">
+              Le fournisseur peut signaler ce qui arrive à un lead qu’il a envoyé (« rendez-vous pris »,
+              « dossier complété ») : le CRM retrouve le lead et lance les workflows prévus pour cet événement.
+            </p>
+          </div>
+          <div class="p-4 flex flex-col gap-3">
+            <div class="flex items-center gap-2">
+              <div class="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 font-mono text-xs text-slate-700 select-all overflow-x-auto">
+                {{ url }}/events
+              </div>
+              <button tas-outlined-button type="button" class="shrink-0" (click)="copyEventsUrl(url + '/events')">
+                <tas-icon iconName="feather:copy" style="font-size:12px"></tas-icon>
+                Copier
+              </button>
+            </div>
+            <ul class="list-disc space-y-0.5 pl-5 text-xs text-slate-500">
+              <li>Même secret de signature et mêmes adresses IP autorisées que pour les leads.</li>
+              <li>Le lead est retrouvé par son identifiant externe, ou par téléphone parmi les leads de cette source uniquement.</li>
+              <li>
+                Pour agir sur un événement, ajoutez à un workflow « Lead » un déclencheur
+                <span class="font-medium">Événement externe</span> portant son type (par exemple
+                <code class="font-mono">appointment.booked</code>).
+              </li>
+              <li>Le format complet est dans la documentation fournisseur ci-dessous.</li>
+            </ul>
+          </div>
+        </tas-card>
+      }
+
       <!-- HMAC Signature Secret -->
       <tas-card class="block">
         <div class="p-4 border-b border-slate-100">
@@ -71,11 +108,23 @@ import { isWebhookSettings, readSettings, writeSettings } from './lead-source-se
             <tas-icon iconName="feather:key" class="text-slate-400" style="font-size:14px"></tas-icon>
             Secret de signature HMAC
           </p>
-          <p class="text-xs text-slate-400 mt-0.5">
-            Le fournisseur signe chaque requête avec ce secret. Le CRM vérifie la signature.
-          </p>
+          @if (hmacHint()) {
+            <p class="text-xs text-slate-500 mt-0.5">
+              Signature exigée : toute requête non signée ou mal signée est refusée (401).
+            </p>
+          } @else {
+            <p class="text-xs text-amber-700 mt-0.5">
+              Aucun secret : les envois ne sont pas vérifiés, et la source ne pourra pas être activée tant qu’il manque.
+            </p>
+          }
         </div>
         <div class="p-4 flex flex-col gap-3">
+          @if (source().lastRejectedAt) {
+            <div class="rounded-lg bg-red-50 px-3 py-2 text-xs text-red-800" role="alert">
+              Dernier envoi refusé le {{ source().lastRejectedAt | date:'dd/MM/yyyy HH:mm' }} :
+              {{ rejectionLabel(source().lastRejectedReason) }}.
+            </div>
+          }
           <!-- Newly revealed secret -->
           @if (revealedHmacSecret()) {
             <div class="p-3 bg-green-50 border border-green-200 rounded-lg">
@@ -212,6 +261,20 @@ import { isWebhookSettings, readSettings, writeSettings } from './lead-source-se
               <tas-error>{{ jsonPathHint }}</tas-error>
             }
           </tas-form-field>
+
+          <label class="mt-3 flex items-start gap-2 text-sm text-slate-700" [class.opacity-50]="!externalIdPath().trim()">
+            <input type="checkbox" class="mt-0.5 h-4 w-4 accent-primary"
+                   [checked]="allowUpdates()"
+                   [disabled]="readonly() || !externalIdPath().trim()"
+                   (change)="allowUpdates.set($any($event.target).checked)" />
+            <span>
+              Mettre à jour le lead quand le même identifiant revient
+              <span class="block text-xs text-slate-400">
+                Seuls ses champs personnalisés sont mis à jour, sans effacer les autres. Jamais son statut,
+                son propriétaire ni ce qu’un agent a saisi.
+              </span>
+            </span>
+          </label>
         </div>
       </tas-card>
 
@@ -293,6 +356,7 @@ export class WebhookConnection implements OnInit {
 
   // External ID path
   public externalIdPath = signal('');
+  public allowUpdates = signal(false);
 
   // Provider doc
   public isDownloadingDoc = signal(false);
@@ -306,6 +370,27 @@ export class WebhookConnection implements OnInit {
     if (isWebhookSettings(settings)) {
       this.allowedIps.set(settings.allowedIps);
       this.externalIdPath.set(settings.externalIdPath ?? '');
+      this.allowUpdates.set(settings.allowUpdates);
+    }
+  }
+
+  /** Pourquoi le dernier envoi a été refusé, dans les mots de l’administrateur. */
+  public rejectionLabel(reason: string | null | undefined): string {
+    switch (reason) {
+      case 'SIGNATURE_MISSING':
+        return 'aucune signature dans la requête';
+      case 'SIGNATURE_INVALID':
+        return 'signature incorrecte (mauvais secret ou corps modifié)';
+      case 'SIGNATURE_EXPIRED':
+        return 'signature trop ancienne (horloge du fournisseur décalée de plus de 5 minutes)';
+      case 'SIGNATURE_MALFORMED':
+        return 'en-tête de signature mal formé (attendu : t=…,v1=…)';
+      case 'SIGNATURE_SECRET_MISSING':
+        return 'aucun secret configuré pour vérifier la signature';
+      case 'IP_NOT_ALLOWED':
+        return 'adresse IP non autorisée';
+      default:
+        return reason ?? 'motif inconnu';
     }
   }
 
@@ -318,6 +403,11 @@ export class WebhookConnection implements OnInit {
       this.urlCopied.set(true);
       setTimeout(() => this.urlCopied.set(false), 2000);
     });
+  }
+
+  public copyEventsUrl(url: string): void {
+    navigator.clipboard.writeText(url).then(() =>
+      this._snackbar.success('Copié', 'L’adresse des événements a été copiée.'));
   }
 
   public copySecret(value: string): void {
@@ -352,7 +442,8 @@ export class WebhookConnection implements OnInit {
           }),
         ).subscribe((result) => {
           this.revealedHmacSecret.set(result.secret ?? null);
-          this.hmacOldExpiresAt.set(result.oldExpiresAt ?? null);
+          // Une première génération n'a pas d'ancien secret : rien à annoncer.
+          this.hmacOldExpiresAt.set(isFirstGeneration ? null : result.oldExpiresAt ?? null);
           this.isRotatingHmac.set(false);
           this._snackbar.success(
             isFirstGeneration ? 'Secret généré' : 'Secret remplacé',
@@ -427,6 +518,8 @@ export class WebhookConnection implements OnInit {
       settings: writeSettings(src.settings, src.mode, {
         allowedIps: this.allowedIps().map((ip) => ip.trim()).filter(Boolean),
         externalIdPath: externalIdPath || null,
+        // Sans identifiant externe, rien ne permet de reconnaître un lead déjà reçu.
+        allowUpdates: !!externalIdPath && this.allowUpdates(),
       }),
     }).pipe(
       catchError(() => {

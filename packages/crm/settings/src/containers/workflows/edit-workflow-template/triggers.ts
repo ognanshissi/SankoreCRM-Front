@@ -1,4 +1,4 @@
-import { Component, effect, inject, input, signal } from '@angular/core';
+import { Component, computed, effect, inject, input, signal } from '@angular/core';
 import { catchError, EMPTY } from 'rxjs';
 import { TasCard } from '@talisoft/ui/card';
 import { Button } from '@talisoft/ui/button';
@@ -11,6 +11,7 @@ import { TimeagoPipe } from '@talisoft/ui/timeago';
 import {
   AddTriggerRequestTriggerTypeEnum,
   TriggerDto,
+  TriggerEventDto,
   WorkflowTemplateDto,
   WorkflowTemplatesApiService,
 } from '@sankore/crm-api';
@@ -85,6 +86,9 @@ import { PermissionsService } from '@sankore/crm/common';
                           {{ triggerTypeLabel(trigger.triggerType) }}
                         </p>
                         @if (trigger.eventName) {
+                          @if (eventLabel(trigger.eventName); as label) {
+                            <p class="text-xs text-slate-600 truncate">{{ label }}</p>
+                          }
                           <p class="text-xs text-slate-400 font-mono truncate">{{ trigger.eventName }}</p>
                         }
                         @if (trigger.createdAt) {
@@ -137,15 +141,45 @@ import { PermissionsService } from '@sankore/crm/common';
 
                 @if (newTriggerType() === AddTriggerRequestTriggerTypeEnum.EntityEvent) {
                   <div>
+                    <label for="trigger-event-code" class="text-xs text-slate-500 mb-1 block">Événement</label>
+                    <select
+                      id="trigger-event-code"
+                      class="w-full px-3 py-2 text-sm border border-slate-200 rounded-md bg-white focus:outline-none focus:ring-1 focus:ring-primary/40 focus:border-primary/40"
+                      [value]="newEventName()"
+                      (change)="newEventName.set($any($event.target).value)"
+                    >
+                      <option value="" disabled>Choisir un événement…</option>
+                      @for (group of eventGroups(); track group.family) {
+                        <optgroup [label]="group.family">
+                          @for (event of group.events; track event.code) {
+                            <option [value]="event.code" [selected]="event.code === newEventName()">{{ event.label }} — {{ event.code }}</option>
+                          }
+                        </optgroup>
+                      }
+                    </select>
+                    @if (selectedEvent()?.description; as description) {
+                      <p class="mt-1 text-xs text-slate-500">{{ description }}</p>
+                    } @else if (eventGroups().length === 0) {
+                      <p class="mt-1 text-xs text-slate-500">
+                        Aucun événement interne ne porte sur ce type de modèle.
+                      </p>
+                    }
+                  </div>
+                } @else if (needsEventName()) {
+                  <div>
                     <label for="trigger-event-name" class="text-xs text-slate-500 mb-1 block">Nom de l'événement</label>
                     <input
                       id="trigger-event-name"
                       type="text"
                       class="w-full px-3 py-2 text-sm border border-slate-200 rounded-md bg-white focus:outline-none focus:ring-1 focus:ring-primary/40 focus:border-primary/40 font-mono"
-                      placeholder="ex: lead.created"
+                      placeholder="ex: appointment.booked"
                       [value]="newEventName()"
                       (input)="newEventName.set($any($event.target).value)"
                     />
+                    <p class="mt-1 text-xs text-slate-500">
+                      Le type que le fournisseur envoie à l’adresse « événements » de sa source de leads
+                      (Paramétrage › Sources de leads › Connexion). Le circuit doit porter sur des leads.
+                    </p>
                   </div>
                 }
 
@@ -155,7 +189,7 @@ import { PermissionsService } from '@sankore/crm/common';
                       tas-raised-button
                       color="primary"
                       type="button"
-                      [disabled]="isSaving() || (newTriggerType() === AddTriggerRequestTriggerTypeEnum.EntityEvent && !newEventName().trim())"
+                      [disabled]="isSaving() || (needsEventName() && !newEventName().trim())"
                       (click)="addTrigger()"
                     >
                       Ajouter le déclencheur
@@ -199,7 +233,24 @@ export class WorkflowTriggersPage {
   public template = signal<WorkflowTemplateDto | null>(null);
   public showAddForm = signal(false);
   public newTriggerType = signal<AddTriggerRequestTriggerTypeEnum>(AddTriggerRequestTriggerTypeEnum.EntityEvent);
+
+  /** Un événement — du CRM ou d’un fournisseur — se désigne par son nom ; une planification non. */
+  public readonly needsEventName = computed(() =>
+    this.newTriggerType() === AddTriggerRequestTriggerTypeEnum.EntityEvent
+    || this.newTriggerType() === AddTriggerRequestTriggerTypeEnum.ExternalEvent);
   public newEventName = signal('');
+
+  /** Événements internes qui portent sur l'entité du modèle — un nom libre n'était jamais émis. */
+  public readonly events = signal<TriggerEventDto[]>([]);
+  public readonly eventGroups = computed(() => {
+    const groups = new Map<string, TriggerEventDto[]>();
+    for (const event of this.events()) {
+      const family = event.family ?? 'Autres';
+      groups.set(family, [...(groups.get(family) ?? []), event]);
+    }
+    return [...groups].map(([family, events]) => ({ family, events }));
+  });
+  public readonly selectedEvent = computed(() => this.events().find((e) => e.code === this.newEventName()) ?? null);
 
   constructor() {
     effect(() => {
@@ -216,6 +267,10 @@ export class WorkflowTriggersPage {
     }
   }
 
+  public eventLabel(code: string): string | null {
+    return this.events().find((e) => e.code === code)?.label ?? null;
+  }
+
   public toggleAddForm(): void {
     this.showAddForm.update((v) => !v);
     this.newTriggerType.set(AddTriggerRequestTriggerTypeEnum.EntityEvent);
@@ -227,7 +282,7 @@ export class WorkflowTriggersPage {
     this._api
       .addTrigger(this.id(), {
         triggerType: this.newTriggerType(),
-        eventName: this.newTriggerType() === AddTriggerRequestTriggerTypeEnum.EntityEvent ? this.newEventName().trim() : null,
+        eventName: this.needsEventName() ? this.newEventName().trim() : null,
       })
       .subscribe({
         next: () => {
@@ -278,6 +333,10 @@ export class WorkflowTriggersPage {
     this._api.getWorkflowTemplate(this.id()).subscribe({
       next: (template) => {
         this.template.set(template);
+        this._api
+          .listWorkflowTriggerEvents(template.entityType ?? undefined)
+          .pipe(catchError(() => EMPTY))
+          .subscribe((events) => this.events.set(events ?? []));
         this._api.listTriggers(this.id()).subscribe({
           next: (triggers) => {
             this.triggers.set(triggers ?? []);

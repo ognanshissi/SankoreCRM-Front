@@ -82,6 +82,8 @@ export class ProjectValidations {
         return { label: 'Délai dépassé', tone: 'text-red-700', icon: 'feather:alert-circle' };
       case 'Skipped':
         return { label: 'Sans objet', tone: 'text-slate-400', icon: 'feather:minus-circle' };
+      case 'Executed':
+        return { label: 'Exécutée automatiquement', tone: 'text-primary', icon: 'feather:bell' };
       case 'Unknown':
         return { label: 'Illisible', tone: 'text-amber-700', icon: 'feather:help-circle' };
       default:

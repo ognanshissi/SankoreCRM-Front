@@ -281,6 +281,7 @@ model/create-territory-request.interface.ts
 model/create-territory-result.interface.ts
 model/create-user-request.interface.ts
 model/create-user-result.interface.ts
+model/created-webhook-subscription-dto.interface.ts
 model/credential-dto.interface.ts
 model/crm-task-detail-dto.interface.ts
 model/crm-task-dto.interface.ts
@@ -560,6 +561,7 @@ model/paged-result-of-retention-candidate-dto.interface.ts
 model/paged-result-of-run-dto.interface.ts
 model/paged-result-of-stalled-holding-dto.interface.ts
 model/paged-result-of-telephony-call-list-item-dto.interface.ts
+model/paged-result-of-webhook-delivery-dto.interface.ts
 model/payment-instrument-dto.interface.ts
 model/perfect-vision-settings.interface.ts
 model/performance-factor.interface.ts
@@ -698,6 +700,7 @@ model/role-detail-dto.interface.ts
 model/role-dto.interface.ts
 model/role-permission-dto.interface.ts
 model/rotate-hmac-secret-result.interface.ts
+model/rotated-webhook-secret-dto.interface.ts
 model/row-validation-result.interface.ts
 model/rule-dto.interface.ts
 model/rule-input.interface.ts
@@ -707,6 +710,7 @@ model/run-kyc-verification-response.interface.ts
 model/sab-settings.interface.ts
 model/save-entity-form-request.interface.ts
 model/save-mail-template-request.interface.ts
+model/save-webhook-subscription-request.interface.ts
 model/save-whats-app-bot-profile-request.interface.ts
 model/save-whats-app-channel-request.interface.ts
 model/schedule-appointment-request.interface.ts
@@ -761,6 +765,7 @@ model/set-sms-monthly-quota-command.interface.ts
 model/set-task-participants-request.interface.ts
 model/set-task-tags-request.interface.ts
 model/set-telephony-caller-number-request.interface.ts
+model/set-webhook-subscription-active-request.interface.ts
 model/set-whats-app-api-key-request.interface.ts
 model/set-whats-app-bot-enabled-request.interface.ts
 model/sign-holding-request.interface.ts
@@ -848,6 +853,7 @@ model/tenant-module-subscription-dto.interface.ts
 model/tenant-modules-dto.interface.ts
 model/territory-dto.interface.ts
 model/test-email-result.interface.ts
+model/test-webhook-subscription-request.interface.ts
 model/timeline-event.interface.ts
 model/transfer-client-request.interface.ts
 model/transition-changed-dto.interface.ts
@@ -855,6 +861,7 @@ model/transition-dto.interface.ts
 model/transition-snapshot-dto.interface.ts
 model/transitions-diff-dto.interface.ts
 model/trigger-dto.interface.ts
+model/trigger-event-dto.interface.ts
 model/unlink-telephony-user-request.interface.ts
 model/unmapped-codes-response.interface.ts
 model/unmapped-crm-code.interface.ts
@@ -918,6 +925,11 @@ model/validate-lead-import-response.interface.ts
 model/verify-token-response.interface.ts
 model/web-form-field-dto.interface.ts
 model/web-form-response.interface.ts
+model/webhook-delivery-detail-dto.interface.ts
+model/webhook-delivery-dto.interface.ts
+model/webhook-event-type-dto.interface.ts
+model/webhook-subscription-dto.interface.ts
+model/webhook-test-result-dto.interface.ts
 model/weekly-conversions-dto.interface.ts
 model/whats-app-bot-collected-field-dto.interface.ts
 model/whats-app-bot-faq-entry-dto.interface.ts

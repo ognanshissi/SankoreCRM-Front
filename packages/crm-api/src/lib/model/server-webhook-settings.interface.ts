@@ -24,6 +24,7 @@ export interface ServerWebhookSettings {
     readonly expectedMode?: ServerWebhookSettingsExpectedModeEnum;
     allowedIps?: Array<string> | null;
     externalIdPath?: string | null;
+    allowUpdates?: boolean;
     contentType?: string | null;
     signatureAlgorithm?: string | null;
     signatureHeaderName?: string | null;

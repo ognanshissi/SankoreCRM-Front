@@ -124,8 +124,21 @@ export class WorkflowInstanceDetailPage implements OnInit {
     this._load();
   }
 
+  /**
+   * Ce que l'envoi d'une étape Notification est devenu, par public (la personne, les gens qui
+   * travaillent le dossier). Les modules qui envoient l'écrivent dans l'historique de l'instance.
+   */
+  public notificationOutcomes(stepDefinitionId: string | null | undefined): { sent: boolean; detail: string }[] {
+    if (!stepDefinitionId) return [];
+    return this.audit()
+      .filter((e) => e.fromStateId === stepDefinitionId && (e.eventCode === 'NOTIFICATION_SENT' || e.eventCode === 'NOTIFICATION_NOT_SENT'))
+      .map((e) => ({ sent: e.eventCode === 'NOTIFICATION_SENT', detail: e.comment ?? '' }));
+  }
+
   public stepName(stateId: string | null | undefined): string {
-    return this.instance()?.steps?.find((s) => s.id === stateId)?.name ?? stateId ?? '—';
+    // L'historique désigne l'étape du MODÈLE (stepDefinitionId), pas celle de l'instance : la
+    // comparaison sur `id` seul affichait un identifiant brut à la place du nom.
+    return this.instance()?.steps?.find((s) => s.stepDefinitionId === stateId || s.id === stateId)?.name ?? stateId ?? '—';
   }
 
   public currentStep(): WorkflowInstanceStepDto | null {

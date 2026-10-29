@@ -273,7 +273,11 @@
         @if (step.description) { <p class="text-xs text-slate-600">{{ step.description }}</p> }
       } @else {
         <div class="flex flex-wrap gap-1.5 mt-1.5">
-          @if (isIntegration) {
+          @if (kind === StepKind.Notification) {
+            @for (chip of notificationChips(step); track chip) {
+              <span class="px-2 py-0.5 rounded-md bg-slate-100 text-xs text-slate-700">{{ chip }}</span>
+            }
+          } @else if (isIntegration) {
             <span class="px-2 py-0.5 rounded-md bg-slate-100 text-xs text-slate-700">SYSTEM</span>
             @if (targetLabel(step)) { <span class="px-2 py-0.5 rounded-md bg-slate-100 text-xs text-slate-700">{{ targetLabel(step) }}</span> }
           } @else if (step.approverRoleCode) {

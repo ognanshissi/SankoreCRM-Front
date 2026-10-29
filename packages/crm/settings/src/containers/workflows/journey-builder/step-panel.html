@@ -65,10 +65,90 @@
     }
 
     @if (kind() === StepKind.Notification) {
+      <div class="flex flex-col gap-2">
+        <p class="text-sm font-medium text-slate-700">Destinataires</p>
+        <tas-checkbox [formField]="formSchema.notifySubject">
+          <span class="text-sm text-slate-700">La personne du dossier (lead ou client)</span>
+        </tas-checkbox>
+        <tas-checkbox [formField]="formSchema.notifyAgent">
+          <span class="text-sm text-slate-700">L'agent du dossier</span>
+        </tas-checkbox>
+        <tas-checkbox [formField]="formSchema.notifyRoles">
+          <span class="text-sm text-slate-700">Les titulaires d'un rôle</span>
+        </tas-checkbox>
+        @if (noRecipient()) {
+          <p class="text-xs text-functional-error">Cochez au moins un destinataire.</p>
+        }
+      </div>
+
+      @if (model().notifyRoles) {
+        <tas-form-field>
+          <tas-label>Rôles</tas-label>
+          <tas-multi-select [options]="roleOptions()" placeholder="Choisissez les rôles" [formField]="formSchema.roleCodes"></tas-multi-select>
+          <tas-hint>Les titulaires de l'agence du dossier et des agences dont elle dépend.</tas-hint>
+          @if (!model().roleCodes.length) {
+            <tas-error>Choisissez au moins un rôle.</tas-error>
+          }
+        </tas-form-field>
+      }
+
+      @if (model().notifySubject) {
+        <tas-form-field>
+          <tas-label>Canal</tas-label>
+          <tas-select [options]="channelOptions" [formField]="formSchema.channel"></tas-select>
+          <tas-hint>
+            Un lead ne le reçoit que s'il a consenti au contact par {{ model().channel === 'Sms' ? 'SMS' : 'e-mail' }}.
+            @if (model().channel === 'Sms') { Il faut aussi un canal SMS configuré. }
+          </tas-hint>
+        </tas-form-field>
+      }
+      @if (model().notifyAgent || model().notifyRoles) {
+        <p class="text-xs text-slate-500 -mt-2">L'agent et les rôles sont prévenus dans l'application (cloche).</p>
+      }
+
+      @if (model().notifySubject && model().channel !== 'Sms' || model().notifyAgent || model().notifyRoles) {
+        <tas-form-field>
+          <tas-label>Objet</tas-label>
+          <input tasInput type="text" placeholder="Par défaut : le nom de l'étape" [formField]="formSchema.subject" />
+        </tas-form-field>
+      }
+
       <tas-form-field>
-        <tas-label>Canal</tas-label>
-        <tas-select [options]="channelOptions" [formField]="formSchema.channel"></tas-select>
+        <tas-label>Message <span class="text-functional-error">*</span></tas-label>
+        <textarea tasInput rows="5" [formField]="formSchema.message"></textarea>
+        @if (!model().message.trim()) {
+          <tas-error>Sans message, rien n'est envoyé.</tas-error>
+        }
       </tas-form-field>
+      @if (!readOnly()) {
+        <div class="flex flex-wrap gap-1.5 -mt-2">
+          @for (variable of variables; track variable.key) {
+            <button type="button" class="px-2 py-0.5 rounded-md bg-slate-100 hover:bg-slate-200 text-xs text-slate-700"
+              [title]="'Insère ' + token(variable.key)" (click)="insertVariable(variable.key)">
+              {{ variable.label }}
+            </button>
+          }
+        </div>
+      }
+      @if (unknownVariables().length) {
+        <p class="text-xs text-amber-700">
+          Variable inconnue, envoyée telle quelle :
+          @for (name of unknownVariables(); track name) { <code class="font-mono">{{ token(name) }}</code> }
+        </p>
+      }
+
+      @if (preview()) {
+        <div class="p-3 rounded-lg bg-slate-50 border border-slate-200">
+          <p class="text-xs font-semibold text-slate-500 mb-1">Aperçu (valeurs d'exemple)</p>
+          <p class="text-sm text-slate-800 whitespace-pre-wrap">{{ preview() }}</p>
+          @if (model().notifySubject && model().channel === 'Sms') {
+            <p class="text-xs mt-2 tabular-nums" [class]="segments().segments > 1 ? 'text-amber-700' : 'text-slate-500'">
+              {{ segments().length }} / {{ segments().perSegment }} caractères · {{ segments().segments }} SMS facturé{{ segments().segments > 1 ? 's' : '' }}
+              @if (segments().unicode) { · un caractère spécial (accent circonflexe, emoji…) réduit la limite à 70 }
+            </p>
+          }
+        </div>
+      }
     }
 
     @if (kind() === StepKind.IntegrationAction) {
@@ -93,7 +173,7 @@
     </div>
   }
 
-  @if (kind() !== StepKind.Condition) {
+  @if (kind() !== StepKind.Condition && kind() !== StepKind.Notification) {
     <div class="flex items-start justify-between gap-3">
       <div>
         <p class="text-sm font-semibold text-slate-800">Étape bloquante</p>

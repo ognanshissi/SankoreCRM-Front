@@ -1,3 +1,4 @@
+import { HttpErrorResponse } from '@angular/common/http';
 import { Component, effect, inject, input, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { form, FormField, FormRoot, required, submit } from '@angular/forms/signals';
@@ -272,10 +273,12 @@ export class WorkflowInformationsPage {
 
     request$
       .pipe(
-        catchError(() => {
+        // Le motif du serveur (une étape Notification sans message, par exemple) plutôt qu'un
+        // « impossible » qui laisse chercher.
+        catchError((err: HttpErrorResponse) => {
           this._snackbarService.error(
             'Erreur',
-            `Impossible de ${template.isActive ? 'désactiver' : 'activer'} le modèle.`,
+            err.error?.detail ?? `Impossible de ${template.isActive ? 'désactiver' : 'activer'} le modèle.`,
           );
           this.isTogglingStatus.set(false);
           return EMPTY;

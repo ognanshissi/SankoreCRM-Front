@@ -43,9 +43,14 @@ export function instanceStatusMeta(status: string | null | undefined): StatusMet
 
 const STEP_STATUS_META: Record<string, StatusMeta> = {
   Pending: { label: 'En attente', severity: 'warning' },
+  AwaitingApproval: { label: 'En attente', severity: 'warning' },
   Approved: { label: 'Approuvée', severity: 'success' },
+  AutoApproved: { label: 'Approuvée automatiquement', severity: 'success' },
   Rejected: { label: 'Rejetée', severity: 'error' },
   Skipped: { label: 'Ignorée', severity: 'neutral' },
+  TimedOut: { label: 'Délai dépassé', severity: 'error' },
+  // Une étape automatique (notification) : franchie à l'entrée, personne n'a décidé.
+  Executed: { label: 'Exécutée automatiquement', severity: 'success' },
 };
 
 export function stepStatusMeta(status: string | null | undefined): StatusMeta {

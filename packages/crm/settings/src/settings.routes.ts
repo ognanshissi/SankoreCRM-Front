@@ -426,6 +426,22 @@ const paneRoutes: Routes = [
     loadComponent: () => import('./containers/whatsapp/bot/whatsapp-bot-profile-page'),
   },
   {
+    path: 'webhooks',
+    canActivate: [hasPermissionGuard('Integration.Webhook.View')],
+    loadComponent: () => import('./containers/webhooks/webhooks-page'),
+  },
+  {
+    // Avant `webhooks/:id`, sinon « documentation » serait lu comme un identifiant.
+    path: 'webhooks/documentation',
+    canActivate: [hasPermissionGuard('Integration.Webhook.View')],
+    loadComponent: () => import('./containers/webhooks/webhooks-documentation-page'),
+  },
+  {
+    path: 'webhooks/:id',
+    canActivate: [hasPermissionGuard('Integration.Webhook.View')],
+    loadComponent: () => import('./containers/webhooks/webhook-detail-page'),
+  },
+  {
     path: 'integrations',
     canActivate: [hasPermissionGuard('lead:source:read')],
     loadComponent: () => import('./containers/integrations/integrations-hub'),

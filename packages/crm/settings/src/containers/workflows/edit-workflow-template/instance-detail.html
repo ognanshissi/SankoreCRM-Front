@@ -96,6 +96,10 @@
                       <div class="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center">
                         <tas-icon iconName="feather:x" class="text-red-600" style="font-size:14px"></tas-icon>
                       </div>
+                    } @else if (step.status === 'Executed') {
+                      <div class="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                        <tas-icon iconName="feather:bell" class="text-primary" style="font-size:14px"></tas-icon>
+                      </div>
                     } @else if (step.status === 'Pending') {
                       <div class="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center ring-2 ring-amber-400 ring-offset-1">
                         <tas-icon iconName="feather:clock" class="text-amber-600" style="font-size:14px"></tas-icon>
@@ -137,6 +141,18 @@
                     }
                     @if (step.comment) {
                       <p class="text-xs text-slate-500 mt-1 italic">"{{ step.comment }}"</p>
+                    }
+                    @if (step.kind === 'Notification') {
+                      @for (outcome of notificationOutcomes(step.stepDefinitionId); track $index) {
+                        <p class="text-xs mt-1 flex items-start gap-1" [class]="outcome.sent ? 'text-slate-600' : 'text-amber-700'">
+                          <tas-icon [iconName]="outcome.sent ? 'feather:check' : 'feather:alert-triangle'" iconSize="sm" class="shrink-0"></tas-icon>
+                          {{ outcome.detail }}
+                        </p>
+                      } @empty {
+                        @if (step.status === 'Executed') {
+                          <p class="text-xs text-slate-400 mt-1">Envoi en cours de traitement…</p>
+                        }
+                      }
                     }
                     @if (step.completedAt) {
                       <p class="text-xs text-slate-400 mt-0.5">{{ step.completedAt | dateTimeAgo }}</p>
@@ -544,7 +560,7 @@
             @for (entry of audit(); track entry.id) {
               <div class="py-3">
                 <div class="flex items-center gap-2 text-sm text-slate-700">
-                  @if (entry.fromStateId) {
+                  @if (entry.fromStateId && entry.fromStateId !== entry.toStateId) {
                     <span class="text-slate-500">{{ stepName(entry.fromStateId) }}</span>
                     <tas-icon iconName="feather:arrow-right" class="text-slate-300 shrink-0" style="font-size:12px"></tas-icon>
                   }

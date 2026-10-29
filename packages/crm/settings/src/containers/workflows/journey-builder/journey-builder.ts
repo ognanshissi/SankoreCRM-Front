@@ -40,6 +40,7 @@ import {
   TriggerPreset,
   triggerLabel,
   validateJourney,
+  notificationRecipients,
 } from './journey-model';
 import { JourneyStepPanel } from './step-panel';
 
@@ -134,6 +135,18 @@ export class JourneyBuilder implements OnInit {
   public roleLabel(code: string | null | undefined): string {
     if (!code) return '';
     return this.roleOptions().find((r) => r.value === code)?.label ?? code;
+  }
+
+  /** Les destinataires d'une étape Notification, en badges sur le canevas. */
+  public notificationChips(step: WorkflowStepDto): string[] {
+    const config = parseStepConfig(step.configJson);
+    const recipients = notificationRecipients(config);
+    const chips: string[] = [];
+    if (recipients.includes('subject')) chips.push(config.channel === 'Sms' ? 'SMS à la personne' : 'E-mail à la personne');
+    if (recipients.includes('assignedAgent')) chips.push('Agent');
+    if (recipients.includes('role')) chips.push(...(config.roleCodes ?? []).map((code) => this.roleLabel(code)));
+    if (!config.message?.trim()) chips.push('Sans message');
+    return chips;
   }
 
   public targetLabel(step: WorkflowStepDto): string {

@@ -251,6 +251,8 @@ export const PERMISSIONS = {
   INTEGRATION_COMMAND_REPLAY: 'Integration.Command.Replay',
   INTEGRATION_RECONCILIATION_VIEW: 'Integration.Reconciliation.View',
   INTEGRATION_RECONCILIATION_RESOLVE: 'Integration.Reconciliation.Resolve',
+  INTEGRATION_WEBHOOK_VIEW: 'Integration.Webhook.View',
+  INTEGRATION_WEBHOOK_MANAGE: 'Integration.Webhook.Manage',
 
   CORE_BANKING_BALANCE_VIEW_LIVE: 'CoreBanking.Balance.ViewLive',
 

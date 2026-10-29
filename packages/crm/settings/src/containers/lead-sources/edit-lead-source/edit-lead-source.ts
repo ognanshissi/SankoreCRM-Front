@@ -240,9 +240,15 @@ export class EditLeadSource implements OnInit {
         break;
       }
       case 'ServerWebhook': {
-        // Rien d'obligatoire au contrat : un webhook sans filtrage d'IP et sans
-        // identifiant externe reste valide. En revanche, un chemin renseigne
-        // mais invalide casserait la deduplication a la premiere reception.
+        // Le serveur refuse d'activer un webhook sans secret de signature (webhooks lot 5) :
+        // la liste l'annonce au lieu de laisser « Activer » finir sur un refus.
+        checks.push({
+          label: 'Secret de signature généré (onglet Connexion)',
+          ok: (src.secrets ?? []).some((s) => s.name === 'hmac'),
+        });
+
+        // Un webhook sans filtrage d'IP et sans identifiant externe reste valide. En revanche,
+        // un chemin renseigne mais invalide casserait la deduplication a la premiere reception.
         const path = settings.externalIdPath;
         if (path?.trim()) {
           checks.push({
@@ -383,7 +389,7 @@ export class EditLeadSource implements OnInit {
       acceptButtonProps: { label: 'Activer', theme: 'primary' },
       rejectButtonProps: { label: 'Annuler' },
       accept: () =>
-        this._lifecycleAction(this._sourcesService.activate(src.id!)),
+        this._lifecycleAction(this._sourcesService.activateFrom(src.id!, src.status)),
     });
   }
 
@@ -430,6 +436,9 @@ export class EditLeadSource implements OnInit {
       .pipe(
         catchError(() => {
           this.actionLoading.set(false);
+          // Rechargé aussi sur refus : une activation depuis le brouillon a pu passer la source en
+          // test avant d'être refusée, et l'en-tête affichait encore « Brouillon ».
+          this._load(this.source()!.id!);
           return EMPTY;
         }),
       )

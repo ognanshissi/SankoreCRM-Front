@@ -64,7 +64,7 @@ export class TasMultiSelect<T>
 
   public searchKey = signal('');
 
-  public selectControl = new FormControl(null);
+  public selectControl = new FormControl<string[] | null>(null);
 
   public filteredList = computed(() => {
     if (!this.searchKey().trim()?.length) {
@@ -78,20 +78,20 @@ export class TasMultiSelect<T>
   });
 
   public ngOnChanges(changes: SimpleChanges) {
-    if (changes['options']?.currentValue) {
-      // if (changes['options'].currentValue.length > 10) {
-      //   this.searchable();
-      // }
-    }
+    // Les options arrivent souvent APRÈS la valeur (liste chargée par l'écran) : on recoche alors
+    // ce qui avait été écrit.
+    if (changes['options']) this._syncSelection();
   }
 
   public ngOnInit(): void {
     this._closeDropdownOnOutsideClick();
 
     this.selectionModel.changed.subscribe((res) => {
-      this.value = this.selectionModel.selected.map(
+      if (this._syncing) return;
+      this._written = this.selectionModel.selected.map(
         (selected) => selected[this.optionValue()]
       );
+      this.value = this._written;
     });
   }
 
@@ -99,9 +99,29 @@ export class TasMultiSelect<T>
    * Update the writeValue method when the field has default value
    * @param obj
    */
-  override writeValue(obj: string[]) {
-    if (obj) {
-      this.value = obj;
+  /**
+   * Une valeur écrite depuis le modèle COCHE les options correspondantes, sans notifier en retour.
+   * Avant, elle passait par le setter `value` (qui rappelle `onChange`) et ne cochait rien : une
+   * valeur enregistrée ne s'affichait pas, et la première case cochée remplaçait toute la liste.
+   */
+  override writeValue(obj: string[] | null) {
+    this._written = obj ?? [];
+    this.selectControl.setValue(obj ?? null, { emitEvent: false });
+    this._syncSelection();
+  }
+
+  private _written: string[] = [];
+  private _syncing = false;
+
+  private _syncSelection(): void {
+    const wanted = new Set(this._written);
+    this._syncing = true;
+    try {
+      this.selectionModel.clear();
+      const matching = (this.options() ?? []).filter((o) => wanted.has(o[this.optionValue()]));
+      if (matching.length) this.selectionModel.select(...(matching as { [key: string]: string }[]));
+    } finally {
+      this._syncing = false;
     }
   }
 

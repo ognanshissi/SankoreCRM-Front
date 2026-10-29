@@ -115,6 +115,7 @@ export const SETTINGS_CATALOG: ReadonlyArray<SettingsGroup> = [
     tint: 'bg-[#f6efe5]',
     entries: [
       { id: 'integrations-hub', title: 'Vue d’ensemble', icon: 'feather:grid', link: '/settings/integrations', permission: 'lead:source:read', description: 'Les services externes connectables depuis SANKORE, et leur état.' },
+      { id: 'webhooks', title: 'Webhooks', icon: 'feather:zap', link: '/settings/webhooks', permission: 'Integration.Webhook.View', description: 'Les événements leads, projets et clients envoyés à vos partenaires, et leurs livraisons.' },
       { id: 'connections', title: 'Connexions', icon: 'feather:link', link: '/settings/integrations/connections', permission: 'Integration.Connection.View', description: 'Core banking, assurance et téléphonie.' },
       { id: 'mappings', title: 'Correspondances de codes', icon: 'feather:repeat', link: '/settings/integrations/mappings', permission: 'Integration.Mapping.Manage', description: 'Les codes du CRM et ceux attendus par chaque système externe.' , modules: BANKING_OR_INSURANCE },
       { id: 'commands', title: 'Écritures et rejets', icon: 'feather:send', link: '/settings/integrations/commands', permission: 'Integration.Command.View', description: 'Les écritures envoyées aux systèmes externes, et les rejets à traiter.' , modules: BANKING_OR_INSURANCE },
