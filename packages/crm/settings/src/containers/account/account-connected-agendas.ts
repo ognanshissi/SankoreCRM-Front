@@ -17,6 +17,8 @@ import { TasSpinner } from '@talisoft/ui/spinner';
 import { TimeagoPipe } from '@talisoft/ui/timeago';
 import { mailboxErrorMessage, mailSyncErrorLabel } from './connected-mailbox.labels';
 import { ImapMailboxDrawer, ImapMailboxDrawerData } from './imap-mailbox-drawer';
+// eslint-disable-next-line @nx/enforce-module-boundaries
+import { MailSignatureDrawer, MailSignatureDrawerData } from '@sankore/crm/tasks';
 
 type ProviderCode = 'Microsoft' | 'Google';
 
@@ -355,6 +357,21 @@ export class AccountConnectedAgendas implements OnInit {
         });
       },
     });
+  }
+
+  /** La signature de la boîte, ajoutée sous ses nouveaux messages et ses réponses. */
+  public openSignature(account: ConnectedAccountDto): void {
+    this._sideDrawer
+      .open<string | null, MailSignatureDrawerData, MailSignatureDrawer>(MailSignatureDrawer, {
+        width: '100%',
+        height: '100%',
+        panelClass: 'side-drawer-panel',
+        data: { accountId: account.id!, email: account.email ?? '', signature: account.mailSignature ?? null },
+      })
+      .closed.subscribe((signature) => {
+        if (signature === undefined) return;
+        this.accounts.update((all) => all.map((a) => (a.id === account.id ? { ...a, mailSignature: signature } : a)));
+      });
   }
 
   /** La lecture se fait en arrière-plan (202) : on relit l'état quelques secondes plus tard. */

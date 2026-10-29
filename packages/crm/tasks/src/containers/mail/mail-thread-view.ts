@@ -1,5 +1,4 @@
-import { ChangeDetectionStrategy, Component, effect, inject, input, output, signal, untracked } from '@angular/core';
-import { DatePipe } from '@angular/common';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, input, output, signal, untracked } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { catchError, EMPTY, finalize, map, of } from 'rxjs';
 import { ConnectedMailboxApiService, MailAttachmentDto, MailLinkDto, MailMessageDto, MailThreadDto } from '@sankore/crm-api';
@@ -9,36 +8,48 @@ import { SideDrawerService } from '@talisoft/ui/side-drawer';
 import { SnackbarService } from '@talisoft/ui/snackbar';
 import { TasSpinner } from '@talisoft/ui/spinner';
 import { MailBody } from './mail-body';
-import { MailComposeDrawer, MailComposeDrawerData, MailComposeMode } from './mail-compose-drawer';
-import { addressesOf, partyLabel } from './mail-labels';
+import { MailComposeDrawer, MailComposeDrawerData } from './mail-compose-drawer';
+import { addressesOf, bodyPreview, initials, messageDate, partyLabel } from './mail-labels';
+import { MailReplyBox } from './mail-reply-box';
+
+/** Le lead ou le client de la conversation, et l'adresse à laquelle on lui écrit. */
+export interface MailThreadContact {
+  link: MailLinkDto;
+  email: string | null;
+}
 
 /**
- * Une conversation de la messagerie (lot 5), du plus ancien au plus récent. Les messages sont des
- * cartes empilées et non un `tas-table` : c'est un FIL qu'on lit dans l'ordre, comme le fil
- * WhatsApp et celui des tickets de support (mêmes exceptions validées) — pas une liste qu'on trie
- * ou qu'on pagine. Les messages lus d'avant sont repliés ; un clic les déplie.
+ * Une conversation de la Messagerie, du plus ancien au plus récent. Les messages sont des cartes
+ * empilées et non un `tas-table` : c'est un FIL qu'on lit dans l'ordre, comme les fils WhatsApp et
+ * support — la maquette du propriétaire (2026-10-28) le dessine ainsi. Les messages déjà lus sont
+ * repliés sur une ligne ; le dernier et les non-lus sont ouverts. La réponse rapide est en bas.
  *
  * Ouvrir une conversation la marque lue chez le fournisseur comme ici.
  */
 @Component({
   selector: 'mail-thread-view',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [DatePipe, RouterLink, Button, TasIcon, TasSpinner, MailBody],
+  imports: [RouterLink, Button, TasIcon, TasSpinner, MailBody, MailReplyBox],
+  host: { class: 'flex h-full min-h-0 flex-col' },
   template: `
     @if (isLoading()) {
-      <div class="flex justify-center py-16"><tas-spinner size="8" class="text-primary"></tas-spinner></div>
+      <div class="flex flex-1 items-center justify-center py-16"><tas-spinner size="8" class="text-primary"></tas-spinner></div>
     } @else if (loadFailed()) {
-      <div class="flex flex-col items-center gap-3 py-16 text-center" role="alert">
+      <div class="flex flex-1 flex-col items-center justify-center gap-3 py-16 text-center" role="alert">
         <p class="text-sm text-slate-600">Cette conversation n’a pas pu être chargée.</p>
         <button tas-outlined-button color="primary" type="button" (click)="load()">Réessayer</button>
       </div>
     } @else if (thread(); as t) {
-      <header class="flex flex-wrap items-start justify-between gap-3 border-b border-slate-100 pb-4">
+      <header class="flex items-start gap-3 border-b border-slate-100 px-5 pb-3 pt-4">
         <div class="min-w-0 flex-1">
-          <h2 class="text-lg font-semibold text-slate-900">{{ t.subject || '(sans objet)' }}</h2>
-          <p class="mt-0.5 text-xs text-slate-500">{{ t.accountLabel }} · {{ t.messages?.length }} message{{ (t.messages?.length ?? 0) > 1 ? 's' : '' }}</p>
+          <h2 class="truncate text-lg font-bold text-slate-900">{{ t.subject || '(sans objet)' }}</h2>
+          <p class="text-xs text-slate-500">
+            {{ t.messages?.length }} message{{ (t.messages?.length ?? 0) > 1 ? 's' : '' }}
+            @if (counterpart()) { avec {{ counterpart() }} }
+          </p>
+          <!-- Sous 1280 px le panneau du contact n'est plus là : ses liens restent ici. -->
           @if (links().length > 0) {
-            <div class="mt-2 flex flex-wrap gap-1.5">
+            <div class="mt-2 flex flex-wrap gap-1.5 xl:hidden">
               @for (l of links(); track l.entityId) {
                 <a [routerLink]="linkRoute(l)" class="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-semibold text-primary hover:underline">
                   <tas-icon [iconName]="l.entityType === 'Client' ? 'feather:user' : 'feather:target'" iconClass="!size-3"></tas-icon>
@@ -48,41 +59,46 @@ import { addressesOf, partyLabel } from './mail-labels';
             </div>
           }
         </div>
-        <button tas-text-button type="button" (click)="markUnread()">
-          <tas-icon iconName="feather:mail" iconClass="!size-3.5"></tas-icon> Marquer non lu
-        </button>
+        <div class="flex shrink-0 items-center gap-1.5">
+          <button type="button" class="grid size-9 place-items-center rounded-lg border border-slate-200 text-slate-600 hover:border-primary hover:text-primary"
+                  aria-label="Marquer comme non lu" title="Marquer comme non lu" (click)="markUnread()">
+            <tas-icon iconName="feather:mail" iconClass="!size-4"></tas-icon>
+          </button>
+          @if (latest(); as last) {
+            <button type="button" class="grid size-9 place-items-center rounded-lg border border-slate-200 text-slate-600 hover:border-primary hover:text-primary"
+                    aria-label="Transférer le dernier message" title="Transférer" (click)="forward(last)">
+              <tas-icon iconName="feather:corner-up-right" iconClass="!size-4"></tas-icon>
+            </button>
+          }
+        </div>
       </header>
 
-      <div class="flex flex-col gap-3 pt-4">
+      <div class="flex min-h-0 flex-1 flex-col gap-2.5 overflow-y-auto px-5 py-4">
         @for (m of t.messages ?? []; track m.id; let last = $last) {
           @let open = last || expanded().has(m.id!);
-          <article class="rounded-xl border bg-white" [class]="m.direction === 'Sent' ? 'border-primary/20' : 'border-slate-200'">
-            <button type="button" class="flex w-full items-start gap-3 px-4 py-3 text-left" [attr.aria-expanded]="open" (click)="toggle(m)">
-              <span class="grid size-8 shrink-0 place-items-center rounded-full text-xs font-bold"
-                    [class]="m.direction === 'Sent' ? 'bg-primary text-white' : 'bg-slate-100 text-slate-600'" aria-hidden="true">
-                {{ initials(m) }}
-              </span>
-              <span class="min-w-0 flex-1">
-                <span class="flex items-baseline justify-between gap-3">
-                  <span class="truncate text-sm font-semibold text-slate-900">
-                    {{ m.direction === 'Sent' ? 'Vous' : partyLabel(m.from) }}
-                    @if (m.direction !== 'Sent' && m.from?.name) { <span class="font-normal text-slate-500">&lt;{{ m.from.address }}&gt;</span> }
-                  </span>
-                  <span class="shrink-0 text-xs text-slate-500 tabular-nums">{{ m.sentAt | date: 'dd/MM/yyyy HH:mm' }}</span>
-                </span>
-                <span class="block truncate text-xs text-slate-500">
-                  À {{ recipients(m) }}
-                </span>
-              </span>
-            </button>
-
-            @if (open) {
-              <div class="border-t border-slate-100 px-4 py-3">
+          @let mine = m.direction === 'Sent';
+          <article class="rounded-xl border border-slate-200 bg-white">
+            @if (!open) {
+              <button type="button" class="flex w-full items-center gap-3 px-3.5 py-2.5 text-left hover:bg-slate-50" aria-expanded="false" (click)="toggle(m)">
+                <span class="grid size-8 shrink-0 place-items-center rounded-full text-xs font-bold" [class]="avatarClass(mine)" aria-hidden="true">{{ avatar(m) }}</span>
+                <span class="shrink-0 text-sm font-semibold text-slate-900">{{ mine ? 'Vous' : partyLabel(m.from) }}</span>
+                <span class="min-w-0 flex-1 truncate text-sm text-slate-500">{{ preview(m) }}</span>
+                <span class="shrink-0 text-xs tabular-nums text-slate-500">{{ messageDate(m.sentAt) }}</span>
+              </button>
+            } @else {
+              <div class="flex items-center gap-3 px-3.5 pt-3">
+                <span class="grid size-8 shrink-0 place-items-center rounded-full text-xs font-bold" [class]="avatarClass(mine)" aria-hidden="true">{{ avatar(m) }}</span>
+                <button type="button" class="min-w-0 flex-1 truncate text-left text-sm font-semibold text-slate-900" [disabled]="last" aria-expanded="true" (click)="toggle(m)">
+                  {{ mine ? 'Vous' : partyLabel(m.from) }}
+                </button>
+                <span class="shrink-0 text-xs tabular-nums text-slate-500">{{ messageDate(m.sentAt) }}</span>
+              </div>
+              <div class="px-3.5 pb-3.5 sm:pl-[3.6rem]">
+                <p class="mb-2 truncate text-xs text-slate-500">{{ route(m) }}</p>
                 <mail-body [body]="m.body" [isHtml]="!!m.bodyIsHtml"></mail-body>
                 @if (m.bodyTruncated) {
                   <p class="mt-2 text-xs text-slate-500">Message très long : la fin n’a pas été conservée. Ouvrez-le dans votre messagerie pour le lire en entier.</p>
                 }
-
                 @if (visibleAttachments(m).length > 0) {
                   <div class="mt-3 flex flex-wrap gap-2">
                     @for (a of visibleAttachments(m); track a.id) {
@@ -98,25 +114,17 @@ import { addressesOf, partyLabel } from './mail-labels';
                     }
                   </div>
                 }
-
-                <div class="mt-3 flex flex-wrap gap-2 border-t border-slate-100 pt-3">
-                  <button tas-outlined-button color="primary" type="button" (click)="compose('reply', m)">
-                    <tas-icon iconName="feather:corner-up-left" iconClass="!size-3.5"></tas-icon> Répondre
-                  </button>
-                  @if (canReplyAll(m)) {
-                    <button tas-outlined-button type="button" (click)="compose('replyAll', m)">
-                      <tas-icon iconName="feather:corner-up-left" iconClass="!size-3.5"></tas-icon> Répondre à tous
-                    </button>
-                  }
-                  <button tas-outlined-button type="button" (click)="compose('forward', m)">
-                    <tas-icon iconName="feather:corner-up-right" iconClass="!size-3.5"></tas-icon> Transférer
-                  </button>
-                </div>
               </div>
             }
           </article>
         }
       </div>
+
+      @if (latest(); as last) {
+        <div class="border-t border-slate-100 bg-white px-5 pb-4 pt-3">
+          <mail-reply-box [source]="last" [context]="replyContext()" (sent)="afterSend()"></mail-reply-box>
+        </div>
+      }
     }
   `,
 })
@@ -130,6 +138,8 @@ export class MailThreadView {
 
   /** Lu / non lu a changé, ou un message est parti : la liste doit se relire. */
   public readonly changed = output<void>();
+  /** Le lead ou le client de la conversation, pour le panneau de droite ; `null` sans lien. */
+  public readonly contact = output<MailThreadContact | null>();
 
   public readonly thread = signal<MailThreadDto | null>(null);
   public readonly isLoading = signal(true);
@@ -139,6 +149,29 @@ export class MailThreadView {
   public readonly links = signal<MailLinkDto[]>([]);
 
   public readonly partyLabel = partyLabel;
+  public readonly messageDate = messageDate;
+
+  public readonly latest = computed(() => {
+    const messages = this.thread()?.messages ?? [];
+    return messages[messages.length - 1] ?? null;
+  });
+
+  /** L'interlocuteur : le lead ou le client, sinon l'adresse du dernier échange. */
+  public readonly counterpart = computed(() => {
+    const named = this.links().find((l) => l.name)?.name;
+    if (named) return named;
+    const last = this.latest();
+    if (!last) return '';
+    return last.direction === 'Sent' ? (last.to ?? []).map((p) => partyLabel(p)).join(', ') : partyLabel(last.from);
+  });
+
+  public readonly replyContext = computed(() => {
+    const link = this.links()[0];
+    return {
+      leadId: link?.entityType === 'Lead' ? link.entityId : null,
+      clientId: link?.entityType === 'Client' ? link.entityId : null,
+    };
+  });
 
   constructor() {
     effect(() => {
@@ -156,6 +189,7 @@ export class MailThreadView {
       .pipe(
         catchError(() => {
           this.loadFailed.set(true);
+          this.contact.emit(null);
           return EMPTY;
         }),
         finalize(() => this.isLoading.set(false)),
@@ -169,6 +203,10 @@ export class MailThreadView {
         const seen = new Map<string, MailLinkDto>();
         for (const l of messages.flatMap((m) => m.links ?? [])) seen.set(`${l.entityType}:${l.entityId}`, l);
         this.links.set([...seen.values()]);
+
+        const last = messages[messages.length - 1];
+        const first = this.links()[0];
+        this.contact.emit(first ? { link: first, email: last ? this._counterpartAddress(last) : null } : null);
 
         if (messages.some((m) => !m.isRead)) this._setRead(id, true);
       });
@@ -187,20 +225,25 @@ export class MailThreadView {
     this._setRead(this.messageId(), false);
   }
 
-  public initials(m: MailMessageDto): string {
-    if (m.direction === 'Sent') return 'V';
-    const label = partyLabel(m.from);
-    return label.slice(0, 1).toUpperCase() || '?';
+  public avatar(m: MailMessageDto): string {
+    return initials(partyLabel(m.from)) || (m.direction === 'Sent' ? 'V' : '?');
   }
 
-  public recipients(m: MailMessageDto): string {
-    const to = addressesOf(m.to);
+  public avatarClass(mine: boolean): string {
+    return mine ? 'bg-primary text-white' : 'bg-slate-100 text-slate-700';
+  }
+
+  public preview(m: MailMessageDto): string {
+    return bodyPreview(m);
+  }
+
+  /** « De vous à aya@… » / « De aya@… à vous » — qui a écrit à qui, en une ligne. */
+  public route(m: MailMessageDto): string {
     const cc = addressesOf(m.cc);
-    return to.join(', ') + (cc.length ? ` · Cc ${cc.join(', ')}` : '');
-  }
-
-  public canReplyAll(m: MailMessageDto): boolean {
-    return addressesOf(m.to).length + addressesOf(m.cc).length > 1;
+    const copy = cc.length > 0 ? ` · Cc ${cc.join(', ')}` : '';
+    return m.direction === 'Sent'
+      ? `De vous à ${addressesOf(m.to).join(', ')}${copy}`
+      : `De ${m.from?.address ?? ''} à vous${copy}`;
   }
 
   public visibleAttachments(m: MailMessageDto): MailAttachmentDto[] {
@@ -236,29 +279,29 @@ export class MailThreadView {
       });
   }
 
-  public compose(mode: MailComposeMode, source: MailMessageDto): void {
-    const link = this.links()[0];
+  public forward(source: MailMessageDto): void {
     this._drawer
       .open<boolean, MailComposeDrawerData, MailComposeDrawer>(MailComposeDrawer, {
         width: '100%',
         height: '100%',
         panelClass: 'side-drawer-panel',
-        data: {
-          mode,
-          source,
-          context: {
-            leadId: link?.entityType === 'Lead' ? link.entityId : null,
-            clientId: link?.entityType === 'Client' ? link.entityId : null,
-          },
-        },
+        data: { mode: 'forward', source, context: this.replyContext() },
       })
       .closed.subscribe((sent) => {
-        // La copie envoyée arrive par la synchro qui suit l'envoi : on relit un peu plus tard.
-        if (sent) setTimeout(() => {
-          this.load();
-          this.changed.emit();
-        }, 6000);
+        if (sent) this.afterSend();
       });
+  }
+
+  /** La copie envoyée arrive par la synchro qui suit l'envoi : on relit un peu plus tard. */
+  public afterSend(): void {
+    setTimeout(() => {
+      this.load();
+      this.changed.emit();
+    }, 6000);
+  }
+
+  private _counterpartAddress(m: MailMessageDto): string | null {
+    return (m.direction === 'Sent' ? m.to?.[0]?.address : m.from?.address) ?? null;
   }
 
   private _setRead(id: string, isRead: boolean): void {
@@ -273,6 +316,7 @@ export class MailThreadView {
           if (!isRead) this._snackbar.error('Non modifié', 'La conversation n’a pas pu être marquée non lue.');
           return;
         }
+        if (!isRead) this._snackbar.success('Marquée non lue', 'Elle reste en tête des non lus.');
         this.thread.update((t) => (t ? { ...t, messages: (t.messages ?? []).map((m) => ({ ...m, isRead })) } : t));
         this.changed.emit();
       });

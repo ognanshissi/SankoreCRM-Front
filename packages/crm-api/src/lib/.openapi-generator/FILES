@@ -492,7 +492,9 @@ model/mail-server-dto.interface.ts
 model/mail-server-test-result.interface.ts
 model/mail-template-dto.interface.ts
 model/mail-template-variable-dto.interface.ts
+model/mail-thread-counts-dto.interface.ts
 model/mail-thread-dto.interface.ts
+model/mail-thread-page-dto.interface.ts
 model/mail-thread-summary-dto.interface.ts
 model/manual-pull-result.interface.ts
 model/manually-validate-kyc-file-request.interface.ts
@@ -553,7 +555,6 @@ model/paged-result-of-ingestion-dto.interface.ts
 model/paged-result-of-insurance-product-dto.interface.ts
 model/paged-result-of-lead-dto.interface.ts
 model/paged-result-of-lead-source-list-dto.interface.ts
-model/paged-result-of-mail-thread-summary-dto.interface.ts
 model/paged-result-of-overdue-profile-notice-dto.interface.ts
 model/paged-result-of-retention-candidate-dto.interface.ts
 model/paged-result-of-run-dto.interface.ts
@@ -709,6 +710,7 @@ model/save-mail-template-request.interface.ts
 model/save-whats-app-bot-profile-request.interface.ts
 model/save-whats-app-channel-request.interface.ts
 model/schedule-appointment-request.interface.ts
+model/scheduled-mail-dto.interface.ts
 model/scheduled-pull-settings.interface.ts
 model/scoped-permission-dto.interface.ts
 model/score-history-dto.interface.ts
@@ -725,6 +727,7 @@ model/segment-rule-definition.interface.ts
 model/segment-rule-dto.interface.ts
 model/segment-rules-dto.interface.ts
 model/select-connected-calendar-request.interface.ts
+model/send-mail-outcome.interface.ts
 model/send-snippet-request.interface.ts
 model/send-test-email-request.interface.ts
 model/send-whats-app-media-result.interface.ts
@@ -745,6 +748,7 @@ model/set-intent-level-request.interface.ts
 model/set-kyc-remote-policy-request.interface.ts
 model/set-legal-hold-request.interface.ts
 model/set-life-insurance-request.interface.ts
+model/set-mail-signature-request.interface.ts
 model/set-mail-thread-read-request.interface.ts
 model/set-monthly-quota-command.interface.ts
 model/set-pep-status-request.interface.ts

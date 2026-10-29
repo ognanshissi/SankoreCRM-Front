@@ -29,5 +29,6 @@ export interface ConnectedAccountDto {
     mailServer?: MailServerDto;
     mailSyncedAt?: string | null;
     mailLastError?: string | null;
+    mailSignature?: string | null;
 }
 

@@ -21,11 +21,17 @@ import { Observable }                                        from 'rxjs';
 // @ts-ignore
 import { MailThreadDto } from '../model/mail-thread-dto.interface';
 // @ts-ignore
-import { PagedResultOfMailThreadSummaryDto } from '../model/paged-result-of-mail-thread-summary-dto.interface';
+import { MailThreadPageDto } from '../model/mail-thread-page-dto.interface';
 // @ts-ignore
 import { RenderMailTemplateRequest } from '../model/render-mail-template-request.interface';
 // @ts-ignore
 import { RenderedMailTemplateDto } from '../model/rendered-mail-template-dto.interface';
+// @ts-ignore
+import { ScheduledMailDto } from '../model/scheduled-mail-dto.interface';
+// @ts-ignore
+import { SendMailOutcome } from '../model/send-mail-outcome.interface';
+// @ts-ignore
+import { SetMailSignatureRequest } from '../model/set-mail-signature-request.interface';
 // @ts-ignore
 import { SetMailThreadReadRequest } from '../model/set-mail-thread-read-request.interface';
 
@@ -110,6 +116,70 @@ export class ConnectedMailboxApiService {
             throw Error("key may not be null if value is not object or array");
         }
         return httpParams;
+    }
+
+    /**
+     * Cancels a scheduled message: it is deleted with its files
+     * @param id 
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     */
+    public cancelScheduledMail(id: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<any>;
+    public cancelScheduledMail(id: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<HttpResponse<any>>;
+    public cancelScheduledMail(id: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<HttpEvent<any>>;
+    public cancelScheduledMail(id: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<any> {
+        if (id === null || id === undefined) {
+            throw new Error('Required parameter id was null or undefined when calling cancelScheduledMail.');
+        }
+
+        let localVarHeaders = this.defaultHeaders;
+
+        let localVarCredential: string | undefined;
+        // authentication (BearerToken) required
+        localVarCredential = this.configuration.lookupCredential('BearerToken');
+        if (localVarCredential) {
+            localVarHeaders = localVarHeaders.set('Authorization', 'Bearer ' + localVarCredential);
+        }
+
+        let localVarHttpHeaderAcceptSelected: string | undefined = options && options.httpHeaderAccept;
+        if (localVarHttpHeaderAcceptSelected === undefined) {
+            // to determine the Accept header
+            const httpHeaderAccepts: string[] = [
+            ];
+            localVarHttpHeaderAcceptSelected = this.configuration.selectHeaderAccept(httpHeaderAccepts);
+        }
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+
+        let localVarHttpContext: HttpContext | undefined = options && options.context;
+        if (localVarHttpContext === undefined) {
+            localVarHttpContext = new HttpContext();
+        }
+
+
+        let responseType_: 'text' | 'json' | 'blob' = 'json';
+        if (localVarHttpHeaderAcceptSelected) {
+            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+                responseType_ = 'text';
+            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+                responseType_ = 'json';
+            } else {
+                responseType_ = 'blob';
+            }
+        }
+
+        let localVarPath = `/api/v1/integration/me/mail/scheduled/${this.configuration.encodeParam({name: "id", value: id, in: "path", style: "simple", explode: false, dataType: "string", dataFormat: "uuid"})}`;
+        return this.httpClient.request<any>('delete', `${this.configuration.basePath}${localVarPath}`,
+            {
+                context: localVarHttpContext,
+                responseType: <any>responseType_,
+                withCredentials: this.configuration.withCredentials,
+                headers: localVarHeaders,
+                observe: observe,
+                reportProgress: reportProgress
+            }
+        );
     }
 
     /**
@@ -253,13 +323,15 @@ export class ConnectedMailboxApiService {
      * @param unreadOnly 
      * @param page 
      * @param pageSize 
+     * @param entity 
+     * @param search 
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      */
-    public listMyMailThreads(accountId?: string, unreadOnly?: boolean, page?: number, pageSize?: number, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<PagedResultOfMailThreadSummaryDto>;
-    public listMyMailThreads(accountId?: string, unreadOnly?: boolean, page?: number, pageSize?: number, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<PagedResultOfMailThreadSummaryDto>>;
-    public listMyMailThreads(accountId?: string, unreadOnly?: boolean, page?: number, pageSize?: number, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<PagedResultOfMailThreadSummaryDto>>;
-    public listMyMailThreads(accountId?: string, unreadOnly?: boolean, page?: number, pageSize?: number, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
+    public listMyMailThreads(accountId?: string, unreadOnly?: boolean, page?: number, pageSize?: number, entity?: string, search?: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<MailThreadPageDto>;
+    public listMyMailThreads(accountId?: string, unreadOnly?: boolean, page?: number, pageSize?: number, entity?: string, search?: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<MailThreadPageDto>>;
+    public listMyMailThreads(accountId?: string, unreadOnly?: boolean, page?: number, pageSize?: number, entity?: string, search?: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<MailThreadPageDto>>;
+    public listMyMailThreads(accountId?: string, unreadOnly?: boolean, page?: number, pageSize?: number, entity?: string, search?: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
 
         let localVarQueryParameters = new HttpParams({encoder: this.encoder});
         if (accountId !== undefined && accountId !== null) {
@@ -277,6 +349,14 @@ export class ConnectedMailboxApiService {
         if (pageSize !== undefined && pageSize !== null) {
           localVarQueryParameters = this.addToHttpParams(localVarQueryParameters,
             <any>pageSize, 'pageSize');
+        }
+        if (entity !== undefined && entity !== null) {
+          localVarQueryParameters = this.addToHttpParams(localVarQueryParameters,
+            <any>entity, 'entity');
+        }
+        if (search !== undefined && search !== null) {
+          localVarQueryParameters = this.addToHttpParams(localVarQueryParameters,
+            <any>search, 'search');
         }
 
         let localVarHeaders = this.defaultHeaders;
@@ -318,10 +398,71 @@ export class ConnectedMailboxApiService {
         }
 
         let localVarPath = `/api/v1/integration/me/mail/threads`;
-        return this.httpClient.request<PagedResultOfMailThreadSummaryDto>('get', `${this.configuration.basePath}${localVarPath}`,
+        return this.httpClient.request<MailThreadPageDto>('get', `${this.configuration.basePath}${localVarPath}`,
             {
                 context: localVarHttpContext,
                 params: localVarQueryParameters,
+                responseType: <any>responseType_,
+                withCredentials: this.configuration.withCredentials,
+                headers: localVarHeaders,
+                observe: observe,
+                reportProgress: reportProgress
+            }
+        );
+    }
+
+    /**
+     * The caller\&#39;s messages waiting to leave (or that failed to), soonest first
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     */
+    public listMyScheduledMails(observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<Array<ScheduledMailDto>>;
+    public listMyScheduledMails(observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<Array<ScheduledMailDto>>>;
+    public listMyScheduledMails(observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<Array<ScheduledMailDto>>>;
+    public listMyScheduledMails(observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
+
+        let localVarHeaders = this.defaultHeaders;
+
+        let localVarCredential: string | undefined;
+        // authentication (BearerToken) required
+        localVarCredential = this.configuration.lookupCredential('BearerToken');
+        if (localVarCredential) {
+            localVarHeaders = localVarHeaders.set('Authorization', 'Bearer ' + localVarCredential);
+        }
+
+        let localVarHttpHeaderAcceptSelected: string | undefined = options && options.httpHeaderAccept;
+        if (localVarHttpHeaderAcceptSelected === undefined) {
+            // to determine the Accept header
+            const httpHeaderAccepts: string[] = [
+                'application/json'
+            ];
+            localVarHttpHeaderAcceptSelected = this.configuration.selectHeaderAccept(httpHeaderAccepts);
+        }
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+
+        let localVarHttpContext: HttpContext | undefined = options && options.context;
+        if (localVarHttpContext === undefined) {
+            localVarHttpContext = new HttpContext();
+        }
+
+
+        let responseType_: 'text' | 'json' | 'blob' = 'json';
+        if (localVarHttpHeaderAcceptSelected) {
+            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+                responseType_ = 'text';
+            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+                responseType_ = 'json';
+            } else {
+                responseType_ = 'blob';
+            }
+        }
+
+        let localVarPath = `/api/v1/integration/me/mail/scheduled`;
+        return this.httpClient.request<Array<ScheduledMailDto>>('get', `${this.configuration.basePath}${localVarPath}`,
+            {
+                context: localVarHttpContext,
                 responseType: <any>responseType_,
                 withCredentials: this.configuration.withCredentials,
                 headers: localVarHeaders,
@@ -411,26 +552,18 @@ export class ConnectedMailboxApiService {
     }
 
     /**
-     * Sends an e-mail from one of the caller\&#39;s mailboxes — new, reply or forward — with attachments
-     * multipart/form-data. &#x60;to&#x60;, &#x60;cc&#x60;, &#x60;bcc&#x60;: repeated fields, or one field separated by commas. &#x60;body&#x60;: HTML. &#x60;replyToMessageId&#x60;: a kept message of the same mailbox — the reply is threaded. &#x60;forwardMessageId&#x60; + repeated &#x60;forwardAttachmentIds&#x60;: the original\&#39;s attachments, fetched now. &#x60;files&#x60;: up to 10 files, 20 MB in all, executables refused. Answers 202: the provider accepted it; it appears in the conversation after the sync that follows, when a lead or a client is among its recipients. Limited to 30 sends a minute per user.
-     * @param accountId 
-     * @param to 
-     * @param cc 
-     * @param bcc 
-     * @param subject 
-     * @param body 
-     * @param replyToMessageId 
-     * @param forwardMessageId 
-     * @param forwardAttachmentIds 
-     * @param files 
-     * @param toClientId 
+     * Sends now a scheduled message that failed to leave
+     * @param id 
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      */
-    public sendMail(accountId?: string, to?: Array<string>, cc?: Array<string>, bcc?: Array<string>, subject?: string, body?: string, replyToMessageId?: string, forwardMessageId?: string, forwardAttachmentIds?: Array<string>, files?: Array<Blob>, toClientId?: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<any>;
-    public sendMail(accountId?: string, to?: Array<string>, cc?: Array<string>, bcc?: Array<string>, subject?: string, body?: string, replyToMessageId?: string, forwardMessageId?: string, forwardAttachmentIds?: Array<string>, files?: Array<Blob>, toClientId?: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<HttpResponse<any>>;
-    public sendMail(accountId?: string, to?: Array<string>, cc?: Array<string>, bcc?: Array<string>, subject?: string, body?: string, replyToMessageId?: string, forwardMessageId?: string, forwardAttachmentIds?: Array<string>, files?: Array<Blob>, toClientId?: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<HttpEvent<any>>;
-    public sendMail(accountId?: string, to?: Array<string>, cc?: Array<string>, bcc?: Array<string>, subject?: string, body?: string, replyToMessageId?: string, forwardMessageId?: string, forwardAttachmentIds?: Array<string>, files?: Array<Blob>, toClientId?: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<any> {
+    public retryScheduledMail(id: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<any>;
+    public retryScheduledMail(id: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<HttpResponse<any>>;
+    public retryScheduledMail(id: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<HttpEvent<any>>;
+    public retryScheduledMail(id: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<any> {
+        if (id === null || id === undefined) {
+            throw new Error('Required parameter id was null or undefined when calling retryScheduledMail.');
+        }
 
         let localVarHeaders = this.defaultHeaders;
 
@@ -445,6 +578,80 @@ export class ConnectedMailboxApiService {
         if (localVarHttpHeaderAcceptSelected === undefined) {
             // to determine the Accept header
             const httpHeaderAccepts: string[] = [
+            ];
+            localVarHttpHeaderAcceptSelected = this.configuration.selectHeaderAccept(httpHeaderAccepts);
+        }
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+
+        let localVarHttpContext: HttpContext | undefined = options && options.context;
+        if (localVarHttpContext === undefined) {
+            localVarHttpContext = new HttpContext();
+        }
+
+
+        let responseType_: 'text' | 'json' | 'blob' = 'json';
+        if (localVarHttpHeaderAcceptSelected) {
+            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+                responseType_ = 'text';
+            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+                responseType_ = 'json';
+            } else {
+                responseType_ = 'blob';
+            }
+        }
+
+        let localVarPath = `/api/v1/integration/me/mail/scheduled/${this.configuration.encodeParam({name: "id", value: id, in: "path", style: "simple", explode: false, dataType: "string", dataFormat: "uuid"})}/retry`;
+        return this.httpClient.request<any>('post', `${this.configuration.basePath}${localVarPath}`,
+            {
+                context: localVarHttpContext,
+                responseType: <any>responseType_,
+                withCredentials: this.configuration.withCredentials,
+                headers: localVarHeaders,
+                observe: observe,
+                reportProgress: reportProgress
+            }
+        );
+    }
+
+    /**
+     * Sends an e-mail from one of the caller\&#39;s mailboxes — new, reply or forward — with attachments
+     * multipart/form-data. &#x60;to&#x60;, &#x60;cc&#x60;, &#x60;bcc&#x60;: repeated fields, or one field separated by commas. &#x60;body&#x60;: HTML. &#x60;replyToMessageId&#x60;: a kept message of the same mailbox — the reply is threaded. &#x60;forwardMessageId&#x60; + repeated &#x60;forwardAttachmentIds&#x60;: the original\&#39;s attachments, fetched now. &#x60;files&#x60;: up to 10 files, 20 MB in all, executables refused. Answers 202: the provider accepted it; it appears in the conversation after the sync that follows, when a lead or a client is among its recipients. Limited to 30 sends a minute per user. &#x60;sendAt&#x60;: « Programmer l\&#39;envoi » — everything is checked now and the message is kept, encrypted, to leave at that instant; the answer carries its &#x60;scheduledId&#x60;.
+     * @param accountId 
+     * @param to 
+     * @param cc 
+     * @param bcc 
+     * @param subject 
+     * @param body 
+     * @param replyToMessageId 
+     * @param forwardMessageId 
+     * @param forwardAttachmentIds 
+     * @param files 
+     * @param toClientId 
+     * @param sendAt 
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     */
+    public sendMail(accountId?: string, to?: Array<string>, cc?: Array<string>, bcc?: Array<string>, subject?: string, body?: string, replyToMessageId?: string, forwardMessageId?: string, forwardAttachmentIds?: Array<string>, files?: Array<Blob>, toClientId?: string, sendAt?: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<SendMailOutcome>;
+    public sendMail(accountId?: string, to?: Array<string>, cc?: Array<string>, bcc?: Array<string>, subject?: string, body?: string, replyToMessageId?: string, forwardMessageId?: string, forwardAttachmentIds?: Array<string>, files?: Array<Blob>, toClientId?: string, sendAt?: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<SendMailOutcome>>;
+    public sendMail(accountId?: string, to?: Array<string>, cc?: Array<string>, bcc?: Array<string>, subject?: string, body?: string, replyToMessageId?: string, forwardMessageId?: string, forwardAttachmentIds?: Array<string>, files?: Array<Blob>, toClientId?: string, sendAt?: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<SendMailOutcome>>;
+    public sendMail(accountId?: string, to?: Array<string>, cc?: Array<string>, bcc?: Array<string>, subject?: string, body?: string, replyToMessageId?: string, forwardMessageId?: string, forwardAttachmentIds?: Array<string>, files?: Array<Blob>, toClientId?: string, sendAt?: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
+
+        let localVarHeaders = this.defaultHeaders;
+
+        let localVarCredential: string | undefined;
+        // authentication (BearerToken) required
+        localVarCredential = this.configuration.lookupCredential('BearerToken');
+        if (localVarCredential) {
+            localVarHeaders = localVarHeaders.set('Authorization', 'Bearer ' + localVarCredential);
+        }
+
+        let localVarHttpHeaderAcceptSelected: string | undefined = options && options.httpHeaderAccept;
+        if (localVarHttpHeaderAcceptSelected === undefined) {
+            // to determine the Accept header
+            const httpHeaderAccepts: string[] = [
+                'application/json'
             ];
             localVarHttpHeaderAcceptSelected = this.configuration.selectHeaderAccept(httpHeaderAccepts);
         }
@@ -539,6 +746,9 @@ export class ConnectedMailboxApiService {
         if (toClientId !== undefined) {
             localVarFormParams = localVarFormParams.append('toClientId', <any>toClientId) as any || localVarFormParams;
         }
+        if (sendAt !== undefined) {
+            localVarFormParams = localVarFormParams.append('sendAt', <any>sendAt) as any || localVarFormParams;
+        }
 
         let responseType_: 'text' | 'json' | 'blob' = 'json';
         if (localVarHttpHeaderAcceptSelected) {
@@ -552,10 +762,88 @@ export class ConnectedMailboxApiService {
         }
 
         let localVarPath = `/api/v1/integration/me/mail/send`;
-        return this.httpClient.request<any>('post', `${this.configuration.basePath}${localVarPath}`,
+        return this.httpClient.request<SendMailOutcome>('post', `${this.configuration.basePath}${localVarPath}`,
             {
                 context: localVarHttpContext,
                 body: localVarConvertFormParamsToString ? localVarFormParams.toString() : localVarFormParams,
+                responseType: <any>responseType_,
+                withCredentials: this.configuration.withCredentials,
+                headers: localVarHeaders,
+                observe: observe,
+                reportProgress: reportProgress
+            }
+        );
+    }
+
+    /**
+     * Sets (or clears, with null) the signature the composer adds under messages from this mailbox
+     * @param id 
+     * @param setMailSignatureRequest 
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     */
+    public setMailSignature(id: string, setMailSignatureRequest: SetMailSignatureRequest, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<any>;
+    public setMailSignature(id: string, setMailSignatureRequest: SetMailSignatureRequest, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<HttpResponse<any>>;
+    public setMailSignature(id: string, setMailSignatureRequest: SetMailSignatureRequest, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<HttpEvent<any>>;
+    public setMailSignature(id: string, setMailSignatureRequest: SetMailSignatureRequest, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<any> {
+        if (id === null || id === undefined) {
+            throw new Error('Required parameter id was null or undefined when calling setMailSignature.');
+        }
+        if (setMailSignatureRequest === null || setMailSignatureRequest === undefined) {
+            throw new Error('Required parameter setMailSignatureRequest was null or undefined when calling setMailSignature.');
+        }
+
+        let localVarHeaders = this.defaultHeaders;
+
+        let localVarCredential: string | undefined;
+        // authentication (BearerToken) required
+        localVarCredential = this.configuration.lookupCredential('BearerToken');
+        if (localVarCredential) {
+            localVarHeaders = localVarHeaders.set('Authorization', 'Bearer ' + localVarCredential);
+        }
+
+        let localVarHttpHeaderAcceptSelected: string | undefined = options && options.httpHeaderAccept;
+        if (localVarHttpHeaderAcceptSelected === undefined) {
+            // to determine the Accept header
+            const httpHeaderAccepts: string[] = [
+            ];
+            localVarHttpHeaderAcceptSelected = this.configuration.selectHeaderAccept(httpHeaderAccepts);
+        }
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+
+        let localVarHttpContext: HttpContext | undefined = options && options.context;
+        if (localVarHttpContext === undefined) {
+            localVarHttpContext = new HttpContext();
+        }
+
+
+        // to determine the Content-Type header
+        const consumes: string[] = [
+            'application/json'
+        ];
+        const httpContentTypeSelected: string | undefined = this.configuration.selectHeaderContentType(consumes);
+        if (httpContentTypeSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Content-Type', httpContentTypeSelected);
+        }
+
+        let responseType_: 'text' | 'json' | 'blob' = 'json';
+        if (localVarHttpHeaderAcceptSelected) {
+            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+                responseType_ = 'text';
+            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+                responseType_ = 'json';
+            } else {
+                responseType_ = 'blob';
+            }
+        }
+
+        let localVarPath = `/api/v1/integration/connected-accounts/${this.configuration.encodeParam({name: "id", value: id, in: "path", style: "simple", explode: false, dataType: "string", dataFormat: "uuid"})}/mail/signature`;
+        return this.httpClient.request<any>('put', `${this.configuration.basePath}${localVarPath}`,
+            {
+                context: localVarHttpContext,
+                body: setMailSignatureRequest,
                 responseType: <any>responseType_,
                 withCredentials: this.configuration.withCredentials,
                 headers: localVarHeaders,

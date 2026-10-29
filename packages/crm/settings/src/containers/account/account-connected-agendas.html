@@ -147,6 +147,7 @@
                   @if (a.mailEnabled) {
                     <div class="flex items-center gap-2">
                       <button tas-text-button color="primary" type="button" [disabled]="busy() !== null || reconnect" [isLoading]="busy() === a.id" (click)="syncMail(a)">Lire maintenant</button>
+                      <button tas-text-button color="primary" type="button" [disabled]="busy() !== null" (click)="openSignature(a)">{{ a.mailSignature ? 'Signature' : 'Ajouter une signature' }}</button>
                       <button tas-text-button type="button" [disabled]="busy() !== null" (click)="disableMail(a)">Désactiver</button>
                     </div>
                   } @else {
@@ -238,6 +239,7 @@
                   @if (!reconnect) {
                     <button tas-text-button color="primary" type="button" [disabled]="busy() !== null" [isLoading]="busy() === a.id" (click)="syncMail(a)">Lire maintenant</button>
                   }
+                  <button tas-text-button color="primary" type="button" [disabled]="busy() !== null" (click)="openSignature(a)">Signature</button>
                   <button tas-text-button color="primary" type="button" [disabled]="busy() !== null" (click)="openImap(a)">{{ reconnect ? 'Corriger' : 'Modifier' }}</button>
                   <button tas-text-button color="warn" type="button" [disabled]="busy() !== null" (click)="remove(a)">Retirer</button>
                 </div>

@@ -1,26 +1,36 @@
-import { ChangeDetectionStrategy, Component, computed, inject, OnInit, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, OnInit, signal, untracked, viewChild } from '@angular/core';
 import { DIALOG_DATA, DialogRef } from '@angular/cdk/dialog';
 import { HttpErrorResponse } from '@angular/common/http';
 import { disabled, form, FormField, FormRoot, required, submit, validate } from '@angular/forms/signals';
-import { catchError, EMPTY, firstValueFrom, map, of } from 'rxjs';
-import { QuillModule } from 'ngx-quill';
-import {
-  ConnectedAccountDto,
-  ConnectedAccountsApiService,
-  ConnectedMailboxApiService,
-  MailMessageDto,
-  MailTemplateDto,
-  MailTemplatesApiService,
-} from '@sankore/crm-api';
+import { catchError, firstValueFrom, of } from 'rxjs';
+import { ConnectedMailboxApiService, MailMessageDto, MailTemplateDto, MailTemplatesApiService } from '@sankore/crm-api';
 import { Button } from '@talisoft/ui/button';
 import { TasError, TasFormField, TasHint, TasLabel } from '@talisoft/ui/form-field';
 import { TasIcon } from '@talisoft/ui/icon';
 import { TasInput } from '@talisoft/ui/input';
 import { TasSelect } from '@talisoft/ui/select';
-import { TasDrawerAction, TasDrawerContent, TasDrawerTitle, TasSideDrawer } from '@talisoft/ui/side-drawer';
+import { SideDrawerService, TasDrawerAction, TasDrawerContent, TasDrawerTitle, TasSideDrawer } from '@talisoft/ui/side-drawer';
 import { SnackbarService } from '@talisoft/ui/snackbar';
 import { TasTitle } from '@talisoft/ui/title';
-import { addressesOf, BLOCKED_EXTENSIONS, htmlToText, MAIL_SEND_ERRORS, MAX_ATTACHMENT_BYTES, MAX_ATTACHMENTS, splitAddresses } from './mail-labels';
+import {
+  BLOCKED_EXTENSIONS,
+  MAIL_SEND_ERRORS,
+  MAX_ATTACHMENT_BYTES,
+  MAX_ATTACHMENTS,
+  htmlToText,
+  prefixedSubject,
+  quoteHtml,
+  replyRecipients,
+  scheduleLabel,
+  signatureBlock,
+  splitAddresses,
+  toEmailHtml,
+} from './mail-labels';
+import { MailAccountsStore } from './mail-accounts.store';
+import { MailComposerActions } from './mail-composer-actions';
+import { MailEditor } from './mail-editor';
+import { MailScheduledStore } from './mail-scheduled.store';
+import { MailSignatureDrawer, MailSignatureDrawerData } from './mail-signature-drawer';
 
 export type MailComposeMode = 'new' | 'reply' | 'replyAll' | 'forward';
 
@@ -31,7 +41,12 @@ export interface MailComposeDrawerData {
   /** La boîte qui envoie ; à défaut celle du message source, sinon la première. */
   accountId?: string | null;
   to?: string[];
+  cc?: string[];
   subject?: string;
+  /** Un texte déjà commencé — la réponse rapide du fil, ouverte en grand —, citation comprise. */
+  body?: string;
+  /** Les fichiers déjà joints à ce texte. */
+  files?: File[];
   /** Le lead ou le client à qui l'on écrit : ce qui remplit les variables d'un modèle. */
   context?: { leadId?: string | null; clientId?: string | null };
   /**
@@ -42,10 +57,6 @@ export interface MailComposeDrawerData {
   client?: { id: string; name: string; maskedEmail?: string | null } | null;
 }
 
-const QUILL_MODULES = {
-  toolbar: [['bold', 'italic', 'underline'], [{ list: 'ordered' }, { list: 'bullet' }], ['blockquote', 'link'], ['clean']],
-};
-
 class ComposeFormModel {
   public accountId!: string;
   public to!: string;
@@ -53,8 +64,6 @@ class ComposeFormModel {
   public bcc!: string;
   public subject!: string;
   public body!: string;
-  /** Pas envoyé : le modèle qu'on applique au texte. */
-  public templateId!: string;
 }
 
 /**
@@ -67,8 +76,8 @@ class ComposeFormModel {
   selector: 'mail-compose-drawer',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
-    FormField, FormRoot, QuillModule, Button, TasError, TasFormField, TasHint, TasLabel, TasIcon, TasInput, TasSelect, TasTitle,
-    TasSideDrawer, TasDrawerTitle, TasDrawerContent, TasDrawerAction,
+    FormField, FormRoot, Button, TasError, TasFormField, TasHint, TasLabel, TasIcon, TasInput, TasSelect, TasTitle,
+    TasSideDrawer, TasDrawerTitle, TasDrawerContent, TasDrawerAction, MailEditor, MailComposerActions,
   ],
   template: `
     <tas-side-drawer>
@@ -137,32 +146,17 @@ class ComposeFormModel {
               }
             </tas-form-field>
 
-            @if (templates().length > 0) {
-              <div class="flex flex-wrap items-end gap-2">
-                <tas-form-field class="min-w-56 flex-1">
-                  <tas-label>Partir d’un modèle</tas-label>
-                  <tas-select [options]="templateOptions()" [formField]="formSchema.templateId" placeholder="Choisir un modèle"></tas-select>
-                </tas-form-field>
-                <button tas-outlined-button color="primary" type="button" [disabled]="!model().templateId || applying()" [isLoading]="applying()" (click)="applyTemplate()">
-                  Appliquer
-                </button>
-              </div>
-              @if (missing().length > 0) {
-                <p class="-mt-2 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-900">
-                  Sans valeur ici, laissé vide dans le texte : {{ missing().join(', ') }}. Relisez avant d’envoyer.
-                </p>
-              }
+            @if (missing().length > 0) {
+              <p class="-mt-2 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-900">
+                Sans valeur ici, laissé vide dans le texte : {{ missing().join(', ') }}. Relisez avant d’envoyer.
+              </p>
             }
 
             <div class="flex flex-col gap-1">
               <span class="text-sm font-medium text-slate-700">Message</span>
-              <quill-editor
-                [formField]="formSchema.body"
-                [modules]="quillModules"
-                theme="snow"
-                placeholder="Votre message…"
-                [styles]="{ minHeight: '14rem' }"
-              ></quill-editor>
+              <div class="rounded-xl border border-slate-200 pt-1 [--mail-editor-min:14rem] [--mail-editor-max:28rem] focus-within:border-primary/50">
+                <mail-editor [formField]="formSchema.body" [toolbar]="toolbar()" placeholder="Votre message…"></mail-editor>
+              </div>
             </div>
 
             <!-- Pièces jointes -->
@@ -190,10 +184,6 @@ class ComposeFormModel {
                 </div>
               }
 
-              <label class="inline-flex w-fit cursor-pointer items-center gap-1.5 text-sm font-medium text-primary hover:underline">
-                <tas-icon iconName="feather:paperclip" iconClass="!size-3.5"></tas-icon> Joindre des fichiers
-                <input type="file" multiple class="sr-only" (change)="addFiles($any($event.target))" />
-              </label>
               @if (attachmentError()) {
                 <p class="text-xs text-functional-error" role="alert">{{ attachmentError() }}</p>
               }
@@ -207,12 +197,22 @@ class ComposeFormModel {
       </tas-drawer-content>
 
       <tas-drawer-action>
-        <button tas-outlined-button type="button" (click)="close()">Annuler</button>
-        <button tas-raised-button color="primary" type="button"
-                [disabled]="formSchema().invalid() || formSchema().submitting() || !!attachmentError() || accountOptions().length === 0"
-                [isLoading]="formSchema().submitting()" (click)="send()">
-          <tas-icon iconName="feather:send"></tas-icon> Envoyer
-        </button>
+        <mail-composer-actions
+          class="w-full"
+          [canSend]="!formSchema().invalid() && !attachmentError() && accountOptions().length > 0"
+          [sending]="formSchema().submitting()"
+          [templates]="templates()"
+          [hasSignature]="!!signature()"
+          [(toolbar)]="toolbar"
+          (send)="send($event)"
+          (files)="addFiles($event)"
+          (link)="editor()?.openLink()"
+          (emoji)="editor()?.insertText($event)"
+          (signature)="editor()?.insertHtml(signature()!)"
+          (editSignature)="editSignature()"
+          (template)="applyTemplate($event)"
+          (discard)="close()"
+        ></mail-composer-actions>
       </tas-drawer-action>
     </tas-side-drawer>
   `,
@@ -221,20 +221,23 @@ export class MailComposeDrawer implements OnInit {
   public readonly data: MailComposeDrawerData = inject(DIALOG_DATA) ?? {};
 
   private readonly _dialogRef = inject(DialogRef<boolean>);
-  private readonly _accountsApi = inject(ConnectedAccountsApiService);
   private readonly _mailApi = inject(ConnectedMailboxApiService);
   private readonly _templatesApi = inject(MailTemplatesApiService);
   private readonly _snackbar = inject(SnackbarService);
+  private readonly _drawer = inject(SideDrawerService);
+  private readonly _store = inject(MailAccountsStore);
+  private readonly _scheduled = inject(MailScheduledStore);
 
-  public readonly quillModules = QUILL_MODULES;
+  public readonly editor = viewChild(MailEditor);
   public readonly mode: MailComposeMode = this.data.mode ?? 'new';
 
-  public readonly loadingAccounts = signal(true);
-  public readonly accounts = signal<ConnectedAccountDto[]>([]);
+  public readonly loadingAccounts = computed(() => !this._store.loaded());
+  public readonly accounts = this._store.accounts;
   public readonly templates = signal<MailTemplateDto[]>([]);
-  public readonly applying = signal(false);
+  /** La barre de mise en forme : ouverte d'emblée dans le tiroir, qui a la place. */
+  public readonly toolbar = signal(true);
   public readonly missing = signal<string[]>([]);
-  public readonly files = signal<File[]>([]);
+  public readonly files = signal<File[]>(this.data.files ?? []);
   public readonly forwardIds = signal<Set<string>>(new Set());
   public readonly submitError = signal<string | null>(null);
   public readonly showCopies = signal(false);
@@ -252,7 +255,10 @@ export class MailComposeDrawer implements OnInit {
       .map((a) => ({ label: a.label === a.email ? a.email ?? '' : `${a.label} — ${a.email}`, value: a.id ?? '' })),
   );
 
-  public readonly templateOptions = computed(() => this.templates().map((t) => ({ label: t.name ?? '', value: t.id ?? '' })));
+  public readonly signature = computed(() => this._store.signatureOf(this.model().accountId));
+
+  /** Le texte tant que l'agent n'y a pas touché : la signature suit la boîte choisie dans « De ». */
+  private _untouchedBody: string | null = null;
 
   public readonly forwardable = computed(() =>
     this.mode === 'forward' ? (this.data.source?.attachments ?? []).filter((a) => !a.isInline) : [],
@@ -285,29 +291,46 @@ export class MailComposeDrawer implements OnInit {
     validate(schema.bcc, (ctx) => invalidAddress(ctx.value()));
   });
 
+  constructor() {
+    // La boîte demandée, celle du message source, sinon la première qui peut envoyer — dès que la
+    // liste des boîtes est là.
+    effect(() => {
+      const options = this.accountOptions();
+      untracked(() => {
+        if (this.model().accountId || options.length === 0) return;
+        const wanted = this.data.accountId ?? this.data.source?.accountId;
+        const chosen = options.find((o) => o.value === wanted)?.value ?? options[0].value;
+        this.model.update((m) => ({ ...m, accountId: chosen }));
+      });
+    });
+
+    // La signature de la boîte qui envoie, sous le texte, tant que l'agent n'a rien écrit. Un texte
+    // repris de la réponse rapide (`data.body`) a déjà la sienne.
+    effect(() => {
+      const signature = this.signature();
+      untracked(() => {
+        if (this.data.body !== undefined) return;
+        const body = this.model().body;
+        if (this._untouchedBody !== null ? body !== this._untouchedBody : htmlToText(body) !== htmlToText(this._quote())) return;
+        const next = signatureBlock(signature) + this._quote();
+        this._untouchedBody = next;
+        this.model.update((m) => ({ ...m, body: next }));
+      });
+    });
+  }
+
   ngOnInit(): void {
     this.forwardIds.set(new Set(this.forwardable().map((a) => a.id!)));
     if (this.model().cc) this.showCopies.set(true);
 
-    this._accountsApi.listMyConnectedAccounts().pipe(catchError(() => of({ accounts: [] }))).subscribe((result) => {
-      this.accounts.set(result.accounts ?? []);
-      this.loadingAccounts.set(false);
-
-      // La boîte demandée, celle du message source, sinon la première qui peut envoyer.
-      const wanted = this.data.accountId ?? this.data.source?.accountId;
-      const options = this.accountOptions();
-      const chosen = options.find((o) => o.value === wanted)?.value ?? options[0]?.value ?? '';
-      this.model.update((m) => ({ ...m, accountId: chosen }));
-    });
-
+    this._store.load();
     this._templatesApi.listMailTemplates(false).pipe(catchError(() => of([]))).subscribe((list) => this.templates.set(list ?? []));
   }
 
   /** Remplace le texte (et l'objet, hors réponse) par le modèle rempli pour ce destinataire ; la citation d'origine reste dessous. */
-  public async applyTemplate(): Promise<void> {
-    const id = this.model().templateId;
+  public async applyTemplate(template: MailTemplateDto): Promise<void> {
+    const id = template.id;
     if (!id) return;
-    this.applying.set(true);
 
     const rendered = await firstValueFrom(
       this._mailApi
@@ -324,7 +347,6 @@ export class MailComposeDrawer implements OnInit {
         ),
     );
 
-    this.applying.set(false);
     if (!rendered) return;
 
     this.missing.set(rendered.missing ?? []);
@@ -333,14 +355,12 @@ export class MailComposeDrawer implements OnInit {
     this.model.update((m) => ({
       ...m,
       subject: this.isReply() ? m.subject : rendered.subject ?? m.subject,
-      body: (rendered.body ?? '') + this._quote(),
+      body: (rendered.body ?? '') + signatureBlock(this.signature()) + this._quote(),
     }));
   }
 
-  public addFiles(input: HTMLInputElement): void {
-    const added = Array.from(input.files ?? []);
+  public addFiles(added: File[]): void {
     this.files.update((list) => [...list, ...added]);
-    input.value = '';
   }
 
   public removeFile(index: number): void {
@@ -363,14 +383,14 @@ export class MailComposeDrawer implements OnInit {
     return `${(n / 1024 / 1024).toFixed(1).replace('.', ',')} Mo`;
   }
 
-  public send(): void {
+  /** @param at `null` : maintenant ; une date : programmé (« Programmer l'envoi »). */
+  public send(at: Date | null): void {
     this.submitError.set(null);
 
     submit(this.formSchema, async () => {
       const m = this.model();
       const forwarded = this.forwardable().filter((a) => this.forwardIds().has(a.id!)).map((a) => a.id!);
 
-      // `map(() => true)` : la route répond 202 sans corps, le client généré émet `null`.
       const sent = await firstValueFrom(
         this._mailApi
           .sendMail(
@@ -379,30 +399,47 @@ export class MailComposeDrawer implements OnInit {
             splitAddresses(m.cc),
             splitAddresses(m.bcc),
             m.subject.trim(),
-            m.body,
+            toEmailHtml(m.body),
             this.isReply() ? this.data.source?.id ?? undefined : undefined,
             this.mode === 'forward' ? this.data.source?.id ?? undefined : undefined,
             forwarded,
             this.files(),
             this.data.client?.id,
+            at?.toISOString(),
           )
           .pipe(
-            map(() => true),
             catchError((err: HttpErrorResponse) => {
               this.submitError.set(sendError(err));
-              return of(false);
+              return of(undefined);
             }),
           ),
       );
 
-      if (!sent) return;
-      this._snackbar.success('E-mail envoyé', 'Il apparaîtra dans la conversation dans quelques instants s’il concerne un lead ou un client.');
-      this._dialogRef.close(true);
+      if (sent === undefined) return;
+      if (at) {
+        this._snackbar.success('Envoi programmé', `L’e-mail partira ${scheduleLabel(at)}. Vous pouvez l’annuler dans « Programmés ».`);
+        this._scheduled.refresh();
+      } else {
+        this._snackbar.success('E-mail envoyé', 'Il apparaîtra dans la conversation dans quelques instants s’il concerne un lead ou un client.');
+      }
+      this._dialogRef.close(!at);
     });
   }
 
   public close(): void {
     this._dialogRef.close(false);
+  }
+
+  public editSignature(): void {
+    const accountId = this.model().accountId;
+    if (!accountId) return;
+    const account = this.accounts().find((a) => a.id === accountId);
+    this._drawer.open<string | null, MailSignatureDrawerData, MailSignatureDrawer>(MailSignatureDrawer, {
+      width: '100%',
+      height: '100%',
+      panelClass: 'side-drawer-panel',
+      data: { accountId, email: account?.email ?? '', signature: this.signature() },
+    });
   }
 
   private _initialModel(): ComposeFormModel {
@@ -411,18 +448,12 @@ export class MailComposeDrawer implements OnInit {
     const subject = source?.subject ?? this.data.subject ?? '';
 
     let to = (this.data.to ?? []).join(', ');
-    let cc = '';
+    let cc = (this.data.cc ?? []).join(', ');
 
     if (source && (mode === 'reply' || mode === 'replyAll')) {
-      // Répondre à son propre message envoyé, c'est écrire à nouveau à ses destinataires.
-      to = source.direction === 'Sent' ? addressesOf(source.to).join(', ') : source.from?.address ?? '';
-      if (mode === 'replyAll') {
-        const own = (source.direction === 'Sent' ? source.from?.address : undefined)?.toLowerCase();
-        const others = [...addressesOf(source.to), ...addressesOf(source.cc)].filter(
-          (a) => a.toLowerCase() !== own && !splitAddresses(to).some((t) => t.toLowerCase() === a.toLowerCase()),
-        );
-        cc = others.join(', ');
-      }
+      const recipients = replyRecipients(source, mode === 'replyAll');
+      to = recipients.to.join(', ');
+      cc = recipients.cc.join(', ');
     }
 
     return Object.assign(new ComposeFormModel(), {
@@ -430,35 +461,15 @@ export class MailComposeDrawer implements OnInit {
       to,
       cc,
       bcc: '',
-      subject: !source ? subject : mode === 'forward' ? prefixed('TR', subject) : prefixed('RE', subject),
-      body: this._quote(),
-      templateId: '',
+      subject: !source ? subject : mode === 'forward' ? prefixedSubject('TR', subject) : prefixedSubject('RE', subject),
+      body: this.data.body ?? this._quote(),
     });
   }
 
-  /** La citation du message d'origine, sous le texte : en texte simple, l'éditeur ne garderait pas sa mise en page. */
   private _quote(): string {
     const source = this.data.source;
-    if (!source) return '';
-
-    const text = escape(source.bodyIsHtml ? htmlToText(source.body ?? '') : source.body ?? '').replace(/\n/g, '<br>');
-    const when = source.sentAt ? new Date(source.sentAt).toLocaleString('fr-FR', { dateStyle: 'long', timeStyle: 'short' }) : '';
-    const who = escape(source.from?.name ? `${source.from.name} <${source.from.address}>` : source.from?.address ?? '');
-
-    const header = this.mode === 'forward'
-      ? `<p>---------- Message transféré ----------<br>De : ${who}<br>Date : ${when}<br>Objet : ${escape(source.subject ?? '')}<br>À : ${escape(addressesOf(source.to).join(', '))}</p>`
-      : `<p>Le ${when}, ${who} a écrit :</p>`;
-
-    return `<p><br></p>${header}<blockquote>${text}</blockquote>`;
+    return source ? quoteHtml(source, this.mode === 'forward' ? 'forward' : 'reply') : '';
   }
-}
-
-function prefixed(prefix: 'RE' | 'TR', subject: string): string {
-  return new RegExp(`^\\s*${prefix}\\s*:`, 'i').test(subject) ? subject : `${prefix}: ${subject}`;
-}
-
-function escape(value: string): string {
-  return value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
 const ADDRESS = /^[^\s@,;<>]+@[^\s@,;<>]+\.[^\s@,;<>]+$/;

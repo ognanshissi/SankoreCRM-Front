@@ -1,12 +1,67 @@
-<div class="flex flex-col gap-4 pb-6">
-  <div class="flex flex-wrap items-center justify-between gap-3">
-    <div>
-      <h1 class="text-xl font-bold text-slate-900">Messagerie</h1>
-      <p class="text-sm text-slate-500">Vos échanges avec vos leads et vos clients, depuis vos boîtes connectées. Vous seul les lisez.</p>
-    </div>
+<div class="flex flex-col gap-4">
+  <!-- En-tête : la boîte, sa dernière lecture, et qui voit ces e-mails -->
+  <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
+    <h1 class="text-2xl font-bold text-slate-900">Messagerie</h1>
+
     @if (mailboxes().length > 0) {
-      <button tas-raised-button color="primary" type="button" (click)="compose()">
-        <tas-icon iconName="feather:edit" iconClass="!size-3.5"></tas-icon> Nouvel e-mail
+      <button type="button" TasMenuTrigger [panel]="mailboxMenu"
+              class="inline-flex max-w-full items-center gap-2 rounded-full border border-slate-200 bg-white px-3.5 py-1.5 text-sm text-slate-800 hover:border-primary/40">
+        <tas-icon iconName="feather:mail" iconClass="!size-3.5" class="shrink-0 text-slate-500"></tas-icon>
+        <span class="truncate font-medium">{{ mailboxLabel() }}</span>
+        <span class="hidden shrink-0 text-slate-500 sm:inline">· {{ syncing() ? 'lecture en cours…' : syncLabel() }}</span>
+        <tas-icon iconName="feather:chevron-down" iconClass="!size-3" class="shrink-0 text-slate-500"></tas-icon>
+      </button>
+      <ng-template #mailboxMenu>
+        <tas-menu>
+          @if (mailboxes().length > 1) {
+            <tas-menu-item>
+              <button type="button" class="flex w-full items-center gap-2" (click)="setAccount('toutes')">
+                <tas-icon [iconName]="currentMailbox() ? 'feather:circle' : 'feather:check-circle'" iconClass="!size-3.5" class="text-primary"></tas-icon>
+                Toutes mes boîtes
+              </button>
+            </tas-menu-item>
+          }
+          @for (b of mailboxes(); track b.id) {
+            <tas-menu-item>
+              <button type="button" class="flex w-full items-start gap-2 text-left" (click)="setAccount(b.id!)">
+                <tas-icon [iconName]="currentMailbox()?.id === b.id ? 'feather:check-circle' : 'feather:circle'" iconClass="!size-3.5" class="mt-0.5 text-primary"></tas-icon>
+                <span class="min-w-0">
+                  <span class="block truncate">{{ b.email || b.label }}</span>
+                  <span class="block text-xs text-slate-500">{{ syncedAgo(b.mailSyncedAt) }}</span>
+                </span>
+              </button>
+            </tas-menu-item>
+          }
+          <tas-menu-item>
+            <button type="button" class="flex w-full items-center gap-2" [disabled]="syncing()" (click)="syncNow()">
+              <tas-icon iconName="feather:refresh-cw" iconClass="!size-3.5" class="text-slate-500"></tas-icon>
+              Lire maintenant
+            </button>
+          </tas-menu-item>
+          <tas-menu-item>
+            <a routerLink="/settings/account/agendas" class="flex w-full items-center gap-2">
+              <tas-icon iconName="feather:settings" iconClass="!size-3.5" class="text-slate-500"></tas-icon>
+              Gérer mes boîtes
+            </a>
+          </tas-menu-item>
+        </tas-menu>
+      </ng-template>
+
+      @if (scheduled.count() > 0) {
+        <button type="button" (click)="openScheduled()"
+                class="inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium"
+                [class]="scheduled.failed() > 0 ? 'border-red-200 bg-red-50 text-red-800 hover:bg-red-100' : 'border-slate-200 bg-white text-slate-700 hover:border-primary/40'">
+          <tas-icon [iconName]="scheduled.failed() > 0 ? 'feather:alert-triangle' : 'feather:clock'" iconClass="!size-3.5"></tas-icon>
+          Programmés <span class="tabular-nums">{{ scheduled.count() }}</span>
+        </button>
+      }
+
+      <span class="inline-flex items-center gap-1.5 text-sm text-slate-500" title="Seuls les e-mails échangés avec vos leads et clients sont gardés, et vous seul les lisez.">
+        <tas-icon iconName="feather:lock" iconClass="!size-3.5"></tas-icon> Visible par vous seul
+      </span>
+
+      <button tas-raised-button color="primary" type="button" class="ms-auto" (click)="compose()">
+        <tas-icon iconName="feather:edit-2" iconClass="!size-3.5"></tas-icon> Nouvel e-mail
       </button>
     }
   </div>
@@ -36,87 +91,130 @@
       </div>
     }
 
-    <div class="grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(0,26rem)_minmax(0,1fr)]">
-      <!-- Les conversations : masquées sur mobile quand une conversation est ouverte -->
-      <section class="min-w-0 flex-col gap-3 rounded-2xl bg-white p-3" [class]="selected() ? 'hidden lg:flex' : 'flex'" aria-label="Conversations">
-        <div class="flex flex-wrap items-center gap-2">
-          @if (mailboxes().length > 1) {
-            <tas-select class="min-w-44 flex-1" [options]="accountOptions()" [ngModel]="accountFilter()" (ngModelChange)="setAccount($event)"></tas-select>
-          }
-          <label class="flex cursor-pointer items-center gap-2 text-sm text-slate-700">
-            <input type="checkbox" class="h-4 w-4 accent-primary" [checked]="unreadOnly()" (change)="setUnreadOnly($any($event.target).checked)" />
-            Non lus seulement
+    <!--
+      Trois colonnes de la hauteur de l'écran, chacune avec son propre défilement : la liste, le fil
+      (réponse rapide en bas) et le contact. Sous 1024 px, la liste ou le fil ; sous 1280 px, sans
+      le contact, dont les liens restent dans l'en-tête du fil.
+      La hauteur retire la barre du haut (76 px), le titre et les marges de <main> : en px et non en
+      rem, la taille de police racine de l'application n'est pas 16 px.
+    -->
+    <div class="grid grid-cols-1 gap-3 lg:h-[calc(100dvh-196px)] lg:min-h-[30rem] lg:grid-cols-[minmax(0,23rem)_minmax(0,1fr)] xl:grid-cols-[minmax(0,23rem)_minmax(0,1fr)_17rem]">
+      <!-- Les conversations -->
+      <section class="min-h-0 flex-col rounded-2xl bg-white" [class]="selected() ? 'hidden lg:flex' : 'flex'" aria-label="Conversations">
+        <div class="flex flex-col gap-3 p-3 pb-2">
+          <label class="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 focus-within:border-primary/50 focus-within:bg-white">
+            <tas-icon iconName="feather:search" iconClass="!size-4" class="shrink-0 text-slate-400"></tas-icon>
+            <span class="sr-only">Rechercher</span>
+            <input type="search" class="min-w-0 flex-1 bg-transparent text-sm text-slate-900 outline-none placeholder:text-slate-400"
+                   placeholder="Rechercher un nom, un sujet…" autocomplete="off"
+                   [ngModel]="search()" (ngModelChange)="onSearch($event)" />
+            @if (search()) {
+              <button type="button" class="grid size-5 place-items-center rounded-full text-slate-400 hover:bg-slate-200 hover:text-slate-700" aria-label="Effacer la recherche" (click)="clearSearch()">
+                <tas-icon iconName="feather:x" iconClass="!size-3"></tas-icon>
+              </button>
+            }
           </label>
-          <button tas-button iconButton type="button" class="ms-auto" aria-label="Actualiser" [disabled]="isLoading()" (click)="load()">
-            <tas-icon iconName="feather:refresh-cw" iconClass="!size-3.5"></tas-icon>
-          </button>
+
+          <div class="grid grid-cols-4 gap-1" role="tablist" aria-label="Filtrer les conversations">
+            @for (t of tabs; track t.key) {
+              @let active = tab() === t.key;
+              <button type="button" role="tab" [attr.aria-selected]="active"
+                      class="rounded-lg px-1.5 py-1.5 text-center text-xs font-semibold transition-colors"
+                      [class]="active ? 'bg-primary text-white' : 'text-slate-600 hover:bg-slate-100'"
+                      (click)="setTab(t.key)">
+                {{ t.label }}
+                @if (counts(); as c) { <span class="tabular-nums" [class]="active ? 'text-white/80' : 'text-slate-400'">{{ c[t.count] }}</span> }
+              </button>
+            }
+          </div>
         </div>
 
-        @if (loadFailed()) {
-          <div class="flex flex-col items-center gap-2 py-10 text-center" role="alert">
-            <p class="text-sm text-slate-600">Les conversations n’ont pas pu être chargées.</p>
-            <button tas-outlined-button color="primary" type="button" (click)="load()">Réessayer</button>
-          </div>
-        } @else if (!isLoading() && threads().length === 0) {
-          <p class="px-2 py-10 text-center text-sm text-slate-400">
-            @if (unreadOnly()) { Aucune conversation non lue. }
-            @else { Aucun échange avec un lead ou un client pour le moment. Les e-mails des 30 derniers jours apparaissent après la première lecture de la boîte. }
-          </p>
-        } @else {
-          <tas-table [data]="threads()" identifierField="latestMessageId" [config]="config()" [isLoading]="isLoading()" [hasCaption]="false"
-                     (pageEventChange)="onPage($event)">
-            <ng-template #body let-t>
-              <tr>
-                <td class="!p-0">
-                  @let unread = (t.unreadCount ?? 0) > 0;
-                  <button type="button" class="flex w-full items-start gap-2.5 rounded-lg px-2.5 py-2.5 text-left transition-colors"
-                          [class]="isSelected(t) ? 'bg-primary/10' : 'hover:bg-slate-50'" [attr.aria-current]="isSelected(t) ? 'true' : null" (click)="open(t)">
-                    <span class="mt-1.5 size-2 shrink-0 rounded-full" [class]="unread ? 'bg-primary' : 'bg-transparent'" [attr.aria-label]="unread ? 'Non lu' : null"></span>
+        <div class="min-h-0 flex-1 overflow-y-auto border-t border-slate-100">
+          @if (loadFailed()) {
+            <div class="flex flex-col items-center gap-2 py-10 text-center" role="alert">
+              <p class="text-sm text-slate-600">Les conversations n’ont pas pu être chargées.</p>
+              <button tas-outlined-button color="primary" type="button" (click)="load()">Réessayer</button>
+            </div>
+          } @else if (!isLoading() && threads().length === 0) {
+            <p class="px-4 py-10 text-center text-sm text-slate-400">
+              @if (search().trim()) { Aucune conversation ne correspond à « {{ search().trim() }} ». }
+              @else if (tab() === 'nonlus') { Aucune conversation non lue. }
+              @else if (tab() === 'leads') { Aucun échange avec un lead. }
+              @else if (tab() === 'clients') { Aucun échange avec un client. }
+              @else { Aucun échange avec un lead ou un client pour le moment. Les e-mails des 30 derniers jours apparaissent après la première lecture de la boîte. }
+            </p>
+          } @else if (isLoading() && threads().length === 0) {
+            <div class="flex justify-center py-10"><tas-spinner size="6" class="text-primary"></tas-spinner></div>
+          } @else {
+            <!-- Une liste simple, pas un tas-table : choix du propriétaire (2026-10-29) — une boîte de réception se lit en continu, sans pagination. -->
+            <ul class="divide-y divide-slate-100" [class.opacity-60]="isLoading()" aria-label="Conversations">
+              @for (t of threads(); track t.latestMessageId) {
+                @let unread = (t.unreadCount ?? 0) > 0;
+                @let kind = rowKind(t);
+                <li>
+                  <button type="button" class="flex w-full items-start gap-3 border-l-[3px] px-3.5 py-3 text-left transition-colors"
+                          [class]="isSelected(t) ? 'border-primary bg-primary/5' : 'border-transparent hover:bg-slate-50'"
+                          [attr.aria-current]="isSelected(t) ? 'true' : null" (click)="open(t)">
+                    <span class="grid size-10 shrink-0 place-items-center rounded-xl bg-slate-100 text-sm font-bold text-slate-700" aria-hidden="true">{{ rowInitials(t) }}</span>
                     <span class="min-w-0 flex-1">
-                      <span class="flex items-baseline justify-between gap-2">
-                        <span class="truncate text-sm" [class]="unread ? 'font-semibold text-slate-900' : 'text-slate-700'">
-                          {{ counterparts(t) }}
-                          @if ((t.messageCount ?? 0) > 1) { <span class="text-xs font-normal text-slate-400">({{ t.messageCount }})</span> }
-                        </span>
-                        <span class="shrink-0 text-xs tabular-nums" [class]="unread ? 'font-semibold text-primary' : 'text-slate-400'">{{ shortDate(t.lastAt) }}</span>
+                      <span class="flex items-center gap-2">
+                        <span class="truncate text-sm text-slate-900" [class.font-semibold]="unread">{{ rowName(t) }}</span>
+                        @if (kind) {
+                          <span class="shrink-0 rounded px-1.5 py-px text-[10px] font-semibold"
+                                [class]="kind === 'Client' ? 'bg-emerald-50 text-emerald-700' : 'bg-indigo-50 text-indigo-700'">{{ kind }}</span>
+                        }
+                        <span class="ms-auto shrink-0 text-xs tabular-nums" [class]="unread ? 'font-semibold text-primary' : 'text-slate-500'">{{ shortDate(t.lastAt) }}</span>
                       </span>
-                      <span class="flex items-center gap-1 truncate text-sm" [class]="unread ? 'font-medium text-slate-900' : 'text-slate-600'">
-                        @if (t.hasAttachments) { <tas-icon iconName="feather:paperclip" iconClass="!size-3" class="shrink-0 text-slate-400"></tas-icon> }
-                        <span class="truncate">{{ t.subject || '(sans objet)' }}</span>
+                      <span class="mt-0.5 flex items-center gap-2">
+                        <span class="min-w-0 flex-1 truncate text-sm" [class]="unread ? 'font-semibold text-slate-900' : 'text-slate-700'">{{ t.subject || '(sans objet)' }}</span>
+                        @if (t.hasAttachments) { <tas-icon iconName="feather:paperclip" iconClass="!size-3" class="shrink-0 text-slate-400" aria-label="Pièce jointe"></tas-icon> }
+                        @if (unread) {
+                          <span class="size-2 shrink-0 rounded-full bg-primary" aria-label="Non lu"></span>
+                        } @else if ((t.messageCount ?? 0) > 1) {
+                          <span class="shrink-0 text-xs tabular-nums text-slate-400" [attr.aria-label]="t.messageCount + ' messages'">{{ t.messageCount }}</span>
+                        }
                       </span>
-                      <span class="block truncate text-xs text-slate-500">{{ t.snippet }}</span>
-                      @if ((t.links ?? []).length > 0) {
-                        <span class="mt-1 flex flex-wrap gap-1">
-                          @for (l of t.links; track l.entityId) {
-                            <span class="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600">
-                              {{ l.name || (l.entityType === 'Client' ? 'Client' : 'Lead') }}
-                            </span>
-                          }
-                        </span>
-                      }
+                      <span class="mt-0.5 block truncate text-xs text-slate-500">
+                        @if (t.lastDirection === 'Sent') { Vous : }{{ t.snippet }}
+                      </span>
                     </span>
                   </button>
-                </td>
-              </tr>
-            </ng-template>
-          </tas-table>
-        }
+                </li>
+              }
+            </ul>
+
+            @if (remaining() > 0) {
+              <div class="flex justify-center border-t border-slate-100 p-3">
+                <button tas-text-button color="primary" type="button" [disabled]="loadingMore()" [isLoading]="loadingMore()" (click)="loadMore()">
+                  Afficher plus <span class="tabular-nums text-slate-400">({{ remaining() }})</span>
+                </button>
+              </div>
+            }
+          }
+        </div>
       </section>
 
       <!-- La conversation ouverte -->
-      <section class="min-w-0 rounded-2xl bg-white p-4 sm:p-5" [class]="selected() ? 'block' : 'hidden lg:block'" aria-label="Conversation">
+      <section class="min-h-0 flex-col overflow-hidden rounded-2xl bg-white" [class]="selected() ? 'flex' : 'hidden lg:flex'" aria-label="Conversation">
         @if (selected(); as id) {
-          <button tas-text-button type="button" class="mb-2 lg:hidden" (click)="closeThread()">
+          <button tas-text-button type="button" class="mx-4 mt-3 self-start lg:hidden" (click)="closeThread()">
             <tas-icon iconName="feather:arrow-left" iconClass="!size-3.5"></tas-icon> Conversations
           </button>
-          <mail-thread-view [messageId]="id" (changed)="load()"></mail-thread-view>
+          <mail-thread-view class="min-h-0 flex-1" [messageId]="id" (changed)="load()" (contact)="contact.set($event)"></mail-thread-view>
         } @else {
-          <div class="flex flex-col items-center gap-2 py-24 text-center text-slate-400">
+          <div class="flex flex-1 flex-col items-center justify-center gap-2 py-24 text-center text-slate-400">
             <tas-icon iconName="feather:mail" iconClass="!size-6"></tas-icon>
             <p class="text-sm">Choisissez une conversation.</p>
           </div>
         }
       </section>
+
+      <!-- Le contact de la conversation -->
+      <aside class="hidden min-h-0 overflow-y-auto xl:block" aria-label="Contact">
+        @if (selected() && contact(); as c) {
+          <mail-contact-panel [link]="c.link" [email]="c.email"></mail-contact-panel>
+        }
+      </aside>
     </div>
   }
 </div>

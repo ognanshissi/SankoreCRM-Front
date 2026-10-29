@@ -5349,6 +5349,47 @@
         }
       }
     },
+    "/api/v1/integration/connected-accounts/{id}/mail/signature": {
+      "put": {
+        "tags": [
+          "ConnectedMailbox"
+        ],
+        "summary": "Sets (or clears, with null) the signature the composer adds under messages from this mailbox",
+        "operationId": "SetMailSignature",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetMailSignatureRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "422": {
+            "description": "Unprocessable Entity"
+          }
+        }
+      }
+    },
     "/api/v1/integration/me/mail/threads": {
       "get": {
         "tags": [
@@ -5387,6 +5428,20 @@
               "type": "integer",
               "format": "int32"
             }
+          },
+          {
+            "name": "entity",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -5395,7 +5450,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PagedResultOfMailThreadSummaryDto"
+                  "$ref": "#/components/schemas/MailThreadPageDto"
                 }
               }
             }
@@ -5445,7 +5500,7 @@
           "ConnectedMailbox"
         ],
         "summary": "Sends an e-mail from one of the caller's mailboxes — new, reply or forward — with attachments",
-        "description": "multipart/form-data. `to`, `cc`, `bcc`: repeated fields, or one field separated by commas. `body`: HTML. `replyToMessageId`: a kept message of the same mailbox — the reply is threaded. `forwardMessageId` + repeated `forwardAttachmentIds`: the original's attachments, fetched now. `files`: up to 10 files, 20 MB in all, executables refused. Answers 202: the provider accepted it; it appears in the conversation after the sync that follows, when a lead or a client is among its recipients. Limited to 30 sends a minute per user.",
+        "description": "multipart/form-data. `to`, `cc`, `bcc`: repeated fields, or one field separated by commas. `body`: HTML. `replyToMessageId`: a kept message of the same mailbox — the reply is threaded. `forwardMessageId` + repeated `forwardAttachmentIds`: the original's attachments, fetched now. `files`: up to 10 files, 20 MB in all, executables refused. Answers 202: the provider accepted it; it appears in the conversation after the sync that follows, when a lead or a client is among its recipients. Limited to 30 sends a minute per user. `sendAt`: « Programmer l'envoi » — everything is checked now and the message is kept, encrypted, to leave at that instant; the answer carries its `scheduledId`.",
         "operationId": "SendMail",
         "requestBody": {
           "content": {
@@ -5459,7 +5514,14 @@
         },
         "responses": {
           "202": {
-            "description": "Accepted"
+            "description": "Accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SendMailOutcome"
+                }
+              }
+            }
           },
           "404": {
             "description": "Not Found"
@@ -5598,6 +5660,92 @@
           },
           "404": {
             "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/api/v1/integration/me/mail/scheduled": {
+      "get": {
+        "tags": [
+          "ConnectedMailbox"
+        ],
+        "summary": "The caller's messages waiting to leave (or that failed to), soonest first",
+        "operationId": "ListMyScheduledMails",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ScheduledMailDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/integration/me/mail/scheduled/{id}": {
+      "delete": {
+        "tags": [
+          "ConnectedMailbox"
+        ],
+        "summary": "Cancels a scheduled message: it is deleted with its files",
+        "operationId": "CancelScheduledMail",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "409": {
+            "description": "Conflict"
+          }
+        }
+      }
+    },
+    "/api/v1/integration/me/mail/scheduled/{id}/retry": {
+      "post": {
+        "tags": [
+          "ConnectedMailbox"
+        ],
+        "summary": "Sends now a scheduled message that failed to leave",
+        "operationId": "RetryScheduledMail",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "422": {
+            "description": "Unprocessable Entity"
           }
         }
       }
@@ -36618,6 +36766,10 @@
           "mailLastError": {
             "type": "string",
             "nullable": true
+          },
+          "mailSignature": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -47013,6 +47165,28 @@
         },
         "additionalProperties": false
       },
+      "MailThreadCountsDto": {
+        "type": "object",
+        "properties": {
+          "all": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "unread": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "leads": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "clients": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
       "MailThreadDto": {
         "type": "object",
         "properties": {
@@ -47034,6 +47208,34 @@
               "$ref": "#/components/schemas/MailMessageDto"
             },
             "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "MailThreadPageDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MailThreadSummaryDto"
+            },
+            "nullable": true
+          },
+          "totalCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "page": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "counts": {
+            "$ref": "#/components/schemas/MailThreadCountsDto"
           }
         },
         "additionalProperties": false
@@ -49225,44 +49427,6 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/LeadSourceListDto"
-            },
-            "nullable": true
-          },
-          "totalCount": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "page": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "pageSize": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "totalPages": {
-            "type": "integer",
-            "format": "int32",
-            "readOnly": true
-          },
-          "hasNextPage": {
-            "type": "boolean",
-            "readOnly": true
-          },
-          "hasPreviousPage": {
-            "type": "boolean",
-            "readOnly": true
-          }
-        },
-        "additionalProperties": false
-      },
-      "PagedResultOfMailThreadSummaryDto": {
-        "type": "object",
-        "properties": {
-          "items": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/MailThreadSummaryDto"
             },
             "nullable": true
           },
@@ -54263,6 +54427,54 @@
         },
         "additionalProperties": false
       },
+      "ScheduledMailDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "accountId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "accountLabel": {
+            "type": "string",
+            "nullable": true
+          },
+          "sendAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "status": {
+            "type": "string",
+            "nullable": true
+          },
+          "lastError": {
+            "type": "string",
+            "nullable": true
+          },
+          "subject": {
+            "type": "string",
+            "nullable": true
+          },
+          "to": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "attachmentCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "isReply": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
       "ScheduledPullSettings": {
         "required": [
           "$mode"
@@ -54882,6 +55094,27 @@
             "type": "string",
             "format": "uuid",
             "nullable": true
+          },
+          "sendAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "SendMailOutcome": {
+        "type": "object",
+        "properties": {
+          "scheduledId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "sendAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -55272,6 +55505,16 @@
         "properties": {
           "isLifeInsurance": {
             "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "SetMailSignatureRequest": {
+        "type": "object",
+        "properties": {
+          "signature": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
