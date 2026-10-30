@@ -34,6 +34,7 @@
           aria-hidden="true"></tas-icon>
       </div>
       <p class="min-w-0 text-sm font-mono text-slate-500">{{ dto.code || '—' }}</p>
+      <settings-promote-button class="ms-auto" kind="product" [id]="dto.id" [label]="dto.name ?? ''"></settings-promote-button>
     </div>
 
     <!--

@@ -23,6 +23,8 @@ import { CreateProjectTemplateRequest } from '../model/create-project-template-r
 // @ts-ignore
 import { ProjectTemplateDto } from '../model/project-template-dto.interface';
 // @ts-ignore
+import { PromotionResult } from '../model/promotion-result.interface';
+// @ts-ignore
 import { UpdateProjectTemplateRequest } from '../model/update-project-template-request.interface';
 // @ts-ignore
 import { WorkflowCircuitSummary } from '../model/workflow-circuit-summary.interface';
@@ -345,6 +347,80 @@ export class ProjectTemplatesApiService {
         return this.httpClient.request<Array<WorkflowCircuitSummary>>('get', `${this.configuration.basePath}${localVarPath}`,
             {
                 context: localVarHttpContext,
+                responseType: <any>responseType_,
+                withCredentials: this.configuration.withCredentials,
+                headers: localVarHeaders,
+                observe: observe,
+                reportProgress: reportProgress
+            }
+        );
+    }
+
+    /**
+     * Copy a ProjectTemplate from test mode to production
+     * From « Mode test »: creates or updates the production counterpart through the ordinary save commands. dryRun&#x3D;true only answers what would happen and what linked configuration production lacks. 409 PROMOTION_TEST_MODE_REQUIRED / PROMOTION_DEPENDENCY_MISSING; 422 with the save command\&#39;s own code.
+     * @param id 
+     * @param dryRun 
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     */
+    public promoteProjectTemplate(id: string, dryRun?: boolean, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<PromotionResult>;
+    public promoteProjectTemplate(id: string, dryRun?: boolean, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<PromotionResult>>;
+    public promoteProjectTemplate(id: string, dryRun?: boolean, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<PromotionResult>>;
+    public promoteProjectTemplate(id: string, dryRun?: boolean, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
+        if (id === null || id === undefined) {
+            throw new Error('Required parameter id was null or undefined when calling promoteProjectTemplate.');
+        }
+
+        let localVarQueryParameters = new HttpParams({encoder: this.encoder});
+        if (dryRun !== undefined && dryRun !== null) {
+          localVarQueryParameters = this.addToHttpParams(localVarQueryParameters,
+            <any>dryRun, 'dryRun');
+        }
+
+        let localVarHeaders = this.defaultHeaders;
+
+        let localVarCredential: string | undefined;
+        // authentication (BearerToken) required
+        localVarCredential = this.configuration.lookupCredential('BearerToken');
+        if (localVarCredential) {
+            localVarHeaders = localVarHeaders.set('Authorization', 'Bearer ' + localVarCredential);
+        }
+
+        let localVarHttpHeaderAcceptSelected: string | undefined = options && options.httpHeaderAccept;
+        if (localVarHttpHeaderAcceptSelected === undefined) {
+            // to determine the Accept header
+            const httpHeaderAccepts: string[] = [
+                'application/json'
+            ];
+            localVarHttpHeaderAcceptSelected = this.configuration.selectHeaderAccept(httpHeaderAccepts);
+        }
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+
+        let localVarHttpContext: HttpContext | undefined = options && options.context;
+        if (localVarHttpContext === undefined) {
+            localVarHttpContext = new HttpContext();
+        }
+
+
+        let responseType_: 'text' | 'json' | 'blob' = 'json';
+        if (localVarHttpHeaderAcceptSelected) {
+            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+                responseType_ = 'text';
+            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+                responseType_ = 'json';
+            } else {
+                responseType_ = 'blob';
+            }
+        }
+
+        let localVarPath = `/api/v1/leads/project-templates/${this.configuration.encodeParam({name: "id", value: id, in: "path", style: "simple", explode: false, dataType: "string", dataFormat: "uuid"})}/promote`;
+        return this.httpClient.request<PromotionResult>('post', `${this.configuration.basePath}${localVarPath}`,
+            {
+                context: localVarHttpContext,
+                params: localVarQueryParameters,
                 responseType: <any>responseType_,
                 withCredentials: this.configuration.withCredentials,
                 headers: localVarHeaders,

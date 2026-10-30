@@ -1,6 +1,6 @@
 import { computed, inject, Injectable, Signal } from '@angular/core';
 import { AuthenticationService } from './authentification.service';
-import { PermissionCode } from '../models/permissions';
+import { PermissionCode, TEAM_WRITE_PERMISSIONS } from '../models/permissions';
 
 /**
  * Les rôles qui n'ont pas le Paramétrage (propriétaire, 2026-10-30) : un agent travaille ses
@@ -21,10 +21,16 @@ export const ROLES_WITHOUT_SETTINGS: readonly string[] = ['Agent', 'CommercialAg
 export class PermissionsService {
   private readonly _auth = inject(AuthenticationService);
 
-  /** Permissions accordées, en `Set` pour un test en temps constant. */
-  public readonly granted = computed(
-    () => new Set(this._auth.connectedUser()?.permissions ?? []),
-  );
+  /**
+   * Permissions accordées, en `Set` pour un test en temps constant. En mode test, celles qui
+   * modifient l'équipe ou l'institution sont retirées : elles appartiennent à la production
+   * (voir `TEAM_WRITE_PERMISSIONS`).
+   */
+  public readonly granted = computed(() => {
+    const granted = new Set(this._auth.connectedUser()?.permissions ?? []);
+    if (this._auth.testMode()) TEAM_WRITE_PERMISSIONS.forEach((p) => granted.delete(p));
+    return granted;
+  });
 
   /** L'entrée « Paramétrage » du menu et son accueil. Voir `ROLES_WITHOUT_SETTINGS`. */
   public readonly seesSettings = computed(() =>

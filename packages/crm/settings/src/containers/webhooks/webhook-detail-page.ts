@@ -27,6 +27,7 @@ import { TimeagoPipe } from '@talisoft/ui/timeago';
 import { WebhookDeliveryDrawer, WebhookDeliveryDrawerData } from './webhook-delivery-drawer';
 import { WebhookDrawer, WebhookDrawerData } from './webhook-drawer';
 import { DELIVERY_STATUS_OPTIONS, deliveryState, failureLabel, webhookErrorMessage, webhookState } from './webhook-labels';
+import { PromoteButton } from '../../components/promote-to-production/promote-to-production';
 
 /**
  * Un webhook sortant : ses événements, son secret de signature, un envoi de test, et le journal
@@ -34,7 +35,7 @@ import { DELIVERY_STATUS_OPTIONS, deliveryState, failureLabel, webhookErrorMessa
  */
 @Component({
   templateUrl: './webhook-detail-page.html',
-  imports: [
+  imports: [PromoteButton, 
     Anchor, Button, DatePipe, FormsModule, RouterLink, TasCard, TasIcon, TasSelect, TasSpinner, TasTable, TasTag, TimeagoPipe,
   ],
 })

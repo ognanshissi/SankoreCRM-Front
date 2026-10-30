@@ -68,6 +68,10 @@ export const PERMISSIONS = {
   TENANT_MODULES_READ: 'tenant:modules:read',
   TENANT_MODULES_REQUEST: 'tenant:modules:request',
   TENANT_MODULES_DEACTIVATE: 'tenant:modules:deactivate',
+  // « Mode test » : la copie d'essai des données et du paramétrage. Administrateur par défaut.
+  TENANT_TEST_MODE: 'tenant:test-mode',
+  // « Copier en production » depuis le mode test. Administrateur par défaut.
+  TENANT_TEST_MODE_PROMOTE: 'tenant:test-mode:promote',
 
   // Tickets adressés à l'équipe Sankoré. Chacun voit les siens ; « read:all » (Administrateur)
   // ouvre ceux de toute l'institution.
@@ -335,3 +339,31 @@ export type PermissionCode = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
 
 /** Liste plate, utile pour les écrans d'administration des rôles. */
 export const ALL_PERMISSION_CODES: PermissionCode[] = Object.values(PERMISSIONS);
+
+/**
+ * Modifier l'équipe et l'institution — utilisateurs, rôles, agences, territoires, fiche de
+ * l'institution, modules. En mode test, elles sont celles de la production et le serveur refuse
+ * d'y toucher : ces droits s'y lisent comme non accordés, et les boutons disparaissent au lieu
+ * d'échouer (lot 6 du bac à sable).
+ */
+export const TEAM_WRITE_PERMISSIONS: readonly PermissionCode[] = [
+  PERMISSIONS.AGENCY_CREATE, PERMISSIONS.AGENCY_UPDATE, PERMISSIONS.AGENCY_DELETE, PERMISSIONS.AGENCY_MOVE,
+  PERMISSIONS.AGENCY_ACTIVATE, PERMISSIONS.AGENCY_ASSIGN_MANAGER,
+  PERMISSIONS.USER_CREATE, PERMISSIONS.USER_UPDATE, PERMISSIONS.USER_IMPERSONATE, PERMISSIONS.USER_DEACTIVATE,
+  PERMISSIONS.USER_REACTIVATE, PERMISSIONS.USER_RESET_PASSWORD, PERMISSIONS.USER_ASSIGN_ROLE,
+  PERMISSIONS.USER_ASSIGN_AGENCY, PERMISSIONS.USER_ASSIGN_MANAGER, PERMISSIONS.USER_REVOKE_ROLE,
+  PERMISSIONS.USER_ASSIGN_PERMISSION, PERMISSIONS.USER_REVOKE_PERMISSION, PERMISSIONS.USER_CREDENTIAL_MANAGE,
+  PERMISSIONS.TERRITORY_CREATE, PERMISSIONS.TERRITORY_UPDATE, PERMISSIONS.TERRITORY_DELETE,
+  PERMISSIONS.ROLE_CREATE, PERMISSIONS.ROLE_UPDATE, PERMISSIONS.ROLE_DELETE, PERMISSIONS.ROLE_MANAGE_PERMISSIONS,
+  PERMISSIONS.COMPANY_UPDATE,
+  PERMISSIONS.TENANT_MODULES_REQUEST, PERMISSIONS.TENANT_MODULES_DEACTIVATE,
+];
+
+/**
+ * « Repartir de la production » réécrit, dans le mode test, chacun des types copiés : il faut
+ * les droits d'édition de tous, comme le serveur l'exige.
+ */
+export const TEST_MODE_REFRESH_PERMISSIONS: readonly PermissionCode[] = [
+  PERMISSIONS.TENANT_TEST_MODE, PERMISSIONS.PRODUCT_UPDATE, PERMISSIONS.WORKFLOW_CREATE,
+  PERMISSIONS.LEAD_PIPELINE_STAGE_MANAGE, PERMISSIONS.LEAD_SOURCE_MANAGE, PERMISSIONS.INTEGRATION_WEBHOOK_MANAGE,
+];

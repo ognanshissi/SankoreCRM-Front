@@ -180,7 +180,11 @@ import { LeadSourcesService } from './lead-sources.service';
         <!-- Technical info -->
         <div class="grid grid-cols-3 gap-3">
           <div class="p-3 bg-slate-50 rounded-lg">
-            <p class="text-[10px] text-slate-400 mb-0.5">Clé publique</p>
+            <p class="text-[10px] text-slate-400 mb-0.5">Clé publique
+              @if (snippet()!.publicKey?.startsWith('pk_test_')) {
+                <span class="ml-1 rounded bg-orange-100 px-1 font-semibold text-orange-700" title="Les leads de ce script arrivent dans le mode test">test</span>
+              }
+            </p>
             <p class="text-xs text-slate-700 font-mono truncate">{{ snippet()!.publicKey }}</p>
           </div>
           <div class="p-3 bg-slate-50 rounded-lg">

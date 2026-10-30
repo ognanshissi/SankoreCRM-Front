@@ -31,11 +31,15 @@ import { LoginRequest } from '../model/login-request.interface';
 // @ts-ignore
 import { LoginResult } from '../model/login-result.interface';
 // @ts-ignore
+import { RefreshTestModeRequest } from '../model/refresh-test-mode-request.interface';
+// @ts-ignore
 import { RefreshTokenRequest } from '../model/refresh-token-request.interface';
 // @ts-ignore
 import { ResetPasswordRequest } from '../model/reset-password-request.interface';
 // @ts-ignore
 import { ResetPasswordResult } from '../model/reset-password-result.interface';
+// @ts-ignore
+import { SwitchTestModeRequest } from '../model/switch-test-mode-request.interface';
 // @ts-ignore
 import { VerifyTokenResponse } from '../model/verify-token-response.interface';
 
@@ -391,6 +395,81 @@ export class AuthApiService {
     }
 
     /**
+     * Start again from production\&#39;s configuration, in the test mode
+     * From « Mode test »: copies production\&#39;s products, workflows, project templates, lead sources and webhooks into the test mode, in the background — and empties its trial data first when wipeData. Keys and secrets never cross. The user is told on the bell. 409 TEST_MODE_REQUIRED.
+     * @param refreshTestModeRequest 
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     */
+    public refreshTestMode(refreshTestModeRequest: RefreshTestModeRequest, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<any>;
+    public refreshTestMode(refreshTestModeRequest: RefreshTestModeRequest, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<HttpResponse<any>>;
+    public refreshTestMode(refreshTestModeRequest: RefreshTestModeRequest, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<HttpEvent<any>>;
+    public refreshTestMode(refreshTestModeRequest: RefreshTestModeRequest, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<any> {
+        if (refreshTestModeRequest === null || refreshTestModeRequest === undefined) {
+            throw new Error('Required parameter refreshTestModeRequest was null or undefined when calling refreshTestMode.');
+        }
+
+        let localVarHeaders = this.defaultHeaders;
+
+        let localVarCredential: string | undefined;
+        // authentication (BearerToken) required
+        localVarCredential = this.configuration.lookupCredential('BearerToken');
+        if (localVarCredential) {
+            localVarHeaders = localVarHeaders.set('Authorization', 'Bearer ' + localVarCredential);
+        }
+
+        let localVarHttpHeaderAcceptSelected: string | undefined = options && options.httpHeaderAccept;
+        if (localVarHttpHeaderAcceptSelected === undefined) {
+            // to determine the Accept header
+            const httpHeaderAccepts: string[] = [
+            ];
+            localVarHttpHeaderAcceptSelected = this.configuration.selectHeaderAccept(httpHeaderAccepts);
+        }
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+
+        let localVarHttpContext: HttpContext | undefined = options && options.context;
+        if (localVarHttpContext === undefined) {
+            localVarHttpContext = new HttpContext();
+        }
+
+
+        // to determine the Content-Type header
+        const consumes: string[] = [
+            'application/json'
+        ];
+        const httpContentTypeSelected: string | undefined = this.configuration.selectHeaderContentType(consumes);
+        if (httpContentTypeSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Content-Type', httpContentTypeSelected);
+        }
+
+        let responseType_: 'text' | 'json' | 'blob' = 'json';
+        if (localVarHttpHeaderAcceptSelected) {
+            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+                responseType_ = 'text';
+            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+                responseType_ = 'json';
+            } else {
+                responseType_ = 'blob';
+            }
+        }
+
+        let localVarPath = `/api/v1/auth/test-mode/refresh`;
+        return this.httpClient.request<any>('post', `${this.configuration.basePath}${localVarPath}`,
+            {
+                context: localVarHttpContext,
+                body: refreshTestModeRequest,
+                responseType: <any>responseType_,
+                withCredentials: this.configuration.withCredentials,
+                headers: localVarHeaders,
+                observe: observe,
+                reportProgress: reportProgress
+            }
+        );
+    }
+
+    /**
      * @param refreshTokenRequest 
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
@@ -529,6 +608,82 @@ export class AuthApiService {
             {
                 context: localVarHttpContext,
                 body: resetPasswordRequest,
+                responseType: <any>responseType_,
+                withCredentials: this.configuration.withCredentials,
+                headers: localVarHeaders,
+                observe: observe,
+                reportProgress: reportProgress
+            }
+        );
+    }
+
+    /**
+     * Switch the session into or out of « Mode test »
+     * Answers a new token pair whose tenant is the tenant\&#39;s test twin (test: true) — its own data and configuration, production\&#39;s users — or production again. The refresh token presented is revoked. Entering needs tenant:test-mode and creates the twin on first use; leaving needs nothing. 403 TEST_MODE_FORBIDDEN / TEST_MODE_IMPERSONATING, 401 TEST_MODE_SESSION_INVALID, 503 TEST_MODE_UNAVAILABLE.
+     * @param switchTestModeRequest 
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     */
+    public switchTestMode(switchTestModeRequest: SwitchTestModeRequest, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<LoginResult>;
+    public switchTestMode(switchTestModeRequest: SwitchTestModeRequest, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<LoginResult>>;
+    public switchTestMode(switchTestModeRequest: SwitchTestModeRequest, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<LoginResult>>;
+    public switchTestMode(switchTestModeRequest: SwitchTestModeRequest, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
+        if (switchTestModeRequest === null || switchTestModeRequest === undefined) {
+            throw new Error('Required parameter switchTestModeRequest was null or undefined when calling switchTestMode.');
+        }
+
+        let localVarHeaders = this.defaultHeaders;
+
+        let localVarCredential: string | undefined;
+        // authentication (BearerToken) required
+        localVarCredential = this.configuration.lookupCredential('BearerToken');
+        if (localVarCredential) {
+            localVarHeaders = localVarHeaders.set('Authorization', 'Bearer ' + localVarCredential);
+        }
+
+        let localVarHttpHeaderAcceptSelected: string | undefined = options && options.httpHeaderAccept;
+        if (localVarHttpHeaderAcceptSelected === undefined) {
+            // to determine the Accept header
+            const httpHeaderAccepts: string[] = [
+                'application/json'
+            ];
+            localVarHttpHeaderAcceptSelected = this.configuration.selectHeaderAccept(httpHeaderAccepts);
+        }
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+
+        let localVarHttpContext: HttpContext | undefined = options && options.context;
+        if (localVarHttpContext === undefined) {
+            localVarHttpContext = new HttpContext();
+        }
+
+
+        // to determine the Content-Type header
+        const consumes: string[] = [
+            'application/json'
+        ];
+        const httpContentTypeSelected: string | undefined = this.configuration.selectHeaderContentType(consumes);
+        if (httpContentTypeSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Content-Type', httpContentTypeSelected);
+        }
+
+        let responseType_: 'text' | 'json' | 'blob' = 'json';
+        if (localVarHttpHeaderAcceptSelected) {
+            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+                responseType_ = 'text';
+            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+                responseType_ = 'json';
+            } else {
+                responseType_ = 'blob';
+            }
+        }
+
+        let localVarPath = `/api/v1/auth/test-mode`;
+        return this.httpClient.request<LoginResult>('post', `${this.configuration.basePath}${localVarPath}`,
+            {
+                context: localVarHttpContext,
+                body: switchTestModeRequest,
                 responseType: <any>responseType_,
                 withCredentials: this.configuration.withCredentials,
                 headers: localVarHeaders,

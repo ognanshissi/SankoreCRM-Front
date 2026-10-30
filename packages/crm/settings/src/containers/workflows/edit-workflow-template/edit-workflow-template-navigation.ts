@@ -9,10 +9,11 @@ import { BreadcrumbService, MenuItem } from '@sankore/crm/common';
 import { SnackbarService } from '@talisoft/ui/snackbar';
 import { entityTypeLabel } from '../workflow-shared';
 import { Anchor, Button } from '@talisoft/ui/button';
+import { PromoteButton } from '../../../components/promote-to-production/promote-to-production';
 
 @Component({
   selector: 'edit-workflow-template-navigation',
-  imports: [
+  imports: [PromoteButton, 
     Navigation,
     RouterLink,
     TasIcon,
@@ -30,6 +31,7 @@ import { Anchor, Button } from '@talisoft/ui/button';
           </a>
           @if (!isLoading() && template()) {
             <div class="ml-auto flex items-center gap-1.5">
+              <settings-promote-button kind="workflow" [id]="template()!.id" [label]="template()!.name ?? ''"></settings-promote-button>
               <button
                 tas-raised-button
                 color="primary"

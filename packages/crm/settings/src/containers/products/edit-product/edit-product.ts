@@ -39,6 +39,7 @@ import { ProductParametersEditor } from '../product-parameters-editor';
 import { QualificationTemplatesPanel } from '../qualification-templates-panel';
 import { BeneficiaryPolicyEditor } from '../beneficiary-policy-editor';
 import { KycRemotePolicyEditor } from '../kyc-remote-policy-editor';
+import { PromoteButton } from '../../../components/promote-to-production/promote-to-production';
 
 const NAME_MAX_LENGTH = 200;
 const DESCRIPTION_MAX_LENGTH = 1000;
@@ -167,7 +168,7 @@ class CbsFormModel {
  */
 @Component({
   selector: 'edit-product',
-  imports: [
+  imports: [PromoteButton, 
     RouterLink,
     Button,
     TasIcon,

@@ -152,6 +152,11 @@ const paneRoutes: Routes = [
     loadComponent: () => import('./containers/tenant-modules/tenant-modules'),
   },
   {
+    path: 'mode-test',
+    canActivate: [hasPermissionGuard('tenant:test-mode')],
+    loadComponent: () => import('./containers/test-mode/test-mode-page'),
+  },
+  {
     path: 'workflows',
     canActivate: [hasPermissionGuard('workflow:read')],
     loadComponent: () =>

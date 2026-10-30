@@ -4,6 +4,7 @@ import { RouterLink } from '@angular/router';
 import { TasIcon } from '@talisoft/ui/icon';
 import { AuthenticationService } from '../../../services/authentification.service';
 import { TelephonyTopBarState } from './telephony-top-bar-state';
+import { TestModeSwitcher } from '../../test-mode/test-mode';
 
 const ROLE_LABELS: Record<string, string> = {
   System: 'Système',
@@ -86,6 +87,14 @@ const DOT_TONES: Record<string, string> = {
           <tas-icon iconName="feather:user" class="text-slate-500" style="font-size:16px"></tas-icon>
           Mon profil
         </a>
+        <!-- Sur petit écran l'interrupteur de l'en-tête est masqué : le menu le reprend. -->
+        @if (switcher.available()) {
+          <button cdkMenuItem type="button" class="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-orange-800 hover:bg-orange-50 sm:hidden"
+                  (cdkMenuItemTriggered)="switcher.switch(!switcher.on())">
+            <tas-icon iconName="feather:tool" style="font-size:16px"></tas-icon>
+            {{ switcher.on() ? 'Quitter le mode test' : 'Passer en mode test' }}
+          </button>
+        }
         <button cdkMenuItem type="button" class="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-slate-700 hover:bg-slate-50" (cdkMenuItemTriggered)="help.emit()">
           <tas-icon iconName="feather:help-circle" class="text-slate-500" style="font-size:16px"></tas-icon>
           Aide et raccourcis
@@ -103,6 +112,8 @@ export class PortalUserMenu {
   public readonly telephony = inject(TelephonyTopBarState);
 
   public readonly help = output<void>();
+
+  public readonly switcher = inject(TestModeSwitcher);
 
   public readonly name = computed(() => {
     const user = this._auth.connectedUser();

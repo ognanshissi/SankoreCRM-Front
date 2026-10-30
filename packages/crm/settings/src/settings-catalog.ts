@@ -151,6 +151,7 @@ export const SETTINGS_CATALOG: ReadonlyArray<SettingsGroup> = [
       { id: 'currency', title: 'Monnaie', icon: 'feather:dollar-sign', description: 'Les devises utilisées.' },
       { id: 'tags', title: 'Tags', icon: 'feather:tag', description: 'L’ensemble des tags.' },
       { id: 'billing', title: 'Modules et abonnement', icon: 'feather:package', link: '/settings/modules', permission: 'tenant:modules:read', description: 'Les modules payants de l’institution : Banking - Microfinance et Assurance.' },
+      { id: 'test-mode', title: 'Mode test', icon: 'feather:tool', link: '/settings/mode-test', permission: 'tenant:test-mode', description: 'Une copie d’essai de l’institution, pour régler et essayer sans toucher à la production.' },
     ],
   },
 ];

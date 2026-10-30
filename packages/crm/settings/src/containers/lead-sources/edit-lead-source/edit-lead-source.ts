@@ -42,11 +42,12 @@ import { SnackbarService } from '@talisoft/ui/snackbar';
 import { ConfirmDialogService } from '@talisoft/ui/confirm-dialog';
 import { BreadcrumbService, PermissionsService } from '@sankore/crm/common';
 import { LeadSourceDetailDto } from '@sankore/crm-api';
+import { PromoteButton } from '../../../components/promote-to-production/promote-to-production';
 
 @Component({
   selector: 'edit-lead-source',
   standalone: true,
-  imports: [
+  imports: [PromoteButton, 
     RouterLink,
     TasCard,
     TasSpinner,

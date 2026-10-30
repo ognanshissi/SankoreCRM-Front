@@ -43,6 +43,7 @@ import {
   StepPreset,
   templateScopeOptions,
 } from './project-steps.models';
+import { PromoteButton } from '../../components/promote-to-production/promote-to-production';
 
 /** Le segment d'URL d'un nouveau gabarit, et celui du parcours par défaut (qui n'a pas d'id tant qu'il n'est pas modifié). */
 export const NEW_TEMPLATE = 'new';
@@ -178,7 +179,7 @@ function probabilityOf(text: string): number | null {
   selector: 'project-template-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './project-template-page.html',
-  imports: [
+  imports: [PromoteButton, 
     RouterLink, TasAlert, TasCard, TasCheckbox, TasSpinner, TasSwitch, Button,
     TasFormField, TasLabel, TasError, TasHint, TasInput, TasSelect, TasIcon, FormRoot, FormField,
   ],

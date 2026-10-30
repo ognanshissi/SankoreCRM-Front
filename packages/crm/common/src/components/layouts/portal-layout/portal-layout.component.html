@@ -58,6 +58,8 @@
         <kbd class="rounded-md border border-slate-200 px-1.5 py-0.5 text-[11px] text-slate-500">{{ modifier }} K</kbd>
       </button>
 
+      <common-test-mode-toggle></common-test-mode-toggle>
+
       <common-portal-quick-create></common-portal-quick-create>
       
       <button type="button" class="rounded-lg p-2 text-slate-600 hover:bg-slate-100 md:hidden" aria-label="Rechercher" (click)="openPalette()">
@@ -83,6 +85,7 @@
     </header>
 
     <common-impersonation-banner></common-impersonation-banner>
+    <common-test-mode-banner></common-test-mode-banner>
 
     <main class="flex-1 overflow-y-auto p-4 lg:p-7">
       <router-outlet></router-outlet>

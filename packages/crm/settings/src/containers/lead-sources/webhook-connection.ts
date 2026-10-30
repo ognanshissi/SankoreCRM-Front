@@ -54,6 +54,9 @@ import { isWebhookSettings, readSettings, writeSettings } from './lead-source-se
                 {{ urlCopied() ? 'Copié' : 'Copier' }}
               </button>
             </div>
+            @if (source().publicKey?.startsWith('pk_test_')) {
+              <p class="mt-2 text-xs text-orange-700">Clé de test : les leads envoyés à cette adresse arrivent dans le mode test, jamais en production.</p>
+            }
           } @else {
             <p class="text-xs text-amber-600 flex items-center gap-1">
               <tas-icon iconName="feather:alert-triangle" style="font-size:12px"></tas-icon>

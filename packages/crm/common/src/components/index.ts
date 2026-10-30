@@ -36,3 +36,5 @@ export * from './notification-bell/notification-sound';
 // Effacement à la demande (purge de données, lot 3) : le tiroir de demande, partagé lead / client.
 export * from './erasure/erasure-request-drawer';
 export * from './erasure/erasure-labels';
+// « Mode test » (bac à sable) : l'interrupteur de l'en-tête et le bandeau orange.
+export * from './test-mode/test-mode';

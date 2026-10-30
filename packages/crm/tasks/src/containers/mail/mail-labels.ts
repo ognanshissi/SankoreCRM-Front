@@ -10,6 +10,7 @@ export const BLOCKED_EXTENSIONS = ['.exe', '.bat', '.cmd', '.com', '.scr', '.pif
 export const MAIL_SEND_ERRORS: Record<string, string> = {
   MAIL_RECIPIENTS_REQUIRED: 'Indiquez au moins un destinataire.',
   MAIL_RECIPIENT_INVALID: 'Une adresse de destinataire n’est pas valide.',
+  MAIL_TEST_RECIPIENT: 'Mode test : seules les adresses des utilisateurs de l’institution reçoivent des e-mails.',
   MAIL_TOO_MANY_RECIPIENTS: '50 destinataires au plus.',
   MAIL_SUBJECT_INVALID: 'L’objet n’est pas valide.',
   MAIL_BODY_TOO_LARGE: 'Le message est trop long.',

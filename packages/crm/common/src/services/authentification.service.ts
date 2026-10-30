@@ -1,4 +1,4 @@
-import { inject, Injectable, PLATFORM_ID, signal } from '@angular/core';
+import { computed, inject, Injectable, PLATFORM_ID, signal } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { Router } from '@angular/router';
 import {
@@ -73,6 +73,9 @@ export class AuthenticationService {
   private readonly _impersonation = signal<ImpersonationState | null>(null);
   /** Non nul pendant une usurpation d'identité. */
   public readonly impersonation = this._impersonation.asReadonly();
+
+  /** La session travaille sur la copie d'essai de l'institution (« Mode test »). */
+  public readonly testMode = computed(() => this._connectedUser()?.testMode === true);
 
   public constructor() {
     if (isPlatformBrowser(this._platformId)) {
@@ -204,6 +207,18 @@ export class AuthenticationService {
         }
       }),
       catchError(() => of(null)),
+    );
+  }
+
+  /**
+   * Entre en « Mode test » ou en sort : même compte, même session, une nouvelle paire de jetons
+   * qui désigne la copie d'essai — ou la production. L'appelant recharge l'application : tout ce
+   * qui est en mémoire appartient à l'autre mode.
+   */
+  public switchTestMode(test: boolean): Observable<LoginResult> {
+    const refreshToken = localStorage.getItem('refreshToken') ?? '';
+    return this._authService.switchTestMode({ test, refreshToken }).pipe(
+      tap((result) => this.setAccessToken(result.accessToken, result.expiresAt, result.refreshToken, result.refreshTokenExpiresAt)),
     );
   }
 

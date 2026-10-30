@@ -15,6 +15,7 @@
     </div>
     @if (canManage()) {
       <div class="flex flex-wrap items-center gap-2">
+        <settings-promote-button kind="webhook" [id]="s.id" [label]="s.name ?? ''"></settings-promote-button>
         <button tas-outlined-button type="button" (click)="edit()">
           <tas-icon iconName="feather:edit-2" style="font-size:13px"></tas-icon>
           Modifier

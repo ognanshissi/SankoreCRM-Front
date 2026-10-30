@@ -16,5 +16,6 @@ export interface WorkflowCircuitSummary {
     name?: string | null;
     version?: number;
     stepCount?: number;
+    templateId?: string;
 }
 

@@ -28,6 +28,7 @@ const SEND_ERROR_LABELS: Record<string, string> = {
 /** Pourquoi un message n'est pas parti, tel que l'agent le lit sous la bulle. */
 export const WHATSAPP_FAILURE_LABELS: Record<string, string> = {
   MESSAGING_RECIPIENT_INVALID: 'Ce numéro ne reçoit pas de messages WhatsApp.',
+  MESSAGING_TEST_RECIPIENT: 'Mode test : seuls les numéros des utilisateurs de l’institution reçoivent des messages.',
   MESSAGING_TEMPLATE_REJECTED: 'Meta a refusé le template.',
   MESSAGING_OUTSIDE_WINDOW: 'Hors de la fenêtre de 24 h : seul un template peut être envoyé.',
   MESSAGING_QUOTA_EXCEEDED: 'Limite d’envoi atteinte, réessayez plus tard.',

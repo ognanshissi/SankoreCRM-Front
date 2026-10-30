@@ -28,5 +28,6 @@ export interface CurrentUserDto {
     impersonatorName?: string | null;
     activeModules?: Array<string> | null;
     readOnlyModules?: Array<string> | null;
+    testMode?: boolean;
 }
 

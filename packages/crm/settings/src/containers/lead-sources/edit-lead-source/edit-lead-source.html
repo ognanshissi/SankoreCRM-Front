@@ -46,6 +46,7 @@
       <!-- Lifecycle actions (FE-09) -->
       @if (canWrite() && !source()!.isSystem) {
         <div class="flex items-center gap-2">
+          <settings-promote-button kind="lead-source" [id]="source()!.id" [label]="source()!.label ?? ''"></settings-promote-button>
           @if (actionLoading()) {
             <tas-spinner size="4"></tas-spinner>
           } @else {

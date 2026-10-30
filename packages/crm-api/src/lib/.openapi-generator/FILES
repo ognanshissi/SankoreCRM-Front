@@ -605,6 +605,8 @@ model/project-template-summary-dto.interface.ts
 model/project-validation-decision-dto.interface.ts
 model/project-validation-dto.interface.ts
 model/project-workflow-run-dto.interface.ts
+model/promotion-dependency.interface.ts
+model/promotion-result.interface.ts
 model/publish-sdk-version-result.interface.ts
 model/pull-config.interface.ts
 model/qualification-answer-input.interface.ts
@@ -649,6 +651,7 @@ model/record-remittance-request.interface.ts
 model/record-underwriting-request.interface.ts
 model/recording-policy-dto.interface.ts
 model/recycle-lead-request.interface.ts
+model/refresh-test-mode-request.interface.ts
 model/refresh-token-request.interface.ts
 model/register-payment-instrument-request.interface.ts
 model/register-relay-agent-request.interface.ts
@@ -823,6 +826,7 @@ model/suspend-client-request.interface.ts
 model/suspend-group-request.interface.ts
 model/suspend-group-result.interface.ts
 model/suspicion-alert-dto.interface.ts
+model/switch-test-mode-request.interface.ts
 model/system-capture-lead-request.interface.ts
 model/tag-dto.interface.ts
 model/task-assignment-entry-dto.interface.ts

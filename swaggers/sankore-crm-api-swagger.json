@@ -786,6 +786,38 @@
         }
       }
     },
+    "/api/v1/auth/test-mode": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Switch the session into or out of « Mode test »",
+        "description": "Answers a new token pair whose tenant is the tenant's test twin (test: true) — its own data and configuration, production's users — or production again. The refresh token presented is revoked. Entering needs tenant:test-mode and creates the twin on first use; leaving needs nothing. 403 TEST_MODE_FORBIDDEN / TEST_MODE_IMPERSONATING, 401 TEST_MODE_SESSION_INVALID, 503 TEST_MODE_UNAVAILABLE.",
+        "operationId": "SwitchTestMode",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SwitchTestModeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginResult"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/auth/logout": {
       "post": {
         "tags": [
@@ -976,6 +1008,31 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/test-mode/refresh": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Start again from production's configuration, in the test mode",
+        "description": "From « Mode test »: copies production's products, workflows, project templates, lead sources and webhooks into the test mode, in the background — and empties its trial data first when wipeData. Keys and secrets never cross. The user is told on the bell. 409 TEST_MODE_REQUIRED.",
+        "operationId": "RefreshTestMode",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefreshTestModeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Accepted"
           }
         }
       }
@@ -18953,6 +19010,46 @@
         }
       }
     },
+    "/api/v1/leads/lead-sources/{id}/promote": {
+      "post": {
+        "tags": [
+          "LeadSources"
+        ],
+        "summary": "Copy a LeadSource from test mode to production",
+        "description": "From « Mode test »: creates or updates the production counterpart through the ordinary save commands. dryRun=true only answers what would happen and what linked configuration production lacks. 409 PROMOTION_TEST_MODE_REQUIRED / PROMOTION_DEPENDENCY_MISSING; 422 with the save command's own code.",
+        "operationId": "PromoteLeadSource",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "dryRun",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PromotionResult"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/leads/lead-sources": {
       "get": {
         "tags": [
@@ -22353,6 +22450,46 @@
         }
       }
     },
+    "/api/v1/products/{id}/promote": {
+      "post": {
+        "tags": [
+          "Products"
+        ],
+        "summary": "Copy a Product from test mode to production",
+        "description": "From « Mode test »: creates or updates the production counterpart through the ordinary save commands. dryRun=true only answers what would happen and what linked configuration production lacks. 409 PROMOTION_TEST_MODE_REQUIRED / PROMOTION_DEPENDENCY_MISSING; 422 with the save command's own code.",
+        "operationId": "PromoteProduct",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "dryRun",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PromotionResult"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/leads/project-templates": {
       "get": {
         "tags": [
@@ -22495,6 +22632,46 @@
           },
           "404": {
             "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/api/v1/leads/project-templates/{id}/promote": {
+      "post": {
+        "tags": [
+          "Project Templates"
+        ],
+        "summary": "Copy a ProjectTemplate from test mode to production",
+        "description": "From « Mode test »: creates or updates the production counterpart through the ordinary save commands. dryRun=true only answers what would happen and what linked configuration production lacks. 409 PROMOTION_TEST_MODE_REQUIRED / PROMOTION_DEPENDENCY_MISSING; 422 with the save command's own code.",
+        "operationId": "PromoteProjectTemplate",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "dryRun",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PromotionResult"
+                }
+              }
+            }
           }
         }
       }
@@ -28512,6 +28689,46 @@
         }
       }
     },
+    "/api/v1/integration/webhook-subscriptions/{id}/promote": {
+      "post": {
+        "tags": [
+          "Webhooks"
+        ],
+        "summary": "Copy a WebhookSubscription from test mode to production",
+        "description": "From « Mode test »: creates or updates the production counterpart through the ordinary save commands. dryRun=true only answers what would happen and what linked configuration production lacks. 409 PROMOTION_TEST_MODE_REQUIRED / PROMOTION_DEPENDENCY_MISSING; 422 with the save command's own code.",
+        "operationId": "PromoteWebhookSubscription",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "dryRun",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PromotionResult"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/integration/webhook-subscriptions": {
       "get": {
         "tags": [
@@ -31351,6 +31568,46 @@
           },
           "400": {
             "description": "Bad Request"
+          }
+        }
+      }
+    },
+    "/api/v1/workflow/templates/{id}/promote": {
+      "post": {
+        "tags": [
+          "WorkflowTemplates"
+        ],
+        "summary": "Copy a WorkflowTemplate from test mode to production",
+        "description": "From « Mode test »: creates or updates the production counterpart through the ordinary save commands. dryRun=true only answers what would happen and what linked configuration production lacks. 409 PROMOTION_TEST_MODE_REQUIRED / PROMOTION_DEPENDENCY_MISSING; 422 with the save command's own code.",
+        "operationId": "PromoteWorkflowTemplate",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "dryRun",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PromotionResult"
+                }
+              }
+            }
           }
         }
       }
@@ -39854,6 +40111,9 @@
               "type": "string"
             },
             "nullable": true
+          },
+          "testMode": {
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -51961,6 +52221,60 @@
         },
         "additionalProperties": false
       },
+      "PromotionDependency": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "nullable": true
+          },
+          "testId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "label": {
+            "type": "string",
+            "nullable": true
+          },
+          "blocking": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "PromotionResult": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "type": "string",
+            "nullable": true
+          },
+          "productionId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "missing": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PromotionDependency"
+            },
+            "nullable": true
+          },
+          "notes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "secret": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "PublishSdkVersionResult": {
         "type": "object",
         "properties": {
@@ -53280,6 +53594,15 @@
           "newCampaign": {
             "type": "string",
             "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "RefreshTestModeRequest": {
+        "type": "object",
+        "properties": {
+          "wipeData": {
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -58146,6 +58469,19 @@
             "nullable": true
           },
           "handledByName": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "SwitchTestModeRequest": {
+        "type": "object",
+        "properties": {
+          "test": {
+            "type": "boolean"
+          },
+          "refreshToken": {
             "type": "string",
             "nullable": true
           }
@@ -63402,6 +63738,10 @@
           "stepCount": {
             "type": "integer",
             "format": "int32"
+          },
+          "templateId": {
+            "type": "string",
+            "format": "uuid"
           }
         },
         "additionalProperties": false

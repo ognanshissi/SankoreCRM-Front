@@ -369,6 +369,8 @@ export function telephonyErrorMessage(
       return "Le numéro n'a pas pu être lu pour cette fiche. Réessayez dans un instant — la fiche n'est pas en cause.";
     case 'TELEPHONY_PROVIDER_REFUSED':
       return "Le fournisseur a refusé l'appel. Vérifiez le numéro de la fiche, puis relancez vous-même : l'appel n'a pas été réessayé automatiquement.";
+    case 'TELEPHONY_TEST_NUMBER':
+      return "Mode test : seuls les numéros des utilisateurs de l'institution peuvent être appelés. Aucun appel n'a été passé.";
 
     // ——— Rattachement de l'appel à une fiche ———
     case 'TELEPHONY_ENTITY_NOT_YOURS':

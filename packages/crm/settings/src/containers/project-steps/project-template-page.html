@@ -460,6 +460,7 @@
         }
       </div>
       <div class="flex items-center gap-2">
+        <settings-promote-button kind="project-template" [id]="template()?.id" [label]="template()?.name ?? ''"></settings-promote-button>
         <a [routerLink]="['/settings/project-steps']" tas-text-button>{{ canManage() ? 'Annuler' : 'Retour' }}</a>
         @if (canManage()) {
           <button

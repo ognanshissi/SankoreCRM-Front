@@ -8,6 +8,7 @@ import { catchError, filter, map, of } from 'rxjs';
 import { UsersApiService } from '@sankore/crm-api';
 import { TasIcon } from '@talisoft/ui/icon';
 import { ImpersonationBanner } from '../../impersonation-banner/impersonation-banner';
+import { TestModeBanner, TestModeToggle } from '../../test-mode/test-mode';
 import { NotificationBell } from '../../notification-bell/notification-bell';
 import { AuthenticationService, BreadcrumbItem, BreadcrumbService, PermissionsService, TenantProvider } from '../../../services';
 import { ENVIRONMENT_CONFIG } from '../../../utils/environment-config.token';
@@ -34,7 +35,7 @@ import { ShortcutsDialog, ShortcutsDialogData } from './shortcuts-dialog';
 @Component({
   selector: 'common-portal-layout',
   templateUrl: 'portal-layout.component.html',
-  imports: [RouterOutlet, RouterLink, TasIcon, ImpersonationBanner, NotificationBell, PortalQuickCreate, PortalSidebar, PortalUserMenu],
+  imports: [RouterOutlet, RouterLink, TasIcon, ImpersonationBanner, TestModeBanner, TestModeToggle, NotificationBell, PortalQuickCreate, PortalSidebar, PortalUserMenu],
 })
 export class PortalLayoutComponent {
   private readonly _tenantProvider = inject(TenantProvider);

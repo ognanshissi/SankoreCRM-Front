@@ -43,6 +43,13 @@ export const errorInterceptor: HttpInterceptorFn = (
         return EMPTY;
       }
 
+      // « Mode test » : l'équipe et l'institution sont celles de la production, le serveur en refuse
+      // toute modification. Dit ici une fois pour tous les écrans concernés, qui afficheraient
+      // sinon chacun leur erreur générique ; l'erreur continue vers l'écran, qui s'arrête.
+      if (error.status === 409 && (error.error as { detail?: string } | null)?.detail === 'TEST_MODE_TEAM_READ_ONLY') {
+        snackbar.info('Mode test', 'L’équipe et l’institution se modifient en production : quittez le mode test pour cette modification.');
+      }
+
       return throwError(() => error);
     }),
   );
