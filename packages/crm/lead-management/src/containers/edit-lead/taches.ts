@@ -13,15 +13,14 @@ import {
   CrmTaskDto,
   CrmTaskDtoStatusEnum,
   CrmTaskDtoPriorityEnum,
-  CrmTaskDtoTypeEnum,
   CreateTaskRequestPriorityEnum,
-  CreateTaskRequestTypeEnum,
   FormFieldReferenceTargetEnum,
 } from '@sankore/crm-api';
 import {
   CompleteTaskDrawer,
   DeclineTaskDrawer,
-  CreateTaskDrawer,
+  NewTaskDrawer,
+  NewTaskDrawerData,
   TaskDetailDrawer,
   TaskDetailDrawerResult,
 } from '@sankore/crm/tasks';
@@ -31,6 +30,8 @@ import {
   completenessGapSection,
   EntityFormReferences,
   PermissionsService,
+  SYSTEM_TASK_TYPES,
+  taskTypeLabel,
 } from '@sankore/crm/common';
 import { LeadEditContext } from './lead-edit-context';
 import { LeadComplianceStore } from './lead-compliance-store';
@@ -44,14 +45,14 @@ interface TaskTypeMeta {
   icon: string;
 }
 
-const TASK_TYPES: Record<string, TaskTypeMeta> = {
-  FirstContact:   { label: 'Premier contact', icon: 'feather:phone' },
-  Qualification:  { label: 'Qualification',   icon: 'feather:list' },
-  SlaFollowUp:    { label: 'Suivi SLA',       icon: 'feather:clock' },
-  ScoreReview:    { label: 'Revue du score',  icon: 'feather:bar-chart-2' },
-  OwnerHandover:  { label: 'Passation',       icon: 'feather:repeat' },
-  ManualDispatch: { label: 'Dispatch manuel', icon: 'feather:shuffle' },
-  Generic:        { label: 'Tâche',           icon: 'feather:check-square' },
+/** Icônes des types système ; un type ajouté par le tenant prend celle d'une tâche générique. */
+const TASK_TYPE_ICONS: Record<string, string> = {
+  FirstContact:   'feather:phone',
+  Qualification:  'feather:list',
+  SlaFollowUp:    'feather:clock',
+  ScoreReview:    'feather:bar-chart-2',
+  OwnerHandover:  'feather:repeat',
+  ManualDispatch: 'feather:shuffle',
 };
 
 const CLOSED_LEAD_STATUSES = ['Converted', 'Lost', 'Disqualified', 'Archived'];
@@ -63,12 +64,16 @@ export interface TaskSuggestion {
   icon: string;
   title: string;
   description: string;
-  type: CreateTaskRequestTypeEnum;
+  type: string;
   priority: CreateTaskRequestPriorityEnum;
 }
 
-function typeMeta(type: string | undefined): TaskTypeMeta {
-  return TASK_TYPES[type ?? ''] ?? TASK_TYPES['Generic'];
+/** Le libellé vient du paramétrage du tenant, joint à la tâche par le serveur. */
+function typeMeta(task: CrmTaskDto): TaskTypeMeta {
+  return {
+    label: taskTypeLabel(task.type, task.typeLabel),
+    icon: TASK_TYPE_ICONS[task.type ?? ''] ?? 'feather:check-square',
+  };
 }
 
 function isOpen(task: CrmTaskDto): boolean {
@@ -185,7 +190,7 @@ export class LeadTachesPage {
         icon: 'feather:list',
         title: 'Qualifier le lead',
         description: 'Il n\'a pas encore de score : la qualification mesure son intérêt et ouvre la suite du dossier.',
-        type: CreateTaskRequestTypeEnum.Qualification,
+        type: SYSTEM_TASK_TYPES.Qualification,
         priority: CreateTaskRequestPriorityEnum.High,
       });
     }
@@ -202,7 +207,7 @@ export class LeadTachesPage {
         description: blocking
           ? `Sans ${consents.length > 1 ? 'eux' : 'lui'}, ${firstName} ne pourra pas être converti en client.`
           : 'Ils sont attendus avant la conversion.',
-        type: CreateTaskRequestTypeEnum.Generic,
+        type: SYSTEM_TASK_TYPES.Generic,
         priority: blocking ? CreateTaskRequestPriorityEnum.High : CreateTaskRequestPriorityEnum.Medium,
       });
     }
@@ -220,7 +225,7 @@ export class LeadTachesPage {
         description: missing.length === 1
           ? `À demander à ${firstName} pour compléter le dossier.`
           : `${labels.slice(0, 3).join(', ')}${missing.length > 3 ? '…' : ''}`,
-        type: CreateTaskRequestTypeEnum.Generic,
+        type: SYSTEM_TASK_TYPES.Generic,
         priority: missing.some((g) => g.blocking) ? CreateTaskRequestPriorityEnum.High : CreateTaskRequestPriorityEnum.Medium,
       });
     }
@@ -231,7 +236,7 @@ export class LeadTachesPage {
     return result.filter((s) =>
       !dismissed.has(s.key)
       && !openTitles.has(s.title.toLowerCase())
-      && !(s.type === CreateTaskRequestTypeEnum.Qualification && openTypes.has(CrmTaskDtoTypeEnum.Qualification)),
+      && !(s.type === SYSTEM_TASK_TYPES.Qualification && openTypes.has(SYSTEM_TASK_TYPES.Qualification)),
     );
   });
 
@@ -274,7 +279,7 @@ export class LeadTachesPage {
         : 'Annulée.';
     }
     const when = dateTimeLabel(task.completedAt);
-    if (!task.startedAt && task.triggerEventType === 'LeadDispatched' && task.type === 'FirstContact') {
+    if (!task.startedAt && task.triggerEventType === 'LeadDispatched' && task.type === SYSTEM_TASK_TYPES.FirstContact) {
       const who = this.assigneeName(task);
       const subject = who === 'vous' ? 'vous avez' : who ? `${who} a` : 'l\'agent a';
       return `Terminée automatiquement le ${when}, quand ${subject} enregistré le premier contact.`;
@@ -378,15 +383,19 @@ export class LeadTachesPage {
 
   public openCreateTaskDrawer(): void {
     const lead = this._leadEditContext.lead();
-    const ref = this._sideDrawer.open(CreateTaskDrawer, {
+    const ref = this._sideDrawer.open<string, NewTaskDrawerData, NewTaskDrawer>(NewTaskDrawer, {
       width: '100%',
       height: '100%',
       panelClass: 'side-drawer-panel',
-      data: { leadId: this.id(), currentOwnerId: lead?.currentAssignedId ?? lead?.ownerId ?? null },
+      data: {
+        subject: { type: 'lead', id: this.id(), label: lead ? displayName(lead) : 'Ce lead' },
+        // Le lead a déjà quelqu'un : c'est à lui que la tâche revient d'abord.
+        holderId: lead?.currentAssignedId ?? lead?.ownerId ?? null,
+      },
     });
 
-    ref.closed.subscribe((created: any) => {
-      if (created) this._refresh();
+    ref.closed.subscribe((id) => {
+      if (id) this._refresh();
     });
   }
 

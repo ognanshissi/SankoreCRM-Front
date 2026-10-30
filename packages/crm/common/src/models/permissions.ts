@@ -178,6 +178,9 @@ export const PERMISSIONS = {
   COMPLIANCE_SUSPICION_MANAGE: 'compliance:suspicion:manage',
   CUSTOMERS_EXPORT: 'customers:export',
   CUSTOMERS_GROUPS_MANAGE: 'customers:groups_manage',
+  // Les règles de segmentation automatique (propriétaire, 2026-10-30) : un droit à elles, réservé
+  // à l'administrateur — elles s'écrivaient sous `customers:update_sensitive`, qu'a un agent.
+  CUSTOMERS_SEGMENTS_MANAGE: 'customers:segments_manage',
 
   // Déclaré par `GET /api/v1/clients/{clientId}/household` : « PEP detail (function,
   // country, family link) requires customers:pep_read; the exposure flag is always

@@ -14,10 +14,8 @@
 export interface ProjectTaskDto { 
     id?: string;
     title?: string | null;
-    /**
-     * One of: FirstContact, Qualification, SlaFollowUp, ScoreReview, OwnerHandover, ManualDispatch, Generic
-     */
-    type?: ProjectTaskDtoTypeEnum;
+    type?: string | null;
+    typeLabel?: string | null;
     /**
      * One of: Low, Medium, High, Critical
      */
@@ -32,15 +30,6 @@ export interface ProjectTaskDto {
     createdAt?: string;
     completedAt?: string | null;
 }
-export enum ProjectTaskDtoTypeEnum {
-    FirstContact = 'FirstContact',
-    Qualification = 'Qualification',
-    SlaFollowUp = 'SlaFollowUp',
-    ScoreReview = 'ScoreReview',
-    OwnerHandover = 'OwnerHandover',
-    ManualDispatch = 'ManualDispatch',
-    Generic = 'Generic'
-};
 export enum ProjectTaskDtoPriorityEnum {
     Low = 'Low',
     Medium = 'Medium',

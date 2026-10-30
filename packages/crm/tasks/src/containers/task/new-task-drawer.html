@@ -13,7 +13,7 @@
         }
       </tas-form-field>
 
-      <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
           <tas-date-picker mode="date" [min]="minDate" [formField]="formSchema.date">
             Échéance <span class="text-functional-error">*</span>
@@ -27,6 +27,16 @@
           <input tasInput type="time" step="300" [formField]="formSchema.time" />
           @if (formSchema.time().touched() && formSchema.time().invalid()) {
             <tas-error>{{ formSchema.time().errors()[0].message }}</tas-error>
+          }
+        </tas-form-field>
+      </div>
+
+      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <tas-form-field>
+          <tas-label>Type <span class="text-functional-error">*</span></tas-label>
+          <tas-select [options]="typeOptions()" [formField]="formSchema.type"></tas-select>
+          @if (formSchema.type().touched() && formSchema.type().invalid()) {
+            <tas-error>{{ formSchema.type().errors()[0].message }}</tas-error>
           }
         </tas-form-field>
         <tas-form-field>
@@ -182,7 +192,7 @@
       <button tas-outlined-button type="button" (click)="close()">Annuler</button>
       <button tas-raised-button color="primary" type="button"
         [disabled]="formSchema().submitting()" [isLoading]="formSchema().submitting()" (click)="handleSubmit()">
-        Créer la tâche
+        {{ submitLabel }}
       </button>
     </div>
   </tas-drawer-action>

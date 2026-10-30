@@ -3,6 +3,14 @@ import { AuthenticationService } from './authentification.service';
 import { PermissionCode } from '../models/permissions';
 
 /**
+ * Les rôles qui n'ont pas le Paramétrage (propriétaire, 2026-10-30) : un agent travaille ses
+ * dossiers, il ne règle pas l'institution. Ses droits ne suffisent pas à l'écarter — la lecture
+ * KYC, la téléphonie ou les imports ouvrent des rubriques —, d'où une règle par rôle. Qui cumule
+ * un autre rôle garde le Paramétrage.
+ */
+export const ROLES_WITHOUT_SETTINGS: readonly string[] = ['Agent', 'CommercialAgent'];
+
+/**
  * Lecture des permissions de l'utilisateur connecté.
  *
  * Évite que chaque écran réécrive
@@ -16,6 +24,11 @@ export class PermissionsService {
   /** Permissions accordées, en `Set` pour un test en temps constant. */
   public readonly granted = computed(
     () => new Set(this._auth.connectedUser()?.permissions ?? []),
+  );
+
+  /** L'entrée « Paramétrage » du menu et son accueil. Voir `ROLES_WITHOUT_SETTINGS`. */
+  public readonly seesSettings = computed(() =>
+    (this._auth.connectedUser()?.roles ?? []).some((r) => !ROLES_WITHOUT_SETTINGS.includes(r)),
   );
 
   /**

@@ -17,22 +17,10 @@ import {
 } from '@talisoft/ui/side-drawer';
 import { SnackbarService } from '@talisoft/ui/snackbar';
 import { TasksApiService, CrmTaskDto } from '@sankore/crm-api';
+import { typeLabel } from './task-meta';
 
 export interface DeclineTaskDrawerData {
   task: CrmTaskDto;
-}
-
-function typeLabel(type: string | undefined): string {
-  switch (type) {
-    case 'FirstContact':   return 'Premier contact';
-    case 'Qualification':  return 'Qualification';
-    case 'SlaFollowUp':    return 'Suivi SLA';
-    case 'ScoreReview':    return 'Revue score';
-    case 'OwnerHandover':  return 'Passation';
-    case 'ManualDispatch': return 'Dispatch manuel';
-    case 'Generic':        return 'Générique';
-    default:               return type ?? '—';
-  }
 }
 
 const REASON_OPTIONS: { label: string; value: string }[] = [
@@ -74,9 +62,9 @@ const REASON_OPTIONS: { label: string; value: string }[] = [
       <tas-drawer-content>
         <!-- Task summary -->
         <div class="mb-4 p-3 rounded-lg bg-slate-50 border border-slate-200">
-          <p class="text-sm font-medium text-slate-800">{{ data.task.title ?? typeLabel(data.task.type) }}</p>
+          <p class="text-sm font-medium text-slate-800">{{ data.task.title ?? typeLabel(data.task) }}</p>
           <div class="flex items-center gap-2 mt-1">
-            <tas-tag severity="info">{{ typeLabel(data.task.type) }}</tas-tag>
+            <tas-tag severity="info">{{ typeLabel(data.task) }}</tas-tag>
             @if (data.task.leadId) {
               <span class="text-xs text-slate-400">Lead {{ data.task.leadId }}</span>
             }

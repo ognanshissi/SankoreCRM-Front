@@ -399,7 +399,7 @@ export class ClientTimelineSegmentsApiService {
 
     /**
      * Replace the tenant\&#39;s segmentation rules
-     * Replaces the whole rule set (a rule set is an ordered decision list, so it is written as a set, never patched rule by rule). Rules are evaluated by ascending priority and the first match wins; a rule with no criterion matches everyone and is how a catch-all segment is expressed. A rule with requiresOutstandingData&#x3D;true is accepted and stored but stays INACTIVE until M03 (Savings) / M04 (Credit) expose a contract — the response reports how many. Changes take effect on the next nightly run of the segmentation job. Requires permission: customers:update_sensitive.
+     * Replaces the whole rule set (a rule set is an ordered decision list, so it is written as a set, never patched rule by rule). Rules are evaluated by ascending priority and the first match wins; a rule with no criterion matches everyone and is how a catch-all segment is expressed. A rule with requiresOutstandingData&#x3D;true is accepted and stored but stays INACTIVE until M03 (Savings) / M04 (Credit) expose a contract — the response reports how many. Changes take effect on the next nightly run of the segmentation job. Requires permission: customers:segments_manage.
      * @param updateSegmentRulesRequest 
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.

@@ -34,6 +34,9 @@ import {
   KYC_LEVEL_OPTIONS,
   KycLevel,
   NOTIFICATION_VARIABLES,
+  ConditionFieldOption,
+  conditionOperators,
+  operatorNeedsValue,
   NotificationRecipient,
   notificationRecipients,
   parseStepConfig,
@@ -43,6 +46,7 @@ import {
   serializeStepConfig,
   SLA_OPTIONS,
   STEP_KIND_META,
+  STEP_KIND_SUPPORT,
   StepConfig,
   StepKind,
   stepKind,
@@ -65,6 +69,11 @@ class StepFormModel {
   public roleCodes!: string[];
   public subject!: string;
   public message!: string;
+  public waitEvent!: string;
+  public condField!: string;
+  public formFields!: string[];
+  public condOperator!: string;
+  public condValue!: string;
 
   public static fromStep(step: WorkflowStepDto): StepFormModel {
     const config = parseStepConfig(step.configJson);
@@ -85,6 +94,11 @@ class StepFormModel {
     m.roleCodes = config.roleCodes ?? [];
     m.subject = config.subject ?? '';
     m.message = config.message ?? '';
+    m.waitEvent = config.eventCode ?? '';
+    m.condField = config.condition?.field ?? '';
+    m.formFields = config.fields ?? [];
+    m.condOperator = config.condition?.operator ?? '';
+    m.condValue = config.condition?.value ?? '';
     return m;
   }
 }
@@ -108,6 +122,23 @@ export class JourneyStepPanel {
   public templateId = input.required<string>();
   public step = input.required<WorkflowStepDto>();
   public roleOptions = input<{ label: string; value: string }[]>([]);
+  public waitEvents = input<{ label: string; value: string }[]>([]);
+  /** Les faits du dossier qu'une Condition peut comparer, pour le type d'entité du modèle. */
+  public conditionFields = input<ConditionFieldOption[]>([]);
+  /** Les champs du dossier qu'une étape Formulaire peut exiger. */
+  public formFieldOptions = input<{ label: string; value: string }[]>([]);
+  public readonly conditionFieldOptions = computed(() => this.conditionFields().map((f) => ({ label: f.label, value: f.key })));
+  public readonly conditionField = computed(() => this.conditionFields().find((f) => f.key === this.model().condField));
+  public readonly operatorOptions = computed(() => conditionOperators(this.conditionField()?.type));
+  public readonly conditionNeedsValue = computed(() => operatorNeedsValue(this.model().condOperator || this.operatorOptions()[0]?.value));
+  /** Une liste pour un choix ou un oui/non, une saisie sinon. */
+  public readonly conditionValueOptions = computed(() => {
+    const field = this.conditionField();
+    if (field?.type === 'boolean') return [{ label: 'Oui', value: 'true' }, { label: 'Non', value: 'false' }];
+    return field?.options?.map((o) => ({ label: o.label, value: o.value })) ?? null;
+  });
+  /** « Aucun » en tête : une attente peut n'être qu'un délai. */
+  public readonly waitEventOptions = computed(() => [{ label: 'Aucun : délai seul', value: '' }, ...this.waitEvents()]);
   public readOnly = input(false);
 
   public updated = output<WorkflowStepDto>();
@@ -134,7 +165,18 @@ export class JourneyStepPanel {
 
   public readonly kind = computed(() => stepKind(this.step()));
   public readonly meta = computed(() => STEP_KIND_META[this.kind()]);
+  public readonly support = computed(() => STEP_KIND_SUPPORT[this.kind()]);
   public readonly withAssignee = computed(() => hasAssignee(this.kind()));
+  /** Ce qui se passe quand le délai de l'étape est dépassé — jamais l'arrêt de l'instance. */
+  public readonly escalationHint = computed(() => {
+    switch (this.model().escalation) {
+      case 'supervisor': return 'Délai dépassé : l\'étape est confiée au supérieur de celui qui la tient (ou de l\'agent du dossier), prévenu dans l\'application. Le délai repart.';
+      case 'reassign': return 'Délai dépassé : l\'étape est confiée à un autre titulaire du rôle, dans l\'agence du dossier. Le délai repart.';
+      case 'supervisor_then_reassign': return 'Au premier dépassement, le supérieur ; au suivant, un autre titulaire du rôle. Le délai repart à chaque fois.';
+      default: return 'Délai dépassé : l\'étape reste où elle est et ses responsables sont relancés à chaque délai.';
+    }
+  });
+
   public readonly variables = NOTIFICATION_VARIABLES;
   /** Le message tel qu'un destinataire le lirait, avec des valeurs d'exemple. */
   public readonly preview = computed(() => renderNotificationPreview(this.model().message ?? ''));
@@ -262,6 +304,20 @@ export class JourneyStepPanel {
       config.subject = model.subject.trim() || undefined;
       config.message = model.message.trim() || undefined;
     }
+    if (kind === StepKind.Wait) config.eventCode = model.waitEvent || undefined;
+    if (kind === StepKind.Form) config.fields = model.formFields.length ? [...model.formFields] : undefined;
+    if (kind === StepKind.Condition && model.condField) {
+      // Un opérateur qui ne vaut plus pour le champ choisi repart sur le premier qui vaut.
+      const field = this.conditionFields().find((f) => f.key === model.condField);
+      const operators = conditionOperators(field?.type);
+      const operator = operators.some((o) => o.value === model.condOperator) ? model.condOperator : operators[0].value;
+      config.condition = {
+        nodeType: 'leaf',
+        field: model.condField,
+        operator,
+        value: operatorNeedsValue(operator) ? model.condValue.trim() || undefined : undefined,
+      };
+    }
     if (kind === StepKind.IntegrationAction) config.target = model.target as StepConfig['target'];
 
     return {
@@ -273,7 +329,7 @@ export class JourneyStepPanel {
       kind: kind as unknown as UpdateStepRequestKindEnum,
       configJson: serializeStepConfig(config),
       // Une notification est franchie à l'entrée : « bloquante » n'a pas de sens pour elle.
-      isBlocking: kind === StepKind.Notification ? false : model.isBlocking,
+      isBlocking: kind === StepKind.Notification || kind === StepKind.Wait ? false : model.isBlocking,
     };
   }
 }

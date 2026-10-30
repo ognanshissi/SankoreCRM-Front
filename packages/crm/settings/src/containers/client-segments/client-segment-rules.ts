@@ -215,13 +215,13 @@ export class ClientSegmentRulesPage implements OnInit {
   private readonly _permissions = inject(PermissionsService);
 
   /**
-   * `PUT /api/v1/clients/segments/rules` exige `customers:update_sensitive` — la
+   * `PUT /api/v1/clients/segments/rules` exige `customers:segments_manage` — la
    * lecture ne demande que `customers:read`. Le contrôle est répété ici et pas
    * seulement dans la garde de route : si la garde est un jour ouverte à
    * `customers:read` pour offrir un mode consultation, l'écran passe de lui-même
    * en lecture seule au lieu de laisser le serveur répondre 403.
    */
-  public readonly canManage = this._permissions.can('customers:update_sensitive');
+  public readonly canManage = this._permissions.can('customers:segments_manage');
 
   public isLoading = signal(true);
   public isSaving = signal(false);

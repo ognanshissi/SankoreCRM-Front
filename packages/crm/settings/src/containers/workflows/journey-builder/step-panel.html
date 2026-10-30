@@ -9,6 +9,41 @@
     }
   </div>
 
+  @if (support() === 'blocked') {
+    <p class="text-xs text-amber-800 p-3 rounded-lg bg-amber-50 border border-amber-200">
+      Ce type d'étape n'est pas encore exécuté par le moteur : il arrêterait le dossier. Un parcours
+      qui le contient ne peut pas être publié pour l'instant.
+    </p>
+  } @else if (kind() === StepKind.Form) {
+    <p class="text-xs text-slate-600 p-3 rounded-lg bg-slate-50 border border-slate-200">
+      Le responsable ne peut approuver l'étape qu'une fois les champs choisis remplis sur le dossier ;
+      sinon l'approbation est refusée et les champs manquants sont nommés.
+    </p>
+  } @else if (kind() === StepKind.QualificationForm) {
+    <p class="text-xs text-slate-600 p-3 rounded-lg bg-slate-50 border border-slate-200">
+      Le responsable ne peut approuver l'étape que lorsque plus aucun questionnaire du dossier n'est
+      « à compléter ». Disponible pour les parcours Lead et Projet.
+    </p>
+  } @else if (kind() === StepKind.KycCheck) {
+    <p class="text-xs text-slate-600 p-3 rounded-lg bg-slate-50 border border-slate-200">
+      L'étape passe toute seule dès que le KYC du client du dossier est validé au niveau requis ; avant,
+      elle ne peut pas être approuvée. Un KYC refusé la laisse ouverte, pour une décision manuelle.
+    </p>
+  } @else if (kind() === StepKind.IntegrationAction) {
+    <p class="text-xs text-slate-600 p-3 rounded-lg bg-slate-50 border border-slate-200">
+      L'étape n'envoie rien elle-même : les envois sont automatiques (le client part au core banking
+      quand son KYC est validé, un contrat part à l'assureur à sa création). Elle attend que le système
+      cible ait le dossier, puis passe toute seule. Un refus la laisse ouverte, avec son motif. Assureur :
+      parcours Projet uniquement.
+    </p>
+  } @else if (kind() === StepKind.ManualTask) {
+    <p class="text-xs text-slate-600 p-3 rounded-lg bg-slate-50 border border-slate-200">
+      Une tâche est créée dans « Ma journée » pour l'agent du dossier (le nom de l'étape en est le titre,
+      le délai son échéance). L'étape se termine quand la tâche est faite. Le responsable peut aussi
+      l'approuver directement : la tâche est alors retirée.
+    </p>
+  }
+
   @if (readOnly()) {
     <p class="text-xs text-slate-500 p-3 rounded-lg bg-slate-50 border border-slate-200">
       Version publiée : créez un brouillon pour modifier ce parcours.
@@ -24,6 +59,18 @@
       }
     </tas-form-field>
 
+    @if (kind() === StepKind.Form) {
+      <tas-form-field>
+        <tas-label>Champs à remplir <span class="text-functional-error">*</span></tas-label>
+        <tas-multi-select [options]="formFieldOptions()" placeholder="Choisissez les champs" [formField]="formSchema.formFields"></tas-multi-select>
+        @if (!formFieldOptions().length) {
+          <tas-hint>Ce type de dossier n'a pas de formulaire à vérifier.</tas-hint>
+        } @else if (!model().formFields.length) {
+          <tas-error>Choisissez au moins un champ.</tas-error>
+        }
+      </tas-form-field>
+    }
+
     @if (kind() === StepKind.KycCheck) {
       <tas-form-field>
         <tas-label>Niveau requis</tas-label>
@@ -32,6 +79,33 @@
     }
 
     @if (kind() === StepKind.Condition) {
+      <tas-form-field>
+        <tas-label>Donnée comparée <span class="text-functional-error">*</span></tas-label>
+        <tas-select [options]="conditionFieldOptions()" placeholder="Choisissez une donnée du dossier" [formField]="formSchema.condField"></tas-select>
+        @if (!conditionFields().length) {
+          <tas-hint>Ce type de dossier ne fournit pas de données à comparer.</tas-hint>
+        }
+      </tas-form-field>
+      @if (model().condField) {
+        <tas-form-field>
+          <tas-label>Comparaison</tas-label>
+          <tas-select [options]="operatorOptions()" placeholder="Choisissez" [formField]="formSchema.condOperator"></tas-select>
+        </tas-form-field>
+        @if (conditionNeedsValue()) {
+          <tas-form-field>
+            <tas-label>Valeur <span class="text-functional-error">*</span></tas-label>
+            @if (conditionValueOptions(); as values) {
+              <tas-select [options]="values" placeholder="Choisissez" [formField]="formSchema.condValue"></tas-select>
+            } @else {
+              <input tasInput type="text" [attr.inputmode]="conditionField()?.type === 'number' ? 'decimal' : null" [formField]="formSchema.condValue" />
+            }
+          </tas-form-field>
+        }
+      }
+      <p class="text-xs text-slate-500 -mt-2">
+        Évaluée quand le dossier atteint l'étape, sur ses données du moment. Vraie : le dossier suit la
+        branche « Oui » ; fausse : la branche « Non ». Les étapes de l'autre branche sont ignorées.
+      </p>
       <tas-form-field>
         <tas-label>Question</tas-label>
         <textarea tasInput rows="2" placeholder="Principal, conjoint ou enfant" [formField]="formSchema.description"></textarea>
@@ -50,9 +124,25 @@
       </tas-form-field>
     }
 
-    @if (withAssignee() || kind() === StepKind.Wait) {
+    @if (kind() === StepKind.Wait) {
       <tas-form-field>
-        <tas-label>{{ kind() === StepKind.Wait ? 'Délai' : 'SLA' }}</tas-label>
+        <tas-label>Attendre un événement</tas-label>
+        <tas-select [options]="waitEventOptions()" [formField]="formSchema.waitEvent"></tas-select>
+        <tas-hint>Un événement de ce dossier, par exemple « Lead qualifié ». Le parcours reprend dès qu'il survient.</tas-hint>
+      </tas-form-field>
+      <tas-form-field>
+        <tas-label>{{ model().waitEvent ? 'Délai maximum' : 'Délai' }}</tas-label>
+        <tas-select [options]="slaOptions" [placeholder]="model().waitEvent ? 'Sans limite' : 'Choisissez un délai'" [formField]="formSchema.timeoutHours"></tas-select>
+        <tas-hint>
+          {{ model().waitEvent ? 'Passé ce délai, le parcours reprend même sans l\'événement.' : 'Le parcours reprend tout seul à la fin du délai.' }}
+        </tas-hint>
+        @if (!model().waitEvent && !model().timeoutHours) {
+          <tas-error>Choisissez un délai ou un événement à attendre.</tas-error>
+        }
+      </tas-form-field>
+    } @else if (withAssignee()) {
+      <tas-form-field>
+        <tas-label>SLA</tas-label>
         <tas-select [options]="slaOptions" placeholder="Sans délai" [formField]="formSchema.timeoutHours"></tas-select>
       </tas-form-field>
     }
@@ -61,6 +151,7 @@
       <tas-form-field>
         <tas-label>Escalade</tas-label>
         <tas-select [options]="escalationOptions" [formField]="formSchema.escalation"></tas-select>
+        <tas-hint>{{ escalationHint() }}</tas-hint>
       </tas-form-field>
     }
 
@@ -173,11 +264,11 @@
     </div>
   }
 
-  @if (kind() !== StepKind.Condition && kind() !== StepKind.Notification) {
+  @if (kind() !== StepKind.Condition && kind() !== StepKind.Notification && kind() !== StepKind.Wait) {
     <div class="flex items-start justify-between gap-3">
       <div>
         <p class="text-sm font-semibold text-slate-800">Étape bloquante</p>
-        <p class="text-xs text-slate-500 mt-0.5">Le lead ne peut pas avancer sans elle.</p>
+        <p class="text-xs text-slate-500 mt-0.5">Tant qu'elle n'est pas franchie, le lead ne peut pas être converti en client ni le projet clôturé gagné.</p>
       </div>
       <tas-switch [checked]="model().isBlocking" [disabled]="readOnly()" ariaLabel="Étape bloquante" (toggle)="setBlocking($event)"></tas-switch>
     </div>

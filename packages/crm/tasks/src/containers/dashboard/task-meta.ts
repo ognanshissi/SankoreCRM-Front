@@ -1,5 +1,6 @@
 import { Severity } from '@talisoft/ui/tag';
 import { CrmTaskDto, CrmTaskDtoPriorityEnum, CrmTaskDtoStatusEnum } from '@sankore/crm-api';
+import { taskTypeLabel } from '@sankore/crm/common';
 
 /**
  * Libellés, sévérités et calcul de SLA d'une tâche CRM.
@@ -32,17 +33,9 @@ export function priorityMeta(
   }
 }
 
-export function typeLabel(type: string | undefined): string {
-  switch (type) {
-    case 'FirstContact':   return 'Premier contact';
-    case 'Qualification':  return 'Qualification';
-    case 'SlaFollowUp':    return 'Suivi SLA';
-    case 'ScoreReview':    return 'Revue score';
-    case 'OwnerHandover':  return 'Passation';
-    case 'ManualDispatch': return 'Dispatch manuel';
-    case 'Generic':        return 'Générique';
-    default:               return type ?? '—';
-  }
+/** Le libellé du type, tel que le paramétrage du tenant le nomme. */
+export function typeLabel(task: { type?: string | null; typeLabel?: string | null }): string {
+  return taskTypeLabel(task.type, task.typeLabel);
 }
 
 /**
@@ -150,7 +143,10 @@ export function workStatusLabel(status: CrmTaskDtoStatusEnum | string | undefine
   }
 }
 
-/** Ce que l'agent doit faire, à l'infinitif. Une tâche générique garde son titre, seul porteur de sens. */
+/**
+ * Ce que l'agent doit faire, à l'infinitif. Une tâche générique — ou d'un type ajouté par le tenant —
+ * garde son titre, seul porteur de sens.
+ */
 export function taskActionLabel(task: CrmTaskDto): string {
   switch (task.type) {
     case 'FirstContact':   return 'Contacter';
@@ -159,7 +155,7 @@ export function taskActionLabel(task: CrmTaskDto): string {
     case 'ScoreReview':    return 'Revoir le score';
     case 'OwnerHandover':  return 'Reprendre le lead';
     case 'ManualDispatch': return 'Dispatcher';
-    default:               return task.title?.trim() || typeLabel(task.type);
+    default:               return task.title?.trim() || typeLabel(task);
   }
 }
 

@@ -13,7 +13,7 @@ import {
   UpdateTaskDetailsRequestPriorityEnum,
   UsersApiService,
 } from '@sankore/crm-api';
-import { BreadcrumbService, PERMISSIONS, PermissionsService } from '@sankore/crm/common';
+import { BreadcrumbService, PERMISSIONS, PermissionsService, taskTypeLabel } from '@sankore/crm/common';
 import { Button } from '@talisoft/ui/button';
 import { ConfirmDialogService } from '@talisoft/ui/confirm-dialog';
 import { TasError, TasFormField, TasLabel } from '@talisoft/ui/form-field';
@@ -113,6 +113,8 @@ export class TaskPage implements OnInit {
   public readonly editable = computed(() => this.canManage() && !!this.task()?.isOpen);
   public readonly status = computed(() => STATUS_LABELS[this.task()?.status ?? ''] ?? { label: this.task()?.status ?? '', tone: 'bg-slate-100 text-slate-600' });
   public readonly priority = computed(() => PRIORITY_LABELS[this.task()?.priority ?? ''] ?? PRIORITY_LABELS['Medium']);
+  /** Le libellé que le paramétrage du tenant donne au type, même désactivé depuis. */
+  public readonly typeLabel = computed(() => taskTypeLabel(this.task()?.type, this.task()?.typeLabel));
   public readonly subjectLink = computed(() => subjectRoute(this.task()?.subject?.type, this.task()?.subject?.id));
   public readonly criteriaDone = computed(() => (this.task()?.criteria ?? []).filter((c) => c.isMet).length);
   public readonly isLate = computed(() => !!this.task()?.isOpen && new Date(this.task()!.dueAt!).getTime() < Date.now());

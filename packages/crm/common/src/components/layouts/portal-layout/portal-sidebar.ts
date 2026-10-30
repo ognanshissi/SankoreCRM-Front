@@ -58,9 +58,11 @@ const BADGE_TONES: Record<NavBadgeKey, string> = {
       }
     </nav>
 
-    <div class="px-3 pb-4">
-      <ng-container [ngTemplateOutlet]="entry" [ngTemplateOutletContext]="{ $implicit: settings }" />
-    </div>
+    @if (seesSettings()) {
+      <div class="px-3 pb-4">
+        <ng-container [ngTemplateOutlet]="entry" [ngTemplateOutletContext]="{ $implicit: settings }" />
+      </div>
+    }
 
     <ng-template #entry let-item>
       @let active = item.id === activeId();
@@ -102,6 +104,7 @@ export class PortalSidebar {
   public readonly navigated = output<void>();
 
   public readonly settings = SETTINGS_NAV_ITEM;
+  public readonly seesSettings = this._permissions.seesSettings;
   public readonly canCreateLead = this._permissions.can(PERMISSIONS.LEAD_CREATE);
   public readonly initial = computed(() => (this.companyName().trim().charAt(0) || 'S').toUpperCase());
 

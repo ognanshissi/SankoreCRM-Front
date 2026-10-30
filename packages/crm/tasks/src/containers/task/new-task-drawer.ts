@@ -8,13 +8,13 @@ import { catchError, debounceTime, distinctUntilChanged, EMPTY, firstValueFrom, 
 import {
   ClientsApiService,
   CreateTaskRequestEntityTypeEnum,
+  CreateTaskRequest,
   CreateTaskRequestPriorityEnum,
-  CreateTaskRequestTypeEnum,
   LeadsApiService,
   TasksApiService,
   UsersApiService,
 } from '@sankore/crm-api';
-import { AuthenticationService } from '@sankore/crm/common';
+import { AuthenticationService, SYSTEM_TASK_TYPES, TaskTypesStore } from '@sankore/crm/common';
 import { Button } from '@talisoft/ui/button';
 import { TasError, TasFormField, TasHint, TasLabel } from '@talisoft/ui/form-field';
 import { TasIcon } from '@talisoft/ui/icon';
@@ -32,6 +32,22 @@ import { TASK_ERRORS, TaskSubjectType } from './task-meta';
 export interface NewTaskDrawerData {
   /** Un sujet déjà choisi — la tâche est créée depuis sa fiche. */
   subject?: { type: TaskSubjectType; id: string; label: string };
+  /**
+   * Plusieurs leads à la fois, depuis la sélection de la page Leads : une tâche identique est
+   * créée pour chacun. Remplace `subject`.
+   */
+  leads?: { id: string; label: string }[];
+  /** Qui s'en charge, présélectionné — l'agent du lead par exemple. Moi par défaut. */
+  holderId?: string | null;
+}
+
+/** Le sujet que le formulaire affiche : celui donné, ou le résumé d'une sélection de leads. */
+function lockedSubject(data: NewTaskDrawerData | null): NewTaskDrawerData['subject'] {
+  const leads = data?.leads ?? [];
+  if (leads.length === 0) return data?.subject;
+  if (leads.length === 1) return { type: 'lead', id: leads[0].id, label: leads[0].label };
+  const names = leads.slice(0, 3).map((l) => l.label).join(', ');
+  return { type: 'lead', id: leads[0].id, label: `${leads.length} leads : ${names}${leads.length > 3 ? '…' : ''}` };
 }
 
 interface SubjectCandidate {
@@ -63,6 +79,7 @@ const ENTITY_TYPES: Record<Exclude<TaskSubjectType, 'none'>, CreateTaskRequestEn
 
 class NewTaskFormModel {
   public title!: string;
+  public type!: string;
   public date!: string;
   public time!: string;
   public priority!: string;
@@ -73,14 +90,15 @@ class NewTaskFormModel {
   public subjectLabel!: string;
   public description!: string;
 
-  public static instantiate(me: string, subject?: NewTaskDrawerData['subject']): NewTaskFormModel {
+  public static instantiate(me: string, subject?: NewTaskDrawerData['subject'], holderId?: string | null): NewTaskFormModel {
     const m = new NewTaskFormModel();
     m.title = '';
+    m.type = SYSTEM_TASK_TYPES.Generic;
     // Demain à 9 h : une tâche se crée rarement pour dans l'heure.
     m.date = dayKey(addDays(new Date(), 1));
     m.time = '09:00';
     m.priority = CreateTaskRequestPriorityEnum.Medium;
-    m.holderId = me;
+    m.holderId = holderId || me;
     m.participantIds = [];
     m.subjectType = subject?.type ?? 'none';
     m.subjectId = subject?.id ?? '';
@@ -118,18 +136,27 @@ export class NewTaskDrawer {
   private readonly _dialogRef = inject<DialogRef<string>>(DialogRef);
   private readonly _data = inject<NewTaskDrawerData | null>(DIALOG_DATA, { optional: true });
   private readonly _me = inject(AuthenticationService).connectedUser()?.id ?? '';
+  private readonly _taskTypes = inject(TaskTypesStore);
 
   /** « Un projet » seulement depuis la page d'un projet : aucune recherche de projet n'existe ici. */
-  public readonly subjectOptions =
-    this._data?.subject?.type === 'project' ? [...SUBJECT_OPTIONS, { label: 'Un projet', value: 'project' as const }] : SUBJECT_OPTIONS;
-  public readonly priorityOptions = PRIORITY_OPTIONS;
-  public readonly minDate = dayKey(Date.now());
-  public readonly subjectLocked = !!this._data?.subject;
+  private readonly _subject = lockedSubject(this._data);
+  /** Les leads d'une sélection : une tâche par lead à l'enregistrement. */
+  private readonly _bulkLeads = (this._data?.leads?.length ?? 0) > 1 ? this._data!.leads! : null;
 
-  public model = signal(NewTaskFormModel.instantiate(this._me, this._data?.subject));
+  public readonly subjectOptions =
+    this._subject?.type === 'project' ? [...SUBJECT_OPTIONS, { label: 'Un projet', value: 'project' as const }] : SUBJECT_OPTIONS;
+  public readonly priorityOptions = PRIORITY_OPTIONS;
+  /** Les types actifs du paramétrage du tenant, dans son ordre d'affichage. */
+  public readonly typeOptions = this._taskTypes.options;
+  public readonly minDate = dayKey(Date.now());
+  public readonly subjectLocked = !!this._subject;
+  public readonly submitLabel = this._bulkLeads ? `Créer ${this._bulkLeads.length} tâches` : 'Créer la tâche';
+
+  public model = signal(NewTaskFormModel.instantiate(this._me, this._subject, this._data?.holderId));
 
   public formSchema = form(this.model, (schema) => {
     required(schema.title, { message: 'Le titre est obligatoire' });
+    required(schema.type, { message: 'Le type est obligatoire' });
     validate(schema.title, (ctx) => (ctx.value().trim().length > 200 ? { kind: 'max', message: '200 caractères au plus' } : null));
     required(schema.date, { message: 'La date est obligatoire' });
     required(schema.time, { message: 'L’heure est obligatoire' });
@@ -176,6 +203,7 @@ export class NewTaskDrawer {
   private readonly _search$ = new Subject<string>();
 
   constructor() {
+    this._taskTypes.ensureLoaded();
     this._usersApi
       .listUsers('Active', undefined, undefined, 1, 500)
       .pipe(catchError(() => {
@@ -300,21 +328,27 @@ export class NewTaskDrawer {
     submit(this.formSchema, async (field) => {
       const v = field().value();
       const type = v.subjectType === 'none' ? null : ENTITY_TYPES[v.subjectType];
+      const request = (entityId: string | null) => ({
+        type: v.type,
+        priority: v.priority as CreateTaskRequestPriorityEnum,
+        title: v.title.trim(),
+        dueAt: new Date(`${v.date}T${v.time}`).toISOString(),
+        assignedAgentId: v.holderId,
+        description: v.description.trim() || null,
+        entityType: entityId ? type : null,
+        entityId,
+        participantIds: v.participantIds.filter((p) => p !== v.holderId),
+        criteria: this.criteria(),
+        tags: this.tags(),
+      });
+
+      if (this._bulkLeads) {
+        await this._createForEachLead(this._bulkLeads, request, v.holderId === this._me);
+        return;
+      }
 
       const id = await firstValueFrom(
-        this._tasksApi.createCrmTask({
-          type: CreateTaskRequestTypeEnum.Generic,
-          priority: v.priority as CreateTaskRequestPriorityEnum,
-          title: v.title.trim(),
-          dueAt: new Date(`${v.date}T${v.time}`).toISOString(),
-          assignedAgentId: v.holderId,
-          description: v.description.trim() || null,
-          entityType: type,
-          entityId: type ? v.subjectId : null,
-          participantIds: v.participantIds.filter((p) => p !== v.holderId),
-          criteria: this.criteria(),
-          tags: this.tags(),
-        }).pipe(
+        this._tasksApi.createCrmTask(request(type ? v.subjectId : null)).pipe(
           catchError((err: HttpErrorResponse) => {
             this.submitError.set(TASK_ERRORS[err.error?.detail] ?? 'La tâche n’a pas pu être créée.');
             return EMPTY;
@@ -328,6 +362,46 @@ export class NewTaskDrawer {
         this._dialogRef.close(id);
       }
     });
+  }
+
+  /**
+   * Une tâche identique par lead, l'une après l'autre : aucune création en masse n'existe côté
+   * serveur. Un refus n'arrête pas les suivantes ; le message dit combien sont passées.
+   */
+  private async _createForEachLead(
+    leads: { id: string; label: string }[],
+    request: (entityId: string | null) => CreateTaskRequest,
+    forMe: boolean,
+  ): Promise<void> {
+    let firstId: string | null = null;
+    let created = 0;
+    let lastError: string | null = null;
+    for (const lead of leads) {
+      const id = await firstValueFrom(
+        this._tasksApi.createCrmTask(request(lead.id)).pipe(
+          catchError((err: HttpErrorResponse) => {
+            lastError = TASK_ERRORS[err.error?.detail] ?? null;
+            return of(null);
+          }),
+        ),
+        { defaultValue: null },
+      );
+      if (id) {
+        created++;
+        firstId ??= id;
+      }
+    }
+
+    if (created === 0) {
+      this.submitError.set(lastError ?? 'Aucune tâche n’a pu être créée.');
+      return;
+    }
+    if (created < leads.length) {
+      this._snackbar.info('Tâches créées en partie', `${created} sur ${leads.length} : ${lastError ?? 'les autres ont été refusées.'}`);
+    } else {
+      this._snackbar.success('Tâches créées', `Une tâche pour chacun des ${created} leads${forMe ? ', dans votre journée' : ''}.`);
+    }
+    this._dialogRef.close(firstId!);
   }
 
   public close(): void {

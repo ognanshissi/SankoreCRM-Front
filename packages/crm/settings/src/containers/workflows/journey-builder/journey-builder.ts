@@ -16,6 +16,7 @@ import {
   AddTriggerRequestTriggerTypeEnum,
   RolesApiService,
   TriggerDto,
+  TriggerEventDto,
   WorkflowStepDto,
   WorkflowTemplateDto,
   WorkflowTemplatesApiService,
@@ -40,6 +41,9 @@ import {
   TriggerPreset,
   triggerLabel,
   validateJourney,
+  conditionSummary,
+  ConditionFieldOption,
+  STEP_KIND_SUPPORT,
   notificationRecipients,
 } from './journey-model';
 import { JourneyStepPanel } from './step-panel';
@@ -91,6 +95,7 @@ export class JourneyBuilder implements OnInit {
   public readonly paletteGroups = PALETTE_GROUPS;
   public readonly kindsOf = kindsOf;
   public readonly STEP_KIND_META = STEP_KIND_META;
+  public readonly STEP_KIND_SUPPORT = STEP_KIND_SUPPORT;
   public readonly triggerPresets = TRIGGER_PRESETS;
   public readonly triggerLabel = triggerLabel;
   public readonly productOfTrigger = productOfTrigger;
@@ -103,6 +108,12 @@ export class JourneyBuilder implements OnInit {
   public published = signal<WorkflowTemplateDto | null>(null);
   public triggers = signal<TriggerDto[]>([]);
   public roleOptions = signal<{ label: string; value: string }[]>([]);
+  /** Les événements internes du type de dossier, qu'une étape Attente peut attendre. */
+  public waitEvents = signal<{ label: string; value: string }[]>([]);
+  /** Les faits que les étapes Condition peuvent comparer, pour le type de dossier du modèle. */
+  public conditionFields = signal<ConditionFieldOption[]>([]);
+  /** Les champs qu'une étape Formulaire peut exiger, pour le type de dossier du modèle. */
+  public formFieldOptions = signal<{ label: string; value: string }[]>([]);
 
   public selectedStepId = signal<string | null>(null);
   public triggerPanelOpen = signal(false);
@@ -135,6 +146,16 @@ export class JourneyBuilder implements OnInit {
   public roleLabel(code: string | null | undefined): string {
     if (!code) return '';
     return this.roleOptions().find((r) => r.value === code)?.label ?? code;
+  }
+
+  public conditionLabel(step: WorkflowStepDto): string | null {
+    return conditionSummary(parseStepConfig(step.configJson).condition, this.conditionFields());
+  }
+
+  public waitEventLabel(step: WorkflowStepDto): string | null {
+    const code = parseStepConfig(step.configJson).eventCode;
+    if (!code) return null;
+    return this.waitEvents().find((e) => e.value === code)?.label ?? code;
   }
 
   /** Les destinataires d'une étape Notification, en badges sur le canevas. */
@@ -403,6 +424,33 @@ export class JourneyBuilder implements OnInit {
       }).subscribe({
         next: ({ template, triggers, roles, all }) => {
           this.template.set(template);
+          if (template.entityType)
+            this._api
+              .listWorkflowFormFields(template.entityType)
+              .pipe(catchError(() => of([])))
+              .subscribe((fields) =>
+                this.formFieldOptions.set((fields ?? []).map((f) => ({ label: f.label ?? f.key!, value: f.key! }))),
+              );
+          if (template.entityType)
+            this._api
+              .listWorkflowConditionFields(template.entityType)
+              .pipe(catchError(() => of([])))
+              .subscribe((fields) =>
+                this.conditionFields.set(
+                  (fields ?? []).map((f) => ({ key: f.key!, label: f.label ?? f.key!, type: f.type ?? 'text', options: f.options?.map((o) => ({ value: o.value!, label: o.label ?? o.value! })) })),
+                ),
+              );
+          // La capture n'arrive qu'une fois, avant toute instance : l'attendre n'aurait pas de sens.
+          this._api
+            .listWorkflowTriggerEvents(template.entityType ?? undefined)
+            .pipe(catchError(() => of([] as TriggerEventDto[])))
+            .subscribe((events) =>
+              this.waitEvents.set(
+                (events ?? [])
+                  .filter((e) => e.code && e.code !== 'LEAD_CAPTURED')
+                  .map((e) => ({ label: e.label ?? e.code!, value: e.code! })),
+              ),
+            );
           this.triggers.set(triggers ?? []);
           this.roleOptions.set(
             (roles ?? [])

@@ -1,7 +1,7 @@
-import { CrmTaskDto, CrmTaskDtoTypeEnum } from '@sankore/crm-api';
+import { CrmTaskDto } from '@sankore/crm-api';
 import { dayKey, duplicateTaskIds, postponedDueAt, spreadOverWeek, whatsappUrl } from './my-day-meta';
 
-function task(id: string, dueAt: Date, type = CrmTaskDtoTypeEnum.FirstContact, leadId = id): CrmTaskDto {
+function task(id: string, dueAt: Date, type = 'FirstContact', leadId = id): CrmTaskDto {
   return { id, leadId, type, dueAt: dueAt.toISOString() };
 }
 
@@ -36,7 +36,7 @@ describe('spreadOverWeek', () => {
   it('ne déplace que les premiers contacts', () => {
     const tasks = [
       ...Array.from({ length: 6 }, (_, i) => task(`c${i}`, at(8 + i))),
-      task('q', at(9), CrmTaskDtoTypeEnum.Qualification),
+      task('q', at(9), 'Qualification'),
     ];
 
     expect(spreadOverWeek(tasks, dayKey(saturday)).map((m) => m.taskId)).not.toContain('q');
@@ -62,9 +62,9 @@ describe('duplicateTaskIds', () => {
   it('signale la seconde tâche du même type sur le même lead', () => {
     const due = new Date(2026, 9, 22, 9);
     const ids = duplicateTaskIds([
-      task('a', due, CrmTaskDtoTypeEnum.Qualification, 'paul'),
-      task('b', due, CrmTaskDtoTypeEnum.Qualification, 'paul'),
-      task('c', due, CrmTaskDtoTypeEnum.FirstContact, 'paul'),
+      task('a', due, 'Qualification', 'paul'),
+      task('b', due, 'Qualification', 'paul'),
+      task('c', due, 'FirstContact', 'paul'),
     ]);
     expect([...ids]).toEqual(['b']);
   });

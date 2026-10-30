@@ -248,6 +248,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
         return groupByDay(this._onSelectedDay(this.openTasks(), (t) => t.dueAt), (t) => t.dueAt, now);
     }
   });
+  /** Ce qui définit la liste affichée : quand il change, elle repart de sa première page. */
+  public readonly taskListKey = computed(() =>
+    [this.view(), this.scope(), this.selectedDay() ?? '', this.agentFilter()].join('|'),
+  );
   public readonly reminderGroups = computed(() =>
     groupByDay(this._onSelectedDay(this.reminders(), (e) => e.at), (e) => e.at, this.now()),
   );

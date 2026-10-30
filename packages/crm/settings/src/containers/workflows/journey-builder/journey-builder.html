@@ -100,7 +100,12 @@
             (click)="appendStep(kind)">
             <tas-icon iconName="feather:more-vertical" class="text-slate-300 mt-0.5 shrink-0" style="font-size:12px"></tas-icon>
             <span>
-              <span class="block text-sm font-medium text-slate-800">{{ STEP_KIND_META[kind].label }}</span>
+              <span class="block text-sm font-medium text-slate-800">
+                {{ STEP_KIND_META[kind].label }}
+                @if (STEP_KIND_SUPPORT[kind] === 'blocked') {
+                  <span class="ml-1 px-1.5 py-0.5 rounded bg-amber-50 text-[10px] font-semibold text-amber-700">Bientôt</span>
+                }
+              </span>
               <span class="block text-xs text-slate-500">{{ STEP_KIND_META[kind].hint }}</span>
             </span>
           </button>
@@ -214,6 +219,9 @@
           [templateId]="id()"
           [step]="step"
           [roleOptions]="roleOptions()"
+          [waitEvents]="waitEvents()"
+          [conditionFields]="conditionFields()"
+          [formFieldOptions]="formFieldOptions()"
           [readOnly]="readOnly()"
           (updated)="onStepUpdated($event)"
           (deleteRequested)="deleteStep($event)"
@@ -270,6 +278,11 @@
       <p class="text-xs text-slate-500">{{ STEP_KIND_META[kind].label }}</p>
       <p class="text-sm font-semibold text-slate-900">{{ step.name }}</p>
       @if (isCondition) {
+        @if (conditionLabel(step); as rule) {
+          <p class="text-xs text-slate-700 mt-0.5"><span class="font-medium">Si</span> {{ rule }}</p>
+        } @else {
+          <p class="text-xs text-amber-700 mt-0.5">Sans condition</p>
+        }
         @if (step.description) { <p class="text-xs text-slate-600">{{ step.description }}</p> }
       } @else {
         <div class="flex flex-wrap gap-1.5 mt-1.5">
@@ -283,9 +296,12 @@
           } @else if (step.approverRoleCode) {
             <span class="px-2 py-0.5 rounded-md bg-slate-100 text-xs text-slate-700">{{ roleLabel(step.approverRoleCode) }}</span>
           }
+          @if (kind === StepKind.Wait && waitEventLabel(step); as waitLabel) {
+            <span class="px-2 py-0.5 rounded-md bg-slate-100 text-xs text-slate-700">Attend : {{ waitLabel }}</span>
+          }
           @if (step.timeoutHours) {
             <span class="px-2 py-0.5 rounded-md bg-slate-100 text-xs text-slate-700 tabular-nums">
-              {{ kind === StepKind.Wait ? 'Délai' : 'SLA' }} {{ step.timeoutHours }} h
+              {{ kind === StepKind.Wait ? (waitEventLabel(step) ? 'Au plus' : 'Délai') : 'SLA' }} {{ step.timeoutHours }} h
             </span>
           }
           @if (step.isBlocking) {
@@ -329,6 +345,9 @@
           <button type="button" class="w-full flex items-center gap-2" (click)="insertStep(kind, pendingSlot())">
             <tas-icon [iconName]="STEP_KIND_META[kind].icon" class="text-slate-400" style="font-size:13px"></tas-icon>
             {{ STEP_KIND_META[kind].label }}
+            @if (STEP_KIND_SUPPORT[kind] === 'blocked') {
+              <span class="ml-auto text-[10px] font-semibold text-amber-700">Bientôt</span>
+            }
           </button>
         </tas-menu-item>
       }

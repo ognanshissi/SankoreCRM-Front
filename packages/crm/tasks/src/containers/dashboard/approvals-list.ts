@@ -54,8 +54,8 @@ export class ApprovalsList {
   }
 
   public openInstance(item: ApprovalItem): void {
-    if (item.kind !== 'workflow' || !item.instance?.templateId || !item.step.instanceId) return;
-    this._router.navigate(['/settings/workflows', item.instance.templateId, 'instances', item.step.instanceId]);
+    if (item.kind !== 'workflow' || !item.step.instanceId) return;
+    this._router.navigate(['/settings/workflows/instances', item.step.instanceId]);
   }
 
   public decide(item: ApprovalItem, approve: boolean): void {

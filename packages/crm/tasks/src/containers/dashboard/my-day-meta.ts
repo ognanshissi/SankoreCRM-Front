@@ -1,4 +1,4 @@
-import { CrmTaskDto, CrmTaskDtoTypeEnum } from '@sankore/crm-api';
+import { CrmTaskDto } from '@sankore/crm-api';
 
 /**
  * Le calendrier de « Ma journée » : jours locaux, groupes par jour, report et répartition des
@@ -122,7 +122,8 @@ export const SPREAD_THRESHOLD = 6;
 const SPREAD_DAYS = 5;
 
 export function isFirstContact(task: CrmTaskDto): boolean {
-  return task.type === CrmTaskDtoTypeEnum.FirstContact;
+  // Code système en clair : importer @sankore/crm/common ici tirerait ses composants dans le spec.
+  return task.type === 'FirstContact';
 }
 
 /**

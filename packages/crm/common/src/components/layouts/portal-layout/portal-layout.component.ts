@@ -99,7 +99,10 @@ export class PortalLayoutComponent {
   });
 
   public readonly activeItem = computed(() =>
-    activeNavItem(this._url(), [...this.groups().flatMap((g) => g.items), SETTINGS_NAV_ITEM]),
+    activeNavItem(this._url(), [
+      ...this.groups().flatMap((g) => g.items),
+      ...(this._permissions.seesSettings() ? [SETTINGS_NAV_ITEM] : []),
+    ]),
   );
 
   /**

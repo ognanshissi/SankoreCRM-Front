@@ -31,6 +31,15 @@ export const STEP_KIND_META: Record<StepKind, StepKindMeta> = {
   IntegrationAction: { label: 'Action Integration',         hint: 'CBS ou assurance',         icon: 'feather:send',         group: 'actions' },
 };
 
+/**
+ * Ce que le moteur fait aujourd'hui de chaque type — à dire dans l'écran plutôt que de le laisser
+ * découvrir sur un dossier arrêté. `blocked` : refusé à la publication (le serveur refuse aussi
+ * l'activation, `StepKinds.BlocksActivation`) parce que l'étape arrêterait le dossier. `approvalOnly` :
+ * le responsable approuve l'étape, rien de plus.
+ */
+export const STEP_KIND_SUPPORT: Partial<Record<StepKind, 'blocked' | 'approvalOnly'>> = {
+};
+
 export const PALETTE_GROUPS: { label: string; group: StepKindMeta['group'] }[] = [
   { label: 'Étapes', group: 'steps' },
   { label: 'Logique', group: 'logic' },
@@ -66,6 +75,65 @@ export interface StepConfig {
   roleCodes?: string[];
   subject?: string;
   message?: string;
+  /** Attente : l'événement interne attendu (code du catalogue). Le délai est alors un maximum. */
+  eventCode?: string;
+  /** Condition : une comparaison sur un fait du dossier, au format du `ConditionEvaluator` serveur. */
+  condition?: ConditionLeaf;
+  /** Formulaire : les champs du dossier à remplir avant que l'étape puisse être approuvée. */
+  fields?: string[];
+}
+
+export interface ConditionLeaf {
+  nodeType: 'leaf';
+  field: string;
+  operator: string;
+  value?: string;
+}
+
+/** Un fait du dossier qu'une condition peut comparer (`GET workflow/templates/condition-fields`). */
+export interface ConditionFieldOption {
+  key: string;
+  label: string;
+  type: string;
+  options?: { value: string; label: string }[] | null;
+}
+
+const OPERATORS: Record<string, { value: string; label: string; symbol: string }> = {
+  eq: { value: 'eq', label: 'est égal à', symbol: '=' },
+  noteq: { value: 'noteq', label: 'est différent de', symbol: '≠' },
+  gt: { value: 'gt', label: 'est supérieur à', symbol: '>' },
+  gte: { value: 'gte', label: 'est supérieur ou égal à', symbol: '≥' },
+  lt: { value: 'lt', label: 'est inférieur à', symbol: '<' },
+  lte: { value: 'lte', label: 'est inférieur ou égal à', symbol: '≤' },
+  contains: { value: 'contains', label: 'contient', symbol: 'contient' },
+  isempty: { value: 'isempty', label: 'est vide', symbol: 'est vide' },
+  isnotempty: { value: 'isnotempty', label: 'est renseigné', symbol: 'est renseigné' },
+};
+
+/** Les opérateurs qui ont un sens pour ce type de fait. */
+export function conditionOperators(type: string | undefined): { value: string; label: string }[] {
+  const keys =
+    type === 'number' ? ['eq', 'noteq', 'gt', 'gte', 'lt', 'lte']
+    : type === 'choice' || type === 'boolean' ? ['eq', 'noteq']
+    : ['eq', 'noteq', 'contains', 'isempty', 'isnotempty'];
+  return keys.map((k) => ({ value: OPERATORS[k].value, label: OPERATORS[k].label }));
+}
+
+export function operatorNeedsValue(operator: string | undefined): boolean {
+  return operator !== 'isempty' && operator !== 'isnotempty';
+}
+
+/** « Score du lead ≥ 60 », pour la carte du canevas. */
+export function conditionSummary(condition: ConditionLeaf | undefined, fields: ConditionFieldOption[]): string | null {
+  if (!condition?.field) return null;
+  const field = fields.find((f) => f.key === condition.field);
+  const op = OPERATORS[condition.operator?.toLowerCase()];
+  const value =
+    field?.type === 'boolean' ? (condition.value === 'true' ? 'oui' : 'non')
+    : field?.options?.find((o) => o.value === condition.value)?.label ?? condition.value ?? '';
+  return [field?.label ?? condition.field, op?.symbol ?? condition.operator, operatorNeedsValue(condition.operator) ? value : '']
+    .filter(Boolean)
+    .join(' ');
 }
 
 export function parseStepConfig(json: string | null | undefined): StepConfig {
@@ -231,8 +299,8 @@ export type FlowRow =
 
 /**
  * Lignes du canevas. Une condition est suivie de ses branches : les étapes contiguës qui portent
- * `branch`. Le moteur exécute aujourd'hui toutes les étapes à la suite ; les branches décrivent le
- * parcours voulu, elles n'aiguillent pas encore le dossier.
+ * `branch`. Le moteur évalue la condition quand le dossier l'atteint et ignore les étapes de l'autre
+ * branche (`ConditionStepConsumer`).
  */
 export function layoutFlow(steps: WorkflowStepDto[]): FlowRow[] {
   const sorted = [...steps].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
@@ -289,6 +357,18 @@ export function validateJourney(steps: WorkflowStepDto[], triggers: TriggerDto[]
   for (const step of steps) {
     const kind = stepKind(step);
     if (hasAssignee(kind) && !step.approverRoleCode) issues.push({ label: `« ${step.name} » n'a pas de responsable` });
+    if (kind === StepKind.Form && !parseStepConfig(step.configJson).fields?.length)
+      issues.push({ label: `« ${step.name} » : choisissez les champs à remplir` });
+    if (kind === StepKind.Condition) {
+      const condition = parseStepConfig(step.configJson).condition;
+      if (!condition?.field) issues.push({ label: `« ${step.name} » n'a pas de condition` });
+      else if (operatorNeedsValue(condition.operator) && !condition.value?.toString().trim())
+        issues.push({ label: `« ${step.name} » compare à une valeur vide` });
+    }
+    if (kind === StepKind.Wait && !step.timeoutHours && !parseStepConfig(step.configJson).eventCode)
+      issues.push({ label: `« ${step.name} » n'attend ni délai ni événement` });
+    if (STEP_KIND_SUPPORT[kind] === 'blocked')
+      issues.push({ label: `« ${step.name} » : ce type d'étape n'est pas encore exécuté par le moteur` });
     if (kind === StepKind.Notification) {
       const config = parseStepConfig(step.configJson);
       const recipients = notificationRecipients(config);

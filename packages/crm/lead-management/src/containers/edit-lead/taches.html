@@ -69,11 +69,11 @@
               (keydown.space)="$event.preventDefault(); openTaskDetail(task)"
             >
               <span class="w-9 h-9 rounded-lg bg-slate-100 text-slate-600 flex items-center justify-center shrink-0">
-                <tas-icon [iconName]="typeMeta(task.type).icon" style="font-size:15px"></tas-icon>
+                <tas-icon [iconName]="typeMeta(task).icon" style="font-size:15px"></tas-icon>
               </span>
               <div class="flex-1 min-w-0">
                 <div class="flex flex-wrap items-center gap-2">
-                  <p class="text-sm font-semibold text-slate-800">{{ task.title || typeMeta(task.type).label }}</p>
+                  <p class="text-sm font-semibold text-slate-800">{{ task.title || typeMeta(task).label }}</p>
                   @if (task.status === 'InProgress') { <tas-tag severity="info">En cours</tas-tag> }
                   @if (isHighPriority(task)) {
                     <tas-tag [severity]="task.priority === 'Critical' ? 'error' : 'warning'">
@@ -86,8 +86,8 @@
                 }
                 <div class="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1.5 text-xs text-slate-500">
                   <span class="inline-flex items-center gap-1">
-                    <tas-icon [iconName]="typeMeta(task.type).icon" style="font-size:11px"></tas-icon>
-                    {{ typeMeta(task.type).label }}
+                    <tas-icon [iconName]="typeMeta(task).icon" style="font-size:11px"></tas-icon>
+                    {{ typeMeta(task).label }}
                   </span>
                   @if (due) {
                     <span class="inline-flex items-center gap-1" [class]="due.late ? 'text-functional-error font-medium' : ''">
@@ -200,12 +200,12 @@
                 <tas-icon [iconName]="cancelled ? 'feather:x' : 'feather:check'" style="font-size:13px"></tas-icon>
               </span>
               <div class="flex-1 min-w-0">
-                <p class="text-sm font-semibold text-slate-500 line-through">{{ task.title || typeMeta(task.type).label }}</p>
+                <p class="text-sm font-semibold text-slate-500 line-through">{{ task.title || typeMeta(task).label }}</p>
                 <p class="text-sm text-slate-600 mt-0.5">{{ closedLabel(task) }}</p>
                 <div class="flex flex-wrap items-center gap-1.5 mt-1.5">
                   <span class="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-2 py-0.5 text-xs font-medium text-slate-600">
-                    <tas-icon [iconName]="typeMeta(task.type).icon" style="font-size:11px"></tas-icon>
-                    {{ typeMeta(task.type).label }}
+                    <tas-icon [iconName]="typeMeta(task).icon" style="font-size:11px"></tas-icon>
+                    {{ typeMeta(task).label }}
                   </span>
                   @if (timing) {
                     <span

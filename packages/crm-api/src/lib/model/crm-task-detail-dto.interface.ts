@@ -18,6 +18,7 @@ import { TaskPersonDto } from './task-person-dto.interface';
 export interface CrmTaskDetailDto { 
     id?: string;
     type?: string | null;
+    typeLabel?: string | null;
     priority?: string | null;
     title?: string | null;
     description?: string | null;

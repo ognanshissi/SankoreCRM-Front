@@ -158,7 +158,9 @@ export class ComplianceSettingsPage implements OnInit {
   private readonly _complianceConfig = inject(ComplianceConfigService);
 
   /** Deux droits distincts : consulter le régime en vigueur n'est pas le modifier. */
-  public readonly canManage = this._permissions.can('kyc:settings:manage');
+  // Le droit que `PUT /compliance-settings` exige : `kyc:settings:manage` laissait l'écran éditable
+  // à qui le serveur refusait ensuite l'enregistrement.
+  public readonly canManage = this._permissions.can('admin:compliance:manage');
   public readonly canReadAudit = this._permissions.can('audit:read');
 
   /**

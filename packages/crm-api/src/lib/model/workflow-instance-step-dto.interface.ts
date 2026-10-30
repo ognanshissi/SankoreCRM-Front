@@ -23,5 +23,7 @@ export interface WorkflowInstanceStepDto {
     completedAt?: string | null;
     stepDefinitionId?: string;
     kind?: string | null;
+    dueAt?: string | null;
+    assignedToUserId?: string | null;
 }
 

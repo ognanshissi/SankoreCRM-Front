@@ -48,7 +48,7 @@ export class KycSettingsPage implements OnInit {
   private readonly _confirmDialogService = inject(ConfirmDialogService);
   private readonly _snackbar = inject(SnackbarService);
 
-  /** Lire demande `kyc:read`, écrire `kyc:settings:manage` : ce sont deux droits distincts. */
+  /** Lire et écrire demandent tous deux `kyc:settings:manage` (route et serveur). */
   public readonly canManage = this._permissions.can('kyc:settings:manage');
 
   public isLoading = signal(true);

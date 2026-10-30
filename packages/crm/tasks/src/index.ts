@@ -6,8 +6,6 @@ export { DeclineTaskDrawer } from './containers/dashboard/decline-task-drawer';
 export type { DeclineTaskDrawerData } from './containers/dashboard/decline-task-drawer';
 export { TaskDetailDrawer } from './containers/dashboard/task-detail-drawer';
 export type { TaskDetailDrawerData, TaskDetailDrawerResult } from './containers/dashboard/task-detail-drawer';
-export { CreateTaskDrawer } from './containers/dashboard/create-task-drawer';
-export type { CreateTaskDrawerData } from './containers/dashboard/create-task-drawer';
 export { NewTaskDrawer } from './containers/task/new-task-drawer';
 export type { NewTaskDrawerData } from './containers/task/new-task-drawer';
 export { CreateAppointmentDrawer } from './containers/dashboard/create-appointment-drawer';

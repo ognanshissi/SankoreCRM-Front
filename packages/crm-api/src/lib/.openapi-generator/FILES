@@ -223,6 +223,8 @@ model/complete-task-request.interface.ts
 model/completed-task-dto.interface.ts
 model/completeness-gap.interface.ts
 model/compliance-settings-response.interface.ts
+model/condition-field-dto.interface.ts
+model/condition-field-option-dto.interface.ts
 model/configure-whats-app-template-request.interface.ts
 model/configure-whats-app-webhook-response.interface.ts
 model/connected-account-dto.interface.ts
@@ -360,6 +362,7 @@ model/file-client-complaint-response.interface.ts
 model/forgot-password-request.interface.ts
 model/forgot-password-result.interface.ts
 model/form-condition.interface.ts
+model/form-field-choice-dto.interface.ts
 model/form-field.interface.ts
 model/form-option.interface.ts
 model/form-section.interface.ts

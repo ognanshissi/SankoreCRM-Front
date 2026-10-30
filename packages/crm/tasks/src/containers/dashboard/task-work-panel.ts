@@ -11,7 +11,6 @@ import { SnackbarService } from '@talisoft/ui/snackbar';
 import {
   CrmTaskDto,
   CrmTaskDtoStatusEnum,
-  CrmTaskDtoTypeEnum,
   LeadDto,
   LeadsApiService,
   LogActivityRequestOutcomeEnum,
@@ -29,12 +28,13 @@ import {
   typeLabel,
   workStatusLabel,
 } from './task-meta';
+import { SYSTEM_TASK_TYPES } from '@sankore/crm/common';
 
 /** Types pour lesquels l'agent doit dire comment l'échange s'est terminé avant de clore. */
 const TYPES_REQUIRING_RESULT = new Set<string>([
-  CrmTaskDtoTypeEnum.FirstContact,
-  CrmTaskDtoTypeEnum.Qualification,
-  CrmTaskDtoTypeEnum.SlaFollowUp,
+  SYSTEM_TASK_TYPES.FirstContact,
+  SYSTEM_TASK_TYPES.Qualification,
+  SYSTEM_TASK_TYPES.SlaFollowUp,
 ]);
 
 const OUTCOME_OPTIONS: { label: string; value: string }[] = [

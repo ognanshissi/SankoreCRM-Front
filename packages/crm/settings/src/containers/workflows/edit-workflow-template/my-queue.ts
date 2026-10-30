@@ -1,3 +1,4 @@
+import { HttpErrorResponse } from '@angular/common/http';
 import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { NgClass } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -543,21 +544,7 @@ export class WorkflowMyQueuePage implements OnInit {
 
   public navigateToDoneTask(task: CompletedTaskDto): void {
     if (!task.instanceId) return;
-    this.navigatingStepId.set(task.stepId ?? null);
-    this._api.getWorkflowInstance(task.instanceId).subscribe({
-      next: (instance) => {
-        this.navigatingStepId.set(null);
-        if (!instance.templateId) {
-          this._snackbar.error('Erreur', 'Template introuvable pour cette instance.');
-          return;
-        }
-        this._router.navigate(['/settings/workflows', instance.templateId, 'instances', task.instanceId]);
-      },
-      error: () => {
-        this.navigatingStepId.set(null);
-        this._snackbar.error('Erreur', 'Impossible d\'ouvrir l\'instance.');
-      },
-    });
+    this._router.navigate(['/settings/workflows/instances', task.instanceId]);
   }
 
   public openAction(step: MyStepDto, type: 'approve' | 'reject'): void {
@@ -645,32 +632,19 @@ export class WorkflowMyQueuePage implements OnInit {
         this.closeAction();
         this.steps.update((list) => list.filter((s) => s.stepId !== step.stepId));
       },
-      error: () => {
-        this._snackbar.error('Erreur', type === 'approve' ? "Impossible d'approuver." : 'Impossible de rejeter.');
+      // Le motif du serveur (champs à remplir, questionnaires, KYC) plutôt qu'un « impossible ».
+      error: (err: HttpErrorResponse) => {
+        this._snackbar.error('Erreur', err.error?.detail ?? err.error?.error ?? (type === 'approve' ? "Impossible d'approuver." : 'Impossible de rejeter.'));
         this.actingOnStepId.set(null);
       },
     });
   }
 
+  // La page d'instance hors du modèle : qui doit agir sur une étape n'a pas forcément le droit de
+  // lire le circuit (`workflow:read`), et n'a pas besoin d'aller chercher son modèle pour l'ouvrir.
   public navigateToStep(step: MyStepDto): void {
     if (!step.instanceId) return;
-    this.navigatingStepId.set(step.stepId ?? null);
-    // MyStepDto has no templateId — fetch instance to resolve it
-    this._api.getWorkflowInstance(step.instanceId).subscribe({
-      next: (instance) => {
-        this.navigatingStepId.set(null);
-        const templateId = instance.templateId;
-        if (!templateId) {
-          this._snackbar.error('Erreur', 'Template introuvable pour cette instance.');
-          return;
-        }
-        this._router.navigate(['/settings/workflows', templateId, 'instances', step.instanceId]);
-      },
-      error: () => {
-        this.navigatingStepId.set(null);
-        this._snackbar.error('Erreur', 'Impossible d\'ouvrir l\'instance.');
-      },
-    });
+    this._router.navigate(['/settings/workflows/instances', step.instanceId]);
   }
 }
 

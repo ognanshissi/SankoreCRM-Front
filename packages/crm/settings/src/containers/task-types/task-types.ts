@@ -11,8 +11,10 @@ import { TasFormField, TasLabel } from '@talisoft/ui/form-field';
 import { TasInput } from '@talisoft/ui/input';
 import { SnackbarService } from '@talisoft/ui/snackbar';
 import { ConfirmDialogService } from '@talisoft/ui/confirm-dialog';
+import { SideDrawerService } from '@talisoft/ui/side-drawer';
 import { TaskTypesApiService, TaskTypeDto } from '@sankore/crm-api';
-import { BreadcrumbService, PermissionsService } from '@sankore/crm/common';
+import { BreadcrumbService, PermissionsService, TaskTypesStore } from '@sankore/crm/common';
+import { EditTaskTypeDrawer } from './edit-task-type-drawer';
 
 @Component({
   selector: 'task-types-config',
@@ -65,7 +67,9 @@ import { BreadcrumbService, PermissionsService } from '@sankore/crm/common';
           <div class="mb-4 p-3 rounded-lg bg-blue-50 border border-blue-200 flex items-center gap-2">
             <tas-icon iconName="feather:info" class="text-blue-500 shrink-0" style="font-size:14px"></tas-icon>
             <p class="text-xs text-blue-700">
-              Les nouveaux types sont immédiatement disponibles dans les formulaires de clôture de tâche, sans redéploiement.
+              Le type d'une tâche est choisi parmi les types actifs. Les types système servent aux tâches
+              automatiques : leur libellé et leur ordre se modifient, ils ne se désactivent pas. Un type désactivé
+              n'est plus proposé, les tâches qui le portent le gardent.
             </p>
           </div>
 
@@ -93,6 +97,11 @@ import { BreadcrumbService, PermissionsService } from '@sankore/crm/common';
                       </div>
                       @if (tt.description) { <p class="text-xs text-slate-400 mt-0.5">{{ tt.description }}</p> }
                     </div>
+                    @if (canManage()) {
+                      <button tas-button iconButton type="button" [attr.aria-label]="'Modifier ' + (tt.label ?? '')" (click)="edit(tt)">
+                        <tas-icon iconName="feather:edit-2" style="font-size:14px"></tas-icon>
+                      </button>
+                    }
                     @if (!tt.isSystem) {
                       <tas-switch
                         [checked]="tt.isActive ?? false"
@@ -100,6 +109,9 @@ import { BreadcrumbService, PermissionsService } from '@sankore/crm/common';
                         [isLoading]="togglingId() === tt.id"
                         (toggle)="toggleActive(tt, $event)"
                       ></tas-switch>
+                    } @else {
+                      <!-- Place de l'interrupteur : les crayons restent alignés d'une ligne à l'autre. -->
+                      <span class="inline-block w-10 shrink-0" aria-hidden="true"></span>
                     }
                   </div>
                 }
@@ -119,6 +131,9 @@ export class TaskTypesConfig implements OnInit {
   private readonly _snackbar = inject(SnackbarService);
   private readonly _confirmDialog = inject(ConfirmDialogService);
   private readonly _breadcrumbService = inject(BreadcrumbService);
+  private readonly _sideDrawer = inject(SideDrawerService);
+  // Les tiroirs de création et les libellés lisent ce service : il doit voir les changements faits ici.
+  private readonly _taskTypesStore = inject(TaskTypesStore);
 
   public isLoading = signal(true);
   public isCreating = signal(false);
@@ -149,6 +164,17 @@ export class TaskTypesConfig implements OnInit {
     });
   }
 
+  public edit(tt: TaskTypeDto): void {
+    const ref = this._sideDrawer.open<boolean, TaskTypeDto, EditTaskTypeDrawer>(EditTaskTypeDrawer, {
+      width: '520px', height: '100%', panelClass: 'side-drawer-panel', data: tt,
+    });
+    ref.closed.subscribe((saved) => {
+      if (!saved) return;
+      this._snackbar.success('Type modifié', 'Le nouveau libellé s’affiche sur les tâches de ce type.');
+      this._load();
+    });
+  }
+
   public toggleActive(tt: TaskTypeDto, active: boolean): void {
     if (!active) {
       this._confirmDialog.confirm({
@@ -171,6 +197,7 @@ export class TaskTypesConfig implements OnInit {
       .subscribe({ next: () => {
         this.taskTypes.update((l) => l.map((t) => t.id === tt.id ? { ...t, isActive: active } : t));
         this._snackbar.success('Succès', `Type ${active ? 'activé' : 'désactivé'}.`);
+        this._taskTypesStore.refresh();
       }, complete: () => this.togglingId.set(null) });
   }
 
@@ -178,6 +205,7 @@ export class TaskTypesConfig implements OnInit {
     this.isLoading.set(true);
     this._api.listTaskTypes().pipe(catchError(() => { this.isLoading.set(false); return EMPTY; }))
       .subscribe((t) => { this.taskTypes.set(t ?? []); this.isLoading.set(false); });
+    this._taskTypesStore.refresh();
   }
 }
 

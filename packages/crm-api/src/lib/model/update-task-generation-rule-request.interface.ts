@@ -13,10 +13,7 @@
 
 export interface UpdateTaskGenerationRuleRequest { 
     triggerEventType?: string | null;
-    /**
-     * One of: FirstContact, Qualification, SlaFollowUp, ScoreReview, OwnerHandover, ManualDispatch, Generic
-     */
-    taskType?: UpdateTaskGenerationRuleRequestTaskTypeEnum;
+    taskType?: string | null;
     /**
      * One of: Low, Medium, High, Critical
      */
@@ -26,15 +23,6 @@ export interface UpdateTaskGenerationRuleRequest {
     dueDuration?: string;
     descriptionTemplate?: string | null;
 }
-export enum UpdateTaskGenerationRuleRequestTaskTypeEnum {
-    FirstContact = 'FirstContact',
-    Qualification = 'Qualification',
-    SlaFollowUp = 'SlaFollowUp',
-    ScoreReview = 'ScoreReview',
-    OwnerHandover = 'OwnerHandover',
-    ManualDispatch = 'ManualDispatch',
-    Generic = 'Generic'
-};
 export enum UpdateTaskGenerationRuleRequestPriorityEnum {
     Low = 'Low',
     Medium = 'Medium',

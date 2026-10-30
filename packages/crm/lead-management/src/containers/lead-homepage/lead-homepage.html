@@ -91,18 +91,20 @@
     </tas-menu>
   </ng-template>
 
-  <button type="button" class="px-3 py-1 rounded-full border border-slate-200 bg-white text-xs text-slate-700 hover:bg-slate-50"
-    TasMenuTrigger [panel]="agentMenu">
-    Agent : {{ filterAgentLabel() }}
-  </button>
-  <ng-template #agentMenu>
-    <tas-menu>
-      <tas-menu-item><button type="button" class="w-full text-left" (click)="setOwnerFilter('')">Tous</button></tas-menu-item>
-      @for (agent of agentOptions(); track agent.value) {
-        <tas-menu-item><button type="button" class="w-full text-left" (click)="setOwnerFilter(agent.value)">{{ agent.label }}</button></tas-menu-item>
-      }
-    </tas-menu>
-  </ng-template>
+  @if (canFilterByAgent()) {
+    <button type="button" class="px-3 py-1 rounded-full border border-slate-200 bg-white text-xs text-slate-700 hover:bg-slate-50"
+      TasMenuTrigger [panel]="agentMenu">
+      Agent : {{ filterAgentLabel() }}
+    </button>
+    <ng-template #agentMenu>
+      <tas-menu>
+        <tas-menu-item><button type="button" class="w-full text-left" (click)="setOwnerFilter('')">Tous</button></tas-menu-item>
+        @for (agent of agentOptions(); track agent.value) {
+          <tas-menu-item><button type="button" class="w-full text-left" (click)="setOwnerFilter(agent.value)">{{ agent.label }}</button></tas-menu-item>
+        }
+      </tas-menu>
+    </ng-template>
+  }
 
   <button type="button" class="px-3 py-1 rounded-full text-xs font-medium transition-colors"
     [class]="filterAwaitingDispatch() ? 'bg-amber-600 text-white' : 'bg-amber-50 text-amber-800 hover:bg-amber-100'"

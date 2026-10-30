@@ -12,10 +12,7 @@
 
 
 export interface CreateTaskRequest { 
-    /**
-     * One of: FirstContact, Qualification, SlaFollowUp, ScoreReview, OwnerHandover, ManualDispatch, Generic
-     */
-    type?: CreateTaskRequestTypeEnum;
+    type?: string | null;
     /**
      * One of: Low, Medium, High, Critical
      */
@@ -35,15 +32,6 @@ export interface CreateTaskRequest {
     criteria?: Array<string> | null;
     tags?: Array<string> | null;
 }
-export enum CreateTaskRequestTypeEnum {
-    FirstContact = 'FirstContact',
-    Qualification = 'Qualification',
-    SlaFollowUp = 'SlaFollowUp',
-    ScoreReview = 'ScoreReview',
-    OwnerHandover = 'OwnerHandover',
-    ManualDispatch = 'ManualDispatch',
-    Generic = 'Generic'
-};
 export enum CreateTaskRequestPriorityEnum {
     Low = 'Low',
     Medium = 'Medium',

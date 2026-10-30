@@ -1,3 +1,4 @@
+import { HttpErrorResponse } from '@angular/common/http';
 import { Component, computed, inject, input, OnInit, signal } from '@angular/core';
 import { NgClass } from '@angular/common';
 import { Router } from '@angular/router';
@@ -18,9 +19,7 @@ import {
   WorkflowInstanceDto,
   WorkflowInstanceStepDto,
   WorkflowInstancesApiService,
-  WorkflowStepDto,
   WorkflowTasksApiService,
-  WorkflowTemplatesApiService,
 } from '@sankore/crm-api';
 import { SideDrawerService } from '@talisoft/ui/side-drawer';
 // Le module KYC ne dépend pas de la lib settings : l'import ne crée donc pas de cycle.
@@ -76,14 +75,18 @@ export class WorkflowInstanceDetailPage implements OnInit {
   public readonly canCompleteTask = this._permissions.can('workflow:task:complete');
 
   private readonly _api = inject(WorkflowInstancesApiService);
-  private readonly _templateApi = inject(WorkflowTemplatesApiService);
   private readonly _tasksApi = inject(WorkflowTasksApiService);
   private readonly _usersApi = inject(UsersApiService);
   private readonly _snackbar = inject(SnackbarService);
   private readonly _confirm = inject(ConfirmDialogService);
   private readonly _router = inject(Router);
 
-  public readonly id = input.required<string>();         // templateId from parent route
+  /**
+   * Le modèle, quand la page est ouverte depuis ses onglets (`workflows/:id/instances/:instanceId`).
+   * Absent depuis « Ma journée » ou « Ma file » (`workflows/instances/:instanceId`) : qui doit agir
+   * sur une étape ne lit pas forcément le circuit.
+   */
+  public readonly id = input<string>();
   public readonly instanceId = input.required<string>();
 
   public readonly entityTypeLabel = entityTypeLabel;
@@ -96,7 +99,6 @@ export class WorkflowInstanceDetailPage implements OnInit {
   public isActing = signal(false);
   public instance = signal<WorkflowInstanceDto | null>(null);
   public audit = signal<WorkflowAuditEntryDto[]>([]);
-  public templateSteps = signal<WorkflowStepDto[]>([]);
   public tasks = signal<TaskDto[]>([]);
   public completingTaskId = signal<string | null>(null);
   public cancellingTaskId = signal<string | null>(null);
@@ -133,6 +135,30 @@ export class WorkflowInstanceDetailPage implements OnInit {
     return this.audit()
       .filter((e) => e.fromStateId === stepDefinitionId && (e.eventCode === 'NOTIFICATION_SENT' || e.eventCode === 'NOTIFICATION_NOT_SENT'))
       .map((e) => ({ sent: e.eventCode === 'NOTIFICATION_SENT', detail: e.comment ?? '' }));
+  }
+
+  /** La tâche d'une étape « Tâche manuelle » : créée (pour qui), annulée. */
+  public taskNotes(stepDefinitionId: string | null | undefined): { cancelled: boolean; detail: string }[] {
+    if (!stepDefinitionId) return [];
+    return this.audit()
+      .filter((e) => e.fromStateId === stepDefinitionId && (e.eventCode === 'TASK_CREATED' || e.eventCode === 'TASK_CANCELLED'))
+      .map((e) => ({ cancelled: e.eventCode === 'TASK_CANCELLED', detail: e.comment ?? '' }));
+  }
+
+  /** Pourquoi une étape Attente s'est terminée, ou quelle branche une Condition a choisie. */
+  public waitResumption(stepDefinitionId: string | null | undefined): string | null {
+    if (!stepDefinitionId) return null;
+    return this.audit().find((e) => e.fromStateId === stepDefinitionId
+      && (e.eventCode === 'WAIT_RESUMED' || e.eventCode === 'CONDITION_RESOLVED' || e.eventCode === 'KYC_VALIDATED'
+        || e.eventCode === 'INTEGRATION_SYNCED'))?.comment ?? null;
+  }
+
+  /** Ce qu'attend une étape Vérification KYC encore ouverte (dernier constat). */
+  public kycPending(stepDefinitionId: string | null | undefined): string | null {
+    if (!stepDefinitionId) return null;
+    const notes = this.audit().filter((e) => e.fromStateId === stepDefinitionId
+      && (e.eventCode === 'KYC_PENDING' || e.eventCode === 'INTEGRATION_PENDING'));
+    return notes.length ? notes[notes.length - 1].comment ?? null : null;
   }
 
   public stepName(stateId: string | null | undefined): string {
@@ -188,8 +214,10 @@ export class WorkflowInstanceDetailPage implements OnInit {
           this.isActing.set(false);
           this._load();
         },
-        error: () => {
-          this._snackbar.error('Erreur', "Impossible d'approuver.");
+        // Le motif du serveur : une étape Formulaire, questionnaire ou KYC refuse l'approbation tant
+        // que le dossier ne la satisfait pas, et dit ce qui manque.
+        error: (err: HttpErrorResponse) => {
+          this._snackbar.error('Erreur', err.error?.detail ?? err.error?.error ?? "Impossible d'approuver.");
           this.isActing.set(false);
         },
       });
@@ -379,19 +407,24 @@ export class WorkflowInstanceDetailPage implements OnInit {
   }
 
   public goBack(): void {
-    this._router.navigate(['/settings/workflows', this.id(), 'instances']);
+    const templateId = this.id();
+    if (templateId) {
+      this._router.navigate(['/settings/workflows', templateId, 'instances']);
+    } else if (history.length > 1) {
+      history.back();
+    } else {
+      this._router.navigate(['/tasks/my-day']);
+    }
   }
 
   // ── SLA helpers ───────────────────────────────────────────────────────────
 
-  /** Computes the deadline for an instance step using its createdAt + template timeoutHours. */
+  /**
+   * L'échéance de l'étape elle-même. Elle était recalculée depuis le délai du MODÈLE, ce qui était
+   * faux dès qu'une escalade l'avait repoussée, et demandait de lire le circuit.
+   */
   public stepDueAt(step: WorkflowInstanceStepDto): Date | null {
-    if (!step.createdAt) return null;
-    const timeout = this.templateSteps().find((s) => s.order === step.order)?.timeoutHours;
-    if (!timeout) return null;
-    const d = new Date(step.createdAt);
-    d.setHours(d.getHours() + timeout);
-    return d;
+    return step.dueAt ? new Date(step.dueAt) : null;
   }
 
   public stepIsOverdue(step: WorkflowInstanceStepDto): boolean {
@@ -412,13 +445,11 @@ export class WorkflowInstanceDetailPage implements OnInit {
     forkJoin({
       instance: this._api.getWorkflowInstance(this.instanceId()),
       audit: this._api.getWorkflowInstanceAudit(this.instanceId()),
-      template: this._templateApi.getWorkflowTemplate(this.id()),
       tasks: this._tasksApi.listWorkflowTasks(this.instanceId()),
     }).subscribe({
-      next: ({ instance, audit, template, tasks }) => {
+      next: ({ instance, audit, tasks }) => {
         this.instance.set(instance);
         this.audit.set(audit ?? []);
-        this.templateSteps.set(template.steps ?? []);
         this.tasks.set(tasks ?? []);
         this.isLoading.set(false);
       },

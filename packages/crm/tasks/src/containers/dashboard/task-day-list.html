@@ -7,12 +7,13 @@
   </div>
 } @else {
   <div class="flex flex-col gap-4">
-    @for (group of groups(); track group.key) {
+    @for (page of pageGroups(); track page.group.key) {
+      @let group = page.group;
       @let contacts = firstContacts(group);
       <section class="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm" [attr.aria-label]="group.heading">
         <header class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-4 py-3">
           <h2 class="text-sm font-semibold text-slate-900">
-            {{ group.heading }}
+            {{ group.heading }}@if (page.continued) {<span class="font-normal text-slate-500"> (suite)</span>}
             <span class="font-normal text-slate-500">· {{ group.items.length }} tâche{{ group.items.length > 1 ? 's' : '' }}</span>
           </h2>
           @if (canSpread() && contacts >= spreadThreshold) {
@@ -29,7 +30,7 @@
         </header>
 
         <ul class="divide-y divide-slate-100">
-          @for (task of group.items; track task.id) {
+          @for (task of page.items; track task.id) {
             @let v = visual(task.type);
             @let pending = isOpen(task);
             @let busy = busyIds().has(task.id!);
@@ -101,4 +102,16 @@
       </section>
     }
   </div>
+  @if (paginated()) {
+    <mat-paginator
+      class="mt-4 rounded-2xl border border-slate-100 bg-white shadow-sm"
+      [length]="total()"
+      [pageIndex]="currentPage()"
+      [pageSize]="pageSize()"
+      [pageSizeOptions]="pageSizeOptions"
+      [selectConfig]="{ panelClass: 'tas-paginator-panel' }"
+      aria-label="Pagination des tâches"
+      (page)="changePage($event)"
+    ></mat-paginator>
+  }
 }

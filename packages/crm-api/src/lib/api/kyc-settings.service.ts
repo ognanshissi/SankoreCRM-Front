@@ -227,7 +227,7 @@ export class KYCSettingsApiService {
 
     /**
      * List the KYC parameters of the current tenant
-     * Every declared M02 parameter with the value in force, its type, its description, the factory default and an IsDefault flag. A key the tenant has never customised answers with its factory value — the same one the module resolves to. Requires permission: kyc:read.
+     * Every declared M02 parameter with the value in force, its type, its description, the factory default and an IsDefault flag. A key the tenant has never customised answers with its factory value — the same one the module resolves to. Requires permission: kyc:settings:manage.
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      */

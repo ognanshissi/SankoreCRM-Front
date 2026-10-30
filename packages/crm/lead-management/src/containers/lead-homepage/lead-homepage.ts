@@ -39,7 +39,7 @@ import { SystemCaptureDrawer } from './system-capture-drawer';
 import { LeadQuickViewData, LeadQuickViewDrawer } from './lead-quick-view-drawer';
 import { interestedProductLabel } from '../../components/interested-product';
 import { LeadNextStep } from '../../components/lead-next-step';
-import { CreateTaskDrawer } from '@sankore/crm/tasks';
+import { NewTaskDrawer, NewTaskDrawerData } from '@sankore/crm/tasks';
 import { Severity, TasTag } from '@talisoft/ui/tag';
 import { AuthenticationService, CustomFieldFilters, PermissionsService, QuickCreateEvents } from '@sankore/crm/common';
 
@@ -276,6 +276,9 @@ export class LeadHomepage implements OnInit {
   public readonly canExport = this._permissions.can('lead:export');
   public readonly canImport = this._permissions.can('lead:import');
   public readonly canAssign = this._permissions.can('lead:assign');
+  // Sans « lead:read:all », le serveur ne renvoie que les leads de l'utilisateur : filtrer par
+  // agent n'aurait rien d'autre à montrer que les siens.
+  public readonly canFilterByAgent = this._permissions.can('lead:read:all');
 
   private readonly _leadsApiService = inject(LeadsApiService);
   private readonly _agenciesApiService = inject(AgenciesApiService);
@@ -441,7 +444,7 @@ export class LeadHomepage implements OnInit {
     if (params['leadSource']) this.filterLeadSourceId.set(params['leadSource']);
     if (params['agency']) this.filterAgencyId.set(params['agency']);
     if (params['intent']) this.filterIntent.set(params['intent']);
-    if (params['owner']) this.filterOwnerId.set(params['owner']);
+    if (params['owner'] && this.canFilterByAgent()) this.filterOwnerId.set(params['owner']);
     if (params['queue'] === '1') this.filterAwaitingDispatch.set(true);
     this.filterCustom.set(this._route.snapshot.queryParamMap.getAll('cf'));
     if (params['view'] === 'list') this.viewMode.set('list');
@@ -939,36 +942,26 @@ export class LeadHomepage implements OnInit {
     const selectedIds = [...this.selectedLeadIds()];
     if (selectedIds.length === 0) return;
 
-    // Open CreateTaskDrawer for the first selected lead, with all lead IDs in description for context
-    const firstLeadId = selectedIds[0];
-    const selectedLeads = this.leads().filter((l) => this.selectedLeadIds().has(l.id!));
-    const leadNames = selectedLeads.map((l) => this.displayName(l)).join(', ');
+    // Une tâche par lead sélectionné. L'ancien tiroir n'en créait qu'une, pour le premier, en
+    // annonçant pourtant « tâche créée pour N leads ».
+    // Par les identifiants sélectionnés, pas par la page affichée : une sélection peut en déborder.
+    const byId = new Map(this.leads().map((l) => [l.id, l]));
+    const leads = selectedIds.map((id) => {
+      const lead = byId.get(id);
+      return { id, label: lead ? this.displayName(lead) : 'Lead' };
+    });
 
-    const ref = this._sideDrawerService.open(CreateTaskDrawer, {
+    const ref = this._sideDrawerService.open<string, NewTaskDrawerData, NewTaskDrawer>(NewTaskDrawer, {
       width: '100%',
       height: '100%',
       panelClass: 'side-drawer-panel',
-      data: { leadId: firstLeadId },
+      data: { leads },
     });
 
-    ref.closed.subscribe((created: any) => {
-      if (created && selectedIds.length > 1) {
-        // Create tasks for remaining leads
-        const tasksApi = this._leadsApiService;
-        const remaining = selectedIds.length - 1;
-        // The first task was already created by the drawer.
-        // For the rest, we re-use the same pattern but via bulk:
-        // Since there's no bulk-create-task API, we inform the user.
-        this._snackbar.info(
-          'Tâche créée',
-          `Tâche créée pour ${selectedIds.length} lead(s). Pour les leads restants, répétez l'opération ou utilisez l'assignation en masse.`,
-        );
-        this.clearSelection();
-        this.reloadCurrentPage();
-      } else if (created) {
-        this._snackbar.success('Tâche créée', 'La tâche a été assignée.');
-        this.clearSelection();
-      }
+    ref.closed.subscribe((id) => {
+      if (!id) return;
+      this.clearSelection();
+      this.reloadCurrentPage();
     });
   }
 

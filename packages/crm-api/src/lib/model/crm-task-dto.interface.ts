@@ -14,10 +14,7 @@
 export interface CrmTaskDto { 
     id?: string;
     tenantId?: string;
-    /**
-     * One of: FirstContact, Qualification, SlaFollowUp, ScoreReview, OwnerHandover, ManualDispatch, Generic
-     */
-    type?: CrmTaskDtoTypeEnum;
+    type?: string | null;
     /**
      * One of: Low, Medium, High, Critical
      */
@@ -43,16 +40,8 @@ export interface CrmTaskDto {
     entityType?: CrmTaskDtoEntityTypeEnum | null;
     entityId?: string | null;
     createdBy?: string | null;
+    typeLabel?: string | null;
 }
-export enum CrmTaskDtoTypeEnum {
-    FirstContact = 'FirstContact',
-    Qualification = 'Qualification',
-    SlaFollowUp = 'SlaFollowUp',
-    ScoreReview = 'ScoreReview',
-    OwnerHandover = 'OwnerHandover',
-    ManualDispatch = 'ManualDispatch',
-    Generic = 'Generic'
-};
 export enum CrmTaskDtoPriorityEnum {
     Low = 'Low',
     Medium = 'Medium',

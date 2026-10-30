@@ -161,6 +161,7 @@
             [agentNames]="scope() === 'team' ? agentNames() : null"
             [canSpread]="scope() === 'mine' && view() === 'todo'"
             [busyIds]="busyIds()"
+            [pageKey]="taskListKey()"
             [emptyTitle]="view() === 'done' ? 'Aucune tâche terminée' : view() === 'overdue' ? 'Rien en retard' : 'Rien à faire'"
             [emptyText]="selectedDay() ? 'Aucune tâche ce jour-là.' : view() === 'todo' ? 'Les tâches qui vous sont attribuées apparaîtront ici.' : ''"
             (open)="openTask($event)"

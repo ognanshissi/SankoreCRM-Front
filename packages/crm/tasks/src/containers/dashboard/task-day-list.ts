@@ -1,6 +1,8 @@
-import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, ElementRef, inject, input, linkedSignal, output, signal } from '@angular/core';
+import { MatPaginator, PageEvent } from '@angular/material/paginator';
 import { CrmTaskDto, CrmTaskDtoStatusEnum, LeadDto } from '@sankore/crm-api';
 import { TasIcon } from '@talisoft/ui/icon';
+import { provideTasPaginatorIntl } from '@talisoft/ui/table';
 import { ContactButtons } from './contact-buttons';
 import { DayGroup, dayChip, isFirstContact, SPREAD_THRESHOLD } from './my-day-meta';
 import { leadDisplayName, taskActionLabel } from './task-meta';
@@ -22,7 +24,7 @@ const SOURCE_LABELS: Record<string, string> = {
   MarketingCampaign: 'Campagne',
 };
 
-function typeVisual(type: string | undefined): { icon: string; tone: string } {
+function typeVisual(type: string | null | undefined): { icon: string; tone: string } {
   switch (type) {
     case 'FirstContact':   return { icon: 'feather:phone',       tone: 'bg-primary/10 text-primary' };
     case 'Qualification':  return { icon: 'feather:list',        tone: 'bg-indigo-50 text-indigo-600' };
@@ -34,9 +36,22 @@ function typeVisual(type: string | undefined): { icon: string; tone: string } {
   }
 }
 
+/** Au-delà, la liste se pagine (demande du propriétaire, 2026-10-29). */
+export const TASK_PAGE_SIZE = 10;
+
+/** Un jour tel qu'affiché sur la page courante : ses tâches de la page, et le jour entier. */
+interface PageGroup {
+  group: DayGroup<CrmTaskDto>;
+  items: CrmTaskDto[];
+  /** Le jour a commencé sur la page précédente. */
+  continued: boolean;
+}
+
 /**
  * Les tâches de « Ma journée », une carte par jour. En cartes et non en `tas-table` : c'est la
- * maquette du propriétaire, et une liste de travail regroupée par jour n'a pas de paginateur.
+ * maquette du propriétaire. Au-delà de dix tâches, la liste se pagine : la page découpe la suite
+ * des tâches, puis les regroupe par jour — le compte d'un jour et « Répartir sur la semaine »
+ * portent toujours sur le jour entier, même coupé entre deux pages.
  *
  * Le composant ne fait rien lui-même : ouvrir, reporter, répartir et réassigner remontent à
  * l'écran, qui possède la liste et la recharge.
@@ -44,10 +59,13 @@ function typeVisual(type: string | undefined): { icon: string; tone: string } {
 @Component({
   selector: 'my-day-task-list',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [TasIcon, ContactButtons],
+  imports: [TasIcon, ContactButtons, MatPaginator],
+  providers: [provideTasPaginatorIntl()],
   templateUrl: './task-day-list.html',
 })
 export class TaskDayList {
+  private readonly _host = inject<ElementRef<HTMLElement>>(ElementRef);
+
   public readonly groups = input.required<DayGroup<CrmTaskDto>[]>();
   public readonly leads = input<Map<string, LeadDto>>(new Map());
   public readonly now = input(Date.now());
@@ -58,6 +76,8 @@ export class TaskDayList {
   public readonly busyIds = input<Set<string>>(new Set());
   public readonly emptyTitle = input('Rien à faire');
   public readonly emptyText = input('');
+  /** Change quand l'écran change de liste (vue, portée, jour, agent) : on revient à la page 1. */
+  public readonly pageKey = input('');
 
   public readonly open = output<CrmTaskDto>();
   public readonly postpone = output<CrmTaskDto>();
@@ -67,6 +87,39 @@ export class TaskDayList {
   public readonly visual = typeVisual;
   public readonly actionLabel = taskActionLabel;
   public readonly spreadThreshold = SPREAD_THRESHOLD;
+  public readonly pageSizeOptions = [TASK_PAGE_SIZE, 25, 50];
+
+  // Une tâche faite ou reportée recharge la liste sans changer de clé : on reste sur la page.
+  public readonly pageIndex = linkedSignal({ source: this.pageKey, computation: () => 0 });
+  public readonly pageSize = signal(TASK_PAGE_SIZE);
+  public readonly total = computed(() => this.groups().reduce((n, g) => n + g.items.length, 0));
+  public readonly paginated = computed(() => this.total() > TASK_PAGE_SIZE);
+  /** La page demandée, ramenée à la dernière quand la liste a rétréci. */
+  public readonly currentPage = computed(() =>
+    Math.min(this.pageIndex(), Math.max(0, Math.ceil(this.total() / this.pageSize()) - 1)),
+  );
+
+  public readonly pageGroups = computed<PageGroup[]>(() => {
+    if (!this.paginated()) return this.groups().map((group) => ({ group, items: group.items, continued: false }));
+    const start = this.currentPage() * this.pageSize();
+    const end = start + this.pageSize();
+    const page: PageGroup[] = [];
+    let offset = 0;
+    for (const group of this.groups()) {
+      const from = Math.max(start - offset, 0);
+      const to = Math.min(end - offset, group.items.length);
+      if (from < to) page.push({ group, items: group.items.slice(from, to), continued: from > 0 });
+      offset += group.items.length;
+      if (offset >= end) break;
+    }
+    return page;
+  });
+
+  public changePage(event: PageEvent): void {
+    this.pageSize.set(event.pageSize);
+    this.pageIndex.set(event.pageIndex);
+    this._host.nativeElement.scrollIntoView({ block: 'start', behavior: 'smooth' });
+  }
 
   public isOpen(task: CrmTaskDto): boolean {
     return task.status === CrmTaskDtoStatusEnum.Pending || task.status === CrmTaskDtoStatusEnum.InProgress;

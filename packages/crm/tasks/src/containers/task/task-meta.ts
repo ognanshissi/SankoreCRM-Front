@@ -9,6 +9,8 @@ export const TASK_ERRORS: Record<string, string> = {
   TASK_TITLE_REQUIRED: 'Le titre est obligatoire.',
   TASK_TITLE_TOO_LONG: 'Le titre dépasse 200 caractères.',
   TASK_DESCRIPTION_TOO_LONG: 'La description dépasse 4 000 caractères.',
+  TASK_TYPE_UNKNOWN: 'Ce type de tâche n’existe pas : rechargez la page.',
+  TASK_TYPE_INACTIVE: 'Ce type de tâche a été désactivé : choisissez-en un autre.',
   TASK_ENTITY_INCOMPLETE: 'Choisissez ce sur quoi porte la tâche.',
   TASK_USER_NOT_FOUND: 'Une des personnes choisies n’existe plus.',
   TASK_TOO_MANY_PARTICIPANTS: '20 personnes associées au plus.',

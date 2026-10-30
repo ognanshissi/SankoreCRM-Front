@@ -171,6 +171,14 @@ const paneRoutes: Routes = [
   },
   // Redirections déclarées ici et non dans les enfants de `workflows/:id` : une redirection enfant ne
   // voit pas le `:id` de la route parente (« Cannot redirect … Cannot find ':id' »).
+  {
+    // Une instance hors des onglets de son modèle : c'est ainsi que « Ma journée » et « Ma file »
+    // l'ouvrent, pour qui doit agir sur une étape sans lire le circuit (`workflow:read`).
+    // Déclarée avant `workflows/:id`, qui capturerait « instances » comme identifiant.
+    path: 'workflows/instances/:instanceId',
+    canActivate: [hasPermissionGuard('workflow:instance:view')],
+    loadComponent: () => import('./containers/workflows/edit-workflow-template/instance-detail'),
+  },
   { path: 'workflows/:id', redirectTo: '/settings/workflows/:id/parcours', pathMatch: 'full' },
   // Ancienne adresse du canevas libre : les liens existants mènent au nouveau constructeur.
   { path: 'workflows/:id/builder', redirectTo: '/settings/workflows/:id/parcours', pathMatch: 'full' },
@@ -235,11 +243,11 @@ const paneRoutes: Routes = [
       import('./containers/qualification-templates/edit-qualification-template/edit-qualification-template'),
   },
   {
-    // US-M01-FE-18. `PUT /api/v1/clients/segments/rules` exige
-    // `customers:update_sensitive` : la garde reprend ce droit pour ne pas
-    // ouvrir un écran d'écriture que le serveur refuserait.
+    // US-M01-FE-18. `PUT /api/v1/clients/segments/rules` exige `customers:segments_manage`
+    // (propriétaire, 2026-10-30 — c'était `customers:update_sensitive`, qu'a un agent de guichet) :
+    // la garde reprend ce droit pour ne pas ouvrir un écran d'écriture que le serveur refuserait.
     path: 'client-segments',
-    canActivate: [hasPermissionGuard('customers:update_sensitive')],
+    canActivate: [hasPermissionGuard('customers:segments_manage')],
     loadComponent: () =>
       import('./containers/client-segments/client-segment-rules'),
   },
@@ -284,20 +292,18 @@ const paneRoutes: Routes = [
     loadComponent: () => import('./containers/scoring-configs/scoring-configs'),
   },
   {
-    // Lecture sur `kyc:read` comme l'écran KYC voisin, pour la même raison : consulter
-    // le régime FATCA en vigueur est légitime pour qui lit déjà les dossiers, et
-    // `GET /api/v1/compliance-settings` ne déclare aucune permission propre au contrat.
-    // L'écran vérifie `kyc:settings:manage` avant toute écriture.
+    // Réservé à qui peut modifier ces réglages (propriétaire, 2026-10-30) : `kyc:read` est le droit
+    // d'un agent sur ses dossiers et ouvrait l'écran à tous. `GET /compliance-settings` reste lisible
+    // plus largement (`admin:compliance:read`) : d'autres écrans lisent le régime FATCA en vigueur.
     path: 'conformite',
-    canActivate: [hasPermissionGuard('kyc:read')],
+    canActivate: [hasPermissionGuard('admin:compliance:manage')],
     loadComponent: () => import('./containers/compliance/compliance-settings'),
   },
   {
-    // Lecture sur `kyc:read`, comme `GET /kyc-settings` : la modification, elle, exige
-    // `kyc:settings:manage`, vérifié dans l'écran et non par le garde — consulter les plafonds en
-    // vigueur est légitime pour qui lit déjà les dossiers.
+    // `kyc:settings:manage`, comme `GET /kyc-settings` (propriétaire, 2026-10-30) : `kyc:read` est le
+    // droit d'un agent sur ses dossiers, et aucun écran de travail ne lit ces paramètres.
     path: 'kyc',
-    canActivate: [hasPermissionGuard('kyc:read')],
+    canActivate: [hasPermissionGuard('kyc:settings:manage')],
     loadComponent: () => import('./containers/kyc-settings/kyc-settings'),
   },
   {

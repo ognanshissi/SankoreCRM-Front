@@ -3761,7 +3761,7 @@
           "Client Timeline & Segments"
         ],
         "summary": "Replace the tenant's segmentation rules",
-        "description": "Replaces the whole rule set (a rule set is an ordered decision list, so it is written as a set, never patched rule by rule). Rules are evaluated by ascending priority and the first match wins; a rule with no criterion matches everyone and is how a catch-all segment is expressed. A rule with requiresOutstandingData=true is accepted and stored but stays INACTIVE until M03 (Savings) / M04 (Credit) expose a contract — the response reports how many. Changes take effect on the next nightly run of the segmentation job. Requires permission: customers:update_sensitive.",
+        "description": "Replaces the whole rule set (a rule set is an ordered decision list, so it is written as a set, never patched rule by rule). Rules are evaluated by ascending priority and the first match wins; a rule with no criterion matches everyone and is how a catch-all segment is expressed. A rule with requiresOutstandingData=true is accepted and stored but stays INACTIVE until M03 (Savings) / M04 (Credit) expose a contract — the response reports how many. Changes take effect on the next nightly run of the segmentation job. Requires permission: customers:segments_manage.",
         "operationId": "UpdateClientSegmentRules",
         "requestBody": {
           "content": {
@@ -14038,7 +14038,7 @@
           "KYC Settings"
         ],
         "summary": "List the KYC parameters of the current tenant",
-        "description": "Every declared M02 parameter with the value in force, its type, its description, the factory default and an IsDefault flag. A key the tenant has never customised answers with its factory value — the same one the module resolves to. Requires permission: kyc:read.",
+        "description": "Every declared M02 parameter with the value in force, its type, its description, the factory default and an IsDefault flag. A key the tenant has never customised answers with its factory value — the same one the module resolves to. Requires permission: kyc:settings:manage.",
         "operationId": "ListKycSettings",
         "responses": {
           "200": {
@@ -24040,19 +24040,8 @@
           {
             "name": "type",
             "in": "query",
-            "description": "One of: FirstContact, Qualification, SlaFollowUp, ScoreReview, OwnerHandover, ManualDispatch, Generic",
             "schema": {
-              "enum": [
-                "FirstContact",
-                "Qualification",
-                "SlaFollowUp",
-                "ScoreReview",
-                "OwnerHandover",
-                "ManualDispatch",
-                "Generic"
-              ],
-              "type": "string",
-              "description": "One of: FirstContact, Qualification, SlaFollowUp, ScoreReview, OwnerHandover, ManualDispatch, Generic"
+              "type": "string"
             }
           }
         ],
@@ -32280,6 +32269,74 @@
         }
       }
     },
+    "/api/v1/workflow/templates/condition-fields": {
+      "get": {
+        "tags": [
+          "WorkflowTemplates"
+        ],
+        "summary": "The record facts a workflow condition step can compare, for one entity type",
+        "operationId": "ListWorkflowConditionFields",
+        "parameters": [
+          {
+            "name": "entityType",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ConditionFieldDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workflow/templates/form-fields": {
+      "get": {
+        "tags": [
+          "WorkflowTemplates"
+        ],
+        "summary": "The record fields a workflow form step can require, for one entity type",
+        "operationId": "ListWorkflowFormFields",
+        "parameters": [
+          {
+            "name": "entityType",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/FormFieldChoiceDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/workflow/templates/{templateId}/triggers": {
       "get": {
         "tags": [
@@ -37194,6 +37251,45 @@
         },
         "additionalProperties": false
       },
+      "ConditionFieldDto": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string",
+            "nullable": true
+          },
+          "label": {
+            "type": "string",
+            "nullable": true
+          },
+          "type": {
+            "type": "string",
+            "nullable": true
+          },
+          "options": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ConditionFieldOptionDto"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ConditionFieldOptionDto": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "type": "string",
+            "nullable": true
+          },
+          "label": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "ConfigureWhatsAppTemplateRequest": {
         "type": "object",
         "properties": {
@@ -39116,17 +39212,8 @@
             "nullable": true
           },
           "taskType": {
-            "enum": [
-              "FirstContact",
-              "Qualification",
-              "SlaFollowUp",
-              "ScoreReview",
-              "OwnerHandover",
-              "ManualDispatch",
-              "Generic"
-            ],
             "type": "string",
-            "description": "One of: FirstContact, Qualification, SlaFollowUp, ScoreReview, OwnerHandover, ManualDispatch, Generic"
+            "nullable": true
           },
           "priority": {
             "enum": [
@@ -39161,17 +39248,8 @@
         "type": "object",
         "properties": {
           "type": {
-            "enum": [
-              "FirstContact",
-              "Qualification",
-              "SlaFollowUp",
-              "ScoreReview",
-              "OwnerHandover",
-              "ManualDispatch",
-              "Generic"
-            ],
             "type": "string",
-            "description": "One of: FirstContact, Qualification, SlaFollowUp, ScoreReview, OwnerHandover, ManualDispatch, Generic"
+            "nullable": true
           },
           "priority": {
             "enum": [
@@ -39493,6 +39571,10 @@
             "type": "string",
             "nullable": true
           },
+          "typeLabel": {
+            "type": "string",
+            "nullable": true
+          },
           "priority": {
             "type": "string",
             "nullable": true
@@ -39591,17 +39673,8 @@
             "format": "uuid"
           },
           "type": {
-            "enum": [
-              "FirstContact",
-              "Qualification",
-              "SlaFollowUp",
-              "ScoreReview",
-              "OwnerHandover",
-              "ManualDispatch",
-              "Generic"
-            ],
             "type": "string",
-            "description": "One of: FirstContact, Qualification, SlaFollowUp, ScoreReview, OwnerHandover, ManualDispatch, Generic"
+            "nullable": true
           },
           "priority": {
             "enum": [
@@ -39692,6 +39765,10 @@
           "createdBy": {
             "type": "string",
             "format": "uuid",
+            "nullable": true
+          },
+          "typeLabel": {
+            "type": "string",
             "nullable": true
           }
         },
@@ -42356,6 +42433,20 @@
           },
           "isRequiredLocked": {
             "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "FormFieldChoiceDto": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string",
+            "nullable": true
+          },
+          "label": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -51585,17 +51676,12 @@
             "nullable": true
           },
           "type": {
-            "enum": [
-              "FirstContact",
-              "Qualification",
-              "SlaFollowUp",
-              "ScoreReview",
-              "OwnerHandover",
-              "ManualDispatch",
-              "Generic"
-            ],
             "type": "string",
-            "description": "One of: FirstContact, Qualification, SlaFollowUp, ScoreReview, OwnerHandover, ManualDispatch, Generic"
+            "nullable": true
+          },
+          "typeLabel": {
+            "type": "string",
+            "nullable": true
           },
           "priority": {
             "enum": [
@@ -58482,17 +58568,8 @@
             "nullable": true
           },
           "taskType": {
-            "enum": [
-              "FirstContact",
-              "Qualification",
-              "SlaFollowUp",
-              "ScoreReview",
-              "OwnerHandover",
-              "ManualDispatch",
-              "Generic"
-            ],
             "type": "string",
-            "description": "One of: FirstContact, Qualification, SlaFollowUp, ScoreReview, OwnerHandover, ManualDispatch, Generic"
+            "nullable": true
           },
           "priority": {
             "enum": [
@@ -61057,17 +61134,8 @@
             "nullable": true
           },
           "taskType": {
-            "enum": [
-              "FirstContact",
-              "Qualification",
-              "SlaFollowUp",
-              "ScoreReview",
-              "OwnerHandover",
-              "ManualDispatch",
-              "Generic"
-            ],
             "type": "string",
-            "description": "One of: FirstContact, Qualification, SlaFollowUp, ScoreReview, OwnerHandover, ManualDispatch, Generic"
+            "nullable": true
           },
           "priority": {
             "enum": [
@@ -63443,6 +63511,16 @@
           },
           "kind": {
             "type": "string",
+            "nullable": true
+          },
+          "dueAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "assignedToUserId": {
+            "type": "string",
+            "format": "uuid",
             "nullable": true
           }
         },

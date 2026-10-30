@@ -112,7 +112,8 @@ export class CommandPalette {
 
   private readonly _pages = computed<PaletteResult[]>(() => {
     const granted = this._permissions.granted();
-    return [...PORTAL_NAVIGATION.flatMap((g) => g.items.map((item) => ({ item, group: g.label }))), { item: SETTINGS_NAV_ITEM, group: '' }]
+    const settings = this._permissions.seesSettings() ? [{ item: SETTINGS_NAV_ITEM, group: '' }] : [];
+    return [...PORTAL_NAVIGATION.flatMap((g) => g.items.map((item) => ({ item, group: g.label }))), ...settings]
       .filter(({ item }) => !item.anyOf || item.anyOf.some((p) => granted.has(p)))
       .map(({ item, group }) => ({
         key: `p-${item.id}`,

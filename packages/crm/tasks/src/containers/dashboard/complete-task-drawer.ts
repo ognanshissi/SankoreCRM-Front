@@ -19,11 +19,11 @@ import { SnackbarService } from '@talisoft/ui/snackbar';
 import {
   TasksApiService,
   CrmTaskDto,
-  CrmTaskDtoTypeEnum,
-  CreateTaskRequestTypeEnum,
   CreateTaskRequestPriorityEnum,
 } from '@sankore/crm-api';
 import { TasTitle } from '@talisoft/ui/title';
+import { SYSTEM_TASK_TYPES } from '@sankore/crm/common';
+import { typeLabel } from './task-meta';
 
 export interface CompleteTaskDrawerData {
   task: CrmTaskDto;
@@ -34,13 +34,13 @@ export interface CompleteTaskDrawerResult {
   followUpCreated: boolean;
 }
 
-/** Task types that require a result/comment to close */
+/** Types système qui exigent un résultat pour être clôturés ; un type ajouté par le tenant n'en exige pas. */
 const TYPES_REQUIRING_RESULT = new Set<string>([
-  CrmTaskDtoTypeEnum.FirstContact,
-  CrmTaskDtoTypeEnum.Qualification,
-  CrmTaskDtoTypeEnum.SlaFollowUp,
-  CrmTaskDtoTypeEnum.ScoreReview,
-  CrmTaskDtoTypeEnum.OwnerHandover,
+  SYSTEM_TASK_TYPES.FirstContact,
+  SYSTEM_TASK_TYPES.Qualification,
+  SYSTEM_TASK_TYPES.SlaFollowUp,
+  SYSTEM_TASK_TYPES.ScoreReview,
+  SYSTEM_TASK_TYPES.OwnerHandover,
 ]);
 
 const OUTCOME_OPTIONS: { label: string; value: string }[] = [
@@ -57,38 +57,25 @@ const OUTCOME_OPTIONS: { label: string; value: string }[] = [
 
 /** Suggested follow-up task type based on current task type + outcome */
 function suggestFollowUp(
-  type: CrmTaskDtoTypeEnum | string | undefined,
+  type: string | null | undefined,
   outcome: string,
-): { type: CreateTaskRequestTypeEnum; title: string } | null {
+): { type: string; title: string } | null {
   if (outcome === 'callback_requested') {
-    return { type: CreateTaskRequestTypeEnum.FirstContact, title: 'Rappeler le prospect' };
+    return { type: SYSTEM_TASK_TYPES.FirstContact, title: 'Rappeler le prospect' };
   }
   if (outcome === 'unreachable') {
-    return { type: CreateTaskRequestTypeEnum.SlaFollowUp, title: 'Relance — prospect injoignable' };
+    return { type: SYSTEM_TASK_TYPES.SlaFollowUp, title: 'Relance — prospect injoignable' };
   }
-  if (type === CrmTaskDtoTypeEnum.FirstContact && outcome === 'contacted_success') {
-    return { type: CreateTaskRequestTypeEnum.Qualification, title: 'Qualifier le lead' };
+  if (type === SYSTEM_TASK_TYPES.FirstContact && outcome === 'contacted_success') {
+    return { type: SYSTEM_TASK_TYPES.Qualification, title: 'Qualifier le lead' };
   }
-  if (type === CrmTaskDtoTypeEnum.Qualification && outcome === 'qualification_validated') {
-    return { type: CreateTaskRequestTypeEnum.ScoreReview, title: 'Revue du score après qualification' };
+  if (type === SYSTEM_TASK_TYPES.Qualification && outcome === 'qualification_validated') {
+    return { type: SYSTEM_TASK_TYPES.ScoreReview, title: 'Revue du score après qualification' };
   }
   if (outcome === 'qualification_insufficient') {
-    return { type: CreateTaskRequestTypeEnum.Qualification, title: 'Compléter la qualification' };
+    return { type: SYSTEM_TASK_TYPES.Qualification, title: 'Compléter la qualification' };
   }
   return null;
-}
-
-function typeLabel(type: string | undefined): string {
-  switch (type) {
-    case 'FirstContact':   return 'Premier contact';
-    case 'Qualification':  return 'Qualification';
-    case 'SlaFollowUp':    return 'Suivi SLA';
-    case 'ScoreReview':    return 'Revue score';
-    case 'OwnerHandover':  return 'Passation';
-    case 'ManualDispatch': return 'Dispatch manuel';
-    case 'Generic':        return 'Générique';
-    default:               return type ?? '—';
-  }
 }
 
 @Component({
@@ -120,10 +107,10 @@ function typeLabel(type: string | undefined): string {
         <!-- Task summary -->
         <div class="mb-4 p-3 rounded-lg bg-slate-50 border border-slate-200">
           <p class="text-sm font-medium text-slate-800">
-            {{ data.task.title ?? typeLabel(data.task.type) }}
+            {{ data.task.title ?? typeLabel(data.task) }}
           </p>
           <div class="flex items-center gap-2 mt-1">
-            <tas-tag severity="info">{{ typeLabel(data.task.type) }}</tas-tag>
+            <tas-tag severity="info">{{ typeLabel(data.task) }}</tas-tag>
             @if (data.task.leadId) {
               <span class="text-xs text-slate-400"
                 >Lead {{ data.task.leadId }}</span
@@ -302,7 +289,7 @@ export class CompleteTaskDrawer {
 
           this._tasksApi
             .createCrmTask({
-              type: suggestion.type as any,
+              type: suggestion.type,
               priority:
                 (this.data.task.priority as any) ??
                 CreateTaskRequestPriorityEnum.Medium,
@@ -311,7 +298,7 @@ export class CompleteTaskDrawer {
               assignedAgentId: this.data.task.assignedAgentId,
               dueAt: dueAt.toISOString(),
               description:
-                `Suite de : ${this.data.task.title ?? typeLabel(this.data.task.type)}. Résultat : ${this.selectedOutcome()}. ${this.comment() ? 'Note : ' + this.comment() : ''}`.trim(),
+                `Suite de : ${this.data.task.title ?? typeLabel(this.data.task)}. Résultat : ${this.selectedOutcome()}. ${this.comment() ? 'Note : ' + this.comment() : ''}`.trim(),
             })
             .pipe(
               catchError(() => {

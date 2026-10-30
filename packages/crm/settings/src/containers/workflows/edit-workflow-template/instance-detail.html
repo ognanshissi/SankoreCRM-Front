@@ -98,7 +98,7 @@
                       </div>
                     } @else if (step.status === 'Executed') {
                       <div class="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                        <tas-icon iconName="feather:bell" class="text-primary" style="font-size:14px"></tas-icon>
+                        <tas-icon [iconName]="step.kind === 'Wait' ? 'feather:clock' : step.kind === 'Condition' ? 'feather:git-branch' : step.kind === 'KycCheck' ? 'feather:shield' : step.kind === 'IntegrationAction' ? 'feather:send' : 'feather:bell'" class="text-primary" style="font-size:14px"></tas-icon>
                       </div>
                     } @else if (step.status === 'Pending') {
                       <div class="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center ring-2 ring-amber-400 ring-offset-1">
@@ -141,6 +141,26 @@
                     }
                     @if (step.comment) {
                       <p class="text-xs text-slate-500 mt-1 italic">"{{ step.comment }}"</p>
+                    }
+                    @if ((step.kind === 'KycCheck' || step.kind === 'IntegrationAction') && step.status !== 'Executed' && kycPending(step.stepDefinitionId); as pending) {
+                      <p class="text-xs text-amber-700 mt-1 flex items-start gap-1">
+                        <tas-icon iconName="feather:shield" iconSize="sm" class="shrink-0"></tas-icon>
+                        {{ pending }}
+                      </p>
+                    }
+                    @if ((step.kind === 'Wait' || step.kind === 'Condition' || step.kind === 'KycCheck' || step.kind === 'IntegrationAction') && waitResumption(step.stepDefinitionId); as resumed) {
+                      <p class="text-xs text-slate-600 mt-1 flex items-start gap-1">
+                        <tas-icon [iconName]="step.kind === 'Condition' ? 'feather:git-branch' : step.kind === 'KycCheck' ? 'feather:shield' : 'feather:clock'" iconSize="sm" class="shrink-0"></tas-icon>
+                        {{ resumed }}
+                      </p>
+                    }
+                    @if (step.kind === 'ManualTask') {
+                      @for (note of taskNotes(step.stepDefinitionId); track $index) {
+                        <p class="text-xs mt-1 flex items-start gap-1" [class]="note.cancelled ? 'text-amber-700' : 'text-slate-600'">
+                          <tas-icon [iconName]="note.cancelled ? 'feather:x-circle' : 'feather:check-square'" iconSize="sm" class="shrink-0"></tas-icon>
+                          {{ note.detail }}
+                        </p>
+                      }
                     }
                     @if (step.kind === 'Notification') {
                       @for (outcome of notificationOutcomes(step.stepDefinitionId); track $index) {

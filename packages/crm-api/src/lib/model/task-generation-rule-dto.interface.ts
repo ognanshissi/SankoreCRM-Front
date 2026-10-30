@@ -15,10 +15,7 @@ export interface TaskGenerationRuleDto {
     id?: string;
     tenantId?: string;
     triggerEventType?: string | null;
-    /**
-     * One of: FirstContact, Qualification, SlaFollowUp, ScoreReview, OwnerHandover, ManualDispatch, Generic
-     */
-    taskType?: TaskGenerationRuleDtoTaskTypeEnum;
+    taskType?: string | null;
     /**
      * One of: Low, Medium, High, Critical
      */
@@ -30,15 +27,6 @@ export interface TaskGenerationRuleDto {
     isActive?: boolean;
     createdAt?: string;
 }
-export enum TaskGenerationRuleDtoTaskTypeEnum {
-    FirstContact = 'FirstContact',
-    Qualification = 'Qualification',
-    SlaFollowUp = 'SlaFollowUp',
-    ScoreReview = 'ScoreReview',
-    OwnerHandover = 'OwnerHandover',
-    ManualDispatch = 'ManualDispatch',
-    Generic = 'Generic'
-};
 export enum TaskGenerationRuleDtoPriorityEnum {
     Low = 'Low',
     Medium = 'Medium',

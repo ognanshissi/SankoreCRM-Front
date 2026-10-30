@@ -5,6 +5,7 @@ import {
   UnknownTenantComponent,
   TenantSuspendedComponent,
   authorized,
+  settingsAreaGuard,
   tenantGuard,
 } from '@sankore/crm/common';
 
@@ -59,6 +60,7 @@ export const appRoutes: Route[] = [
     path: 'settings',
     component: PortalLayoutComponent,
     canActivate: [tenantGuard, authorized],
+    canActivateChild: [settingsAreaGuard],
     loadChildren: () => import('@sankore/crm/settings'),
   },
   {
