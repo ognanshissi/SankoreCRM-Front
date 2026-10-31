@@ -72,11 +72,13 @@ interface RenderedGroup {
  * défaut s'appliquent et {@link customFieldsPayload} envoie tout ce qui est saisi ; un objet signifie
  * « fiche existante » et le payload ne contient que ce qui a changé.</p>
  */
+import { TasInputPhone } from '@talisoft/ui/input-phone';
 @Component({
   selector: 'entity-form-renderer',
   templateUrl: './entity-form-renderer.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
+    TasInputPhone,
     TasSuffix,
     TasDatePicker,
     NgTemplateOutlet,

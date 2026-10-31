@@ -58,16 +58,16 @@
 
             <tas-form-field>
               <tas-label>Téléphone professionnel</tas-label>
-              <input tasInput type="tel" autocomplete="tel" placeholder="+225 07 00 00 00 00" [formField]="formSchema.workPhone" />
+              <tas-input-phone defaultCountry="CI" [formField]="formSchema.workPhone"></tas-input-phone>
               @if (formSchema.workPhone().touched() && formSchema.workPhone().invalid()) {
-                <tas-error>{{ formSchema.workPhone().errors()[0].message }}</tas-error>
+                <tas-error>{{ phoneErrorMessage(formSchema.workPhone().errors()) }}</tas-error>
               }
             </tas-form-field>
             <tas-form-field>
               <tas-label>WhatsApp</tas-label>
-              <input tasInput type="tel" placeholder="Facultatif" [formField]="formSchema.whatsApp" />
+              <tas-input-phone defaultCountry="CI" [formField]="formSchema.whatsApp"></tas-input-phone>
               @if (formSchema.whatsApp().touched() && formSchema.whatsApp().invalid()) {
-                <tas-error>{{ formSchema.whatsApp().errors()[0].message }}</tas-error>
+                <tas-error>{{ phoneErrorMessage(formSchema.whatsApp().errors()) }}</tas-error>
               }
             </tas-form-field>
 

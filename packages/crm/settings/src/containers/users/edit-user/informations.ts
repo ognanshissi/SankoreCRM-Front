@@ -6,6 +6,7 @@ import { disabled, email, form, FormField, FormRoot, pattern, readonly, required
 import { catchError, firstValueFrom, map, of } from 'rxjs';
 import { Button } from '@talisoft/ui/button';
 import { TasError, TasFormField, TasHint, TasLabel } from '@talisoft/ui/form-field';
+import { phoneErrorMessage, TasInputPhone } from '@talisoft/ui/input-phone';
 import { TasInput } from '@talisoft/ui/input';
 import { TasSelect } from '@talisoft/ui/select';
 import { TasSpinner } from '@talisoft/ui/spinner';
@@ -52,7 +53,7 @@ class IdentityFormModel {
 @Component({
   selector: 'user-informations',
   imports: [
-    DatePipe, RouterLink, Button, TasFormField, TasLabel, TasError, TasHint, TasInput, TasSelect, TasSpinner,
+    DatePipe, RouterLink, Button, TasFormField, TasLabel, TasError, TasHint, TasInput, TasInputPhone, TasSelect, TasSpinner,
     FormRoot, FormField, TimeagoPipe, UserManagerCard,
   ],
   template: `
@@ -91,9 +92,9 @@ class IdentityFormModel {
               </tas-form-field>
               <tas-form-field>
                 <tas-label>Téléphone professionnel</tas-label>
-                <input tasInput type="tel" placeholder="+225 07 00 00 00 00" [formField]="formSchema.workPhone" />
+                <tas-input-phone defaultCountry="CI" [formField]="formSchema.workPhone"></tas-input-phone>
                 @if (formSchema.workPhone().touched() && formSchema.workPhone().invalid()) {
-                  <tas-error>{{ formSchema.workPhone().errors()[0].message }}</tas-error>
+                  <tas-error>{{ phoneErrorMessage(formSchema.workPhone().errors()) }}</tas-error>
                 }
               </tas-form-field>
 
@@ -201,6 +202,8 @@ export class UserInformationsPage {
 
   public agencyOptions = signal<{ label: string; value: string }[]>([]);
   public model = signal(IdentityFormModel.fromUser(null));
+  public readonly phoneErrorMessage = phoneErrorMessage;
+
   public formSchema = form(this.model, (schema) => {
     required(schema.firstName, { message: 'Le prénom est obligatoire' });
     required(schema.lastName, { message: 'Le nom est obligatoire' });

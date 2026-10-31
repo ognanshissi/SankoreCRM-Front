@@ -31,6 +31,7 @@ export const MAIL_SEND_ERRORS: Record<string, string> = {
   MAIL_CLIENT_NOT_REACHABLE: 'Ce client n’est pas dans votre périmètre, ou n’existe plus.',
   MAIL_CLIENT_RESTRICTED: 'Ce client a demandé l’effacement de ses données : plus de contact à notre initiative.',
   MAIL_CLIENT_EMAIL_MISSING: 'Ce client n’a pas d’adresse e-mail active : ajoutez-en une dans Coordonnées.',
+  MAIL_COMPLAINT_NOT_FOUND: 'Cette réclamation n’est pas celle de ce client.',
 };
 
 /** « a@b.ci, c@d.ci; e@f.ci » → trois adresses. */

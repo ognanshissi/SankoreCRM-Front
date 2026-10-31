@@ -24,14 +24,13 @@ import { TasSelect } from '@talisoft/ui/select';
 import { TasCheckbox } from '@talisoft/ui/checkbox';
 import { TasIcon } from '@talisoft/ui/icon';
 import { SnackbarService } from '@talisoft/ui/snackbar';
-import { COUNTRIES } from '@talisoft/ui/input-phone';
+import { COUNTRIES, CountryDef, phoneErrorMessage, TasInputPhone } from '@talisoft/ui/input-phone';
 import {
   AddContactPointRequest,
   AddContactPointRequestTypeEnum,
   AddContactPointResult,
   ClientContactPointsApiService,
 } from '@sankore/crm-api';
-import { UEMOA_COUNTRIES } from '../../models/client-labels';
 
 export interface AddContactPointDrawerData {
   clientId: string;
@@ -41,58 +40,16 @@ export interface AddContactPointDrawerData {
   activeTypes?: string[];
 }
 
-interface PhoneCountry {
-  code: string;
-  label: string;
-  dial: string;
-  /** Format national attendu, hors indicatif et hors séparateurs. */
-  pattern: RegExp;
-  placeholder: string;
-}
-
-/** Repli quand le kit ne connaît pas un pays : longueur plausible d'un numéro national. */
-const FALLBACK_PHONE_PATTERN = /^\d{6,14}$/;
-
 /**
- * Pays proposés pour un téléphone, **UEMOA en premier** (US-M01-FE-06).
- *
- * `UEMOA_COUNTRIES` donne l'ordre, le libellé français et l'indicatif ; `COUNTRIES` du
- * design system fournit le format national par pays. On ne réutilise pas `tas-input-phone`
- * tel quel parce que son inventaire est trié autrement (la Guinée s'y place avant le Niger
- * et la Guinée-Bissau) et que son API n'expose aucun moyen de piloter cet ordre.
+ * Le pays d'un numéro tel que `tas-input-phone` le rend (« +2250769738964 ») : l'indicatif le plus
+ * long qui convient, et le numéro national derrière. Le composant porte la liste des pays (UEMOA
+ * d'abord) et le choix du pays ; ce tiroir avait les siens — un sélecteur à part et un champ qui
+ * refusait le « + » d'un numéro collé avec son indicatif.
  */
-export const PHONE_COUNTRIES: PhoneCountry[] = (() => {
-  const uemoaCodes = new Set(UEMOA_COUNTRIES.map((c) => c.code));
-  const uemoa = UEMOA_COUNTRIES.map((country) => {
-    const fromKit = COUNTRIES.find((c) => c.code === country.code);
-    return {
-      code: country.code,
-      label: country.label,
-      dial: country.dial,
-      pattern: fromKit?.pattern ?? FALLBACK_PHONE_PATTERN,
-      placeholder: fromKit?.placeholder ?? '',
-    };
-  });
-  const others = COUNTRIES.filter((c) => !uemoaCodes.has(c.code)).map((c) => ({
-    code: c.code,
-    label: c.name,
-    dial: c.dial,
-    pattern: c.pattern,
-    placeholder: c.placeholder,
-  }));
-  return [...uemoa, ...others];
-})();
-
-export function findPhoneCountry(code: string | null | undefined): PhoneCountry | null {
-  if (!code) return null;
-  return PHONE_COUNTRIES.find((c) => c.code === code) ?? null;
+function splitPhone(value: string): { country: CountryDef | null; national: string } {
+  const country = [...COUNTRIES].sort((a, b) => b.dial.length - a.dial.length).find((c) => value.startsWith(c.dial)) ?? null;
+  return { country, national: country ? value.slice(country.dial.length) : value };
 }
-
-/** Les options de `tas-select` ne travaillent qu'en chaînes : la valeur est le code pays. */
-export const PHONE_COUNTRY_OPTIONS = PHONE_COUNTRIES.map((c) => ({
-  label: `${c.label} (${c.dial})`,
-  value: c.code,
-}));
 
 export const CONTACT_POINT_TYPE_OPTIONS = [
   { label: 'Téléphone', value: AddContactPointRequestTypeEnum.Phone },
@@ -103,14 +60,9 @@ export const CONTACT_POINT_TYPE_OPTIONS = [
 /** Un e-mail « suffisamment correct » : le serveur reste l'autorité finale. */
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
-/** Espaces, points, tirets et parenthèses sont tolérés à la saisie, puis retirés. */
-function normalizePhoneDigits(raw: string | null | undefined): string {
-  return (raw ?? '').replace(/[\s.\-()]/g, '');
-}
-
 export class AddContactPointFormModel {
   public type!: AddContactPointRequestTypeEnum;
-  public countryCode!: string;
+  /** Au format international, tel que le composant téléphone le rend. */
   public phoneNumber!: string;
   public email!: string;
   public address!: string;
@@ -122,7 +74,6 @@ export class AddContactPointFormModel {
   ): AddContactPointFormModel {
     const model = new AddContactPointFormModel();
     model.type = initialType;
-    model.countryCode = PHONE_COUNTRIES[0]?.code ?? 'CI';
     model.phoneNumber = '';
     model.email = '';
     model.address = '';
@@ -149,6 +100,7 @@ export class AddContactPointFormModel {
     TasHint,
     TasInput,
     TasSelect,
+    TasInputPhone,
     TasCheckbox,
     FormRoot,
     FormField,
@@ -172,36 +124,12 @@ export class AddContactPointFormModel {
 
           @if (isPhone()) {
             <tas-form-field>
-              <tas-label>Pays du numéro <span class="text-functional-error">*</span></tas-label>
-              <tas-select
-                [options]="countryOptions"
-                [searchable]="true"
-                placeholder="Choisissez un pays"
-                [formField]="formSchema.countryCode"
-              ></tas-select>
-              @if (formSchema.countryCode().touched() && formSchema.countryCode().invalid()) {
-                <tas-error>{{ formSchema.countryCode().errors()[0].message }}</tas-error>
-              }
-              <tas-hint>Les pays de l'UEMOA sont proposés en premier.</tas-hint>
-            </tas-form-field>
-
-            <tas-form-field>
               <tas-label>Numéro de téléphone <span class="text-functional-error">*</span></tas-label>
-              <input
-                tasInput
-                type="tel"
-                inputmode="tel"
-                autocomplete="off"
-                [placeholder]="phonePlaceholder()"
-                [formField]="formSchema.phoneNumber"
-              />
+              <tas-input-phone defaultCountry="CI" [formField]="formSchema.phoneNumber"></tas-input-phone>
               @if (formSchema.phoneNumber().touched() && formSchema.phoneNumber().invalid()) {
-                <tas-error>{{ formSchema.phoneNumber().errors()[0].message }}</tas-error>
+                <tas-error>{{ phoneErrorMessage(formSchema.phoneNumber().errors()) }}</tas-error>
               } @else {
-                <tas-hint>
-                  Saisissez le numéro sans l'indicatif. Enregistré sous la forme
-                  {{ phonePreview() }}.
-                </tas-hint>
+                <tas-hint>Choisissez le pays à gauche (UEMOA en premier), ou collez le numéro avec son indicatif.</tas-hint>
               }
             </tas-form-field>
           }
@@ -293,7 +221,6 @@ export class AddContactPointDrawer {
   private readonly _snackbar = inject(SnackbarService);
 
   public readonly typeOptions = CONTACT_POINT_TYPE_OPTIONS;
-  public readonly countryOptions = PHONE_COUNTRY_OPTIONS;
 
   public model = signal(
     AddContactPointFormModel.instantiate(
@@ -304,31 +231,22 @@ export class AddContactPointDrawer {
   public formSchema = form(this.model, (schema) => {
     required(schema.type, { message: 'Le type de coordonnée est obligatoire' });
 
-    validate(schema.countryCode, (ctx) => {
-      if (ctx.valueOf(schema.type) !== AddContactPointRequestTypeEnum.Phone) return null;
-      return findPhoneCountry(ctx.value())
-        ? null
-        : { kind: 'required', message: 'Choisissez le pays du numéro' };
-    });
-
     // Le format dépend de l'indicatif choisi : c'est le critère 3 de l'US.
     validate(schema.phoneNumber, (ctx) => {
       if (ctx.valueOf(schema.type) !== AddContactPointRequestTypeEnum.Phone) return null;
-      const digits = normalizePhoneDigits(ctx.value());
-      if (!digits) {
+      const value = (ctx.value() ?? '').trim();
+      if (!value) {
         return { kind: 'required', message: 'Le numéro de téléphone est obligatoire' };
       }
-      if (!/^\d+$/.test(digits)) {
+      const { country, national } = splitPhone(value);
+      if (!country || !/^\d+$/.test(national)) {
         return { kind: 'pattern', message: 'Le numéro ne doit contenir que des chiffres' };
       }
-      const country = findPhoneCountry(ctx.valueOf(schema.countryCode));
-      if (country && !country.pattern.test(digits)) {
-        const expected = country.placeholder
-          ? ` Exemple : ${country.placeholder}.`
-          : '';
+      if (!country.pattern.test(national)) {
+        const expected = country.placeholder ? ` Exemple : ${country.placeholder}.` : '';
         return {
           kind: 'pattern',
-          message: `Ce numéro ne correspond pas au format attendu pour ${country.label} (${country.dial}).${expected}`,
+          message: `Ce numéro ne correspond pas au format attendu pour ${country.name} (${country.dial}).${expected}`,
         };
       }
       return null;
@@ -357,6 +275,8 @@ export class AddContactPointDrawer {
     });
   });
 
+  public readonly phoneErrorMessage = phoneErrorMessage;
+
   public readonly selectedType = computed(() => this.formSchema.type().value());
   public readonly isPhone = computed(
     () => this.selectedType() === AddContactPointRequestTypeEnum.Phone,
@@ -367,20 +287,6 @@ export class AddContactPointDrawer {
   public readonly isAddress = computed(
     () => this.selectedType() === AddContactPointRequestTypeEnum.Address,
   );
-
-  public readonly selectedCountry = computed(() =>
-    findPhoneCountry(this.formSchema.countryCode().value()),
-  );
-
-  public readonly phonePlaceholder = computed(
-    () => this.selectedCountry()?.placeholder || '07 12 34 56 78',
-  );
-
-  public readonly phonePreview = computed(() => {
-    const dial = this.selectedCountry()?.dial ?? '';
-    const digits = normalizePhoneDigits(this.formSchema.phoneNumber().value());
-    return digits ? `${dial}${digits}` : `${dial}…`;
-  });
 
   public readonly labelPlaceholder = computed(() => {
     if (this.isEmail()) return 'Professionnel, personnel…';
@@ -435,10 +341,8 @@ export class AddContactPointDrawer {
 
   private _buildValue(value: AddContactPointFormModel): string {
     switch (value.type) {
-      case AddContactPointRequestTypeEnum.Phone: {
-        const dial = this.selectedCountry()?.dial ?? '';
-        return `${dial}${normalizePhoneDigits(value.phoneNumber)}`;
-      }
+      case AddContactPointRequestTypeEnum.Phone:
+        return value.phoneNumber.trim();
       case AddContactPointRequestTypeEnum.Email:
         return value.email.trim();
       default:

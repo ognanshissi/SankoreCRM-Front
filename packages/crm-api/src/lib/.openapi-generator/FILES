@@ -206,6 +206,7 @@ model/client-search-item-dto.interface.ts
 model/client-status-history-dto.interface.ts
 model/client-status-history-summary-dto.interface.ts
 model/client-timeline-entry-dto.interface.ts
+model/client-whats-app-dto.interface.ts
 model/close-client-complaint-request.interface.ts
 model/close-complaint-request.interface.ts
 model/close-credential-request.interface.ts
@@ -218,6 +219,7 @@ model/company-info-dto.interface.ts
 model/company-logo-response.interface.ts
 model/compatibility-factors.interface.ts
 model/complaint-dto.interface.ts
+model/complaint-mail-dto.interface.ts
 model/complaint-report-dto.interface.ts
 model/complete-task-request.interface.ts
 model/completed-task-dto.interface.ts
@@ -740,6 +742,8 @@ model/segment-rule-definition.interface.ts
 model/segment-rule-dto.interface.ts
 model/segment-rules-dto.interface.ts
 model/select-connected-calendar-request.interface.ts
+model/send-client-whats-app-template-request.interface.ts
+model/send-client-whats-app-text-request.interface.ts
 model/send-mail-outcome.interface.ts
 model/send-snippet-request.interface.ts
 model/send-test-email-request.interface.ts

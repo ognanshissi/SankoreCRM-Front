@@ -22,7 +22,8 @@ import { TasDrawerAction, TasDrawerContent, TasDrawerTitle, TasSideDrawer } from
 import { SnackbarService } from '@talisoft/ui/snackbar';
 import { TasSpinner } from '@talisoft/ui/spinner';
 import { TasTitle } from '@talisoft/ui/title';
-import { PermissionsService } from '@sankore/crm/common';
+import { ClientWhatsAppDrawer, ClientWhatsAppDrawerData, PermissionsService } from '@sankore/crm/common';
+import { SideDrawerService } from '@talisoft/ui/side-drawer';
 import { CONVERSATION_STATUS, whatsAppActionError } from '../edit-lead/whatsapp/whatsapp-labels';
 
 export interface WhatsAppConversationDrawerData {
@@ -85,6 +86,9 @@ export class WhatsAppConversationDrawer implements OnInit {
 
   /** Une réclamation recueillie par le bot est sur la fiche du client, pas dans ce fil (2026-10-26). */
   public readonly canReadComplaints = this._permissions.can('customers:complaints:read');
+  /** Une conversation de client se répond depuis le panneau « client » (réclamations, lot 3). */
+  public readonly canWriteClient = this._permissions.can('WhatsApp.Send');
+  private readonly _sideDrawer = inject(SideDrawerService);
 
   public readonly isLoading = signal(true);
   public readonly loadError = signal<string | null>(null);
@@ -169,6 +173,25 @@ export class WhatsAppConversationDrawer implements OnInit {
       link.click();
       setTimeout(() => URL.revokeObjectURL(url), 10_000);
     });
+  }
+
+  /**
+   * Répondre à un client : avant, une conversation de client était en lecture seule ici. Le
+   * panneau « client » porte les règles (fenêtre, prise en main, STOP, périmètre du client).
+   */
+  public answerClient(): void {
+    const detail = this.detail();
+    if (!detail?.clientId) return;
+    this._sideDrawer
+      .open<boolean, ClientWhatsAppDrawerData, ClientWhatsAppDrawer>(ClientWhatsAppDrawer, {
+        width: '100%',
+        height: '100%',
+        panelClass: 'side-drawer-panel',
+        data: { clientId: detail.clientId, clientName: detail.name ?? 'Client' },
+      })
+      .closed.subscribe((sent) => {
+        if (sent) this._ref.close(true);
+      });
   }
 
   public openComplaints(): void {

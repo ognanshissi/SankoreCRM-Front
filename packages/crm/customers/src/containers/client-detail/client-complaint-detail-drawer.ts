@@ -3,16 +3,27 @@ import { DIALOG_DATA, DialogRef } from '@angular/cdk/dialog';
 import { HttpErrorResponse } from '@angular/common/http';
 import { RouterLink } from '@angular/router';
 import { FormField, FormRoot, form, maxLength, required, submit } from '@angular/forms/signals';
-import { catchError, EMPTY, finalize, firstValueFrom, of } from 'rxjs';
+import { catchError, EMPTY, finalize, firstValueFrom, forkJoin, map, of } from 'rxjs';
 import { Button } from '@talisoft/ui/button';
 import { TasError, TasFormField, TasHint, TasLabel } from '@talisoft/ui/form-field';
 import { TasIcon } from '@talisoft/ui/icon';
 import { TasInput } from '@talisoft/ui/input';
-import { TasDrawerAction, TasDrawerContent, TasDrawerTitle, TasSideDrawer } from '@talisoft/ui/side-drawer';
+import { SideDrawerService, TasDrawerAction, TasDrawerContent, TasDrawerTitle, TasSideDrawer } from '@talisoft/ui/side-drawer';
 import { SnackbarService } from '@talisoft/ui/snackbar';
 import { TasSpinner } from '@talisoft/ui/spinner';
 import { TasTag } from '@talisoft/ui/tag';
-import { ClientComplaintDetailDto, ClientComplaintsApiService, UsersApiService } from '@sankore/crm-api';
+import {
+  ClientComplaintDetailDto,
+  ClientComplaintsApiService,
+  ClientDetailDto,
+  ClientsApiService,
+  ConnectedMailboxApiService,
+  UsersApiService,
+  WhatsAppApiService,
+} from '@sankore/crm-api';
+import { ClientWhatsAppDrawer, ClientWhatsAppDrawerData, PermissionsService } from '@sankore/crm/common';
+// eslint-disable-next-line @nx/enforce-module-boundaries
+import { MailComposeDrawer, MailComposeDrawerData } from '@sankore/crm/tasks';
 import {
   complaintCategoryLabel,
   complaintChannelLabel,
@@ -20,6 +31,7 @@ import {
   formatComplaintDate,
   isOpenComplaint,
 } from './client-complaints.labels';
+import { isMergedStatus } from '../../models/client-labels';
 
 export interface ClientComplaintDetailDrawerData {
   clientId: string;
@@ -28,6 +40,21 @@ export interface ClientComplaintDetailDrawerData {
 }
 
 type Mode = 'view' | 'resolve' | 'close';
+
+/**
+ * Un échange de la réclamation : un message WhatsApp ou un e-mail. Le texte d'un e-mail n'est connu
+ * que de la personne dont c'est la boîte ; les autres voient quand, dans quel sens et de qui.
+ */
+interface Exchange {
+  key: string;
+  channel: 'whatsapp' | 'mail';
+  outbound: boolean;
+  at: string;
+  who: string | null;
+  text: string | null;
+  /** Un message WhatsApp que le fournisseur a refusé : le client ne l'a jamais reçu. */
+  failed: boolean;
+}
 
 class ResolveFormModel {
   public response!: string;
@@ -155,6 +182,52 @@ class CloseFormModel {
               }
             </div>
 
+            <section aria-label="Échanges avec le client" class="flex flex-col gap-2">
+              <div class="flex flex-wrap items-center justify-between gap-2">
+                <p class="text-xs font-medium uppercase tracking-wide text-slate-500">Échanges avec le client</p>
+                @if (canAct()) {
+                  <div class="flex gap-2">
+                    @if (canWhatsApp()) {
+                      <button tas-outlined-button color="primary" type="button" class="text-xs" (click)="openWhatsApp()">
+                        <tas-icon iconName="feather:message-circle" style="font-size:13px"></tas-icon> WhatsApp
+                      </button>
+                    }
+                    @if (mailAddress(); as masked) {
+                      <button tas-outlined-button color="primary" type="button" class="text-xs" [title]="'Écrire à ' + masked" (click)="openMail(masked)">
+                        <tas-icon iconName="feather:mail" style="font-size:13px"></tas-icon> E-mail
+                      </button>
+                    }
+                  </div>
+                }
+              </div>
+              <!-- Un fil, en bulles comme les autres fils de l'application (exception tas-table des fils). -->
+              <div class="flex flex-col gap-2 rounded-lg border border-slate-200 bg-slate-50 p-3">
+                @for (x of exchanges(); track x.key) {
+                  <div class="max-w-[90%] rounded-lg px-3 py-2 text-sm shadow-sm"
+                       [class]="x.outbound ? 'ml-auto bg-primary/10' : 'mr-auto bg-white'">
+                    <p class="flex items-center gap-1.5 text-[11px] text-slate-500">
+                      <tas-icon [iconName]="x.channel === 'whatsapp' ? 'feather:message-circle' : 'feather:mail'" style="font-size:11px"></tas-icon>
+                      @if (x.failed) { <span class="text-red-700">Non envoyé</span> } @else { {{ x.outbound ? 'Envoyé' : 'Reçu' }} }@if (x.who) { · {{ x.who }} } · {{ date(x.at) }}
+                    </p>
+                    @if (x.text) {
+                      <p class="mt-0.5 whitespace-pre-line text-slate-800">{{ x.text }}</p>
+                      @if (x.outbound && !x.failed && canAct()) {
+                        <button type="button" class="mt-1 text-xs text-primary hover:underline" (click)="useAsResponse(x)">
+                          Utiliser comme réponse officielle
+                        </button>
+                      }
+                    } @else {
+                      <p class="mt-0.5 text-xs italic text-slate-500">E-mail d’une autre boîte : son contenu n’est visible que de son propriétaire.</p>
+                    }
+                  </div>
+                } @empty {
+                  <p class="py-2 text-center text-sm text-slate-500">
+                    Aucun échange enregistré sur cette réclamation. Les e-mails apparaissent après la synchronisation de la boîte.
+                  </p>
+                }
+              </div>
+            </section>
+
             @if (c.response) {
               <div>
                 <p class="text-xs font-medium uppercase tracking-wide text-slate-500">Réponse donnée</p>
@@ -250,7 +323,29 @@ export class ClientComplaintDetailDrawer implements OnInit {
   private readonly _api = inject(ClientComplaintsApiService);
   private readonly _usersApi = inject(UsersApiService);
   private readonly _snackbar = inject(SnackbarService);
+  private readonly _clientsApi = inject(ClientsApiService);
+  private readonly _whatsAppApi = inject(WhatsAppApiService);
+  private readonly _mailApi = inject(ConnectedMailboxApiService);
+  private readonly _drawer = inject(SideDrawerService);
+  private readonly _permissions = inject(PermissionsService);
   public readonly data = inject<ClientComplaintDetailDrawerData>(DIALOG_DATA);
+
+  public readonly canWhatsApp = this._permissions.can('WhatsApp.Send');
+  private readonly _canMail = this._permissions.can('ConnectedAccounts.Use');
+  public readonly client = signal<ClientDetailDto | null>(null);
+  public readonly exchanges = signal<Exchange[]>([]);
+
+  /** L'adresse masquée à qui écrire, ou null — même règle que le bouton E-mail de la fiche client. */
+  public readonly mailAddress = computed(() => {
+    const client = this.client();
+    if (!this._canMail() || !client || client.processingRestrictedAt || isMergedStatus(client.status)) return null;
+    const emails = (client.contactPoints ?? [])
+      .filter((cp) => cp.type === 'Email' && cp.isActive)
+      .sort((a, b) => Number(!!b.isPrimary) - Number(!!a.isPrimary));
+    return emails[0] ? emails[0].valueMasked || 'adresse du dossier' : null;
+  });
+
+  private readonly _clientName = computed(() => this.client()?.displayName ?? this.client()?.clientNumber ?? 'Client');
 
   public readonly complaint = signal<ClientComplaintDetailDto | null>(null);
   public readonly assigneeName = signal<string | null>(null);
@@ -276,6 +371,48 @@ export class ClientComplaintDetailDrawer implements OnInit {
 
   public ngOnInit(): void {
     this._load();
+    this._loadExchanges();
+    this._clientsApi.getClient(this.data.clientId).pipe(catchError(() => EMPTY)).subscribe((client) => this.client.set(client));
+  }
+
+  public openWhatsApp(): void {
+    this._drawer
+      .open<boolean, ClientWhatsAppDrawerData, ClientWhatsAppDrawer>(ClientWhatsAppDrawer, {
+        width: '100%',
+        height: '100%',
+        panelClass: 'side-drawer-panel',
+        data: {
+          clientId: this.data.clientId,
+          clientName: this._clientName(),
+          complaintId: this.data.complaintId,
+          complaintReference: this.complaint()?.summary?.reference ?? null,
+        },
+      })
+      .closed.subscribe(() => this._loadExchanges());
+  }
+
+  public openMail(maskedEmail: string): void {
+    const reference = this.complaint()?.summary?.reference;
+    this._drawer
+      .open<boolean, MailComposeDrawerData, MailComposeDrawer>(MailComposeDrawer, {
+        width: '100%',
+        height: '100%',
+        panelClass: 'side-drawer-panel',
+        data: {
+          mode: 'new',
+          client: { id: this.data.clientId, name: this._clientName(), maskedEmail },
+          context: { clientId: this.data.clientId },
+          subject: reference ? `Votre réclamation ${reference}` : undefined,
+          complaintId: this.data.complaintId,
+        },
+      })
+      .closed.subscribe(() => this._loadExchanges());
+  }
+
+  /** Ce qu'on a écrit au client devient la réponse officielle — relue avant d'être enregistrée. */
+  public useAsResponse(exchange: Exchange): void {
+    this.resolveForm().reset(Object.assign(new ResolveFormModel(), { response: exchange.text ?? '' }));
+    this.mode.set('resolve');
   }
 
   public date(value: string | null | undefined): string {
@@ -358,6 +495,41 @@ export class ClientComplaintDetailDrawer implements OnInit {
             .subscribe((user) => this.assigneeName.set(user.fullName?.trim() || user.email?.trim() || null));
         }
       });
+  }
+
+  /** WhatsApp (si le droit le permet) et e-mails, du plus récent au plus ancien. */
+  private _loadExchanges(): void {
+    const whatsapp = this.canWhatsApp()
+      ? this._whatsAppApi.listClientWhatsAppMessages(this.data.clientId, this.data.complaintId, undefined, 100).pipe(
+          map((page) => page.items ?? []),
+          catchError(() => of([])),
+        )
+      : of([]);
+    const mails = this._mailApi.listComplaintMails(this.data.clientId, this.data.complaintId).pipe(catchError(() => of([])));
+
+    forkJoin({ whatsapp, mails }).subscribe(({ whatsapp, mails }) => {
+      const list: Exchange[] = [
+        ...whatsapp.map((m) => ({
+          key: `w-${m.id}`,
+          channel: 'whatsapp' as const,
+          outbound: m.direction === 'Outbound',
+          at: m.occurredAt ?? '',
+          who: m.authorName ?? null,
+          text: m.body ?? null,
+          failed: m.status === 'Failed',
+        })),
+        ...mails.map((m, i) => ({
+          key: `m-${m.messageId ?? i}-${m.sentAt}`,
+          channel: 'mail' as const,
+          outbound: m.direction === 'Sent',
+          at: m.sentAt ?? '',
+          who: m.userName ?? null,
+          text: m.mine ? [m.subject, m.snippet].filter(Boolean).join(' — ') || null : null,
+          failed: false,
+        })),
+      ];
+      this.exchanges.set(list.sort((a, b) => b.at.localeCompare(a.at)));
+    });
   }
 
   private _fail(err: unknown): void {

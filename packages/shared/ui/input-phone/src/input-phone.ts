@@ -19,7 +19,7 @@ import {
   ValidationErrors,
 } from '@angular/forms';
 import { fromEvent } from 'rxjs';
-import { COUNTRIES, CountryDef } from './countries';
+import { COUNTRIES, CountryDef, nationalNumber, readTypedPhone } from './countries';
 
 @Component({
   selector: 'tas-input-phone, InputPhone',
@@ -101,6 +101,7 @@ import { COUNTRIES, CountryDef } from './countries';
         class="tas-phone-input__number"
         [placeholder]="selectedCountry().placeholder"
         [formControl]="phoneControl"
+        (blur)="onTouched()"
       />
     </div>
   `,
@@ -210,7 +211,7 @@ export class TasInputPhone extends AbstractControlValueAccessor<string> {
     const raw = (this.phoneControl.value ?? '').replace(/\s+/g, '');
     if (!raw) return null;
     const country = this.selectedCountry();
-    if (!country.pattern.test(raw)) {
+    if (!country.pattern.test(nationalNumber(country, raw))) {
       return {
         phonePattern: { country: country.name, expected: country.placeholder },
       };
@@ -218,31 +219,20 @@ export class TasInputPhone extends AbstractControlValueAccessor<string> {
     return null;
   }
 
-  /**
-   * Chiffres et espaces seulement — les espaces sont la mise en forme que l'agent tape
-   * (« 07 12 34 56 78 ») et ne partent pas dans la valeur. Un numéro collé au format international
-   * (« +225 07 12 34 56 78 ») prend son indicatif au lieu de garder « 225 » devant le numéro.
-   */
+  /** Voir `readTypedPhone` : le pays reconnu dans un indicatif tapé ou collé est choisi ici. */
   private _digitsOnly(value: string): string {
-    let text = value;
-    if (text.trimStart().startsWith('+')) {
-      const compact = text.replace(/[^\d+]/g, '');
-      // Le plus long indicatif d'abord : « +1 » ne doit pas avaler « +1242 ».
-      const match = [...COUNTRIES]
-        .sort((a, b) => b.dial.length - a.dial.length)
-        .find((c) => compact.startsWith(c.dial));
-      if (match) {
-        this.selectedCountry.set(match);
-        text = compact.slice(match.dial.length);
-      }
-    }
-    return text.replace(/[^\d ]/g, '').replace(/ {2,}/g, ' ');
+    const read = readTypedPhone(value);
+    if (read.country) this.selectedCountry.set(read.country);
+    return read.text;
   }
 
   private _emitValue(): void {
     const raw = (this.phoneControl.value ?? '').replace(/\s+/g, '');
-    const full = raw ? `${this.selectedCountry().dial}${raw}` : '';
-    this.onTouched();
+    // Un indicatif en cours de saisie (« +22 ») n'est pas encore un numéro.
+    const country = this.selectedCountry();
+    const full = raw && !raw.startsWith('+') ? `${country.dial}${nationalNumber(country, raw)}` : '';
+    // « Touché » à la sortie du champ (blur) : marqué à chaque touche, le format était déclaré
+    // faux dès le premier chiffre.
     this.onChange(full);
   }
 }

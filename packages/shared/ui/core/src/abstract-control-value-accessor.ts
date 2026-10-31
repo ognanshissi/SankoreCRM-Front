@@ -82,6 +82,10 @@ export class AbstractControlValueAccessor<T = unknown>
    * @param fn - The callback function to be called when the validator changes.
    */
   public registerOnValidatorChange?(fn: () => void): void {
-    this.onTouched = fn;
+    // Ce rappel remplaçait `onTouched` : aucun champ du kit ne marquait plus son champ « touché »
+    // dans un signal form, et ses erreurs ne s'affichaient jamais.
+    this.onValidatorChange = fn;
   }
+
+  public onValidatorChange = () => {};
 }

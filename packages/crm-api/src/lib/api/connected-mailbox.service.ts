@@ -19,6 +19,8 @@ import { CustomHttpParameterCodec }                          from '../encoder';
 import { Observable }                                        from 'rxjs';
 
 // @ts-ignore
+import { ComplaintMailDto } from '../model/complaint-mail-dto.interface';
+// @ts-ignore
 import { MailThreadDto } from '../model/mail-thread-dto.interface';
 // @ts-ignore
 import { MailThreadPageDto } from '../model/mail-thread-page-dto.interface';
@@ -306,6 +308,76 @@ export class ConnectedMailboxApiService {
 
         let localVarPath = `/api/v1/integration/me/mail/messages/${this.configuration.encodeParam({name: "id", value: id, in: "path", style: "simple", explode: false, dataType: "string", dataFormat: "uuid"})}/thread`;
         return this.httpClient.request<MailThreadDto>('get', `${this.configuration.basePath}${localVarPath}`,
+            {
+                context: localVarHttpContext,
+                responseType: <any>responseType_,
+                withCredentials: this.configuration.withCredentials,
+                headers: localVarHeaders,
+                observe: observe,
+                reportProgress: reportProgress
+            }
+        );
+    }
+
+    /**
+     * The e-mails filed on a client complaint, newest first — subject and preview for the mailbox\&#39;s owner only
+     * Filed by the mailbox sync when the subject quotes the complaint\&#39;s reference (RCL-yyyy-nnnnnn) and the complaint\&#39;s client is a party. 404 COMPLAINT_NOT_FOUND outside the client\&#39;s perimeter or for another client\&#39;s complaint. Requires customers:complaints:read.
+     * @param clientId 
+     * @param complaintId 
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     */
+    public listComplaintMails(clientId: string, complaintId: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<Array<ComplaintMailDto>>;
+    public listComplaintMails(clientId: string, complaintId: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<Array<ComplaintMailDto>>>;
+    public listComplaintMails(clientId: string, complaintId: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<Array<ComplaintMailDto>>>;
+    public listComplaintMails(clientId: string, complaintId: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
+        if (clientId === null || clientId === undefined) {
+            throw new Error('Required parameter clientId was null or undefined when calling listComplaintMails.');
+        }
+        if (complaintId === null || complaintId === undefined) {
+            throw new Error('Required parameter complaintId was null or undefined when calling listComplaintMails.');
+        }
+
+        let localVarHeaders = this.defaultHeaders;
+
+        let localVarCredential: string | undefined;
+        // authentication (BearerToken) required
+        localVarCredential = this.configuration.lookupCredential('BearerToken');
+        if (localVarCredential) {
+            localVarHeaders = localVarHeaders.set('Authorization', 'Bearer ' + localVarCredential);
+        }
+
+        let localVarHttpHeaderAcceptSelected: string | undefined = options && options.httpHeaderAccept;
+        if (localVarHttpHeaderAcceptSelected === undefined) {
+            // to determine the Accept header
+            const httpHeaderAccepts: string[] = [
+                'application/json'
+            ];
+            localVarHttpHeaderAcceptSelected = this.configuration.selectHeaderAccept(httpHeaderAccepts);
+        }
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+
+        let localVarHttpContext: HttpContext | undefined = options && options.context;
+        if (localVarHttpContext === undefined) {
+            localVarHttpContext = new HttpContext();
+        }
+
+
+        let responseType_: 'text' | 'json' | 'blob' = 'json';
+        if (localVarHttpHeaderAcceptSelected) {
+            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+                responseType_ = 'text';
+            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+                responseType_ = 'json';
+            } else {
+                responseType_ = 'blob';
+            }
+        }
+
+        let localVarPath = `/api/v1/integration/clients/${this.configuration.encodeParam({name: "clientId", value: clientId, in: "path", style: "simple", explode: false, dataType: "string", dataFormat: "uuid"})}/complaints/${this.configuration.encodeParam({name: "complaintId", value: complaintId, in: "path", style: "simple", explode: false, dataType: "string", dataFormat: "uuid"})}/mails`;
+        return this.httpClient.request<Array<ComplaintMailDto>>('get', `${this.configuration.basePath}${localVarPath}`,
             {
                 context: localVarHttpContext,
                 responseType: <any>responseType_,
@@ -630,13 +702,14 @@ export class ConnectedMailboxApiService {
      * @param files 
      * @param toClientId 
      * @param sendAt 
+     * @param complaintId 
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      */
-    public sendMail(accountId?: string, to?: Array<string>, cc?: Array<string>, bcc?: Array<string>, subject?: string, body?: string, replyToMessageId?: string, forwardMessageId?: string, forwardAttachmentIds?: Array<string>, files?: Array<Blob>, toClientId?: string, sendAt?: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<SendMailOutcome>;
-    public sendMail(accountId?: string, to?: Array<string>, cc?: Array<string>, bcc?: Array<string>, subject?: string, body?: string, replyToMessageId?: string, forwardMessageId?: string, forwardAttachmentIds?: Array<string>, files?: Array<Blob>, toClientId?: string, sendAt?: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<SendMailOutcome>>;
-    public sendMail(accountId?: string, to?: Array<string>, cc?: Array<string>, bcc?: Array<string>, subject?: string, body?: string, replyToMessageId?: string, forwardMessageId?: string, forwardAttachmentIds?: Array<string>, files?: Array<Blob>, toClientId?: string, sendAt?: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<SendMailOutcome>>;
-    public sendMail(accountId?: string, to?: Array<string>, cc?: Array<string>, bcc?: Array<string>, subject?: string, body?: string, replyToMessageId?: string, forwardMessageId?: string, forwardAttachmentIds?: Array<string>, files?: Array<Blob>, toClientId?: string, sendAt?: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
+    public sendMail(accountId?: string, to?: Array<string>, cc?: Array<string>, bcc?: Array<string>, subject?: string, body?: string, replyToMessageId?: string, forwardMessageId?: string, forwardAttachmentIds?: Array<string>, files?: Array<Blob>, toClientId?: string, sendAt?: string, complaintId?: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<SendMailOutcome>;
+    public sendMail(accountId?: string, to?: Array<string>, cc?: Array<string>, bcc?: Array<string>, subject?: string, body?: string, replyToMessageId?: string, forwardMessageId?: string, forwardAttachmentIds?: Array<string>, files?: Array<Blob>, toClientId?: string, sendAt?: string, complaintId?: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<SendMailOutcome>>;
+    public sendMail(accountId?: string, to?: Array<string>, cc?: Array<string>, bcc?: Array<string>, subject?: string, body?: string, replyToMessageId?: string, forwardMessageId?: string, forwardAttachmentIds?: Array<string>, files?: Array<Blob>, toClientId?: string, sendAt?: string, complaintId?: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<SendMailOutcome>>;
+    public sendMail(accountId?: string, to?: Array<string>, cc?: Array<string>, bcc?: Array<string>, subject?: string, body?: string, replyToMessageId?: string, forwardMessageId?: string, forwardAttachmentIds?: Array<string>, files?: Array<Blob>, toClientId?: string, sendAt?: string, complaintId?: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
 
         let localVarHeaders = this.defaultHeaders;
 
@@ -748,6 +821,9 @@ export class ConnectedMailboxApiService {
         }
         if (sendAt !== undefined) {
             localVarFormParams = localVarFormParams.append('sendAt', <any>sendAt) as any || localVarFormParams;
+        }
+        if (complaintId !== undefined) {
+            localVarFormParams = localVarFormParams.append('complaintId', <any>complaintId) as any || localVarFormParams;
         }
 
         let responseType_: 'text' | 'json' | 'blob' = 'json';

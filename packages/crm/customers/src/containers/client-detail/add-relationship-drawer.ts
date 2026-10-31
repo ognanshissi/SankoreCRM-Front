@@ -31,6 +31,7 @@ import {
 import { Button } from '@talisoft/ui/button';
 import { TasError, TasFormField, TasHint, TasLabel } from '@talisoft/ui/form-field';
 import { TasIcon } from '@talisoft/ui/icon';
+import { TasInputPhone } from '@talisoft/ui/input-phone';
 import { TasInput } from '@talisoft/ui/input';
 import { TasSelect } from '@talisoft/ui/select';
 import { TasDatePicker } from '@talisoft/ui/date-picker';
@@ -126,6 +127,7 @@ export class AddRelationshipFormModel {
   selector: 'add-relationship-drawer',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
+    TasInputPhone,
     TasSideDrawer,
     TasDrawerTitle,
     TasDrawerContent,
@@ -283,12 +285,7 @@ export class AddRelationshipFormModel {
               <div class="grid grid-cols-2 gap-3">
                 <tas-form-field>
                   <tas-label>Téléphone</tas-label>
-                  <input
-                    tasInput
-                    type="tel"
-                    placeholder="+225 01 02 03 04 05"
-                    [formField]="formSchema.externalPhoneNumber"
-                  />
+                  <tas-input-phone defaultCountry="CI" [formField]="formSchema.externalPhoneNumber"></tas-input-phone>
                 </tas-form-field>
 
                 <div>

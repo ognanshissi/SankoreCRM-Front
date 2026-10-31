@@ -33,5 +33,6 @@ export interface WhatsAppMessageDto {
     errorCode?: string | null;
     errorDetail?: string | null;
     mediaPurged?: boolean;
+    complaintId?: string | null;
 }
 

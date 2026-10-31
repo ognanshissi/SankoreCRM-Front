@@ -6,6 +6,7 @@ import { catchError, EMPTY, firstValueFrom, map, of } from 'rxjs';
 import { Button } from '@talisoft/ui/button';
 import { TasFormField, TasLabel, TasError, TasHint } from '@talisoft/ui/form-field';
 import { TasIcon } from '@talisoft/ui/icon';
+import { phoneErrorMessage, TasInputPhone } from '@talisoft/ui/input-phone';
 import { TasInput } from '@talisoft/ui/input';
 import { TasSelect } from '@talisoft/ui/select';
 import { TasSpinner } from '@talisoft/ui/spinner';
@@ -71,7 +72,7 @@ class ProfileFormModel {
   selector: 'account-profile',
   imports: [
     DatePipe, TitleCasePipe, FormRoot, FormField, Button, TasFormField, TasLabel, TasError, TasHint,
-    TasIcon, TasInput, TasSelect, TasSpinner,
+    TasIcon, TasInput, TasInputPhone, TasSelect, TasSpinner,
   ],
   templateUrl: './account-profile.html',
 })
@@ -91,6 +92,8 @@ export class AccountProfile implements OnInit {
   public dto = signal<MyProfileDto | null>(null);
 
   public model = signal(ProfileFormModel.fromDto({}));
+  public readonly phoneErrorMessage = phoneErrorMessage;
+
   public formSchema = form(this.model, (schema) => {
     required(schema.firstName, { message: 'Le prénom est obligatoire' });
     required(schema.lastName, { message: 'Le nom est obligatoire' });

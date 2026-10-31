@@ -146,7 +146,7 @@
                     <input tasInput type="email" [placeholder]="placeholderOf(field)" [formField]="entry(field.key).text" />
                   }
                   @case (Type.Phone) {
-                    <input tasInput type="tel" [placeholder]="placeholderOf(field)" [formField]="entry(field.key).text" />
+                    <tas-input-phone defaultCountry="CI" [formField]="entry(field.key).text"></tas-input-phone>
                   }
                   @case (Type.Url) {
                     <input tasInput type="url" [placeholder]="placeholderOf(field, 'https://')" [formField]="entry(field.key).text" />

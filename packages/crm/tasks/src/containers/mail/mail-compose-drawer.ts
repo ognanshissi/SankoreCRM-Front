@@ -55,6 +55,11 @@ export interface MailComposeDrawerData {
    * masquée.
    */
   client?: { id: string; name: string; maskedEmail?: string | null } | null;
+  /**
+   * Écrit depuis une réclamation de ce client : le serveur met sa référence dans l'objet, et le
+   * message comme la réponse du client se rangent sur la réclamation.
+   */
+  complaintId?: string | null;
 }
 
 class ComposeFormModel {
@@ -406,6 +411,7 @@ export class MailComposeDrawer implements OnInit {
             this.files(),
             this.data.client?.id,
             at?.toISOString(),
+            this.data.complaintId ?? undefined,
           )
           .pipe(
             catchError((err: HttpErrorResponse) => {

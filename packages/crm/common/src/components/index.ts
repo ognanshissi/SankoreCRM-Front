@@ -38,3 +38,6 @@ export * from './erasure/erasure-request-drawer';
 export * from './erasure/erasure-labels';
 // « Mode test » (bac à sable) : l'interrupteur de l'en-tête et le bandeau orange.
 export * from './test-mode/test-mode';
+// Écrire à un client sur WhatsApp — depuis une réclamation, ou la boîte WhatsApp (réclamations, lot 3).
+export * from './client-whatsapp/client-whatsapp-drawer';
+export * from './client-whatsapp/whatsapp-failure-labels';

@@ -5406,6 +5406,54 @@
         }
       }
     },
+    "/api/v1/integration/clients/{clientId}/complaints/{complaintId}/mails": {
+      "get": {
+        "tags": [
+          "ConnectedMailbox"
+        ],
+        "summary": "The e-mails filed on a client complaint, newest first — subject and preview for the mailbox's owner only",
+        "description": "Filed by the mailbox sync when the subject quotes the complaint's reference (RCL-yyyy-nnnnnn) and the complaint's client is a party. 404 COMPLAINT_NOT_FOUND outside the client's perimeter or for another client's complaint. Requires customers:complaints:read.",
+        "operationId": "ListComplaintMails",
+        "parameters": [
+          {
+            "name": "clientId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "complaintId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ComplaintMailDto"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
     "/api/v1/integration/connected-accounts/{id}/mail/signature": {
       "put": {
         "tags": [
@@ -30253,6 +30301,203 @@
         }
       }
     },
+    "/api/v1/leads/whatsapp/clients/{clientId}": {
+      "get": {
+        "tags": [
+          "WhatsApp"
+        ],
+        "summary": "The client's WhatsApp exchange: conversation, window, what blocks a send, the templates",
+        "operationId": "GetClientWhatsApp",
+        "parameters": [
+          {
+            "name": "clientId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClientWhatsAppDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/leads/whatsapp/clients/{clientId}/messages": {
+      "get": {
+        "tags": [
+          "WhatsApp"
+        ],
+        "summary": "The client's messages, newest first; `complaintId` keeps those written about one complaint",
+        "operationId": "ListClientWhatsAppMessages",
+        "parameters": [
+          {
+            "name": "clientId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "complaintId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "before",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WhatsAppMessagePageDto"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "WhatsApp"
+        ],
+        "summary": "A free reply to the client, inside their 24-hour window, by the advisor who holds the conversation",
+        "operationId": "SendClientWhatsAppText",
+        "parameters": [
+          {
+            "name": "clientId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SendClientWhatsAppTextRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/leads/whatsapp/clients/{clientId}/send-template": {
+      "post": {
+        "tags": [
+          "WhatsApp"
+        ],
+        "summary": "Open the exchange with the client by a template, optionally about one of their complaints",
+        "description": "No consent asked: following up the client's own complaint is a service relationship. Refused when the client's processing is restricted, has no usable number, wrote STOP (WHATSAPP_CLIENT_OPTED_OUT), or a template went unanswered in the last 24 h (unless WhatsApp.Send.Force).",
+        "operationId": "SendClientWhatsAppTemplate",
+        "parameters": [
+          {
+            "name": "clientId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SendClientWhatsAppTemplateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SendWhatsAppTemplateResult"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/leads/whatsapp/clients/{clientId}/takeover": {
+      "post": {
+        "tags": [
+          "WhatsApp"
+        ],
+        "summary": "Take the client's conversation, to answer it freely",
+        "operationId": "TakeOverClientWhatsApp",
+        "parameters": [
+          {
+            "name": "clientId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/api/v1/leads/whatsapp/bot": {
       "get": {
         "tags": [
@@ -37072,6 +37317,58 @@
         },
         "additionalProperties": false
       },
+      "ClientWhatsAppDto": {
+        "type": "object",
+        "properties": {
+          "conversationId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "nullable": true
+          },
+          "ownerUserId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "heldByMe": {
+            "type": "boolean"
+          },
+          "windowExpiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "windowOpen": {
+            "type": "boolean"
+          },
+          "optedOut": {
+            "type": "boolean"
+          },
+          "maskedPhone": {
+            "type": "string",
+            "nullable": true
+          },
+          "blockers": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "templates": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WhatsAppComposeTemplateDto"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "CloseClientComplaintRequest": {
         "type": "object",
         "properties": {
@@ -37363,6 +37660,44 @@
           },
           "resolutionOverdue": {
             "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ComplaintMailDto": {
+        "type": "object",
+        "properties": {
+          "messageId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "sentAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "direction": {
+            "type": "string",
+            "nullable": true
+          },
+          "userId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "userName": {
+            "type": "string",
+            "nullable": true
+          },
+          "mine": {
+            "type": "boolean"
+          },
+          "subject": {
+            "type": "string",
+            "nullable": true
+          },
+          "snippet": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -56291,6 +56626,43 @@
         },
         "additionalProperties": false
       },
+      "SendClientWhatsAppTemplateRequest": {
+        "type": "object",
+        "properties": {
+          "templateId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "variables": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "complaintId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "SendClientWhatsAppTextRequest": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string",
+            "nullable": true
+          },
+          "complaintId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "SendMailForm": {
         "type": "object",
         "properties": {
@@ -56360,6 +56732,11 @@
           "sendAt": {
             "type": "string",
             "format": "date-time",
+            "nullable": true
+          },
+          "complaintId": {
+            "type": "string",
+            "format": "uuid",
             "nullable": true
           }
         },
@@ -63617,6 +63994,11 @@
           },
           "mediaPurged": {
             "type": "boolean"
+          },
+          "complaintId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
           }
         },
         "additionalProperties": false
