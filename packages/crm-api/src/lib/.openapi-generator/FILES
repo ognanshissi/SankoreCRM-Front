@@ -588,6 +588,7 @@ model/product-factor.interface.ts
 model/product-performance-dto.interface.ts
 model/product-routing-dto.interface.ts
 model/product-routing-line-dto.interface.ts
+model/product-suggestion-dto.interface.ts
 model/project-attachment-dto.interface.ts
 model/project-checklist-item-input.interface.ts
 model/project-checklist-item.interface.ts
@@ -600,6 +601,7 @@ model/project-questionnaire-item-dto.interface.ts
 model/project-questionnaires-dto.interface.ts
 model/project-step-dto.interface.ts
 model/project-step-request.interface.ts
+model/project-suggestion-dto.interface.ts
 model/project-task-dto.interface.ts
 model/project-template-dto.interface.ts
 model/project-template-summary-dto.interface.ts

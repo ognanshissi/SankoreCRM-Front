@@ -26,6 +26,7 @@ import {
   FatcaStatusBadge,
   PepExposureBadge,
   PermissionsService,
+  ProductNamesStore,
 } from '@sankore/crm/common';
 import { SnackbarService } from '@talisoft/ui/snackbar';
 import { SideDrawerService } from '@talisoft/ui/side-drawer';
@@ -48,6 +49,7 @@ import { TimeagoPipe } from '@talisoft/ui/timeago';
 import { Menu, MenuItem, TasMenuTrigger } from '@talisoft/ui/menu';
 import { catchError, EMPTY, filter, firstValueFrom, forkJoin, map, of } from 'rxjs';
 import { LeadEditContext } from './lead-edit-context';
+import { ProjectSuggestionBanner } from './project-suggestion-banner';
 import { LeadComplianceStore } from './lead-compliance-store';
 import { interestedProductLabel } from '../../components/interested-product';
 import { nextStepDue, nextStepDueClass, nextStepIcon } from '../../components/lead-next-step';
@@ -106,6 +108,7 @@ function defaultPlanDate(): string {
 
 @Component({
   imports: [
+    ProjectSuggestionBanner,
     FormRoot,
     FormField,
     RouterLink,
@@ -132,6 +135,8 @@ function defaultPlanDate(): string {
 export class EditLeadNavigation implements OnDestroy {
   private readonly _permissions = inject(PermissionsService);
   public readonly canUpdate = this._permissions.can('lead:update');
+  // Réassigner et remettre en file passent par des routes sous lead:assign : un agent recevait un 403.
+  public readonly canAssign = this._permissions.can('lead:assign');
   // Les actions rapides de l'en-tête : chacune n'apparaît qu'avec le droit qu'exige son écran.
   public readonly canWhatsApp = this._permissions.can('WhatsApp.Send', 'WhatsApp.Supervise');
   public readonly canScheduleAppointment = this._permissions.can('lead:activity:log');
@@ -140,6 +145,7 @@ export class EditLeadNavigation implements OnDestroy {
   public readonly canRequestErasure = this._permissions.can('privacy:erasure:request');
 
   private readonly _leadsApiService = inject(LeadsApiService);
+  private readonly _productNames = inject(ProductNamesStore).ensureLoaded();
   private readonly _breadcrumbService = inject(BreadcrumbService);
   private readonly _breadcrumbOwner = inject(DestroyRef);
   private readonly _sideDrawerService = inject(SideDrawerService);
@@ -201,7 +207,7 @@ export class EditLeadNavigation implements OnDestroy {
       catchError(() => { this._snackbar.error('Erreur', 'Impossible de modifier l\'intérêt ressenti.'); return EMPTY; }),
     ).subscribe(() => this.reload());
   }
-  public readonly productLabel = computed(() => interestedProductLabel(this.lead()?.interestedProduct));
+  public readonly productLabel = computed(() => interestedProductLabel(this.lead()?.interestedProduct, this._productNames.names()));
   public readonly name = computed(() => displayName(this.lead()));
   public readonly avatar = computed(() => initials(this.name()));
   public readonly statusMeta = computed(() => leadStatusMeta(this.lead()?.status));

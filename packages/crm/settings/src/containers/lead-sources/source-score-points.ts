@@ -59,7 +59,7 @@ class SourceScorePointsFormModel {
                     [disabled]="formSchema().invalid() || formSchema().submitting() || !changed()"
                     [isLoading]="formSchema().submitting()">Enregistrer</button>
             @if (isCustom()) {
-              <button tas-text-button type="button" [disabled]="formSchema().submitting()" (click)="reset()">
+              <button tas-text-button color="primary" type="button" [disabled]="formSchema().submitting()" (click)="reset()">
                 Revenir à la valeur du canal
               </button>
             }

@@ -21,7 +21,7 @@ import {
   RecordConsentRequestChannelEnum,
   RecordConsentRequestTypeEnum,
 } from '@sankore/crm-api';
-import { AuthenticationService, EntityFormReferences, PermissionsService } from '@sankore/crm/common';
+import { AuthenticationService, EntityFormReferences, PermissionsService, ProductNamesStore } from '@sankore/crm/common';
 import { interestedProductLabel } from '../../components/interested-product';
 import { ConvertedLeadNotice } from './converted-lead-notice';
 import { LeadComplianceStore } from './lead-compliance-store';
@@ -184,6 +184,7 @@ interface HistoryEntry {
 export class LeadConsentementPage {
   private readonly _permissions = inject(PermissionsService);
   private readonly _context = inject(LeadEditContext);
+  private readonly _productNames = inject(ProductNamesStore).ensureLoaded();
   private readonly _leadsApi = inject(LeadsApiService);
   private readonly _snackbar = inject(SnackbarService);
   private readonly _sideDrawer = inject(SideDrawerService);
@@ -226,7 +227,7 @@ export class LeadConsentementPage {
   });
 
   public readonly name = computed(() => displayName(this._context.lead()));
-  public readonly product = computed(() => interestedProductLabel(this._context.lead()?.interestedProduct));
+  public readonly product = computed(() => interestedProductLabel(this._context.lead()?.interestedProduct, this._productNames.names()));
 
   // ——— Les finalités ———
 

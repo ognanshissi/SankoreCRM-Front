@@ -31,6 +31,7 @@ import {
   PERMISSIONS,
   PermissionsService,
   WireValue,
+  ProductNamesStore,
 } from '@sankore/crm/common';
 // eslint-disable-next-line @nx/enforce-module-boundaries
 import { CallButton } from '@sankore/crm/telephony';
@@ -101,6 +102,7 @@ function maskDocument(value: string): string {
 export class LeadInformationsPage {
   private readonly _permissions = inject(PermissionsService);
   private readonly _leadEditContext = inject(LeadEditContext);
+  private readonly _productNames = inject(ProductNamesStore).ensureLoaded();
   private readonly _leadsApiService = inject(LeadsApiService);
   private readonly _snackbar = inject(SnackbarService);
   private readonly _auth = inject(AuthenticationService);
@@ -136,7 +138,7 @@ export class LeadInformationsPage {
   public readonly isConverted = this._leadEditContext.isConverted;
   public readonly isLoading = computed(() => !this._leadEditContext.isKnown());
 
-  public readonly productLabel = computed(() => interestedProductLabel(this.lead()?.interestedProduct));
+  public readonly productLabel = computed(() => interestedProductLabel(this.lead()?.interestedProduct, this._productNames.names()));
   public readonly firstName = computed(() => this.lead()?.firstName || this.lead()?.fullName?.split(' ')[0] || 'le prospect');
   public readonly age = computed(() => ageOf(this.lead()?.dateOfBirth));
   public readonly isCompany = computed(() => this.lead()?.prospectType === 'Corporate');

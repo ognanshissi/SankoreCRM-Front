@@ -109,6 +109,8 @@ import { PagedResultOfLeadDto } from '../model/paged-result-of-lead-dto.interfac
 // @ts-ignore
 import { ProblemDetails } from '../model/problem-details.interface';
 // @ts-ignore
+import { ProjectSuggestionDto } from '../model/project-suggestion-dto.interface';
+// @ts-ignore
 import { QualificationTemplateDto } from '../model/qualification-template-dto.interface';
 // @ts-ignore
 import { QualifyLeadRequest } from '../model/qualify-lead-request.interface';
@@ -2512,6 +2514,72 @@ export class LeadsApiService {
 
         let localVarPath = `/api/v1/leads/${this.configuration.encodeParam({name: "leadId", value: leadId, in: "path", style: "simple", explode: false, dataType: "string", dataFormat: "uuid"})}/owner-history`;
         return this.httpClient.request<Array<OwnerAssignmentDto>>('get', `${this.configuration.basePath}${localVarPath}`,
+            {
+                context: localVarHttpContext,
+                responseType: <any>responseType_,
+                withCredentials: this.configuration.withCredentials,
+                headers: localVarHeaders,
+                observe: observe,
+                reportProgress: reportProgress
+            }
+        );
+    }
+
+    /**
+     * Catalogue products the lead\&#39;s « produit souhaité » looks like, to open a project for
+     * Matched on the product\&#39;s code, name (any order, a typo, part of it) or description, accents and case folded; confidence 60–100, at most three. 204 when the lead is closed, named no product, nothing matches, or an open project already carries the product. A suggestion only: the project\&#39;s line is still resolved exactly when it is created.
+     * @param leadId 
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     */
+    public getLeadProjectSuggestion(leadId: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<ProjectSuggestionDto>;
+    public getLeadProjectSuggestion(leadId: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<ProjectSuggestionDto>>;
+    public getLeadProjectSuggestion(leadId: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<ProjectSuggestionDto>>;
+    public getLeadProjectSuggestion(leadId: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
+        if (leadId === null || leadId === undefined) {
+            throw new Error('Required parameter leadId was null or undefined when calling getLeadProjectSuggestion.');
+        }
+
+        let localVarHeaders = this.defaultHeaders;
+
+        let localVarCredential: string | undefined;
+        // authentication (BearerToken) required
+        localVarCredential = this.configuration.lookupCredential('BearerToken');
+        if (localVarCredential) {
+            localVarHeaders = localVarHeaders.set('Authorization', 'Bearer ' + localVarCredential);
+        }
+
+        let localVarHttpHeaderAcceptSelected: string | undefined = options && options.httpHeaderAccept;
+        if (localVarHttpHeaderAcceptSelected === undefined) {
+            // to determine the Accept header
+            const httpHeaderAccepts: string[] = [
+                'application/json'
+            ];
+            localVarHttpHeaderAcceptSelected = this.configuration.selectHeaderAccept(httpHeaderAccepts);
+        }
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+
+        let localVarHttpContext: HttpContext | undefined = options && options.context;
+        if (localVarHttpContext === undefined) {
+            localVarHttpContext = new HttpContext();
+        }
+
+
+        let responseType_: 'text' | 'json' | 'blob' = 'json';
+        if (localVarHttpHeaderAcceptSelected) {
+            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+                responseType_ = 'text';
+            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+                responseType_ = 'json';
+            } else {
+                responseType_ = 'blob';
+            }
+        }
+
+        let localVarPath = `/api/v1/leads/${this.configuration.encodeParam({name: "leadId", value: leadId, in: "path", style: "simple", explode: false, dataType: "string", dataFormat: "uuid"})}/project-suggestion`;
+        return this.httpClient.request<ProjectSuggestionDto>('get', `${this.configuration.basePath}${localVarPath}`,
             {
                 context: localVarHttpContext,
                 responseType: <any>responseType_,

@@ -1,4 +1,5 @@
 import { Component, computed, inject, OnInit, signal } from '@angular/core';
+import { interestedProductLabel } from '../../components/interested-product';
 import { DIALOG_DATA, DialogRef } from '@angular/cdk/dialog';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Router } from '@angular/router';
@@ -44,6 +45,7 @@ import {
   pepLinkLabel,
   PERMISSIONS,
   PermissionsService,
+  ProductNamesStore,
 } from '@sankore/crm/common';
 import {
   ConvertLeadRequest,
@@ -133,6 +135,12 @@ const BLOCKING_CODE: Record<string, string> = {
   CUSTOMER_EXISTS: 'Un client existe déjà pour cette personne.',
   ALREADY_CONVERTED: 'Ce lead est déjà converti.',
   KYC_INVALID: "Le dossier KYC n'est pas valide.",
+};
+
+/** Les codes d'erreur que le serveur renvoie tels quels dans `detail`, lus par l'agent. */
+const CONVERT_ERRORS: Record<string, string> = {
+  LEAD_HAS_NO_AGENCY:
+    "Le lead n'est rattaché à aucune agence : renseignez son agence (Actions › Modifier les informations), puis réessayez.",
 };
 
 function blockingCodeLabel(code: string | null | undefined): string {
@@ -258,6 +266,7 @@ export class ConvertLeadWizard implements OnInit {
   public readonly data: ConvertLeadWizardData = inject(DIALOG_DATA);
   private readonly _dialogRef = inject(DialogRef<ConvertLeadWizardResult | false>);
   private readonly _leadsApi = inject(LeadsApiService);
+  private readonly _productNames = inject(ProductNamesStore).ensureLoaded();
   private readonly _permissions = inject(PermissionsService);
   private readonly _complianceConfig = inject(ComplianceConfigService);
   private readonly _snackbar = inject(SnackbarService);
@@ -279,6 +288,7 @@ export class ConvertLeadWizard implements OnInit {
 
   /** Rechargé après un complément de saisie : le récapitulatif doit refléter le lead à jour. */
   public lead = signal<LeadDto>(this.data.lead);
+  public readonly productLabel = computed(() => interestedProductLabel(this.lead().interestedProduct, this._productNames.names()));
   public currentStep = signal<Step>('recap');
 
   /** Garde de réentrance : testée en première ligne de chaque action d'écriture. */
@@ -763,9 +773,11 @@ export class ConvertLeadWizard implements OnInit {
     const firstError = validationErrors
       ? Object.values(validationErrors).flat()[0]
       : undefined;
+    const detail = error.error?.detail as string | undefined;
     return (
       firstError ??
-      error.error?.detail ??
+      (detail ? CONVERT_ERRORS[detail] : undefined) ??
+      detail ??
       error.error?.title ??
       error.error?.code ??
       'La conversion a échoué. Veuillez réessayer.'

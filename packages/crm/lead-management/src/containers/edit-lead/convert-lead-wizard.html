@@ -146,7 +146,7 @@
             </div>
             <div class="flex justify-between gap-4 text-sm flex-wrap">
               <span class="text-slate-500">Produit souhaité</span>
-              <span class="text-slate-800">{{ lead().interestedProduct || '—' }}</span>
+              <span class="text-slate-800">{{ productLabel() ?? '—' }}</span>
             </div>
             @if (lead().customerReference) {
               <div class="flex justify-between gap-4 text-sm flex-wrap">

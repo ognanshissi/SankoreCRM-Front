@@ -15764,6 +15764,45 @@
         }
       }
     },
+    "/api/v1/leads/{leadId}/project-suggestion": {
+      "get": {
+        "tags": [
+          "Leads"
+        ],
+        "summary": "Catalogue products the lead's « produit souhaité » looks like, to open a project for",
+        "description": "Matched on the product's code, name (any order, a typo, part of it) or description, accents and case folded; confidence 60–100, at most three. 204 when the lead is closed, named no product, nothing matches, or an open project already carries the product. A suggestion only: the project's line is still resolved exactly when it is created.",
+        "operationId": "GetLeadProjectSuggestion",
+        "parameters": [
+          {
+            "name": "leadId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectSuggestionDto"
+                }
+              }
+            }
+          },
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
     "/api/v1/leads/{leadId}/intent-level": {
       "get": {
         "tags": [
@@ -49612,6 +49651,13 @@
             "type": "integer",
             "format": "int32",
             "nullable": true
+          },
+          "blockingSteps": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -51547,6 +51593,38 @@
         },
         "additionalProperties": false
       },
+      "ProductSuggestionDto": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "category": {
+            "type": "string",
+            "nullable": true
+          },
+          "confidence": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "basis": {
+            "enum": [
+              "Code",
+              "Name",
+              "SimilarName",
+              "Description"
+            ],
+            "type": "string",
+            "description": "One of: Code, Name, SimilarName, Description"
+          }
+        },
+        "additionalProperties": false
+      },
       "ProjectAttachmentDto": {
         "type": "object",
         "properties": {
@@ -52052,6 +52130,23 @@
             "type": "array",
             "items": {
               "type": "string"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ProjectSuggestionDto": {
+        "type": "object",
+        "properties": {
+          "interestedProduct": {
+            "type": "string",
+            "nullable": true
+          },
+          "products": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProductSuggestionDto"
             },
             "nullable": true
           }

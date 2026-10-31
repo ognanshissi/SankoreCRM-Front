@@ -6,3 +6,4 @@ export * from './permissions.service';
 export * from './compliance-config.service';
 export * from './tenant-modules.service';
 export * from './task-types.store';
+export * from './product-names.store';

@@ -41,7 +41,7 @@ import { interestedProductLabel } from '../../components/interested-product';
 import { LeadNextStep } from '../../components/lead-next-step';
 import { NewTaskDrawer, NewTaskDrawerData } from '@sankore/crm/tasks';
 import { Severity, TasTag } from '@talisoft/ui/tag';
-import { AuthenticationService, CustomFieldFilters, PermissionsService, QuickCreateEvents } from '@sankore/crm/common';
+import { AuthenticationService, CustomFieldFilters, PermissionsService, ProductNamesStore, QuickCreateEvents } from '@sankore/crm/common';
 
 function leadStatusMeta(status: string | null | undefined): { label: string; severity: Severity } {
   switch (status) {
@@ -285,6 +285,7 @@ export class LeadHomepage implements OnInit {
   public readonly canFilterByAgent = this._permissions.can('lead:read:all');
 
   private readonly _leadsApiService = inject(LeadsApiService);
+  private readonly _productNames = inject(ProductNamesStore).ensureLoaded();
   private readonly _agenciesApiService = inject(AgenciesApiService);
   private readonly _leadSourcesApiService = inject(LeadSourcesApiService);
   private readonly _usersApiService = inject(UsersApiService);
@@ -659,12 +660,12 @@ export class LeadHomepage implements OnInit {
    * à montrer « Web » pour trois campagnes différentes.
    */
   public productLabel(lead: LeadDto): string | null {
-    return interestedProductLabel(lead.interestedProduct);
+    return interestedProductLabel(lead.interestedProduct, this._productNames.names());
   }
 
   /** Libellé d'une valeur du filtre ; « Unknown » s'y lit « Non précisé ». */
   public productValueLabel(value: string): string {
-    return interestedProductLabel(value) ?? 'Non précisé';
+    return interestedProductLabel(value, this._productNames.names()) ?? 'Non précisé';
   }
 
   public leadSourceLabel(lead: LeadDto): string {

@@ -85,7 +85,7 @@ const isScore = (raw: string) => /^\d{1,3}$/.test(raw.trim()) && Number(raw) >= 
               <button tas-raised-button color="primary" type="button" (click)="handleSubmit()"
                       [disabled]="formSchema().invalid() || formSchema().submitting()"
                       [isLoading]="formSchema().submitting()">Enregistrer</button>
-              <button tas-text-button type="button" [disabled]="formSchema().submitting()" (click)="cancel()">Annuler</button>
+              <button tas-text-button color="primary" type="button" [disabled]="formSchema().submitting()" (click)="cancel()">Annuler</button>
             </div>
           </form>
         }

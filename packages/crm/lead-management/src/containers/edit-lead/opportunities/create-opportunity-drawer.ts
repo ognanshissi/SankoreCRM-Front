@@ -23,6 +23,8 @@ import { amountText, parseAmount } from '../lead-view.models';
 
 export interface CreateOpportunityDrawerData {
   lead: LeadDto;
+  /** Le libellé d'un produit déjà choisi — la proposition de projet de la fiche lead. */
+  product?: string;
 }
 
 /** Le produit vaut son LIBELLÉ : c'est ce que la clôture résout contre le catalogue. */
@@ -166,7 +168,7 @@ export class CreateOpportunityDrawer {
 
   public readonly submitError = signal<string | null>(null);
 
-  public model = signal(CreateOpportunityFormModel.fromLead(this.data.lead, ''));
+  public model = signal(this._initialModel());
   /** Le gabarit du produit choisi : nom du montant, date critique. */
   public readonly rules = projectCreationRules(() => this.model().product);
 
@@ -186,7 +188,15 @@ export class CreateOpportunityDrawer {
     });
   });
 
+  /** Un produit choisi d'avance donne aussi le titre : « Crédit commerçant », que l'agent complète. */
+  private _initialModel(): CreateOpportunityFormModel {
+    const m = CreateOpportunityFormModel.fromLead(this.data.lead, this.data.product ?? '');
+    if (this.data.product) m.title = this.data.product;
+    return m;
+  }
+
   constructor() {
+    if (this.data.product) return;
     // Le lead porte le CODE du produit (`interestedProduct`) ; l'opportunité, son libellé. La
     // correspondance n'est connue qu'une fois le catalogue chargé.
     const code = this.data.lead.interestedProduct;

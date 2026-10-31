@@ -177,7 +177,7 @@
                   </button>
                 </tas-menu-item>
               }
-              @if (!isConverted()) {
+              @if (canAssign() && !isConverted()) {
                 <tas-menu-item>
                   <button type="button" class="flex w-full items-center gap-2 text-slate-700" (click)="openReassignDrawer()">
                     <tas-icon iconName="feather:user-plus" class="text-slate-400" style="font-size:13px"></tas-icon>
@@ -351,6 +351,11 @@
           </form>
         }
       </section>
+    }
+
+    <!-- Le produit souhaité ressemble à un produit du catalogue : on propose d'en ouvrir le projet. -->
+    @if (!isLoading() && lead(); as l) {
+      <lead-project-suggestion [lead]="l"></lead-project-suggestion>
     }
   </tas-card>
 

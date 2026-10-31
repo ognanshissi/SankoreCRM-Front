@@ -70,7 +70,7 @@
       <dl class="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
         <div>
           <dt class="text-xs text-slate-400">Produit</dt>
-          <dd class="text-slate-700 truncate" [title]="product ?? ''">{{ product ?? '—' }}</dd>
+          <dd class="text-slate-700 truncate" [title]="product() ?? ''">{{ product() ?? '—' }}</dd>
         </div>
         <div>
           <dt class="text-xs text-slate-400">Montant souhaité</dt>

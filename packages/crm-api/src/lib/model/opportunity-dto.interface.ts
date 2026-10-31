@@ -60,6 +60,7 @@ export interface OpportunityDto {
     templateVersionId?: string | null;
     templateVersion?: number | null;
     latestTemplateVersion?: number | null;
+    blockingSteps?: Array<string> | null;
 }
 export enum OpportunityDtoStageEnum {
     Prospecting = 'Prospecting',

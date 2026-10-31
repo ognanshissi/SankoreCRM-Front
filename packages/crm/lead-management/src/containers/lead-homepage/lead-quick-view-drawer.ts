@@ -17,6 +17,7 @@ import { TasTitle } from '@talisoft/ui/title';
 import { TimeagoPipe } from '@talisoft/ui/timeago';
 import { LeadNextStep } from '../../components/lead-next-step';
 import { interestedProductLabel } from '../../components/interested-product';
+import { ProductNamesStore } from '@sankore/crm/common';
 import {
   activityTypeMeta,
   displayName,
@@ -61,6 +62,7 @@ const RECENT_ACTIVITIES = 3;
 })
 export class LeadQuickViewDrawer implements OnInit {
   private readonly _leadsApi = inject(LeadsApiService);
+  private readonly _productNames = inject(ProductNamesStore).ensureLoaded();
   private readonly _router = inject(Router);
   private readonly _dialogRef = inject(DialogRef);
   public readonly data = inject<LeadQuickViewData>(DIALOG_DATA);
@@ -70,7 +72,7 @@ export class LeadQuickViewDrawer implements OnInit {
   public readonly initials = initials(this.name);
   public readonly status = leadStatusMeta(this.lead.status);
   public readonly intent = intentOption(this.lead.intentLevel);
-  public readonly product = interestedProductLabel(this.lead.interestedProduct);
+  public readonly product = computed(() => interestedProductLabel(this.lead.interestedProduct, this._productNames.names()));
   public readonly amount = formatAmount(this.lead.desiredAmount?.amount, this.lead.desiredAmount?.currency);
   public readonly origin = originLabel(this.lead);
   public readonly prospectType = prospectTypeLabel(this.lead.prospectType);
