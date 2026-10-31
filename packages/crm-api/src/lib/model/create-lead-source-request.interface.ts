@@ -32,6 +32,7 @@ export interface CreateLeadSourceRequest {
     costCurrency?: string | null;
     defaultAgencyId?: string | null;
     defaultDispatchingRuleId?: string | null;
+    scorePoints?: number | null;
 }
 export enum CreateLeadSourceRequestChannelTypeEnum {
     WebForm = 'WebForm',

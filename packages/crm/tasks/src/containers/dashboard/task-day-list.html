@@ -61,6 +61,9 @@
                     <span class="font-semibold">{{ actionLabel(task) }}</span>
                     @if (leadName(task)) { {{ leadName(task) }} }
                   </span>
+                  @if (reason(task); as r) {
+                    <span class="shrink-0 rounded-md px-1.5 py-0.5 text-[11px] font-semibold tabular-nums" [class]="r.tone">{{ r.label }}</span>
+                  }
                   @if (pending && duplicates().has(task.id!)) {
                     <span class="shrink-0 rounded-md bg-red-50 px-1.5 py-0.5 text-[11px] font-semibold text-red-700"
                       title="Une autre tâche du même type est ouverte sur ce lead">En double</span>

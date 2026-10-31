@@ -31,6 +31,7 @@ import { PullWizard } from '../pull-wizard/pull-wizard';
 import { PullConnection } from '../pull-connection';
 import { PullDryRun } from '../pull-dry-run';
 import { RunHistory } from '../run-history';
+import { SourceScorePoints } from '../source-score-points';
 import { IngestionList } from '../ingestion-list';
 import { TasCard } from '@talisoft/ui/card';
 import { TasSpinner } from '@talisoft/ui/spinner';
@@ -41,13 +42,13 @@ import { Menu, MenuItem, TasMenuTrigger } from '@talisoft/ui/menu';
 import { SnackbarService } from '@talisoft/ui/snackbar';
 import { ConfirmDialogService } from '@talisoft/ui/confirm-dialog';
 import { BreadcrumbService, PermissionsService } from '@sankore/crm/common';
-import { LeadSourceDetailDto } from '@sankore/crm-api';
+import { LeadSourceDetailDto, UpdateLeadSourceRequest } from '@sankore/crm-api';
 import { PromoteButton } from '../../../components/promote-to-production/promote-to-production';
 
 @Component({
   selector: 'edit-lead-source',
   standalone: true,
-  imports: [PromoteButton, 
+  imports: [PromoteButton, SourceScorePoints, 
     RouterLink,
     TasCard,
     TasSpinner,
@@ -454,8 +455,7 @@ export class EditLeadSource implements OnInit {
     if (!src) return;
     this._sourcesService
       .update(src.id!, {
-        version: src.version,
-        label: src.label,
+        ...this._unchanged(src),
         settings: writeSettings(src.settings, src.mode, { pull }),
         costPerLead: pull.costPerLead,
         costCurrency: pull.costCurrency || null,
@@ -476,8 +476,7 @@ export class EditLeadSource implements OnInit {
 
     this._sourcesService
       .update(src.id!, {
-        version: src.version,
-        label: src.label,
+        ...this._unchanged(src),
         settings: writeSettings(src.settings, src.mode, { hostedForm }),
       })
       .pipe(catchError(() => EMPTY))
@@ -493,8 +492,7 @@ export class EditLeadSource implements OnInit {
 
     this._sourcesService
       .update(src.id!, {
-        version: src.version,
-        label: src.label,
+        ...this._unchanged(src),
         settings: writeSettings(src.settings, src.mode, { script }),
       })
       .pipe(catchError(() => EMPTY))
@@ -544,8 +542,7 @@ export class EditLeadSource implements OnInit {
 
     this._sourcesService
       .update(src.id!, {
-        version: src.version,
-        label: src.label,
+        ...this._unchanged(src),
         settings: writeSettings(src.settings, src.mode, { consent }),
       })
       .pipe(
@@ -563,14 +560,52 @@ export class EditLeadSource implements OnInit {
       });
   }
 
+  public onScorePointsSaved(scorePoints: number | null): void {
+    const src = this.source();
+    if (!src) return;
+
+    this._sourcesService
+      .update(src.id!, { ...this._unchanged(src), scorePoints })
+      .pipe(catchError(() => EMPTY))
+      .subscribe(() => {
+        this._snackbar.success(
+          'Enregistré',
+          scorePoints === null
+            ? 'La source reprend la valeur de son canal.'
+            : `Un lead de cette source vaut désormais ${scorePoints} points sur 20 dans son score.`,
+        );
+        this._load(src.id!);
+      });
+  }
+
+  /**
+   * Ce que la source a déjà, renvoyé par chaque onglet. Le serveur REMPLACE description,
+   * connexion, coût, agence, règle de dispatching et valeur de la source : un onglet qui ne les
+   * renvoyait pas les effaçait — enregistrer la correspondance des champs vidait la règle de
+   * dispatching choisie à la création, et une source active liée à une connexion refusait tout
+   * enregistrement.
+   */
+  private _unchanged(src: LeadSourceDetailDto): UpdateLeadSourceRequest {
+    return {
+      version: src.version,
+      label: src.label,
+      description: src.description ?? null,
+      platformConnectionId: src.platformConnectionId ?? null,
+      costPerLead: src.costPerLead?.amount ?? null,
+      costCurrency: src.costPerLead?.currency ?? null,
+      defaultAgencyId: src.defaultAgencyId ?? null,
+      defaultDispatchingRuleId: src.defaultDispatchingRuleId ?? null,
+      scorePoints: src.scorePoints ?? null,
+    };
+  }
+
   public onMappingSaved(rules: MappingRule[]): void {
     const src = this.source();
     if (!src) return;
 
     this._sourcesService
       .update(src.id!, {
-        version: src.version,
-        label: src.label,
+        ...this._unchanged(src),
         settings: writeSettings(src.settings, src.mode, {
           fieldMappings: toPersistedRules(rules),
         }),

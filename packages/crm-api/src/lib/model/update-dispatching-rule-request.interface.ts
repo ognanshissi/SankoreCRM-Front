@@ -21,5 +21,8 @@ export interface UpdateDispatchingRuleRequest {
     firstContactSla?: string;
     priority?: number;
     excludedAgentIds?: Array<string> | null;
+    firstContactSlaHot?: string | null;
+    firstContactSlaWarm?: string | null;
+    firstContactSlaCold?: string | null;
 }
 

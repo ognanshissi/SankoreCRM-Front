@@ -42,6 +42,9 @@ export interface DispatchRuleOverviewDto {
     medianDelayMinutes?: number | null;
     agents?: Array<DispatchAgentDto> | null;
     recent?: Array<DispatchFeedItemDto> | null;
+    firstContactSlaHot?: string | null;
+    firstContactSlaWarm?: string | null;
+    firstContactSlaCold?: string | null;
 }
 export enum DispatchRuleOverviewDtoKindEnum {
     Rule = 'Rule',

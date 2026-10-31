@@ -65,10 +65,10 @@ export const PORTAL_NAVIGATION: PortalNavGroup[] = [
       { id: 'dispatching', label: 'Dispatching', icon: 'feather:shuffle', link: '/leads/dispatching', anyOf: [PERMISSIONS.LEAD_DISPATCHING_RULE_READ] },
       {
         id: 'workflows',
-        label: 'Suivi des workflows',
+        label: 'Workflows',
         icon: 'feather:activity',
-        link: '/settings/workflows/analytiques',
-        anyOf: [PERMISSIONS.WORKFLOW_ANALYTICS_VIEW],
+        link: '/settings/workflows',
+        anyOf: [PERMISSIONS.WORKFLOW_READ],
         badge: 'workflows',
       },
     ],

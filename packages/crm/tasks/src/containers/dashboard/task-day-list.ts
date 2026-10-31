@@ -4,8 +4,8 @@ import { CrmTaskDto, CrmTaskDtoStatusEnum, LeadDto } from '@sankore/crm-api';
 import { TasIcon } from '@talisoft/ui/icon';
 import { provideTasPaginatorIntl } from '@talisoft/ui/table';
 import { ContactButtons } from './contact-buttons';
-import { DayGroup, dayChip, isFirstContact, SPREAD_THRESHOLD } from './my-day-meta';
-import { leadDisplayName, taskActionLabel } from './task-meta';
+import { DayGroup, dayChip, isFirstContact, SPREAD_THRESHOLD, taskUrgency } from './my-day-meta';
+import { fmtDur, leadDisplayName, taskActionLabel } from './task-meta';
 
 /** Le canal d'arrivée du lead, en clair, pour la ligne de sous-titre. */
 const SOURCE_LABELS: Record<string, string> = {
@@ -155,6 +155,25 @@ export class TaskDayList {
     if (!this.isOpen(task)) return task.completedAt ? `Faite ${dayChip(task.completedAt, this.now()).toLowerCase()}` : 'Faite';
     if (this.isLate(task)) return 'En retard';
     return task.dueAt ? dayChip(task.dueAt, this.now()) : '—';
+  }
+
+  /**
+   * Pourquoi la ligne est où elle est, quand l'heure ne le dit pas : un SLA qui va tomber, un lead
+   * chaud à contacter, ou une priorité haute. Un premier contact se reconnaît déjà à son « Contacter ».
+   */
+  public reason(task: CrmTaskDto): { label: string; tone: string } | null {
+    if (!this.isOpen(task) || this.isLate(task)) return null;
+    if (taskUrgency(task, this.now()) === 'sla')
+      return { label: `SLA dans ${fmtDur(new Date(task.slaDeadline!).getTime() - this.now())}`, tone: 'bg-amber-50 text-amber-800' };
+    // Un premier contact est toujours créé en priorité haute : ce badge-là s'affichait sur chacun
+    // et noyait « Lead chaud », la seule différence qui compte entre eux.
+    if (isFirstContact(task))
+      return task.leadId && this.leads().get(task.leadId)?.intentLevel === 'Hot'
+        ? { label: 'Lead chaud', tone: 'bg-red-50 text-red-700' }
+        : null;
+    if (task.priority === 'Critical') return { label: 'Critique', tone: 'bg-red-50 text-red-700' };
+    if (task.priority === 'High') return { label: 'Priorité haute', tone: 'bg-orange-50 text-orange-800' };
+    return null;
   }
 
   public firstContacts(group: DayGroup<CrmTaskDto>): number {

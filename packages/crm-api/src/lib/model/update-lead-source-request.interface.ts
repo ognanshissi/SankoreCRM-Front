@@ -24,5 +24,6 @@ export interface UpdateLeadSourceRequest {
     costCurrency?: string | null;
     defaultAgencyId?: string | null;
     defaultDispatchingRuleId?: string | null;
+    scorePoints?: number | null;
 }
 

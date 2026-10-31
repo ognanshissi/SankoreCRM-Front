@@ -31,6 +31,7 @@ import { NewTaskDrawer, NewTaskDrawerData } from '../task/new-task-drawer';
 import { agendaEntries } from './agenda-meta';
 import {
   addDays,
+  byUrgency,
   dayKey,
   dayHeading,
   DayGroup,
@@ -213,11 +214,13 @@ export class DashboardComponent implements OnInit, OnDestroy {
     return agent ? this.allTasks().filter((t) => t.assignedAgentId === agent) : this.allTasks();
   });
 
-  public readonly openTasks = computed(() =>
-    this._scopedTasks()
-      .filter(isOpen)
-      .sort((a, b) => new Date(a.dueAt ?? 0).getTime() - new Date(b.dueAt ?? 0).getTime()),
-  );
+  /** Par urgence (`byUrgency`) ; `groupByDay` les range ensuite par jour d'échéance sans changer cet ordre. */
+  public readonly openTasks = computed(() => {
+    const leads = this.leads();
+    const scoreOf = (t: CrmTaskDto) => (t.leadId ? leads.get(t.leadId)?.score : undefined);
+    const intentOf = (t: CrmTaskDto) => (t.leadId ? leads.get(t.leadId)?.intentLevel : undefined);
+    return this._scopedTasks().filter(isOpen).sort(byUrgency(this.now(), scoreOf, intentOf));
+  });
   public readonly overdueTasks = computed(() => {
     const n = this.now();
     return this.openTasks().filter((t) => deadlineOf(t) < n);

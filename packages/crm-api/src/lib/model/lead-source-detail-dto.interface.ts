@@ -51,6 +51,8 @@ export interface LeadSourceDetailDto {
     secrets?: Array<SecretHintDto> | null;
     lastRejectedAt?: string | null;
     lastRejectedReason?: string | null;
+    scorePoints?: number | null;
+    defaultScorePoints?: number;
 }
 export enum LeadSourceDetailDtoChannelTypeEnum {
     WebForm = 'WebForm',

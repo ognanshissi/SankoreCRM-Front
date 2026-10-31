@@ -401,6 +401,7 @@ model/integration-command-dto.interface.ts
 model/integration-command-list-item.interface.ts
 model/integration-command-list-page.interface.ts
 model/integration-reference-dto.interface.ts
+model/intent-thresholds-dto.interface.ts
 model/internal-settings.interface.ts
 model/invitation-sent-dto.interface.ts
 model/issue-credential-request.interface.ts
@@ -755,6 +756,8 @@ model/set-connection-secret-request.interface.ts
 model/set-exclusions-request.interface.ts
 model/set-household-resources-request.interface.ts
 model/set-intent-level-request.interface.ts
+model/set-intent-thresholds-request.interface.ts
+model/set-intent-thresholds-result-dto.interface.ts
 model/set-kyc-remote-policy-request.interface.ts
 model/set-legal-hold-request.interface.ts
 model/set-life-insurance-request.interface.ts

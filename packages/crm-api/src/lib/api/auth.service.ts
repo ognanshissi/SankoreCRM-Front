@@ -396,7 +396,7 @@ export class AuthApiService {
 
     /**
      * Start again from production\&#39;s configuration, in the test mode
-     * From « Mode test »: copies production\&#39;s products, workflows, project templates, lead sources and webhooks into the test mode, in the background — and empties its trial data first when wipeData. Keys and secrets never cross. The user is told on the bell. 409 TEST_MODE_REQUIRED.
+     * From « Mode test »: copies production\&#39;s products, workflows, project templates, lead sources and webhooks into the test mode, in the background — and empties its trial data first when wipeData. Keys and secrets never cross. The user is told on the bell. Needs tenant:test-mode and the edit right of each kind copied. 409 TEST_MODE_REQUIRED.
      * @param refreshTestModeRequest 
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.

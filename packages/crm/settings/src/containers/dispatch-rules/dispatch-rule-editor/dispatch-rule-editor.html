@@ -229,6 +229,32 @@
                 <number-stepper [formField]="formSchema.firstContactSlaMinutes" [step]="60" [format]="formatDuration" ariaLabel="le délai de premier contact"></number-stepper>
                 , sinon le lead remonte au responsable de l'agent
               </div>
+              <label class="mt-3 ml-6 flex items-start gap-2 text-sm text-slate-700 cursor-pointer">
+                <input type="checkbox" class="mt-0.5 accent-primary" [formField]="formSchema.slaByIntent" />
+                <span>
+                  Adapter le délai à la température du lead
+                  <span class="block text-xs text-slate-500">Un lead chaud refroidit en une heure : il passe avant les autres.</span>
+                </span>
+              </label>
+              @if (model().slaByIntent) {
+                <div class="mt-3 ml-6 grid gap-2 sm:grid-cols-3">
+                  <div class="flex flex-wrap items-center gap-2 text-sm text-slate-700">
+                    <span class="inline-flex items-center gap-1.5"><span class="size-2 rounded-full bg-red-500" aria-hidden="true"></span>Chaud</span>
+                    <number-stepper [formField]="formSchema.slaHotMinutes" [step]="15" [format]="formatDuration" ariaLabel="le délai d'un lead chaud"></number-stepper>
+                  </div>
+                  <div class="flex flex-wrap items-center gap-2 text-sm text-slate-700">
+                    <span class="inline-flex items-center gap-1.5"><span class="size-2 rounded-full bg-amber-500" aria-hidden="true"></span>Tiède</span>
+                    <number-stepper [formField]="formSchema.slaWarmMinutes" [step]="15" [format]="formatDuration" ariaLabel="le délai d'un lead tiède"></number-stepper>
+                  </div>
+                  <div class="flex flex-wrap items-center gap-2 text-sm text-slate-700">
+                    <span class="inline-flex items-center gap-1.5"><span class="size-2 rounded-full bg-blue-500" aria-hidden="true"></span>Froid</span>
+                    <number-stepper [formField]="formSchema.slaColdMinutes" [step]="60" [format]="formatDuration" ariaLabel="le délai d'un lead froid"></number-stepper>
+                  </div>
+                  <p class="sm:col-span-3 text-xs text-slate-500">
+                    Un lead encore sans score garde le délai ci-dessus. Les seuils chaud et tiède se règlent sur l'écran Dispatching.
+                  </p>
+                </div>
+              }
             </div>
           </div>
         </tas-card>

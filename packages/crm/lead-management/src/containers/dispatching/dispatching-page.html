@@ -88,6 +88,7 @@
         <p class="px-1 text-xs text-slate-500">
           La règle active de plus haute priorité reçoit les leads ; une source peut désigner une autre règle pour les siens.
         </p>
+        <intent-thresholds-card class="mt-2 block" [canManage]="canManage()"></intent-thresholds-card>
       </aside>
 
       @if (selected(); as r) {

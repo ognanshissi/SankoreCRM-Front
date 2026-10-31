@@ -47,6 +47,11 @@ class DispatchRuleFormModel {
   public maxLeadsPerAgent!: number;
   public maxTasksPerAgent!: number;
   public firstContactSlaMinutes!: number;
+  /** Un délai par température du lead ; décoché, les trois partent à null (le délai de la règle). */
+  public slaByIntent!: boolean;
+  public slaHotMinutes!: number;
+  public slaWarmMinutes!: number;
+  public slaColdMinutes!: number;
   public antiMonopolyThreshold!: number;
   public excludedAgentIds!: string[];
 
@@ -59,6 +64,10 @@ class DispatchRuleFormModel {
     m.maxLeadsPerAgent = 30;
     m.maxTasksPerAgent = 20;
     m.firstContactSlaMinutes = 24 * 60;
+    m.slaByIntent = false;
+    m.slaHotMinutes = 30;
+    m.slaWarmMinutes = 4 * 60;
+    m.slaColdMinutes = 24 * 60;
     m.antiMonopolyThreshold = 5;
     m.excludedAgentIds = [];
     return m;
@@ -72,6 +81,10 @@ class DispatchRuleFormModel {
     m.maxLeadsPerAgent = dto.maxLeadsPerAgent || m.maxLeadsPerAgent;
     m.maxTasksPerAgent = dto.maxTasksPerAgent ?? 0;
     m.firstContactSlaMinutes = timeSpanToMinutes(dto.firstContactSla) || m.firstContactSlaMinutes;
+    m.slaByIntent = !!(dto.firstContactSlaHot || dto.firstContactSlaWarm || dto.firstContactSlaCold);
+    m.slaHotMinutes = timeSpanToMinutes(dto.firstContactSlaHot) ?? Math.min(m.slaHotMinutes, m.firstContactSlaMinutes);
+    m.slaWarmMinutes = timeSpanToMinutes(dto.firstContactSlaWarm) ?? Math.min(m.slaWarmMinutes, m.firstContactSlaMinutes);
+    m.slaColdMinutes = timeSpanToMinutes(dto.firstContactSlaCold) ?? m.firstContactSlaMinutes;
     m.antiMonopolyThreshold = dto.antiMonopolyThreshold || m.antiMonopolyThreshold;
     m.excludedAgentIds = [...(dto.excludedAgentIds ?? [])];
     return m;
@@ -127,6 +140,10 @@ export class DispatchRuleEditorPage implements OnInit {
     min(schema.maxLeadsPerAgent, 1);
     min(schema.maxTasksPerAgent, 0);
     min(schema.firstContactSlaMinutes, 60);
+    // Un lead chaud se rappelle dans le quart d'heure : la borne descend à 15 min pour les trois.
+    min(schema.slaHotMinutes, 15);
+    min(schema.slaWarmMinutes, 15);
+    min(schema.slaColdMinutes, 15);
     min(schema.antiMonopolyThreshold, 1);
     for (const key of WEIGHT_KEYS) {
       min(schema.weights[key], 0);
@@ -312,6 +329,9 @@ export class DispatchRuleEditorPage implements OnInit {
         // Envoyé explicitement : absent, il repartait à 0 et écrasait le plafond réglé. 0 = pas de limite.
         maxTasksPerAgent: value.maxTasksPerAgent,
         firstContactSla: minutesToTimeSpan(value.firstContactSlaMinutes),
+        firstContactSlaHot: value.slaByIntent ? minutesToTimeSpan(value.slaHotMinutes) : null,
+        firstContactSlaWarm: value.slaByIntent ? minutesToTimeSpan(value.slaWarmMinutes) : null,
+        firstContactSlaCold: value.slaByIntent ? minutesToTimeSpan(value.slaColdMinutes) : null,
         antiMonopolyThreshold: value.antiMonopolyThreshold,
         priority: plan.self,
         excludedAgentIds: value.excludedAgentIds,
@@ -411,6 +431,10 @@ export class DispatchRuleEditorPage implements OnInit {
         maxLeadsPerAgent: rule.maxLeadsPerAgent,
         maxTasksPerAgent: rule.maxTasksPerAgent,
         firstContactSla: rule.firstContactSla,
+        // Renvoyés tels quels : le serveur les remplace, et un réordonnancement les aurait effacés.
+        firstContactSlaHot: rule.firstContactSlaHot ?? null,
+        firstContactSlaWarm: rule.firstContactSlaWarm ?? null,
+        firstContactSlaCold: rule.firstContactSlaCold ?? null,
         antiMonopolyThreshold: rule.antiMonopolyThreshold,
         priority,
         excludedAgentIds: rule.excludedAgentIds ?? [],

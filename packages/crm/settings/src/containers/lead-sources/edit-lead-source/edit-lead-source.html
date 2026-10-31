@@ -348,6 +348,12 @@
             </div>
           </tas-card>
 
+          <source-score-points
+            [source]="source()!"
+            [canWrite]="canWrite()"
+            (save)="onScorePointsSaved($event)"
+          ></source-score-points>
+
           <!-- Secrets -->
           @if (source()!.secrets?.length) {
             <tas-card class="block mt-4">

@@ -126,6 +126,57 @@ export function isFirstContact(task: CrmTaskDto): boolean {
   return task.type === 'FirstContact';
 }
 
+// ——— Ordre dans la journée ———
+
+/** Un SLA qui expire dans moins de deux heures fait passer la tâche devant le reste de sa journée. */
+export const SLA_AT_RISK_MS = 2 * 3_600_000;
+
+/**
+ * Les trois paliers d'une journée (choix du propriétaire, 2026-10-31) : le SLA qui va tomber, puis
+ * les premiers contacts — un lead chaud refroidit en une heure —, puis le reste. Les rendez-vous et
+ * les rappels promis ne sont pas des tâches : ils ont leurs onglets, à leur heure.
+ */
+export type TaskUrgency = 'sla' | 'first-contact' | 'other';
+
+export function taskUrgency(task: CrmTaskDto, now: number): TaskUrgency {
+  if (task.slaDeadline && new Date(task.slaDeadline).getTime() - now < SLA_AT_RISK_MS) return 'sla';
+  return isFirstContact(task) ? 'first-contact' : 'other';
+}
+
+const URGENCY_RANK: Record<TaskUrgency, number> = { sla: 0, 'first-contact': 1, other: 2 };
+/** Les noms du contrat (`LeadIntentLevel`) ; un lead non évalué passe après les froids. */
+const INTENT_RANK: Record<string, number> = { Hot: 0, Warm: 1, Cold: 2 };
+const PRIORITY_RANK: Record<string, number> = { Critical: 0, High: 1, Medium: 2, Low: 3 };
+
+const time = (iso: string | null | undefined) => (iso ? new Date(iso).getTime() : Infinity);
+
+/**
+ * L'ordre des tâches ouvertes. Dans un palier : le SLA le plus proche ; pour les premiers contacts,
+ * le lead le plus chaud puis celui qui attend depuis le plus longtemps (température, lot 3) ; sinon
+ * la priorité puis l'échéance. À égalité, le meilleur score de lead, puis la plus ancienne, puis
+ * l'id — un ordre stable : deux rechargements ne doivent pas permuter deux lignes.
+ */
+export function byUrgency(
+  now: number,
+  scoreOf: (task: CrmTaskDto) => number | undefined = () => undefined,
+  intentOf: (task: CrmTaskDto) => string | null | undefined = () => undefined,
+) {
+  return (a: CrmTaskDto, b: CrmTaskDto): number => {
+    const ua = taskUrgency(a, now);
+    const ub = taskUrgency(b, now);
+    if (ua !== ub) return URGENCY_RANK[ua] - URGENCY_RANK[ub];
+    const within =
+      ua === 'sla' ? time(a.slaDeadline) - time(b.slaDeadline)
+      : ua === 'first-contact'
+        ? (INTENT_RANK[intentOf(a) ?? ''] ?? 3) - (INTENT_RANK[intentOf(b) ?? ''] ?? 3) || time(a.createdAt) - time(b.createdAt)
+      : (PRIORITY_RANK[a.priority ?? ''] ?? 2) - (PRIORITY_RANK[b.priority ?? ''] ?? 2) || time(a.dueAt) - time(b.dueAt);
+    return within
+      || (scoreOf(b) ?? 0) - (scoreOf(a) ?? 0)
+      || time(a.createdAt) - time(b.createdAt)
+      || (a.id ?? '').localeCompare(b.id ?? '');
+  };
+}
+
 /**
  * Étale les premiers contacts d'un jour sur ce jour et les quatre jours ouvrés suivants, à part
  * égale, en gardant l'heure de chacun. Les premiers (dans l'ordre de la journée) restent où ils

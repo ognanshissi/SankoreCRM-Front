@@ -1018,7 +1018,7 @@
           "Auth"
         ],
         "summary": "Start again from production's configuration, in the test mode",
-        "description": "From « Mode test »: copies production's products, workflows, project templates, lead sources and webhooks into the test mode, in the background — and empties its trial data first when wipeData. Keys and secrets never cross. The user is told on the bell. 409 TEST_MODE_REQUIRED.",
+        "description": "From « Mode test »: copies production's products, workflows, project templates, lead sources and webhooks into the test mode, in the background — and empties its trial data first when wipeData. Keys and secrets never cross. The user is told on the bell. Needs tenant:test-mode and the edit right of each kind copied. 409 TEST_MODE_REQUIRED.",
         "operationId": "RefreshTestMode",
         "requestBody": {
           "content": {
@@ -14850,6 +14850,61 @@
         }
       }
     },
+    "/api/v1/lead-settings/intent-thresholds": {
+      "get": {
+        "tags": [
+          "Lead Settings"
+        ],
+        "summary": "Scores from which a lead reads warm and hot",
+        "description": "Hot from `hot`, warm from `warm`, cold below. Any signed-in user: the lists and « Ma journée » read them.",
+        "operationId": "GetIntentThresholds",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IntentThresholdsDto"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Lead Settings"
+        ],
+        "summary": "Change the warm and hot thresholds",
+        "description": "Both at once, 1 ≤ warm < hot ≤ 100 (else 400 INTENT_THRESHOLDS_INVALID). The open leads already scored take the temperature of their stored score at once; the answer says how many. cooldownEnabled (optional) switches the inactivity penalty; it acts at the next rescore. Requires permission: lead:dispatching-rule:manage — the bands drive the dispatch's SLA.",
+        "operationId": "SetIntentThresholds",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetIntentThresholdsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SetIntentThresholdsResultDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request"
+          }
+        }
+      }
+    },
     "/api/v1/lead-settings/{key}": {
       "get": {
         "tags": [
@@ -17035,6 +17090,9 @@
         "responses": {
           "204": {
             "description": "No Content"
+          },
+          "403": {
+            "description": "Forbidden"
           },
           "404": {
             "description": "Not Found"
@@ -38487,6 +38545,21 @@
               "format": "uuid"
             },
             "nullable": true
+          },
+          "firstContactSlaHot": {
+            "type": "string",
+            "format": "date-span",
+            "nullable": true
+          },
+          "firstContactSlaWarm": {
+            "type": "string",
+            "format": "date-span",
+            "nullable": true
+          },
+          "firstContactSlaCold": {
+            "type": "string",
+            "format": "date-span",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -38886,6 +38959,11 @@
           "defaultDispatchingRuleId": {
             "type": "string",
             "format": "uuid",
+            "nullable": true
+          },
+          "scorePoints": {
+            "type": "integer",
+            "format": "int32",
             "nullable": true
           }
         },
@@ -41390,6 +41468,21 @@
               "$ref": "#/components/schemas/DispatchFeedItemDto"
             },
             "nullable": true
+          },
+          "firstContactSlaHot": {
+            "type": "string",
+            "format": "date-span",
+            "nullable": true
+          },
+          "firstContactSlaWarm": {
+            "type": "string",
+            "format": "date-span",
+            "nullable": true
+          },
+          "firstContactSlaCold": {
+            "type": "string",
+            "format": "date-span",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -41495,6 +41588,21 @@
               "type": "string",
               "format": "uuid"
             },
+            "nullable": true
+          },
+          "firstContactSlaHot": {
+            "type": "string",
+            "format": "date-span",
+            "nullable": true
+          },
+          "firstContactSlaWarm": {
+            "type": "string",
+            "format": "date-span",
+            "nullable": true
+          },
+          "firstContactSlaCold": {
+            "type": "string",
+            "format": "date-span",
             "nullable": true
           }
         },
@@ -44512,6 +44620,23 @@
         },
         "additionalProperties": false
       },
+      "IntentThresholdsDto": {
+        "type": "object",
+        "properties": {
+          "warm": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "hot": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "cooldownEnabled": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
       "InternalSettings": {
         "required": [
           "$mode"
@@ -47096,6 +47221,15 @@
           "lastRejectedReason": {
             "type": "string",
             "nullable": true
+          },
+          "scorePoints": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "defaultScorePoints": {
+            "type": "integer",
+            "format": "int32"
           }
         },
         "additionalProperties": false
@@ -56484,6 +56618,45 @@
         },
         "additionalProperties": false
       },
+      "SetIntentThresholdsRequest": {
+        "type": "object",
+        "properties": {
+          "warm": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "hot": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "cooldownEnabled": {
+            "type": "boolean",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "SetIntentThresholdsResultDto": {
+        "type": "object",
+        "properties": {
+          "warm": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "hot": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "leadsUpdated": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "cooldownEnabled": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
       "SetKycRemotePolicyRequest": {
         "type": "object",
         "properties": {
@@ -60600,6 +60773,21 @@
               "format": "uuid"
             },
             "nullable": true
+          },
+          "firstContactSlaHot": {
+            "type": "string",
+            "format": "date-span",
+            "nullable": true
+          },
+          "firstContactSlaWarm": {
+            "type": "string",
+            "format": "date-span",
+            "nullable": true
+          },
+          "firstContactSlaCold": {
+            "type": "string",
+            "format": "date-span",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -60830,6 +61018,11 @@
           "defaultDispatchingRuleId": {
             "type": "string",
             "format": "uuid",
+            "nullable": true
+          },
+          "scorePoints": {
+            "type": "integer",
+            "format": "int32",
             "nullable": true
           }
         },

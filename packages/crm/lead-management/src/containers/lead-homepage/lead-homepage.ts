@@ -61,13 +61,14 @@ function leadStatusMeta(status: string | null | undefined): { label: string; sev
   }
 }
 
+// L'API envoie le NOM du niveau (`Unknown`, `Cold`, `Warm`, `Hot`). Ces trois fonctions comparaient
+// à « 0 »…« 3 » : rien ne correspondait et la colonne affichait « — » sur tous les leads.
 function intentMeta(level: string | number | null | undefined): { label: string; severity: Severity } {
   switch (String(level)) {
-    case '0': return { label: 'Froid',      severity: 'neutral' };
-    case '1': return { label: 'Tiède',      severity: 'info' };
-    case '2': return { label: 'Chaud',      severity: 'warning' };
-    case '3': return { label: 'Très chaud', severity: 'error' };
-    default:  return { label: '—',          severity: 'neutral' };
+    case 'Cold': return { label: 'Froid', severity: 'info' };
+    case 'Warm': return { label: 'Tiède', severity: 'warning' };
+    case 'Hot':  return { label: 'Chaud', severity: 'error' };
+    default:     return { label: '—',     severity: 'neutral' };
   }
 }
 
@@ -99,13 +100,16 @@ const SOURCE_LABELS: Record<string, string> = {
  */
 const ALL_SOURCES_OPTION = { label: 'Toutes', value: '' };
 
+// Les noms du contrat (`LeadIntentLevel`). Les anciennes valeurs « 0 »…« 3 » partaient en nombre et
+// le serveur les lisait décalées d'un cran : « Froid » filtrait les leads non évalués, « Chaud » les
+// tièdes. Une ancienne URL est relue par INTENT_LEGACY_PARAM, selon l'énumération du serveur.
 const INTENT_FILTER_OPTIONS = [
   { label: 'Toutes', value: '' },
-  { label: 'Froid',      value: '0' },
-  { label: 'Tiède',      value: '1' },
-  { label: 'Chaud',      value: '2' },
-  { label: 'Très chaud', value: '3' },
+  { label: 'Froid', value: 'Cold' },
+  { label: 'Tiède', value: 'Warm' },
+  { label: 'Chaud', value: 'Hot' },
 ];
+const INTENT_LEGACY_PARAM: Record<string, string> = { '1': 'Cold', '2': 'Warm', '3': 'Hot' };
 
 // ——— Pipeline stages (Kanban columns) ———
 
@@ -443,7 +447,7 @@ export class LeadHomepage implements OnInit {
     // aucune correspondance n'existe entre les deux vocabulaires.
     if (params['leadSource']) this.filterLeadSourceId.set(params['leadSource']);
     if (params['agency']) this.filterAgencyId.set(params['agency']);
-    if (params['intent']) this.filterIntent.set(params['intent']);
+    if (params['intent']) this.filterIntent.set(INTENT_LEGACY_PARAM[params['intent']] ?? params['intent']);
     if (params['owner'] && this.canFilterByAgent()) this.filterOwnerId.set(params['owner']);
     if (params['queue'] === '1') this.filterAwaitingDispatch.set(true);
     this.filterCustom.set(this._route.snapshot.queryParamMap.getAll('cf'));
@@ -676,21 +680,19 @@ export class LeadHomepage implements OnInit {
 
   public intentDotClass(level: string | number | null | undefined): string {
     switch (String(level)) {
-      case '0': return 'text-slate-500';
-      case '1': return 'text-blue-600';
-      case '2': return 'text-amber-600';
-      case '3': return 'text-red-600';
-      default:  return 'text-slate-400';
+      case 'Cold': return 'text-blue-600';
+      case 'Warm': return 'text-amber-600';
+      case 'Hot':  return 'text-red-600';
+      default:     return 'text-slate-400';
     }
   }
 
   public intentDotBg(level: string | number | null | undefined): string {
     switch (String(level)) {
-      case '0': return 'bg-slate-400';
-      case '1': return 'bg-blue-500';
-      case '2': return 'bg-amber-500';
-      case '3': return 'bg-red-500';
-      default:  return 'bg-slate-300';
+      case 'Cold': return 'bg-blue-500';
+      case 'Warm': return 'bg-amber-500';
+      case 'Hot':  return 'bg-red-500';
+      default:     return 'bg-slate-300';
     }
   }
 
@@ -831,7 +833,7 @@ export class LeadHomepage implements OnInit {
 
     const status = (this.filterStatus() || undefined) as ListLeadStatus | undefined;
     const agencyId = this.filterAgencyId() || undefined;
-    const intent = this.filterIntent() ? Number(this.filterIntent()) as any : undefined;
+    const intent = (this.filterIntent() || undefined) as 'Cold' | 'Warm' | 'Hot' | undefined;
     const search = this.searchQuery() || undefined;
     const leadSourceConfigId = this.filterLeadSourceId() || undefined;
     const ownerId = this.filterOwnerId() || undefined;

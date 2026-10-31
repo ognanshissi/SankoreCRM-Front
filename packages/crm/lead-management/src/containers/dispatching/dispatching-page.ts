@@ -18,6 +18,7 @@ import {
   LeadDispatchingApiService,
 } from '@sankore/crm-api';
 import { BreadcrumbService, PermissionsService } from '@sankore/crm/common';
+import { IntentThresholdsCard } from './intent-thresholds-card';
 import { formatDuration, formatNumber, label, SOURCE_LABELS } from '../reports/report-labels';
 
 type PeriodKey = 'jour' | '7j' | '30j';
@@ -71,7 +72,7 @@ interface Insight {
  */
 @Component({
   templateUrl: './dispatching-page.html',
-  imports: [RouterLink, Anchor, Button, TasIcon, TasSpinner, TasTable, TasSwitch],
+  imports: [RouterLink, Anchor, Button, TasIcon, TasSpinner, TasTable, TasSwitch, IntentThresholdsCard],
 })
 export class DispatchingPage implements OnInit {
   private readonly _api = inject(LeadDispatchingApiService);
@@ -128,6 +129,12 @@ export class DispatchingPage implements OnInit {
       { k: 'Plafond de tâches', v: r.maxTasksPerAgent ? `${r.maxTasksPerAgent} ouvertes par agent` : 'Aucun' },
       { k: 'Anti-monopole', v: r.antiMonopolyThreshold ? `${r.antiMonopolyThreshold} leads chauds max` : 'Aucun' },
       { k: 'Premier contact', v: formatSla(r.firstContactSla) },
+      ...(r.firstContactSlaHot || r.firstContactSlaWarm || r.firstContactSlaCold
+        ? [{
+            k: 'Selon la température',
+            v: `chaud ${formatSla(r.firstContactSlaHot ?? r.firstContactSla)} · tiède ${formatSla(r.firstContactSlaWarm ?? r.firstContactSla)} · froid ${formatSla(r.firstContactSlaCold ?? r.firstContactSla)}`,
+          }]
+        : []),
       { k: 'Agents exclus', v: r.excludedAgentCount ? String(r.excludedAgentCount) : 'Aucun' },
     ];
     if (r.pinnedSources?.length) items.push({ k: 'Sources liées', v: r.pinnedSources.join(', ') });
