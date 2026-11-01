@@ -18,14 +18,14 @@ export interface TaskWorkDrawerData {
 export type TaskWorkDrawerResult =
   | { action: 'completed' }
   | { action: 'reassign'; task: CrmTaskDto }
-  | { action: 'open-lead'; leadId: string }
+  | { action: 'open-subject'; route: string[] }
   | { action: 'open-task'; taskId: string };
 
 /**
  * Le panneau de travail d'une tâche, dans un drawer. Il était la colonne de droite de l'ancienne
  * « Ma journée » ; la nouvelle mise en page lui laisse la largeur de la liste, et c'est au clic
  * sur une ligne qu'il s'ouvre. Il garde son rôle : clore la tâche en consignant le résultat de
- * l'appel sur le lead, ce que le drawer « Terminer » des autres écrans ne fait pas.
+ * l'appel sur le lead (ou la note sur la tâche quand elle porte sur autre chose), ce que le drawer « Terminer » des autres écrans ne fait pas.
  */
 @Component({
   selector: 'task-work-drawer',
@@ -50,7 +50,7 @@ export type TaskWorkDrawerResult =
             [now]="now"
             (completed)="close({ action: 'completed' })"
             (reassignRequested)="close({ action: 'reassign', task: $event })"
-            (openLeadRequested)="close({ action: 'open-lead', leadId: $event })"
+            (openSubjectRequested)="close({ action: 'open-subject', route: $event })"
           ></task-work-panel>
         </div>
       </tas-drawer-content>

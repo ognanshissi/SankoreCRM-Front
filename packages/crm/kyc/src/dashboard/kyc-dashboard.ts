@@ -163,6 +163,13 @@ export class KycDashboardPage implements OnInit {
   private readonly _destroyRef = inject(DestroyRef);
 
   public readonly canOpenFile = this._permissions.can('kyc:manage');
+  /**
+   * Sans « kyc:read:all » (Agent, Agent commercial), le serveur ne renvoie déjà que les dossiers
+   * de l'utilisateur (responsable, sinon créateur) : « Mon agence » et « Toutes les agences »
+   * montraient la même liste sous un faux libellé. Le sélecteur disparaît et la liste n'envoie
+   * pas « mine », qui ne retiendrait que le responsable et cacherait les dossiers créés.
+   */
+  public readonly canReadAll = this._permissions.can('kyc:read:all');
 
   /** Remonté au shell pour le badge du menu : dossiers qui attendent l'utilisateur. */
   public readonly awaitingMeCountChange = output<number>();
@@ -417,7 +424,7 @@ export class KycDashboardPage implements OnInit {
   private _load(): void {
     this.isLoading.set(true);
     this.loadError.set(null);
-    const scope = this.scope();
+    const scope = this.canReadAll() ? this.scope() : 'all';
 
     const base: KycDashboardFilters = {
       status: '',
@@ -537,7 +544,7 @@ export class KycDashboardPage implements OnInit {
     this._router.navigate([], {
       relativeTo: this._route,
       queryParams: {
-        scope: this.scope(),
+        scope: this.canReadAll() ? this.scope() : null,
         q: this._appliedQuery() || null,
         file: this.selectedId(),
       },

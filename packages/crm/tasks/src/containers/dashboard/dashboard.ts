@@ -455,7 +455,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
           if (this.isAgentLayout()) this.loadScorecard();
           break;
         case 'reassign':  this.openReassign(result.task); break;
-        case 'open-lead': this._router.navigate(['/leads', result.leadId]); break;
+        case 'open-subject': this._router.navigate(result.route); break;
         case 'open-task': this._router.navigate(['/tasks', result.taskId]); break;
       }
     });

@@ -1,12 +1,14 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input, linkedSignal, output } from '@angular/core';
+import { toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { HttpErrorResponse } from '@angular/common/http';
 import { form, FormField, FormRoot, submit, validate } from '@angular/forms/signals';
-import { catchError, firstValueFrom, map, of } from 'rxjs';
+import { catchError, firstValueFrom, map, of, switchMap } from 'rxjs';
 import { Button } from '@talisoft/ui/button';
 import { TasFormField, TasLabel, TasError } from '@talisoft/ui/form-field';
 import { TasIcon } from '@talisoft/ui/icon';
 import { TasInput } from '@talisoft/ui/input';
 import { TasSelect } from '@talisoft/ui/select';
+import { TasTag } from '@talisoft/ui/tag';
 import { SnackbarService } from '@talisoft/ui/snackbar';
 import {
   CrmTaskDto,
@@ -15,6 +17,7 @@ import {
   LeadsApiService,
   LogActivityRequestOutcomeEnum,
   LogActivityRequestTypeEnum,
+  TaskSubjectDto,
   TasksApiService,
 } from '@sankore/crm-api';
 import {
@@ -29,6 +32,7 @@ import {
   workStatusLabel,
 } from './task-meta';
 import { SYSTEM_TASK_TYPES } from '@sankore/crm/common';
+import { subjectRoute } from '../task/task-meta';
 
 /** Types pour lesquels l'agent doit dire comment l'échange s'est terminé avant de clore. */
 const TYPES_REQUIRING_RESULT = new Set<string>([
@@ -36,6 +40,20 @@ const TYPES_REQUIRING_RESULT = new Set<string>([
   SYSTEM_TASK_TYPES.Qualification,
   SYSTEM_TASK_TYPES.SlaFollowUp,
 ]);
+
+/** Tâches internes d'un lead : personne n'y appelle personne, il n'y a pas de résultat d'appel. */
+const TYPES_WITHOUT_CALL = new Set<string>([
+  SYSTEM_TASK_TYPES.ScoreReview,
+  SYSTEM_TASK_TYPES.OwnerHandover,
+  SYSTEM_TASK_TYPES.ManualDispatch,
+]);
+
+const SUBJECT_META: Record<string, { label: string; icon: string }> = {
+  Lead:    { label: 'Lead',        icon: 'feather:target' },
+  Client:  { label: 'Client',      icon: 'feather:users' },
+  Project: { label: 'Projet',      icon: 'feather:briefcase' },
+  KycFile: { label: 'Dossier KYC', icon: 'feather:user-check' },
+};
 
 const OUTCOME_OPTIONS: { label: string; value: string }[] = [
   { label: 'Intéressé, rendez-vous fixé', value: LogActivityRequestOutcomeEnum.Rescheduled },
@@ -63,13 +81,14 @@ const HOUR_FMT = new Intl.DateTimeFormat('fr-FR', { hour: '2-digit', minute: '2-
 
 /**
  * Panneau de travail d'une tâche, à droite de la liste « Mes tâches ». L'agent y clôt la tâche sans
- * quitter l'écran : le résultat d'appel et la note sont enregistrés comme activité du lead, seul
- * endroit où le contrat les garde — `POST /tasks/{id}/complete` ne prend pas de corps.
+ * quitter l'écran : sur un lead, le résultat d'appel et la note sont enregistrés comme activité du
+ * lead ; sur un client, un projet ou un dossier KYC, la note devient un commentaire de la tâche —
+ * `POST /tasks/{id}/complete` ne prend pas de corps.
  */
 @Component({
   selector: 'task-work-panel',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [Button, TasIcon, TasFormField, TasLabel, TasError, TasInput, TasSelect, FormRoot, FormField],
+  imports: [Button, TasIcon, TasTag, TasFormField, TasLabel, TasError, TasInput, TasSelect, FormRoot, FormField],
   templateUrl: './task-work-panel.html',
 })
 export class TaskWorkPanel {
@@ -84,7 +103,7 @@ export class TaskWorkPanel {
 
   public completed = output<CrmTaskDto>();
   public reassignRequested = output<CrmTaskDto>();
-  public openLeadRequested = output<string>();
+  public openSubjectRequested = output<string[]>();
 
   public readonly outcomeOptions = OUTCOME_OPTIONS;
   public readonly journey = LEAD_JOURNEY;
@@ -104,7 +123,39 @@ export class TaskWorkPanel {
     );
   });
 
-  public readonly requiresResult = computed(() => TYPES_REQUIRING_RESULT.has(this.task().type ?? ''));
+  public readonly requiresResult = computed(() => this.asksResult() && TYPES_REQUIRING_RESULT.has(this.task().type ?? ''));
+
+  /**
+   * Le résultat d'appel n'existe qu'en activité de lead (`logLeadActivity`) : une tâche sur un client,
+   * un projet ou un dossier KYC — une réclamation à traiter, une pièce à relancer — n'en a pas, et le
+   * champ y était saisi pour rien.
+   */
+  public readonly asksResult = computed(() => !!this.task().leadId && !TYPES_WITHOUT_CALL.has(this.task().type ?? ''));
+
+  /** Ce sur quoi porte la tâche, nommé par le serveur : le DTO de liste n'a que le type et l'id. */
+  public readonly subject = toSignal(
+    toObservable(computed(() => this.task().id)).pipe(
+      switchMap((id) =>
+        id
+          ? this._tasksApi.getCrmTaskDetail(id).pipe(
+              map((d) => d.subject ?? null),
+              catchError(() => of(null)),
+            )
+          : of(null),
+      ),
+    ),
+    { initialValue: null as TaskSubjectDto | null },
+  );
+  public readonly subjectMeta = computed(() => {
+    const type = this.subject()?.type ?? this.task().entityType ?? (this.task().leadId ? 'Lead' : null);
+    return type ? SUBJECT_META[type] ?? null : null;
+  });
+  public readonly subjectLabel = computed(() =>
+    this.task().leadId ? this.leadName() || this.subject()?.label || 'Lead' : this.subject()?.label ?? this.subjectMeta()?.label ?? '',
+  );
+  public readonly subjectLink = computed(() =>
+    subjectRoute(this.subject()?.type ?? this.task().entityType, this.subject()?.id ?? this.task().entityId),
+  );
   public readonly isOpen = computed(
     () =>
       this.task().status === CrmTaskDtoStatusEnum.Pending ||
@@ -170,13 +221,28 @@ export class TaskWorkPanel {
       if (!done) return;
 
       const note = value.note.trim();
+      if (!task.leadId && note) {
+        // Hors lead, la note n'avait nulle part où aller et se perdait : elle devient un commentaire
+        // de la tâche, lisible sur sa fiche.
+        const commented = await firstValueFrom(
+          this._tasksApi.addCrmTaskComment(task.id, { body: note }).pipe(
+            map(() => true),
+            catchError(() => of(false)),
+          ),
+        );
+        if (!commented) {
+          this._snackbar.info('Tâche terminée', "La note n'a pas pu être enregistrée sur la tâche.");
+          this.completed.emit(task);
+          return;
+        }
+      }
       if (task.leadId && (value.outcome || note)) {
         // La tâche est déjà close : un échec ici ne doit pas la faire paraître ouverte, seulement
         // prévenir que le compte rendu est à ressaisir sur la fiche du lead.
         const logged = await firstValueFrom(
           this._leadsApi
             .logLeadActivity(task.leadId, {
-              type: LogActivityRequestTypeEnum.Call,
+              type: value.outcome ? LogActivityRequestTypeEnum.Call : LogActivityRequestTypeEnum.Note,
               subject: `${this.actionLabel()} — tâche terminée`,
               notes: note || null,
               outcome: (value.outcome as LogActivityRequestOutcomeEnum) || null,

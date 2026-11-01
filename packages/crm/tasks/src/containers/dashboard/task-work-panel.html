@@ -1,16 +1,25 @@
 <div class="flex flex-col gap-5 p-6">
-  <!-- En-tête : tâche et lead -->
-  <div>
-    <p class="text-xs text-slate-500">Tâche · {{ actionLabel() }}</p>
-    @if (task().leadId) {
-      <button type="button" class="text-xl font-bold text-primary hover:underline text-left" (click)="openLeadRequested.emit(task().leadId!)">
-        {{ leadName() || 'Lead' }}
-      </button>
-    } @else {
-      <p class="text-xl font-bold text-primary">{{ task().title ?? typeLabel(task()) }}</p>
+  <!-- En-tête : type, tâche et ce sur quoi elle porte -->
+  <div class="flex flex-col gap-1.5">
+    <div>
+      <tas-tag severity="info">{{ typeLabel(task()) }}</tas-tag>
+    </div>
+    <p class="text-xl font-bold text-primary">{{ task().leadId ? actionLabel() : task().title || typeLabel(task()) }}</p>
+    @if (subjectMeta(); as meta) {
+      <p class="flex items-center gap-1.5 text-sm text-slate-600">
+        <tas-icon [iconName]="meta.icon" style="font-size:14px"></tas-icon>
+        <span class="text-slate-500">{{ meta.label }} ·</span>
+        @if (subjectLink(); as route) {
+          <button type="button" class="font-medium text-primary hover:underline text-left" (click)="openSubjectRequested.emit(route)">
+            {{ subjectLabel() }}
+          </button>
+        } @else {
+          <span class="font-medium text-slate-700">{{ subjectLabel() }}</span>
+        }
+      </p>
     }
     @if (leadSubtitle()) {
-      <p class="text-xs text-slate-500 mt-0.5">{{ leadSubtitle() }}</p>
+      <p class="text-xs text-slate-500">{{ leadSubtitle() }}</p>
     }
   </div>
 
@@ -52,20 +61,22 @@
   @if (isOpen()) {
     <!-- Compte rendu et clôture -->
     <form [formRoot]="formSchema" class="flex flex-col gap-4">
-      <tas-form-field>
-        <tas-label>
-          Résultat de l'appel
-          @if (requiresResult()) { <span class="text-functional-error">*</span> }
-        </tas-label>
-        <tas-select [options]="outcomeOptions" placeholder="Sélectionnez un résultat" [formField]="formSchema.outcome"></tas-select>
-        @if (formSchema.outcome().touched() && formSchema.outcome().invalid()) {
-          <tas-error>{{ formSchema.outcome().errors()[0].message }}</tas-error>
-        }
-      </tas-form-field>
+      @if (asksResult()) {
+        <tas-form-field>
+          <tas-label>
+            Résultat de l'appel
+            @if (requiresResult()) { <span class="text-functional-error">*</span> }
+          </tas-label>
+          <tas-select [options]="outcomeOptions" placeholder="Sélectionnez un résultat" [formField]="formSchema.outcome"></tas-select>
+          @if (formSchema.outcome().touched() && formSchema.outcome().invalid()) {
+            <tas-error>{{ formSchema.outcome().errors()[0].message }}</tas-error>
+          }
+        </tas-form-field>
+      }
 
       <tas-form-field>
         <tas-label>Note</tas-label>
-        <textarea tasInput rows="3" placeholder="Ce qu'il faut retenir de l'échange…" [formField]="formSchema.note"></textarea>
+        <textarea tasInput rows="3" [placeholder]="asksResult() ? 'Ce qu\'il faut retenir de l\'échange…' : 'Ce qui a été fait, ce qu\'il faut retenir…'" [formField]="formSchema.note"></textarea>
       </tas-form-field>
     </form>
 
@@ -80,15 +91,8 @@
       >
         Terminer la tâche
       </button>
-      <button tas-outlined-button type="button" [disabled]="formSchema().submitting()" (click)="reassignRequested.emit(task())">
+      <button tas-outlined-button color="primary" type="button" [disabled]="formSchema().submitting()" (click)="reassignRequested.emit(task())">
         Réassigner
-      </button>
-      <!--
-        Aucun point d'API ne permet aujourd'hui de déplacer l'échéance d'une tâche (`reassign` refuse
-        le même agent). Le bouton reste visible et désactivé plutôt que de détourner un autre appel.
-      -->
-      <button tas-text-button color="primary" type="button" disabled title="Le report d'échéance n'est pas encore disponible.">
-        Reporter
       </button>
     </div>
   } @else {
