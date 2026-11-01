@@ -16,6 +16,12 @@
       <button tas-button iconButton type="button" title="Actualiser" (click)="refresh()">
         <tas-icon iconName="feather:refresh-cw" iconSize="sm"></tas-icon>
       </button>
+      @if (canManageObjectives()) {
+        <button tas-outlined-button type="button" (click)="openObjectives()">
+          <tas-icon iconName="feather:target"></tas-icon>
+          Objectifs
+        </button>
+      }
       @if (canCreate()) {
         <button tas-filled-button color="primary" type="button" (click)="openCreateDrawer()">
           <tas-icon iconName="feather:user-plus"></tas-icon>

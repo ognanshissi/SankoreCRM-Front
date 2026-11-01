@@ -1,3 +1,69 @@
+@if (isAgentLayout()) {
+  @switch (agentMode()) {
+    @case ('upcoming') {
+      <button type="button" class="mb-4 inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline" (click)="agentMode.set('today')">
+        <tas-icon iconName="feather:arrow-left" style="font-size:14px"></tas-icon>
+        Retour à ma journée
+      </button>
+      <h1 class="mb-4 text-2xl font-bold text-slate-900">Mes tâches à venir</h1>
+      <my-day-task-list
+        [groups]="upcomingGroups()"
+        [leads]="leads()"
+        [now]="now()"
+        [duplicates]="duplicates()"
+        [canSpread]="true"
+        [busyIds]="busyIds()"
+        pageKey="upcoming"
+        emptyTitle="Rien à venir"
+        emptyText="Les tâches des prochains jours apparaîtront ici."
+        (open)="openTask($event)"
+        (postpone)="postpone($event)"
+        (spread)="spread($event)"
+        (reassign)="openReassign($event)"
+      ></my-day-task-list>
+    }
+    @case ('approvals') {
+      <button type="button" class="mb-4 inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline" (click)="agentMode.set('today')">
+        <tas-icon iconName="feather:arrow-left" style="font-size:14px"></tas-icon>
+        Retour à ma journée
+      </button>
+      <h1 class="mb-4 text-2xl font-bold text-slate-900">Mes approbations</h1>
+      <tasks-approvals-list
+        [items]="approvals()"
+        [kycAwaitingTotal]="kycAwaitingTotal()"
+        [isLoading]="isApprovalsLoading()"
+        [now]="now()"
+        (changed)="loadApprovals()"
+      ></tasks-approvals-list>
+    }
+    @default {
+      <my-day-agent
+        [firstName]="userFirstName()"
+        [agencyName]="agencyName()"
+        [now]="now()"
+        [tasks]="allTasks()"
+        [openTasks]="openTasks()"
+        [entries]="entries()"
+        [leads]="leads()"
+        [approvalsCount]="approvalsCount()"
+        [isLoading]="isLoading()"
+        [canManageTasks]="canManageTasks()"
+        [canScheduleAppointment]="canScheduleAppointment()"
+        [scorecard]="scorecard()"
+        [scorePeriod]="scorePeriod()"
+        [scorecardLoading]="isScorecardLoading()"
+        (scorePeriodChange)="setScorePeriod($event)"
+        (openTask)="openTask($event)"
+        (openAppointment)="openAppointment($event)"
+        (newTask)="openNewTask()"
+        (newAppointment)="openCreateAppointment()"
+        (agendaChanged)="loadAgenda()"
+        (showUpcoming)="agentMode.set('upcoming')"
+        (showApprovals)="agentMode.set('approvals')"
+      ></my-day-agent>
+    }
+  }
+} @else {
 <!-- En-tête -->
 <div class="mb-6 flex flex-wrap items-start justify-between gap-4">
   <div>
@@ -174,3 +240,4 @@
     }
   </main>
 </div>
+}

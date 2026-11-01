@@ -12985,7 +12985,7 @@
           "KYC"
         ],
         "summary": "Upload an identity document, a selfie, or a proof of address",
-        "description": "Stores the image encrypted and returns an opaque reference to hand to POST kyc-files/{id}/verify. Accepts image/jpeg, image/png and application/pdf, up to the tenant's configured size limit. `kind=ProofOfAddress` records the quittance CIMA LBC/FT article 13.6 requires of a REMOTE sale; pass `documentIssuedOn` with it, because the final KYC approval refuses a proof whose issue date is absent or older than the tenant's proof-of-address-max-age-days. A proof of address never enters the OCR or face-match chain. Requires permission: kyc:manage.",
+        "description": "Stores the image encrypted and returns an opaque reference to hand to POST kyc-files/{id}/verify. Accepts image/jpeg, image/png and application/pdf, up to the tenant's configured size limit. `kind=ProofOfAddress` records the quittance CIMA LBC/FT article 13.6 requires of a REMOTE sale; pass `documentIssuedOn` with it, because the final KYC approval refuses a proof whose issue date is absent or older than the tenant's proof-of-address-max-age-days. A proof of address never enters the OCR or face-match chain. A file in validation accepts an image only while no rung is signed, and goes back for verification (409 KYC_APPROVAL_ALREADY_SIGNED otherwise). Requires permission: kyc:manage.",
         "operationId": "UploadKycDocument",
         "parameters": [
           {
@@ -15204,6 +15204,17 @@
               "type": "array",
               "items": {
                 "type": "string"
+              }
+            }
+          },
+          {
+            "name": "ids",
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "uuid"
               }
             }
           }
@@ -18708,6 +18719,204 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/MyPerformanceDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request"
+          }
+        }
+      }
+    },
+    "/api/v1/leads/me/scorecard": {
+      "get": {
+        "tags": [
+          "Leads — Analytics"
+        ],
+        "summary": "Les chiffres de « Ma journée » de l'agent connecté : leads attribués par statut, leads reçus par semaine, premier contact sous 24 h, conversions, tâches du jour et leads attribués aujourd'hui",
+        "description": "period = week (semaine ISO en cours) ou month (mois civil en cours), bornes UTC. Les objectifs sont ceux que le responsable a fixés (GET me/objective) ; en semaine, celui des conversions est la part de 7 jours de l'objectif du mois. dailyReceived (semaine seulement) : lundi à vendredi, samedi et dimanche s'ils ont reçu des leads ou sont aujourd'hui. Une affectation retirée avant tout contact ne compte pas. Les leads attribués aujourd'hui : les 10 plus anciens encore détenus.",
+        "operationId": "GetMyScorecard",
+        "parameters": [
+          {
+            "name": "period",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "default": "month"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyScorecardDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request"
+          }
+        }
+      }
+    },
+    "/api/v1/leads/agent-objectives": {
+      "get": {
+        "tags": [
+          "Leads — Analytics"
+        ],
+        "summary": "Les objectifs du mois des agents de l'équipe de l'appelant (premier contact sous 24 h, conversions)",
+        "description": "month = aaaa-mm, le mois courant par défaut. Un mois sans objectif fixé reprend le dernier fixé avant lui (setFor dit lequel). L'équipe = l'agence de l'appelant et ses sous-agences, rôles Agent et Agent commercial. Requires permission: lead:agent-objective:manage.",
+        "operationId": "ListAgentObjectives",
+        "parameters": [
+          {
+            "name": "month",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AgentObjectiveDto"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request"
+          }
+        }
+      }
+    },
+    "/api/v1/leads/agent-objectives/{agentId}": {
+      "get": {
+        "tags": [
+          "Leads — Analytics"
+        ],
+        "summary": "Les objectifs d'un agent de l'équipe : le mois en cours et les deux suivants, et l'historique de ce qui a été fixé",
+        "description": "404 AGENT_OBJECTIVE_AGENT_NOT_FOUND pour un agent hors de l'équipe de l'appelant. Requires permission: lead:agent-objective:manage.",
+        "operationId": "GetAgentObjectivePlan",
+        "parameters": [
+          {
+            "name": "agentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentObjectivePlanDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/api/v1/leads/agent-objectives/{agentId}/{month}": {
+      "put": {
+        "tags": [
+          "Leads — Analytics"
+        ],
+        "summary": "Fixe les objectifs d'un agent de l'équipe à partir d'un mois (le mois courant ou un mois à venir)",
+        "description": "Null = pas d'objectif à partir de ce mois. Refusé pour un mois passé (AGENT_OBJECTIVE_MONTH_CLOSED) et pour un agent hors de l'équipe (404 AGENT_OBJECTIVE_AGENT_NOT_FOUND). Requires permission: lead:agent-objective:manage.",
+        "operationId": "SetAgentObjective",
+        "parameters": [
+          {
+            "name": "agentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "month",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetAgentObjectiveRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentObjectiveDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/api/v1/leads/me/objective": {
+      "get": {
+        "tags": [
+          "Leads — Analytics"
+        ],
+        "summary": "Les objectifs du mois de l'agent connecté, tels que son responsable les a fixés",
+        "operationId": "GetMyObjective",
+        "parameters": [
+          {
+            "name": "month",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentObjectiveDto"
                 }
               }
             }
@@ -34164,6 +34373,99 @@
         },
         "additionalProperties": false
       },
+      "AgentObjectiveDto": {
+        "type": "object",
+        "properties": {
+          "agentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "agentName": {
+            "type": "string",
+            "nullable": true
+          },
+          "month": {
+            "type": "string",
+            "nullable": true
+          },
+          "firstContactWithin24hPercent": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "conversions": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "setFor": {
+            "type": "string",
+            "nullable": true
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "AgentObjectiveHistoryDto": {
+        "type": "object",
+        "properties": {
+          "month": {
+            "type": "string",
+            "nullable": true
+          },
+          "firstContactWithin24hPercent": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "conversions": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedByName": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "AgentObjectivePlanDto": {
+        "type": "object",
+        "properties": {
+          "agentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "agentName": {
+            "type": "string",
+            "nullable": true
+          },
+          "upcoming": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AgentObjectiveDto"
+            },
+            "nullable": true
+          },
+          "history": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AgentObjectiveHistoryDto"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "AgentPerformanceDto": {
         "type": "object",
         "properties": {
@@ -49465,6 +49767,53 @@
         },
         "additionalProperties": false
       },
+      "MyScorecardDto": {
+        "type": "object",
+        "properties": {
+          "period": {
+            "type": "string",
+            "nullable": true
+          },
+          "from": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "to": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "assigned": {
+            "$ref": "#/components/schemas/ScorecardAssignedDto"
+          },
+          "weeklyReceived": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ScorecardWeekDto"
+            },
+            "nullable": true
+          },
+          "dailyReceived": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ScorecardDayDto"
+            },
+            "nullable": true
+          },
+          "firstContactWithin24h": {
+            "$ref": "#/components/schemas/ScorecardFirstContactDto"
+          },
+          "conversions": {
+            "$ref": "#/components/schemas/ScorecardConversionsDto"
+          },
+          "tasksToday": {
+            "$ref": "#/components/schemas/ScorecardTasksTodayDto"
+          },
+          "assignedToday": {
+            "$ref": "#/components/schemas/ScorecardAssignedTodayDto"
+          }
+        },
+        "additionalProperties": false
+      },
       "MyStepDto": {
         "type": "object",
         "properties": {
@@ -56214,6 +56563,182 @@
         },
         "additionalProperties": false
       },
+      "ScorecardAssignedDto": {
+        "type": "object",
+        "properties": {
+          "total": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "toContact": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "inProgress": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "converted": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "lost": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ScorecardAssignedLeadDto": {
+        "type": "object",
+        "properties": {
+          "leadId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "fullName": {
+            "type": "string",
+            "nullable": true
+          },
+          "product": {
+            "type": "string",
+            "nullable": true
+          },
+          "source": {
+            "type": "string",
+            "nullable": true
+          },
+          "sourceLabel": {
+            "type": "string",
+            "nullable": true
+          },
+          "assignedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "slaDeadline": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "contacted": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ScorecardAssignedTodayDto": {
+        "type": "object",
+        "properties": {
+          "total": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ScorecardAssignedLeadDto"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ScorecardConversionsDto": {
+        "type": "object",
+        "properties": {
+          "count": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "objective": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ScorecardDayDto": {
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "received": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "isToday": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ScorecardFirstContactDto": {
+        "type": "object",
+        "properties": {
+          "rate": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "onTime": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "eligible": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "objective": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ScorecardTasksTodayDto": {
+        "type": "object",
+        "properties": {
+          "done": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "total": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ScorecardWeekDto": {
+        "type": "object",
+        "properties": {
+          "year": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "week": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "label": {
+            "type": "string",
+            "nullable": true
+          },
+          "startsOn": {
+            "type": "string",
+            "format": "date"
+          },
+          "received": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
       "ScoringConfigDto": {
         "type": "object",
         "properties": {
@@ -56920,6 +57445,22 @@
           "capacityCeiling": {
             "type": "integer",
             "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "SetAgentObjectiveRequest": {
+        "type": "object",
+        "properties": {
+          "firstContactWithin24hPercent": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "conversions": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
           }
         },
         "additionalProperties": false

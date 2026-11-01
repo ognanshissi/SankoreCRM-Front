@@ -30,6 +30,7 @@ import { KycFacadeService } from '../data-access/kyc-facade.service';
 import { kycConfidenceMeta } from '../data-access/kyc-referential';
 import { KycImageRef } from '../data-access/kyc.types';
 import { KycCameraCapture } from './kyc-camera-capture';
+import { kycUploadErrorMessage } from './kyc-upload-error';
 
 type SelfieStep = 'capture' | 'uploading' | 'verifying' | 'result';
 
@@ -256,7 +257,7 @@ export class KycSelfieCapture {
         takeUntilDestroyed(this._destroyRef),
         catchError((error: HttpErrorResponse) => {
           this.errorMessage.set(
-            error.error?.title ?? "La photo n'a pas pu être déposée. Réessayez.",
+            kycUploadErrorMessage(error, "La photo n'a pas pu être déposée. Réessayez."),
           );
           this.step.set('capture');
           return EMPTY;

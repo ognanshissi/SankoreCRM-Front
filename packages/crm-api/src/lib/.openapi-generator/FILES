@@ -121,6 +121,9 @@ model/agenda-appointment-dto.interface.ts
 model/agenda-participant-dto.interface.ts
 model/agenda-reminder-dto.interface.ts
 model/agent-comparison-dto.interface.ts
+model/agent-objective-dto.interface.ts
+model/agent-objective-history-dto.interface.ts
+model/agent-objective-plan-dto.interface.ts
 model/agent-performance-dto.interface.ts
 model/agent-report-dto.interface.ts
 model/agent-report-point.interface.ts
@@ -532,6 +535,7 @@ model/my-notification-dto.interface.ts
 model/my-notifications-dto.interface.ts
 model/my-performance-dto.interface.ts
 model/my-profile-dto.interface.ts
+model/my-scorecard-dto.interface.ts
 model/my-step-dto.interface.ts
 model/my-telephony-status-dto.interface.ts
 model/next-action-dto.interface.ts
@@ -729,6 +733,14 @@ model/scheduled-mail-dto.interface.ts
 model/scheduled-pull-settings.interface.ts
 model/scoped-permission-dto.interface.ts
 model/score-history-dto.interface.ts
+model/scorecard-assigned-dto.interface.ts
+model/scorecard-assigned-lead-dto.interface.ts
+model/scorecard-assigned-today-dto.interface.ts
+model/scorecard-conversions-dto.interface.ts
+model/scorecard-day-dto.interface.ts
+model/scorecard-first-contact-dto.interface.ts
+model/scorecard-tasks-today-dto.interface.ts
+model/scorecard-week-dto.interface.ts
 model/scoring-config-dto.interface.ts
 model/scoring-weights-dto.interface.ts
 model/script-config.interface.ts
@@ -753,6 +765,7 @@ model/send-whats-app-template-result.interface.ts
 model/send-whats-app-text-request.interface.ts
 model/server-webhook-settings.interface.ts
 model/set-agent-capacity-ceiling-request.interface.ts
+model/set-agent-objective-request.interface.ts
 model/set-appointment-target-request.interface.ts
 model/set-beneficiary-policy-request.interface.ts
 model/set-biometry-token-request.interface.ts

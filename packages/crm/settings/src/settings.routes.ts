@@ -84,6 +84,12 @@ const paneRoutes: Routes = [
         loadComponent: () => import('./containers/users/edit-user/parametrage'),
       },
       {
+        // Les objectifs du mois d'un agent de l'équipe ; le serveur refuse un agent hors de l'équipe.
+        path: 'objectifs',
+        canActivate: [hasPermissionGuard('lead:agent-objective:manage')],
+        loadComponent: () => import('./containers/users/edit-user/objectifs'),
+      },
+      {
         // `GET /api/v1/users/{userId}/login-history` ne déclare aucune
         // permission : la garde reprend `user:read`, le droit déjà exigé par la
         // fiche utilisateur, au lieu d'un code inventé.

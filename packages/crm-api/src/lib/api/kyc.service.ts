@@ -1907,7 +1907,7 @@ export class KYCApiService {
 
     /**
      * Upload an identity document, a selfie, or a proof of address
-     * Stores the image encrypted and returns an opaque reference to hand to POST kyc-files/{id}/verify. Accepts image/jpeg, image/png and application/pdf, up to the tenant\&#39;s configured size limit. &#x60;kind&#x3D;ProofOfAddress&#x60; records the quittance CIMA LBC/FT article 13.6 requires of a REMOTE sale; pass &#x60;documentIssuedOn&#x60; with it, because the final KYC approval refuses a proof whose issue date is absent or older than the tenant\&#39;s proof-of-address-max-age-days. A proof of address never enters the OCR or face-match chain. Requires permission: kyc:manage.
+     * Stores the image encrypted and returns an opaque reference to hand to POST kyc-files/{id}/verify. Accepts image/jpeg, image/png and application/pdf, up to the tenant\&#39;s configured size limit. &#x60;kind&#x3D;ProofOfAddress&#x60; records the quittance CIMA LBC/FT article 13.6 requires of a REMOTE sale; pass &#x60;documentIssuedOn&#x60; with it, because the final KYC approval refuses a proof whose issue date is absent or older than the tenant\&#39;s proof-of-address-max-age-days. A proof of address never enters the OCR or face-match chain. A file in validation accepts an image only while no rung is signed, and goes back for verification (409 KYC_APPROVAL_ALREADY_SIGNED otherwise). Requires permission: kyc:manage.
      * @param kycFileId 
      * @param kind One of: IdentityDocumentFront, IdentityDocumentBack, Selfie, ProofOfAddress
      * @param file 

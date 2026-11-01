@@ -37,6 +37,7 @@ import {
 } from '../data-access/kyc.types';
 import { KycScoreGauge } from '../ui/kyc-score-gauge';
 import { KycCameraCapture } from './kyc-camera-capture';
+import { kycUploadErrorMessage } from './kyc-upload-error';
 
 /**
  * Fiabilité d'un champ lu par l'OCR, telle qu'elle est présentée à l'agent.
@@ -391,7 +392,7 @@ export class KycDocumentCapture {
         takeUntilDestroyed(this._destroyRef),
         catchError((error: HttpErrorResponse) => {
           this.uploadError.set(
-            error.error?.title ?? "L'image n'a pas pu être déposée. Réessayez.",
+            kycUploadErrorMessage(error, "L'image n'a pas pu être déposée. Réessayez."),
           );
           this.step.set('capture');
           return EMPTY;

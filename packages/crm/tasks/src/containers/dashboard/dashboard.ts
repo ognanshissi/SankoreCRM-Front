@@ -1,4 +1,4 @@
-import { Component, computed, DestroyRef, inject, signal, OnInit, OnDestroy } from '@angular/core';
+import { Component, computed, DestroyRef, effect, inject, signal, OnInit, OnDestroy, untracked } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { HttpErrorResponse } from '@angular/common/http';
@@ -16,7 +16,9 @@ import {
   CrmTaskDto,
   CrmTaskDtoStatusEnum,
   LeadDto,
+  LeadsAnalyticsApiService,
   LeadsApiService,
+  MyScorecardDto,
   MyAgendaDto,
   TasksApiService,
   UserDto,
@@ -50,8 +52,12 @@ import { AgendaDayList } from './agenda-day-list';
 import { TaskWorkDrawer, TaskWorkDrawerData, TaskWorkDrawerResult } from './task-work-drawer';
 import { CreateAppointmentDrawer, CreateAppointmentDrawerData } from './create-appointment-drawer';
 import { AppointmentDetailDrawer, AppointmentDetailDrawerData, AppointmentDetailDrawerResult } from './appointment-detail-drawer';
+import { MyDayAgent } from './my-day-agent';
+import { ScorePeriod } from './my-day-scorecard';
 
 type MyDayView = 'todo' | 'overdue' | 'reminders' | 'meetings' | 'approvals' | 'done';
+/** L'écran des agents : la journée, ou l'une des deux listes qu'il ouvre. */
+type AgentMode = 'today' | 'upcoming' | 'approvals';
 type TaskScope = 'mine' | 'team';
 
 interface NavItem {
@@ -71,6 +77,12 @@ interface NavItem {
  * tenant pour un super-utilisateur ou un compte sans agence. À garder alignés.
  */
 const SUPERVISOR_ROLES = ['System', 'Administrator', 'SalesManager', 'BranchManager'];
+
+/** Les rôles qui reçoivent la maquette « agent » (propriétaire, 2026-10-31), sauf s'ils supervisent aussi. */
+const AGENT_ROLES = ['Agent', 'CommercialAgent'];
+
+/** Le plafond de `GET leads?ids=` (`ListLeadsQuery.MaxIds`). */
+const LEADS_PER_CALL = 100;
 
 /** Ce que l'agenda couvre au moins à partir d'aujourd'hui, quel que soit le mois affiché. */
 const AGENDA_AHEAD_DAYS = 14;
@@ -106,11 +118,13 @@ function isOpen(task: CrmTaskDto): boolean {
     PromisedReminders,
     TaskDayList,
     AgendaDayList,
+    MyDayAgent,
   ],
 })
 export class DashboardComponent implements OnInit, OnDestroy {
   private readonly _tasksApi = inject(TasksApiService);
   private readonly _leadsApi = inject(LeadsApiService);
+  private readonly _analyticsApi = inject(LeadsAnalyticsApiService);
   private readonly _agenciesApi = inject(AgenciesApiService);
   private readonly _auth = inject(AuthenticationService);
   private readonly _sideDrawer = inject(SideDrawerService);
@@ -152,6 +166,26 @@ export class DashboardComponent implements OnInit, OnDestroy {
   );
   /** Filtre agent de la vue équipe, appliqué côté client sur les tâches chargées. */
   public agentFilter = signal('');
+
+  /**
+   * Les agents ont l'écran de la maquette : bandeau, avancement et journée par moment. Un compte
+   * qui supervise aussi garde l'écran à calendrier, vues et équipe.
+   */
+  public readonly isAgentLayout = computed(() => {
+    const roles = this._auth.connectedUser()?.roles ?? [];
+    return !this.isSupervisor() && roles.some((r) => AGENT_ROLES.includes(r));
+  });
+  public agentMode = signal<AgentMode>('today');
+  /** « Mes performances » et « Attribués aujourd'hui » (`GET leads/me/scorecard`). */
+  public scorecard = signal<MyScorecardDto | null>(null);
+  public scorePeriod = signal<ScorePeriod>('month');
+  public isScorecardLoading = signal(false);
+  /** « Voir toutes mes tâches » : les tâches ouvertes à partir de demain, par jour et dans l'ordre d'urgence. */
+  public readonly upcomingGroups = computed(() => {
+    const today = this.todayKey();
+    const later = this.openTasks().filter((t) => !!t.dueAt && dayKey(t.dueAt) > today);
+    return groupByDay(later, (t) => t.dueAt, this.now());
+  });
   public agentNames = signal<Map<string, string>>(new Map());
   public readonly agentOptions = computed(() => {
     const names = this.agentNames();
@@ -290,16 +324,32 @@ export class DashboardComponent implements OnInit, OnDestroy {
   ];
   public readonly visibleNav = computed(() => this.nav.filter((n) => this.scope() === 'mine' || !n.mineOnly));
 
+  /**
+   * Ce qui dépend du compte attend qu'il soit chargé. Lu dans `ngOnInit`, il ne l'était pas encore
+   * à l'ouverture directe de la page : un responsable restait sur « Mes tâches » malgré
+   * `?vue=equipe`, ses « Mes tâches » recevaient l'équipe (aucun agent demandé), l'agence manquait
+   * à l'en-tête, et l'écran des agents ne demandait pas ses chiffres.
+   */
+  private _accountReady = false;
+  private readonly _whenAccountReady = effect(() => {
+    const user = this._auth.connectedUser();
+    if (!user?.id || this._accountReady) return;
+    this._accountReady = true;
+    untracked(() => {
+      if (this._route.snapshot.queryParams['vue'] === 'equipe' && this.isSupervisor()) {
+        this.scope.set('team');
+        this._loadAgentNames();
+      }
+      this._loadTasks();
+      if (this.isAgentLayout()) this.loadScorecard();
+      this._loadAgency();
+    });
+  });
+
   ngOnInit(): void {
     this._breadcrumbService.set([{ label: 'Ma journée' }]);
-    if (this._route.snapshot.queryParams['vue'] === 'equipe' && this.isSupervisor()) {
-      this.scope.set('team');
-      this._loadAgentNames();
-    }
-    this._loadTasks();
     this.loadApprovals();
     this.loadAgenda();
-    this._loadAgency();
     this._tickTimer = setInterval(() => this.now.set(Date.now()), 30_000);
 
     // Créé depuis « Créer » de la barre du haut : ce n'est pas cette page qui a ouvert le tiroir.
@@ -369,8 +419,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
     });
     ref.closed.subscribe((id) => {
       if (!id) return;
-      // On montre ce qu'on vient de créer.
-      this.view.set('meetings');
+      // On montre ce qu'on vient de créer ; l'écran des agents le montre déjà dans sa journée.
+      if (!this.isAgentLayout()) this.view.set('meetings');
       this.loadAgenda();
     });
   }
@@ -400,7 +450,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
     });
     ref.closed.subscribe((result) => {
       switch (result?.action) {
-        case 'completed': this._loadTasks(); break;
+        case 'completed':
+          this._loadTasks();
+          if (this.isAgentLayout()) this.loadScorecard();
+          break;
         case 'reassign':  this.openReassign(result.task); break;
         case 'open-lead': this._router.navigate(['/leads', result.leadId]); break;
         case 'open-task': this._router.navigate(['/tasks', result.taskId]); break;
@@ -489,6 +542,30 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   // ——— Chargements ———
 
+  public setScorePeriod(period: ScorePeriod): void {
+    if (this.scorePeriod() === period) return;
+    this.scorePeriod.set(period);
+    this.loadScorecard();
+  }
+
+  /** Les chiffres complètent la journée : leur absence n'empêche pas de travailler. */
+  public loadScorecard(): void {
+    this.isScorecardLoading.set(true);
+    this._analyticsApi
+      .getMyScorecard(this.scorePeriod())
+      .pipe(
+        catchError(() => of(null)),
+        finalize(() => this.isScorecardLoading.set(false)),
+      )
+      .subscribe((card) => {
+        this.scorecard.set(card);
+        // Le numéro pour appeler un lead attribué aujourd'hui vient du lead, pas des chiffres.
+        this._loadLeads((card?.assignedToday?.items ?? []).map((i) => i.leadId));
+      });
+  }
+
+
+
   public loadApprovals(): void {
     this.isApprovalsLoading.set(true);
     this._approvalsService.load().subscribe((result) => {
@@ -550,15 +627,35 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   /**
    * Les DTO de tâche et d'agenda ne portent que `leadId` : nom, produit, source et téléphone du
-   * lead sont chargés à part. Un lead introuvable (fusionné, supprimé) laisse sa ligne sans nom.
+   * lead sont chargés à part, par lots de 100 (`GET leads?ids=`). Un appel par lead dépassait la
+   * limite de l'API (200 par minute et par utilisateur) dès la vue équipe, qui en compte une
+   * centaine, et l'appel suivant de l'écran échouait en 429. Un lead hors de portée ou introuvable
+   * (fusionné, supprimé) laisse sa ligne sans nom.
    */
+  private readonly _requestedLeadIds = new Set<string>();
+
   private _loadLeads(ids: (string | null | undefined)[]): void {
     const known = this.leads();
-    const missing = [...new Set(ids.filter((id): id is string => !!id && !known.has(id)))];
+    const missing = [...new Set(ids.filter((id): id is string => !!id && !known.has(id) && !this._requestedLeadIds.has(id)))];
     if (!missing.length) return;
+    missing.forEach((id) => this._requestedLeadIds.add(id));
 
-    forkJoin(missing.map((id) => this._leadsApi.getLead(id).pipe(catchError(() => of(null)))))
-      .pipe(map((leads) => leads.filter((l): l is LeadDto => !!l?.id)))
+    const batches: string[][] = [];
+    for (let i = 0; i < missing.length; i += LEADS_PER_CALL) batches.push(missing.slice(i, i + LEADS_PER_CALL));
+
+    forkJoin(batches.map((batch) =>
+      this._leadsApi
+        .listLeads(1, LEADS_PER_CALL, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, batch)
+        .pipe(
+          map((page) => page.items ?? []),
+          catchError(() => {
+            // Un lot perdu pourra être redemandé au prochain chargement.
+            batch.forEach((id) => this._requestedLeadIds.delete(id));
+            return of([] as LeadDto[]);
+          }),
+        ),
+    ))
+      .pipe(map((pages) => pages.flat().filter((l) => !!l.id)))
       .subscribe((leads) => {
         const next = new Map(this.leads());
         leads.forEach((l) => next.set(l.id!, l));

@@ -160,6 +160,9 @@ export class KycEnrolmentPage {
   }
 
   public onDocumentUploaded(ref: KycImageRef): void {
+    // Une nouvelle pièce renvoie le dossier en vérification : le selfie déjà pris a été comparé à
+    // l'ancienne, et le récapitulatif ne doit plus être atteignable sans une nouvelle comparaison.
+    if (this.documentRef()) this.selfieRef.set(null);
     this.documentRef.set(ref);
     void this._saveDraft();
     // La vérification tourne en arrière-plan côté écran de capture : on avance sans l'attendre.

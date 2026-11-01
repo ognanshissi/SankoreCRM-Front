@@ -11,6 +11,7 @@ import { Button } from '@talisoft/ui/button';
 import { TasIcon } from '@talisoft/ui/icon';
 import { TasTable, TableConfig } from '@talisoft/ui/table';
 import { SideDrawerService } from '@talisoft/ui/side-drawer';
+import { AgentObjectivesDrawer } from '../agent-objectives-drawer';
 import { SnackbarService } from '@talisoft/ui/snackbar';
 import { TimeagoPipe } from '@talisoft/ui/timeago';
 import {
@@ -85,6 +86,8 @@ export class UsersHomePage implements OnInit {
   public readonly canUpdate = this._permissions.can('user:update');
   public readonly canAssignAgency = this._permissions.can('user:assign-agency');
   public readonly canAssignRole = this._permissions.can('user:assign-role');
+  /** Les objectifs du mois des agents de son équipe (premier contact sous 24 h, conversions). */
+  public readonly canManageObjectives = this._permissions.can('lead:agent-objective:manage');
   private readonly _canReadAgencies = this._permissions.can('agency:read');
 
   private readonly _usersApiService = inject(UsersApiService);
@@ -309,6 +312,14 @@ export class UsersHomePage implements OnInit {
     this.reloadCurrentPage();
     this._loadStats();
     this._loadPending();
+  }
+
+  public openObjectives(): void {
+    this._sideDrawerService.open(AgentObjectivesDrawer, {
+      width: '100%',
+      height: '100%',
+      panelClass: 'side-drawer-panel',
+    });
   }
 
   public openCreateDrawer(): void {

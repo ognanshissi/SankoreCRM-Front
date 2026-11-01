@@ -16,6 +16,8 @@ import { ImpersonateDialog, ImpersonateDialogData } from './impersonate-dialog';
 
 type StatusCode = 'PendingActivation' | 'Active' | 'Disabled' | 'Locked';
 
+const AGENT_ROLES = ['Agent', 'CommercialAgent'];
+
 const STATUS: Record<StatusCode, { label: string; classes: string; dot: string }> = {
   PendingActivation: { label: "En attente d'activation", classes: 'bg-blue-50 text-blue-700', dot: 'bg-blue-600' },
   Active: { label: 'Actif', classes: 'bg-green-50 text-green-700', dot: 'bg-green-600' },
@@ -164,6 +166,7 @@ export class EditUserNavigation {
   public readonly canUpdate = this._permissions.can('user:update');
   public readonly canImpersonate = this._permissions.can('user:impersonate');
   public readonly canReadAudit = this._permissions.can('audit:read');
+  public readonly canManageObjectives = this._permissions.can('lead:agent-objective:manage');
 
   public readonly user = this.state.user;
   public isResending = signal(false);
@@ -206,6 +209,10 @@ export class EditUserNavigation {
         danger: false,
       },
       { route: 'parametrage', label: 'Paramétrage agent', hint: 'Produits, plafond de leads', danger: false },
+      // Les objectifs ne concernent que les agents (rôles Agent et Agent commercial).
+      ...(this.canManageObjectives() && (u?.roles ?? []).some((r) => AGENT_ROLES.includes(r))
+        ? [{ route: 'objectifs', label: 'Objectifs', hint: 'Premier contact, conversions du mois', danger: false }]
+        : []),
       { route: 'carte-professionnelle', label: 'Carte professionnelle', hint: "Intermédiaire d'assurance (CIMA)", danger: false },
       {
         route: 'connexions',
