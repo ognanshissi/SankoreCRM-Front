@@ -177,11 +177,8 @@
               style="font-size:16px"
             ></tas-icon>
             <div class="flex-1">
-              <p class="text-sm font-medium text-red-800">Photo refusée</p>
-              <p class="mt-0.5 text-xs text-red-700">
-                Le visage n'est pas exploitable : flou, reflet ou lumière insuffisante. Reprenez la
-                photo en suivant les consignes.
-              </p>
+              <p class="text-sm font-medium text-red-800">{{ rejection().title }}</p>
+              <p class="mt-0.5 text-xs text-red-700">{{ rejection().message }}</p>
             </div>
           </div>
         } @else if (matchMeta(); as meta) {

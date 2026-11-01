@@ -112,6 +112,32 @@ class SelfieOverrideFormModel {
  * pourcentage seul (« 71 % ») ne dit pas à un agent s'il peut continuer ; c'est exactement le genre
  * d'affichage qui pousse à valider un dossier douteux.
  */
+/** La raison d'un refus de capture, dite à l'agent avec ce qu'il doit reprendre. */
+function rejectionMessage(code: string | null): { title: string; message: string } {
+  switch (code) {
+    case 'DOCUMENT_UNREADABLE':
+      return {
+        title: 'Pièce illisible',
+        message: "Le service n'a pas pu lire la pièce (numéro ou bande du bas). Reprenez la photo de la pièce à l'étape 1 : à plat, entière, sans reflet.",
+      };
+    case 'MRZ_CHECKSUM_FAILED':
+      return {
+        title: 'Bande de lecture incohérente',
+        message: "Les deux lignes en bas de la pièce ne se vérifient pas. Reprenez la photo de la pièce à l'étape 1, bande du bas bien nette.",
+      };
+    case 'IMAGE_QUALITY_TOO_LOW':
+      return {
+        title: 'Image de qualité insuffisante',
+        message: 'Une des photos est floue ou trop petite. Reprenez-la en suivant les consignes.',
+      };
+    default:
+      return {
+        title: 'Photo refusée',
+        message: "Le visage n'est pas exploitable : flou, reflet ou lumière insuffisante. Reprenez la photo en suivant les consignes.",
+      };
+  }
+}
+
 @Component({
   selector: 'kyc-selfie-capture',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -173,6 +199,13 @@ export class KycSelfieCapture {
   public readonly errorMessage = signal<string | null>(null);
   public readonly isQueued = signal(false);
   public readonly captureRejected = signal(false);
+  /**
+   * Ce que le service a refusé, et donc ce qu'il faut reprendre. Le message disait toujours « le
+   * visage n'est pas exploitable », y compris quand c'était la pièce : l'agent reprenait le selfie
+   * et retombait sur le même refus (recette KYC, 2026-11-01).
+   */
+  public readonly rejectionCode = signal<string | null>(null);
+  public readonly rejection = computed(() => rejectionMessage(this.rejectionCode()));
 
   public readonly verification = signal<RunKycVerificationResponse | null>(null);
   public readonly faceMatchPercent = signal<number | null>(null);
@@ -250,6 +283,7 @@ export class KycSelfieCapture {
     this.errorMessage.set(null);
     this.isQueued.set(false);
     this.captureRejected.set(false);
+    this.rejectionCode.set(null);
 
     this._kyc
       .uploadImage(this.kycFileId(), 'Selfie', file)
@@ -279,6 +313,7 @@ export class KycSelfieCapture {
     this.errorMessage.set(null);
     this.isQueued.set(false);
     this.captureRejected.set(false);
+    this.rejectionCode.set(null);
   }
 
   public retryVerification(): void {
@@ -408,10 +443,12 @@ export class KycSelfieCapture {
             this.verification.set(null);
             break;
           case RunKycVerificationResponseOutcomeEnum.CaptureRejected:
+            // Rien n'a été comparé : l'écran reste ici avec la raison. Émettre `matched(false)`
+            // envoyait au récapitulatif, qui masquait la raison et affichait un score de 0.
             this.captureRejected.set(true);
+            this.rejectionCode.set(response.code ?? null);
             this.verification.set(null);
             this.attempts.update((count) => count + 1);
-            this.matched.emit(false);
             break;
           default:
             this._loadFaceMatch();
