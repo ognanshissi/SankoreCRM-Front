@@ -100,7 +100,7 @@
                       <div class="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
                         <tas-icon [iconName]="step.kind === 'Wait' ? 'feather:clock' : step.kind === 'Condition' ? 'feather:git-branch' : step.kind === 'KycCheck' ? 'feather:shield' : step.kind === 'IntegrationAction' ? 'feather:send' : 'feather:bell'" class="text-primary" style="font-size:14px"></tas-icon>
                       </div>
-                    } @else if (step.status === 'Pending') {
+                    } @else if (step.status === 'AwaitingApproval') {
                       <div class="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center ring-2 ring-amber-400 ring-offset-1">
                         <tas-icon iconName="feather:clock" class="text-amber-600" style="font-size:14px"></tas-icon>
                       </div>
@@ -116,7 +116,7 @@
                     <div class="flex items-center justify-between gap-2">
                       <div class="flex items-center gap-2 min-w-0">
                         <p class="text-sm font-medium text-slate-800 truncate">{{ step.name ?? '—' }}</p>
-                        @if (step.status === 'Pending' && stepIsOverdue(step)) {
+                        @if (step.status === 'AwaitingApproval' && stepIsOverdue(step)) {
                           <span class="shrink-0 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-red-100 text-red-700">
                             <tas-icon iconName="feather:alert-circle" style="font-size:9px"></tas-icon>
                             SLA dépassé
@@ -133,7 +133,7 @@
                         Rôle : {{ step.approverRoleCode }}
                       </p>
                     }
-                    @if (step.status === 'Pending' && stepDueAtIso(step); as dueIso) {
+                    @if (step.status === 'AwaitingApproval' && stepDueAtIso(step); as dueIso) {
                       <p class="text-xs mt-0.5" [ngClass]="stepIsOverdue(step) ? 'text-red-600 font-medium' : 'text-amber-600'">
                         <tas-icon iconName="feather:clock" class="inline-block" style="font-size:10px"></tas-icon>
                         {{ stepIsOverdue(step) ? 'Échéance dépassée' : 'Échéance' }} {{ dueIso | dateTimeAgo }}
@@ -153,6 +153,14 @@
                         <tas-icon [iconName]="step.kind === 'Condition' ? 'feather:git-branch' : step.kind === 'KycCheck' ? 'feather:shield' : 'feather:clock'" iconSize="sm" class="shrink-0"></tas-icon>
                         {{ resumed }}
                       </p>
+                    }
+                    @if (step.kind === 'End') {
+                      @for (note of endNotes(step.stepDefinitionId); track $index) {
+                        <p class="text-xs mt-1 flex items-start gap-1" [class]="note.failed ? 'text-amber-700' : 'text-slate-600'">
+                          <tas-icon [iconName]="note.failed ? 'feather:alert-triangle' : 'feather:flag'" iconSize="sm" class="shrink-0"></tas-icon>
+                          {{ note.detail }}
+                        </p>
+                      }
                     }
                     @if (step.kind === 'ManualTask') {
                       @for (note of taskNotes(step.stepDefinitionId); track $index) {

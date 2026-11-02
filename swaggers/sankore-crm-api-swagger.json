@@ -34109,10 +34109,11 @@
               "Condition",
               "Wait",
               "Notification",
-              "IntegrationAction"
+              "IntegrationAction",
+              "End"
             ],
             "type": "string",
-            "description": "One of: Form, QualificationForm, KycCheck, Validation, ManualTask, Condition, Wait, Notification, IntegrationAction",
+            "description": "One of: Form, QualificationForm, KycCheck, Validation, ManualTask, Condition, Wait, Notification, IntegrationAction, End",
             "nullable": true
           },
           "configJson": {
@@ -63674,10 +63675,11 @@
               "Condition",
               "Wait",
               "Notification",
-              "IntegrationAction"
+              "IntegrationAction",
+              "End"
             ],
             "type": "string",
-            "description": "One of: Form, QualificationForm, KycCheck, Validation, ManualTask, Condition, Wait, Notification, IntegrationAction",
+            "description": "One of: Form, QualificationForm, KycCheck, Validation, ManualTask, Condition, Wait, Notification, IntegrationAction, End",
             "nullable": true
           },
           "configJson": {

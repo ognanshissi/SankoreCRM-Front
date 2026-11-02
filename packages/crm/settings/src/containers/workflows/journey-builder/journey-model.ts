@@ -29,6 +29,7 @@ export const STEP_KIND_META: Record<StepKind, StepKindMeta> = {
   Wait:              { label: 'Attente',                    hint: 'Délai ou événement',       icon: 'feather:clock',        group: 'logic' },
   Notification:      { label: 'Notification',               hint: 'Email, SMS',               icon: 'feather:bell',         group: 'actions' },
   IntegrationAction: { label: 'Action Integration',         hint: 'CBS ou assurance',         icon: 'feather:send',         group: 'actions' },
+  End:               { label: 'Fin',                        hint: 'Valider ou refuser, et agir', icon: 'feather:flag',       group: 'logic' },
 };
 
 /**
@@ -66,8 +67,19 @@ export type Branch = 'yes' | 'no';
 export interface StepConfig {
   kycLevel?: KycLevel;
   escalation?: Escalation;
-  /** Rang dans la condition qui précède : branche « Oui » ou « Non ». */
+  /** Branche « Oui » ou « Non » de la condition `parent`. */
   branch?: Branch;
+  /**
+   * Identifiant de la condition dont l'étape est une branche (son `node`). Absent sur une étape
+   * enregistrée avant l'imbrication : elle appartient alors à la condition qui la précède.
+   */
+  parent?: string;
+  /** Condition : son identifiant, que ses étapes nomment dans `parent` — stable d'une version à l'autre. */
+  node?: string;
+  /** Fin : le résultat du circuit. Absent = validé. */
+  outcome?: EndOutcome;
+  /** Fin : l'action demandée sur le dossier (`WorkflowEndActions` côté serveur). */
+  action?: string;
   channel?: 'Email' | 'Sms';
   target?: 'CoreBanking' | 'Insurance';
   /** Notification : à qui. Absent = la personne du dossier (étapes enregistrées avant ce champ). */
@@ -246,7 +258,43 @@ export const TARGET_OPTIONS = [
 
 /** Types dont l'étape est confiée à un rôle, avec un délai. */
 export function hasAssignee(kind: StepKind): boolean {
-  return kind !== StepKind.Condition && kind !== StepKind.Wait && kind !== StepKind.Notification && kind !== StepKind.IntegrationAction;
+  return kind !== StepKind.Condition && kind !== StepKind.Wait && kind !== StepKind.Notification
+    && kind !== StepKind.IntegrationAction && kind !== StepKind.End;
+}
+
+// ——— Fin ———
+
+export type EndOutcome = 'approved' | 'rejected';
+
+export const END_OUTCOME_OPTIONS = [
+  { label: 'Validé', value: 'approved' },
+  { label: 'Refusé', value: 'rejected' },
+];
+
+/** Les actions d'une Fin, par type de dossier — la liste `WorkflowEndActions` du serveur. */
+export const END_ACTIONS: { value: string; label: string; entityType: string }[] = [
+  { value: 'project.win', label: 'Gagner le projet', entityType: 'Opportunity' },
+  { value: 'project.lose', label: 'Perdre le projet', entityType: 'Opportunity' },
+  { value: 'lead.qualify', label: 'Qualifier le lead', entityType: 'Lead' },
+  { value: 'lead.lose', label: 'Marquer le lead perdu', entityType: 'Lead' },
+  { value: 'lead.archive', label: 'Archiver le lead', entityType: 'Lead' },
+];
+
+export function endActionsFor(entityType: string | null | undefined): { value: string; label: string }[] {
+  return END_ACTIONS.filter((a) => a.entityType === entityType).map(({ value, label }) => ({ value, label }));
+}
+
+/** « Validé · Gagner le projet », pour la carte du canevas. */
+export function endSummary(config: StepConfig): string[] {
+  const chips = [config.outcome === 'rejected' ? 'Refusé' : 'Validé'];
+  const action = END_ACTIONS.find((a) => a.value === config.action);
+  if (action) chips.push(action.label);
+  return chips;
+}
+
+/** Un identifiant de condition : il suffit qu'il soit unique dans le parcours. */
+export function newConditionNode(): string {
+  return globalThis.crypto?.randomUUID?.() ?? `c-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
 // ——— Déclencheurs ———
@@ -295,49 +343,69 @@ export function productCondition(product: string): string | null {
 
 export type FlowRow =
   | { type: 'step'; step: WorkflowStepDto }
-  | { type: 'branches'; condition: WorkflowStepDto; yes: WorkflowStepDto[]; no: WorkflowStepDto[] };
+  | { type: 'branches'; condition: WorkflowStepDto; yes: FlowRow[]; no: FlowRow[] };
 
 /**
- * Lignes du canevas. Une condition est suivie de ses branches : les étapes contiguës qui portent
- * `branch`. Le moteur évalue la condition quand le dossier l'atteint et ignore les étapes de l'autre
- * branche (`ConditionStepConsumer`).
+ * Lignes du canevas, en arbre : une condition porte ses deux branches, et chaque branche ses
+ * lignes — des étapes ou d'autres conditions, sans limite de profondeur. Le moteur évalue une
+ * condition quand le dossier l'atteint et saute toute la branche non prise (`StepTree` serveur).
+ *
+ * Le rattachement se lit dans `parent` (le `node` de la condition) ; une étape qui n'a qu'une
+ * `branch` a été enregistrée avant l'imbrication et appartient à la condition qui la précède. Une
+ * étape dont la condition a disparu revient à la racine — la publication le signale.
  */
 export function layoutFlow(steps: WorkflowStepDto[]): FlowRow[] {
   const sorted = [...steps].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
-  const rows: FlowRow[] = [];
-  let i = 0;
-  while (i < sorted.length) {
-    const step = sorted[i];
-    if (stepKind(step) !== StepKind.Condition) {
-      rows.push({ type: 'step', step });
-      i++;
-      continue;
+  const root: FlowRow[] = [];
+  const byNode = new Map<string, Extract<FlowRow, { type: 'branches' }>>();
+  let lastCondition: Extract<FlowRow, { type: 'branches' }> | null = null;
+
+  for (const step of sorted) {
+    const config = parseStepConfig(step.configJson);
+    const owner = config.branch
+      ? config.parent ? byNode.get(config.parent) ?? null : lastCondition
+      : null;
+    const list = owner && config.branch ? owner[config.branch] : root;
+
+    if (stepKind(step) === StepKind.Condition) {
+      const row: Extract<FlowRow, { type: 'branches' }> = { type: 'branches', condition: step, yes: [], no: [] };
+      list.push(row);
+      lastCondition = row;
+      if (config.node) byNode.set(config.node, row);
+    } else {
+      list.push({ type: 'step', step });
     }
-    const yes: WorkflowStepDto[] = [];
-    const no: WorkflowStepDto[] = [];
-    i++;
-    while (i < sorted.length) {
-      const branch = parseStepConfig(sorted[i].configJson).branch;
-      if (branch === 'yes') yes.push(sorted[i]);
-      else if (branch === 'no') no.push(sorted[i]);
-      else break;
-      i++;
-    }
-    rows.push({ type: 'branches', condition: step, yes, no });
   }
-  return rows;
+  return root;
+}
+
+/** Les étapes d'une ligne, condition et branches comprises. */
+export function stepsOf(row: FlowRow): WorkflowStepDto[] {
+  if (row.type === 'step') return [row.step];
+  return [row.condition, ...row.yes.flatMap(stepsOf), ...row.no.flatMap(stepsOf)];
 }
 
 /** Dernier ordre occupé par une ligne : une insertion « après » cette ligne prend l'ordre suivant. */
 export function lastOrderOf(row: FlowRow): number {
-  if (row.type === 'step') return row.step.order ?? 0;
-  return Math.max(row.condition.order ?? 0, ...row.yes.map((s) => s.order ?? 0), ...row.no.map((s) => s.order ?? 0));
+  return Math.max(...stepsOf(row).map((s) => s.order ?? 0));
 }
 
-/** Où insérer une étape : ordre visé, et branche éventuelle. */
+/** Une branche se termine par une Fin : rien ne peut venir après dans cette branche. */
+export function endsWithFin(rows: FlowRow[]): boolean {
+  const last = rows[rows.length - 1];
+  return last?.type === 'step' && stepKind(last.step) === StepKind.End;
+}
+
+/**
+ * Où insérer une étape : ordre visé, et, dans une branche, la branche et sa condition. Une étape
+ * insérée en fin de branche prend l'ordre qui suit toute la condition : les étapes d'une condition
+ * restent ainsi contiguës, à toute profondeur.
+ */
 export interface InsertSlot {
   order: number;
   branch?: Branch;
+  /** La condition de la branche visée. */
+  condition?: WorkflowStepDto;
 }
 
 export interface JourneyIssue {
@@ -354,6 +422,18 @@ export function validateJourney(steps: WorkflowStepDto[], triggers: TriggerDto[]
   const issues: JourneyIssue[] = [];
   if (!triggers.length && entityType !== 'Opportunity') issues.push({ label: 'Aucun déclencheur' });
   if (!steps.length) issues.push({ label: 'Aucune étape' });
+  // Une Fin termine sa branche, ou le parcours sur la ligne principale.
+  const checkEnds = (rows: FlowRow[]): void => {
+    rows.forEach((row, i) => {
+      if (row.type === 'branches') {
+        checkEnds(row.yes);
+        checkEnds(row.no);
+      } else if (stepKind(row.step) === StepKind.End && i < rows.length - 1) {
+        issues.push({ label: `Des étapes suivent la fin « ${row.step.name} » : elles ne seraient jamais atteintes` });
+      }
+    });
+  };
+  checkEnds(layoutFlow(steps));
   for (const step of steps) {
     const kind = stepKind(step);
     if (hasAssignee(kind) && !step.approverRoleCode) issues.push({ label: `« ${step.name} » n'a pas de responsable` });
@@ -367,6 +447,12 @@ export function validateJourney(steps: WorkflowStepDto[], triggers: TriggerDto[]
     }
     if (kind === StepKind.Wait && !step.timeoutHours && !parseStepConfig(step.configJson).eventCode)
       issues.push({ label: `« ${step.name} » n'attend ni délai ni événement` });
+    if (kind === StepKind.End) {
+      const config = parseStepConfig(step.configJson);
+      if (entityType === 'KycFile') issues.push({ label: `« ${step.name} » : un circuit KYC se termine par la décision du dossier` });
+      else if (config.action && !endActionsFor(entityType).some((a) => a.value === config.action))
+        issues.push({ label: `« ${step.name} » : cette action ne s'applique pas à ce type de dossier` });
+    }
     if (STEP_KIND_SUPPORT[kind] === 'blocked')
       issues.push({ label: `« ${step.name} » : ce type d'étape n'est pas encore exécuté par le moteur` });
     if (kind === StepKind.Notification) {

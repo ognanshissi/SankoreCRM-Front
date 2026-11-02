@@ -17,7 +17,7 @@ export interface UpdateStepRequest {
     approverRoleCode?: string | null;
     timeoutHours?: number | null;
     /**
-     * One of: Form, QualificationForm, KycCheck, Validation, ManualTask, Condition, Wait, Notification, IntegrationAction
+     * One of: Form, QualificationForm, KycCheck, Validation, ManualTask, Condition, Wait, Notification, IntegrationAction, End
      */
     kind?: UpdateStepRequestKindEnum | null;
     configJson?: string | null;
@@ -32,7 +32,8 @@ export enum UpdateStepRequestKindEnum {
     Condition = 'Condition',
     Wait = 'Wait',
     Notification = 'Notification',
-    IntegrationAction = 'IntegrationAction'
+    IntegrationAction = 'IntegrationAction',
+    End = 'End'
 };
 
 

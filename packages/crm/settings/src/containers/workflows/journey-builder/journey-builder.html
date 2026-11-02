@@ -1,6 +1,6 @@
 <div class="flex flex-col gap-5">
-  <!-- En-tête -->
-  <div class="flex flex-wrap items-center gap-4 px-6 py-4 rounded-2xl bg-white shadow-sm border border-slate-100">
+  <!-- En-tête : reste en haut quand la page défile (le défilement est celui du <main> de la mise en page). -->
+  <div class="sticky top-0 z-30 flex flex-wrap items-center gap-4 px-6 py-4 rounded-2xl bg-white shadow-sm border border-slate-100">
     <a routerLink="/settings/workflows" class="flex items-center gap-1 text-sm font-medium text-primary hover:underline">
       <tas-icon iconName="feather:chevron-left" style="font-size:14px"></tas-icon>
       Parcours
@@ -63,9 +63,30 @@
     }
   </div>
 
-  <div class="grid grid-cols-1 lg:grid-cols-[220px_minmax(0,1fr)_300px] gap-5 items-start">
-    <!-- Palette -->
-    <aside class="rounded-2xl bg-white shadow-sm border border-slate-100 p-4 flex flex-col gap-2">
+  <!-- Canevas : toute la largeur ; la palette s'y pose à la demande, les propriétés s'ouvrent en tiroir. -->
+  <!-- Hauteur de l'écran restant : le canevas défile en lui-même, sa barre (Étapes, zoom) reste visible. -->
+  <section class="relative rounded-2xl border border-slate-100 h-[calc(100dvh-14.75rem)] min-h-[480px] overflow-auto"
+      style="background-color:#faf8f5; background-image:radial-gradient(circle, #e2ddd5 1px, transparent 1px); background-size:20px 20px;"
+      role="presentation"
+      (click)="clearSelection()">
+
+      <!-- Hauteur nulle : la palette se pose sur le parcours au lieu de le pousser vers le bas. -->
+      <div class="sticky top-4 left-0 z-20 h-0 flex justify-between items-start gap-4 px-4 pointer-events-none">
+        <div class="pointer-events-auto flex flex-col gap-2 w-[240px]">
+          <button type="button"
+            class="w-fit flex items-center gap-2 px-3 py-1.5 rounded-full bg-white shadow-sm border text-sm font-medium transition-colors"
+            [class]="paletteOpen() ? 'border-primary text-primary' : 'border-slate-200 text-slate-700 hover:border-slate-300'"
+            [attr.aria-expanded]="paletteOpen()"
+            title="Afficher ou masquer les étapes à glisser sur le parcours"
+            (click)="togglePalette(); $event.stopPropagation()">
+            <tas-icon iconName="feather:layers" style="font-size:14px"></tas-icon>
+            Étapes
+            <tas-icon [iconName]="paletteOpen() ? 'feather:chevron-up' : 'feather:chevron-down'" style="font-size:13px"></tas-icon>
+          </button>
+          @if (paletteOpen()) {
+            <aside class="rounded-2xl bg-white shadow-lg border border-slate-200 p-4 flex flex-col gap-2 max-h-[calc(100dvh-19rem)] overflow-y-auto"
+              (click)="$event.stopPropagation()">
+
       <div>
         <p class="text-sm font-semibold text-slate-900">Étapes</p>
         <p class="text-xs text-slate-500">Glissez une étape sur le parcours.</p>
@@ -111,15 +132,9 @@
           </button>
         }
       }
-    </aside>
-
-    <!-- Canevas -->
-    <section class="relative rounded-2xl border border-slate-100 min-h-[70vh] overflow-auto"
-      style="background-color:#faf8f5; background-image:radial-gradient(circle, #e2ddd5 1px, transparent 1px); background-size:20px 20px;"
-      role="presentation"
-      (click)="clearSelection()">
-
-      <div class="sticky top-4 z-10 flex justify-end px-4 pointer-events-none">
+                </aside>
+          }
+        </div>
         <div class="pointer-events-auto flex items-center gap-1 px-2 py-1 rounded-full bg-white shadow-sm border border-slate-200">
           <button type="button" class="w-7 h-7 flex items-center justify-center rounded-full text-slate-600 hover:bg-slate-100" title="Dézoomer" (click)="zoomOut(); $event.stopPropagation()">
             <tas-icon iconName="feather:minus" style="font-size:13px"></tas-icon>
@@ -134,7 +149,7 @@
       @if (isLoading()) {
         <div class="flex justify-center py-24"><tas-spinner size="8" class="text-primary"></tas-spinner></div>
       } @else {
-        <div class="flex flex-col items-center pb-10 -mt-6 origin-top transition-transform" [style.transform]="'scale(' + zoom() + ')'">
+        <div class="flex flex-col items-center min-w-max px-6 pt-4 pb-10 origin-top transition-transform" [style.transform]="'scale(' + zoom() + ')'">
           <!-- Déclencheur -->
           <div class="w-[340px] rounded-xl bg-white border p-4 flex items-start gap-3 cursor-pointer shadow-sm transition-colors"
             [class]="triggerPanelOpen() ? 'border-primary ring-2 ring-primary/30' : dropTarget() === 'trigger' ? 'border-primary border-dashed' : 'border-slate-200'"
@@ -170,108 +185,99 @@
             @if (row.type === 'step') {
               <ng-container *ngTemplateOutlet="nodeTpl; context: { $implicit: row.step }"></ng-container>
             } @else {
-              <ng-container *ngTemplateOutlet="nodeTpl; context: { $implicit: row.condition }"></ng-container>
-              <!-- Branches -->
-              <div class="w-px h-5 bg-slate-300"></div>
-              <div class="relative w-[680px]">
-                <div class="mx-[170px] h-5 border-t border-x border-slate-300 rounded-t-md"></div>
-                <div class="grid grid-cols-2 gap-6">
-                  @for (branch of ['yes', 'no']; track branch) {
-                    @let branchSteps = branch === 'yes' ? row.yes : row.no;
-                    <div class="flex flex-col items-center">
-                      <span class="-mt-3 mb-2 px-2 py-0.5 rounded-md text-xs font-semibold"
-                        [class]="branch === 'yes' ? 'bg-red-100 text-red-700' : 'bg-slate-100 text-slate-700'">
-                        {{ branch === 'yes' ? 'Oui' : 'Non' }}
-                      </span>
-                      @for (step of branchSteps; track step.id; let first = $first) {
-                        @if (!first) { <div class="w-px h-4 bg-slate-300"></div> }
-                        <ng-container *ngTemplateOutlet="nodeTpl; context: { $implicit: step, narrow: true }"></ng-container>
-                      }
-                      <ng-container *ngTemplateOutlet="slotTpl; context: { $implicit: branchSlot(row, $any(branch)), compact: true }"></ng-container>
-                    </div>
-                  }
-                </div>
-                <div class="mx-[170px] h-5 border-b border-x border-slate-300 rounded-b-md"></div>
-              </div>
+              <ng-container *ngTemplateOutlet="branchesTpl; context: { $implicit: row }"></ng-container>
             }
           }
 
-          <ng-container *ngTemplateOutlet="slotTpl; context: { $implicit: slotAfter(rows().length - 1) }"></ng-container>
+          @if (!endsWithFin(rows())) {
+            <ng-container *ngTemplateOutlet="slotTpl; context: { $implicit: slotAfter(rows().length - 1) }"></ng-container>
 
-          <!-- Fin -->
-          <div class="w-[340px] rounded-xl bg-green-50 border border-green-200 p-4 flex items-center gap-3">
-            <span class="w-9 h-9 rounded-full bg-white text-green-700 flex items-center justify-center shrink-0">
-              <tas-icon iconName="feather:flag" style="font-size:15px"></tas-icon>
-            </span>
-            <div>
-              <p class="text-xs text-green-700">Fin</p>
-              <p class="text-sm font-semibold text-green-800">Client converti</p>
+            <!-- Fin implicite : le circuit est validé quand il arrive au bout. -->
+            <div class="w-[340px] rounded-xl bg-green-50 border border-green-200 p-4 flex items-center gap-3">
+              <span class="w-9 h-9 rounded-full bg-white text-green-700 flex items-center justify-center shrink-0">
+                <tas-icon iconName="feather:flag" style="font-size:15px"></tas-icon>
+              </span>
+              <div class="min-w-0 flex-1">
+                <p class="text-xs text-green-700">Fin</p>
+                <p class="text-sm font-semibold text-green-800">Circuit validé</p>
+              </div>
+              @if (!readOnly()) {
+                <button type="button" class="text-xs font-semibold text-green-800 hover:underline shrink-0"
+                  title="Choisir le résultat et une action sur le dossier"
+                  (click)="appendStep(StepKind.End); $event.stopPropagation()">
+                  Paramétrer
+                </button>
+              }
             </div>
-          </div>
+          }
         </div>
       }
     </section>
 
-    <!-- Propriétés -->
-    <aside class="rounded-2xl bg-white shadow-sm border border-slate-100 lg:sticky lg:top-4">
-      @if (selectedStep(); as step) {
-        <journey-step-panel
-          [templateId]="id()"
-          [step]="step"
-          [roleOptions]="roleOptions()"
-          [waitEvents]="waitEvents()"
-          [conditionFields]="conditionFields()"
-          [formFieldOptions]="formFieldOptions()"
-          [readOnly]="readOnly()"
-          (updated)="onStepUpdated($event)"
-          (deleteRequested)="deleteStep($event)"
-        ></journey-step-panel>
-      } @else if (triggerPanelOpen()) {
-        <div class="flex flex-col gap-4 p-5">
-          <div>
-            <p class="text-xs text-slate-500">Déclencheur</p>
-            <p class="text-xl font-bold text-primary">{{ trigger() ? triggerLabel(trigger()!) : 'Aucun' }}</p>
-          </div>
-          @if (trigger()) {
-            <tas-form-field>
-              <tas-label>Produit concerné</tas-label>
-              <input tasInput type="text" placeholder="Tous les produits"
-                [value]="triggerProduct()" (input)="triggerProduct.set($any($event.target).value)"
-                [readonly]="!isDraft() || !canManageTriggers()" />
-            </tas-form-field>
-            <p class="text-xs text-slate-500">Le parcours ne démarre que pour les leads de ce produit. Laissez vide pour tous.</p>
-            @if (isDraft() && canManageTriggers()) {
-              <button tas-raised-button color="primary" type="button" class="w-fit" [disabled]="isBusy()" [isLoading]="isBusy()" (click)="saveTriggerProduct()">
-                Enregistrer
-              </button>
-            }
-          } @else {
-            <p class="text-sm text-slate-500">Choisissez un déclencheur dans la palette.</p>
-          }
-        </div>
-      } @else {
-        <div class="p-5 text-sm text-slate-500">
-          Sélectionnez une étape pour la configurer.
-        </div>
-      }
-    </aside>
-  </div>
 </div>
+
+<!--
+  Condition et ses deux branches ; une branche peut contenir d'autres conditions, à toute profondeur.
+  Deux colonnes de même largeur (grille 1fr / 1fr, à la largeur de la plus large) : le trait qui
+  descend de la condition tombe ainsi pile sur leur jonction, et chaque demi-ligne horizontale va
+  du centre de sa colonne à cette jonction, en haut comme en bas. Une branche terminée par une Fin
+  ne redescend pas : le circuit s'y arrête.
+-->
+<ng-template #branchesTpl let-row>
+  @let mergesYes = !endsWithFin(row.yes);
+  @let mergesNo = !endsWithFin(row.no);
+  <ng-container *ngTemplateOutlet="nodeTpl; context: { $implicit: row.condition, narrow: true }"></ng-container>
+  <div class="w-px h-5 bg-slate-300"></div>
+  <div class="grid grid-cols-2 w-max">
+    @for (branch of ['yes', 'no']; track branch; let first = $first) {
+      @let branchRows = branch === 'yes' ? row.yes : row.no;
+      @let merges = branch === 'yes' ? mergesYes : mergesNo;
+      <div class="relative flex flex-col items-center px-3 min-w-[324px]">
+        <div class="absolute top-0 h-px bg-slate-300" [class]="first ? 'left-1/2 right-0' : 'left-0 right-1/2'"></div>
+        <div class="w-px h-3 bg-slate-300"></div>
+        <span class="mb-2 px-2 py-0.5 rounded-md text-xs font-semibold"
+          [class]="branch === 'yes' ? 'bg-red-100 text-red-700' : 'bg-slate-100 text-slate-700'">
+          {{ branch === 'yes' ? 'Oui' : 'Non' }}
+        </span>
+        @for (inner of branchRows; track $index) {
+          <!-- Avant chaque étape de la branche, la première comprise : on insère où l'on veut. -->
+          <ng-container *ngTemplateOutlet="slotTpl; context: { $implicit: branchSlotBefore(row, $any(branch), inner), compact: true }"></ng-container>
+          @if (inner.type === 'step') {
+            <ng-container *ngTemplateOutlet="nodeTpl; context: { $implicit: inner.step, narrow: true }"></ng-container>
+          } @else {
+            <ng-container *ngTemplateOutlet="branchesTpl; context: { $implicit: inner }"></ng-container>
+          }
+        }
+        @if (merges) {
+          <ng-container *ngTemplateOutlet="slotTpl; context: { $implicit: branchSlot(row, $any(branch)), compact: true, empty: !branchRows.length }"></ng-container>
+          <!-- Redescend jusqu'au bas de la plus haute des deux branches. -->
+          <div class="w-px flex-1 min-h-4 bg-slate-300"></div>
+          <div class="absolute bottom-0 h-px bg-slate-300" [class]="first ? 'left-1/2 right-0' : 'left-0 right-1/2'"></div>
+        }
+      </div>
+    }
+  </div>
+  @if (mergesYes || mergesNo) {
+    <div class="w-px h-4 bg-slate-300"></div>
+  }
+</ng-template>
 
 <!-- Carte d'étape -->
 <ng-template #nodeTpl let-step let-narrow="narrow">
   @let kind = stepKind(step);
   @let isCondition = kind === StepKind.Condition;
   @let isIntegration = kind === StepKind.IntegrationAction;
+  @let isEnd = kind === StepKind.End;
+  @let endRejected = isEnd && endChips(step)[0] === 'Refusé';
   <div class="rounded-xl p-4 flex items-start gap-3 cursor-pointer transition-all"
-    [class]="(narrow ? 'w-[300px] ' : 'w-[340px] ') + (isCondition ? 'bg-amber-50/60 border border-dashed border-amber-400 ' : 'bg-white border shadow-sm ') + (selectedStepId() === step.id ? 'border-primary ring-4 ring-primary/15 border-2' : isCondition ? '' : 'border-slate-200 hover:border-slate-300')"
+    [class]="(narrow ? 'w-[300px] ' : 'w-[340px] ') + (isCondition ? 'bg-amber-50/60 border border-dashed border-amber-400 ' : isEnd ? (endRejected ? 'bg-red-50 border border-red-200 ' : 'bg-green-50 border border-green-200 ') : 'bg-white border shadow-sm ') + (selectedStepId() === step.id ? 'border-primary ring-4 ring-primary/15 border-2' : isCondition || isEnd ? '' : 'border-slate-200 hover:border-slate-300')"
     role="button"
     tabindex="0"
     (click)="selectStep(step, $event)"
     (keydown.enter)="selectStep(step, $event)"
     (keydown.space)="$event.preventDefault(); selectStep(step, $event)">
     <span class="w-9 h-9 rounded-full flex items-center justify-center shrink-0"
-      [class]="isCondition ? 'bg-amber-100 text-amber-700' : isIntegration ? 'bg-blue-50 text-blue-600' : 'bg-slate-100 text-slate-700'">
+      [class]="isCondition ? 'bg-amber-100 text-amber-700' : isEnd ? (endRejected ? 'bg-white text-red-700' : 'bg-white text-green-700') : isIntegration ? 'bg-blue-50 text-blue-600' : 'bg-slate-100 text-slate-700'">
       <tas-icon [iconName]="STEP_KIND_META[kind].icon" style="font-size:15px"></tas-icon>
     </span>
     <div class="min-w-0">
@@ -286,7 +292,11 @@
         @if (step.description) { <p class="text-xs text-slate-600">{{ step.description }}</p> }
       } @else {
         <div class="flex flex-wrap gap-1.5 mt-1.5">
-          @if (kind === StepKind.Notification) {
+          @if (isEnd) {
+            @for (chip of endChips(step); track chip) {
+              <span class="px-2 py-0.5 rounded-md bg-white/70 text-xs" [class]="endRejected ? 'text-red-800' : 'text-green-800'">{{ chip }}</span>
+            }
+          } @else if (kind === StepKind.Notification) {
             @for (chip of notificationChips(step); track chip) {
               <span class="px-2 py-0.5 rounded-md bg-slate-100 text-xs text-slate-700">{{ chip }}</span>
             }
@@ -313,27 +323,45 @@
   </div>
 </ng-template>
 
-<!-- Emplacement d'insertion : trait, bouton « + », trait -->
-<ng-template #slotTpl let-slot let-compact="compact">
+<!--
+  Emplacement d'insertion. Le « + » n'apparaît qu'au survol de son bout de trait, au clavier et
+  pendant un glisser-déposer : affiché partout, il semblait flotter dans le vide entre les branches.
+  Le trait reste continu derrière lui. Une branche vide montre à la place « Ajouter une étape ».
+-->
+<ng-template #slotTpl let-slot let-compact="compact" let-empty="empty">
   @let key = slotKey(slot);
-  <div class="flex flex-col items-center"
+  @let shown = dragging()?.type === 'step' || dropTarget() === key;
+  <div class="group relative flex flex-col items-center"
     (dragover)="onSlotDragOver($event, key)"
     (dragleave)="dropTarget.set(null)"
     (drop)="onSlotDrop($event, slot)">
-    @if (!compact) { <div class="w-px h-4 bg-slate-300"></div> }
-    @if (!readOnly()) {
+    @if (readOnly()) {
+      <div class="w-px bg-slate-300" [class]="compact ? 'h-4' : 'h-8'"></div>
+    } @else if (empty) {
       <button type="button"
-        class="w-8 h-8 rounded-full border bg-white flex items-center justify-center text-slate-600 hover:border-primary hover:text-primary transition-colors"
-        [class]="dropTarget() === key ? 'border-primary text-primary scale-125 ring-4 ring-primary/15' : 'border-slate-300'"
-        title="Ajouter une étape ici"
+        class="px-3 py-1.5 rounded-lg border border-dashed bg-white/80 flex items-center gap-1.5 text-xs font-medium transition-colors"
+        [class]="dropTarget() === key ? 'border-primary text-primary ring-4 ring-primary/15' : 'border-slate-300 text-slate-500 hover:border-primary hover:text-primary'"
+        title="Ajouter une étape dans cette branche"
         TasMenuTrigger [panel]="kindMenu"
         (click)="pendingSlot.set(slot); $event.stopPropagation()">
-        <tas-icon iconName="feather:plus" style="font-size:14px"></tas-icon>
+        <tas-icon iconName="feather:plus" style="font-size:12px"></tas-icon>
+        Ajouter une étape
       </button>
     } @else {
-      <div class="w-px h-4 bg-slate-300"></div>
+      <div class="absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-slate-300"></div>
+      <div [class]="compact ? 'py-1' : 'py-4'">
+        <button type="button"
+          class="relative w-8 h-8 rounded-full border bg-white flex items-center justify-center text-slate-600 hover:border-primary hover:text-primary transition-all focus-visible:opacity-100"
+          [class]="(dropTarget() === key ? 'border-primary text-primary scale-125 ring-4 ring-primary/15 opacity-100' : 'border-slate-300 ')
+            + (shown ? ' opacity-100' : ' opacity-0 group-hover:opacity-100')"
+          title="Ajouter une étape ici"
+          aria-label="Ajouter une étape ici"
+          TasMenuTrigger [panel]="kindMenu"
+          (click)="pendingSlot.set(slot); $event.stopPropagation()">
+          <tas-icon iconName="feather:plus" style="font-size:14px"></tas-icon>
+        </button>
+      </div>
     }
-    @if (!compact) { <div class="w-px h-4 bg-slate-300"></div> }
   </div>
 </ng-template>
 

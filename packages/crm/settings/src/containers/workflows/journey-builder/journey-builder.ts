@@ -12,9 +12,11 @@ import { Menu, MenuItem, TasMenuTrigger } from '@talisoft/ui/menu';
 import { SnackbarService } from '@talisoft/ui/snackbar';
 import { ConfirmDialogService } from '@talisoft/ui/confirm-dialog';
 import { TimeagoPipe } from '@talisoft/ui/timeago';
+import { SideDrawerService } from '@talisoft/ui/side-drawer';
 import {
   AddTriggerRequestTriggerTypeEnum,
   RolesApiService,
+  UpdateStepRequestKindEnum,
   TriggerDto,
   TriggerEventDto,
   WorkflowStepDto,
@@ -45,8 +47,26 @@ import {
   ConditionFieldOption,
   STEP_KIND_SUPPORT,
   notificationRecipients,
+  endsWithFin,
+  endSummary,
+  newConditionNode,
+  serializeStepConfig,
+  StepConfig,
+  stepsOf,
 } from './journey-model';
-import { JourneyStepPanel } from './step-panel';
+import { JourneyStepDrawer, JourneyStepDrawerData } from './journey-step-drawer';
+import { JourneyTriggerDrawer, JourneyTriggerDrawerData } from './journey-trigger-drawer';
+
+/** La palette ouverte ou fermée, retenue d'une visite à l'autre sur ce poste. */
+const PALETTE_KEY = 'journey-builder.palette-open';
+
+function readPaletteOpen(): boolean {
+  try {
+    return localStorage.getItem(PALETTE_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
 
 type DragPayload = { type: 'step'; kind: StepKind } | { type: 'trigger'; preset: TriggerPreset };
 
@@ -73,7 +93,6 @@ type DragPayload = { type: 'step'; kind: StepKind } | { type: 'trigger'; preset:
     MenuItem,
     TasMenuTrigger,
     TimeagoPipe,
-    JourneyStepPanel,
   ],
   templateUrl: './journey-builder.html',
 })
@@ -82,6 +101,7 @@ export class JourneyBuilder implements OnInit {
   private readonly _rolesApi = inject(RolesApiService);
   private readonly _snackbar = inject(SnackbarService);
   private readonly _confirm = inject(ConfirmDialogService);
+  private readonly _sideDrawer = inject(SideDrawerService);
   private readonly _router = inject(Router);
   private readonly _breadcrumb = inject(BreadcrumbService);
   private readonly _permissions = inject(PermissionsService);
@@ -101,6 +121,7 @@ export class JourneyBuilder implements OnInit {
   public readonly productOfTrigger = productOfTrigger;
   public readonly stepKind = stepKind;
   public readonly StepKind = StepKind;
+  public readonly endsWithFin = endsWithFin;
 
   public isLoading = signal(true);
   public isBusy = signal(false);
@@ -117,6 +138,8 @@ export class JourneyBuilder implements OnInit {
 
   public selectedStepId = signal<string | null>(null);
   public triggerPanelOpen = signal(false);
+  /** La palette des étapes, posée sur le canevas : fermée, le canevas a toute la place. */
+  public paletteOpen = signal(readPaletteOpen());
   public zoom = signal(1);
 
   /** Emplacement visé par le menu « + » qui vient d'être ouvert. */
@@ -124,8 +147,6 @@ export class JourneyBuilder implements OnInit {
   public dragging = signal<DragPayload | null>(null);
   public dropTarget = signal<string | null>(null);
 
-  // Panneau déclencheur : saisie locale, enregistrée explicitement (remplacement côté serveur).
-  public triggerProduct = signal('');
 
   public readonly steps = computed(() => this.template()?.steps ?? []);
   public readonly rows = computed(() => layoutFlow(this.steps()));
@@ -170,13 +191,17 @@ export class JourneyBuilder implements OnInit {
     return chips;
   }
 
+  public endChips(step: WorkflowStepDto): string[] {
+    return endSummary(parseStepConfig(step.configJson));
+  }
+
   public targetLabel(step: WorkflowStepDto): string {
     const target = parseStepConfig(step.configJson).target;
     return TARGET_OPTIONS.find((o) => o.value === target)?.label ?? '';
   }
 
   public slotKey(slot: InsertSlot): string {
-    return `${slot.order}-${slot.branch ?? ''}`;
+    return `${slot.order}-${slot.branch ?? ''}-${slot.condition?.id ?? ''}`;
   }
 
   /** Emplacement « après la ligne `index` » (−1 : avant la première). */
@@ -187,22 +212,79 @@ export class JourneyBuilder implements OnInit {
   }
 
   public branchSlot(row: FlowRow, branch: 'yes' | 'no'): InsertSlot {
-    return { order: lastOrderOf(row) + 1, branch };
+    return { order: lastOrderOf(row) + 1, branch, condition: row.type === 'branches' ? row.condition : undefined };
+  }
+
+  /** Emplacement « juste avant `inner` » dans une branche de `row` : l'étape prend sa place, il est décalé. */
+  public branchSlotBefore(row: FlowRow, branch: 'yes' | 'no', inner: FlowRow): InsertSlot {
+    return {
+      order: Math.min(...stepsOf(inner).map((s) => s.order ?? 0)),
+      branch,
+      condition: row.type === 'branches' ? row.condition : undefined,
+    };
   }
 
   // ——— Sélection ———
 
+  public togglePalette(): void {
+    this.paletteOpen.update((open) => !open);
+    try {
+      localStorage.setItem(PALETTE_KEY, this.paletteOpen() ? '1' : '0');
+    } catch {
+      // Stockage indisponible (navigation privée) : le choix vaut pour cette visite.
+    }
+  }
+
+  /** Les propriétés de l'étape s'ouvrent dans un tiroir ; la carte reste en surbrillance tant qu'il est ouvert. */
   public selectStep(step: WorkflowStepDto, event?: Event): void {
     event?.stopPropagation();
     this.triggerPanelOpen.set(false);
     this.selectedStepId.set(step.id ?? null);
+    const data: JourneyStepDrawerData = {
+      templateId: this.id(),
+      step,
+      roleOptions: this.roleOptions(),
+      waitEvents: this.waitEvents(),
+      conditionFields: this.conditionFields(),
+      formFieldOptions: this.formFieldOptions(),
+      entityType: this.template()?.entityType ?? null,
+      readOnly: this.readOnly(),
+      onUpdated: (updated) => this.onStepUpdated(updated),
+    };
+    const ref = this._sideDrawer.open<'delete' | undefined, JourneyStepDrawerData, JourneyStepDrawer>(JourneyStepDrawer, {
+      width: '100%',
+      height: '100%',
+      panelClass: 'side-drawer-panel',
+      data,
+    });
+    ref.closed.subscribe((result) => {
+      if (this.selectedStepId() === step.id) this.selectedStepId.set(null);
+      if (result === 'delete') {
+        // La version la plus récente : le panneau a pu renommer l'étape avant qu'on la supprime.
+        this.deleteStep(this.steps().find((s) => s.id === step.id) ?? step);
+      }
+    });
   }
 
   public openTriggerPanel(event?: Event): void {
     event?.stopPropagation();
     this.selectedStepId.set(null);
-    this.triggerProduct.set(productOfTrigger(this.trigger()) ?? '');
     this.triggerPanelOpen.set(true);
+    const trigger = this.trigger();
+    const data: JourneyTriggerDrawerData = {
+      label: trigger ? triggerLabel(trigger) : null,
+      product: productOfTrigger(trigger) ?? '',
+      canEdit: this.isDraft() && this.canManageTriggers(),
+      save: (product) => (trigger?.eventName ? this.setTrigger(trigger.eventName, product) : Promise.resolve(false)),
+    };
+    this._sideDrawer
+      .open<void, JourneyTriggerDrawerData, JourneyTriggerDrawer>(JourneyTriggerDrawer, {
+        width: '100%',
+        height: '100%',
+        panelClass: 'side-drawer-panel',
+        data,
+      })
+      .closed.subscribe(() => this.triggerPanelOpen.set(false));
   }
 
   public clearSelection(): void {
@@ -278,6 +360,20 @@ export class JourneyBuilder implements OnInit {
     if (!slot || this.readOnly() || this.isBusy()) return;
     this.isBusy.set(true);
     const meta = STEP_KIND_META[kind];
+
+    const config: StepConfig = {};
+    if (slot.branch && slot.condition) {
+      const node = await this._ensureTree(slot.condition);
+      if (!node) {
+        this.isBusy.set(false);
+        return;
+      }
+      config.branch = slot.branch;
+      config.parent = node;
+    }
+    if (kind === StepKind.Condition) config.node = newConditionNode();
+    if (kind === StepKind.End) config.outcome = 'approved';
+
     const stepId = await firstValueFrom(
       this._api
         .addWorkflowStep(this.id(), {
@@ -286,7 +382,7 @@ export class JourneyBuilder implements OnInit {
           kind,
           insertAt: true,
           timeoutHours: hasAssignee(kind) ? 48 : null,
-          configJson: slot.branch ? JSON.stringify({ branch: slot.branch }) : null,
+          configJson: serializeStepConfig(config) || null,
         })
         .pipe(
           catchError((err: HttpErrorResponse) => {
@@ -299,35 +395,106 @@ export class JourneyBuilder implements OnInit {
     if (!stepId) return;
     // Recharger plutôt que d'insérer localement : l'insertion a décalé l'ordre des étapes suivantes.
     await this._reloadTemplate();
-    this.triggerPanelOpen.set(false);
-    this.selectedStepId.set(String(stepId));
+    // L'étape ajoutée s'ouvre aussitôt : on vient l'ajouter pour la paramétrer.
+    const added = this.steps().find((s) => s.id === String(stepId));
+    if (added) this.selectStep(added);
   }
 
+  /**
+   * Une condition part avec ses branches : laissées seules, ses étapes seraient rattachées à une
+   * condition disparue et le parcours ne pourrait plus être publié.
+   */
   public deleteStep(step: WorkflowStepDto): void {
+    const row = this._rowOf(step, this.rows());
+    const removed = row ? stepsOf(row) : [step];
+    const inside = removed.length - 1;
     this._confirm.confirm({
-      title: "Supprimer l'étape",
-      message: `L'étape « ${step.name} » sera retirée du parcours.`,
+      title: stepKind(step) === StepKind.Condition ? 'Supprimer la condition' : "Supprimer l'étape",
+      message: inside > 0
+        ? `La condition « ${step.name} » et les ${inside} étape${inside > 1 ? 's' : ''} de ses branches seront retirées du parcours.`
+        : `L'étape « ${step.name} » sera retirée du parcours.`,
       closable: true,
       acceptButtonProps: { label: 'Supprimer', theme: 'warn' },
       rejectButtonProps: { label: 'Annuler' },
-      accept: () => {
+      accept: async () => {
         this.isBusy.set(true);
-        this._api
-          .removeWorkflowStep(this.id(), step.id!)
-          .pipe(
-            catchError(() => {
-              this.isBusy.set(false);
-              this._snackbar.error('Erreur', "L'étape n'a pas pu être supprimée.");
-              return EMPTY;
-            }),
-          )
-          .subscribe(async () => {
-            this.selectedStepId.set(null);
-            await this._reloadTemplate();
-            this.isBusy.set(false);
-          });
+        // Les plus profondes d'abord : à aucun moment une étape ne reste sans sa condition.
+        for (const s of [...removed].sort((a, b) => (b.order ?? 0) - (a.order ?? 0))) {
+          const ok = await firstValueFrom(
+            this._api.removeWorkflowStep(this.id(), s.id!).pipe(
+              map(() => true),
+              catchError(() => of(false)),
+            ),
+          );
+          if (!ok) {
+            this._snackbar.error('Erreur', `L'étape « ${s.name} » n'a pas pu être supprimée.`);
+            break;
+          }
+        }
+        this.selectedStepId.set(null);
+        await this._reloadTemplate();
+        this.isBusy.set(false);
       },
     });
+  }
+
+  private _rowOf(step: WorkflowStepDto, rows: FlowRow[]): FlowRow | null {
+    for (const row of rows) {
+      if (row.type === 'step' && row.step.id === step.id) return row;
+      if (row.type === 'branches') {
+        if (row.condition.id === step.id) return row;
+        const inner = this._rowOf(step, row.yes) ?? this._rowOf(step, row.no);
+        if (inner) return inner;
+      }
+    }
+    return null;
+  }
+
+  /**
+   * L'identifiant d'une condition, que ses étapes nomment, et le rattachement explicite de ses
+   * étapes directes. Une condition enregistrée avant l'imbrication n'a pas d'identifiant, et ses
+   * étapes n'ont qu'une `branch` : elles appartiennent à « la condition qui les précède ». Une
+   * condition insérée devant elles les capterait — tout est donc rattaché nommément avant
+   * d'insérer quoi que ce soit dans ses branches.
+   */
+  private async _ensureTree(condition: WorkflowStepDto): Promise<string | null> {
+    const config = parseStepConfig(condition.configJson);
+    const node = config.node ?? newConditionNode();
+    if (!config.node && !(await this._saveConfig(condition, { ...config, node }))) return null;
+
+    const row = this._rowOf(condition, this.rows());
+    const children = row?.type === 'branches'
+      ? [...row.yes, ...row.no].map((r) => (r.type === 'step' ? r.step : r.condition))
+      : [];
+    for (const child of children) {
+      const childConfig = parseStepConfig(child.configJson);
+      if (childConfig.parent || !childConfig.branch) continue;
+      if (!(await this._saveConfig(child, { ...childConfig, parent: node }))) return null;
+    }
+    return node;
+  }
+
+  /** Réécrit la seule configuration d'une étape, le reste tel quel. */
+  private async _saveConfig(step: WorkflowStepDto, config: StepConfig): Promise<boolean> {
+    return firstValueFrom(
+      this._api
+        .updateWorkflowStep(this.id(), step.id!, {
+          name: step.name,
+          description: step.description ?? null,
+          approverRoleCode: step.approverRoleCode ?? null,
+          timeoutHours: step.timeoutHours ?? null,
+          kind: stepKind(step) as unknown as UpdateStepRequestKindEnum,
+          configJson: serializeStepConfig(config),
+          isBlocking: !!step.isBlocking,
+        })
+        .pipe(
+          map(() => true),
+          catchError(() => {
+            this._snackbar.error('Erreur', `L'étape « ${step.name} » n'a pas pu être rattachée à sa condition.`);
+            return of(false);
+          }),
+        ),
+    );
   }
 
   /**
@@ -335,11 +502,13 @@ export class JourneyBuilder implements OnInit {
    * changer d'événement ou de filtre, c'est ajouter le nouveau puis retirer l'ancien — dans cet
    * ordre, pour qu'un échec laisse l'ancien en place plutôt qu'un parcours sans déclencheur.
    */
-  public async setTrigger(eventName: string, product = productOfTrigger(this.trigger()) ?? ''): Promise<void> {
-    if (!this.canManageTriggers() || !this.isDraft() || this.isBusy()) return;
+  /** Vrai quand le déclencheur voulu est en place (ou l'était déjà). */
+  public async setTrigger(eventName: string, product = productOfTrigger(this.trigger()) ?? ''): Promise<boolean> {
+    if (!this.canManageTriggers() || !this.isDraft() || this.isBusy()) return false;
     const previous = this.trigger();
     const conditionJson = productCondition(product);
-    if (previous && previous.eventName === eventName && (previous.conditionJson ?? null) === conditionJson) return;
+    if (previous && previous.eventName === eventName && (previous.conditionJson ?? null) === conditionJson) return true;
+    let saved = false;
 
     this.isBusy.set(true);
     try {
@@ -352,17 +521,14 @@ export class JourneyBuilder implements OnInit {
         if (previous) await firstValueFrom(this._api.removeTrigger(this.id(), previous.id!));
       }
       this._snackbar.success('Déclencheur enregistré', triggerLabel({ eventName }));
+      saved = true;
     } catch (err) {
       const detail = (err as HttpErrorResponse)?.error?.detail;
       this._snackbar.error('Erreur', detail ?? "Le déclencheur n'a pas pu être enregistré.");
     }
     await this._reloadTriggers();
     this.isBusy.set(false);
-  }
-
-  public saveTriggerProduct(): void {
-    const trigger = this.trigger();
-    if (trigger?.eventName) this.setTrigger(trigger.eventName, this.triggerProduct());
+    return saved;
   }
 
   /**

@@ -145,6 +145,18 @@ export class WorkflowInstanceDetailPage implements OnInit {
       .map((e) => ({ cancelled: e.eventCode === 'TASK_CANCELLED', detail: e.comment ?? '' }));
   }
 
+  /**
+   * Ce qu'une étape Fin a décidé (« Fin du circuit : refusé. Action demandée : … ») puis ce que le
+   * module du dossier a fait de l'action.
+   */
+  public endNotes(stepDefinitionId: string | null | undefined): { failed: boolean; detail: string }[] {
+    if (!stepDefinitionId) return [];
+    return this.audit()
+      .filter((e) => e.fromStateId === stepDefinitionId
+        && (e.eventCode === 'ENDED' || e.eventCode === 'END_ACTION_DONE' || e.eventCode === 'END_ACTION_NOT_DONE'))
+      .map((e) => ({ failed: e.eventCode === 'END_ACTION_NOT_DONE', detail: e.comment ?? '' }));
+  }
+
   /** Pourquoi une étape Attente s'est terminée, ou quelle branche une Condition a choisie. */
   public waitResumption(stepDefinitionId: string | null | undefined): string | null {
     if (!stepDefinitionId) return null;
@@ -170,7 +182,9 @@ export class WorkflowInstanceDetailPage implements OnInit {
   public currentStep(): WorkflowInstanceStepDto | null {
     const inst = this.instance();
     if (!inst?.steps) return null;
-    return inst.steps.find((s) => s.status === 'Pending') ?? null;
+    // L'étape ouverte est « AwaitingApproval » ; « Pending » est une étape pas encore atteinte. Lire
+    // « Pending » désignait la première étape à venir — une Fin dans une autre branche, par exemple.
+    return inst.steps.find((s) => s.status === 'AwaitingApproval') ?? null;
   }
 
   public userLabel(userId: string | null | undefined): string {

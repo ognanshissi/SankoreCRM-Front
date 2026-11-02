@@ -27,6 +27,9 @@ import { SnackbarService } from '@talisoft/ui/snackbar';
 import { UpdateStepRequest, UpdateStepRequestKindEnum, WorkflowStepDto, WorkflowTemplatesApiService } from '@sankore/crm-api';
 import {
   CHANNEL_OPTIONS,
+  END_OUTCOME_OPTIONS,
+  EndOutcome,
+  endActionsFor,
   Escalation,
   ESCALATION_OPTIONS,
   hasAssignee,
@@ -74,6 +77,8 @@ class StepFormModel {
   public formFields!: string[];
   public condOperator!: string;
   public condValue!: string;
+  public endOutcome!: string;
+  public endAction!: string;
 
   public static fromStep(step: WorkflowStepDto): StepFormModel {
     const config = parseStepConfig(step.configJson);
@@ -99,6 +104,8 @@ class StepFormModel {
     m.formFields = config.fields ?? [];
     m.condOperator = config.condition?.operator ?? '';
     m.condValue = config.condition?.value ?? '';
+    m.endOutcome = config.outcome ?? 'approved';
+    m.endAction = config.action ?? '';
     return m;
   }
 }
@@ -127,6 +134,11 @@ export class JourneyStepPanel {
   public conditionFields = input<ConditionFieldOption[]>([]);
   /** Les champs du dossier qu'une étape Formulaire peut exiger. */
   public formFieldOptions = input<{ label: string; value: string }[]>([]);
+  /** Le type de dossier du parcours : les actions d'une Fin en dépendent. */
+  public entityType = input<string | null>(null);
+  public readonly endOutcomeOptions = END_OUTCOME_OPTIONS;
+  /** « Aucune action » en tête : une Fin peut seulement valider ou refuser. */
+  public readonly endActionOptions = computed(() => [{ label: 'Aucune action', value: '' }, ...endActionsFor(this.entityType())]);
   public readonly conditionFieldOptions = computed(() => this.conditionFields().map((f) => ({ label: f.label, value: f.key })));
   public readonly conditionField = computed(() => this.conditionFields().find((f) => f.key === this.model().condField));
   public readonly operatorOptions = computed(() => conditionOperators(this.conditionField()?.type));
@@ -288,8 +300,9 @@ export class JourneyStepPanel {
 
   private _toRequest(step: WorkflowStepDto, model: StepFormModel): UpdateStepRequest {
     const kind = stepKind(step);
-    // La branche est posée à l'insertion et n'est pas éditée ici : on la conserve telle quelle.
-    const config: StepConfig = { branch: parseStepConfig(step.configJson).branch };
+    // La place dans l'arbre est posée à l'insertion et n'est pas éditée ici : on la conserve telle quelle.
+    const { branch, parent, node } = parseStepConfig(step.configJson);
+    const config: StepConfig = { branch, parent, node };
     if (kind === StepKind.KycCheck) config.kycLevel = model.kycLevel as KycLevel;
     if (hasAssignee(kind)) config.escalation = model.escalation as Escalation;
     if (kind === StepKind.Notification) {
@@ -319,6 +332,10 @@ export class JourneyStepPanel {
       };
     }
     if (kind === StepKind.IntegrationAction) config.target = model.target as StepConfig['target'];
+    if (kind === StepKind.End) {
+      config.outcome = model.endOutcome as EndOutcome;
+      config.action = model.endAction || undefined;
+    }
 
     return {
       name: model.name.trim(),
@@ -329,7 +346,7 @@ export class JourneyStepPanel {
       kind: kind as unknown as UpdateStepRequestKindEnum,
       configJson: serializeStepConfig(config),
       // Une notification est franchie à l'entrée : « bloquante » n'a pas de sens pour elle.
-      isBlocking: kind === StepKind.Notification || kind === StepKind.Wait ? false : model.isBlocking,
+      isBlocking: kind === StepKind.Notification || kind === StepKind.Wait || kind === StepKind.End ? false : model.isBlocking,
     };
   }
 }
