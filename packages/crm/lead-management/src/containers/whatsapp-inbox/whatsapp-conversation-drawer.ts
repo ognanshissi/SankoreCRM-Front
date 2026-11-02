@@ -234,7 +234,7 @@ export class WhatsAppConversationDrawer implements OnInit {
 
       this._snackbar.success('Conversation rattachée', 'Elle s’ouvre désormais sur la fiche du lead.');
       this._ref.close(true);
-      this._router.navigate(['/leads', leadId, 'suivi', 'whatsapp']);
+      this._router.navigate(['/leads', leadId, 'conversations']);
     });
   }
 

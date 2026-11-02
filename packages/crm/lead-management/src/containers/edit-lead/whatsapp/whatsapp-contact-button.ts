@@ -121,7 +121,7 @@ export class WhatsAppContactButton {
     ref.closed.subscribe((result) => {
       if (!result) return;
       this.reload();
-      this._router.navigate(['/leads', this.leadId(), 'suivi', 'whatsapp']);
+      this._router.navigate(['/leads', this.leadId(), 'conversations']);
     });
   }
 }

@@ -46,33 +46,52 @@ export function intentOption(level: string | null | undefined): IntentOption {
 }
 
 /**
- * Le parcours du lead en UNE frise. Les 4 premières étapes sont son étape de pipeline
- * (`LeadPipeline.ContactStages` côté serveur) ; les 2 dernières, son statut — la qualification et
- * la conversion ne sont pas des étapes de pipeline. Avant, deux frises (« Cycle de vie » sur le
- * statut, « Étape du lead » sur le pipeline) montraient des étapes différentes pour le même lead.
+ * Le parcours du lead en cinq étapes (maquette de la fiche, 2026-11-02) : Nouveau, Contacté,
+ * Intéressé, Qualifié, puis l'issue. L'étape de pipeline (`PipelineStage` côté serveur) place le
+ * lead ; le statut l'emporte quand il est allé plus loin. La frise à six étapes qu'elle remplace
+ * distinguait « contact tenté » et « contact établi », que l'agent lit comme un seul moment.
  */
-export const LEAD_JOURNEY = [
-  { stage: 'New', label: 'Nouveau' },
-  { stage: 'ContactAttempted', label: 'Contact tenté' },
-  { stage: 'ContactEstablished', label: 'Contact établi' },
-  { stage: 'NeedIdentified', label: 'Besoin identifié' },
-  { stage: 'Qualified', label: 'Qualifié' },
-  { stage: 'Converted', label: 'Converti' },
-] as const;
+export const LEAD_STATUS_STEPS = ['Nouveau', 'Contacté', 'Intéressé', 'Qualifié', 'Converti / Perdu'] as const;
 
-/** Rang de l'étape courante : le statut l'emporte quand il est allé plus loin que le pipeline. -1 hors frise. */
-export function journeyIndex(lead: LeadDto | null | undefined): number {
-  if (lead?.status === 'Converted' || lead?.pipelineStage === 'Converted') return LEAD_JOURNEY.length - 1;
-  if (lead?.status === 'Qualified') return 4;
-  return LEAD_JOURNEY.findIndex((s) => s.stage === lead?.pipelineStage);
+const STEP_OF_STAGE: Record<string, number> = {
+  New: 0,
+  ContactAttempted: 1,
+  ContactEstablished: 1,
+  NeedIdentified: 2,
+  Qualified: 3,
+  ProductProposed: 3,
+  ApplicationStarted: 3,
+  DocumentCollection: 3,
+  ApplicationCompleted: 3,
+  ApprovalPending: 3,
+  Converted: 4,
+  Lost: 4,
+};
+
+/** Rang de l'étape courante dans `LEAD_STATUS_STEPS`. */
+export function statusStepIndex(lead: LeadDto | null | undefined): number {
+  const status = lead?.status;
+  if (status === 'Converted' || status === 'Lost' || status === 'Disqualified') return 4;
+  const byStage = STEP_OF_STAGE[lead?.pipelineStage ?? ''] ?? 0;
+  if (status === 'Qualified') return Math.max(byStage, 3);
+  if (status === 'Open' || status === 'Qualifying') return Math.max(byStage, 1);
+  return byStage;
 }
 
-/** Les statuts qui sortent le lead du parcours : la frise s'éteint et le statut s'affiche à côté. */
-const OFF_JOURNEY_STATUSES = ['Lost', 'Disqualified', 'Archived', 'Nurturing', 'Recycled'];
+/** La dernière étape dit l'issue quand elle est connue : « Converti », « Perdu », « Disqualifié ». */
+export function statusStepLabel(lead: LeadDto | null | undefined, index: number): string {
+  if (index !== LEAD_STATUS_STEPS.length - 1) return LEAD_STATUS_STEPS[index];
+  const status = lead?.status;
+  if (status === 'Converted' || status === 'Disqualified') return leadStatusMeta(status).label;
+  if (status === 'Lost' || lead?.pipelineStage === 'Lost') return 'Perdu';
+  return LEAD_STATUS_STEPS[index];
+}
 
-/** « Perdu », « Disqualifié »… quand le lead a quitté le parcours ; null sinon. */
+/** Les statuts qui sortent le lead du parcours sans issue : la frise s'éteint, le statut s'affiche à côté. */
+const OFF_JOURNEY_STATUSES = ['Archived', 'Nurturing', 'Recycled'];
+
+/** « Nurturing », « Recyclé », « Archivé » quand le lead a quitté le parcours ; null sinon. */
 export function journeyOffTrack(lead: LeadDto | null | undefined): { label: string; severity: Severity } | null {
-  if (lead?.pipelineStage === 'Lost') return leadStatusMeta('Lost');
   return OFF_JOURNEY_STATUSES.includes(lead?.status ?? '') ? leadStatusMeta(lead?.status) : null;
 }
 

@@ -21,6 +21,7 @@ import { TasSelect } from '@talisoft/ui/select';
 import { PageEvent } from '@angular/material/paginator';
 import {
   AgenciesApiService,
+  CloseLeadRequestReasonEnum,
   LeadDto,
   LeadsApiService,
   LeadSourcesApiService,
@@ -33,6 +34,7 @@ import { SideDrawerService } from '@talisoft/ui/side-drawer';
 import { TimeagoPipe } from '@talisoft/ui/timeago';
 import { SnackbarService } from '@talisoft/ui/snackbar';
 import { Menu, MenuItem, TasMenuTrigger } from '@talisoft/ui/menu';
+import { ConfirmDialogService } from '@talisoft/ui/confirm-dialog';
 import { CreateLeadComponent } from '../create-lead/create-lead';
 import { ImportLeadsComponent } from '../import-leads/import-leads';
 import { SystemCaptureDrawer } from './system-capture-drawer';
@@ -168,9 +170,10 @@ function transitionBlockedMessage(from: string, to: string): string {
  * pas par un changement d'étape (voir `onDrop`).
  */
 export interface PipelinePhase {
-  key: 'new' | 'dispatched' | 'contacted' | 'need' | 'converted';
+  key: 'new' | 'dispatched' | 'contacted' | 'need' | 'converted' | 'interested' | 'qualified' | 'lost';
   label: string;
-  exit: string;
+  /** La condition de sortie de la colonne ; null pour une issue (Converti, Perdu). */
+  exit: string | null;
   stages: string[];
   dropStage: UpdatePipelineStageRequestStageEnum;
 }
@@ -186,6 +189,41 @@ const PIPELINE_PHASES: PipelinePhase[] = [
     dropStage: S.NeedIdentified },
   { key: 'converted',  label: 'Converti',       exit: 'projet approuvé',             stages: [S.Converted],                                             dropStage: S.Converted },
 ];
+
+/** Les étapes que le lead ne pose plus lui-même : celles de ses projets (lot 4). */
+const PROJECT_STAGES = [S.Qualified, S.ProductProposed, S.ApplicationStarted, S.DocumentCollection, S.ApplicationCompleted, S.ApprovalPending];
+
+/**
+ * Le pipeline vu par un agent (propriétaire, 2026-11-02) : ses leads sont déjà à lui, « Dispatché »
+ * ne lui dit rien. Il suit le parcours de la fiche lead — Nouveau, Contacté, Intéressé, Qualifié —
+ * et ses deux issues, Converti et Perdu.
+ */
+const AGENT_PHASES: PipelinePhase[] = [
+  { key: 'new',        label: 'Nouveau',   exit: 'premier contact',              stages: [S.New],                                  dropStage: S.New },
+  { key: 'contacted',  label: 'Contacté',  exit: 'besoin identifié',             stages: [S.ContactAttempted, S.ContactEstablished], dropStage: S.ContactEstablished },
+  { key: 'interested', label: 'Intéressé', exit: 'qualification dans un projet', stages: [S.NeedIdentified],                       dropStage: S.NeedIdentified },
+  { key: 'qualified',  label: 'Qualifié',  exit: 'projet approuvé',              stages: PROJECT_STAGES,                           dropStage: S.Qualified },
+  { key: 'converted',  label: 'Converti',  exit: null,                           stages: [S.Converted],                            dropStage: S.Converted },
+  { key: 'lost',       label: 'Perdu',     exit: null,                           stages: [S.Lost],                                 dropStage: S.Lost },
+];
+
+/** Colonne d'un lead dans le pipeline de l'agent ; null pour un lead archivé. */
+function agentPhaseOf(lead: LeadDto): PipelinePhase['key'] | null {
+  const status = lead.status;
+  const stage = lead.pipelineStage ?? S.New;
+  if (status === 'Converted') return 'converted';
+  if (status === 'Lost' || status === 'Disqualified' || stage === S.Lost) return 'lost';
+  if (status === 'Archived') return null;
+  // Une étape « Converti » posée à la main, sans client, reste un lead qualifié (voir `phaseOf`).
+  if (status === 'Qualified' || PROJECT_STAGES.includes(stage as typeof S.Qualified) || stage === S.Converted) return 'qualified';
+  if (stage === S.NeedIdentified) return 'interested';
+  if (stage === S.ContactAttempted || stage === S.ContactEstablished || status === 'Open') return 'contacted';
+  return 'new';
+}
+
+/** Les rôles de terrain, et ceux qui encadrent : la même règle que « Ma journée ». */
+const AGENT_ROLES = ['Agent', 'CommercialAgent'];
+const SUPERVISOR_ROLES = ['System', 'Administrator', 'SalesManager', 'BranchManager'];
 
 function assigneeId(lead: LeadDto): string | null {
   return lead.currentAssignedId ?? lead.ownerId ?? null;
@@ -290,6 +328,7 @@ export class LeadHomepage implements OnInit {
   private readonly _leadSourcesApiService = inject(LeadSourcesApiService);
   private readonly _usersApiService = inject(UsersApiService);
   private readonly _auth = inject(AuthenticationService);
+  private readonly _confirmDialog = inject(ConfirmDialogService);
   private readonly _sideDrawerService = inject(SideDrawerService);
   private readonly _snackbar = inject(SnackbarService);
   private readonly _destroyRef = inject(DestroyRef);
@@ -340,7 +379,21 @@ export class LeadHomepage implements OnInit {
   public sourceFilterOptions = signal<{ label: string; value: string }[]>([ALL_SOURCES_OPTION]);
   public readonly intentFilterOptions = INTENT_FILTER_OPTIONS;
   public readonly kanbanColumns = KANBAN_COLUMNS;
-  public readonly pipelinePhases = PIPELINE_PHASES;
+
+  /** Un agent sans rôle d'encadrement voit son parcours, pas les étapes du dispatch. */
+  public readonly isAgentView = computed(() => {
+    const roles = this._auth.connectedUser()?.roles ?? [];
+    return !roles.some((r) => SUPERVISOR_ROLES.includes(r)) && roles.some((r) => AGENT_ROLES.includes(r));
+  });
+  public readonly pipelinePhases = computed(() => (this.isAgentView() ? AGENT_PHASES : PIPELINE_PHASES));
+  private phaseOf(lead: LeadDto): PipelinePhase['key'] | null {
+    return this.isAgentView() ? agentPhaseOf(lead) : phaseOf(lead);
+  }
+  /** Converti et Perdu sont des issues : ni « actifs », ni en risque de SLA. */
+  private _isOutcome(lead: LeadDto): boolean {
+    const phase = this.phaseOf(lead);
+    return phase === 'converted' || phase === 'lost';
+  }
 
   // Filtres de la vue Pipeline
   /** Produit d'intérêt : filtré côté client, le contrat de `listLeads` n'a pas de paramètre produit. */
@@ -372,11 +425,11 @@ export class LeadHomepage implements OnInit {
   /** Leads du pipeline actif : ni perdus, ni filtrés par les puces. */
   private readonly _pipelineLeads = computed(() => {
     const product = this.filterProduct();
-    return this.leads().filter((l) => phaseOf(l) !== null && (!product || l.interestedProduct?.trim() === product));
+    return this.leads().filter((l) => this.phaseOf(l) !== null && (!product || l.interestedProduct?.trim() === product));
   });
 
   public readonly activeLeadCount = computed(
-    () => this._pipelineLeads().filter((l) => phaseOf(l) !== 'converted').length,
+    () => this._pipelineLeads().filter((l) => !this._isOutcome(l)).length,
   );
 
   public readonly slaRiskCount = computed(
@@ -385,10 +438,10 @@ export class LeadHomepage implements OnInit {
 
   public readonly phaseLeads = computed(() => {
     const riskOnly = this.filterSlaRisk();
-    const byPhase = new Map<string, LeadDto[]>(PIPELINE_PHASES.map((p) => [p.key, []]));
+    const byPhase = new Map<string, LeadDto[]>(this.pipelinePhases().map((p) => [p.key, []]));
     for (const lead of this._pipelineLeads()) {
       if (riskOnly && !this._isSlaAtRisk(lead)) continue;
-      byPhase.get(phaseOf(lead)!)?.push(lead);
+      byPhase.get(this.phaseOf(lead)!)?.push(lead);
     }
     return byPhase;
   });
@@ -492,7 +545,7 @@ export class LeadHomepage implements OnInit {
   }
 
   public phaseIds(): string[] {
-    return PIPELINE_PHASES.map((p) => 'phase-' + p.key);
+    return this.pipelinePhases().map((p) => 'phase-' + p.key);
   }
 
   /** Initiale du prénom et nom : « A. Sow », assez pour reconnaître un collègue sur une carte étroite. */
@@ -530,7 +583,7 @@ export class LeadHomepage implements OnInit {
   }
 
   private _isSlaAtRisk(lead: LeadDto): boolean {
-    if (phaseOf(lead) === 'converted') return false;
+    if (this._isOutcome(lead)) return false;
     const sla = this.cardSla(lead);
     return !!sla && sla.tone !== 'ok';
   }
@@ -570,13 +623,14 @@ export class LeadHomepage implements OnInit {
   // ——— Keyboard navigation ———
 
   public onCardKeydown(event: KeyboardEvent, lead: LeadDto): void {
-    const idx = PIPELINE_PHASES.findIndex((p) => p.key === phaseOf(lead));
+    const phases = this.pipelinePhases();
+    const idx = phases.findIndex((p) => p.key === this.phaseOf(lead));
     let target: PipelinePhase | undefined;
 
     if (event.key === 'ArrowRight') {
-      target = PIPELINE_PHASES[idx + 1];
+      target = phases[idx + 1];
     } else if (event.key === 'ArrowLeft') {
-      target = PIPELINE_PHASES[idx - 1];
+      target = phases[idx - 1];
     } else if (event.key === 'Enter' || event.key === ' ') {
       event.preventDefault();
       this.openQuickView(lead);
@@ -590,6 +644,10 @@ export class LeadHomepage implements OnInit {
   }
 
   private _moveToPhase(lead: LeadDto, phase: PipelinePhase): void {
+    if (this.isAgentView()) {
+      this._moveForAgent(lead, phase);
+      return;
+    }
     const fromStage = lead.pipelineStage ?? S.New;
     if (phaseOf(lead) === phase.key) return;
     if (fromStage === phase.dropStage) {
@@ -619,6 +677,74 @@ export class LeadHomepage implements OnInit {
     this._moveLeadOptimistic(lead, fromStage, phase.dropStage);
   }
 
+  /**
+   * Les colonnes de l'agent. Le contact et l'intérêt se posent en déplaçant la carte ; la
+   * qualification se fait dans un projet et la conversion à son approbation, comme sur la fiche.
+   * « Perdu » clôt le lead, après confirmation, comme « Clôturer le lead » de la fiche.
+   */
+  private _moveForAgent(lead: LeadDto, phase: PipelinePhase): void {
+    const from = agentPhaseOf(lead);
+    if (from === phase.key) return;
+
+    if (from === 'converted') {
+      this._snackbar.error('Transition refusée', 'Un lead converti ne change plus de colonne.');
+      return;
+    }
+    if (from === 'lost') {
+      this._snackbar.error('Transition refusée', 'Réouvrez le lead depuis sa fiche pour le remettre dans le parcours.');
+      return;
+    }
+    if (phase.key === 'qualified') {
+      this._snackbar.error('Transition refusée', 'Un lead se qualifie dans un projet : ouvrez sa fiche et qualifiez-le dans un projet.');
+      return;
+    }
+    if (phase.key === 'converted') {
+      this._snackbar.error(
+        'Transition refusée',
+        "Un lead devient client quand l'un de ses projets est approuvé : faites avancer le projet depuis sa fiche.",
+      );
+      return;
+    }
+    if (phase.key === 'lost') {
+      this._confirmLost(lead);
+      return;
+    }
+
+    const fromStage = lead.pipelineStage ?? S.New;
+    if (fromStage === phase.dropStage) return;
+    if (!isTransitionAllowed(fromStage, phase.dropStage)) {
+      this._snackbar.error('Transition refusée', `Transition non autorisée vers « ${phase.label} » : avancez d'une étape à la fois, ou passez le lead en Perdu.`);
+      return;
+    }
+    this._moveLeadOptimistic(lead, fromStage, phase.dropStage);
+  }
+
+  private _confirmLost(lead: LeadDto): void {
+    this._confirmDialog.confirm({
+      title: 'Passer ce lead en perdu ?',
+      message: `« ${this.displayName(lead)} » sera clôturé comme perdu. Vous pourrez le réouvrir depuis sa fiche.`,
+      closable: true,
+      showCancelButton: true,
+      acceptButtonProps: { label: 'Passer en perdu', theme: 'warn' },
+      rejectButtonProps: { label: 'Annuler' },
+      accept: () => {
+        this._leadsApiService.closeLead(lead.id!, {
+          reason: CloseLeadRequestReasonEnum.Lost,
+          detail: 'Déplacé dans « Perdu » depuis le pipeline',
+        }).pipe(
+          catchError(() => {
+            this._snackbar.error('Erreur', 'Le lead n\'a pas pu être clôturé.');
+            return EMPTY;
+          }),
+        ).subscribe(() => {
+          this._snackbar.success('Lead perdu', `« ${this.displayName(lead)} » est passé en perdu.`);
+          this.reloadCurrentPage();
+          this._loadStats();
+        });
+      },
+    });
+  }
+
   private _moveLeadOptimistic(lead: LeadDto, fromStage: string, toStage: string): void {
     // Optimistic update
     this.leads.update((all) =>
@@ -642,7 +768,7 @@ export class LeadHomepage implements OnInit {
         }),
       )
       .subscribe(() => {
-        const toLabel = PIPELINE_PHASES.find((p) => p.stages.includes(toStage))?.label ?? toStage;
+        const toLabel = this.pipelinePhases().find((p) => p.stages.includes(toStage))?.label ?? toStage;
         this._snackbar.success('Lead déplacé', `Déplacé vers « ${toLabel} »`);
         this._loadStats();
       });
@@ -893,17 +1019,17 @@ export class LeadHomepage implements OnInit {
       return;
     }
 
-    const phase = phaseOf(lead);
+    const phase = this.phaseOf(lead);
     this._sideDrawerService.open<void, LeadQuickViewData, LeadQuickViewDrawer>(LeadQuickViewDrawer, {
       width: '100%',
       height: '100%',
       panelClass: 'side-drawer-panel',
       data: {
         lead,
-        phaseLabel: PIPELINE_PHASES.find((p) => p.key === phase)?.label ?? null,
+        phaseLabel: this.pipelinePhases().find((p) => p.key === phase)?.label ?? null,
         agentName: this.agents().get(assigneeId(lead) ?? '')?.fullName?.trim() ?? '',
         agencyName: this.agencyName(lead.agencyId),
-        sla: phase === 'converted' ? null : this.cardSla(lead),
+        sla: this._isOutcome(lead) ? null : this.cardSla(lead),
       },
     });
   }

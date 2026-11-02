@@ -404,7 +404,7 @@
     </div>
   } @else {
     <div class="flex gap-4 overflow-x-auto pb-4 items-start" cdkDropListGroup>
-      @for (phase of pipelinePhases; track phase.key) {
+      @for (phase of pipelinePhases(); track phase.key) {
         <div class="flex-shrink-0 w-[248px] flex flex-col rounded-xl border border-slate-200/70 bg-white/50 p-3">
           <div class="flex items-center gap-2">
             <span class="text-sm font-semibold text-slate-800 truncate">{{ phase.label }}</span>
@@ -412,7 +412,9 @@
               {{ leadsOfPhase(phase.key).length }}
             </span>
           </div>
-          <p class="text-xs text-slate-500 mt-1 pb-2 border-b border-slate-200">Sortie : {{ phase.exit }}</p>
+          <p class="text-xs text-slate-500 mt-1 pb-2 border-b border-slate-200">
+            @if (phase.exit) { Sortie : {{ phase.exit }} } @else { Issue du parcours }
+          </p>
 
           <div
             cdkDropList
@@ -487,9 +489,9 @@
                     title="Aucun agent n'a pu le prendre ; il partira seul dès qu'un agent sera disponible">
                     En file d'attente · {{ lead.awaitingDispatchSince | dateTimeAgo }}
                   </span>
-                } @else if (phase.key === 'new') {
+                } @else if (phase.key === 'new' && !isAgentView()) {
                   <span class="inline-flex mt-2 px-2 py-0.5 rounded-md bg-green-50 text-green-700 text-xs font-medium">À dispatcher</span>
-                } @else if (phase.key !== 'converted' && sla) {
+                } @else if (phase.key !== 'converted' && phase.key !== 'lost' && sla) {
                   <span class="inline-flex mt-2 px-2 py-0.5 rounded-md text-xs font-medium"
                     [class]="sla.tone === 'breach' ? 'bg-red-50 text-red-700' : sla.tone === 'warning' ? 'bg-amber-100 text-amber-800' : 'bg-green-50 text-green-700'">
                     {{ sla.label }}

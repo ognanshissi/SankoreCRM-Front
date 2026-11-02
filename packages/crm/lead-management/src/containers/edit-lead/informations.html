@@ -63,187 +63,458 @@
       }
     }
 
-    <!-- ═══════ Corps : colonne principale + colonne d'actions ═══════ -->
-    <div class="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_21rem] gap-4 items-start">
-      <div class="flex flex-col gap-4 min-w-0">
-        <!--
-          Son besoin, d'abord : ce qu'il veut, d'où il vient et où en est sa qualification. Le
-          parcours et l'intérêt ressenti sont dans l'en-tête, visibles depuis chaque onglet.
-        -->
-        <tas-card class="block">
-          <div class="p-5">
-            <p class="text-base font-semibold text-slate-900 flex items-center gap-2 mb-4">
-              <tas-icon iconName="feather:package" class="text-slate-500" style="font-size:16px"></tas-icon>
-              Son besoin
-            </p>
-            <div class="rounded-xl bg-blue-50/70 p-4">
-              <div class="flex flex-wrap gap-x-10 gap-y-3">
-                <div>
-                  <p class="text-xs text-blue-700/80">Produit</p>
-                  <p class="text-lg font-bold text-slate-900">{{ productLabel() ?? 'À préciser' }}</p>
-                </div>
-                <div>
-                  <p class="text-xs text-blue-700/80">Montant souhaité</p>
-                  @if (amount(); as a) {
-                    <p class="text-lg font-bold text-slate-900 tabular-nums">{{ a }}</p>
-                  } @else {
-                    <p class="text-lg font-bold text-amber-700">À demander</p>
-                  }
-                </div>
-                <!-- L'origine est dans l'en-tête (« Venu par … ») ; la campagne n'y est pas. -->
-                @if (l.campaign) {
-                  <div>
-                    <p class="text-xs text-blue-700/80">Campagne</p>
-                    <p class="text-lg font-bold text-slate-900">{{ l.campaign }}</p>
-                  </div>
-                }
-              </div>
-              <!--
-                Les champs personnalisés que le tenant a rangés dans la section « Besoin » (durée,
-                équipement…) : lus et modifiés ici, là où l'agent parle du besoin.
-              -->
-              <div class="mt-3">
-                <custom-fields-card
-                  entity="Lead"
-                  [bare]="true"
-                  title=""
-                  editLabel="Compléter le besoin"
-                  emptyLabel="À demander"
-                  [sections]="['request']"
-                  [values]="l.customFields"
-                  [context]="{ prospectType: l.prospectType }"
-                  [canEdit]="canUpdate()"
-                  [save]="saveCustomFields"
-                  (saved)="onCustomFieldsSaved()"
-                ></custom-fields-card>
-              </div>
-            </div>
-            @if (l.comment) {
-              <p class="mt-3 text-sm text-slate-600 whitespace-pre-line">{{ l.comment }}</p>
-            }
+    <!-- ═══════ Vue d'ensemble (maquette du 2026-11-02) ═══════ -->
+    <section class="rounded-2xl border border-slate-200 bg-white shadow-sm" aria-labelledby="lead-overview-title">
+      <h2 id="lead-overview-title" class="border-b border-slate-100 px-6 py-5 text-xl font-bold text-primary">Vue d'ensemble</h2>
 
-            <div class="mt-4 rounded-xl bg-slate-50 p-3 flex items-center gap-4">
-              <div class="flex-1 min-w-0">
-                <div class="flex items-center justify-between text-sm">
-                  <span class="font-semibold text-slate-800">Qualification</span>
-                  <span class="text-slate-600 tabular-nums">
-                    @if (qualification().total !== null) {
-                      {{ qualification().answered }} question{{ (qualification().answered ?? 0) > 1 ? 's' : '' }} sur {{ qualification().total }}
-                    } @else {
-                      {{ qualification().percent }} %
-                    }
-                  </span>
-                </div>
-                <div class="mt-2 h-1.5 rounded-full bg-slate-200 overflow-hidden">
-                  <div class="h-full rounded-full bg-primary transition-all" [style.width.%]="qualification().percent"></div>
-                </div>
-                @if (canUpdate()) {
-                  @if (showQualOverride()) {
-                    <div class="flex items-center gap-2 mt-2">
-                      <input type="range" min="0" max="100" class="flex-1 accent-primary"
-                             [ngModel]="qualOverrideValue()" (ngModelChange)="qualOverrideValue.set($event)" />
-                      <span class="text-xs text-slate-600 tabular-nums w-10 text-right">{{ qualOverrideValue() }} %</span>
-                      <button tas-button color="primary" type="button" class="text-xs" [disabled]="isSavingQual()" (click)="saveQualificationCompleteness()">OK</button>
-                      <button type="button" class="text-xs text-slate-400" (click)="showQualOverride.set(false)">Annuler</button>
-                    </div>
-                  } @else {
-                    <button type="button" class="mt-1 text-[11px] text-slate-400 hover:text-slate-600" (click)="showQualOverride.set(true)">
-                      Ajuster à la main
+      <!-- Intérêt ressenti et parcours : où en est le lead, et ce que l'agent en a senti -->
+      <div class="flex flex-wrap items-end gap-x-8 gap-y-4 border-b border-slate-100 px-6 py-4">
+        <div class="shrink-0">
+          <p class="mb-1 text-sm text-slate-500">Intérêt ressenti</p>
+          @if (canSetIntent()) {
+            <button type="button" class="inline-flex items-center gap-2 text-lg font-semibold text-primary"
+                    TasMenuTrigger [panel]="intentMenu" aria-label="Changer l'intérêt ressenti">
+              <span class="h-2.5 w-2.5 rounded-full" [class]="intent().dot"></span>
+              {{ intent().label }}
+              <tas-icon iconName="feather:chevron-down" style="font-size:14px"></tas-icon>
+            </button>
+            <ng-template #intentMenu>
+              <tas-menu>
+                @for (option of intentOptions; track option.value) {
+                  <tas-menu-item>
+                    <button type="button" class="flex w-full items-center gap-2 text-slate-700" (click)="setIntentLevel(option.value)">
+                      <span class="h-2 w-2 rounded-full" [class]="option.dot"></span>
+                      {{ option.label }}
+                      @if ((l.intentLevel ?? 'Unknown') === option.value) {
+                        <tas-icon iconName="feather:check" class="ml-auto text-primary" style="font-size:13px"></tas-icon>
+                      }
                     </button>
-                  }
+                  </tas-menu-item>
                 }
-              </div>
-              <!-- Les questions se posent dans chaque projet, d'après son produit. -->
-              <button type="button" class="shrink-0 px-4 py-2 rounded-full bg-primary text-white text-sm font-semibold hover:opacity-90"
-                      (click)="openTab('projets')">
-                Voir les projets
-              </button>
-            </div>
-          </div>
-        </tas-card>
+              </tas-menu>
+            </ng-template>
+          } @else {
+            <p class="inline-flex items-center gap-2 text-lg font-semibold text-primary">
+              <span class="h-2.5 w-2.5 rounded-full" [class]="intent().dot"></span>{{ intent().label }}
+            </p>
+          }
+        </div>
 
-        <!-- Identité -->
-        <tas-card class="block">
-          <div class="p-5">
-            <div class="flex items-center justify-between mb-4">
-              <p class="text-base font-semibold text-slate-900 flex items-center gap-2">
-                <tas-icon iconName="feather:user" class="text-slate-500" style="font-size:16px"></tas-icon>
-                Identité
-              </p>
-              @if (canUpdate()) {
-                <button type="button" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-100 text-sm font-medium text-slate-700 hover:bg-slate-200"
-                        (click)="openEditInfoDrawer()">
-                  <tas-icon iconName="feather:edit-2" style="font-size:12px"></tas-icon>
-                  Modifier
+        <div class="min-w-0 flex-1 basis-96">
+          <div class="mb-1 flex items-center gap-2">
+            <p class="text-sm text-slate-500">Statut</p>
+            @if (journeyOffTrack(); as off) {
+              <tas-tag [severity]="off.severity">{{ off.label }}</tas-tag>
+            }
+          </div>
+          <ol class="flex" aria-label="Parcours du lead">
+            @for (step of statusSteps; track step; let i = $index; let first = $first) {
+              <li class="min-w-0 flex-1" [class.-ml-2]="!first" [attr.aria-current]="i === statusStep() ? 'step' : null">
+                <div class="flex h-10 items-center justify-center truncate px-5 text-sm"
+                     [style.clip-path]="first ? chevronFirst : chevron"
+                     [class]="journeyOffTrack() ? 'bg-slate-100 text-slate-400'
+                       : i === statusStep() ? 'bg-primary font-semibold text-white'
+                       : i < statusStep() ? 'bg-primary/20 font-semibold text-primary'
+                       : 'bg-primary/10 text-primary/70'">
+                  {{ stepLabel(i) }}
+                </div>
+              </li>
+            }
+          </ol>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_19rem]">
+        <div class="min-w-0">
+          <!-- Étiquettes -->
+          <div class="flex flex-wrap items-center gap-2 border-b border-slate-100 px-6 py-3">
+            <tas-icon iconName="feather:tag" class="text-slate-400" style="font-size:15px"></tas-icon>
+            @for (tag of tags(); track tag.id) {
+              <span class="inline-flex items-center gap-1 rounded-lg bg-primary/10 px-2.5 py-1 text-sm font-medium text-primary">
+                {{ tag.tag }}
+                @if (canTag()) {
+                  <button type="button" class="hover:text-red-500 transition-colors" (click)="removeTag(tag)" [attr.aria-label]="'Retirer l\'étiquette ' + tag.tag">
+                    <tas-icon iconName="feather:x" style="font-size:10px"></tas-icon>
+                  </button>
+                }
+              </span>
+            } @empty {
+              @if (!showTagInput()) {
+                <span class="text-sm text-slate-400">Aucune étiquette</span>
+              }
+            }
+            @if (showTagInput()) {
+              <div class="flex items-center gap-2">
+                <tas-form-field>
+                  <input tasInput type="text" placeholder="Nouvelle étiquette…" aria-label="Nouvelle étiquette"
+                         [ngModel]="newTag()" (ngModelChange)="newTag.set($event)" (keydown.enter)="addTag()" />
+                </tas-form-field>
+                <button tas-button color="primary" type="button" class="text-xs shrink-0" [disabled]="!newTag().trim() || isAddingTag()" (click)="addTag()">
+                  @if (isAddingTag()) { <tas-spinner size="3" class="text-white"></tas-spinner> }
+                  Ajouter
                 </button>
+                <button type="button" class="text-xs text-slate-400 hover:text-slate-600" (click)="showTagInput.set(false)">Annuler</button>
+              </div>
+            } @else if (canTag()) {
+              <button type="button" class="text-sm font-semibold text-primary hover:underline" (click)="showTagInput.set(true)">+ Étiquette</button>
+            }
+          </div>
+
+          <!-- L'essentiel du lead ; « Tout afficher » déplie le reste de la fiche -->
+          <dl class="grid grid-cols-1 gap-x-4 gap-y-2 px-6 py-5 sm:grid-cols-2 lg:grid-cols-3">
+            <div class="rounded-xl p-2.5">
+              <dt class="text-sm text-slate-500">Localisation</dt>
+              @if (location(); as place) {
+                <dd class="mt-0.5 font-semibold text-primary">{{ place }}</dd>
+              } @else {
+                <dd class="mt-0.5"><a class="text-sm text-amber-700 hover:underline" [routerLink]="['../identite']">À compléter</a></dd>
               }
             </div>
-            <div class="grid grid-cols-2 gap-x-6 gap-y-4">
-              <div>
-                <p class="text-xs text-slate-500">Nom complet</p>
-                <p class="text-sm font-semibold text-slate-900 mt-0.5">{{ l.fullName ?? '—' }}</p>
+            <div class="rounded-xl p-2.5">
+              <dt class="text-sm text-slate-500">Agence</dt>
+              <dd class="mt-0.5 font-semibold text-primary">{{ agencyName() ?? '—' }}</dd>
+            </div>
+            <div class="rounded-xl p-2.5">
+              <dt class="text-sm text-slate-500">Produit</dt>
+              <dd class="mt-0.5 font-semibold text-primary">{{ productLabel() ?? 'À préciser' }}</dd>
+            </div>
+            <div class="rounded-xl p-2.5">
+              <dt class="text-sm text-slate-500">Mobile</dt>
+              <dd class="mt-0.5 font-semibold tabular-nums text-primary">{{ l.phoneNumber ?? '—' }}</dd>
+            </div>
+            <div class="rounded-xl p-2.5" [class]="canAssign() ? 'bg-slate-100/80' : ''">
+              <dt class="text-sm text-slate-500">Responsable</dt>
+              <dd class="mt-0.5 flex items-center justify-between gap-2">
+                <span class="font-semibold text-primary">{{ followedBy() ?? 'Pas encore attribué' }}</span>
+                @if (canAssign()) {
+                  <button type="button" class="text-slate-500 hover:text-primary" (click)="openReassignDrawer()"
+                          aria-label="Réassigner le lead" title="Réassigner à un agent">
+                    <tas-icon iconName="feather:edit-2" style="font-size:13px"></tas-icon>
+                  </button>
+                }
+              </dd>
+            </div>
+            <div class="rounded-xl p-2.5">
+              <dt class="text-sm text-slate-500">Créé</dt>
+              <dd class="mt-0.5 font-semibold text-primary">
+                @if (l.capturedAt ?? l.createdAt; as at) {
+                  {{ formatDay(at, true) }} · {{ at | dateTimeAgo }}
+                } @else { — }
+              </dd>
+            </div>
+
+            @if (showAll()) {
+              <div class="rounded-xl p-2.5">
+                <dt class="text-sm text-slate-500">Montant souhaité</dt>
+                @if (amount(); as a) {
+                  <dd class="mt-0.5 font-semibold tabular-nums text-primary">{{ a }}</dd>
+                } @else {
+                  <dd class="mt-0.5 font-semibold text-amber-700">À demander</dd>
+                }
               </div>
-              <div>
-                <p class="text-xs text-slate-500">Type de prospect</p>
-                <p class="text-sm font-semibold text-slate-900 mt-0.5">{{ prospectTypeLabel(l.prospectType) }}</p>
+              <div class="rounded-xl p-2.5">
+                <dt class="text-sm text-slate-500">E-mail</dt>
+                <dd class="mt-0.5 flex items-center gap-2">
+                  <span class="truncate font-semibold text-primary">{{ l.email ?? '—' }}</span>
+                  @if (l.email) {
+                    <button type="button" class="shrink-0 text-slate-500 hover:text-primary" aria-label="Copier l'adresse e-mail" (click)="copyEmail()">
+                      <tas-icon iconName="feather:copy" style="font-size:13px"></tas-icon>
+                    </button>
+                  }
+                </dd>
               </div>
-              <div>
-                <p class="text-xs text-slate-500">Date de naissance</p>
-                <p class="text-sm font-semibold text-slate-900 mt-0.5">
+              <div class="rounded-xl p-2.5">
+                <dt class="text-sm text-slate-500">Venu par</dt>
+                <dd class="mt-0.5 font-semibold text-primary">{{ origin() }}</dd>
+              </div>
+              @if (l.campaign) {
+                <div class="rounded-xl p-2.5">
+                  <dt class="text-sm text-slate-500">Campagne</dt>
+                  <dd class="mt-0.5 font-semibold text-primary">{{ l.campaign }}</dd>
+                </div>
+              }
+              <div class="rounded-xl p-2.5">
+                <dt class="text-sm text-slate-500">Type de prospect</dt>
+                <dd class="mt-0.5 font-semibold text-primary">{{ prospectTypeLabel(l.prospectType) }}</dd>
+              </div>
+              <div class="rounded-xl p-2.5">
+                <dt class="text-sm text-slate-500">Date de naissance</dt>
+                <dd class="mt-0.5 font-semibold text-primary">
                   @if (l.dateOfBirth) {
                     {{ formatDay(l.dateOfBirth) }}@if (age() !== null) { <span class="font-normal text-slate-500">· {{ age() }} ans</span>}
                   } @else {
-                    <span class="text-slate-400 font-normal">Non renseignée</span>
+                    <span class="font-normal text-slate-400">Non renseignée</span>
                   }
-                </p>
+                </dd>
               </div>
-              <div>
-                <p class="text-xs text-slate-500">Genre</p>
-                <p class="text-sm font-semibold text-slate-900 mt-0.5">{{ genderLabel(l.gender) }}</p>
+              <div class="rounded-xl p-2.5">
+                <dt class="text-sm text-slate-500">Genre</dt>
+                <dd class="mt-0.5 font-semibold text-primary">{{ genderLabel(l.gender) }}</dd>
               </div>
-              <div class="col-span-2">
-                <p class="text-xs text-slate-500">Pièce d'identité</p>
+              <div class="rounded-xl p-2.5">
+                <dt class="text-sm text-slate-500">Pièce d'identité</dt>
                 @if (documentDisplay(); as doc) {
-                  <p class="mt-0.5 flex items-center gap-2">
-                    <span class="font-mono text-sm font-semibold text-slate-900 tracking-wide">{{ doc }}</span>
-                    <button type="button" class="w-7 h-7 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-600"
+                  <dd class="mt-0.5 flex items-center gap-2">
+                    <span class="font-mono text-sm font-semibold tracking-wide text-primary">{{ doc }}</span>
+                    <button type="button" class="text-slate-500 hover:text-primary"
                             [attr.aria-label]="showDocument() ? 'Masquer le numéro' : 'Afficher le numéro'"
                             (click)="showDocument.set(!showDocument())">
                       <tas-icon [iconName]="showDocument() ? 'feather:eye-off' : 'feather:eye'" style="font-size:13px"></tas-icon>
                     </button>
-                  </p>
+                  </dd>
                 } @else {
-                  <p class="text-sm text-slate-400 mt-0.5">Non renseignée</p>
+                  <dd class="mt-0.5 text-sm text-slate-400">Non renseignée</dd>
                 }
               </div>
-
               @if (isCompany() || l.companyName) {
-                <div>
-                  <p class="text-xs text-slate-500">Entreprise</p>
-                  <p class="text-sm font-semibold text-slate-900 mt-0.5">{{ l.companyName ?? '—' }}</p>
+                <div class="rounded-xl p-2.5">
+                  <dt class="text-sm text-slate-500">Entreprise</dt>
+                  <dd class="mt-0.5 font-semibold text-primary">{{ l.companyName ?? '—' }}</dd>
                 </div>
                 @if (l.companyEmail) {
-                  <div>
-                    <p class="text-xs text-slate-500">E-mail de l'entreprise</p>
-                    <p class="text-sm font-semibold text-slate-900 mt-0.5 truncate">{{ l.companyEmail }}</p>
+                  <div class="rounded-xl p-2.5">
+                    <dt class="text-sm text-slate-500">E-mail de l'entreprise</dt>
+                    <dd class="mt-0.5 truncate font-semibold text-primary">{{ l.companyEmail }}</dd>
                   </div>
                 }
                 @if (l.companyPhone) {
-                  <div>
-                    <p class="text-xs text-slate-500">Téléphone de l'entreprise</p>
-                    <p class="text-sm font-semibold text-slate-900 mt-0.5 tabular-nums">{{ l.companyPhone }}</p>
+                  <div class="rounded-xl p-2.5">
+                    <dt class="text-sm text-slate-500">Téléphone de l'entreprise</dt>
+                    <dd class="mt-0.5 font-semibold tabular-nums text-primary">{{ l.companyPhone }}</dd>
                   </div>
                 }
                 @if (l.website) {
-                  <div>
-                    <p class="text-xs text-slate-500">Site web</p>
-                    <p class="text-sm font-semibold text-slate-900 mt-0.5 truncate">{{ l.website }}</p>
+                  <div class="rounded-xl p-2.5">
+                    <dt class="text-sm text-slate-500">Site web</dt>
+                    <dd class="mt-0.5 truncate font-semibold text-primary">{{ l.website }}</dd>
                   </div>
                 }
               }
-            </div>
+              <div class="rounded-xl p-2.5">
+                <dt class="text-sm text-slate-500">Dernière activité</dt>
+                @if (l.lastActivityAt) {
+                  <dd class="mt-0.5 font-semibold text-primary">{{ l.lastActivityAt | dateTimeAgo }}</dd>
+                } @else {
+                  <dd class="mt-0.5 font-semibold text-amber-700">Aucune</dd>
+                }
+              </div>
+              @if (l.convertedAt) {
+                <div class="rounded-xl p-2.5">
+                  <dt class="text-sm text-slate-500">Converti</dt>
+                  <dd class="mt-0.5 font-semibold text-primary">{{ formatDay(l.convertedAt) }}</dd>
+                </div>
+              } @else if (l.expiresAt) {
+                <div class="rounded-xl p-2.5">
+                  <dt class="text-sm text-slate-500">Expiration du lead</dt>
+                  <dd class="mt-0.5 font-semibold text-primary">{{ formatDay(l.expiresAt) }} · {{ l.expiresAt | dateTimeAgo }}</dd>
+                </div>
+              }
+              @if (l.comment) {
+                <div class="rounded-xl p-2.5 sm:col-span-2 lg:col-span-3">
+                  <dt class="text-sm text-slate-500">Commentaire de la capture</dt>
+                  <dd class="mt-0.5 whitespace-pre-line text-sm text-slate-700">{{ l.comment }}</dd>
+                </div>
+              }
+            }
+          </dl>
+
+          <div class="flex flex-wrap items-center gap-4 px-6 pb-5">
+            <button type="button" class="inline-flex items-center gap-1.5 text-sm font-semibold text-primary"
+                    [attr.aria-expanded]="showAll()" (click)="showAll.set(!showAll())">
+              {{ showAll() ? 'Afficher moins' : 'Tout afficher' }}
+              <tas-icon [iconName]="showAll() ? 'feather:chevron-up' : 'feather:chevron-down'" style="font-size:13px"></tas-icon>
+            </button>
+            @if (canUpdate()) {
+              <button type="button" class="inline-flex items-center gap-1.5 text-sm text-slate-600 hover:text-primary" (click)="openEditInfoDrawer()">
+                <tas-icon iconName="feather:edit-2" style="font-size:12px"></tas-icon>
+                Modifier
+              </button>
+            }
           </div>
-        </tas-card>
+
+          <!-- WA-FE-03/04 : consentement WhatsApp et envoi d'un template. Masqué sans WhatsApp.Send. -->
+          @if (l.phoneNumber) {
+            <div class="px-6 pb-5 empty:hidden">
+              <lead-whatsapp-contact [leadId]="id()" [leadName]="firstName()"></lead-whatsapp-contact>
+            </div>
+          }
+        </div>
+
+        <!-- Notes : l'agent écrit ici ce qu'il retient, sans quitter la vue d'ensemble -->
+        <aside class="flex flex-col gap-3 border-t border-slate-100 p-4 xl:border-l xl:border-t-0" aria-label="Notes">
+          @if (canLogActivity()) {
+            <form [formRoot]="noteForm" class="flex flex-col rounded-xl bg-amber-50 p-3">
+              <textarea rows="3" class="w-full resize-none bg-transparent text-sm text-slate-800 placeholder:text-amber-800/70 focus:outline-none"
+                        placeholder="Ajouter une note..." aria-label="Ajouter une note"
+                        [formField]="noteForm.text"></textarea>
+              <button type="button" class="ml-auto mt-1 text-sm font-semibold text-amber-900 hover:underline disabled:opacity-50"
+                      [disabled]="noteForm().invalid() || noteForm().submitting()" (click)="addNote()">
+                Écrire une note
+              </button>
+            </form>
+          }
+          @for (note of notes(); track note.id) {
+            <article class="border-b border-slate-100 pb-3 last:border-b-0">
+              @if (note.subject && note.subject !== 'Note') {
+                <p class="text-xs font-semibold text-slate-700">{{ note.subject }}</p>
+              }
+              <p class="whitespace-pre-line text-sm text-slate-800">{{ note.notes }}</p>
+              <p class="mt-1.5 flex items-center gap-1.5 text-xs text-slate-500">
+                <tas-icon iconName="feather:edit-2" style="font-size:11px"></tas-icon>
+                {{ userName(note.performedBy) }}
+                @if (note.performedAt) { · {{ note.performedAt | dateTimeAgo }} }
+              </p>
+            </article>
+          } @empty {
+            <p class="text-sm text-slate-400">Aucune note pour l'instant.</p>
+          }
+          @if (hasMoreNotes()) {
+            <a [routerLink]="['../suivi', 'activites']" class="text-xs font-semibold text-primary hover:underline">Toutes les activités</a>
+          }
+        </aside>
+      </div>
+    </section>
+
+    <!-- ═══════ Projets ouverts et prochaines activités ═══════ -->
+    <div class="grid grid-cols-1 items-start gap-4 lg:grid-cols-2">
+      <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm" aria-labelledby="lead-projects-title">
+        <div class="mb-4 flex items-center gap-3">
+          <span class="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
+            <tas-icon iconName="feather:briefcase" style="font-size:16px"></tas-icon>
+          </span>
+          <h3 id="lead-projects-title" class="flex-1 text-base font-bold text-primary">Projets ouverts de {{ firstName() }}</h3>
+          @if (canCreateProject()) {
+            <button tas-outlined-button color="primary" type="button" class="bg-white text-xs" (click)="openCreateProject()">+ Projet</button>
+          }
+        </div>
+        @for (project of openProjects(); track project.id) {
+          <button type="button" class="mb-2 flex w-full items-center gap-3 rounded-xl border border-slate-200 px-4 py-3 text-left hover:border-primary/40 hover:bg-slate-50"
+                  (click)="openProject(project)">
+            <span class="min-w-0 flex-1">
+              <span class="block truncate font-semibold text-primary">{{ project.title || project.product || 'Projet' }}</span>
+              <span class="block truncate text-xs text-slate-500">
+                {{ projectStep(project) }}@if (project.expectedCloseDate) { · clôture prévue {{ formatDay(project.expectedCloseDate, true) }} }
+              </span>
+            </span>
+            @if (project.estimatedAmount?.amount) {
+              <span class="shrink-0 font-bold tabular-nums text-primary">{{ formatAmount(project.estimatedAmount!.amount!, project.estimatedAmount!.currency) }}</span>
+            }
+          </button>
+        } @empty {
+          <p class="text-sm text-slate-400">{{ projectsFailed() ? 'Les projets n\'ont pas pu être chargés.' : 'Aucun projet ouvert.' }}</p>
+        }
+
+        <!-- Les questions de qualification se posent dans chaque projet, d'après son produit. -->
+        <div class="mt-3 rounded-xl bg-slate-50 p-3">
+          <div class="flex items-center justify-between text-sm">
+            <span class="font-semibold text-slate-800">Qualification</span>
+            <span class="text-slate-600 tabular-nums">
+              @if (qualification().total !== null) {
+                {{ qualification().answered }} question{{ (qualification().answered ?? 0) > 1 ? 's' : '' }} sur {{ qualification().total }}
+              } @else {
+                {{ qualification().percent }} %
+              }
+            </span>
+          </div>
+          <div class="mt-2 h-1.5 rounded-full bg-slate-200 overflow-hidden">
+            <div class="h-full rounded-full bg-primary transition-all" [style.width.%]="qualification().percent"></div>
+          </div>
+          @if (canUpdate()) {
+            @if (showQualOverride()) {
+              <div class="flex items-center gap-2 mt-2">
+                <input type="range" min="0" max="100" class="flex-1 accent-primary" aria-label="Progression de la qualification"
+                       [ngModel]="qualOverrideValue()" (ngModelChange)="qualOverrideValue.set($event)" />
+                <span class="text-xs text-slate-600 tabular-nums w-10 text-right">{{ qualOverrideValue() }} %</span>
+                <button tas-button color="primary" type="button" class="text-xs" [disabled]="isSavingQual()" (click)="saveQualificationCompleteness()">OK</button>
+                <button type="button" class="text-xs text-slate-400" (click)="showQualOverride.set(false)">Annuler</button>
+              </div>
+            } @else {
+              <button type="button" class="mt-1 text-[11px] text-slate-400 hover:text-slate-600" (click)="showQualOverride.set(true)">
+                Ajuster à la main
+              </button>
+            }
+          }
+        </div>
+      </section>
+
+      <div class="flex min-w-0 flex-col gap-4">
+      <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm" aria-labelledby="lead-upcoming-title">
+        <div class="mb-2 flex items-center gap-3">
+          <span class="flex h-9 w-9 items-center justify-center rounded-lg bg-amber-100 text-amber-800">
+            <tas-icon iconName="feather:calendar" style="font-size:16px"></tas-icon>
+          </span>
+          <h3 id="lead-upcoming-title" class="flex-1 text-base font-bold text-primary">Prochaines activités</h3>
+        </div>
+        <ul class="divide-y divide-slate-100">
+          @for (item of upcoming(); track item.key) {
+            <li>
+              <a class="flex items-center gap-3 py-3 hover:bg-slate-50" [routerLink]="item.link">
+                <tas-icon [iconName]="item.icon" class="text-slate-500" style="font-size:15px"></tas-icon>
+                <span class="min-w-0 flex-1 truncate text-sm text-slate-800">{{ item.label }}</span>
+                <span class="shrink-0 text-xs font-semibold tabular-nums" [class]="item.tone">{{ item.when }}</span>
+              </a>
+            </li>
+          } @empty {
+            <li class="py-3 text-sm text-slate-400">Rien de prévu. Planifiez un rappel ou une tâche depuis les actions du haut.</li>
+          }
+        </ul>
+        @if (upcomingMore() > 0) {
+          <a [routerLink]="['../suivi', 'taches']" class="mt-2 inline-block text-xs font-semibold text-primary hover:underline">
+            Et {{ upcomingMore() }} autre{{ upcomingMore() > 1 ? 's' : '' }}
+          </a>
+        }
+      </section>
+
+        <!-- Fiche complète -->
+        @if (completeness(); as c) {
+          <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <p class="text-base font-semibold text-slate-900">Fiche complète à {{ completenessPercent() }} %</p>
+            <div class="mt-3 h-2 rounded-full bg-slate-100 overflow-hidden">
+              <div class="h-full rounded-full bg-primary transition-all" [style.width.%]="completenessPercent()"></div>
+            </div>
+            @if (gaps().length > 0) {
+              <p class="mt-4 mb-1 text-sm text-slate-600">
+                Manquant pour étudier {{ productLabel() ? 'le ' + productLabel() : 'le besoin' }} :
+              </p>
+              <ul class="divide-y divide-slate-100">
+                @for (gap of gaps(); track $index) {
+                  <li>
+                    <button type="button" class="w-full py-2.5 flex items-center gap-2 text-left"
+                            [disabled]="!gap.route" (click)="openTab(gap.route)">
+                      <tas-icon [iconName]="gap.blocking ? 'feather:plus-circle' : 'feather:circle'"
+                                [class]="gap.blocking ? 'text-red-600' : 'text-slate-400'" style="font-size:15px"></tas-icon>
+                      <span class="flex-1 text-sm text-slate-800">{{ gap.label }}</span>
+                      <span class="text-xs text-slate-500">{{ gap.where }}</span>
+                    </button>
+                  </li>
+                }
+              </ul>
+            } @else {
+              <p class="mt-3 text-sm text-green-700">Rien ne manque au dossier.</p>
+            }
+          </section>
+        }
+      </div>
+    </div>
+
+    <!-- ═══════ Le besoin détaillé et les autres champs du tenant ═══════ -->
+    <div class="flex min-w-0 flex-col gap-4">
+        <!--
+          Les champs personnalisés que le tenant a rangés dans la section « Besoin » (durée,
+          équipement…) : lus et modifiés à côté du produit et du montant.
+        -->
+        <custom-fields-card
+          entity="Lead"
+          title="Son besoin"
+          editLabel="Compléter le besoin"
+          emptyLabel="À demander"
+          [sections]="['request']"
+          [values]="l.customFields"
+          [context]="{ prospectType: l.prospectType }"
+          [canEdit]="canUpdate()"
+          [save]="saveCustomFields"
+          (saved)="onCustomFieldsSaved()"
+        ></custom-fields-card>
 
         <!-- Les autres champs personnalisés du tenant (formulaires dynamiques) -->
         <custom-fields-card
@@ -255,167 +526,6 @@
           [save]="saveCustomFields"
           (saved)="onCustomFieldsSaved()"
         ></custom-fields-card>
-
-        <!-- Tags -->
-        <tas-card class="block">
-          <div class="p-5">
-            <p class="text-base font-semibold text-slate-900 flex items-center gap-2 mb-3">
-              <tas-icon iconName="feather:tag" class="text-slate-500" style="font-size:16px"></tas-icon>
-              Tags
-            </p>
-            <div class="flex flex-wrap gap-1.5 mb-3">
-              @for (tag of tags(); track tag.id) {
-                <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium">
-                  {{ tag.tag }}
-                  @if (canTag()) {
-                    <button type="button" class="hover:text-red-500 transition-colors" (click)="removeTag(tag)" aria-label="Retirer le tag">
-                      <tas-icon iconName="feather:x" style="font-size:10px"></tas-icon>
-                    </button>
-                  }
-                </span>
-              }
-              @if (tags().length === 0 && !showTagInput()) {
-                <span class="text-xs text-slate-400">Aucun tag</span>
-              }
-            </div>
-            @if (showTagInput()) {
-              <div class="flex items-center gap-2">
-                <tas-form-field>
-                  <input tasInput type="text" placeholder="Nouveau tag…"
-                         [ngModel]="newTag()" (ngModelChange)="newTag.set($event)" (keydown.enter)="addTag()" />
-                </tas-form-field>
-                <button tas-button color="primary" type="button" class="text-xs shrink-0" [disabled]="!newTag().trim() || isAddingTag()" (click)="addTag()">
-                  @if (isAddingTag()) { <tas-spinner size="3" class="text-white"></tas-spinner> }
-                  Ajouter
-                </button>
-                <button type="button" class="text-xs text-slate-400 hover:text-slate-600" (click)="showTagInput.set(false)">Annuler</button>
-              </div>
-            } @else if (canTag()) {
-              <button type="button" class="text-xs text-primary hover:underline flex items-center gap-1" (click)="showTagInput.set(true)">
-                <tas-icon iconName="feather:plus" style="font-size:10px"></tas-icon> Ajouter un tag
-              </button>
-            }
-          </div>
-        </tas-card>
-      </div>
-
-      <!-- ═══════ Colonne d'actions ═══════ -->
-      <div class="flex flex-col gap-4">
-        <!-- Cycle de vie et score : venus de l'ancienne colonne de gauche, qui les répétait sur chaque onglet -->
-        <lead-progress-card></lead-progress-card>
-
-        <!-- Joindre -->
-        <tas-card class="block">
-          <div class="p-5">
-            <p class="text-base font-semibold text-slate-900 mb-3">Joindre {{ firstName() }}</p>
-            @if (l.phoneNumber) {
-              <div class="rounded-xl bg-slate-50 p-3 flex items-center gap-2">
-                <div class="flex-1 min-w-0">
-                  <p class="text-xs text-slate-500">Mobile</p>
-                  <p class="text-sm font-bold text-slate-900 tabular-nums truncate">{{ l.phoneNumber }}</p>
-                </div>
-                <!--
-                  TEL-F-04 : le bouton se masque lui-même si cet agent ne peut pas appeler. Il
-                  n'affiche aucun numéro et envoie la fiche, que le serveur déchiffre et compose.
-                -->
-                <lib-call-button entityType="Lead" [entityId]="id()"></lib-call-button>
-                @if (canUpdate()) {
-                  <button type="button" class="w-9 h-9 rounded-full bg-slate-200/70 hover:bg-slate-200 flex items-center justify-center text-slate-600"
-                          aria-label="Noter un message envoyé" title="Noter un message (SMS, WhatsApp)"
-                          (click)="logActivity(Activity.Sms)">
-                    <tas-icon iconName="feather:message-circle" style="font-size:15px"></tas-icon>
-                  </button>
-                }
-              </div>
-              <!-- WA-FE-03/04 : consentement WhatsApp et envoi d'un template. Masqué sans WhatsApp.Send. -->
-              <lead-whatsapp-contact [leadId]="id()" [leadName]="firstName()"></lead-whatsapp-contact>
-            }
-            @if (l.email) {
-              <div class="mt-2 rounded-xl bg-slate-50 p-3 flex items-center gap-2">
-                <div class="flex-1 min-w-0">
-                  <p class="text-xs text-slate-500">E-mail</p>
-                  <p class="text-sm font-bold text-slate-900 truncate">{{ l.email }}</p>
-                </div>
-                <button type="button" class="w-9 h-9 rounded-full bg-slate-200/70 hover:bg-slate-200 flex items-center justify-center text-slate-600"
-                        aria-label="Copier l'adresse e-mail" (click)="copyEmail()">
-                  <tas-icon iconName="feather:copy" style="font-size:15px"></tas-icon>
-                </button>
-              </div>
-            }
-            @if (!l.phoneNumber && !l.email) {
-              <p class="text-sm text-slate-400">Aucune coordonnée enregistrée.</p>
-            }
-          </div>
-        </tas-card>
-
-        <!-- Fiche complète -->
-        @if (completeness(); as c) {
-          <tas-card class="block">
-            <div class="p-5">
-              <p class="text-base font-semibold text-slate-900">Fiche complète à {{ completenessPercent() }} %</p>
-              <div class="mt-3 h-2 rounded-full bg-slate-100 overflow-hidden">
-                <div class="h-full rounded-full bg-primary transition-all" [style.width.%]="completenessPercent()"></div>
-              </div>
-              @if (gaps().length > 0) {
-                <p class="mt-4 mb-1 text-sm text-slate-600">
-                  Manquant pour étudier {{ productLabel() ? 'le ' + productLabel() : 'le besoin' }} :
-                </p>
-                <ul class="divide-y divide-slate-100">
-                  @for (gap of gaps(); track $index) {
-                    <li>
-                      <button type="button" class="w-full py-2.5 flex items-center gap-2 text-left"
-                              [disabled]="!gap.route" (click)="openTab(gap.route)">
-                        <tas-icon [iconName]="gap.blocking ? 'feather:plus-circle' : 'feather:circle'"
-                                  [class]="gap.blocking ? 'text-red-600' : 'text-slate-400'" style="font-size:15px"></tas-icon>
-                        <span class="flex-1 text-sm text-slate-800">{{ gap.label }}</span>
-                        <span class="text-xs text-slate-500">{{ gap.where }}</span>
-                      </button>
-                    </li>
-                  }
-                </ul>
-              } @else {
-                <p class="mt-3 text-sm text-green-700">Rien ne manque au dossier.</p>
-              }
-            </div>
-          </tas-card>
-        }
-
-        <!-- Dates -->
-        <tas-card class="block">
-          <div class="p-5">
-            <p class="text-base font-semibold text-slate-900 mb-4">Dates</p>
-            <ol class="relative ml-1.5 border-l border-slate-200 flex flex-col gap-5">
-              <li class="pl-4 relative">
-                <span class="absolute -left-[5px] top-1 w-2.5 h-2.5 rounded-full bg-primary"></span>
-                <p class="text-xs text-slate-500">Capturé</p>
-                <p class="text-sm font-semibold text-slate-900">{{ l.capturedAt ? (l.capturedAt | dateTimeAgo) : '—' }}</p>
-              </li>
-              <li class="pl-4 relative">
-                <span class="absolute -left-[5px] top-1 w-2.5 h-2.5 rounded-full" [class]="l.lastActivityAt ? 'bg-primary' : 'bg-amber-500'"></span>
-                <p class="text-xs text-slate-500">Dernière activité</p>
-                @if (l.lastActivityAt) {
-                  <p class="text-sm font-semibold text-slate-900">{{ l.lastActivityAt | dateTimeAgo }}</p>
-                } @else {
-                  <p class="text-sm font-semibold text-amber-700">Aucune</p>
-                }
-              </li>
-              @if (l.convertedAt) {
-                <li class="pl-4 relative">
-                  <span class="absolute -left-[5px] top-1 w-2.5 h-2.5 rounded-full bg-green-600"></span>
-                  <p class="text-xs text-slate-500">Converti</p>
-                  <p class="text-sm font-semibold text-slate-900">{{ formatDay(l.convertedAt) }}</p>
-                </li>
-              } @else if (l.expiresAt) {
-                <li class="pl-4 relative">
-                  <span class="absolute -left-[5px] top-1 w-2.5 h-2.5 rounded-full bg-slate-300"></span>
-                  <p class="text-xs text-slate-500">Expiration du lead</p>
-                  <p class="text-sm font-semibold text-slate-900">{{ formatDay(l.expiresAt) }} · {{ l.expiresAt | dateTimeAgo }}</p>
-                </li>
-              }
-            </ol>
-          </div>
-        </tas-card>
-      </div>
     </div>
   </div>
 }

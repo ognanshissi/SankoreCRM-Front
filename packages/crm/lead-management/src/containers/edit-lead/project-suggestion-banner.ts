@@ -33,7 +33,7 @@ const dismissKey = (leadId: string) => `lead-project-suggestion-dismissed:${lead
   template: `
     @if (shown(); as s) {
       @let p = chosen()!;
-      <section class="flex flex-wrap items-center gap-x-5 gap-y-3 border-t border-primary/15 bg-primary/5 px-5 py-3" aria-label="Proposition de projet">
+      <section class="flex flex-wrap items-center gap-x-5 gap-y-3 rounded-2xl border border-primary/15 bg-primary/5 px-5 py-3" aria-label="Proposition de projet">
         <span class="grid size-9 shrink-0 place-items-center rounded-full bg-primary/10 text-primary" aria-hidden="true">
           <tas-icon iconName="feather:briefcase" style="font-size:15px"></tas-icon>
         </span>

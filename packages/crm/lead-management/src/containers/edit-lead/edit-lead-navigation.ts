@@ -2,7 +2,6 @@ import { Component, computed, DestroyRef, effect, inject, input, OnDestroy, sign
 import { NavigationEnd, Router, RouterLink, RouterOutlet } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { TasIcon } from '@talisoft/ui/icon';
-import { TasCard } from '@talisoft/ui/card';
 import { TasSpinner } from '@talisoft/ui/spinner';
 import { Anchor, Button } from '@talisoft/ui/button';
 import {
@@ -12,7 +11,7 @@ import {
   FormFieldReferenceTargetEnum,
   LeadDto,
   LeadsApiService,
-  SetIntentLevelRequestIntentLevelEnum,
+  OpportunitiesApiService,
   LogActivityRequestTypeEnum,
   LeadNextStepDtoActionTypeEnum,
   LeadNextStepDtoKindEnum,
@@ -50,6 +49,9 @@ import { Menu, MenuItem, TasMenuTrigger } from '@talisoft/ui/menu';
 import { catchError, EMPTY, filter, firstValueFrom, forkJoin, map, of } from 'rxjs';
 import { LeadEditContext } from './lead-edit-context';
 import { ProjectSuggestionBanner } from './project-suggestion-banner';
+import { LeadProgressCard } from './lead-progress-card';
+import { CreateOpportunityDrawer, CreateOpportunityDrawerData } from './opportunities/create-opportunity-drawer';
+import { isClosed } from './opportunities/opportunity.model';
 import { LeadComplianceStore } from './lead-compliance-store';
 import { interestedProductLabel } from '../../components/interested-product';
 import { nextStepDue, nextStepDueClass, nextStepIcon } from '../../components/lead-next-step';
@@ -59,11 +61,8 @@ import {
   formatAmount,
   formatDay,
   initials,
-  INTENT_OPTIONS,
+  intentOption,
   isConsentGap,
-  journeyIndex,
-  journeyOffTrack,
-  LEAD_JOURNEY,
   leadStatusMeta,
   missingAddressParts,
   originLabel,
@@ -82,17 +81,18 @@ interface MenuBadge {
 }
 
 /**
- * Les onglets de la fiche, à plat et par usage (refonte du 2026-10-24) : ce qu'il faut savoir du
- * lead, ce qu'il pourrait signer, ce qui a été fait avec lui, qui il est, ce que la conformité
- * demande. Avant, huit rubriques se cachaient dans deux menus déroulants, et « Projets » — le
- * cœur de la vente — était rangé dans « Dossier ». Doublons n'apparaît que s'il y en a.
+ * Les rubriques de la fiche, dans l'ordre de la maquette du 2026-11-02 — plus Conformité et
+ * Doublons, que la maquette ne montre pas et que la fiche avait déjà. Conversations n'apparaît
+ * qu'avec un droit WhatsApp, Doublons que s'il y en a.
  */
 const MENU: ReadonlyArray<LeadMenuItem> = [
   { label: "Vue d'ensemble", icon: 'feather:grid', route: 'informations' },
+  { label: 'Détails du lead', icon: 'feather:user', route: 'identite' },
+  { label: 'Conversations', icon: 'feather:message-square', route: 'conversations' },
+  // Activités, rappels, tâches et chronologie : les onglets de la page Suivi.
+  { label: 'Activités', icon: 'feather:activity', route: 'suivi' },
   { label: 'Projets', icon: 'feather:briefcase', route: 'projets' },
-  // Activités, rappels, tâches, chronologie et WhatsApp : les onglets de la page Suivi.
-  { label: 'Suivi', icon: 'feather:activity', route: 'suivi' },
-  { label: 'Identité & foyer', icon: 'feather:user', route: 'identite' },
+  { label: 'Foyer', icon: 'feather:users', route: 'foyer' },
   { label: 'Conformité', icon: 'feather:shield', route: 'conformite' },
   { label: 'Doublons', icon: 'feather:copy', route: 'doublons' },
 ];
@@ -114,8 +114,8 @@ function defaultPlanDate(): string {
     RouterLink,
     RouterOutlet,
     TasIcon,
-    TasCard,
     TasSpinner,
+    LeadProgressCard,
     Anchor,
     Button,
     TasTag,
@@ -143,8 +143,13 @@ export class EditLeadNavigation implements OnDestroy {
   public readonly canManageTasks = this._permissions.can('lead:task:manage');
   public readonly canMail = this._permissions.can('ConnectedAccounts.Use');
   public readonly canRequestErasure = this._permissions.can('privacy:erasure:request');
+  public readonly canLogActivity = this._permissions.can('lead:activity:log');
+  private readonly _canManageProjects = this._permissions.can('lead:opportunity:manage');
+  public readonly canCreateProject = computed(() => this._canManageProjects() && !this.isConverted());
 
   private readonly _leadsApiService = inject(LeadsApiService);
+  private readonly _opportunitiesApi = inject(OpportunitiesApiService);
+  private readonly _router = inject(Router);
   private readonly _productNames = inject(ProductNamesStore).ensureLoaded();
   private readonly _breadcrumbService = inject(BreadcrumbService);
   private readonly _breadcrumbOwner = inject(DestroyRef);
@@ -160,7 +165,11 @@ export class EditLeadNavigation implements OnDestroy {
 
   /** Doublons n'est un onglet que s'il y en a, ou si l'on y est déjà (lien direct). */
   public readonly menu = computed(() =>
-    MENU.filter((i) => i.route !== 'doublons' || this.duplicateCount() > 0 || this.activeRoute() === 'doublons'),
+    MENU.filter((i) => {
+      if (i.route === 'doublons') return this.duplicateCount() > 0 || this.activeRoute() === 'doublons';
+      if (i.route === 'conversations') return this.canWhatsApp();
+      return true;
+    }),
   );
 
   /**
@@ -194,24 +203,26 @@ export class EditLeadNavigation implements OnDestroy {
   /** Lu par le template : un lead converti n'offre plus d'action d'écriture. */
   public readonly isConverted = computed(() => this.lead()?.status === 'Converted');
 
-  // ——— Parcours et intérêt : dans l'en-tête, visibles depuis chaque onglet (choix du 2026-10-24) ———
-  public readonly journey = LEAD_JOURNEY;
-  public readonly journeyIndex = computed(() => journeyIndex(this.lead()));
-  public readonly journeyOffTrack = computed(() => journeyOffTrack(this.lead()));
-  public readonly intentOptions = INTENT_OPTIONS;
-  public readonly canSetIntent = computed(() => this.canUpdate() && !this.isConverted());
+  public readonly intent = computed(() => intentOption(this.lead()?.intentLevel));
 
-  public setIntentLevel(level: SetIntentLevelRequestIntentLevelEnum): void {
-    if (!this.canSetIntent() || this.lead()?.intentLevel === level) return;
-    this._leadsApiService.setLeadIntentLevel(this.id(), { intentLevel: level }).pipe(
-      catchError(() => { this._snackbar.error('Erreur', 'Impossible de modifier l\'intérêt ressenti.'); return EMPTY; }),
-    ).subscribe(() => this.reload());
-  }
   public readonly productLabel = computed(() => interestedProductLabel(this.lead()?.interestedProduct, this._productNames.names()));
   public readonly name = computed(() => displayName(this.lead()));
   public readonly avatar = computed(() => initials(this.name()));
   public readonly statusMeta = computed(() => leadStatusMeta(this.lead()?.status));
   public readonly origin = computed(() => originLabel(this.lead()));
+
+  /** Sous le nom : l'entreprise et la ville, ce qui situe le prospect d'un coup d'œil. */
+  public readonly subtitle = computed(() => {
+    const lead = this.lead();
+    return [lead?.companyName, lead?.address?.city ?? lead?.address?.neighbourhood]
+      .filter((v) => !!v?.trim())
+      .join(' · ');
+  });
+
+  /** Les suites du lead sous la flèche d'« Ajouter un projet ». */
+  public readonly hasPrimaryMenu = computed(
+    () => (this.awaitsFirstContact() && this.canUpdate()) || !!this.openClientFileId() || this.canBeConverted(),
+  );
 
   /** « suivi par Fatou Diallo » — l'agent qui a le lead, ou son responsable à défaut. */
   private readonly _users = toSignal(
@@ -260,6 +271,9 @@ export class EditLeadNavigation implements OnDestroy {
     () => (this.compliance.completeness()?.gaps ?? []).filter((g) => isConsentGap(g.code)).length,
   );
 
+  /** Les projets ouverts du lead, pour le compteur du menu. */
+  public readonly openProjectCount = signal(0);
+
   public readonly duplicateCount = computed(() => {
     const id = this.id();
     const dismissed = this._dismissed();
@@ -294,6 +308,8 @@ export class EditLeadNavigation implements OnDestroy {
           : null;
       case 'suivi':
         return this.hasNoActivity() ? { text: '0', tone: 'amber' } : null;
+      case 'projets':
+        return this.openProjectCount() > 0 ? { text: String(this.openProjectCount()), tone: 'slate' } : null;
       case 'doublons':
         return this.duplicateCount() > 0 ? { text: String(this.duplicateCount()), tone: 'red' } : null;
       case 'conformite':
@@ -387,6 +403,7 @@ export class EditLeadNavigation implements OnDestroy {
         this._setLead(lead);
         this.isLoading.set(false);
         this._loadDuplicates(lead);
+        this._loadProjectCount(id);
         this._startPolling(id);
       });
     });
@@ -402,6 +419,7 @@ export class EditLeadNavigation implements OnDestroy {
       this._setLead(lead);
     });
     this.compliance.reloadAfterWrite();
+    this._loadProjectCount(this.id());
   }
 
   private _setLead(lead: LeadDto): void {
@@ -436,6 +454,34 @@ export class EditLeadNavigation implements OnDestroy {
       height: '100%',
       panelClass: 'side-drawer-panel',
       data: { mode: 'new', to: [email], context: { leadId: this.id() } },
+    });
+  }
+
+  /** Un projet pour ce lead : on ouvre sa page, où il se complète. */
+  public openCreateProject(): void {
+    const lead = this.lead();
+    if (!lead) return;
+    const ref = this._sideDrawerService.open<string | false, CreateOpportunityDrawerData, CreateOpportunityDrawer>(
+      CreateOpportunityDrawer,
+      { width: '100%', height: '100%', panelClass: 'side-drawer-panel', data: { lead } },
+    );
+    ref.closed.subscribe((projectId) => {
+      if (projectId) void this._router.navigate(['/leads/projets', projectId]);
+    });
+  }
+
+  public readonly Activity = LogActivityRequestTypeEnum;
+
+  /** « Noter un message » : le panneau d'activité, ouvert sur le type demandé. */
+  public logActivity(type: LogActivityRequestTypeEnum): void {
+    const ref = this._sideDrawerService.open(LogActivityDrawer, {
+      width: '100%',
+      height: '100%',
+      panelClass: 'side-drawer-panel',
+      data: { leadId: this.id(), leadName: this.name(), initialType: type } satisfies LogActivityDrawerData,
+    });
+    ref.closed.subscribe((result) => {
+      if (result) this.reload();
     });
   }
 
@@ -643,6 +689,13 @@ export class EditLeadNavigation implements OnDestroy {
       this._duplicates.set(duplicates ?? []);
       // `candidateLeadId` est le lead écarté ; `leadId` est celui-ci.
       this._dismissed.set(new Set((dismissals ?? []).map((d) => d.candidateLeadId ?? '').filter(Boolean)));
+    });
+  }
+
+  /** Une panne ou un refus de droit laisse le compteur vide, pas l'écran. */
+  private _loadProjectCount(leadId: string): void {
+    this._opportunitiesApi.listOpportunities(leadId).pipe(catchError(() => of([]))).subscribe((items) => {
+      this.openProjectCount.set((items ?? []).filter((o) => !isClosed(o)).length);
     });
   }
 

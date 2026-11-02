@@ -14,270 +14,279 @@
     </a>
   </div>
 } @else {
-  <!-- ═══════ En-tête : qui, quoi, et la suite — une seule carte (refonte du 2026-10-24) ═══════ -->
   <!--
-    Avant : un en-tête, un bandeau « prochaine étape », puis une colonne de gauche qui répétait le
-    nom, les coordonnées, le statut (cycle de vie) et le score sur chaque onglet. Tout ce qui
-    identifie le lead tient ici, une fois ; le cycle de vie et le score vivent dans la vue
-    d'ensemble.
+    ═══════ Fiche lead, maquette du 2026-11-02 ═══════
+    Les actions en haut à droite (le fil d'Ariane de l'application occupe la gauche), une colonne
+    d'identité à gauche — qui, son score, les rubriques — et la rubrique ouverte à droite. Ce que
+    l'ancien en-tête portait et qui ne tient pas dans la colonne (coordonnées, origine, parcours,
+    intérêt ressenti) est passé dans la vue d'ensemble.
   -->
-  <tas-card class="mb-4 block">
-    <div class="flex flex-wrap items-start gap-4 p-5">
-      <a [routerLink]="['/leads']"
-         class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-50 text-slate-600 hover:text-slate-900"
-         aria-label="Retour aux leads">
-        <tas-icon iconName="feather:chevron-left" style="font-size:18px"></tas-icon>
-      </a>
-
-      @if (isLoading()) {
-        <div class="flex-1"><div class="h-7 w-56 animate-pulse rounded bg-slate-200"></div></div>
-      } @else if (lead(); as l) {
-        <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary/10 font-bold text-primary">{{ avatar() }}</span>
-
-        <div class="min-w-64 flex-1">
-          <div class="flex flex-wrap items-center gap-2">
-            <h1 class="text-xl font-bold text-slate-900">{{ name() }}</h1>
-            <tas-tag [severity]="statusMeta().severity">{{ statusMeta().label }}</tas-tag>
-            <pep-exposure-badge [exposed]="compliance.hasPepExposure()"></pep-exposure-badge>
-            @if (compliance.fatcaEnabled()) {
-              <fatca-status-badge [status]="compliance.principalFatcaStatus()"></fatca-status-badge>
-            }
-          </div>
-
-          <!-- Le besoin oriente tout le traitement : il se lit juste sous le nom. -->
-          <p class="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
-            <!-- @if (productLabel(); as product) {
-              <span class="inline-flex items-center gap-1.5 font-semibold text-primary">
-                <tas-icon iconName="feather:package" style="font-size:14px"></tas-icon>{{ product }}
-              </span>
-            } @else {
-              <span class="inline-flex items-center gap-1.5 text-slate-500">
-                <tas-icon iconName="feather:package" style="font-size:13px"></tas-icon>Produit souhaité non précisé
-              </span>
-              @if (canUpdate() && !isConverted()) {
-                <button tas-text-button type="button" class="text-xs" (click)="openEditInfoDrawer()">Préciser</button>
-              }
-            } -->
-            @if (l.desiredAmount?.amount) {
-              <span class="font-semibold tabular-nums text-slate-800">{{ formatAmount(l.desiredAmount!.amount, l.desiredAmount!.currency) }}</span>
-            }
-          </p>
-
-          <p class="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500">
-            @if (l.phoneNumber) {
-              <span class="inline-flex items-center gap-1 tabular-nums"><tas-icon iconName="feather:phone" style="font-size:12px"></tas-icon>{{ l.phoneNumber }}</span>
-            }
-            @if (l.email) {
-              <span class="inline-flex max-w-64 items-center gap-1"><tas-icon iconName="feather:mail" style="font-size:12px"></tas-icon><span class="truncate">{{ l.email }}</span></span>
-            }
-            @if (origin() !== '—') {
-              <span class="inline-flex items-center gap-1"><tas-icon iconName="feather:phone-incoming" style="font-size:12px"></tas-icon>Venu par {{ origin() }}</span>
-            }
-            <span class="inline-flex items-center gap-1">
-              <tas-icon iconName="feather:user" style="font-size:12px"></tas-icon>
-              @if (followedBy(); as agent) { Suivi par {{ agent }} } @else { Pas encore attribué }
-            </span>
-          </p>
-        </div>
-
-        <div class="flex flex-wrap items-center justify-end gap-3">
-          <!-- Actions rapides : joindre le prospect, planifier un rendez-vous, confier une tâche. -->
-          <div class="flex flex-wrap items-center gap-2" role="group" aria-label="Actions rapides">
-            @if (l.phoneNumber) {
-              <!-- Se masque lui-même si cet agent ne peut pas appeler (TEL-F-04). -->
-              <lib-call-button entityType="Lead" [entityId]="id()" label="Appeler"></lib-call-button>
-              @if (canWhatsApp()) {
-                <a tas-outlined-button color="primary" class="rounded-full bg-white" [routerLink]="['suivi', 'whatsapp']"
-                   title="Ouvrir la conversation WhatsApp">
-                  <tas-icon iconName="feather:message-circle" style="font-size:14px"></tas-icon>
-                  &nbsp;WhatsApp
-                </a>
-              }
-            }
-            @if (l.email && canMail()) {
-              <button tas-outlined-button color="primary" type="button" class="rounded-full bg-white" (click)="openNewMail()"
-                      title="Écrire à ce lead depuis votre boîte mail">
-                <tas-icon iconName="feather:mail" style="font-size:14px"></tas-icon>
-                &nbsp;E-mail
-              </button>
-            }
-            @if (canScheduleAppointment() && !isConverted()) {
-              <button tas-outlined-button color="primary" type="button" class="rounded-full bg-white" (click)="openNewAppointment()"
-                      title="Ajouter un rendez-vous avec ce lead">
-                <tas-icon iconName="feather:calendar" style="font-size:14px"></tas-icon>
-                &nbsp;Rendez-vous
-              </button>
-            }
-            @if (canManageTasks() && !isConverted()) {
-              <button tas-outlined-button color="primary" type="button" class="rounded-full bg-white" (click)="openNewTask()"
-                      title="Ajouter une tâche sur ce lead">
-                <tas-icon iconName="feather:check-square" style="font-size:14px"></tas-icon>
-                &nbsp;Tâche
-              </button>
-            }
-          </div>
-
-          @if (missingConsents() > 0) {
-            <a [routerLink]="['conformite']" fragment="consentements" class="inline-flex items-center gap-1.5 text-sm text-red-700 hover:underline">
-              <tas-icon iconName="feather:lock" style="font-size:13px"></tas-icon>
-              {{ missingConsents() }} consentement{{ missingConsents() > 1 ? 's' : '' }} manquant{{ missingConsents() > 1 ? 's' : '' }}
+  @if (!isLoading() && lead(); as l) {
+    <div class="mb-5 flex flex-wrap items-center justify-end gap-2" role="group" aria-label="Actions rapides">
+      @if (l.email && canMail()) {
+        <button tas-outlined-button color="primary" type="button" class="bg-white" (click)="openNewMail()"
+                title="Écrire à ce lead depuis votre boîte mail">
+          <tas-icon iconName="feather:mail" style="font-size:14px"></tas-icon>
+          &nbsp;E-mail
+        </button>
+      }
+      @if (l.phoneNumber) {
+        <!-- Se masque lui-même si cet agent ne peut pas appeler (TEL-F-04). -->
+        <lib-call-button entityType="Lead" [entityId]="id()" label="Appeler"></lib-call-button>
+        @if (canWhatsApp()) {
+          <div class="inline-flex">
+            <a tas-outlined-button color="primary" class="rounded-r-none bg-white" [routerLink]="['conversations']"
+               title="Ouvrir la conversation WhatsApp">
+              <tas-icon iconName="feather:message-circle" style="font-size:14px"></tas-icon>
+              &nbsp;WhatsApp
             </a>
-          }
-
-          @if (awaitsFirstContact() && canUpdate()) {
-            <button tas-raised-button color="primary" type="button" class="rounded-full" (click)="openFirstContact()">
-              <tas-icon iconName="feather:phone-call" style="font-size:14px"></tas-icon>
-              &nbsp;Premier contact
+            <button tas-outlined-button color="primary" type="button" class="-ml-px rounded-l-none bg-white px-2"
+                    TasMenuTrigger [panel]="whatsappMenu" aria-label="Autres actions WhatsApp">
+              <tas-icon iconName="feather:chevron-down" style="font-size:12px"></tas-icon>
             </button>
-          } @else if (openClientFileId(); as clientId) {
-            <a tas-outlined-button color="primary" class="rounded-full bg-white" [routerLink]="['/customers', clientId]"
-               title="Le lead deviendra client quand l'un de ses projets sera approuvé">
-              <tas-icon iconName="feather:folder" style="font-size:14px"></tas-icon>
-              &nbsp;Dossier client ouvert
-            </a>
-          } @else if (canBeConverted()) {
-            <!--
-              Désactivé sur le canConvert de l'API (BNF-F-08), jamais sur une règle recalculée ici.
-              Le libellé change pour un lead rattaché à un client existant (BNF-F-19).
-            -->
-            <button tas-raised-button color="primary" type="button" class="rounded-full"
-              [disabled]="convertDisabled()"
-              [attr.title]="convertDisabledHint()"
-              [attr.aria-describedby]="convertDisabled() ? 'convert-disabled-hint' : null"
-              (click)="openConvertWizard()">
-              <tas-icon iconName="feather:user-check" style="font-size:14px"></tas-icon>
-              &nbsp;{{ convertActionLabel() }}
-            </button>
-            @if (convertDisabled() && !compliance.isLoading()) {
-              <span id="convert-disabled-hint" class="sr-only">{{ convertDisabledHint() }}</span>
-            }
-          }
-
-          @if (canBeReopened()) {
-            <button tas-raised-button color="primary" type="button" [disabled]="isReopening()" (click)="reopenLead()">
-              @if (isReopening()) { <tas-spinner size="3" class="text-white"></tas-spinner> }
-              <tas-icon iconName="feather:rotate-ccw" style="font-size:14px"></tas-icon>
-              &nbsp;Réouvrir
-            </button>
-          }
-
-          <button tas-outlined-button type="button" color="primary" class="rounded-full bg-white" TasMenuTrigger [panel]="actionsMenu">
-            Actions
-            <tas-icon iconName="feather:chevron-down" style="font-size:12px"></tas-icon>
-          </button>
-
-          <ng-template #actionsMenu>
+          </div>
+          <ng-template #whatsappMenu>
             <tas-menu>
-              <!-- Un lead converti est figé : les actions qui l'écrivent disparaissent du menu. -->
-              @if (canUpdate() && !isConverted()) {
+              <tas-menu-item>
+                <a class="flex w-full items-center gap-2 text-slate-700" [routerLink]="['conversations']">
+                  <tas-icon iconName="feather:message-square" class="text-slate-400" style="font-size:13px"></tas-icon>
+                  Ouvrir la conversation
+                </a>
+              </tas-menu-item>
+              @if (canLogActivity() && !isConverted()) {
                 <tas-menu-item>
-                  <button type="button" class="flex w-full items-center gap-2 text-slate-700" (click)="openEditInfoDrawer()">
-                    <tas-icon iconName="feather:edit-2" class="text-slate-400" style="font-size:13px"></tas-icon>
-                    Modifier les informations
-                  </button>
-                </tas-menu-item>
-              }
-              @if (canAssign() && !isConverted()) {
-                <tas-menu-item>
-                  <button type="button" class="flex w-full items-center gap-2 text-slate-700" (click)="openReassignDrawer()">
-                    <tas-icon iconName="feather:user-plus" class="text-slate-400" style="font-size:13px"></tas-icon>
-                    Réassigner à un agent
-                  </button>
-                </tas-menu-item>
-                <tas-menu-item [disabled]="isReturningToQueue()">
-                  <button type="button" class="flex w-full items-center gap-2 text-slate-700" (click)="returnToQueue()">
-                    <tas-icon iconName="feather:corner-down-left" class="text-slate-400" style="font-size:13px"></tas-icon>
-                    Remettre en file d'attente
-                  </button>
-                </tas-menu-item>
-              }
-              @if (canRequestErasure()) {
-                <tas-menu-item>
-                  <button type="button" class="flex w-full items-center gap-2 text-slate-700" (click)="openErasureRequest()">
-                    <tas-icon iconName="feather:user-x" class="text-slate-400" style="font-size:13px"></tas-icon>
-                    Demander l'effacement
-                  </button>
-                </tas-menu-item>
-              }
-              @if (l.status !== 'Converted') {
-                <tas-menu-item>
-                  <button type="button" class="flex w-full items-center gap-2 text-slate-700" (click)="openNurtureRecycleDrawer()">
-                    <tas-icon iconName="feather:refresh-cw" class="text-amber-500" style="font-size:13px"></tas-icon>
-                    Nurturing / Recycler
-                  </button>
-                </tas-menu-item>
-                <tas-menu-item>
-                  <button type="button" class="flex w-full items-center gap-2 text-red-600" (click)="closeLead()">
-                    <tas-icon iconName="feather:x-square" class="text-red-400" style="font-size:13px"></tas-icon>
-                    Clôturer le lead
+                  <button type="button" class="flex w-full items-center gap-2 text-slate-700" (click)="logActivity(Activity.Sms)">
+                    <tas-icon iconName="feather:edit-3" class="text-slate-400" style="font-size:13px"></tas-icon>
+                    Noter un message (SMS, WhatsApp)
                   </button>
                 </tas-menu-item>
               }
             </tas-menu>
           </ng-template>
-        </div>
+        }
       }
-    </div>
+      @if (canManageTasks() && !isConverted()) {
+        <button tas-outlined-button color="primary" type="button" class="bg-white" (click)="openNewTask()"
+                title="Ajouter une tâche sur ce lead">
+          <tas-icon iconName="feather:check-square" style="font-size:14px"></tas-icon>
+          &nbsp;Tâche
+        </button>
+      }
+      @if (canScheduleAppointment() && !isConverted()) {
+        <button tas-outlined-button color="primary" type="button" class="bg-white" (click)="openNewAppointment()"
+                title="Ajouter un rendez-vous avec ce lead">
+          <tas-icon iconName="feather:calendar" style="font-size:14px"></tas-icon>
+          &nbsp;Rendez-vous
+        </button>
+      }
 
-    <!-- Parcours et intérêt ressenti : où en est le lead, et ce que l'agent en a senti -->
-    @if (!isLoading() && lead(); as l) {
-      <div class="flex flex-wrap items-center gap-x-8 gap-y-3 border-t border-slate-100 px-5 py-3">
-        <div class="min-w-80 flex-1">
-          <div class="mb-1.5 flex items-center gap-2">
-            <p class="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Parcours</p>
-            @if (journeyOffTrack(); as off) {
-              <tas-tag [severity]="off.severity">{{ off.label }}</tas-tag>
-            }
-          </div>
-          <ol class="grid grid-cols-6 gap-1" aria-label="Parcours du lead">
-            @for (step of journey; track step.stage; let i = $index) {
-              <li [attr.aria-current]="i === journeyIndex() ? 'step' : null">
-                <div class="h-1.5 rounded-full"
-                     [class]="journeyOffTrack() ? 'bg-slate-200' : i <= journeyIndex() ? (journeyIndex() === journey.length - 1 ? 'bg-green-600' : 'bg-primary') : 'bg-slate-100'"></div>
-                <p class="mt-1 truncate text-[11px]"
-                   [class]="i === journeyIndex() && !journeyOffTrack() ? 'font-semibold text-primary' : i < journeyIndex() ? 'text-slate-700' : 'text-slate-400'">
-                  {{ step.label }}
-                </p>
-              </li>
-            }
-          </ol>
+      @if (canBeReopened()) {
+        <button tas-raised-button color="primary" type="button" [disabled]="isReopening()" (click)="reopenLead()">
+          @if (isReopening()) { <tas-spinner size="3" class="text-white"></tas-spinner> }
+          <tas-icon iconName="feather:rotate-ccw" style="font-size:14px"></tas-icon>
+          &nbsp;Réouvrir
+        </button>
+      } @else if (canCreateProject() || hasPrimaryMenu()) {
+        <!--
+          « Ajouter un projet » est l'action principale de la maquette. Les suites du lead qu'elle
+          remplace dans l'en-tête — premier contact, dossier client — sont sous sa flèche.
+        -->
+        <div class="inline-flex">
+          @if (canCreateProject()) {
+            <button tas-raised-button color="primary" type="button" [class]="hasPrimaryMenu() ? 'rounded-r-none' : ''" (click)="openCreateProject()">
+              <tas-icon iconName="feather:briefcase" style="font-size:14px"></tas-icon>
+              &nbsp;Ajouter un projet
+            </button>
+          }
+          @if (hasPrimaryMenu()) {
+            <button tas-raised-button color="primary" type="button"
+                    [class]="canCreateProject() ? 'rounded-l-none border-l border-white/30 px-2' : ''"
+                    TasMenuTrigger [panel]="primaryMenu" aria-label="Suites du lead">
+              @if (!canCreateProject()) { Suites du lead&nbsp; }
+              <tas-icon iconName="feather:chevron-down" style="font-size:12px"></tas-icon>
+            </button>
+          }
         </div>
-        <div>
-          <p class="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-500">Intérêt ressenti</p>
-          <div class="flex flex-wrap gap-1.5" role="radiogroup" aria-label="Intérêt ressenti">
-            @for (option of intentOptions; track option.value) {
-              <button type="button" role="radio"
-                      class="inline-flex items-center gap-1.5 rounded-full border bg-white px-2.5 py-1 text-xs font-medium transition-colors"
-                      [class]="(l.intentLevel ?? 'Unknown') === option.value ? 'border-primary text-slate-900 ring-1 ring-primary' : 'border-slate-200 text-slate-600 hover:bg-slate-50'"
-                      [attr.aria-checked]="(l.intentLevel ?? 'Unknown') === option.value"
-                      [disabled]="!canSetIntent()"
-                      (click)="setIntentLevel(option.value)">
-                <span class="h-2 w-2 rounded-full" [class]="option.dot"></span>
-                {{ option.label }}
+        <ng-template #primaryMenu>
+          <tas-menu>
+            @if (awaitsFirstContact() && canUpdate()) {
+              <tas-menu-item>
+                <button type="button" class="flex w-full items-center gap-2 text-slate-700" (click)="openFirstContact()">
+                  <tas-icon iconName="feather:phone-call" class="text-slate-400" style="font-size:13px"></tas-icon>
+                  Premier contact
+                </button>
+              </tas-menu-item>
+            }
+            @if (openClientFileId(); as clientId) {
+              <tas-menu-item>
+                <a class="flex w-full items-center gap-2 text-slate-700" [routerLink]="['/customers', clientId]"
+                   title="Le lead deviendra client quand l'un de ses projets sera approuvé">
+                  <tas-icon iconName="feather:folder" class="text-slate-400" style="font-size:13px"></tas-icon>
+                  Dossier client ouvert
+                </a>
+              </tas-menu-item>
+            } @else if (canBeConverted()) {
+              <!--
+                Désactivé sur le canConvert de l'API (BNF-F-08), jamais sur une règle recalculée ici.
+                Le libellé change pour un lead rattaché à un client existant (BNF-F-19).
+              -->
+              <tas-menu-item [disabled]="convertDisabled()">
+                <button type="button" class="flex w-full items-center gap-2 text-slate-700"
+                        [disabled]="convertDisabled()" [attr.title]="convertDisabledHint()" (click)="openConvertWizard()">
+                  <tas-icon iconName="feather:user-check" class="text-slate-400" style="font-size:13px"></tas-icon>
+                  <span class="flex flex-col items-start">
+                    {{ convertActionLabel() }}
+                    @if (convertDisabled() && !compliance.isLoading()) {
+                      <span class="text-[11px] text-slate-500">{{ convertDisabledHint() }}</span>
+                    }
+                  </span>
+                </button>
+              </tas-menu-item>
+            }
+          </tas-menu>
+        </ng-template>
+      }
+
+      <button tas-outlined-button type="button" color="primary" class="bg-white px-2.5" TasMenuTrigger [panel]="actionsMenu"
+              aria-label="Autres actions" title="Autres actions">
+        <tas-icon iconName="feather:more-horizontal" style="font-size:16px"></tas-icon>
+      </button>
+
+      <ng-template #actionsMenu>
+        <tas-menu>
+          <!-- Un lead converti est figé : les actions qui l'écrivent disparaissent du menu. -->
+          @if (canUpdate() && !isConverted()) {
+            <tas-menu-item>
+              <button type="button" class="flex w-full items-center gap-2 text-slate-700" (click)="openEditInfoDrawer()">
+                <tas-icon iconName="feather:edit-2" class="text-slate-400" style="font-size:13px"></tas-icon>
+                Modifier les informations
               </button>
+            </tas-menu-item>
+          }
+          @if (canAssign() && !isConverted()) {
+            <tas-menu-item>
+              <button type="button" class="flex w-full items-center gap-2 text-slate-700" (click)="openReassignDrawer()">
+                <tas-icon iconName="feather:user-plus" class="text-slate-400" style="font-size:13px"></tas-icon>
+                Réassigner à un agent
+              </button>
+            </tas-menu-item>
+            <tas-menu-item [disabled]="isReturningToQueue()">
+              <button type="button" class="flex w-full items-center gap-2 text-slate-700" (click)="returnToQueue()">
+                <tas-icon iconName="feather:corner-down-left" class="text-slate-400" style="font-size:13px"></tas-icon>
+                Remettre en file d'attente
+              </button>
+            </tas-menu-item>
+          }
+          @if (canRequestErasure()) {
+            <tas-menu-item>
+              <button type="button" class="flex w-full items-center gap-2 text-slate-700" (click)="openErasureRequest()">
+                <tas-icon iconName="feather:user-x" class="text-slate-400" style="font-size:13px"></tas-icon>
+                Demander l'effacement
+              </button>
+            </tas-menu-item>
+          }
+          @if (l.status !== 'Converted') {
+            <tas-menu-item>
+              <button type="button" class="flex w-full items-center gap-2 text-slate-700" (click)="openNurtureRecycleDrawer()">
+                <tas-icon iconName="feather:refresh-cw" class="text-amber-500" style="font-size:13px"></tas-icon>
+                Nurturing / Recycler
+              </button>
+            </tas-menu-item>
+            <tas-menu-item>
+              <button type="button" class="flex w-full items-center gap-2 text-red-600" (click)="closeLead()">
+                <tas-icon iconName="feather:x-square" class="text-red-400" style="font-size:13px"></tas-icon>
+                Clôturer le lead
+              </button>
+            </tas-menu-item>
+          }
+        </tas-menu>
+      </ng-template>
+    </div>
+  }
+
+  <div class="grid grid-cols-1 items-start gap-6 lg:grid-cols-[17rem_minmax(0,1fr)]">
+    <!-- ═══════ Colonne d'identité : qui, son score, les rubriques ═══════ -->
+    <aside class="flex flex-col gap-4 lg:sticky lg:top-4" aria-label="Lead">
+      @if (isLoading()) {
+        <div class="flex items-center gap-3">
+          <div class="h-16 w-16 animate-pulse rounded-full bg-slate-200"></div>
+          <div class="h-6 w-36 animate-pulse rounded bg-slate-200"></div>
+        </div>
+      } @else if (lead(); as l) {
+        <div class="flex items-start gap-3">
+          <span class="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-primary text-xl font-bold text-white">{{ avatar() }}</span>
+          <div class="min-w-0 pt-1">
+            <h1 class="text-xl font-bold leading-tight text-primary">{{ name() }}</h1>
+            @if (subtitle()) {
+              <p class="mt-0.5 truncate text-sm text-slate-600">{{ subtitle() }}</p>
+            }
+            <div class="mt-1.5 flex flex-wrap items-center gap-1.5">
+              <tas-tag [severity]="statusMeta().severity">{{ statusMeta().label }}</tas-tag>
+              @if (l.intentLevel && l.intentLevel !== 'Unknown') {
+                <span class="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-900">
+                  <span class="h-1.5 w-1.5 rounded-full" [class]="intent().dot"></span>{{ intent().label }}
+                </span>
+              }
+              <pep-exposure-badge [exposed]="compliance.hasPepExposure()"></pep-exposure-badge>
+              @if (compliance.fatcaEnabled()) {
+                <fatca-status-badge [status]="compliance.principalFatcaStatus()"></fatca-status-badge>
+              }
+            </div>
+            @if (missingConsents() > 0) {
+              <a [routerLink]="['conformite']" fragment="consentements" class="mt-2 inline-flex items-center gap-1.5 text-xs text-red-700 hover:underline">
+                <tas-icon iconName="feather:lock" style="font-size:12px"></tas-icon>
+                {{ missingConsents() }} consentement{{ missingConsents() > 1 ? 's' : '' }} manquant{{ missingConsents() > 1 ? 's' : '' }}
+              </a>
             }
           </div>
         </div>
-      </div>
-    }
 
-    @if (lead(); as l) {
-      @if (l.awaitingDispatchSince && !l.currentAssignmentId) {
-        <div class="flex items-center gap-2 border-t border-amber-100 bg-amber-50 px-5 py-2.5 text-xs text-amber-900" role="status">
-          <tas-icon iconName="feather:clock" style="font-size:13px"></tas-icon>
-          <span><span class="font-semibold">En file d'attente de dispatch</span> — aucun agent n'a pu le prendre {{ l.awaitingDispatchSince | dateTimeAgo }} ; il partira seul dès qu'un agent sera disponible.</span>
-        </div>
+        <lead-progress-card></lead-progress-card>
       }
-    }
 
-    <!-- Prochaine étape : quoi, et pour quand. Dans l'en-tête, pour qu'aucun onglet ne la cache. -->
+      <!-- En dessous de lg, faute de largeur, le menu redevient une rangée qui défile horizontalement. -->
+      <nav class="overflow-x-auto" aria-label="Rubriques du lead">
+        <div class="flex gap-1 lg:flex-col">
+          @for (item of menu(); track item.route) {
+            <a class="flex items-center gap-3 whitespace-nowrap rounded-xl border-l-4 px-3 py-2.5 text-[15px] transition-colors"
+               [class]="activeRoute() === item.route
+                 ? 'border-primary bg-white font-semibold text-primary shadow-sm'
+                 : 'border-transparent text-slate-700 hover:bg-white/60 hover:text-slate-900'"
+               [attr.aria-current]="activeRoute() === item.route ? 'page' : null"
+               [routerLink]="item.route">
+              <tas-icon [iconName]="item.icon" style="font-size:16px"></tas-icon>
+              <span class="flex-1">{{ item.label }}</span>
+              @if (badgeFor(item.route); as badge) {
+                <span class="flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[10px] font-semibold"
+                      [class]="badge.tone === 'red' ? 'bg-red-100 text-red-700' : badge.tone === 'amber' ? 'bg-amber-100 text-amber-800' : 'bg-primary/10 text-primary'">
+                  {{ badge.text }}
+                </span>
+              }
+            </a>
+          }
+        </div>
+      </nav>
+    </aside>
+
+    <!-- ═══════ La rubrique ouverte ═══════ -->
+    <div class="flex min-w-0 flex-col gap-4">
+      @if (lead(); as l) {
+        @if (l.awaitingDispatchSince && !l.currentAssignmentId) {
+          <div class="flex items-center gap-2 rounded-2xl border border-amber-100 bg-amber-50 px-5 py-2.5 text-xs text-amber-900" role="status">
+            <tas-icon iconName="feather:clock" style="font-size:13px"></tas-icon>
+            <span><span class="font-semibold">En file d'attente de dispatch</span> — aucun agent n'a pu le prendre {{ l.awaitingDispatchSince | dateTimeAgo }} ; il partira seul dès qu'un agent sera disponible.</span>
+          </div>
+        }
+      }
+
+    <!-- Prochaine étape : quoi, et pour quand. Au-dessus de chaque rubrique, pour qu'aucune ne la cache. -->
     @if (!isLoading() && nextStep(); as step) {
       @let due = nextStepDue();
       <section
-        class="flex flex-wrap items-center gap-x-5 gap-y-3 rounded-b-2xl border-t px-5 py-3"
+        class="flex flex-wrap items-center gap-x-5 gap-y-3 rounded-2xl border px-5 py-3"
         [class]="due.tone === 'overdue' ? 'border-red-100 bg-red-50/60'
           : due.tone === 'today' ? 'border-amber-100 bg-amber-50/60'
-          : 'border-slate-100 bg-slate-50/60'"
+          : 'border-slate-100 bg-white'"
         aria-label="Prochaine étape"
       >
         <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg"
@@ -312,8 +321,8 @@
               <a tas-outlined-button color="primary" class="bg-white" [routerLink]="['suivi', 'rappels']">Voir le rappel</a>
             }
             @case (nextStepKind.FirstContact) {
-              <!-- L'en-tête propose déjà « Premier contact » sur un lead nouveau : pas de second bouton. -->
-              @if (canUpdate() && !awaitsFirstContact()) {
+              <!-- « Premier contact » n'est plus qu'une entrée de menu dans l'en-tête : le bouton reste ici. -->
+              @if (canUpdate()) {
                 <button tas-raised-button color="primary" type="button" (click)="openFirstContact()">Enregistrer le contact</button>
               }
             }
@@ -355,38 +364,12 @@
 
     <!-- Le produit souhaité ressemble à un produit du catalogue : on propose d'en ouvrir le projet. -->
     @if (!isLoading() && lead(); as l) {
-      <lead-project-suggestion [lead]="l"></lead-project-suggestion>
+      <!-- Vide quand rien n'est proposé : masqué, il ne compte pas d'espacement dans la colonne. -->
+      <lead-project-suggestion class="empty:hidden" [lead]="l"></lead-project-suggestion>
     }
-  </tas-card>
 
-  <!--
-    ═══════ Rubriques : menu vertical à gauche du contenu, collé en haut au défilement ═══════
-    En dessous de lg, faute de largeur, il redevient une rangée qui défile horizontalement.
-  -->
-  <div class="grid grid-cols-1 items-start gap-5 lg:grid-cols-[13rem_minmax(0,1fr)]">
-    <nav class="sticky top-0 z-20 overflow-x-auto rounded-2xl border border-slate-100 bg-white p-2 shadow-sm lg:top-4" aria-label="Rubriques du lead">
-      <div class="flex gap-1 lg:flex-col">
-        @for (item of menu(); track item.route) {
-          <a class="flex items-center gap-2.5 whitespace-nowrap rounded-xl px-3 py-2.5 text-sm transition-colors"
-             [class]="activeRoute() === item.route ? 'bg-primary/10 font-semibold text-primary' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'"
-             [attr.aria-current]="activeRoute() === item.route ? 'page' : null"
-             [routerLink]="item.route">
-            <tas-icon [iconName]="item.icon" style="font-size:15px"></tas-icon>
-            <span class="flex-1">{{ item.label }}</span>
-            @if (badgeFor(item.route); as badge) {
-              <span class="flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[10px] font-semibold"
-                    [class]="badge.tone === 'red' ? 'bg-red-100 text-red-700' : badge.tone === 'amber' ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-600'">
-                {{ badge.text }}
-              </span>
-            }
-          </a>
-        }
-      </div>
-    </nav>
-
-    <!-- Rubrique : c'est la page qui défile, pour que le menu reste collé en haut -->
-    <div class="min-w-0">
-      <router-outlet></router-outlet>
-    </div>
+    <!-- La rubrique s'insère APRÈS cet élément, qui reste vide : masqué pour la même raison. -->
+    <router-outlet class="hidden"></router-outlet>
   </div>
+</div>
 }

@@ -60,7 +60,9 @@ export const PORTAL_NAVIGATION: PortalNavGroup[] = [
   {
     label: 'Pilotage',
     items: [
-      { id: 'analytics', label: 'Tableau de bord', icon: 'feather:bar-chart-2', link: '/leads/analytics' },
+      // Sous le droit de sa route (`lead:analytics:view`, supervision des leads) : sans lui, l'entrée
+      // menait un agent à un refus.
+      { id: 'analytics', label: 'Tableau de bord', icon: 'feather:bar-chart-2', link: '/leads/analytics', anyOf: [PERMISSIONS.LEAD_ANALYTICS_VIEW] },
       { id: 'reports', label: 'Rapports', icon: 'feather:pie-chart', link: '/leads/reports', anyOf: [PERMISSIONS.LEAD_REPORT_VIEW] },
       { id: 'dispatching', label: 'Dispatching', icon: 'feather:shuffle', link: '/leads/dispatching', anyOf: [PERMISSIONS.LEAD_DISPATCHING_RULE_READ] },
       {

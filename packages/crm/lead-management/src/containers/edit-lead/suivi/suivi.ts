@@ -17,10 +17,12 @@ const TABS: ReadonlyArray<SuiviTab> = [
   { label: 'Rappels', icon: 'feather:bell', route: 'rappels', permission: 'lead:reminder:manage' },
   { label: 'Tâches', icon: 'feather:check-square', route: 'taches', permission: 'lead:task:read' },
   { label: 'Chronologie', icon: 'feather:clock', route: 'timeline' },
-  { label: 'WhatsApp', icon: 'feather:message-circle', route: 'whatsapp', permission: 'WhatsApp.Send' },
 ];
 
-/** Page « Suivi » de la fiche lead : les activités, rappels, tâches et la chronologie, en onglets. */
+/**
+ * Page « Activités » de la fiche lead : les activités, rappels, tâches et la chronologie, en
+ * onglets. Le fil WhatsApp en est sorti (2026-11-02) : c'est la rubrique « Conversations ».
+ */
 @Component({
   selector: 'lead-suivi',
   changeDetection: ChangeDetectionStrategy.OnPush,

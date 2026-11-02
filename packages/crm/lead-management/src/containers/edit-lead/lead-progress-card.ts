@@ -2,9 +2,9 @@ import { ChangeDetectionStrategy, Component, computed, effect, inject, signal, u
 import { RouterLink } from '@angular/router';
 import { catchError, EMPTY } from 'rxjs';
 import { LeadIntentLevelDto, LeadsApiService } from '@sankore/crm-api';
-import { TasCard } from '@talisoft/ui/card';
 import { TasIcon } from '@talisoft/ui/icon';
 import { TimeagoPipe } from '@talisoft/ui/timeago';
+import { PermissionsService } from '@sankore/crm/common';
 import { LeadEditContext } from './lead-edit-context';
 import { intentOption } from './lead-view.models';
 
@@ -42,72 +42,66 @@ function parseFactors(factorsJson: string | null | undefined): ScoreFactor[] {
 }
 
 /**
- * Le score du lead dans la vue d'ensemble. Il était dans une colonne de gauche présente sur chaque
- * onglet (refonte de la fiche, 2026-10-24). La carte portait aussi une frise « Cycle de vie » sur le
- * statut : elle contredisait la frise du pipeline de « Suivi commercial », qui porte désormais
- * seule le parcours du lead.
+ * Le score du lead, dans la colonne d'identité de la fiche (maquette du 2026-11-02) : visible
+ * depuis chaque rubrique. La flèche mène à l'historique du score ; un clic sur le chiffre déplie
+ * le détail par dimension.
  */
 @Component({
   selector: 'lead-progress-card',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [TasCard, TasIcon, TimeagoPipe, RouterLink],
+  imports: [TasIcon, TimeagoPipe, RouterLink],
   template: `
     @if (lead(); as l) {
-      <tas-card class="block">
-        <div class="p-5">
-          <div>
-            <button type="button" class="w-full text-left" (click)="showFactors.set(!showFactors())"
-                    [attr.aria-expanded]="showFactors()" aria-controls="score-factors-panel">
-              <div class="flex items-center justify-between gap-2">
-                <p class="text-sm font-semibold text-slate-800">
-                  Score <span class="text-2xl font-bold tabular-nums text-slate-900">{{ score() }}</span><span class="text-slate-400">/100</span>
-                </p>
-                <span class="flex items-center gap-1.5 text-xs text-slate-500">
-                  <span class="h-2 w-2 rounded-full" [class]="intent().dot"></span>
-                  {{ intent().label }}
-                  <tas-icon [iconName]="showFactors() ? 'feather:chevron-up' : 'feather:chevron-down'" class="text-slate-400" style="font-size:14px"></tas-icon>
-                </span>
-              </div>
-              <!-- La barre et le repère du seuil : ce qui manque se voit avant de se lire. -->
-              <div class="relative mt-3 h-2 rounded-full bg-slate-100" role="meter" aria-label="Score du lead"
-                   aria-valuemin="0" aria-valuemax="100" [attr.aria-valuenow]="score()">
-                <div class="h-2 rounded-full" [class]="bar()" [style.width.%]="score()"></div>
-                <div class="absolute -top-1 h-4 w-0.5 rounded bg-slate-500" [style.left.%]="threshold()" aria-hidden="true"></div>
-              </div>
-              <div class="mt-1.5 flex items-center justify-between gap-2 text-[11px] text-slate-500">
-                <span>
-                  @if (isUnqualified()) {
-                    Pas encore qualifié
-                  } @else if (pointsToThreshold() > 0) {
-                    Encore <span class="font-semibold tabular-nums text-slate-700">{{ pointsToThreshold() }}</span> points pour le seuil
-                  } @else {
-                    Seuil de qualification atteint
-                  }
-                </span>
-                <span class="shrink-0 tabular-nums">seuil {{ threshold() }}</span>
-              </div>
-            </button>
-            @if (showFactors()) {
-              <div id="score-factors-panel" class="mt-3 overflow-hidden rounded-lg border border-slate-200" role="region" aria-label="Détail du score">
-                @for (factor of factors(); track factor.label) {
-                  <div class="flex items-center justify-between gap-2 border-b border-slate-100 px-3 py-2 last:border-b-0">
-                    <p class="truncate text-xs font-medium text-slate-700">{{ factor.label }}</p>
-                    <span class="shrink-0 text-xs font-semibold tabular-nums text-slate-800">{{ factor.value }}</span>
-                  </div>
-                } @empty {
-                  <p class="px-3 py-3 text-center text-xs text-slate-400">Aucun détail disponible</p>
-                }
-                @if (intentDetail()?.updatedAt) {
-                  <p class="border-t border-slate-100 px-3 py-2 text-[11px] text-slate-400">
-                    Intérêt mis à jour {{ intentDetail()!.updatedAt! | dateTimeAgo }}
-                  </p>
-                }
-              </div>
-            }
-            <a [routerLink]="['../score']" class="mt-3 inline-block text-xs font-semibold text-primary hover:underline">Historique du score</a>
-          </div>
+      <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div class="flex items-center gap-3">
+          <button type="button" class="min-w-0 flex-1 text-left" (click)="showFactors.set(!showFactors())"
+                  [attr.aria-expanded]="showFactors()" aria-controls="score-factors-panel" title="Détail du score">
+            <p class="text-xs text-slate-500">Score</p>
+            <p class="text-3xl font-bold leading-tight tabular-nums text-primary">{{ score() }}<span class="text-sm font-normal text-slate-400">/100</span></p>
+          </button>
+          @if (canReadScore()) {
+            <a [routerLink]="['score']" class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200"
+               aria-label="Historique du score" title="Historique du score">
+              <tas-icon iconName="feather:chevron-right" style="font-size:15px"></tas-icon>
+            </a>
+          }
         </div>
-      </tas-card>
+        <!-- La barre et le repère du seuil : ce qui manque se voit avant de se lire. -->
+        <div class="relative mt-3 h-1.5 rounded-full bg-slate-100" role="meter" aria-label="Score du lead"
+             aria-valuemin="0" aria-valuemax="100" [attr.aria-valuenow]="score()">
+          <div class="h-1.5 rounded-full" [class]="bar()" [style.width.%]="score()"></div>
+          <div class="absolute -top-1 h-3.5 w-0.5 rounded bg-slate-500" [style.left.%]="threshold()" aria-hidden="true"></div>
+        </div>
+        <p class="mt-1.5 flex items-center justify-between gap-2 text-[11px] text-slate-500">
+          <span>
+            @if (isUnqualified()) {
+              Pas encore qualifié
+            } @else if (pointsToThreshold() > 0) {
+              Encore <span class="font-semibold tabular-nums text-slate-700">{{ pointsToThreshold() }}</span> points pour le seuil
+            } @else {
+              Seuil de qualification atteint
+            }
+          </span>
+          <span class="shrink-0 tabular-nums">seuil {{ threshold() }}</span>
+        </p>
+        @if (showFactors()) {
+          <div id="score-factors-panel" class="mt-3 overflow-hidden rounded-lg border border-slate-200" role="region" aria-label="Détail du score">
+            @for (factor of factors(); track factor.label) {
+              <div class="flex items-center justify-between gap-2 border-b border-slate-100 px-3 py-2 last:border-b-0">
+                <p class="truncate text-xs font-medium text-slate-700">{{ factor.label }}</p>
+                <span class="shrink-0 text-xs font-semibold tabular-nums text-slate-800">{{ factor.value }}</span>
+              </div>
+            } @empty {
+              <p class="px-3 py-3 text-center text-xs text-slate-400">Aucun détail disponible</p>
+            }
+            @if (intentDetail()?.updatedAt) {
+              <p class="border-t border-slate-100 px-3 py-2 text-[11px] text-slate-400">
+                Intérêt « {{ intent().label }} » mis à jour {{ intentDetail()!.updatedAt! | dateTimeAgo }}
+              </p>
+            }
+          </div>
+        }
+      </div>
     }
   `,
 })
@@ -116,6 +110,8 @@ export class LeadProgressCard {
   private readonly _api = inject(LeadsApiService);
 
   public readonly lead = this._context.lead;
+  /** La page du score est sous ce droit (route `score`) : sans lui, pas de flèche vers un refus. */
+  public readonly canReadScore = inject(PermissionsService).can('lead:scoring-config:read');
   public readonly showFactors = signal(false);
   public readonly intentDetail = signal<LeadIntentLevelDto | null>(null);
   private readonly _factorsJson = signal<string | null>(null);

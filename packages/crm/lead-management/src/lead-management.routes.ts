@@ -77,11 +77,22 @@ export const leadManagementRoutes = [
         loadComponent: () => import('./containers/edit-lead/informations'),
       },
       {
-        // Identité et foyer : un onglet (refonte de la fiche, 2026-10-24).
+        // « Détails du lead » et « Foyer » : deux rubriques du menu (refonte de la fiche, 2026-11-02).
         path: 'identite',
-        loadComponent: () => import('./containers/edit-lead/identite-foyer'),
+        loadComponent: () => import('./containers/edit-lead/identite'),
       },
-      { path: 'foyer', redirectTo: 'identite', pathMatch: 'full' as const },
+      {
+        path: 'foyer',
+        loadComponent: () => import('./containers/edit-lead/foyer'),
+      },
+      {
+        // « Conversations » : le fil WhatsApp, sorti de Suivi pour être une rubrique du menu.
+        path: 'conversations',
+        canActivate: [hasPermissionGuard('WhatsApp.Send', 'WhatsApp.Supervise')],
+        resolve: { id: leadIdFromAncestors },
+        loadComponent: () => import('./containers/edit-lead/whatsapp/whatsapp-conversation'),
+      },
+      { path: 'whatsapp', redirectTo: 'conversations', pathMatch: 'full' as const },
       {
         // FATCA, PPE et consentements : un onglet.
         path: 'conformite',
@@ -124,8 +135,8 @@ export const leadManagementRoutes = [
             loadComponent: () => import('./containers/edit-lead/timeline'),
           },
           {
-            // WA-FE-05 : le fil WhatsApp. Lire un fil demande d'envoyer ou de superviser ; le
-            // serveur ajoute la règle de propriété du lead.
+            // WA-FE-05 : le fil WhatsApp, désormais la rubrique « Conversations ». L'ancienne adresse
+            // reste servie pour les liens envoyés et les favoris.
             path: 'whatsapp',
             canActivate: [hasPermissionGuard('WhatsApp.Send', 'WhatsApp.Supervise')],
             resolve: { id: leadIdFromAncestors },

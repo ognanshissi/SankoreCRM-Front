@@ -1,40 +1,47 @@
-import { LeadProgressCard } from './lead-progress-card';
-import { Component, computed, effect, inject, input, signal } from '@angular/core';
+import { Component, computed, effect, inject, input, signal, untracked } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
-import { catchError, EMPTY, forkJoin, map, of, switchMap } from 'rxjs';
-import { TasCard } from '@talisoft/ui/card';
+import { Router, RouterLink } from '@angular/router';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { form, FormField, FormRoot, required, submit } from '@angular/forms/signals';
+import { catchError, EMPTY, firstValueFrom, forkJoin, map, of, switchMap } from 'rxjs';
 import { TasSpinner } from '@talisoft/ui/spinner';
 import { TasIcon } from '@talisoft/ui/icon';
 import { TasInput } from '@talisoft/ui/input';
 import { TasFormField } from '@talisoft/ui/form-field';
 import { Button } from '@talisoft/ui/button';
 import { TimeagoPipe } from '@talisoft/ui/timeago';
+import { Menu, MenuItem, TasMenuTrigger } from '@talisoft/ui/menu';
+import { TasTag } from '@talisoft/ui/tag';
 import { SnackbarService } from '@talisoft/ui/snackbar';
 import { SideDrawerService } from '@talisoft/ui/side-drawer';
 import {
+  ActivityDto,
   AgenciesApiService,
+  CrmTaskDto,
   CustomerMatchDto,
+  FormFieldReferenceTargetEnum,
   HoldingDto,
   LeadsApiService,
   LogActivityRequestTypeEnum,
   OpportunitiesApiService,
   OpportunityDto,
   ProductHoldingsApiService,
+  ReminderDto,
+  SetIntentLevelRequestIntentLevelEnum,
   TagDto,
+  TasksApiService,
 } from '@sankore/crm-api';
 import {
   AuthenticationService,
   completenessGapTitle,
   completenessGapSection,
   CustomFieldsCard,
+  EntityFormReferences,
   PERMISSIONS,
   PermissionsService,
   WireValue,
   ProductNamesStore,
 } from '@sankore/crm/common';
-// eslint-disable-next-line @nx/enforce-module-boundaries
-import { CallButton } from '@sankore/crm/telephony';
 import { WhatsAppContactButton } from './whatsapp/whatsapp-contact-button';
 import { LeadEditContext } from './lead-edit-context';
 import { LeadComplianceStore } from './lead-compliance-store';
@@ -44,7 +51,22 @@ import { EditLeadInfoDrawer, genderLabel } from './edit-lead-info-drawer';
 import { LogActivityDrawer, LogActivityDrawerData } from './log-activity-drawer';
 import { CustomerMatchBanner, CustomerMatchView, customerMatchViewFromDto } from './customer-match-banner';
 import { AttachCustomerDrawer, AttachCustomerDrawerData, AttachCustomerResult } from './attach-customer-drawer';
-import { ageOf, formatAmount, formatDay, prospectTypeLabel } from './lead-view.models';
+import { ReassignLeadDrawer } from './reassign-lead-drawer';
+import { CreateOpportunityDrawer, CreateOpportunityDrawerData } from './opportunities/create-opportunity-drawer';
+import { isClosed, stepLabel } from './opportunities/opportunity.model';
+import {
+  ageOf,
+  formatAmount,
+  formatDay,
+  INTENT_OPTIONS,
+  intentOption,
+  journeyOffTrack,
+  LEAD_STATUS_STEPS,
+  originLabel,
+  prospectTypeLabel,
+  statusStepIndex,
+  statusStepLabel,
+} from './lead-view.models';
 
 /** Une correspondance client, avec ses produits et demandes, avant mise en forme. */
 interface LeadCustomerMatchRaw {
@@ -63,6 +85,42 @@ const GAP_SECTION_LABEL: Record<string, string> = {
   client: 'Fiche client',
 };
 
+/** Une ligne de « Prochaines activités » : une tâche ou un rappel du lead. */
+interface UpcomingItem {
+  key: string;
+  at: number;
+  label: string;
+  icon: string;
+  when: string;
+  tone: string;
+  link: string[];
+}
+
+const UPCOMING_LIMIT = 5;
+const NOTES_LIMIT = 3;
+const WHEN_FMT = new Intl.DateTimeFormat('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' });
+const TIME_FMT = new Intl.DateTimeFormat('fr-FR', { hour: '2-digit', minute: '2-digit' });
+
+/** « Lun. 3 nov. · 10:00 », l'heure omise quand elle tombe à minuit (une date sans heure). */
+function upcomingWhen(at: Date): string {
+  const day = WHEN_FMT.format(at);
+  const label = day.charAt(0).toUpperCase() + day.slice(1);
+  return at.getHours() === 0 && at.getMinutes() === 0 ? label : `${label} · ${TIME_FMT.format(at)}`;
+}
+
+/** Rouge en retard, ambre dans les 48 h, gris au-delà. */
+function upcomingTone(at: number, now: number): string {
+  if (at < now) return 'text-red-700';
+  return at - now < 48 * 3_600_000 ? 'text-amber-800' : 'text-slate-600';
+}
+
+/** Les types de tâche qui se traitent au téléphone : l'icône d'appel, comme sur la maquette. */
+const CALL_TASK_TYPES = new Set(['FirstContact', 'Qualification', 'SlaFollowUp']);
+
+/** Les pointes de la frise du statut, en `clip-path` : la première étape n'a pas d'encoche. */
+const CHEVRON = 'polygon(0 0, calc(100% - 14px) 0, 100% 50%, calc(100% - 14px) 100%, 0 100%, 14px 50%)';
+const CHEVRON_FIRST = 'polygon(0 0, calc(100% - 14px) 0, 100% 50%, calc(100% - 14px) 100%, 0 100%)';
+
 /** Le numéro d'une pièce lisible à moitié : assez pour le reconnaître, pas pour le recopier. */
 function maskDocument(value: string): string {
   const v = value.replace(/\s+/g, '');
@@ -71,9 +129,9 @@ function maskDocument(value: string): string {
 }
 
 /**
- * L'onglet Informations de la fiche lead : ce qu'un agent doit savoir avant de décrocher —
- * la demande, le profil, d'où vient le lead, ce qui manque au dossier — et les gestes qui en
- * découlent.
+ * L'onglet « Vue d'ensemble » de la fiche lead (maquette du 2026-11-02) : son intérêt et où il en
+ * est, ses étiquettes, l'essentiel de la fiche (le reste derrière « Tout afficher »), les notes, ses
+ * projets ouverts et ce qui est prévu avec lui ; puis le besoin détaillé et ce qui manque au dossier.
  *
  * <p>Le lead est celui de la coque (`LeadEditContext`) et non une copie rechargée ici : l'en-tête
  * et cet onglet ne peuvent plus diverger, et chaque écriture redemande un rechargement à la coque
@@ -83,19 +141,23 @@ function maskDocument(value: string): string {
   selector: 'lead-informations',
   templateUrl: './informations.html',
   imports: [
-    LeadProgressCard,
     FormsModule,
-    TasCard,
+    FormRoot,
+    FormField,
+    RouterLink,
     TasSpinner,
     TasIcon,
     TasInput,
     TasFormField,
+    TasTag,
     Button,
     TimeagoPipe,
+    Menu,
+    MenuItem,
+    TasMenuTrigger,
     ConvertedLeadNotice,
     CustomerMatchBanner,
     CustomFieldsCard,
-    CallButton,
     WhatsAppContactButton,
   ],
 })
@@ -111,6 +173,8 @@ export class LeadInformationsPage {
   private readonly _agenciesApi = inject(AgenciesApiService);
   private readonly _holdingsApi = inject(ProductHoldingsApiService);
   private readonly _opportunitiesApi = inject(OpportunitiesApiService);
+  private readonly _tasksApi = inject(TasksApiService);
+  private readonly _references = inject(EntityFormReferences);
   protected readonly compliance = inject(LeadComplianceStore);
 
   public readonly id = input.required<string>();
@@ -122,6 +186,14 @@ export class LeadInformationsPage {
   public readonly canTag = computed(() => this._canTag() && !this._leadEditContext.isReadOnly());
   public readonly canUpdate = computed(() => this._canUpdate() && !this._leadEditContext.isReadOnly());
   public readonly canReadCustomers = this._permissions.can(PERMISSIONS.CUSTOMERS_READ);
+  private readonly _canAssign = this._permissions.can('lead:assign');
+  private readonly _canLogActivity = this._permissions.can('lead:activity:log');
+  private readonly _canManageProjects = this._permissions.can('lead:opportunity:manage');
+  private readonly _canReadTasks = this._permissions.can('lead:task:read');
+  private readonly _canReadReminders = this._permissions.can('lead:reminder:manage');
+  public readonly canAssign = computed(() => this._canAssign() && !this._leadEditContext.isReadOnly());
+  public readonly canLogActivity = computed(() => this._canLogActivity() && !this._leadEditContext.isReadOnly());
+  public readonly canCreateProject = computed(() => this._canManageProjects() && !this._leadEditContext.isReadOnly());
 
   /**
    * Rattacher et détacher sont des écritures sur le lead : le contrat n'expose pas de droit dédié
@@ -150,6 +222,156 @@ export class LeadInformationsPage {
     const a = this.lead()?.desiredAmount;
     return a?.amount ? formatAmount(a.amount, a.currency) : null;
   });
+
+  public readonly formatAmount = formatAmount;
+  public readonly origin = computed(() => originLabel(this.lead()));
+  public readonly showAll = signal(false);
+
+  /** « Yopougon, Abidjan » : le quartier et la ville, ce que l'agent cherche pour une visite. */
+  public readonly location = computed(() => {
+    const a = this.lead()?.address;
+    return [a?.neighbourhood, a?.city].filter((v) => !!v?.trim()).join(', ') || null;
+  });
+  public readonly agencyName = computed(() => {
+    const id = this.lead()?.agencyId;
+    return id ? this._agencyNames()[id] ?? null : null;
+  });
+
+  private readonly _users = toSignal(
+    this._references.options(FormFieldReferenceTargetEnum.User).pipe(
+      map((options) => new Map(options.map((o) => [o.value, o.label] as const))),
+      catchError(() => of(new Map<string, string>())),
+    ),
+    { initialValue: new Map<string, string>() },
+  );
+  /** L'agent qui a le lead, ou son responsable à défaut. */
+  public readonly followedBy = computed(() => {
+    const lead = this.lead();
+    const id = lead?.currentAssignedId ?? lead?.ownerId;
+    return id ? this._users().get(id) ?? null : null;
+  });
+  public userName(id: string | null | undefined): string {
+    return (id && this._users().get(id)) || 'Un collègue';
+  }
+
+  // ——— Intérêt ressenti et statut ———
+
+  public readonly intentOptions = INTENT_OPTIONS;
+  public readonly intent = computed(() => intentOption(this.lead()?.intentLevel));
+  public readonly canSetIntent = this.canUpdate;
+  public readonly statusSteps = LEAD_STATUS_STEPS;
+  public readonly statusStep = computed(() => statusStepIndex(this.lead()));
+  public readonly journeyOffTrack = computed(() => journeyOffTrack(this.lead()));
+  public readonly chevron = CHEVRON;
+  public readonly chevronFirst = CHEVRON_FIRST;
+
+  public stepLabel(index: number): string {
+    return statusStepLabel(this.lead(), index);
+  }
+
+  public setIntentLevel(level: SetIntentLevelRequestIntentLevelEnum): void {
+    if (!this.canSetIntent() || this.lead()?.intentLevel === level) return;
+    this._leadsApiService.setLeadIntentLevel(this.id(), { intentLevel: level }).pipe(
+      catchError(() => { this._snackbar.error('Erreur', 'Impossible de modifier l\'intérêt ressenti.'); return EMPTY; }),
+    ).subscribe(() => this._reload());
+  }
+
+  // ——— Notes : les activités « Note » du lead, les plus récentes d'abord ———
+
+  private readonly _notes = signal<ActivityDto[]>([]);
+  public readonly notes = computed(() => this._notes().slice(0, NOTES_LIMIT));
+  public readonly hasMoreNotes = computed(() => this._notes().length > NOTES_LIMIT);
+  public readonly noteModel = signal({ text: '' });
+  public readonly noteForm = form(this.noteModel, (schema) => {
+    required(schema.text, { message: 'Écrivez la note' });
+  });
+
+  public addNote(): void {
+    submit(this.noteForm, async (field) => {
+      const text = field().value().text.trim();
+      if (!text) return;
+      const ok = await firstValueFrom(
+        this._leadsApiService.logLeadActivity(this.id(), {
+          type: LogActivityRequestTypeEnum.Note,
+          subject: 'Note',
+          notes: text,
+        }).pipe(
+          map(() => true),
+          catchError(() => {
+            this._snackbar.error('Erreur', 'La note n\'a pas pu être enregistrée.');
+            return of(false);
+          }),
+        ),
+      );
+      if (!ok) return;
+      this.noteModel.set({ text: '' });
+      this.noteForm.text().reset();
+      this._reload();
+    });
+  }
+
+  // ——— Projets ouverts ———
+
+  private readonly _projects = signal<OpportunityDto[]>([]);
+  public readonly projectsFailed = signal(false);
+  public readonly openProjects = computed(() => this._projects().filter((o) => !isClosed(o)));
+  public readonly projectStep = stepLabel;
+
+  public openProject(project: OpportunityDto): void {
+    if (project.id) void this._router.navigate(['/leads/projets', project.id]);
+  }
+
+  public openCreateProject(): void {
+    const lead = this.lead();
+    if (!lead) return;
+    const ref = this._sideDrawerService.open<string | false, CreateOpportunityDrawerData, CreateOpportunityDrawer>(
+      CreateOpportunityDrawer,
+      { width: '100%', height: '100%', panelClass: 'side-drawer-panel', data: { lead } },
+    );
+    ref.closed.subscribe((projectId) => {
+      if (projectId) this._reload();
+    });
+  }
+
+  // ——— Prochaines activités : tâches ouvertes et rappels en attente ———
+
+  private readonly _tasks = signal<CrmTaskDto[]>([]);
+  private readonly _reminders = signal<ReminderDto[]>([]);
+  private readonly _upcomingAll = computed<UpcomingItem[]>(() => {
+    const now = Date.now();
+    const items: UpcomingItem[] = [];
+    for (const t of this._tasks()) {
+      if (t.status !== 'Pending' && t.status !== 'InProgress') continue;
+      const due = t.slaDeadline ?? t.dueAt;
+      if (!t.id || !due) continue;
+      const at = new Date(due);
+      items.push({
+        key: `task:${t.id}`,
+        at: at.getTime(),
+        label: t.title || t.typeLabel || 'Tâche',
+        icon: CALL_TASK_TYPES.has(t.type ?? '') ? 'feather:phone' : 'feather:file-text',
+        when: upcomingWhen(at),
+        tone: upcomingTone(at.getTime(), now),
+        link: ['/tasks', t.id],
+      });
+    }
+    for (const r of this._reminders()) {
+      if (!r.id || !r.dueAt) continue;
+      const at = new Date(r.dueAt);
+      items.push({
+        key: `reminder:${r.id}`,
+        at: at.getTime(),
+        label: r.title || 'Rappel',
+        icon: 'feather:bell',
+        when: upcomingWhen(at),
+        tone: upcomingTone(at.getTime(), now),
+        link: ['/leads', this.id(), 'suivi', 'rappels'],
+      });
+    }
+    return items.sort((a, b) => a.at - b.at);
+  });
+  public readonly upcoming = computed(() => this._upcomingAll().slice(0, UPCOMING_LIMIT));
+  public readonly upcomingMore = computed(() => Math.max(0, this._upcomingAll().length - UPCOMING_LIMIT));
 
   // ——— Pièce d'identité : masquée par défaut ———
 
@@ -247,6 +469,14 @@ export class LeadInformationsPage {
       this._loadCustomerMatches(leadId);
     });
 
+    // Notes, projets et agenda : relus quand le lead change (une note, un projet, une tâche y touchent).
+    effect(() => {
+      const leadId = this.id();
+      this.lead()?.updatedAt;
+      this.lead()?.lastActivityAt;
+      untracked(() => this._loadSideData(leadId));
+    });
+
     // Le nombre de questions vient du formulaire de qualification du produit demandé.
     effect(() => {
       const product = this.lead()?.interestedProduct;
@@ -260,6 +490,25 @@ export class LeadInformationsPage {
     });
 
     this._loadAgencyNames();
+  }
+
+  /** Chaque bloc retombe sur une liste vide : un droit manquant ne vide pas la vue d'ensemble. */
+  private _loadSideData(leadId: string): void {
+    this._leadsApiService.listLeadActivities(leadId, 0, 50).pipe(catchError(() => of([]))).subscribe((items) => {
+      const at = (a: ActivityDto) => new Date(a.performedAt ?? a.scheduledAt ?? 0).getTime();
+      this._notes.set((items ?? []).filter((a) => a.type === 'Note' && !!a.notes?.trim()).sort((x, y) => at(y) - at(x)));
+    });
+    this._opportunitiesApi.listOpportunities(leadId).pipe(
+      catchError(() => { this.projectsFailed.set(true); return of(null); }),
+    ).subscribe((items) => {
+      if (items) { this.projectsFailed.set(false); this._projects.set(items); }
+    });
+    if (this._canReadTasks()) {
+      this._tasksApi.listCrmTasks(leadId).pipe(catchError(() => of([]))).subscribe((t) => this._tasks.set(t ?? []));
+    }
+    if (this._canReadReminders()) {
+      this._leadsApiService.listLeadReminders(leadId, 'Pending').pipe(catchError(() => of([]))).subscribe((r) => this._reminders.set(r ?? []));
+    }
   }
 
   // ——— Écritures : chacune recharge toute la fiche ———
@@ -325,11 +574,20 @@ export class LeadInformationsPage {
 
   public openTab(route: string | null): void {
     if (!route) return;
-    // Le foyer et les consentements sont des sections d'onglets fusionnés (refonte du 2026-10-24).
-    const merged: Record<string, [string, string]> = { foyer: ['identite', 'foyer'], consentement: ['conformite', 'consentements'] };
+    // Les consentements sont une section de l'onglet Conformité (refonte du 2026-10-24) ; le foyer
+    // a retrouvé sa rubrique (2026-11-02).
+    const merged: Record<string, [string, string]> = { consentement: ['conformite', 'consentements'] };
     const target = merged[route];
     if (target) this._router.navigate(['/leads', this.id(), target[0]], { fragment: target[1] });
     else this._router.navigate(['/leads', this.id(), route]);
+  }
+
+  public openReassignDrawer(): void {
+    const lead = this.lead();
+    if (!lead) return;
+    this._sideDrawerService.open(ReassignLeadDrawer, { data: { lead } }).closed.subscribe((reassigned) => {
+      if (reassigned) this._reload();
+    });
   }
 
   public openEditInfoDrawer(): void {
