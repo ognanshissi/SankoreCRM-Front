@@ -183,7 +183,7 @@ export class ClientLifecycleApiService {
 
     /**
      * Assign or clear the client\&#39;s advisor
-     * Sets the account officer owning the relationship. Send advisorUserId &#x3D; null to clear it. The advisor must be an active user of the client\&#39;s own agency, otherwise ADVISOR_NOT_ELIGIBLE (400). Returns 404 CLIENT_NOT_FOUND when the client is unknown or outside the caller\&#39;s agency perimeter, and CLIENT_READ_ONLY (409) on an archived or merged record. Requires permission: customers:update.
+     * Sets the account officer owning the relationship. Send advisorUserId &#x3D; null to clear it. The advisor must be an active user of the client\&#39;s own agency, otherwise ADVISOR_NOT_ELIGIBLE (400). Returns 404 CLIENT_NOT_FOUND when the client is unknown or outside the caller\&#39;s agency perimeter, and CLIENT_READ_ONLY (409) on an archived or merged record. Requires permission: customers:advisor:assign.
      * @param clientId 
      * @param assignAdvisorRequest 
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.

@@ -1,0 +1,47 @@
+@if (error()) {
+  <div role="alert" class="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-red-50 px-5 py-4">
+    <p class="text-sm text-red-800">{{ error() }}</p>
+    <button tas-outlined-button color="primary" type="button" (click)="reload()">Réessayer</button>
+  </div>
+} @else if (!report() && isLoading()) {
+  <div class="flex justify-center py-16"><tas-spinner size="10" class="text-primary"></tas-spinner></div>
+} @else if (report()) {
+  <div class="flex flex-col gap-5" [class.opacity-60]="isLoading()" [attr.aria-busy]="isLoading()">
+    <!-- Indicateurs clés, comparés à la période précédente -->
+    <report-kpi-tiles [kpis]="kpis()"></report-kpi-tiles>
+
+    <div class="grid grid-cols-1 gap-5 xl:grid-cols-2">
+      <section class="rounded-2xl border border-slate-100 bg-white p-5 shadow-xs">
+        <h2 class="text-base font-semibold text-slate-900">Personnes physiques et morales</h2>
+        <p class="mb-4 text-xs text-slate-500">Les clients actifs ou en attente de KYC aujourd’hui, et les nouveaux de la période.</p>
+        <report-bar-list [items]="byType()" [color]="colors.captured" [color2]="colors.converted"
+          name="Clients" name2="Nouveaux"></report-bar-list>
+      </section>
+
+      <section class="rounded-2xl border border-slate-100 bg-white p-5 shadow-xs">
+        <h2 class="text-base font-semibold text-slate-900">Segments</h2>
+        <p class="mb-4 text-xs text-slate-500">Les clients actifs ou en attente de KYC, par segment aujourd’hui.</p>
+        @if (!bySegment().length) {
+          <p class="py-6 text-center text-sm text-slate-500">Aucun client.</p>
+        } @else {
+          <report-bar-list [items]="bySegment()" [color]="colors.captured" name="Clients"></report-bar-list>
+        }
+      </section>
+    </div>
+
+    <section class="rounded-2xl border border-slate-100 bg-white p-5 shadow-xs">
+      <h2 class="text-base font-semibold text-slate-900">Agences</h2>
+      <p class="mb-4 text-xs text-slate-500">Les clients actifs aujourd’hui et les nouveaux de la période, par agence.</p>
+      @if (!byAgency().length) {
+        <p class="py-6 text-center text-sm text-slate-500">Aucun client.</p>
+      } @else {
+        <report-bar-list [items]="byAgency()" [color]="colors.captured" [color2]="colors.converted"
+          name="Actifs" name2="Nouveaux"></report-bar-list>
+      }
+    </section>
+
+    <p class="text-xs text-slate-500">
+      Des agrégats seulement : aucun client n’est nommé. Les clients fusionnés ou anonymisés ne sont plus comptés.
+    </p>
+  </div>
+}

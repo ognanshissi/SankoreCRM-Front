@@ -20,5 +20,8 @@ export interface LeadReportKpis {
     avgFirstContactMinutes?: number | null;
     slaComplianceRate?: number | null;
     openSlaBreaches?: number;
+    projectRate?: number;
+    untouchedOpenLeads?: number;
+    avgOpenLeadAgeDays?: number | null;
 }
 

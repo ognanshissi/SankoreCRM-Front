@@ -1,0 +1,100 @@
+@if (error()) {
+  <div role="alert" class="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-red-50 px-5 py-4">
+    <p class="text-sm text-red-800">{{ error() }}</p>
+    <button tas-outlined-button color="primary" type="button" (click)="reload()">Réessayer</button>
+  </div>
+} @else if (!report() && isLoading()) {
+  <div class="flex justify-center py-16"><tas-spinner size="10" class="text-primary"></tas-spinner></div>
+} @else if (report(); as r) {
+  <div class="flex flex-col gap-5" [class.opacity-60]="isLoading()" [attr.aria-busy]="isLoading()">
+    <!-- Indicateurs clés, comparés à la période précédente -->
+    <report-kpi-tiles [kpis]="kpis()"></report-kpi-tiles>
+
+    <!-- Où les dossiers attendent -->
+    <section class="rounded-2xl border border-slate-100 bg-white p-5 shadow-xs">
+      <h2 class="text-base font-semibold text-slate-900">En attente de signature</h2>
+      <p class="mb-4 text-xs text-slate-500">
+        Les dossiers en validation aujourd’hui, par échelon qui doit signer, et depuis combien de temps — depuis la
+        signature précédente, ou l’ouverture du circuit pour le premier échelon.
+      </p>
+      @if (!waiting().length) {
+        <p class="py-6 text-center text-sm text-slate-500">Aucun dossier en attente de signature.</p>
+      } @else {
+        <report-bar-list [items]="waiting()" color="#b4532a" name="Dossiers"></report-bar-list>
+      }
+    </section>
+
+    <div class="grid grid-cols-1 gap-5 xl:grid-cols-3">
+      <section class="rounded-2xl border border-slate-100 bg-white p-5 shadow-xs">
+        <h2 class="text-base font-semibold text-slate-900">Niveaux accordés</h2>
+        <p class="mb-4 text-xs text-slate-500">Les dossiers validés sur la période.</p>
+        @if (!byTier().length) {
+          <p class="py-6 text-center text-sm text-slate-500">Aucun dossier validé.</p>
+        } @else {
+          <report-bar-list [items]="byTier()" [color]="colors.converted" name="Dossiers"></report-bar-list>
+        }
+      </section>
+      <section class="rounded-2xl border border-slate-100 bg-white p-5 shadow-xs">
+        <h2 class="text-base font-semibold text-slate-900">Canaux</h2>
+        <p class="mb-4 text-xs text-slate-500">Les dossiers ouverts sur la période, au guichet ou à distance.</p>
+        @if (!byChannel().length) {
+          <p class="py-6 text-center text-sm text-slate-500">Aucun dossier ouvert.</p>
+        } @else {
+          <report-bar-list [items]="byChannel()" [color]="colors.captured" name="Dossiers"></report-bar-list>
+        }
+      </section>
+      <section class="rounded-2xl border border-slate-100 bg-white p-5 shadow-xs">
+        <h2 class="text-base font-semibold text-slate-900">Vigilance</h2>
+        <p class="mb-4 text-xs text-slate-500">Les dossiers ouverts sur la période, par niveau de vigilance.</p>
+        @if (!byVigilance().length) {
+          <p class="py-6 text-center text-sm text-slate-500">Aucun dossier ouvert.</p>
+        } @else {
+          <report-bar-list [items]="byVigilance()" [color]="colors.captured" name="Dossiers"></report-bar-list>
+        }
+      </section>
+    </div>
+
+    <section class="rounded-2xl border border-slate-100 bg-white p-5 shadow-xs">
+      <h2 class="text-base font-semibold text-slate-900">Agences</h2>
+      <p class="mb-4 text-xs text-slate-500">Dossiers ouverts et validés sur la période, par agence.</p>
+      @if (!byAgency().length) {
+        <p class="py-6 text-center text-sm text-slate-500">Aucun dossier sur la période.</p>
+      } @else {
+        <report-bar-list [items]="byAgency()" [color]="colors.captured" [color2]="colors.converted"
+          name="Ouverts" name2="Validés"></report-bar-list>
+      }
+    </section>
+
+    <!-- Les plus anciens -->
+    <section class="rounded-2xl border border-slate-100 bg-white p-5 shadow-xs">
+      <h2 class="text-base font-semibold text-slate-900">Les dossiers qui attendent le plus</h2>
+      <p class="mb-4 text-xs text-slate-500">Les {{ r.longest?.length ?? 0 }} dossiers en attente de signature depuis le plus longtemps.</p>
+      @if (!r.longest?.length) {
+        <p class="py-6 text-center text-sm text-slate-500">Aucun dossier en attente.</p>
+      } @else {
+        <tas-table [data]="r.longest" identifierField="kycFileId" [config]="longestConfig()" [hasCaption]="false">
+          <ng-template #header>
+            <tr class="bg-slate-50 text-left text-xs font-medium uppercase tracking-wide text-slate-500">
+              <th class="px-4 py-3">Client</th>
+              <th class="px-4 py-3">Doit signer</th>
+              <th class="px-4 py-3">Responsable</th>
+              <th class="px-4 py-3">Agence</th>
+              <th class="px-4 py-3 text-right">Attente</th>
+            </tr>
+          </ng-template>
+          <ng-template #body let-f>
+            <tr class="transition-colors hover:bg-slate-50">
+              <td class="px-4 py-3">
+                <a [routerLink]="['/kyc', f.kycFileId]" class="text-sm font-semibold text-primary hover:underline">{{ f.customerName }}</a>
+              </td>
+              <td class="px-4 py-3 text-sm text-slate-700">{{ levelLabel(f.level) }}</td>
+              <td class="px-4 py-3 text-sm text-slate-700">{{ f.responsibleName || 'Non attribué' }}</td>
+              <td class="px-4 py-3 text-sm text-slate-700">{{ f.agency }}</td>
+              <td class="px-4 py-3 text-right text-sm font-semibold tabular-nums text-[#b4532a]">{{ days(f.waitingDays) }}</td>
+            </tr>
+          </ng-template>
+        </tas-table>
+      }
+    </section>
+  </div>
+}

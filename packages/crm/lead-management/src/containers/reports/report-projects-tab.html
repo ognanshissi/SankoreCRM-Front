@@ -1,0 +1,153 @@
+@if (error()) {
+  <div role="alert" class="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-red-50 px-5 py-4">
+    <p class="text-sm text-red-800">{{ error() }}</p>
+    <button tas-outlined-button color="primary" type="button" (click)="reload()">Réessayer</button>
+  </div>
+} @else if (!report() && isLoading()) {
+  <div class="flex justify-center py-16"><tas-spinner size="10" class="text-primary"></tas-spinner></div>
+} @else if (report(); as r) {
+  <div class="flex flex-col gap-5" [class.opacity-60]="isLoading()" [attr.aria-busy]="isLoading()">
+    <!-- Indicateurs clés, comparés à la période précédente -->
+    <report-kpi-tiles [kpis]="kpis()"></report-kpi-tiles>
+
+    <!-- Pipeline ouvert aujourd'hui -->
+    <section class="rounded-2xl border border-slate-100 bg-white p-5 shadow-xs">
+      <h2 class="text-base font-semibold text-slate-900">Pipeline en cours</h2>
+      <p class="mb-4 text-xs text-slate-500">
+        Les projets ouverts aujourd’hui, par nature de montant — un décaissement, une prime et une collecte ne
+        s’additionnent pas. Le pondéré tient compte de la probabilité de l’étape de chaque projet.
+      </p>
+      @if (!r.pipeline?.length) {
+        <p class="py-6 text-center text-sm text-slate-500">Aucun projet en cours.</p>
+      } @else {
+        <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          @for (p of r.pipeline; track p.kind) {
+            <div class="rounded-xl border border-slate-100 p-4">
+              <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">{{ flowLabel(p.kind) }}</p>
+              <p class="mt-1 text-xl font-bold text-primary tabular-nums">{{ fmt(p.weighted ?? 0) }}</p>
+              <p class="text-xs text-slate-500 tabular-nums">
+                pondérés · {{ fmt(p.count ?? 0) }} projet{{ (p.count ?? 0) > 1 ? 's' : '' }} · {{ fmt(p.amount ?? 0) }} au total
+              </p>
+            </div>
+          }
+        </div>
+      }
+    </section>
+
+    <div class="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+      <!-- Produits -->
+      <section class="rounded-2xl border border-slate-100 bg-white p-5 shadow-xs">
+        <h2 class="text-base font-semibold text-slate-900">Par produit</h2>
+        <p class="mb-4 text-xs text-slate-500">Les projets ouverts sur la période, et où ils en sont aujourd’hui.</p>
+        @if (!r.byProduct?.length) {
+          <p class="py-6 text-center text-sm text-slate-500">Aucun projet ouvert sur la période.</p>
+        } @else {
+          <tas-table [data]="r.byProduct" identifierField="product" [config]="productConfig()" [hasCaption]="false">
+            <ng-template #header>
+              <tr class="bg-slate-50 text-left text-xs font-medium uppercase tracking-wide text-slate-500">
+                <th class="px-4 py-3">Produit</th>
+                <th class="px-4 py-3 text-right">Ouverts</th>
+                <th class="px-4 py-3 text-right">Gagnés</th>
+                <th class="px-4 py-3 text-right">Perdus</th>
+                <th class="px-4 py-3 text-right">Taux de gain</th>
+                <th class="px-4 py-3 text-right">Montant estimé</th>
+              </tr>
+            </ng-template>
+            <ng-template #body let-p>
+              <tr>
+                <td class="px-4 py-3 text-sm font-semibold text-slate-800">{{ p.product }}</td>
+                <td class="px-4 py-3 text-right text-sm tabular-nums">{{ fmt(p.opened) }}</td>
+                <td class="px-4 py-3 text-right text-sm tabular-nums text-emerald-800">{{ fmt(p.won) }}</td>
+                <td class="px-4 py-3 text-right text-sm tabular-nums text-slate-600">{{ fmt(p.lost) }}</td>
+                <td class="px-4 py-3 text-right text-sm tabular-nums">{{ pct(p.winRate) }}</td>
+                <td class="px-4 py-3 text-right text-sm tabular-nums">{{ fmt(p.amount) }}</td>
+              </tr>
+            </ng-template>
+          </tas-table>
+        }
+      </section>
+
+      <!-- Motifs de perte -->
+      <section class="rounded-2xl border border-slate-100 bg-white p-5 shadow-xs">
+        <h2 class="text-base font-semibold text-slate-900">Motifs de perte</h2>
+        <p class="mb-4 text-xs text-slate-500">Les motifs les plus fréquents des projets perdus sur la période, tels que saisis.</p>
+        @if (!lossReasons().length) {
+          <p class="py-6 text-center text-sm text-slate-500">Aucun projet perdu sur la période.</p>
+        } @else {
+          <report-bar-list [items]="lossReasons()" color="#b4532a" name="Projets perdus"></report-bar-list>
+        }
+      </section>
+    </div>
+
+    <!-- Étapes -->
+    <section class="rounded-2xl border border-slate-100 bg-white p-5 shadow-xs">
+      <h2 class="text-base font-semibold text-slate-900">Temps passé par étape</h2>
+      <p class="mb-4 text-xs text-slate-500">
+        Pour chaque parcours, la durée moyenne des étapes quittées sur la période, et les projets qui y attendent
+        aujourd’hui — les plus lentes d’abord : c’est là que les projets s’accumulent.
+      </p>
+      @if (!steps().length) {
+        <p class="py-6 text-center text-sm text-slate-500">Aucun changement d’étape enregistré sur la période.</p>
+      } @else {
+        <tas-table [data]="steps()" identifierField="key" [config]="stepConfig()" [hasCaption]="false">
+          <ng-template #header>
+            <tr class="bg-slate-50 text-left text-xs font-medium uppercase tracking-wide text-slate-500">
+              <th class="px-4 py-3">Étape</th>
+              <th class="px-4 py-3 text-right">Quittée</th>
+              <th class="px-4 py-3 text-right">Durée moyenne</th>
+              <th class="px-4 py-3 text-right">En attente</th>
+              <th class="px-4 py-3 text-right">Depuis</th>
+            </tr>
+          </ng-template>
+          <ng-template #body let-s>
+            <tr>
+              <td class="px-4 py-3">
+                <p class="text-sm font-semibold text-slate-800">{{ s.step }}</p>
+                <p class="text-xs text-slate-500">{{ s.template }}</p>
+              </td>
+              <td class="px-4 py-3 text-right text-sm tabular-nums">{{ fmt(s.left) }}</td>
+              <td class="px-4 py-3 text-right text-sm font-semibold tabular-nums text-slate-800">{{ days(s.avgDays) }}</td>
+              <td class="px-4 py-3 text-right text-sm tabular-nums">{{ fmt(s.waitingNow) }}</td>
+              <td class="px-4 py-3 text-right text-sm tabular-nums text-slate-600">{{ days(s.avgWaitingDays) }}</td>
+            </tr>
+          </ng-template>
+        </tas-table>
+      }
+    </section>
+
+    <!-- En retard -->
+    <section class="rounded-2xl border border-slate-100 bg-white p-5 shadow-xs">
+      <h2 class="text-base font-semibold text-slate-900">Clôtures dépassées</h2>
+      <p class="mb-4 text-xs text-slate-500">Les projets en cours dont la date de clôture prévue est passée, les plus en retard d’abord.</p>
+      @if (!r.overdue?.length) {
+        <p class="py-6 text-center text-sm text-slate-500">Aucun projet en retard.</p>
+      } @else {
+        <tas-table [data]="r.overdue" identifierField="projectId" [config]="overdueConfig()" [hasCaption]="false">
+          <ng-template #header>
+            <tr class="bg-slate-50 text-left text-xs font-medium uppercase tracking-wide text-slate-500">
+              <th class="px-4 py-3">Projet</th>
+              <th class="px-4 py-3">Étape</th>
+              <th class="px-4 py-3">Responsable</th>
+              <th class="px-4 py-3 text-right">Clôture prévue</th>
+              <th class="px-4 py-3 text-right">Retard</th>
+              <th class="px-4 py-3 text-right">Montant</th>
+            </tr>
+          </ng-template>
+          <ng-template #body let-o>
+            <tr class="transition-colors hover:bg-slate-50">
+              <td class="px-4 py-3">
+                <a [routerLink]="['/leads/projets', o.projectId]" class="text-sm font-semibold text-primary hover:underline">{{ o.title }}</a>
+                <p class="text-xs text-slate-500">{{ o.product }}</p>
+              </td>
+              <td class="px-4 py-3 text-sm text-slate-700">{{ o.step || phaseLabel(o.phase) }}</td>
+              <td class="px-4 py-3 text-sm text-slate-700">{{ o.ownerName || 'Non attribué' }}</td>
+              <td class="px-4 py-3 text-right text-sm tabular-nums">{{ o.expectedCloseDate | date: 'dd/MM/yyyy' }}</td>
+              <td class="px-4 py-3 text-right text-sm font-semibold tabular-nums text-[#b4532a]">{{ o.daysLate }} j</td>
+              <td class="px-4 py-3 text-right text-sm tabular-nums">{{ fmt(o.amount) }}</td>
+            </tr>
+          </ng-template>
+        </tas-table>
+      }
+    </section>
+  </div>
+}

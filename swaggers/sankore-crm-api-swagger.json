@@ -3093,7 +3093,7 @@
           "Client Lifecycle"
         ],
         "summary": "Assign or clear the client's advisor",
-        "description": "Sets the account officer owning the relationship. Send advisorUserId = null to clear it. The advisor must be an active user of the client's own agency, otherwise ADVISOR_NOT_ELIGIBLE (400). Returns 404 CLIENT_NOT_FOUND when the client is unknown or outside the caller's agency perimeter, and CLIENT_READ_ONLY (409) on an archived or merged record. Requires permission: customers:update.",
+        "description": "Sets the account officer owning the relationship. Send advisorUserId = null to clear it. The advisor must be an active user of the client's own agency, otherwise ADVISOR_NOT_ELIGIBLE (400). Returns 404 CLIENT_NOT_FOUND when the client is unknown or outside the caller's agency perimeter, and CLIENT_READ_ONLY (409) on an archived or merged record. Requires permission: customers:advisor:assign.",
         "operationId": "AssignClientAdvisor",
         "parameters": [
           {
@@ -3680,6 +3680,121 @@
           },
           "409": {
             "description": "Conflict"
+          }
+        }
+      }
+    },
+    "/api/v1/clients/reports": {
+      "get": {
+        "tags": [
+          "Client Reports"
+        ],
+        "summary": "The « Clients » tab of the reports: KPIs against the previous period, base by type, segment and agency",
+        "operationId": "GetClientReport",
+        "parameters": [
+          {
+            "name": "from",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "agencyId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClientReportDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/clients/reports/export": {
+      "get": {
+        "tags": [
+          "Client Reports"
+        ],
+        "summary": "The « Clients » tab of the reports as an Excel workbook",
+        "operationId": "ExportClientReport",
+        "parameters": [
+          {
+            "name": "from",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "agencyId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
+                "schema": {
+                  "type": "string",
+                  "format": "byte"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
           }
         }
       }
@@ -14137,6 +14252,63 @@
         }
       }
     },
+    "/api/v1/kyc-files/reports": {
+      "get": {
+        "tags": [
+          "KYC Reports"
+        ],
+        "summary": "The « KYC » tab of the reports: KPIs against the previous period, files waiting per level, tiers, channels, agencies",
+        "operationId": "GetKycReport",
+        "parameters": [
+          {
+            "name": "from",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "agencyId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KycReportDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/kyc-settings": {
       "get": {
         "tags": [
@@ -14725,6 +14897,121 @@
               ],
               "type": "string",
               "description": "One of: Day, Week, Month"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
+                "schema": {
+                  "type": "string",
+                  "format": "byte"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/leads/reports/projects": {
+      "get": {
+        "tags": [
+          "Lead Reports"
+        ],
+        "summary": "The « Projets » tab of the reports: KPIs against the previous period, pipeline, products, loss reasons, steps, overdue projects",
+        "operationId": "GetProjectReport",
+        "parameters": [
+          {
+            "name": "from",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "agencyId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectReportDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/leads/reports/projects/export": {
+      "get": {
+        "tags": [
+          "Lead Reports"
+        ],
+        "summary": "The « Projets » tab of the reports as an Excel workbook",
+        "operationId": "ExportProjectReport",
+        "parameters": [
+          {
+            "name": "from",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "agencyId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
             }
           }
         ],
@@ -37411,6 +37698,170 @@
         },
         "additionalProperties": false
       },
+      "ClientReportAgency": {
+        "type": "object",
+        "properties": {
+          "agencyId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "newClients": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "active": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ClientReportDto": {
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "to": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "kpis": {
+            "$ref": "#/components/schemas/ClientReportKpis"
+          },
+          "previous": {
+            "$ref": "#/components/schemas/ClientReportPeriodKpis"
+          },
+          "byType": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ClientReportType"
+            },
+            "nullable": true
+          },
+          "bySegment": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ClientReportSegment"
+            },
+            "nullable": true
+          },
+          "byAgency": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ClientReportAgency"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ClientReportKpis": {
+        "type": "object",
+        "properties": {
+          "period": {
+            "$ref": "#/components/schemas/ClientReportPeriodKpis"
+          },
+          "active": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "withoutAdvisor": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "avgProductsPerClient": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "highRisk": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pep": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "openComplaints": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "overdueComplaints": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ClientReportPeriodKpis": {
+        "type": "object",
+        "properties": {
+          "newClients": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "complaintsReceived": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "complaintsResolved": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "avgResolutionDays": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "suspendedOrArchived": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ClientReportSegment": {
+        "type": "object",
+        "properties": {
+          "segmentCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "count": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ClientReportType": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "enum": [
+              "Individual",
+              "Legal"
+            ],
+            "type": "string",
+            "description": "One of: Individual, Legal"
+          },
+          "base": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "newClients": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
       "ClientRowValidationResult": {
         "type": "object",
         "properties": {
@@ -46385,6 +46836,217 @@
         },
         "additionalProperties": false
       },
+      "KycReportAgency": {
+        "type": "object",
+        "properties": {
+          "agencyId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "opened": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "validated": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "KycReportCount": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string",
+            "nullable": true
+          },
+          "count": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "KycReportDto": {
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "to": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "kpis": {
+            "$ref": "#/components/schemas/KycReportKpis"
+          },
+          "previous": {
+            "$ref": "#/components/schemas/KycReportPeriodKpis"
+          },
+          "waiting": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/KycReportWaitingLevel"
+            },
+            "nullable": true
+          },
+          "byTier": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/KycReportCount"
+            },
+            "nullable": true
+          },
+          "byChannel": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/KycReportCount"
+            },
+            "nullable": true
+          },
+          "byVigilance": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/KycReportCount"
+            },
+            "nullable": true
+          },
+          "byAgency": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/KycReportAgency"
+            },
+            "nullable": true
+          },
+          "longest": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/KycReportWaitingFile"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "KycReportKpis": {
+        "type": "object",
+        "properties": {
+          "period": {
+            "$ref": "#/components/schemas/KycReportPeriodKpis"
+          },
+          "inValidation": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "reviewsDueSoon": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "reviewsOverdue": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "KycReportPeriodKpis": {
+        "type": "object",
+        "properties": {
+          "opened": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "validated": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "rejected": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "avgValidationDays": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "complementRate": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "firstPassRate": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "automatic": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "KycReportWaitingFile": {
+        "type": "object",
+        "properties": {
+          "kycFileId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "customerName": {
+            "type": "string",
+            "nullable": true
+          },
+          "level": {
+            "type": "string",
+            "nullable": true
+          },
+          "waitingDays": {
+            "type": "number",
+            "format": "double"
+          },
+          "responsibleName": {
+            "type": "string",
+            "nullable": true
+          },
+          "agency": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "KycReportWaitingLevel": {
+        "type": "object",
+        "properties": {
+          "level": {
+            "type": "string",
+            "nullable": true
+          },
+          "count": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "avgDays": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "oldestDays": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "KycSessionResponse": {
         "type": "object",
         "properties": {
@@ -47322,6 +47984,23 @@
           },
           "forecast": {
             "$ref": "#/components/schemas/LeadReportForecast"
+          },
+          "previous": {
+            "$ref": "#/components/schemas/LeadReportPeriodKpis"
+          },
+          "byTemperature": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LeadReportTemperature"
+            },
+            "nullable": true
+          },
+          "sourceCosts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SourceQualityDto"
+            },
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -47518,6 +48197,55 @@
           "openSlaBreaches": {
             "type": "integer",
             "format": "int32"
+          },
+          "projectRate": {
+            "type": "number",
+            "format": "double"
+          },
+          "untouchedOpenLeads": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "avgOpenLeadAgeDays": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "LeadReportPeriodKpis": {
+        "type": "object",
+        "properties": {
+          "captured": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "convertedInPeriod": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "cohortConversionRate": {
+            "type": "number",
+            "format": "double"
+          },
+          "lost": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "avgFirstContactMinutes": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "slaComplianceRate": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "projectRate": {
+            "type": "number",
+            "format": "double"
           }
         },
         "additionalProperties": false
@@ -47653,6 +48381,30 @@
             "description": "One of: New, Open, Qualifying, Qualified, Nurturing, Recycled, Converted, Lost, Disqualified, Archived"
           },
           "count": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "LeadReportTemperature": {
+        "type": "object",
+        "properties": {
+          "level": {
+            "enum": [
+              "Unknown",
+              "Cold",
+              "Warm",
+              "Hot"
+            ],
+            "type": "string",
+            "description": "One of: Unknown, Cold, Warm, Hot"
+          },
+          "captured": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "converted": {
             "type": "integer",
             "format": "int32"
           }
@@ -52679,6 +53431,271 @@
           },
           "planUnavailable": {
             "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ProjectReportDto": {
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "to": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "kpis": {
+            "$ref": "#/components/schemas/ProjectReportKpis"
+          },
+          "previous": {
+            "$ref": "#/components/schemas/ProjectReportPeriodKpis"
+          },
+          "pipeline": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProjectReportPipeline"
+            },
+            "nullable": true
+          },
+          "byProduct": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProjectReportProduct"
+            },
+            "nullable": true
+          },
+          "lossReasons": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProjectReportLossReason"
+            },
+            "nullable": true
+          },
+          "steps": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProjectReportStep"
+            },
+            "nullable": true
+          },
+          "overdue": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProjectReportOverdue"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ProjectReportKpis": {
+        "type": "object",
+        "properties": {
+          "period": {
+            "$ref": "#/components/schemas/ProjectReportPeriodKpis"
+          },
+          "openProjects": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "overdue": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ProjectReportLossReason": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "nullable": true
+          },
+          "count": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ProjectReportOverdue": {
+        "type": "object",
+        "properties": {
+          "projectId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string",
+            "nullable": true
+          },
+          "product": {
+            "type": "string",
+            "nullable": true
+          },
+          "phase": {
+            "enum": [
+              "Prospecting",
+              "Qualification",
+              "NeedsAnalysis",
+              "Proposal",
+              "Negotiation",
+              "ClosedWon",
+              "ClosedLost"
+            ],
+            "type": "string",
+            "description": "One of: Prospecting, Qualification, NeedsAnalysis, Proposal, Negotiation, ClosedWon, ClosedLost"
+          },
+          "step": {
+            "type": "string",
+            "nullable": true
+          },
+          "ownerId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "ownerName": {
+            "type": "string",
+            "nullable": true
+          },
+          "expectedCloseDate": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "daysLate": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "amount": {
+            "type": "number",
+            "format": "double"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ProjectReportPeriodKpis": {
+        "type": "object",
+        "properties": {
+          "opened": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "won": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "lost": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "winRate": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "wonAmount": {
+            "type": "number",
+            "format": "double"
+          },
+          "avgCycleDays": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ProjectReportPipeline": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "enum": [
+              "Generic",
+              "Loan",
+              "Premium",
+              "Deposit"
+            ],
+            "type": "string",
+            "description": "One of: Generic, Loan, Premium, Deposit"
+          },
+          "count": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "amount": {
+            "type": "number",
+            "format": "double"
+          },
+          "weighted": {
+            "type": "number",
+            "format": "double"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ProjectReportProduct": {
+        "type": "object",
+        "properties": {
+          "product": {
+            "type": "string",
+            "nullable": true
+          },
+          "opened": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "won": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "lost": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "winRate": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "amount": {
+            "type": "number",
+            "format": "double"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ProjectReportStep": {
+        "type": "object",
+        "properties": {
+          "template": {
+            "type": "string",
+            "nullable": true
+          },
+          "step": {
+            "type": "string",
+            "nullable": true
+          },
+          "left": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "avgDays": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "waitingNow": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "avgWaitingDays": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
           }
         },
         "additionalProperties": false

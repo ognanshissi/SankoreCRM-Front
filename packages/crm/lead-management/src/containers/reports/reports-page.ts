@@ -9,13 +9,17 @@ import { TasIcon } from '@talisoft/ui/icon';
 import { TasSelect } from '@talisoft/ui/select';
 import { TasSpinner } from '@talisoft/ui/spinner';
 import { TableConfig, TasTable } from '@talisoft/ui/table';
-import { AgenciesApiService, AgentComparisonDto, LeadReportDto, LeadReportsApiService } from '@sankore/crm-api';
+import { AgenciesApiService, AgentComparisonDto, ClientReportsApiService, LeadReportDto, LeadReportsApiService } from '@sankore/crm-api';
 import { BreadcrumbService, projectFlowLabel } from '@sankore/crm/common';
 import { SnackbarService } from '@talisoft/ui/snackbar';
 import { ReportLineChart, LinePoint, LineSeries } from './report-line-chart';
 import { BarItem, ReportBarList } from './report-bar-list';
 import { AgentReportPanel, periodLabels } from './agent-report-panel';
 import { AgentRankingPanel } from './agent-ranking-panel';
+import { Kpi, pointsDelta, relativeDelta, ReportKpiTiles } from './report-kpi';
+import { ReportProjectsTab, ReportRange } from './report-projects-tab';
+import { ReportClientsTab } from './report-clients-tab';
+import { ReportKycTab } from './report-kyc-tab';
 import { RankingCriterion } from './agent-ranking';
 import {
   formatDuration,
@@ -31,6 +35,18 @@ import {
 
 type PeriodKey = '7j' | '30j' | '90j' | '12m';
 
+const TEMPERATURE_LABELS: Record<string, string> = { Hot: 'Chauds', Warm: 'Tièdes', Cold: 'Froids', Unknown: 'Non évalués' };
+
+/** Les onglets des rapports : Leads, Projets, Clients, KYC (propriétaire, 2026-11-02). */
+type ReportTab = 'leads' | 'projets' | 'clients' | 'kyc';
+
+const TABS: ReadonlyArray<{ key: ReportTab; label: string; icon: string }> = [
+  { key: 'leads', label: 'Leads', icon: 'feather:users' },
+  { key: 'projets', label: 'Projets', icon: 'feather:briefcase' },
+  { key: 'clients', label: 'Clients', icon: 'feather:user-check' },
+  { key: 'kyc', label: 'KYC', icon: 'feather:shield' },
+];
+
 const PERIODS: ReadonlyArray<{ key: PeriodKey; label: string; days: number }> = [
   { key: '7j', label: '7 jours', days: 7 },
   { key: '30j', label: '30 jours', days: 30 },
@@ -38,16 +54,10 @@ const PERIODS: ReadonlyArray<{ key: PeriodKey; label: string; days: number }> = 
   { key: '12m', label: '12 mois', days: 365 },
 ];
 
-interface Kpi {
-  label: string;
-  value: string;
-  hint: string;
-  tone?: 'warn';
-}
-
 /**
- * Rapports des leads pour les administrateurs : volumes, conversions, progression dans le pipeline,
- * sources, agents et agences, sur une période et pour une agence au choix.
+ * Les rapports des responsables, en onglets (propriétaire, 2026-11-02) : Leads — volumes,
+ * conversions, progression, sources, agents et agences — et Projets — phases et prévision. Mêmes
+ * période et agence pour tous les onglets ; chaque indicateur se compare à la période précédente.
  *
  * Tout vient de `GET leads/reports/overview` en un appel, si bien que les chiffres de l'écran se
  * recoupent : ils partagent la même période et les mêmes définitions, écrites une fois côté
@@ -55,10 +65,11 @@ interface Kpi {
  */
 @Component({
   templateUrl: './reports-page.html',
-  imports: [FormsModule, Button, TasIcon, TasSelect, TasSpinner, TasTable, ReportLineChart, ReportBarList, AgentReportPanel, AgentRankingPanel],
+  imports: [FormsModule, Button, TasIcon, TasSelect, TasSpinner, TasTable, ReportLineChart, ReportBarList, AgentReportPanel, AgentRankingPanel, ReportKpiTiles, ReportProjectsTab, ReportClientsTab, ReportKycTab],
 })
 export class ReportsPage implements OnInit {
   private readonly _reports = inject(LeadReportsApiService);
+  private readonly _clientReports = inject(ClientReportsApiService);
   private readonly _agencies = inject(AgenciesApiService);
   private readonly _breadcrumb = inject(BreadcrumbService);
   private readonly _router = inject(Router);
@@ -69,6 +80,11 @@ export class ReportsPage implements OnInit {
   private readonly _agentReload$ = new Subject<void>();
 
   public readonly periods = PERIODS;
+  public readonly tabs = TABS;
+  /** L'onglet ouvert, gardé dans l'URL (`onglet`) pour qu'un lien rouvre le même. */
+  public tab = signal<ReportTab>('leads');
+  /** La période et l'agence transmises aux onglets qui chargent leurs propres chiffres. */
+  public range = signal<ReportRange | null>(null);
   public readonly colors = SERIES_COLORS;
   public readonly fmt = formatNumber;
   public readonly pct = formatPercent;
@@ -107,13 +123,30 @@ export class ReportsPage implements OnInit {
   public readonly kpis = computed<Kpi[]>(() => {
     const k = this.report()?.kpis;
     if (!k) return [];
+    // Les chiffres « aujourd'hui » (leads ouverts, délais dépassés) n'ont pas de période précédente.
+    const p = this.report()?.previous;
     return [
-      { label: 'Leads captés', value: formatNumber(k.captured), hint: 'Arrivés sur la période' },
-      { label: 'Conversions', value: formatNumber(k.convertedInPeriod), hint: 'Réalisées sur la période' },
-      { label: 'Taux de conversion', value: formatPercent(k.cohortConversionRate), hint: 'Des leads captés sur la période' },
+      { label: 'Leads captés', value: formatNumber(k.captured), hint: 'Arrivés sur la période',
+        delta: relativeDelta(k.captured, p?.captured, 'up', formatNumber) },
+      { label: 'Conversions', value: formatNumber(k.convertedInPeriod), hint: 'Réalisées sur la période',
+        delta: relativeDelta(k.convertedInPeriod, p?.convertedInPeriod, 'up', formatNumber) },
+      { label: 'Taux de conversion', value: formatPercent(k.cohortConversionRate), hint: 'Des leads captés sur la période',
+        delta: pointsDelta(k.cohortConversionRate, p?.cohortConversionRate, 'up', formatPercent) },
+      { label: 'Avec un projet', value: formatPercent(k.projectRate), hint: 'Des leads captés sur la période',
+        delta: pointsDelta(k.projectRate, p?.projectRate, 'up', formatPercent) },
       { label: 'Leads ouverts', value: formatNumber(k.openLeads), hint: 'Aujourd’hui, toutes dates' },
-      { label: 'Premier contact', value: formatDuration(k.avgFirstContactMinutes), hint: 'Délai moyen après affectation' },
-      { label: 'Délai respecté', value: formatPercent(k.slaComplianceRate), hint: 'Premiers contacts dans le délai' },
+      { label: 'Âge moyen', value: k.avgOpenLeadAgeDays == null ? '—' : `${formatNumber(Math.round(k.avgOpenLeadAgeDays))} j`,
+        hint: 'Des leads ouverts, depuis leur capture' },
+      {
+        label: 'Sans activité',
+        value: formatNumber(k.untouchedOpenLeads),
+        hint: 'Leads ouverts, rien depuis 7 jours',
+        tone: (k.untouchedOpenLeads ?? 0) > 0 ? 'warn' : undefined,
+      },
+      { label: 'Premier contact', value: formatDuration(k.avgFirstContactMinutes), hint: 'Délai moyen après affectation',
+        delta: relativeDelta(k.avgFirstContactMinutes, p?.avgFirstContactMinutes, 'down', formatDuration) },
+      { label: 'Délai respecté', value: formatPercent(k.slaComplianceRate), hint: 'Premiers contacts dans le délai',
+        delta: pointsDelta(k.slaComplianceRate, p?.slaComplianceRate, 'up', formatPercent) },
       {
         label: 'Délais dépassés',
         value: formatNumber(k.openSlaBreaches),
@@ -224,6 +257,25 @@ export class ReportsPage implements OnInit {
 
   public readonly agents = computed(() => this.report()?.agents ?? []);
 
+  /** La température d'aujourd'hui des leads captés sur la période, du plus chaud au non évalué. */
+  public readonly temperatures = computed<BarItem[]>(() =>
+    (this.report()?.byTemperature ?? []).map((t) => ({
+      key: String(t.level),
+      label: TEMPERATURE_LABELS[t.level ?? ''] ?? String(t.level),
+      value: t.captured ?? 0,
+      value2: t.converted ?? 0,
+    })),
+  );
+
+  /** Null sous un filtre d'agence : le coût d'une source ne se découpe pas par agence. */
+  public readonly sourceCosts = computed(() =>
+    (this.report()?.sourceCosts ?? null)?.filter((c) => (c.received ?? 0) > 0) ?? null,
+  );
+  public readonly sourceCostConfig = signal<TableConfig>({
+    property: 'sourceId',
+    pagination: { serverSide: false, pageIndex: 0, pageSize: 10, pageSizeOptions: [10, 20, 50] },
+  });
+
   public readonly rangeLabel = computed(() => {
     const r = this.report();
     if (!r?.from || !r?.to) return '';
@@ -238,6 +290,8 @@ export class ReportsPage implements OnInit {
     const params = this._route.snapshot.queryParamMap;
     const p = params.get('periode');
     if (PERIODS.some((x) => x.key === p)) this.period.set(p as PeriodKey);
+    const tab = params.get('onglet');
+    if (TABS.some((t) => t.key === tab)) this.tab.set(tab as ReportTab);
     this.agencyId.set(params.get('agence') ?? '');
     const criterion = params.get('classement');
     if (['score', 'converted', 'conversionRate', 'sla', 'firstContact'].includes(criterion ?? '')) {
@@ -282,7 +336,7 @@ export class ReportsPage implements OnInit {
             .pipe(
               catchError((err: HttpErrorResponse) => {
                 this.error.set(err.status === 403
-                  ? 'Ce rapport est réservé aux administrateurs.'
+                  ? 'Ces rapports sont réservés aux responsables et à la conformité.'
                   : (err.error?.detail ?? 'Le rapport n’a pas pu être chargé.'));
                 return EMPTY;
               }),
@@ -306,6 +360,16 @@ export class ReportsPage implements OnInit {
     this.reload();
   }
 
+  public pickTab(key: ReportTab): void {
+    this.tab.set(key);
+    this._router.navigate([], {
+      relativeTo: this._route,
+      queryParams: { onglet: key === 'leads' ? null : key },
+      queryParamsHandling: 'merge',
+      replaceUrl: true,
+    });
+  }
+
   public pickPeriod(key: PeriodKey): void {
     this.period.set(key);
     this._persist();
@@ -317,6 +381,7 @@ export class ReportsPage implements OnInit {
   }
 
   public reload(): void {
+    this.range.set({ ...this._range(), agencyId: this.agencyId(), token: (this.range()?.token ?? 0) + 1 });
     this._reload$.next();
     this._agentReload$.next();
   }
@@ -384,8 +449,12 @@ export class ReportsPage implements OnInit {
     if (this.isExporting()) return;
     this.isExporting.set(true);
     const { from, to } = this._range();
-    this._reports
-      .exportLeadReport(from.toISOString(), to.toISOString(), this.agencyId() || undefined)
+    const tab = this.tab();
+    const agency = this.agencyId() || undefined;
+    const [f, t] = [from.toISOString(), to.toISOString()];
+    (tab === 'projets' ? this._reports.exportProjectReport(f, t, agency)
+      : tab === 'clients' ? this._clientReports.exportClientReport(f, t, agency)
+      : this._reports.exportLeadReport(f, t, agency))
       .pipe(
         catchError(async (err: HttpErrorResponse) => {
           // En mode blob, le corps d'erreur arrive lui aussi en Blob : on le relit pour afficher
@@ -405,7 +474,7 @@ export class ReportsPage implements OnInit {
         const blob = file as unknown as Blob | null;
         if (!blob) return;
         const day = (d: Date) => d.toISOString().slice(0, 10);
-        this._download(blob, `rapport-leads-${day(from)}-au-${day(new Date(to.getTime() - 1))}.xlsx`);
+        this._download(blob, `rapport-${tab}-${day(from)}-au-${day(new Date(to.getTime() - 1))}.xlsx`);
       });
   }
 
