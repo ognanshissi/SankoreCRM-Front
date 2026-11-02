@@ -1,41 +1,47 @@
 import { Component, computed, DestroyRef, inject, OnInit, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { HttpErrorResponse } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { CdkDrag, CdkDragDrop, CdkDropList, CdkDropListGroup } from '@angular/cdk/drag-drop';
 import { catchError, debounceTime, EMPTY, finalize, Subject } from 'rxjs';
 import { OpportunitiesApiService, OpportunityDto } from '@sankore/crm-api';
-import {
-  BreadcrumbService,
-  PermissionsService,
-  projectFlowLabel,
-  projectGateCode,
-  projectGateMessage,
-  TenantProvider,
-} from '@sankore/crm/common';
+import { BreadcrumbService, PermissionsService, projectFlowLabel, TenantProvider } from '@sankore/crm/common';
 import { Button } from '@talisoft/ui/button';
 import { TasFormField, TasLabel } from '@talisoft/ui/form-field';
 import { TasIcon } from '@talisoft/ui/icon';
 import { TasInput } from '@talisoft/ui/input';
 import { TasSelect } from '@talisoft/ui/select';
 import { SideDrawerService } from '@talisoft/ui/side-drawer';
-import { SnackbarService } from '@talisoft/ui/snackbar';
-import { TasSpinner } from '@talisoft/ui/spinner';
-import { formatAmount } from '../edit-lead/lead-view.models';
+import { TableConfig, TasTable } from '@talisoft/ui/table';
+import { TasTag } from '@talisoft/ui/tag';
+import { formatAmount, formatDay } from '../edit-lead/lead-view.models';
 import { NewProjectDrawer } from './new-project-drawer';
-import { currentStep, isClosed, OPEN_STAGES, probabilityPercent, projectSteps, tracksForecast, weightedAmount } from '../edit-lead/opportunities/opportunity.model';
+import {
+  isClosed,
+  probabilityPercent,
+  stepLabel,
+  tracksForecast,
+  weightedAmount,
+} from '../edit-lead/opportunities/opportunity.model';
 
-/** Toutes les familles à la fois : les colonnes sont alors les cinq phases, communes à tous. */
 const ALL = 'tous';
 const BUILT_IN = 'standard';
 
-interface Column {
-  id: string;
-  label: string;
-  hint: string;
-  projects: OpportunityDto[];
-  amount: number;
+export type ProjectStatusFilter = 'ouverts' | 'gagnes' | 'perdus' | 'tous';
+
+const STATUS_OPTIONS: { value: ProjectStatusFilter; label: string }[] = [
+  { value: 'ouverts', label: 'Ouverts' },
+  { value: 'gagnes', label: 'Gagnés' },
+  { value: 'perdus', label: 'Perdus' },
+  { value: 'tous', label: 'Tous' },
+];
+
+function hasStatus(p: OpportunityDto, status: ProjectStatusFilter): boolean {
+  switch (status) {
+    case 'ouverts': return !isClosed(p);
+    case 'gagnes': return p.stage === 'ClosedWon';
+    case 'perdus': return p.stage === 'ClosedLost';
+    default: return true;
+  }
 }
 
 function templateKey(opp: OpportunityDto): string {
@@ -44,7 +50,7 @@ function templateKey(opp: OpportunityDto): string {
 
 /** Minuscules sans accents : « Koné » se trouve en tapant « kone ». */
 function fold(text: string): string {
-  return text.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  return text.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 }
 
 /**
@@ -63,13 +69,12 @@ function searchText(p: OpportunityDto): string {
 }
 
 /**
- * Le tableau des projets ouverts. Par parcours, les colonnes sont ses étapes et une carte se glisse
- * d'une étape à l'autre ; tous parcours confondus, ce sont les cinq phases, en lecture — glisser y
- * déplacerait par phase et ferait perdre au projet l'étape précise de son gabarit.
+ * La liste des projets, ouverts ou clos (propriétaire, 2026-11-02 : la vue en colonnes est
+ * retirée). Un projet avance depuis sa fiche, où ses conditions d'étape s'expliquent.
  */
 @Component({
   selector: 'projects-board',
-  imports: [FormsModule, RouterLink, CdkDropListGroup, CdkDropList, CdkDrag, Button, TasFormField, TasLabel, TasIcon, TasInput, TasSelect, TasSpinner],
+  imports: [FormsModule, RouterLink, Button, TasFormField, TasLabel, TasIcon, TasInput, TasSelect, TasTable, TasTag],
   templateUrl: './projects-board.html',
 })
 export class ProjectsBoard implements OnInit {
@@ -78,7 +83,6 @@ export class ProjectsBoard implements OnInit {
   /** La monnaie de l'institution : celle des totaux et des nouveaux montants. */
   public readonly currency = inject(TenantProvider).currency;
   private readonly _breadcrumb = inject(BreadcrumbService);
-  private readonly _snackbar = inject(SnackbarService);
   private readonly _sideDrawer = inject(SideDrawerService);
   private readonly _route = inject(ActivatedRoute);
   private readonly _router = inject(Router);
@@ -87,91 +91,74 @@ export class ProjectsBoard implements OnInit {
 
   public readonly canManage = this._permissions.can('lead:opportunity:manage');
   public readonly formatAmount = formatAmount;
+  public readonly formatDay = formatDay;
   public readonly probabilityPercent = probabilityPercent;
   public readonly tracksForecast = tracksForecast;
+  public readonly stepLabel = stepLabel;
+  public readonly isClosed = isClosed;
+  public readonly statusOptions = STATUS_OPTIONS;
 
   public readonly projects = signal<OpportunityDto[]>([]);
   public readonly isLoading = signal(false);
   public readonly loadError = signal<string | null>(null);
-  public readonly movingId = signal<string | null>(null);
 
+  public readonly status = signal<ProjectStatusFilter>('ouverts');
   public readonly track = signal(ALL);
   public readonly search = signal('');
   private readonly _appliedSearch = signal('');
 
-  private readonly _open = computed(() => this.projects().filter((p) => !isClosed(p)));
+  private readonly _scope = computed(() => this.projects().filter((p) => hasStatus(p, this.status())));
 
-  /** Les parcours présents parmi les projets ouverts, avec leur nombre de projets. */
+  /** Les parcours présents parmi les projets du statut choisi, avec leur nombre de projets. */
   public readonly trackOptions = computed(() => {
     const counts = new Map<string, { label: string; count: number }>();
-    for (const p of this._open()) {
+    for (const p of this._scope()) {
       const key = templateKey(p);
       const entry = counts.get(key) ?? { label: p.templateName ?? 'Parcours standard', count: 0 };
       entry.count++;
       counts.set(key, entry);
     }
     return [
-      { value: ALL, label: `Tous les parcours (${this._open().length})` },
+      { value: ALL, label: `Tous les parcours (${this._scope().length})` },
       ...[...counts.entries()]
         .sort((a, b) => a[1].label.localeCompare(b[1].label, 'fr'))
         .map(([value, e]) => ({ value, label: `${e.label} (${e.count})` })),
     ];
   });
 
-  public readonly isByTemplate = computed(() => this.track() !== ALL);
-  public readonly canDrag = computed(() => this.isByTemplate() && this.canManage());
-
-  private readonly _visible = computed(() => {
+  private _matches(list: OpportunityDto[]): OpportunityDto[] {
     const terms = fold(this._appliedSearch().trim()).split(/\s+/).filter(Boolean);
     const track = this.track();
     // Chaque mot doit se trouver quelque part : « awa 0708 » trouve Awa par son prénom et son numéro.
-    return this._open().filter(
+    return list.filter(
       (p) =>
         (track === ALL || templateKey(p) === track) &&
         (terms.length === 0 || terms.every((t) => searchText(p).includes(t.replace(/^\+/, '')))),
     );
+  }
+
+  /** Les lignes de la liste, les plus récemment modifiées d'abord. */
+  public readonly rows = computed(() =>
+    [...this._matches(this._scope())].sort((a, b) => (b.updatedAt ?? '').localeCompare(a.updatedAt ?? '')),
+  );
+
+  /** Pagination locale : `listOpportunities` renvoie tous les projets d'un coup. */
+  public readonly tableConfig = signal<TableConfig>({
+    property: 'id',
+    pagination: { serverSide: false, pageIndex: 0, pageSize: 20, pageSizeOptions: [10, 20, 50, 100] },
   });
 
-  public readonly columns = computed<Column[]>(() => {
-    const visible = this._visible();
-    const sum = (list: OpportunityDto[]) => list.reduce((t, p) => t + (p.estimatedAmount?.amount ?? 0), 0);
+  /** Les totaux ne comptent que les projets ouverts retenus par les filtres, quel que soit le statut affiché. */
+  private readonly _openVisible = computed(() => this._matches(this.projects().filter((p) => !isClosed(p))));
 
-    if (!this.isByTemplate()) {
-      return OPEN_STAGES.map((s) => {
-        const list = visible.filter((p) => p.stage === s.value);
-        return { id: s.value, label: s.label, hint: `${s.probability} %`, projects: list, amount: sum(list) };
-      });
-    }
-
-    // Les projets d'un même parcours peuvent suivre des versions différentes (propriétaire,
-    // 2026-10-26) : les colonnes sont celles de la plus récente, complétées des étapes que seule une
-    // version antérieure a — sinon un projet posé sur une telle étape disparaîtrait du tableau.
-    const pool = visible.length ? visible : this._open().filter((p) => templateKey(p) === this.track());
-    const sample = [...pool].sort((a, b) => (b.templateVersion ?? 0) - (a.templateVersion ?? 0))[0];
-    const steps = sample ? [...projectSteps(sample)] : [];
-    for (const p of pool) {
-      projectSteps(p).forEach((step, i, own) => {
-        if (steps.some((s) => s.id === step.id)) return;
-        const before = own.slice(0, i).reverse().find((s) => steps.some((c) => c.id === s.id));
-        steps.splice(before ? steps.findIndex((c) => c.id === before.id) + 1 : 0, 0, step);
-      });
-    }
-    return steps.map((step) => {
-      const list = visible.filter((p) => currentStep(p)?.id === step.id);
-      const hint = sample && tracksForecast(sample) ? `${step.probability ?? 0} %` : '';
-      return { id: step.id ?? '', label: step.label ?? '', hint, projects: list, amount: sum(list) };
-    });
-  });
-
-  public readonly columnIds = computed(() => this.columns().map((c) => 'col-' + c.id));
-  public readonly totalAmount = computed(() => this._visible().reduce((t, p) => t + (p.estimatedAmount?.amount ?? 0), 0));
+  public readonly totalAmount = computed(() => this._openVisible().reduce((t, p) => t + (p.estimatedAmount?.amount ?? 0), 0));
   /**
    * Le pondéré, par nature de montant et pour les seuls parcours qui suivent la prévision : un
    * décaissement de crédit et une collecte d'épargne ne s'additionnent pas.
    */
   public readonly weightedByKind = computed(() => {
     const byKind = new Map<string, number>();
-    for (const p of this._visible().filter(tracksForecast)) {
+    for (const p of this._openVisible().filter(tracksForecast)) {
       const kind = p.amountKind ?? 'Generic';
       byKind.set(kind, (byKind.get(kind) ?? 0) + weightedAmount(p));
     }
@@ -182,6 +169,8 @@ export class ProjectsBoard implements OnInit {
     this._breadcrumb.set([{ label: 'Projets' }]);
 
     const params = this._route.snapshot.queryParamMap;
+    const status = params.get('statut') as ProjectStatusFilter | null;
+    this.status.set(STATUS_OPTIONS.some((o) => o.value === status) ? status! : 'ouverts');
     this.track.set(params.get('parcours') || ALL);
     this.search.set(params.get('q') ?? '');
     this._appliedSearch.set(this.search());
@@ -208,8 +197,7 @@ export class ProjectsBoard implements OnInit {
       )
       .subscribe((list) => {
         this.projects.set(list ?? []);
-        // Un parcours retenu dans l'adresse qui n'a plus de projet ouvert retombe sur « tous ».
-        if (this.track() !== ALL && !this.trackOptions().some((o) => o.value === this.track())) this.track.set(ALL);
+        this._keepTrackInScope();
       });
   }
 
@@ -234,64 +222,35 @@ export class ProjectsBoard implements OnInit {
     this._persist();
   }
 
+  public onStatus(value: string | null): void {
+    this.status.set((value as ProjectStatusFilter) || 'ouverts');
+    this._keepTrackInScope();
+    this._persist();
+  }
+
+  public openProject(p: OpportunityDto): void {
+    if (p.id) this._router.navigate(['/leads/projets', p.id]);
+  }
+
   public ownerLink(p: OpportunityDto): unknown[] | null {
     if (p.customerEntityId) return ['/customers', p.customerEntityId, 'projets'];
     if (p.leadId) return ['/leads', p.leadId, 'projets'];
     return null;
   }
 
-  public onDrop(event: CdkDragDrop<Column, Column, OpportunityDto>): void {
-    const project = event.item.data;
-    const target = event.container.data;
-    if (event.previousContainer === event.container || !this.canDrag() || this.movingId()) return;
-
-    const previous = this.projects();
-    const step = projectSteps(project).find((s) => s.id === target.id);
-    if (!step) {
-      this._snackbar.info(
-        'Étape absente de sa version',
-        `« ${target.label} » n'existe pas dans la version ${project.templateVersion ?? ''} du parcours que suit « ${project.title} ». ` +
-          'Ouvrez le projet pour le faire passer à la dernière version.',
-      );
-      return;
-    }
-
-    // Optimiste : la carte change de colonne tout de suite, et revient si le serveur refuse.
-    this.projects.update((list) =>
-      list.map((p) => (p.id === project.id ? { ...p, currentStepId: step.id, stepId: step.id } : p)),
-    );
-    this.movingId.set(project.id ?? null);
-
-    this._api
-      .moveOpportunityToStep(project.id!, { stepId: step.id!, expectedUpdatedAt: project.updatedAt ?? null })
-      .pipe(
-        catchError((error: HttpErrorResponse) => {
-          this.projects.set(previous);
-          const gate = projectGateCode(error);
-          this._snackbar.error(
-            'Étape non enregistrée',
-            gate
-              ? projectGateMessage(gate, step.label ?? null) + ' Ouvrez le projet pour lever ce blocage.'
-              : error.status === 409
-              ? 'Ce projet a été modifié entre-temps. Rechargez avant de réessayer.'
-              : error.status === 403
-                ? "Vous n'avez pas le droit de déplacer ce projet."
-                : 'Le déplacement a échoué.',
-          );
-          return EMPTY;
-        }),
-        finalize(() => this.movingId.set(null)),
-      )
-      .subscribe(() => {
-        this._snackbar.success('Projet déplacé', `« ${project.title} » : ${step.label}.`);
-        this.load();
-      });
+  /** Un parcours qui n'a plus de projet dans le statut choisi retombe sur « tous », sinon la liste paraît vide. */
+  private _keepTrackInScope(): void {
+    if (this.track() !== ALL && !this.trackOptions().some((o) => o.value === this.track())) this.track.set(ALL);
   }
 
   private _persist(): void {
     this._router.navigate([], {
       relativeTo: this._route,
-      queryParams: { parcours: this.track() === ALL ? null : this.track(), q: this._appliedSearch() || null },
+      queryParams: {
+        statut: this.status() !== 'ouverts' ? this.status() : null,
+        parcours: this.track() === ALL ? null : this.track(),
+        q: this._appliedSearch() || null,
+      },
       replaceUrl: true,
     });
   }

@@ -36427,6 +36427,30 @@
             "type": "object",
             "additionalProperties": { },
             "nullable": true
+          },
+          "profession": {
+            "type": "string",
+            "nullable": true
+          },
+          "maritalStatus": {
+            "type": "string",
+            "nullable": true
+          },
+          "addressLine": {
+            "type": "string",
+            "nullable": true
+          },
+          "postalCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "city": {
+            "type": "string",
+            "nullable": true
+          },
+          "countryCode": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -43228,6 +43252,14 @@
           },
           "nameVerified": {
             "type": "boolean"
+          },
+          "profession": {
+            "type": "string",
+            "nullable": true
+          },
+          "maritalStatus": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -47595,6 +47627,14 @@
             "type": "string",
             "format": "uuid",
             "nullable": true
+          },
+          "profession": {
+            "type": "string",
+            "nullable": true
+          },
+          "maritalStatus": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -50006,6 +50046,15 @@
             "type": "boolean"
           },
           "takeLocation": {
+            "type": "boolean"
+          },
+          "takeProfession": {
+            "type": "boolean"
+          },
+          "takeMaritalStatus": {
+            "type": "boolean"
+          },
+          "takeAddress": {
             "type": "boolean"
           }
         },

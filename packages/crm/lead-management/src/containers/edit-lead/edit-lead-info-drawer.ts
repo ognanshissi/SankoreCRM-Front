@@ -38,7 +38,7 @@ import {
   UpdateLeadRequest,
   UpdateLeadRequestGenderEnum,
 } from '@sankore/crm-api';
-import { currencyUnit, institutionCurrency } from '@sankore/crm/common';
+import { currencyUnit, HiddenFormFieldsStore, institutionCurrency } from '@sankore/crm/common';
 
 export interface EditLeadInfoDrawerData {
   lead: LeadDto;
@@ -169,6 +169,9 @@ export class EditLeadInfoDrawer {
   private readonly _agenciesApiService = inject(AgenciesApiService);
   private readonly _productsApiService = inject(ProductsApiService);
   private readonly _snackbar = inject(SnackbarService);
+  private readonly _formFields = inject(HiddenFormFieldsStore).ensureLoaded('Lead');
+  /** Masqué, le montant n'est pas proposé ; celui déjà enregistré repart tel quel. */
+  public readonly showAmount = computed(() => this._formFields.isVisible('Lead', 'desiredAmount'));
 
   public readonly genderOptions = GENDER_OPTIONS;
   public readonly languageOptions = LANGUAGE_OPTIONS;

@@ -270,6 +270,15 @@
             </p>
           </button>
 
+          <label class="flex items-center gap-2 text-xs text-slate-500 shrink-0" [title]="visibilityHint(field)">
+            Visible
+            <tas-switch
+              [checked]="!field.isHidden"
+              [disabled]="!canManage() || !field.isNative || !!field.isRequired"
+              (toggle)="toggleVisible(field, $event)"
+            ></tas-switch>
+          </label>
+
           <label class="flex items-center gap-2 text-xs text-slate-500 shrink-0" [title]="field.isRequired ? 'Un champ obligatoire figure toujours dans la création rapide' : ''">
             Création rapide
             <tas-switch

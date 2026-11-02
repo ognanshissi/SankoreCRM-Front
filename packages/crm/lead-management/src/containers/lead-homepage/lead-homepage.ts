@@ -234,6 +234,8 @@ function phaseOf(lead: LeadDto): PipelinePhase['key'] | null {
   // Converti = un projet approuvé, et le statut le dit. Une étape « Converti » posée à la main par
   // l'ancien Kanban, sans client, ne suffit pas : ce lead reste dans « Besoin identifié ».
   if (lead.status === 'Converted') return 'converted';
+  // Un lead clos garde l'étape où il était : archivé par une fusion, il restait dans « Dispatché ».
+  if (lead.status === 'Archived' || lead.status === 'Lost' || lead.status === 'Disqualified') return null;
   const stage = lead.pipelineStage ?? S.New;
   if (stage === S.Converted) return 'need';
   // Une étape `New` couvre deux réalités : le lead attend un agent, ou il en a un et attend son

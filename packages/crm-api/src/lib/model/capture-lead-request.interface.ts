@@ -65,6 +65,12 @@ export interface CaptureLeadRequest {
     household?: Array<CaptureHouseholdMember> | null;
     questionnaires?: Array<CaptureQuestionnaire> | null;
     customFields?: { [key: string]: any; } | null;
+    profession?: string | null;
+    maritalStatus?: string | null;
+    addressLine?: string | null;
+    postalCode?: string | null;
+    city?: string | null;
+    countryCode?: string | null;
 }
 export enum CaptureLeadRequestSourceEnum {
     Web = 'Web',

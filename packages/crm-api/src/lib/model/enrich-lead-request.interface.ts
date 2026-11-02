@@ -26,5 +26,7 @@ export interface EnrichLeadRequest {
     neighbourhood?: string | null;
     landmark?: string | null;
     nameVerified?: boolean;
+    profession?: string | null;
+    maritalStatus?: string | null;
 }
 

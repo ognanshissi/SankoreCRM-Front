@@ -11,7 +11,14 @@ import {
   FormsApiService,
   FormSection,
 } from '@sankore/crm-api';
-import { BreadcrumbService, EntityFormRenderer, PermissionsService, RenderMode, WireValues } from '@sankore/crm/common';
+import {
+  BreadcrumbService,
+  EntityFormRenderer,
+  HiddenFormFieldsStore,
+  PermissionsService,
+  RenderMode,
+  WireValues,
+} from '@sankore/crm/common';
 import { TasCard } from '@talisoft/ui/card';
 import { TasSpinner } from '@talisoft/ui/spinner';
 import { TasIcon } from '@talisoft/ui/icon';
@@ -61,6 +68,7 @@ type ViewMode = 'edit' | 'quick' | 'full';
 })
 export class EntityFormsPage implements OnInit {
   private readonly _formsApi = inject(FormsApiService);
+  private readonly _hiddenFields = inject(HiddenFormFieldsStore);
   private readonly _route = inject(ActivatedRoute);
   private readonly _router = inject(Router);
   private readonly _destroyRef = inject(DestroyRef);
@@ -238,6 +246,7 @@ export class EntityFormsPage implements OnInit {
       )
       .subscribe((form) => {
         this._apply(form);
+        this._hiddenFields.refresh(this.entity());
         this._snackbar.success('Enregistré', `Le formulaire ${this.tab().label.toLowerCase()} est à jour.`);
       });
   }
@@ -281,6 +290,18 @@ export class EntityFormsPage implements OnInit {
   public toggleQuickAdd(field: EntityFormField, on: boolean): void {
     if (field.isRequired) return;
     this._patchField(field.key!, { quickAdd: on });
+  }
+
+  /** Seul un champ natif facultatif se masque ; un champ personnalisé s'archive. */
+  public toggleVisible(field: EntityFormField, on: boolean): void {
+    if (!field.isNative || field.isRequired) return;
+    this._patchField(field.key!, { isHidden: !on });
+  }
+
+  public visibilityHint(field: EntityFormField): string {
+    if (!field.isNative) return "Un champ personnalisé ne se masque pas : il s'archive";
+    if (field.isRequired) return 'Un champ obligatoire reste toujours visible';
+    return "Désactivé, le champ n'est plus proposé à la saisie";
   }
 
   public toggleSectionTitle(section: FormSection, on: boolean): void {

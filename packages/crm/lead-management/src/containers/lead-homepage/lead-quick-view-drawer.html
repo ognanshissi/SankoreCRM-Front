@@ -72,10 +72,12 @@
           <dt class="text-xs text-slate-400">Produit</dt>
           <dd class="text-slate-700 truncate" [title]="product() ?? ''">{{ product() ?? '—' }}</dd>
         </div>
-        <div>
-          <dt class="text-xs text-slate-400">Montant souhaité</dt>
-          <dd class="text-slate-700 tabular-nums">{{ amount || '—' }}</dd>
-        </div>
+        @if (showAmount()) {
+          <div>
+            <dt class="text-xs text-slate-400">Montant souhaité</dt>
+            <dd class="text-slate-700 tabular-nums">{{ amount || '—' }}</dd>
+          </div>
+        }
         <div class="col-span-2">
           <dt class="text-xs text-slate-400 flex items-center justify-between">
             <span>Score</span>

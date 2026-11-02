@@ -206,14 +206,16 @@
             </div>
 
             @if (showAll()) {
-              <div class="rounded-xl p-2.5">
-                <dt class="text-sm text-slate-500">Montant souhaité</dt>
-                @if (amount(); as a) {
-                  <dd class="mt-0.5 font-semibold tabular-nums text-primary">{{ a }}</dd>
-                } @else {
-                  <dd class="mt-0.5 font-semibold text-amber-700">À demander</dd>
-                }
-              </div>
+              @if (showAmount()) {
+                <div class="rounded-xl p-2.5">
+                  <dt class="text-sm text-slate-500">Montant souhaité</dt>
+                  @if (amount(); as a) {
+                    <dd class="mt-0.5 font-semibold tabular-nums text-primary">{{ a }}</dd>
+                  } @else {
+                    <dd class="mt-0.5 font-semibold text-amber-700">À demander</dd>
+                  }
+                </div>
+              }
               <div class="rounded-xl p-2.5">
                 <dt class="text-sm text-slate-500">E-mail</dt>
                 <dd class="mt-0.5 flex items-center gap-2">

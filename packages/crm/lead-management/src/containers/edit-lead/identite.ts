@@ -87,6 +87,8 @@ class LeadIdentityFormModel {
   public identity!: PersonIdentityModel;
   public neighbourhood!: string;
   public landmark!: string;
+  public profession!: string;
+  public maritalStatus!: string;
 
   public static fromLead(lead: LeadDto | null | undefined): LeadIdentityFormModel {
     const m = new LeadIdentityFormModel();
@@ -104,6 +106,8 @@ class LeadIdentityFormModel {
     });
     m.neighbourhood = address?.neighbourhood ?? '';
     m.landmark = address?.landmark ?? '';
+    m.profession = lead?.profession ?? '';
+    m.maritalStatus = lead?.maritalStatus ?? '';
     return m;
   }
 }
@@ -186,6 +190,7 @@ export class LeadIdentite {
     maxLength(schema.landmark, 200, { message: 'Le point de repère ne peut pas dépasser 200 caractères' });
     maxLength(schema.identity.addressLine, 300, { message: "L'adresse ne peut pas dépasser 300 caractères" });
     maxLength(schema.identity.postalCode, 20, { message: 'La boîte postale ne peut pas dépasser 20 caractères' });
+    maxLength(schema.profession, 150, { message: 'La profession ne peut pas dépasser 150 caractères' });
   });
 
   public attachModel = signal(AttachSourceFormModel.instantiate());
@@ -233,6 +238,15 @@ export class LeadIdentite {
     const label = this.countries().find((c) => c.value === guess.country)?.label;
     return label ? { ...guess, label } : null;
   });
+
+  /** Les mêmes valeurs que la fiche client, vers laquelle la conversion les reporte. */
+  public readonly maritalStatusOptions = [
+    { value: 'Single', label: 'Célibataire' },
+    { value: 'Married', label: 'Marié(e)' },
+    { value: 'Divorced', label: 'Divorcé(e)' },
+    { value: 'Widowed', label: 'Veuf / veuve' },
+    { value: 'FreeUnion', label: 'Union libre' },
+  ];
 
   public readonly genderChoices = [
     { value: 'Male', label: 'Homme' },
@@ -413,6 +427,8 @@ export class LeadIdentite {
         countryCode: identity.countryCode ?? '',
         neighbourhood: value.neighbourhood.trim(),
         landmark: value.landmark.trim(),
+        profession: value.profession.trim(),
+        maritalStatus: value.maritalStatus,
         nameVerified,
         expectedUpdatedAt: lead.updatedAt ?? null,
       };

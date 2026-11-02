@@ -37,6 +37,7 @@ import {
   completenessGapSection,
   CustomFieldsCard,
   EntityFormReferences,
+  HiddenFormFieldsStore,
   PERMISSIONS,
   PermissionsService,
   WireValue,
@@ -165,6 +166,7 @@ export class LeadInformationsPage {
   private readonly _permissions = inject(PermissionsService);
   private readonly _leadEditContext = inject(LeadEditContext);
   private readonly _productNames = inject(ProductNamesStore).ensureLoaded();
+  private readonly _formFields = inject(HiddenFormFieldsStore).ensureLoaded('Lead');
   private readonly _leadsApiService = inject(LeadsApiService);
   private readonly _snackbar = inject(SnackbarService);
   private readonly _auth = inject(AuthenticationService);
@@ -218,6 +220,8 @@ export class LeadInformationsPage {
   public readonly prospectTypeLabel = prospectTypeLabel;
   public readonly genderLabel = genderLabel;
   public readonly formatDay = formatDay;
+  /** Masqué par défaut dans le paramétrage des formulaires : le montant se saisit sur le projet. */
+  public readonly showAmount = computed(() => this._formFields.isVisible('Lead', 'desiredAmount'));
   public readonly amount = computed(() => {
     const a = this.lead()?.desiredAmount;
     return a?.amount ? formatAmount(a.amount, a.currency) : null;

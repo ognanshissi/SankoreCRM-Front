@@ -121,6 +121,30 @@
         </div>
       </tas-card>
 
+      <!-- Situation -->
+      <tas-card class="block">
+        <div class="p-5">
+          <p class="font-semibold text-slate-800">Situation</p>
+          <p class="text-sm text-slate-500 mt-0.5">Reprises sur la fiche client à la conversion.</p>
+
+          <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <tas-form-field>
+              <tas-label>Profession</tas-label>
+              <input tasInput id="identite-profession" type="text" autocomplete="off" placeholder="Ex. Commerçante"
+                     [formField]="formSchema.profession" />
+              @if (formSchema.profession().touched() && formSchema.profession().invalid()) {
+                <tas-error>{{ formSchema.profession().errors()[0].message }}</tas-error>
+              }
+            </tas-form-field>
+            <tas-form-field>
+              <tas-label>Situation matrimoniale</tas-label>
+              <tas-select id="identite-maritalStatus" [options]="maritalStatusOptions" placeholder="Choisir"
+                          [formField]="formSchema.maritalStatus"></tas-select>
+            </tas-form-field>
+          </div>
+        </div>
+      </tas-card>
+
       <!-- Où il habite -->
       <tas-card class="block">
         <div class="p-5">

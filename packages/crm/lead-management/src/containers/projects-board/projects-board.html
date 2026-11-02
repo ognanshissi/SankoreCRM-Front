@@ -1,6 +1,6 @@
 <div class="flex flex-col gap-4 pb-6">
   <div class="flex flex-wrap items-center justify-between gap-3">
-    <p class="text-sm text-slate-500">Les projets ouverts, par parcours. Glissez une carte pour la faire avancer.</p>
+    <p class="text-sm text-slate-500">Les projets, ouverts ou clos. Cliquez sur une ligne pour ouvrir le projet.</p>
     @if (canManage()) {
       <button tas-raised-button color="primary" type="button" (click)="openNew()">
         <tas-icon iconName="feather:plus" style="font-size:14px"></tas-icon>
@@ -11,13 +11,17 @@
 
   <!-- Filtres -->
   <div class="grid grid-cols-1 gap-3 rounded-xl border border-slate-200 bg-white p-4 md:grid-cols-4">
-    <tas-form-field class="md:col-span-2">
+    <tas-form-field>
       <tas-label>Rechercher</tas-label>
       <input tasInput type="text" placeholder="Nom, prénom, téléphone, e-mail, titre ou produit" [ngModel]="search()" (ngModelChange)="onSearch($event)" />
     </tas-form-field>
     <tas-form-field>
       <tas-label>Parcours</tas-label>
       <tas-select [options]="trackOptions()" [ngModel]="track()" (ngModelChange)="onTrack($event)"></tas-select>
+    </tas-form-field>
+    <tas-form-field>
+      <tas-label>Statut</tas-label>
+      <tas-select [options]="statusOptions" [ngModel]="status()" (ngModelChange)="onStatus($event)"></tas-select>
     </tas-form-field>
     <div class="flex items-end justify-between gap-3">
       <div>
@@ -41,96 +45,83 @@
     }
   </div>
 
-  @if (!isByTemplate()) {
-    <p class="text-xs text-slate-500">
-      Tous parcours confondus, les colonnes sont les cinq phases. Choisissez un parcours pour voir ses étapes et y déplacer les projets.
-    </p>
-  }
-
   @if (loadError()) {
     <div role="alert" class="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3">
       <p class="text-sm text-red-800">{{ loadError() }}</p>
       <button tas-outlined-button color="primary" type="button" (click)="load()">Réessayer</button>
     </div>
-  } @else if (isLoading() && projects().length === 0) {
-    <div class="flex justify-center py-16"><tas-spinner size="8" class="text-primary"></tas-spinner></div>
   } @else {
-    <div class="flex items-start gap-4 overflow-x-auto pb-4" cdkDropListGroup>
-      @for (col of columns(); track col.id) {
-        <div class="flex w-[248px] flex-shrink-0 flex-col rounded-xl border border-slate-200/70 bg-white/50 p-3">
-          <div class="flex items-center gap-2">
-            <span class="truncate text-sm font-semibold text-slate-800">{{ col.label }}</span>
-            <span class="ml-auto rounded-full bg-slate-200/70 px-2.5 py-0.5 text-xs font-semibold text-slate-700 tabular-nums">{{ col.projects.length }}</span>
-          </div>
-          <p class="mt-1 border-b border-slate-200 pb-2 text-xs text-slate-500">
-            {{ col.hint }}@if (col.amount) { @if (col.hint) { · }<span class="tabular-nums">{{ formatAmount(col.amount, currency()) }}</span> }
-          </p>
+    <tas-table [data]="rows()" [config]="tableConfig()" [hasCaption]="false" [isLoading]="isLoading()">
+      <ng-template #header>
+        <tr>
+          <th>Projet</th>
+          <th>Produit</th>
+          <th>Parcours</th>
+          <th>Étape</th>
+          <th class="text-right">Montant</th>
+          <th class="text-right">Probabilité</th>
+          <th>Clôture</th>
+          <th>Prochaine étape</th>
+          <th class="w-10"><span class="sr-only">Ouvrir la fiche du lead ou du client</span></th>
+        </tr>
+      </ng-template>
 
-          <div
-            cdkDropList
-            [cdkDropListData]="col"
-            [cdkDropListConnectedTo]="columnIds()"
-            [cdkDropListDisabled]="!canDrag()"
-            [id]="'col-' + col.id"
-            (cdkDropListDropped)="onDrop($any($event))"
-            class="flex min-h-[80px] flex-col gap-3 pt-3"
-          >
-            @for (p of col.projects; track p.id) {
-              <div
-                cdkDrag
-                [cdkDragData]="p"
-                class="rounded-lg border border-slate-200 bg-white p-3 shadow-sm transition-shadow hover:shadow"
-                [class.cursor-grab]="canDrag()"
-                [class.opacity-60]="movingId() === p.id"
-              >
-                <div class="flex items-start gap-2">
-                  <!-- `mousedown` arrêté : sans ça, la CDK prend le clic sur le lien pour le début d'un glisser. -->
-                  <a [routerLink]="['/leads/projets', p.id]" class="min-w-0 flex-1 text-sm font-semibold text-slate-800 hover:text-primary hover:underline"
-                     (mousedown)="$event.stopPropagation()">{{ p.title }}</a>
-                  @if (ownerLink(p); as link) {
-                    <a
-                      [routerLink]="link"
-                      class="inline-flex size-6 shrink-0 items-center justify-center rounded text-slate-300 hover:bg-slate-100 hover:text-primary"
-                      title="Ouvrir la fiche du lead ou du client"
-                      aria-label="Ouvrir la fiche du lead ou du client"
-                      (mousedown)="$event.stopPropagation()"
-                    >
-                      <tas-icon iconName="feather:external-link" style="font-size:12px"></tas-icon>
-                    </a>
-                  }
-                </div>
-                @if (p.contact; as c) {
-                  <p class="mt-1 truncate text-xs text-slate-600" [title]="c.email ?? ''">
-                    <tas-icon iconName="feather:user" class="text-slate-400" style="font-size:11px"></tas-icon>
-                    {{ c.name }}@if (c.phoneNumber) { · <span class="tabular-nums">{{ c.phoneNumber }}</span> }@if (c.clientNumber) { · {{ c.clientNumber }} }
-                  </p>
-                }
-                @if (p.product) {
-                  <span class="mt-2 inline-flex rounded-md bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700">{{ p.product }}</span>
-                } @else {
-                  <span class="mt-2 inline-flex rounded-md bg-red-50 px-2 py-0.5 text-xs font-medium text-red-700">Produit à préciser</span>
-                }
-                @if (!isByTemplate()) {
-                  <p class="mt-1 truncate text-xs text-slate-500">{{ p.templateName }}</p>
-                }
-                <div class="mt-2 flex items-center justify-between gap-2 text-xs">
-                  <span class="font-semibold text-slate-800 tabular-nums">
-                    {{ p.estimatedAmount?.amount ? formatAmount(p.estimatedAmount!.amount, p.estimatedAmount!.currency) : 'Montant à préciser' }}
-                  </span>
-                  @if (tracksForecast(p)) {
-                    <span class="text-slate-500 tabular-nums">{{ probabilityPercent(p) }} %</span>
-                  }
-                </div>
-                @if (p.nextStep) {
-                  <p class="mt-1 truncate text-xs text-slate-500" [title]="p.nextStep">→ {{ p.nextStep }}</p>
-                }
-              </div>
-            } @empty {
-              <p class="py-4 text-center text-xs text-slate-400">Aucun projet</p>
+      <ng-template #body let-item>
+        <tr class="cursor-pointer transition-colors hover:bg-slate-50" (click)="openProject(item)">
+          <td class="py-3 max-w-[18rem]">
+            <a [routerLink]="['/leads/projets', item.id]" class="block truncate font-medium text-slate-800 hover:text-primary hover:underline"
+               (click)="$event.stopPropagation()">{{ item.title }}</a>
+            @if (item.contact; as c) {
+              <p class="mt-0.5 truncate text-xs text-slate-500" [title]="c.email ?? ''">
+                {{ c.name }}@if (c.phoneNumber) { · <span class="tabular-nums">{{ c.phoneNumber }}</span> }@if (c.clientNumber) { · {{ c.clientNumber }} }
+              </p>
             }
-          </div>
-        </div>
-      }
-    </div>
+          </td>
+          <td>
+            @if (item.product) {
+              <span class="inline-flex max-w-[12rem] truncate rounded-md bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700" [title]="item.product">{{ item.product }}</span>
+            } @else {
+              <span class="inline-flex rounded-md bg-red-50 px-2 py-0.5 text-xs font-medium text-red-700">Produit à préciser</span>
+            }
+          </td>
+          <td class="max-w-[12rem] truncate text-sm text-slate-600">{{ item.templateName ?? 'Parcours standard' }}</td>
+          <td>
+            @if (item.stage === 'ClosedWon') {
+              <tas-tag severity="success">Gagné</tas-tag>
+            } @else if (item.stage === 'ClosedLost') {
+              <tas-tag severity="error">Perdu</tas-tag>
+            } @else {
+              <span class="text-sm text-slate-700">{{ stepLabel(item) }}</span>
+            }
+          </td>
+          <td class="text-right text-sm font-semibold text-slate-800 tabular-nums">
+            {{ item.estimatedAmount?.amount ? formatAmount(item.estimatedAmount.amount, item.estimatedAmount.currency) : '—' }}
+          </td>
+          <td class="text-right text-sm text-slate-600 tabular-nums">
+            {{ tracksForecast(item) && !isClosed(item) ? probabilityPercent(item) + ' %' : '—' }}
+          </td>
+          <td class="text-sm text-slate-600">
+            @if (isClosed(item)) {
+              {{ item.closedAt ? formatDay(item.closedAt, true) : '—' }}
+            } @else if (tracksForecast(item) && item.expectedCloseDate) {
+              {{ formatDay(item.expectedCloseDate, true) }}
+            } @else {
+              —
+            }
+          </td>
+          <td class="max-w-[14rem] truncate text-xs text-slate-500" [title]="item.nextStep ?? ''">{{ item.nextStep ?? '—' }}</td>
+          <td class="w-10 text-right">
+            @if (ownerLink(item); as link) {
+              <a [routerLink]="link"
+                 class="inline-flex size-8 items-center justify-center rounded-md text-slate-400 hover:bg-slate-100 hover:text-primary"
+                 title="Ouvrir la fiche du lead ou du client" aria-label="Ouvrir la fiche du lead ou du client"
+                 (click)="$event.stopPropagation()">
+                <tas-icon iconName="feather:external-link" style="font-size:14px"></tas-icon>
+              </a>
+            }
+          </td>
+        </tr>
+      </ng-template>
+    </tas-table>
   }
 </div>

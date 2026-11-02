@@ -26,5 +26,8 @@ export interface MergeFieldPreferences {
     takeCompanyPhone?: boolean;
     takeWebsite?: boolean;
     takeLocation?: boolean;
+    takeProfession?: boolean;
+    takeMaritalStatus?: boolean;
+    takeAddress?: boolean;
 }
 

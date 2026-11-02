@@ -73,5 +73,7 @@ export interface LeadDto {
     nextStep?: LeadNextStepDto;
     sla?: LeadSlaDto;
     customerId?: string | null;
+    profession?: string | null;
+    maritalStatus?: string | null;
 }
 
