@@ -84,10 +84,11 @@ COPY --from=build /workspace/dist/apps/crm ./
 USER node
 EXPOSE 4000
 
-# La sonde tape un fichier statique et non `/` : express.static est monté avant le handler
-# Angular, donc la réponse ne dépend pas de NG_ALLOWED_HOSTS et ne déclenche pas un rendu SSR
-# complet à chaque intervalle.
+# La sonde tape `/healthz` (server.ts), déclarée avant le handler Angular : la réponse ne dépend
+# pas de NG_ALLOWED_HOSTS et ne déclenche pas un rendu SSR à chaque intervalle. Elle visait
+# `/favicon.ico` ; supprimer ce fichier (2026-10-22) l'a fait tomber dans le handler Angular, qui
+# refuse l'hôte 127.0.0.1 (400) — conteneur « unhealthy », écarté par Traefik, 502 en production.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
-  CMD node -e "require('http').get({host:'127.0.0.1',port:process.env.PORT||4000,path:'/favicon.ico'},r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"
+  CMD node -e "require('http').get({host:'127.0.0.1',port:process.env.PORT||4000,path:'/healthz'},r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"
 
 CMD ["node", "server/server.mjs"]

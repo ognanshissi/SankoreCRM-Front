@@ -60,6 +60,19 @@ app.get('/config.json', (_req, res) => {
 });
 
 /**
+ * Sonde de santé du conteneur (HEALTHCHECK du Dockerfile et de docker-compose.dokploy.yml).
+ *
+ * Elle visait `/favicon.ico`, servi en fichier statique ; ce fichier a été supprimé le 2026-10-22, la
+ * requête est alors tombée dans le handler Angular, qui refuse l'hôte `127.0.0.1` (absent de
+ * NG_ALLOWED_HOSTS) avec un 400 : conteneur « unhealthy », écarté par Traefik, 502 côté Cloudflare.
+ * Une route à elle, déclarée avant le handler Angular, ne dépend plus d'aucun fichier ni de l'hôte.
+ */
+app.get('/healthz', (_req, res) => {
+  res.set('Cache-Control', 'no-store');
+  res.type('text/plain').send('ok');
+});
+
+/**
  * Handle all other requests by rendering the Angular application.
  */
 app.use('/**', (req, res, next) => {

@@ -30,7 +30,7 @@ services:
         - CMD
         - node
         - -e
-        - "require('http').get({host:'127.0.0.1',port:process.env.PORT||4000,path:'/favicon.ico'},r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"
+        - "require('http').get({host:'127.0.0.1',port:process.env.PORT||4000,path:'/healthz'},r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"
       interval: 30s
       timeout: 5s
       start_period: 20s
