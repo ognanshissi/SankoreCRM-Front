@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, ViewEncapsulation } from '@angular/core';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { TasIcon } from '@talisoft/ui/icon';
 import { PermissionCode, PermissionsService } from '@sankore/crm/common';
@@ -27,9 +27,19 @@ const TABS: ReadonlyArray<SuiviTab> = [
   selector: 'lead-suivi',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [RouterLink, RouterLinkActive, RouterOutlet, TasIcon],
+  // Les onglets et leur contenu forment UN cadre (propriétaire, 2026-11-02) : les cartes de chaque
+  // onglet y perdent ombre et arrondi et ne sont plus que des sections séparées d'un filet.
+  styles: `
+    .suivi-body tas-card {
+      box-shadow: none;
+      border-radius: 0;
+      border-top: 1px solid var(--color-slate-100, #f1f5f9);
+    }
+  `,
+  encapsulation: ViewEncapsulation.None,
   template: `
-    <div class="flex flex-col gap-4">
-      <div class="rounded-2xl bg-white border border-slate-100 shadow-sm px-2" role="tablist" aria-label="Suivi du lead">
+    <div class="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm">
+      <div class="px-2" role="tablist" aria-label="Suivi du lead">
         <div class="flex flex-wrap items-center gap-1">
           @for (tab of tabs(); track tab.route) {
             <a role="tab"
@@ -50,7 +60,9 @@ const TABS: ReadonlyArray<SuiviTab> = [
           }
         </div>
       </div>
-      <router-outlet></router-outlet>
+      <div class="suivi-body">
+        <router-outlet></router-outlet>
+      </div>
     </div>
   `,
 })

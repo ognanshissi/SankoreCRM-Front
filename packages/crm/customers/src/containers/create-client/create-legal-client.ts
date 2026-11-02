@@ -218,6 +218,10 @@ export class CreateLegalClient {
   private readonly _destroyRef = inject(DestroyRef);
   private readonly _permissions = inject(PermissionsService);
 
+  /** Un agent ne choisit pas le conseiller, pas même lui-même : le serveur le refuserait. */
+  private readonly _canAssignAdvisor = this._permissions.can('customers:advisor:assign');
+  private readonly _notAsked = computed(() => (this._canAssignAdvisor() ? NOT_ASKED : [...NOT_ASKED, 'advisorUserId']));
+
   /**
    * Déclarer les bénéficiaires effectifs relève de `customers:update_sensitive`,
    * pas de `customers:create` : sans ce droit, la création aboutit et l'étape
@@ -244,7 +248,7 @@ export class CreateLegalClient {
   /** Les étapes de la mise en page « Client » pour une personne morale, puis celles de l'assistant. */
   private readonly _layoutSteps = computed<FormStep[]>(() => {
     const form = this.form();
-    return form ? formSteps(form, 'quick', CONTEXT, NOT_ASKED) : [];
+    return form ? formSteps(form, 'quick', CONTEXT, this._notAsked()) : [];
   });
 
   public readonly steps = computed<{ key: string; label: string }[]>(() => [
@@ -275,7 +279,7 @@ export class CreateLegalClient {
   public readonly showRenderer = computed(() => !!this.currentLayoutStep() || this.currentStep() === 'summary');
   public readonly excluded = computed(() => {
     const all = (this.form()?.fields ?? []).map((f) => f.key ?? '');
-    if (this.currentStep() === 'summary') return NOT_ASKED;
+    if (this.currentStep() === 'summary') return this._notAsked();
     const step = this.currentLayoutStep();
     if (!step) return all;
     const keep = new Set(step.fieldKeys);

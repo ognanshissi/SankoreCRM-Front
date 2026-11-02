@@ -56,8 +56,9 @@ interface SubjectCandidate {
   detail: string;
 }
 
+// Pas de « Rien » : aucun type choisi veut dire aucune entité, et un second clic sur le type
+// choisi l'annule (propriétaire, 2026-11-02).
 const SUBJECT_OPTIONS: { label: string; value: TaskSubjectType }[] = [
-  { label: 'Rien', value: 'none' },
   { label: 'Un lead', value: 'lead' },
   { label: 'Un client', value: 'client' },
   { label: 'Un dossier KYC', value: 'kyc' },
@@ -143,13 +144,19 @@ export class NewTaskDrawer {
   /** Les leads d'une sélection : une tâche par lead à l'enregistrement. */
   private readonly _bulkLeads = (this._data?.leads?.length ?? 0) > 1 ? this._data!.leads! : null;
 
-  public readonly subjectOptions =
-    this._subject?.type === 'project' ? [...SUBJECT_OPTIONS, { label: 'Un projet', value: 'project' as const }] : SUBJECT_OPTIONS;
+  /** Le sujet donné par la fiche d'origine, tant qu'on ne l'a pas retiré. */
+  public readonly subjectLocked = signal(!!this._subject);
+  /** Une sélection de leads ne se retire pas : c'est elle qui fait créer une tâche par lead. */
+  public readonly canRemoveSubject = !this._bulkLeads;
+  public readonly subjectOptions = computed(() =>
+    this.subjectLocked() && this._subject?.type === 'project'
+      ? [...SUBJECT_OPTIONS, { label: 'Un projet', value: 'project' as const }]
+      : SUBJECT_OPTIONS,
+  );
   public readonly priorityOptions = PRIORITY_OPTIONS;
   /** Les types actifs du paramétrage du tenant, dans son ordre d'affichage. */
   public readonly typeOptions = this._taskTypes.options;
   public readonly minDate = dayKey(Date.now());
-  public readonly subjectLocked = !!this._subject;
   public readonly submitLabel = this._bulkLeads ? `Créer ${this._bulkLeads.length} tâches` : 'Créer la tâche';
 
   public model = signal(NewTaskFormModel.instantiate(this._me, this._subject, this._data?.holderId));
@@ -275,8 +282,8 @@ export class NewTaskDrawer {
   }
 
   public setSubjectType(type: TaskSubjectType): void {
-    if (this.subjectLocked || this.subjectType() === type) return;
-    this.formSchema.subjectType().value.set(type);
+    if (this.subjectLocked()) return;
+    this.formSchema.subjectType().value.set(this.subjectType() === type ? 'none' : type);
     this.clearSubject();
     this.searchTerm.set('');
     this.results.set([]);
@@ -297,6 +304,13 @@ export class NewTaskDrawer {
   public clearSubject(): void {
     this.formSchema.subjectId().value.set('');
     this.formSchema.subjectLabel().value.set('');
+  }
+
+  /** Annule le choix : la tâche ne concerne plus aucune entité, et le sélecteur redevient libre. */
+  public removeSubject(): void {
+    this.subjectLocked.set(false);
+    this.clearSubject();
+    this.formSchema.subjectType().value.set('none');
   }
 
   public addCriterion(): void {

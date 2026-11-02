@@ -171,6 +171,8 @@ export const PERMISSIONS = {
   CUSTOMERS_READ_ALL: 'customers:read:all',
   CUSTOMERS_CREATE: 'customers:create',
   CUSTOMERS_UPDATE: 'customers:update',
+  // Choisir le conseiller d'un client, à la création comme ensuite — pas un agent (2026-11-02).
+  CUSTOMERS_ADVISOR_ASSIGN: 'customers:advisor:assign',
   CUSTOMERS_UPDATE_SENSITIVE: 'customers:update_sensitive',
   CUSTOMERS_REVEAL_SENSITIVE: 'customers:reveal_sensitive',
   CUSTOMERS_MERGE: 'customers:merge',

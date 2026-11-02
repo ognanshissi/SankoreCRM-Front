@@ -4,10 +4,12 @@
   </div>
 } @else if (lead(); as l) {
   <div class="pb-6 flex flex-col gap-4">
-    <converted-lead-notice></converted-lead-notice>
+    <!-- Vides la plupart du temps : masqués, ils ne comptent pas d'espacement dans la colonne. -->
+    <converted-lead-notice class="empty:hidden"></converted-lead-notice>
 
     <!-- Bandeau « Client existant » (BNF-F-19) : rien quand l'API ne renvoie aucune correspondance. -->
     <customer-match-banner
+      class="empty:hidden"
       [matches]="customerMatches()"
       [isLoading]="isLoadingMatches()"
       [loadFailed]="matchesFailed()"

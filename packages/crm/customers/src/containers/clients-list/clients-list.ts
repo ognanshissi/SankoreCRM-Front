@@ -194,7 +194,7 @@ export class ClientsListPage implements OnInit {
   /** Groupes solidaires, tontines et AVEC : module « Banking - Microfinance ». */
   public readonly hasGroups = computed(() => this._tenantModules.canRead(TENANT_MODULES.BANKING_MICROFINANCE));
   public readonly canMerge = this._permissions.can('customers:merge');
-  public readonly canAssign = this._permissions.can('customers:update');
+  public readonly canAssign = this._permissions.can('customers:advisor:assign');
   public readonly canReveal = this._permissions.can('customers:reveal_sensitive');
 
   public isLoading = signal(true);

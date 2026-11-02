@@ -64,6 +64,8 @@ const STATUS: Record<string, { label: string; severity: Severity }> = {
   NotReviewed: { label: 'Non revu', severity: 'neutral' },
   Accepted: { label: 'Accepté', severity: 'success' },
   Refused: { label: 'Refusé', severity: 'error' },
+  // Une reprise plus récente de la même pièce existe : celle-ci ne sera jamais revue.
+  Superseded: { label: 'Remplacé', severity: 'neutral' },
   // Pièce de sinistre : l'antivirus
   Clean: { label: 'Contrôlé', severity: 'success' },
   Infected: { label: 'Bloqué (antivirus)', severity: 'error' },

@@ -45,8 +45,8 @@ export interface LifecycleActionDrawerData {
 
 /**
  * Permission exigée par le serveur, action par action. Le swagger la déclare endpoint par
- * endpoint et la répartition ne se devine pas : `customers:update` ne couvre que
- * l'affectation d'un conseiller, la suspension / réactivation / transfert relèvent de
+ * endpoint et la répartition ne se devine pas : l'affectation d'un conseiller relève de
+ * `customers:advisor:assign` (pas des agents, 2026-11-02), la suspension / réactivation / transfert relèvent de
  * `customers:update_sensitive`, et l'archivage de `customers:archive` (comme
  * l'anonymisation, qui n'est pas exposée par ce menu). Un seul droit global rendrait le menu
  * menteur : il proposerait des actions que le serveur refuserait en 403.
@@ -55,7 +55,7 @@ export const LIFECYCLE_ACTION_PERMISSIONS: Record<LifecycleActionKind, Permissio
   suspend: 'customers:update_sensitive',
   reactivate: 'customers:update_sensitive',
   archive: 'customers:archive',
-  assignAdvisor: 'customers:update',
+  assignAdvisor: 'customers:advisor:assign',
   transfer: 'customers:update_sensitive',
 };
 

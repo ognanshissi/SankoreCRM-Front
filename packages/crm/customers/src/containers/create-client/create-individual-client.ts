@@ -37,6 +37,7 @@ import {
   formErrorDetail,
   formSteps,
   FormStep,
+  PermissionsService,
   WireValues,
 } from '@sankore/crm/common';
 import { DuplicateCandidateView, DuplicateCheckBanner } from './duplicate-check-banner';
@@ -108,6 +109,11 @@ export class CreateIndividualClient {
   private readonly _confirmDialogService = inject(ConfirmDialogService);
   private readonly _router = inject(Router);
   private readonly _destroyRef = inject(DestroyRef);
+  private readonly _permissions = inject(PermissionsService);
+
+  /** Un agent ne choisit pas le conseiller, pas même lui-même : le serveur le refuserait. */
+  private readonly _canAssignAdvisor = this._permissions.can('customers:advisor:assign');
+  private readonly _notAsked = computed(() => (this._canAssignAdvisor() ? NOT_ASKED : [...NOT_ASKED, 'advisorUserId']));
 
   private readonly _renderer = viewChild(EntityFormRenderer);
 
@@ -120,7 +126,7 @@ export class CreateIndividualClient {
   public readonly steps = computed<FormStep[]>(() => {
     const form = this.form();
     if (!form) return [];
-    return [...formSteps(form, 'quick', CONTEXT, NOT_ASKED), { key: SUMMARY_KEY, label: 'Récapitulatif', fieldKeys: [] }];
+    return [...formSteps(form, 'quick', CONTEXT, this._notAsked()), { key: SUMMARY_KEY, label: 'Récapitulatif', fieldKeys: [] }];
   });
 
   public stepIndex = signal(0);
@@ -133,7 +139,7 @@ export class CreateIndividualClient {
   /** À chaque étape, tout ce qui n'en est pas ; au récapitulatif, rien — tout est revérifié. */
   public readonly excluded = computed(() => {
     const step = this.currentStep();
-    if (!step || this.isSummary()) return NOT_ASKED;
+    if (!step || this.isSummary()) return this._notAsked();
     const keep = new Set(step.fieldKeys);
     return (this.form()?.fields ?? []).map((f) => f.key ?? '').filter((k) => !keep.has(k));
   });
