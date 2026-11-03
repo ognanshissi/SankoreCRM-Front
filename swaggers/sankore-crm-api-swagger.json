@@ -15504,6 +15504,14 @@
                 "format": "uuid"
               }
             }
+          },
+          {
+            "name": "agentId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
           }
         ],
         "responses": {

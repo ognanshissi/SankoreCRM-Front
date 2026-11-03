@@ -1,55 +1,139 @@
-<!-- En-tête -->
-<div class="flex flex-wrap items-start justify-between gap-4 mb-4">
+<!-- En-tête : titre et recherche (maquette du 2026-11-03) -->
+<div class="flex flex-wrap items-center justify-between gap-4 mb-4">
   <div>
-    <h1 class="text-lg font-semibold text-slate-800">{{ viewMode() === 'kanban' ? 'Pipeline des leads' : 'Leads' }}</h1>
-    <p class="text-sm text-slate-500 mt-0.5">
-      @if (viewMode() === 'kanban') {
+    <h1 class="text-2xl font-semibold text-slate-800">{{ viewMode() === 'kanban' ? 'Pipeline des leads' : 'Leads' }}</h1>
+    @if (viewMode() === 'kanban') {
+      <p class="text-sm text-slate-500 mt-0.5">
         <span class="tabular-nums">{{ activeLeadCount() }}</span> lead{{ activeLeadCount() > 1 ? 's' : '' }} actif{{ activeLeadCount() > 1 ? 's' : '' }}
         @if (agencyLabel()) { · {{ agencyLabel() }} }
         · <span class="tabular-nums">{{ slaRiskCount() }}</span> SLA en risque
-      } @else {
-        <span class="tabular-nums">{{ tableConfig().pagination.totalElements ?? 0 }}</span> leads
-      }
-    </p>
+      </p>
+    }
   </div>
+  <div class="relative w-full sm:w-80">
+    <tas-icon iconName="feather:search" class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" style="font-size:14px"></tas-icon>
+    <input
+      type="search"
+      class="w-full h-10 pl-10! pr-3 rounded-lg border border-slate-200 bg-white text-sm placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-primary"
+      placeholder="Nom, téléphone…"
+      [ngModel]="searchQuery()"
+      (ngModelChange)="onSearchChange($event)"
+    />
+  </div>
+</div>
 
-  <div class="flex flex-wrap items-center gap-2">
-    <div class="relative">
-      <tas-icon iconName="feather:search" class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" style="font-size:14px"></tas-icon>
-      <input
-        type="search"
-        class="w-56 h-10 pl-9 pr-3 rounded-lg border border-slate-200 bg-white text-sm placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-primary"
-        placeholder="Rechercher un lead"
-        [ngModel]="searchQuery()"
-        (ngModelChange)="onSearchChange($event)"
-      />
-    </div>
-    <button tas-outlined-button type="button" (click)="showFilters.set(!showFilters())">
-      Filtrer
-      @if (hasActiveSecondaryFilters()) { <span class="w-1.5 h-1.5 rounded-full bg-primary"></span> }
+<!-- Vues et actions -->
+<div class="flex flex-wrap items-end justify-between gap-3 border-b border-slate-200 mb-4">
+  <nav class="flex flex-wrap items-end gap-1 -mb-px" aria-label="Vues de la liste">
+    @for (view of primaryViews; track view.key) {
+      <button type="button"
+        class="flex items-center gap-2 px-3.5 py-2 rounded-t-lg border text-sm font-medium transition-colors"
+        [class]="activeView()?.key === view.key
+          ? 'bg-white border-slate-200 border-b-white text-slate-800'
+          : 'border-transparent text-slate-500 hover:text-slate-800'"
+        [attr.aria-current]="activeView()?.key === view.key ? 'page' : null"
+        (click)="selectView(view)">
+        {{ view.label }}
+        @if (activeView()?.key === view.key && viewMode() === 'list') {
+          <span class="px-1.5 rounded-full bg-primary text-white text-[11px] font-semibold tabular-nums">{{ tableConfig().pagination.totalElements ?? 0 }}</span>
+        }
+      </button>
+    }
+    <button type="button"
+      class="flex items-center gap-1.5 px-3.5 py-2 rounded-t-lg border text-sm font-medium transition-colors"
+      [class]="activeMoreView() ? 'bg-white border-slate-200 border-b-white text-slate-800' : 'border-transparent text-slate-500 hover:text-slate-800'"
+      TasMenuTrigger [panel]="viewsMenu">
+      @if (activeMoreView(); as view) {
+        {{ view.label }}
+        @if (viewMode() === 'list') {
+          <span class="px-1.5 rounded-full bg-primary text-white text-[11px] font-semibold tabular-nums">{{ tableConfig().pagination.totalElements ?? 0 }}</span>
+        }
+        <tas-icon iconName="feather:chevron-down" style="font-size:12px"></tas-icon>
+      } @else {
+        <tas-icon iconName="feather:plus" style="font-size:13px"></tas-icon>
+        {{ moreViews.length }} autres vues
+      }
     </button>
-    <button tas-outlined-button type="button" TasMenuTrigger [panel]="moreMenu" title="Autres actions">
-      <tas-icon iconName="feather:more-horizontal" style="font-size:14px"></tas-icon>
-    </button>
-    <ng-template #moreMenu>
+    <ng-template #viewsMenu>
       <tas-menu>
-        <tas-menu-item>
-          <button type="button" class="w-full flex items-center gap-2" (click)="setViewMode(viewMode() === 'kanban' ? 'list' : 'kanban')">
-            <tas-icon [iconName]="viewMode() === 'kanban' ? 'feather:list' : 'feather:columns'" class="text-slate-400" style="font-size:13px"></tas-icon>
-            {{ viewMode() === 'kanban' ? 'Vue liste' : 'Vue pipeline' }}
-          </button>
-        </tas-menu-item>
-        @if (canImport()) {
+        @for (view of moreViews; track view.key) {
           <tas-menu-item>
-            <button type="button" class="w-full flex items-center gap-2" (click)="openImportDrawer()">
-              <tas-icon iconName="feather:upload" class="text-slate-400" style="font-size:13px"></tas-icon> Importer
+            <button type="button" class="w-full flex items-center justify-between gap-6 text-left" (click)="selectView(view)">
+              {{ view.label }}
+              @if (activeView()?.key === view.key) {
+                <tas-icon iconName="feather:check" class="text-primary" style="font-size:13px"></tas-icon>
+              }
             </button>
           </tas-menu-item>
         }
+        <tas-menu-item>
+          <button type="button" class="w-full flex items-center gap-2 border-t border-slate-100 pt-2 text-left"
+                  (click)="setViewMode(viewMode() === 'kanban' ? 'list' : 'kanban')">
+            <tas-icon [iconName]="viewMode() === 'kanban' ? 'feather:list' : 'feather:columns'" class="text-slate-400" style="font-size:13px"></tas-icon>
+            {{ viewMode() === 'kanban' ? 'Afficher en liste' : 'Afficher en pipeline' }}
+          </button>
+        </tas-menu-item>
+      </tas-menu>
+    </ng-template>
+  </nav>
+
+  <div class="flex flex-wrap items-center gap-2 pb-2">
+    @if (viewMode() === 'list') {
+      <!-- Les propriétés montrées sur chaque ligne ; le choix reste dans ce navigateur. -->
+      <div class="relative">
+        <button type="button"
+                class="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-slate-700 hover:bg-white"
+                [attr.aria-expanded]="showColumns()" (click)="showColumns.set(!showColumns())">
+          <tas-icon iconName="feather:sliders" style="font-size:14px"></tas-icon>
+          Colonnes
+        </button>
+        @if (showColumns()) {
+          <div class="fixed inset-0 z-30" (click)="showColumns.set(false)"></div>
+          <div style="width:15rem;max-width:none" class="absolute right-0 top-full z-40 mt-1 rounded-xl border border-slate-200 bg-white p-2 shadow-lg" role="dialog" aria-label="Colonnes affichées">
+            <p class="px-2 pb-1 pt-1 text-xs font-semibold uppercase tracking-wide text-slate-400">Colonnes affichées</p>
+            <label class="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-slate-400">
+              <input type="checkbox" class="form-checkbox accent-primary" checked disabled />
+              Nom
+            </label>
+            @for (column of columns; track column.key) {
+              <label class="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm text-slate-700 hover:bg-slate-50">
+                <input type="checkbox" class="form-checkbox accent-primary cursor-pointer"
+                       [checked]="isVisible(column.key)" (change)="toggleColumn(column.key)" />
+                {{ column.label }}
+              </label>
+            }
+            <div class="mt-1 border-t border-slate-100 pt-1">
+              <button type="button" class="w-full rounded-md px-2 py-1.5 text-left text-xs text-slate-500 hover:bg-slate-50" (click)="resetColumns()">
+                Revenir aux colonnes par défaut
+              </button>
+            </div>
+          </div>
+        }
+      </div>
+    }
+
+    @if (canImport()) {
+      <div class="inline-flex">
+        <button tas-outlined-button color="primary" type="button" class="rounded-r-none! bg-white hover:shadow-none!" (click)="openImportDrawer()">
+          <tas-icon iconName="feather:download" style="font-size:14px"></tas-icon>
+          &nbsp;Importer
+        </button>
+        <button tas-outlined-button color="primary" type="button" class="-ml-[1.5px] rounded-l-none! bg-white px-2.5! hover:shadow-none!"
+                TasMenuTrigger [panel]="moreMenu" aria-label="Autres actions">
+          <tas-icon iconName="feather:chevron-down" style="font-size:12px"></tas-icon>
+        </button>
+      </div>
+    } @else {
+      <button tas-outlined-button color="primary" type="button" class="bg-white" TasMenuTrigger [panel]="moreMenu" title="Autres actions">
+        <tas-icon iconName="feather:more-horizontal" style="font-size:14px"></tas-icon>
+      </button>
+    }
+    <ng-template #moreMenu>
+      <tas-menu>
         @if (canExport()) {
           <tas-menu-item>
             <button type="button" class="w-full flex items-center gap-2" [disabled]="isExporting()" (click)="exportLeads()">
-              <tas-icon iconName="feather:download" class="text-slate-400" style="font-size:13px"></tas-icon> Exporter
+              <tas-icon iconName="feather:upload" class="text-slate-400" style="font-size:13px"></tas-icon> Exporter
             </button>
           </tas-menu-item>
         }
@@ -67,54 +151,47 @@
         </tas-menu-item>
       </tas-menu>
     </ng-template>
+
     @if (canCreate()) {
-      <button tas-filled-button [color]="'primary'" (click)="openCreateDrawer()">
-        <tas-icon iconName="feather:plus"></tas-icon>
-        Nouveau lead
+      <button tas-raised-button color="primary" type="button" (click)="openCreateDrawer()">
+        <tas-icon iconName="feather:plus" style="font-size:14px"></tas-icon>
+        &nbsp;Ajouter un lead
       </button>
     }
   </div>
 </div>
 
-<!-- Puces de filtre -->
+<!-- Puces des filtres posés, et le tiroir des filtres -->
 <div class="flex flex-wrap items-center gap-2 mb-4">
-  <button type="button" class="px-3 py-1 rounded-full border border-slate-200 bg-white text-xs text-slate-700 hover:bg-slate-50"
-    TasMenuTrigger [panel]="productMenu">
-    Produit : {{ filterProduct() ? productValueLabel(filterProduct()) : 'tous' }}
-  </button>
-  <ng-template #productMenu>
-    <tas-menu>
-      <tas-menu-item><button type="button" class="w-full text-left" (click)="setProductFilter('')">Tous</button></tas-menu-item>
-      @for (product of productOptions(); track product) {
-        <tas-menu-item><button type="button" class="w-full text-left" (click)="setProductFilter(product)">{{ productValueLabel(product) }}</button></tas-menu-item>
-      }
-    </tas-menu>
-  </ng-template>
-
-  @if (canFilterByAgent()) {
-    <button type="button" class="px-3 py-1 rounded-full border border-slate-200 bg-white text-xs text-slate-700 hover:bg-slate-50"
-      TasMenuTrigger [panel]="agentMenu">
-      Agent : {{ filterAgentLabel() }}
-    </button>
-    <ng-template #agentMenu>
-      <tas-menu>
-        <tas-menu-item><button type="button" class="w-full text-left" (click)="setOwnerFilter('')">Tous</button></tas-menu-item>
-        @for (agent of agentOptions(); track agent.value) {
-          <tas-menu-item><button type="button" class="w-full text-left" (click)="setOwnerFilter(agent.value)">{{ agent.label }}</button></tas-menu-item>
-        }
-      </tas-menu>
-    </ng-template>
+  @for (chip of filterChips(); track chip.key) {
+    <span class="inline-flex items-center gap-1.5 rounded-full bg-primary/10 py-1 pl-3 pr-2 text-xs font-medium text-primary">
+      {{ chip.label }}
+      <button type="button" class="rounded-full p-0.5 hover:bg-primary/15" [attr.aria-label]="'Retirer le filtre ' + chip.label" (click)="removeChip(chip.key)">
+        <tas-icon iconName="feather:x" style="font-size:11px"></tas-icon>
+      </button>
+    </span>
   }
-
-  <button type="button" class="px-3 py-1 rounded-full text-xs font-medium transition-colors"
-    [class]="filterAwaitingDispatch() ? 'bg-amber-600 text-white' : 'bg-amber-50 text-amber-800 hover:bg-amber-100'"
-    [attr.aria-pressed]="filterAwaitingDispatch()"
-    title="Leads qu'aucun agent n'a pu prendre : ils partent seuls dès qu'un agent est disponible"
-    (click)="toggleAwaitingDispatch()">
-    En file d'attente
+  <button type="button"
+    class="inline-flex items-center gap-1.5 rounded-full border border-dashed border-slate-300 px-3 py-1 text-xs font-medium text-slate-600 hover:border-slate-400 hover:bg-white"
+    (click)="openFiltersDrawer()">
+    <tas-icon iconName="feather:filter" style="font-size:12px"></tas-icon>
+    Filtrer
   </button>
 
   @if (viewMode() === 'kanban') {
+    <!-- Filtres propres au pipeline : le produit se filtre sur les cartes chargées. -->
+    <button type="button" class="px-3 py-1 rounded-full border border-slate-200 bg-white text-xs text-slate-700 hover:bg-slate-50"
+      TasMenuTrigger [panel]="productMenu">
+      Produit : {{ filterProduct() ? productValueLabel(filterProduct()) : 'tous' }}
+    </button>
+    <ng-template #productMenu>
+      <tas-menu>
+        <tas-menu-item><button type="button" class="w-full text-left" (click)="setProductFilter('')">Tous</button></tas-menu-item>
+        @for (product of productOptions(); track product) {
+          <tas-menu-item><button type="button" class="w-full text-left" (click)="setProductFilter(product)">{{ productValueLabel(product) }}</button></tas-menu-item>
+        }
+      </tas-menu>
+    </ng-template>
     <button type="button" class="px-3 py-1 rounded-full text-xs font-medium transition-colors"
       [class]="filterSlaRisk() ? 'bg-red-600 text-white' : 'bg-red-50 text-red-700 hover:bg-red-100'"
       (click)="toggleSlaRisk()">
@@ -122,147 +199,6 @@
     </button>
   }
 </div>
-
-<!-- Filtres détaillés (bouton « Filtrer ») -->
-@if (showFilters()) {
-<tas-card class="mb-4 block">
-  <div class="p-4">
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-      <tas-form-field>
-        <tas-label>Source</tas-label>
-        <tas-select
-          clearable
-          [options]="sourceFilterOptions()"
-          optionLabel="label"
-          optionValue="value"
-          placeholder="Toutes les sources"
-          [ngModel]="filterLeadSourceId()"
-          (ngModelChange)="onFilterChange('leadSource', $event)"
-        ></tas-select>
-      </tas-form-field>
-      <tas-form-field>
-        <tas-label>Agence</tas-label>
-        <tas-select
-          clearable
-          [options]="agencyOptions()"
-          optionLabel="label"
-          optionValue="value"
-          placeholder="Toutes les agences"
-          [ngModel]="filterAgencyId()"
-          (ngModelChange)="onFilterChange('agency', $event)"
-        ></tas-select>
-      </tas-form-field>
-      <tas-form-field>
-        <tas-label>Température</tas-label>
-        <tas-select
-          clearable
-          [options]="intentFilterOptions"
-          optionLabel="label"
-          optionValue="value"
-          placeholder="Toutes les températures"
-          [ngModel]="filterIntent()"
-          (ngModelChange)="onFilterChange('intent', $event)"
-        ></tas-select>
-      </tas-form-field>
-      <!-- Les champs personnalisés à choix du tenant, rangés dans la même grille. -->
-      <custom-field-filters entity="Lead" [value]="filterCustom()" (valueChange)="onCustomFiltersChange($event)" />
-    </div>
-
-    <div class="flex items-center justify-end gap-3 mt-3">
-      @if (hasActiveSecondaryFilters()) {
-        <button
-          type="button"
-          class="text-xs text-slate-400 hover:text-slate-600 whitespace-nowrap transition-colors"
-          (click)="clearSecondaryFilters()"
-        >
-          Réinitialiser les filtres
-        </button>
-      }
-      <!-- Le rafraîchissement vivait dans le caption de la table, désormais masqué. -->
-      <button
-        tas-button
-        iconButton
-        type="button"
-        title="Rafraîchir"
-        (click)="reloadCurrentPage()"
-      >
-        <tas-icon iconName="feather:refresh-cw" style="font-size:14px" class="text-slate-500"></tas-icon>
-      </button>
-    </div>
-  </div>
-</tas-card>
-}
-
-@if (viewMode() === 'list') {
-<!-- KPI stats -->
-<div class="grid grid-cols-4 gap-3 mb-5">
-  <tas-card>
-    <div class="flex items-center gap-3 p-3">
-      <div class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center shrink-0">
-        <tas-icon iconName="feather:users" class="text-slate-500" style="font-size:14px"></tas-icon>
-      </div>
-      <div>
-        <p class="text-xl font-semibold text-slate-800 tabular-nums leading-none">{{ stats().total ?? 0 }}</p>
-        <p class="text-xs text-slate-400 mt-0.5">Total</p>
-      </div>
-    </div>
-  </tas-card>
-  <tas-card>
-    <div class="flex items-center gap-3 p-3">
-      <div class="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center shrink-0">
-        <tas-icon iconName="feather:inbox" class="text-blue-500" style="font-size:14px"></tas-icon>
-      </div>
-      <div>
-        <p class="text-xl font-semibold text-slate-800 tabular-nums leading-none">{{ statusCount('New') }}</p>
-        <p class="text-xs text-slate-400 mt-0.5">Nouveaux</p>
-      </div>
-    </div>
-  </tas-card>
-  <tas-card>
-    <div class="flex items-center gap-3 p-3">
-      <div class="w-8 h-8 rounded-full bg-green-50 flex items-center justify-center shrink-0">
-        <tas-icon iconName="feather:check-circle" class="text-green-500" style="font-size:14px"></tas-icon>
-      </div>
-      <div>
-        <p class="text-xl font-semibold text-slate-800 tabular-nums leading-none">{{ stats().convertedCount ?? 0 }}</p>
-        <p class="text-xs text-slate-400 mt-0.5">Convertis</p>
-      </div>
-    </div>
-  </tas-card>
-  <tas-card>
-    <div class="flex items-center gap-3 p-3">
-      <div class="w-8 h-8 rounded-full bg-teal-50 flex items-center justify-center shrink-0">
-        <tas-icon iconName="feather:trending-up" class="text-teal-600" style="font-size:14px"></tas-icon>
-      </div>
-      <div>
-        <p class="text-xl font-semibold text-slate-800 tabular-nums leading-none">
-          {{ ((stats().conversionRate ?? 0)).toFixed(1) }}%
-        </p>
-        <p class="text-xs text-slate-400 mt-0.5">Taux de conversion</p>
-      </div>
-    </div>
-  </tas-card>
-</div>
-
-<!-- Status tabs -->
-<div class="flex items-center gap-1 mb-4 p-1 rounded-lg bg-slate-100 w-fit">
-  @for (tab of statusTabs; track tab.value) {
-    <button
-      type="button"
-      class="px-3 py-1.5 rounded-md text-sm font-medium transition-colors"
-      [class.bg-white]="filterStatus() === tab.value"
-      [class.text-slate-800]="filterStatus() === tab.value"
-      [class.shadow-sm]="filterStatus() === tab.value"
-      [class.text-slate-500]="filterStatus() !== tab.value"
-      (click)="onFilterChange('status', tab.value)"
-    >
-      {{ tab.label }}
-      <span class="ml-1 text-[10px] font-semibold tabular-nums">{{ tab.count() }}</span>
-    </button>
-  }
-</div>
-
-}
 
 <!-- Bulk action bar -->
 @if (selectedCount() > 0) {
@@ -287,9 +223,8 @@
 <!-- List view -->
 @if (viewMode() === 'list') {
   <!--
-    `hasCaption` est désactivé : la recherche du caption faisait doublon avec le
-    champ « Rechercher » de la carte de filtres, et déclenchait un appel par
-    frappe (aucun debounce côté table).
+    `hasCaption` est désactivé : la recherche est dans l'en-tête de la page, debouncée, et le
+    rafraîchissement dans le menu de « Importer ».
   -->
   <tas-table
     [data]="leads()"
@@ -300,97 +235,149 @@
     (refresh)="reloadCurrentPage()"
   >
     <ng-template #header>
-      <tr>
-        <th class="w-10">
+      <tr class="bg-slate-50/70 text-left text-xs font-medium text-slate-500">
+        <th class="w-10 py-2.5">
           <input type="checkbox" class="form-checkbox accent-primary cursor-pointer"
-            [checked]="allSelected()" (change)="toggleSelectAll()" />
+            [checked]="allSelected()" (change)="toggleSelectAll()" aria-label="Tout sélectionner" />
         </th>
-        <th>Lead</th>
-        <th>Prochaine étape</th>
-        <th>Produit souhaité</th>
-        <th>Téléphone</th>
-        <th>Type</th>
-        <th>Source</th>
-        <th>Température</th>
-        <th>Statut</th>
-        <th>Capturé</th>
-        <th class="w-10"><span class="sr-only">Ouvrir la fiche</span></th>
+        <th class="py-2.5">Nom</th>
+        @if (isVisible('product')) { <th class="py-2.5">Produit</th> }
+        @if (isVisible('nextStep')) { <th class="py-2.5">Prochaine étape</th> }
+        @if (isVisible('phone')) { <th class="py-2.5">Téléphone</th> }
+        @if (isVisible('email')) { <th class="py-2.5">E-mail</th> }
+        @if (isVisible('status')) { <th class="py-2.5">Statut</th> }
+        @if (isVisible('intent')) { <th class="py-2.5">Intérêt</th> }
+        @if (isVisible('score')) { <th class="py-2.5">Score</th> }
+        @if (isVisible('source')) { <th class="py-2.5">Source</th> }
+        @if (isVisible('type')) { <th class="py-2.5">Type</th> }
+        @if (isVisible('agent')) { <th class="py-2.5">Agent</th> }
+        @if (isVisible('agency')) { <th class="py-2.5">Agence</th> }
+        @if (isVisible('created')) { <th class="py-2.5">Créé</th> }
       </tr>
     </ng-template>
 
     <ng-template #body let-item>
-      <tr class="cursor-pointer hover:bg-slate-50 transition-colors"
+      <tr class="group cursor-pointer transition-colors hover:bg-slate-50"
         [class]="selectedLeadIds().has(item.id) ? 'bg-primary/5' : ''"
         (click)="openQuickView(item, $event)">
         <td class="py-3 w-10" (click)="$event.stopPropagation()">
           <input type="checkbox" class="form-checkbox accent-primary cursor-pointer"
             [checked]="selectedLeadIds().has(item.id)"
-            (change)="toggleSelectLead(item.id, $event)" />
+            (change)="toggleSelectLead(item.id, $event)"
+            [attr.aria-label]="'Sélectionner ' + displayName(item)" />
         </td>
         <td class="py-3">
           <div class="flex items-center gap-3">
-            <div class="w-9 h-9 rounded-full flex items-center justify-center text-xs font-semibold flex-shrink-0 select-none bg-teal-50 text-teal-800">
+            <div class="w-9 h-9 rounded-full flex items-center justify-center text-xs font-semibold flex-shrink-0 select-none"
+                 [class]="avatarTone(item)">
               {{ initials(item) }}
             </div>
-            <div class="min-w-0">
-              <div class="font-medium text-slate-800 leading-tight truncate">{{ displayName(item) }}</div>
-              @if (item.email) {
-                <div class="text-xs text-slate-400 mt-0.5 truncate">{{ item.email }}</div>
+            <div class="min-w-0 flex-1">
+              <div class="font-medium text-primary leading-tight truncate">{{ displayName(item) }}</div>
+              @if (origin(item) !== '—') {
+                <div class="text-xs text-slate-500 mt-0.5 truncate">Venu par {{ origin(item) }}</div>
+              }
+              @if (item.awaitingDispatchSince && !item.currentAssignmentId) {
+                <div class="mt-0.5 text-[11px] font-medium text-amber-800"
+                  title="Aucun agent n'a pu le prendre ; il partira seul dès qu'un agent sera disponible">
+                  En file d'attente · {{ item.awaitingDispatchSince | dateTimeAgo }}
+                </div>
+              }
+            </div>
+            <!-- Les actions de la ligne, au survol : le clic sur la ligne reste l'aperçu. -->
+            <div class="flex shrink-0 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100"
+                 (click)="$event.stopPropagation()">
+              <!-- Un vrai lien : clic du milieu et « ouvrir dans un nouvel onglet » fonctionnent. -->
+              <a [routerLink]="['/leads', item.id]"
+                 class="inline-flex h-7 w-7 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-500 hover:text-primary"
+                 title="Ouvrir la fiche" aria-label="Ouvrir la fiche">
+                <tas-icon iconName="feather:external-link" style="font-size:13px"></tas-icon>
+              </a>
+              @if (canWhatsApp() && item.phoneNumber) {
+                <a [routerLink]="['/leads', item.id, 'conversations']"
+                   class="inline-flex h-7 w-7 items-center justify-center rounded-md border border-green-200 bg-green-50 text-green-700 hover:bg-green-100"
+                   title="WhatsApp" aria-label="Ouvrir la conversation WhatsApp">
+                  <tas-icon iconName="feather:message-circle" style="font-size:13px"></tas-icon>
+                </a>
+              }
+              @if (item.phoneNumber) {
+                <!-- Se masque lui-même si cet agent ne peut pas appeler. -->
+                <lib-call-button entityType="Lead" [entityId]="item.id" [compact]="true" label="Appeler"></lib-call-button>
+              }
+              @if (canManageTasks() && item.status !== 'Converted') {
+                <button type="button"
+                  class="inline-flex h-7 w-7 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-500 hover:text-primary"
+                  title="Nouvelle tâche" aria-label="Nouvelle tâche" (click)="openTaskFor(item)">
+                  <tas-icon iconName="feather:check-square" style="font-size:13px"></tas-icon>
+                </button>
+              }
+              @if (canLogActivity()) {
+                <button type="button"
+                  class="inline-flex h-7 w-7 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-500 hover:text-primary"
+                  title="Ajouter une note" aria-label="Ajouter une note" (click)="openNoteFor(item)">
+                  <tas-icon iconName="feather:file-text" style="font-size:13px"></tas-icon>
+                </button>
               }
             </div>
           </div>
         </td>
-        <td class="py-3 max-w-[16rem]">
-          <lead-next-step [step]="item.nextStep"></lead-next-step>
-        </td>
-        <td>
-          @if (productLabel(item); as product) {
-            <span class="inline-flex max-w-[12rem] px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 text-xs font-medium truncate"
-                  [title]="product">{{ product }}</span>
-          } @else {
-            <span class="text-sm text-slate-400">—</span>
-          }
-        </td>
-        <td class="text-sm text-slate-600 tabular-nums">{{ item.phoneNumber ?? '—' }}</td>
-        <td class="text-sm text-slate-600">{{ prospectTypeLabel(item.prospectType) }}</td>
-        <td class="text-sm text-slate-600">{{ leadSourceLabel(item) }}</td>
-        <td>
-          @if (item.intentLevel !== null) {
-            <span
-              class="inline-flex items-center gap-1 text-xs font-medium"
-              [class]="intentDotClass(item.intentLevel)"
-            >
-              <span class="w-1.5 h-1.5 rounded-full" [class]="intentDotBg(item.intentLevel)"></span>
-              {{ intentMeta(item.intentLevel).label }}
+        @if (isVisible('product')) {
+          <td class="py-3">
+            @if (productLabel(item); as product) {
+              <div class="max-w-[14rem] truncate text-sm text-slate-800" [title]="product">{{ product }}</div>
+              <div class="text-xs text-slate-500 tabular-nums">{{ amountLabel(item) || '—' }}</div>
+            } @else {
+              <span class="text-sm text-slate-400">—</span>
+            }
+          </td>
+        }
+        @if (isVisible('nextStep')) {
+          <td class="py-3 max-w-[16rem]"><lead-next-step [step]="item.nextStep"></lead-next-step></td>
+        }
+        @if (isVisible('phone')) {
+          <td class="py-3 text-sm text-slate-700 tabular-nums whitespace-nowrap">{{ item.phoneNumber ?? '—' }}</td>
+        }
+        @if (isVisible('email')) {
+          <td class="py-3 max-w-[14rem] truncate text-sm text-slate-600">{{ item.email ?? '—' }}</td>
+        }
+        @if (isVisible('status')) {
+          <td class="py-3">
+            <span class="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-semibold whitespace-nowrap" [class]="statusTone(item)">
+              <tas-icon iconName="feather:chevrons-right" style="font-size:11px"></tas-icon>
+              {{ statusLabel(item) }}
             </span>
-          } @else {
-            <span class="text-sm text-slate-400">—</span>
-          }
-        </td>
-        <td>
-          <tas-tag [severity]="leadStatusMeta(item.status).severity">
-            {{ leadStatusMeta(item.status).label }}
-          </tas-tag>
-          @if (item.awaitingDispatchSince && !item.currentAssignmentId) {
-            <div class="mt-1 text-[11px] font-medium text-amber-800"
-              title="Aucun agent n'a pu le prendre ; il partira seul dès qu'un agent sera disponible">
-              En file d'attente · {{ item.awaitingDispatchSince | dateTimeAgo }}
-            </div>
-          }
-        </td>
-        <td class="text-sm text-slate-500">{{ item.capturedAt | dateTimeAgo }}</td>
-        <td class="w-10 text-right">
-          <!-- Un vrai lien : clic du milieu et « ouvrir dans un nouvel onglet » fonctionnent. -->
-          <a
-            [routerLink]="['/leads', item.id]"
-            class="inline-flex items-center justify-center w-8 h-8 rounded-md text-slate-400 hover:text-primary hover:bg-slate-100"
-            title="Ouvrir la fiche complète"
-            aria-label="Ouvrir la fiche complète"
-            (click)="$event.stopPropagation()"
-          >
-            <tas-icon iconName="feather:external-link" style="font-size:14px"></tas-icon>
-          </a>
-        </td>
+          </td>
+        }
+        @if (isVisible('intent')) {
+          <td class="py-3">
+            @if (item.intentLevel && item.intentLevel !== 'Unknown') {
+              <span class="inline-flex items-center gap-1.5 text-sm text-slate-700">
+                <span class="w-2 h-2 rounded-full" [class]="intentDotBg(item.intentLevel)"></span>
+                {{ intentMeta(item.intentLevel).label }}
+              </span>
+            } @else {
+              <span class="text-sm text-slate-400">—</span>
+            }
+          </td>
+        }
+        @if (isVisible('score')) {
+          <td class="py-3 text-sm text-slate-700 tabular-nums">{{ item.score ?? '—' }}</td>
+        }
+        @if (isVisible('source')) {
+          <td class="py-3 text-sm text-slate-600">{{ leadSourceLabel(item) }}</td>
+        }
+        @if (isVisible('type')) {
+          <td class="py-3 text-sm text-slate-600">{{ prospectTypeLabel(item.prospectType) }}</td>
+        }
+        @if (isVisible('agent')) {
+          <td class="py-3 text-sm text-slate-700 whitespace-nowrap">{{ agentName(item) || '—' }}</td>
+        }
+        @if (isVisible('agency')) {
+          <td class="py-3 text-sm text-slate-600">{{ agencyLabelOf(item) || '—' }}</td>
+        }
+        @if (isVisible('created')) {
+          <td class="py-3 text-sm text-slate-600 whitespace-nowrap" [title]="item.capturedAt | dateTimeAgo">{{ createdLabel(item) }}</td>
+        }
       </tr>
     </ng-template>
   </tas-table>

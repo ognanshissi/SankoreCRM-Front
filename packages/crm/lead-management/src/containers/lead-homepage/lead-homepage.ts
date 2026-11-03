@@ -5,7 +5,6 @@ import {
   inject,
   OnInit,
   signal,
-  Signal,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
@@ -14,18 +13,15 @@ import { catchError, debounceTime, EMPTY, filter, map, Subject } from 'rxjs';
 import { CdkDragDrop, CdkDragStart, DragDropModule } from '@angular/cdk/drag-drop';
 import { Button } from '@talisoft/ui/button';
 import { TasIcon } from '@talisoft/ui/icon';
-import { TasCard } from '@talisoft/ui/card';
 import { TableConfig, TasTable } from '@talisoft/ui/table';
-import { TasFormField, TasLabel } from '@talisoft/ui/form-field';
-import { TasSelect } from '@talisoft/ui/select';
 import { PageEvent } from '@angular/material/paginator';
 import {
   AgenciesApiService,
   CloseLeadRequestReasonEnum,
+  LogActivityRequestTypeEnum,
   LeadDto,
   LeadsApiService,
   LeadSourcesApiService,
-  LeadStatsDto,
   UpdatePipelineStageRequestStageEnum,
   UserDto,
   UsersApiService,
@@ -42,8 +38,12 @@ import { LeadQuickViewData, LeadQuickViewDrawer } from './lead-quick-view-drawer
 import { interestedProductLabel } from '../../components/interested-product';
 import { LeadNextStep } from '../../components/lead-next-step';
 import { NewTaskDrawer, NewTaskDrawerData } from '@sankore/crm/tasks';
-import { Severity, TasTag } from '@talisoft/ui/tag';
-import { AuthenticationService, CustomFieldFilters, PermissionsService, ProductNamesStore, QuickCreateEvents } from '@sankore/crm/common';
+import { Severity } from '@talisoft/ui/tag';
+import { AuthenticationService, PermissionsService, ProductNamesStore, QuickCreateEvents } from '@sankore/crm/common';
+import { CallButton } from '@sankore/crm/telephony';
+import { LogActivityDrawer, LogActivityDrawerData } from '../edit-lead/log-activity-drawer';
+import { formatAmount, formatDay, originLabel, statusStepIndex, statusStepLabel } from '../edit-lead/lead-view.models';
+import { LeadFilters, LeadFiltersDrawer, LeadFiltersDrawerData } from './lead-filters-drawer';
 
 function leadStatusMeta(status: string | null | undefined): { label: string; severity: Severity } {
   switch (status) {
@@ -110,6 +110,19 @@ const INTENT_FILTER_OPTIONS = [
   { label: 'Froid', value: 'Cold' },
   { label: 'Tiède', value: 'Warm' },
   { label: 'Chaud', value: 'Hot' },
+];
+/** Le filtre « Statut » du tiroir : les noms du statut serveur, libellés comme la fiche les dit. */
+const STATUS_FILTER_OPTIONS = [
+  { label: 'Nouveau', value: 'New' },
+  { label: 'Contacté', value: 'Open' },
+  { label: 'En qualification', value: 'Qualifying' },
+  { label: 'Qualifié', value: 'Qualified' },
+  { label: 'En maturation', value: 'Nurturing' },
+  { label: 'Recyclé', value: 'Recycled' },
+  { label: 'Converti', value: 'Converted' },
+  { label: 'Perdu', value: 'Lost' },
+  { label: 'Disqualifié', value: 'Disqualified' },
+  { label: 'Archivé', value: 'Archived' },
 ];
 const INTENT_LEGACY_PARAM: Record<string, string> = { '1': 'Cold', '2': 'Warm', '3': 'Hot' };
 
@@ -266,28 +279,98 @@ const KANBAN_COLUMNS = [
   { status: 'Expired',   statusValue: 'Expired',   label: 'Expiré',   color: '#94a3b8' },
 ];
 
-interface StatusTab {
+/**
+ * Une vue de la liste (maquette du 2026-11-03) : un jeu prédéfini des quatre filtres qu'elle fixe —
+ * statut, intérêt, agent (« moi »), file d'attente. Les autres filtres (agence, source, champs)
+ * restent posés quand on change de vue ; la vue active est celle dont le jeu correspond.
+ */
+export interface LeadView {
+  key: string;
   label: string;
-  value: string;
-  apiValue: string | undefined;
-  count: Signal<number>;
+  status: string;
+  intent: string;
+  mine: boolean;
+  queue: boolean;
 }
+
+const VIEW: Omit<LeadView, 'key' | 'label'> = { status: '', intent: '', mine: false, queue: false };
+const PRIMARY_VIEWS: LeadView[] = [
+  { ...VIEW, key: 'mine', label: 'Mes leads', mine: true },
+  { ...VIEW, key: 'new', label: 'Nouveaux', status: 'New' },
+  { ...VIEW, key: 'hot', label: 'Chauds', intent: 'Hot' },
+  { ...VIEW, key: 'all', label: 'Tous les leads' },
+];
+const MORE_VIEWS: LeadView[] = [
+  { ...VIEW, key: 'contacted', label: 'Contactés', status: 'Open' },
+  { ...VIEW, key: 'qualified', label: 'Qualifiés', status: 'Qualified' },
+  { ...VIEW, key: 'warm', label: 'Tièdes', intent: 'Warm' },
+  { ...VIEW, key: 'converted', label: 'Convertis', status: 'Converted' },
+  { ...VIEW, key: 'lost', label: 'Perdus', status: 'Lost' },
+  { ...VIEW, key: 'queue', label: "En file d'attente", queue: true },
+];
+
+/** Les propriétés qu'une ligne peut montrer ; le nom est toujours là. */
+export type LeadColumnKey =
+  'product' | 'phone' | 'status' | 'intent' | 'agent' | 'created' | 'nextStep' | 'email' | 'source' | 'agency' | 'type' | 'score';
+
+export const LEAD_COLUMNS: ReadonlyArray<{ key: LeadColumnKey; label: string; byDefault: boolean }> = [
+  { key: 'product',  label: 'Produit',          byDefault: true },
+  { key: 'phone',    label: 'Téléphone',        byDefault: true },
+  { key: 'status',   label: 'Statut',           byDefault: true },
+  { key: 'intent',   label: 'Intérêt',          byDefault: true },
+  { key: 'agent',    label: 'Agent',            byDefault: true },
+  { key: 'created',  label: 'Créé',             byDefault: true },
+  { key: 'nextStep', label: 'Prochaine étape',  byDefault: false },
+  { key: 'email',    label: 'E-mail',           byDefault: false },
+  { key: 'source',   label: 'Source',           byDefault: false },
+  { key: 'agency',   label: 'Agence',           byDefault: false },
+  { key: 'type',     label: 'Type',             byDefault: false },
+  { key: 'score',    label: 'Score',            byDefault: false },
+];
+
+/** Le choix des colonnes reste propre à ce navigateur : un confort, pas une donnée partagée. */
+const COLUMNS_STORAGE_KEY = 'sankore.leads.columns';
+
+function storedColumns(): Set<LeadColumnKey> {
+  const fallback = new Set(LEAD_COLUMNS.filter((c) => c.byDefault).map((c) => c.key));
+  try {
+    const raw = localStorage.getItem(COLUMNS_STORAGE_KEY);
+    if (!raw) return fallback;
+    const keys = (JSON.parse(raw) as string[]).filter((k) => LEAD_COLUMNS.some((c) => c.key === k));
+    return new Set(keys as LeadColumnKey[]);
+  } catch {
+    return fallback;
+  }
+}
+
+/** Les couleurs du statut affiché, par étape du parcours (Nouveau → issue). */
+const STEP_TONES = [
+  'bg-blue-50 text-blue-700',
+  'bg-amber-50 text-amber-800',
+  'bg-violet-50 text-violet-700',
+  'bg-emerald-50 text-emerald-700',
+];
+
+/** Une teinte par personne, stable d'un affichage à l'autre : la liste se lit plus vite qu'en gris uniforme. */
+const AVATAR_TONES = [
+  'bg-teal-50 text-teal-800',
+  'bg-orange-50 text-orange-800',
+  'bg-indigo-50 text-indigo-800',
+  'bg-violet-50 text-violet-800',
+  'bg-sky-50 text-sky-800',
+  'bg-rose-50 text-rose-800',
+];
 
 @Component({
   templateUrl: './lead-homepage.html',
   imports: [
-    CustomFieldFilters,
+    CallButton,
     LeadNextStep,
     FormsModule,
     Button,
     TasIcon,
-    TasCard,
     TasTable,
-    TasTag,
     TimeagoPipe,
-    TasFormField,
-    TasLabel,
-    TasSelect,
     DragDropModule,
     Menu,
     MenuItem,
@@ -323,6 +406,9 @@ export class LeadHomepage implements OnInit {
   // Sans « lead:read:all », le serveur ne renvoie que les leads de l'utilisateur : filtrer par
   // agent n'aurait rien d'autre à montrer que les siens.
   public readonly canFilterByAgent = this._permissions.can('lead:read:all');
+  public readonly canWhatsApp = this._permissions.can('WhatsApp.Send', 'WhatsApp.Supervise');
+  public readonly canManageTasks = this._permissions.can('lead:task:manage');
+  public readonly canLogActivity = this._permissions.can('lead:activity:log');
 
   private readonly _leadsApiService = inject(LeadsApiService);
   private readonly _productNames = inject(ProductNamesStore).ensureLoaded();
@@ -345,8 +431,11 @@ export class LeadHomepage implements OnInit {
   public isExporting = signal(false);
   public leads = signal<LeadDto[]>([]);
   public searchQuery = signal('');
-  public viewMode = signal<'list' | 'kanban'>('kanban');
-  public showFilters = signal(false);
+  public viewMode = signal<'list' | 'kanban'>('list');
+  /** Le panneau « Colonnes », ouvert sous son bouton. */
+  public showColumns = signal(false);
+  public visibleColumns = signal<Set<LeadColumnKey>>(storedColumns());
+  public readonly columns = LEAD_COLUMNS;
 
   // Multi-select
   public selectedLeadIds = signal<Set<string>>(new Set());
@@ -357,9 +446,6 @@ export class LeadHomepage implements OnInit {
     const sel = this.selectedLeadIds();
     return leads.length > 0 && leads.every((l) => sel.has(l.id!));
   });
-
-  // Stats
-  public stats = signal<LeadStatsDto>({});
 
   // Filters
   public filterStatus = signal('');
@@ -419,11 +505,6 @@ export class LeadHomepage implements OnInit {
     [...new Set(this.leads().map((l) => l.interestedProduct?.trim()).filter((p): p is string => !!p))].sort(),
   );
 
-  public readonly filterAgentLabel = computed(() => {
-    const id = this.filterOwnerId();
-    return id ? this.agents().get(id)?.fullName ?? 'sélection' : 'tous';
-  });
-
   /** Leads du pipeline actif : ni perdus, ni filtrés par les puces. */
   private readonly _pipelineLeads = computed(() => {
     const product = this.filterProduct();
@@ -460,22 +541,51 @@ export class LeadHomepage implements OnInit {
   /** Currently keyboard-focused card ID */
   public focusedCardId = signal<string | null>(null);
 
-  // Status tabs with live counts from stats
-  public readonly statusTabs: StatusTab[] = [
-    { label: 'Tous',      value: '',  apiValue: undefined, count: computed(() => this.stats().total ?? 0) },
-    // Les noms du statut serveur, pas des indices : « 2 », « 3 », « 4 » étaient lus comme
-    // Qualifying, Qualified et Nurturing, si bien que « Qualifiés », « Convertis » et « Perdus »
-    // filtraient sur autre chose que ce qu'ils comptaient.
-    { label: 'Nouveaux',  value: 'New',       apiValue: 'New',       count: computed(() => this.statusCount('New')) },
-    { label: 'Contactés', value: 'Open',      apiValue: 'Open',      count: computed(() => this.statusCount('Open')) },
-    { label: 'Qualifiés', value: 'Qualified', apiValue: 'Qualified', count: computed(() => this.statusCount('Qualified')) },
-    { label: 'Convertis', value: 'Converted', apiValue: 'Converted', count: computed(() => this.statusCount('Converted')) },
-    { label: 'Perdus',    value: 'Lost',      apiValue: 'Lost',      count: computed(() => this.statusCount('Lost')) },
-  ];
+  // ——— Vues et puces de filtre (maquette du 2026-11-03) ———
 
-  public hasActiveSecondaryFilters = computed(() =>
-    !!(this.filterLeadSourceId() || this.filterAgencyId() || this.filterIntent() || this.filterCustom().length),
+  public readonly primaryViews = PRIMARY_VIEWS;
+  public readonly moreViews = MORE_VIEWS;
+  private readonly _me = computed(() => this._auth.connectedUser()?.id ?? '');
+
+  /** La vue dont le jeu de filtres est celui posé ; null quand l'utilisateur a composé le sien. */
+  public readonly activeView = computed<LeadView | null>(() =>
+    [...PRIMARY_VIEWS, ...MORE_VIEWS].find((v) =>
+      v.status === this.filterStatus()
+      && v.intent === this.filterIntent()
+      && v.queue === this.filterAwaitingDispatch()
+      && (v.mine ? !!this._me() && this.filterOwnerId() === this._me() : !this.filterOwnerId()),
+    ) ?? null,
   );
+  public readonly activeMoreView = computed(() => {
+    const view = this.activeView();
+    return view && MORE_VIEWS.includes(view) ? view : null;
+  });
+
+  /** Les filtres posés en plus de la vue, une puce chacun. */
+  public readonly filterChips = computed(() => {
+    const view = this.activeView();
+    const chips: { key: 'status' | 'intent' | 'agent' | 'queue' | 'agency' | 'leadSource' | 'custom'; label: string }[] = [];
+    if (!view) {
+      if (this.filterStatus()) chips.push({ key: 'status', label: STATUS_FILTER_OPTIONS.find((o) => o.value === this.filterStatus())?.label ?? this.filterStatus() });
+      if (this.filterIntent()) chips.push({ key: 'intent', label: `Intérêt : ${intentMeta(this.filterIntent()).label}` });
+      if (this.filterOwnerId()) {
+        const mine = this.filterOwnerId() === this._me();
+        chips.push({ key: 'agent', label: mine ? 'Mes leads' : `Agent : ${this.agents().get(this.filterOwnerId())?.fullName ?? 'sélection'}` });
+      }
+      if (this.filterAwaitingDispatch()) chips.push({ key: 'queue', label: "En file d'attente" });
+    }
+    if (this.filterAgencyId())
+      chips.push({ key: 'agency', label: this.agencyOptions().find((o) => o.value === this.filterAgencyId())?.label || 'Agence' });
+    if (this.filterLeadSourceId())
+      chips.push({ key: 'leadSource', label: this.sourceFilterOptions().find((o) => o.value === this.filterLeadSourceId())?.label || 'Source' });
+    const custom = this.filterCustom().length;
+    if (custom) chips.push({ key: 'custom', label: custom > 1 ? `${custom} champs personnalisés` : '1 champ personnalisé' });
+    return chips;
+  });
+
+  public isVisible(column: LeadColumnKey): boolean {
+    return this.visibleColumns().has(column);
+  }
 
   public tableConfig = signal<TableConfig>({
     property: 'id',
@@ -483,7 +593,7 @@ export class LeadHomepage implements OnInit {
       serverSide: true,
       pageIndex: 0,
       pageSize: 10,
-      pageSizeOptions: [5, 10, 30, 50],
+      pageSizeOptions: [10, 25, 50],
       totalElements: 0,
     },
   });
@@ -504,10 +614,15 @@ export class LeadHomepage implements OnInit {
     if (params['leadSource']) this.filterLeadSourceId.set(params['leadSource']);
     if (params['agency']) this.filterAgencyId.set(params['agency']);
     if (params['intent']) this.filterIntent.set(INTENT_LEGACY_PARAM[params['intent']] ?? params['intent']);
-    if (params['owner'] && this.canFilterByAgent()) this.filterOwnerId.set(params['owner']);
+    if (params['owner'] && (this.canFilterByAgent() || params['owner'] === this._me())) this.filterOwnerId.set(params['owner']);
     if (params['queue'] === '1') this.filterAwaitingDispatch.set(true);
     this.filterCustom.set(this._route.snapshot.queryParamMap.getAll('cf'));
-    if (params['view'] === 'list') this.viewMode.set('list');
+    // La liste est la vue par défaut depuis la maquette du 2026-11-03 ; le pipeline s'ouvre par
+    // `view=pipeline`. L'ancien `view=list` reste lu, sans effet.
+    if (params['view'] === 'pipeline') this.viewMode.set('kanban');
+    // Sans aucun filtre dans l'adresse, un agent arrive sur ses leads, un encadrant sur tous.
+    const viewKeys = ['q', 'status', 'leadSource', 'agency', 'intent', 'owner', 'queue', 'cf'];
+    if (!viewKeys.some((k) => k in params) && this.isAgentView() && this._me()) this.filterOwnerId.set(this._me());
 
     // « Nouveau lead » de la barre latérale arrive ici avec `?nouveau=1`. Écouté et non lu une
     // fois : depuis cette page, le clic change seulement le paramètre, sans recréer l'écran.
@@ -530,14 +645,12 @@ export class LeadHomepage implements OnInit {
       )
       .subscribe(() => {
         this.reloadCurrentPage();
-        this._loadStats();
-      });
+          });
 
     this.reloadCurrentPage();
     this._loadAgencies();
     this._loadAgents();
     this._loadLeadSources();
-    this._loadStats();
   }
 
   // ——— Pipeline helpers ———
@@ -592,16 +705,6 @@ export class LeadHomepage implements OnInit {
 
   public setProductFilter(product: string): void {
     this.filterProduct.set(product);
-  }
-
-  public setOwnerFilter(ownerId: string): void {
-    this.filterOwnerId.set(ownerId);
-    this._applyFilters();
-  }
-
-  public toggleAwaitingDispatch(): void {
-    this.filterAwaitingDispatch.set(!this.filterAwaitingDispatch());
-    this._applyFilters();
   }
 
   public toggleSlaRisk(): void {
@@ -741,8 +844,7 @@ export class LeadHomepage implements OnInit {
         ).subscribe(() => {
           this._snackbar.success('Lead perdu', `« ${this.displayName(lead)} » est passé en perdu.`);
           this.reloadCurrentPage();
-          this._loadStats();
-        });
+              });
       },
     });
   }
@@ -772,15 +874,10 @@ export class LeadHomepage implements OnInit {
       .subscribe(() => {
         const toLabel = this.pipelinePhases().find((p) => p.stages.includes(toStage))?.label ?? toStage;
         this._snackbar.success('Lead déplacé', `Déplacé vers « ${toLabel} »`);
-        this._loadStats();
-      });
+          });
   }
 
   // ——— Existing methods (unchanged) ———
-
-  public statusCount(status: string): number {
-    return this.stats().byStatus?.find((s) => s.status === status)?.count ?? 0;
-  }
 
   /**
    * Source affichée sur une ligne : le libellé de la source **configurée** quand le lead en a une,
@@ -829,7 +926,7 @@ export class LeadHomepage implements OnInit {
     this.viewMode.set(mode);
     this._router.navigate([], {
       relativeTo: this._route,
-      queryParams: { view: mode === 'list' ? 'list' : null },
+      queryParams: { view: mode === 'kanban' ? 'pipeline' : null },
       queryParamsHandling: 'merge',
       replaceUrl: true,
     });
@@ -854,8 +951,7 @@ export class LeadHomepage implements OnInit {
     ref.closed.subscribe((leadId) => {
       if (leadId) {
         this.reloadCurrentPage();
-        this._loadStats();
-      }
+          }
     });
   }
 
@@ -869,8 +965,7 @@ export class LeadHomepage implements OnInit {
     ref.closed.subscribe((imported) => {
       if (imported) {
         this.reloadCurrentPage();
-        this._loadStats();
-      }
+          }
     });
   }
 
@@ -889,36 +984,6 @@ export class LeadHomepage implements OnInit {
   public onSearchChange(value: string | null): void {
     this.searchQuery.set(value ?? '');
     this._search$.next();
-  }
-
-  public onFilterChange(
-    filter: 'status' | 'leadSource' | 'agency' | 'intent',
-    value: string | null,
-  ): void {
-    // La croix d'effacement d'un `tas-select` notifie `null` : les signaux de
-    // filtre restent en chaîne vide, que tout le reste de l'écran traite déjà
-    // comme « aucun filtre ».
-    const next = value ?? '';
-    switch (filter) {
-      case 'status':     this.filterStatus.set(next); break;
-      case 'leadSource': this.filterLeadSourceId.set(next); break;
-      case 'agency':     this.filterAgencyId.set(next); break;
-      case 'intent':     this.filterIntent.set(next); break;
-    }
-    this._applyFilters();
-  }
-
-  public clearSecondaryFilters(): void {
-    this.filterLeadSourceId.set('');
-    this.filterAgencyId.set('');
-    this.filterIntent.set('');
-    this.filterCustom.set([]);
-    this._applyFilters();
-  }
-
-  public onCustomFiltersChange(filters: string[]): void {
-    this.filterCustom.set(filters);
-    this._applyFilters();
   }
 
   /**
@@ -977,7 +1042,7 @@ export class LeadHomepage implements OnInit {
         status,
         undefined,
         undefined,
-        ownerId,
+        undefined,
         agencyId,
         search,
         undefined,
@@ -985,6 +1050,10 @@ export class LeadHomepage implements OnInit {
         leadSourceConfigId,
         awaitingDispatch,
         this.filterCustom().length ? this.filterCustom() : undefined,
+        undefined,
+        // Les leads que l'agent tient — affectés, ou à lui sans affectation —, ce que dit la colonne
+        // « Agent ». `ownerId` seul manquait les leads dispatchés à un agent qui n'en est pas le propriétaire.
+        ownerId,
       )
       .subscribe({
         next: (result) => {
@@ -1044,6 +1113,168 @@ export class LeadHomepage implements OnInit {
     }
   }
 
+  // ——— Vues, filtres, colonnes ———
+
+  public selectView(view: LeadView): void {
+    this.filterStatus.set(view.status);
+    this.filterIntent.set(view.intent);
+    this.filterOwnerId.set(view.mine ? this._me() : '');
+    this.filterAwaitingDispatch.set(view.queue);
+    this._applyFilters();
+  }
+
+  public removeChip(key: 'status' | 'intent' | 'agent' | 'queue' | 'agency' | 'leadSource' | 'custom'): void {
+    switch (key) {
+      case 'status':     this.filterStatus.set(''); break;
+      case 'intent':     this.filterIntent.set(''); break;
+      case 'agent':      this.filterOwnerId.set(''); break;
+      case 'queue':      this.filterAwaitingDispatch.set(false); break;
+      case 'agency':     this.filterAgencyId.set(''); break;
+      case 'leadSource': this.filterLeadSourceId.set(''); break;
+      case 'custom':     this.filterCustom.set([]); break;
+    }
+    this._applyFilters();
+  }
+
+  public openFiltersDrawer(): void {
+    const withoutAll = (options: { label: string; value: string }[]) => options.filter((o) => o.value);
+    const ref = this._sideDrawerService.open<LeadFilters | null, LeadFiltersDrawerData, LeadFiltersDrawer>(LeadFiltersDrawer, {
+      width: '100%',
+      height: '100%',
+      panelClass: 'side-drawer-panel',
+      data: {
+        value: {
+          status: this.filterStatus(),
+          intent: this.filterIntent(),
+          agent: this.filterOwnerId(),
+          agency: this.filterAgencyId(),
+          leadSource: this.filterLeadSourceId(),
+          queue: this.filterAwaitingDispatch(),
+          custom: this.filterCustom(),
+        },
+        statusOptions: STATUS_FILTER_OPTIONS,
+        intentOptions: withoutAll(INTENT_FILTER_OPTIONS),
+        agencyOptions: withoutAll(this.agencyOptions()),
+        sourceOptions: withoutAll(this.sourceFilterOptions()),
+        agentOptions: this.canFilterByAgent() ? this.agentOptions() : [],
+      },
+    });
+    ref.closed.subscribe((next) => {
+      if (!next) return;
+      this.filterStatus.set(next.status);
+      this.filterIntent.set(next.intent);
+      this.filterOwnerId.set(next.agent);
+      this.filterAgencyId.set(next.agency);
+      this.filterLeadSourceId.set(next.leadSource);
+      this.filterAwaitingDispatch.set(next.queue);
+      this.filterCustom.set(next.custom);
+      this._applyFilters();
+    });
+  }
+
+  public toggleColumn(column: LeadColumnKey): void {
+    this.visibleColumns.update((set) => {
+      const next = new Set(set);
+      if (next.has(column)) next.delete(column); else next.add(column);
+      return next;
+    });
+    this._saveColumns();
+  }
+
+  public resetColumns(): void {
+    this.visibleColumns.set(new Set(LEAD_COLUMNS.filter((c) => c.byDefault).map((c) => c.key)));
+    this._saveColumns();
+  }
+
+  private _saveColumns(): void {
+    try {
+      localStorage.setItem(COLUMNS_STORAGE_KEY, JSON.stringify([...this.visibleColumns()]));
+    } catch {
+      // Stockage indisponible (navigation privée) : le choix vaut pour cette visite.
+    }
+  }
+
+  // ——— Une ligne ———
+
+  /** « Contacté », « Intéressé »… : le parcours de la fiche lead, pas le statut serveur brut. */
+  public statusLabel(lead: LeadDto): string {
+    return statusStepLabel(lead, statusStepIndex(lead));
+  }
+
+  public statusTone(lead: LeadDto): string {
+    const index = statusStepIndex(lead);
+    if (index < STEP_TONES.length) return STEP_TONES[index];
+    return lead.status === 'Converted' ? 'bg-emerald-600 text-white' : 'bg-red-50 text-red-700';
+  }
+
+  public avatarTone(lead: LeadDto): string {
+    const key = lead.id ?? this.displayName(lead);
+    let hash = 0;
+    for (const ch of key) hash = (hash * 31 + ch.charCodeAt(0)) | 0;
+    return AVATAR_TONES[Math.abs(hash) % AVATAR_TONES.length];
+  }
+
+  /** « Venu par Recommandation » : la source configurée, sinon le canal. */
+  public origin(lead: LeadDto): string {
+    return originLabel(lead);
+  }
+
+  public amountLabel(lead: LeadDto): string {
+    return formatAmount(lead.desiredAmount?.amount, lead.desiredAmount?.currency);
+  }
+
+  /** « Ambroise B. » : le prénom se lit d'abord, l'initiale départage. */
+  public agentName(lead: LeadDto): string {
+    const id = assigneeId(lead);
+    const name = id ? this.agents().get(id)?.fullName?.trim() : '';
+    if (!name) return '';
+    const parts = name.split(/\s+/);
+    const last = parts[parts.length - 1];
+    // Un nom qui finit par un chiffre (« Agent 3 ») reste entier : « Tester 3. » ne dit plus qui c'est.
+    return parts.length > 1 && /^\p{L}/u.test(last) ? `${parts[0]} ${last[0]}.` : name;
+  }
+
+  public agencyLabelOf(lead: LeadDto): string {
+    return this.agencyName(lead.agencyId);
+  }
+
+  /** « aujourd'hui », « hier », sinon le jour (« 29 oct. »). */
+  public createdLabel(lead: LeadDto): string {
+    const iso = lead.capturedAt ?? lead.createdAt;
+    if (!iso) return '—';
+    const day = new Date(iso);
+    const today = new Date();
+    const startOf = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+    const diff = Math.round((startOf(today) - startOf(day)) / 86_400_000);
+    if (diff === 0) return "aujourd'hui";
+    if (diff === 1) return 'hier';
+    return day.getFullYear() === today.getFullYear() ? formatDay(iso, true) : formatDay(iso);
+  }
+
+  public openTaskFor(lead: LeadDto): void {
+    const ref = this._sideDrawerService.open<string, NewTaskDrawerData, NewTaskDrawer>(NewTaskDrawer, {
+      width: '100%',
+      height: '100%',
+      panelClass: 'side-drawer-panel',
+      data: { subject: { type: 'lead', id: lead.id!, label: this.displayName(lead) } },
+    });
+    ref.closed.subscribe((id) => {
+      if (id) this.reloadCurrentPage();
+    });
+  }
+
+  public openNoteFor(lead: LeadDto): void {
+    const ref = this._sideDrawerService.open(LogActivityDrawer, {
+      width: '100%',
+      height: '100%',
+      panelClass: 'side-drawer-panel',
+      data: { leadId: lead.id!, leadName: this.displayName(lead), initialType: LogActivityRequestTypeEnum.Note } satisfies LogActivityDrawerData,
+    });
+    ref.closed.subscribe((result) => {
+      if (result) this.reloadCurrentPage();
+    });
+  }
+
   // ——— Multi-select ———
 
   public toggleSelectLead(leadId: string, event: Event): void {
@@ -1101,7 +1332,7 @@ export class LeadHomepage implements OnInit {
       width: '100%', height: '100%', panelClass: 'side-drawer-panel',
     });
     ref.closed.subscribe((created: any) => {
-      if (created) { this.reloadCurrentPage(); this._loadStats(); }
+      if (created) { this.reloadCurrentPage(); }
     });
   }
 
@@ -1201,11 +1432,7 @@ export class LeadHomepage implements OnInit {
       });
   }
 
-  private _loadStats(): void {
-    this._leadsApiService.getLeadStats().subscribe({
-      next: (s) => this.stats.set(s),
-    });
-  }
+
 }
 
 export default LeadHomepage;
