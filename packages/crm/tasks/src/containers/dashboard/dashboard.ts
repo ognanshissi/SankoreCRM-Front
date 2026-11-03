@@ -20,6 +20,7 @@ import {
   LeadsApiService,
   MyScorecardDto,
   MyAgendaDto,
+  TeamScorecardDto,
   TasksApiService,
   UserDto,
   UsersApiService,
@@ -54,6 +55,7 @@ import { CreateAppointmentDrawer, CreateAppointmentDrawerData } from './create-a
 import { AppointmentDetailDrawer, AppointmentDetailDrawerData, AppointmentDetailDrawerResult } from './appointment-detail-drawer';
 import { MyDayAgent } from './my-day-agent';
 import { ScorePeriod } from './my-day-scorecard';
+import { MyDayTeam, MyDayTeamTable, TeamPeriod } from './my-day-team';
 
 type MyDayView = 'todo' | 'overdue' | 'reminders' | 'meetings' | 'approvals' | 'done';
 /** L'écran des agents : la journée, ou l'une des deux listes qu'il ouvre. */
@@ -119,6 +121,8 @@ function isOpen(task: CrmTaskDto): boolean {
     TaskDayList,
     AgendaDayList,
     MyDayAgent,
+    MyDayTeam,
+    MyDayTeamTable,
   ],
 })
 export class DashboardComponent implements OnInit, OnDestroy {
@@ -175,7 +179,22 @@ export class DashboardComponent implements OnInit, OnDestroy {
     const roles = this._auth.connectedUser()?.roles ?? [];
     return !this.isSupervisor() && roles.some((r) => AGENT_ROLES.includes(r));
   });
+  /**
+   * Les responsables ont la même maquette (propriétaire, 2026-11-03), avec la journée de leur équipe
+   * à droite et un tableau des agents dessous ; le calendrier et la vue « Équipe » leur sont retirés.
+   */
+  public readonly isManagerLayout = computed(() => this.isSupervisor());
+  public readonly isMyDayLayout = computed(() => this.isAgentLayout() || this.isManagerLayout());
+  public readonly canViewTeam = this._permissions.can('lead:analytics:view');
   public agentMode = signal<AgentMode>('today');
+  /** La journée de l'équipe (`GET leads/me/team-scorecard`) ; agence et agent restent dans l'URL. */
+  public teamCard = signal<TeamScorecardDto | null>(null);
+  public teamPeriod = signal<TeamPeriod>('day');
+  public teamAgency = signal('');
+  public teamAgent = signal('');
+  public isTeamLoading = signal(false);
+  public readonly teamPeriodLabel = computed(() =>
+    this.teamPeriod() === 'day' ? 'aujourd’hui' : this.teamPeriod() === 'week' ? 'cette semaine' : 'ce mois-ci');
   /** « Mes performances » et « Attribués aujourd'hui » (`GET leads/me/scorecard`). */
   public scorecard = signal<MyScorecardDto | null>(null);
   public scorePeriod = signal<ScorePeriod>('month');
@@ -220,6 +239,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
   public approvals = signal<ApprovalItem[]>([]);
   public kycAwaitingTotal = signal(0);
   public isApprovalsLoading = signal(true);
+  public readonly kycApprovals = computed(
+    () => Math.max(this.kycAwaitingTotal(), this.approvals().filter((a) => a.kind === 'kyc').length),
+  );
+  public readonly workflowApprovals = computed(() => this.approvals().filter((a) => a.kind === 'workflow').length);
   public readonly approvalsCount = computed(
     () => Math.max(this.kycAwaitingTotal(), this.approvals().filter((a) => a.kind === 'kyc').length)
       + this.approvals().filter((a) => a.kind === 'workflow').length,
@@ -336,7 +359,13 @@ export class DashboardComponent implements OnInit, OnDestroy {
     if (!user?.id || this._accountReady) return;
     this._accountReady = true;
     untracked(() => {
-      if (this._route.snapshot.queryParams['vue'] === 'equipe' && this.isSupervisor()) {
+      const params = this._route.snapshot.queryParams;
+      if (this.isManagerLayout()) {
+        if (['day', 'week', 'month'].includes(params['periode'])) this.teamPeriod.set(params['periode']);
+        this.teamAgency.set(params['agence'] ?? '');
+        this.teamAgent.set(params['agent'] ?? '');
+        this.loadTeamScorecard();
+      } else if (params['vue'] === 'equipe' && this.isSupervisor()) {
         this.scope.set('team');
         this._loadAgentNames();
       }
@@ -453,6 +482,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
         case 'completed':
           this._loadTasks();
           if (this.isAgentLayout()) this.loadScorecard();
+          if (this.isManagerLayout()) this.loadTeamScorecard();
           break;
         case 'reassign':  this.openReassign(result.task); break;
         case 'open-subject': this._router.navigate(result.route); break;
@@ -565,6 +595,58 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
 
+
+  public setTeamPeriod(period: TeamPeriod): void {
+    if (this.teamPeriod() === period) return;
+    this.teamPeriod.set(period);
+    this.loadTeamScorecard();
+  }
+
+  /** Changer d'agence remet l'agent à « Tous » : celui d'avant n'en fait peut-être pas partie. */
+  public setTeamAgency(agencyId: string): void {
+    if (this.teamAgency() === agencyId) return;
+    this.teamAgency.set(agencyId);
+    this.teamAgent.set('');
+    this.loadTeamScorecard();
+  }
+
+  public setTeamAgent(agentId: string): void {
+    // Recliquer l'agent choisi dans le tableau revient à toute l'équipe.
+    this.teamAgent.set(this.teamAgent() === agentId ? '' : agentId);
+    this.loadTeamScorecard();
+  }
+
+  /** Les chiffres d'équipe complètent la journée : leur absence n'empêche pas de travailler. */
+  public loadTeamScorecard(): void {
+    if (!this.canViewTeam()) return;
+    this._router.navigate([], {
+      relativeTo: this._route,
+      queryParams: {
+        periode: this.teamPeriod() === 'day' ? null : this.teamPeriod(),
+        agence: this.teamAgency() || null,
+        agent: this.teamAgent() || null,
+      },
+      queryParamsHandling: 'merge',
+      replaceUrl: true,
+    });
+    this.isTeamLoading.set(true);
+    this._analyticsApi
+      .getTeamScorecard(this.teamPeriod(), this.teamAgency() || undefined, this.teamAgent() || undefined)
+      .pipe(
+        catchError((err: HttpErrorResponse) => {
+          // Une agence ou un agent sorti du périmètre (lien ancien) : on revient à toute l'équipe.
+          if (err.status === 404 && (this.teamAgency() || this.teamAgent())) {
+            this.teamAgency.set('');
+            this.teamAgent.set('');
+            this.loadTeamScorecard();
+            return EMPTY;
+          }
+          return of(null);
+        }),
+        finalize(() => this.isTeamLoading.set(false)),
+      )
+      .subscribe((card) => this.teamCard.set(card));
+  }
 
   public loadApprovals(): void {
     this.isApprovalsLoading.set(true);

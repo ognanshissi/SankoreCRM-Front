@@ -239,7 +239,12 @@ export class EditLeadNavigation implements OnDestroy {
 
   // ——— Prochaine étape : calculée par le serveur (`LeadDto.nextStep`), relue avec le lead ———
 
-  public readonly nextStep = computed(() => (this.isConverted() ? null : this.lead()?.nextStep ?? null));
+  // « Attribuer le lead » ne concerne que qui peut attribuer : un agent n'a rien à en faire.
+  public readonly nextStep = computed(() => {
+    const step = this.isConverted() ? null : this.lead()?.nextStep ?? null;
+    if (step?.actionType === LeadNextStepDtoActionTypeEnum.Dispatch && !this.canAssign()) return null;
+    return step;
+  });
   public readonly nextStepDue = computed(() => nextStepDue(this.nextStep()));
   public readonly nextStepIcon = computed(() => nextStepIcon(this.nextStep()));
   public readonly nextStepDueClass = computed(() => nextStepDueClass(this.nextStepDue().tone));
@@ -252,6 +257,7 @@ export class EditLeadNavigation implements OnDestroy {
     return type === LeadNextStepDtoActionTypeEnum.Qualify || type === LeadNextStepDtoActionTypeEnum.CompleteQualification;
   });
   public readonly nextStepKind = LeadNextStepDtoKindEnum;
+  public readonly nextAction = LeadNextStepDtoActionTypeEnum;
 
   /** « Planifier » une suggestion : le serveur en fait un rappel, qui devient l'étape datée. */
   public readonly showPlanner = signal(false);

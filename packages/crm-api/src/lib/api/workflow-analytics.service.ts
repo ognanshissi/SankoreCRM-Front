@@ -26,6 +26,8 @@ import { SlaDashboardDto } from '../model/sla-dashboard-dto.interface';
 import { StepBottleneckDto } from '../model/step-bottleneck-dto.interface';
 // @ts-ignore
 import { TemplateStatsDto } from '../model/template-stats-dto.interface';
+// @ts-ignore
+import { WorkflowHealthDto } from '../model/workflow-health-dto.interface';
 
 // @ts-ignore
 import { BASE_PATH, COLLECTION_FORMATS }                     from '../variables';
@@ -361,6 +363,80 @@ export class WorkflowAnalyticsApiService {
         return this.httpClient.request<TemplateStatsDto>('get', `${this.configuration.basePath}${localVarPath}`,
             {
                 context: localVarHttpContext,
+                responseType: <any>responseType_,
+                withCredentials: this.configuration.withCredentials,
+                headers: localVarHeaders,
+                observe: observe,
+                reportProgress: reportProgress
+            }
+        );
+    }
+
+    /**
+     * What needs someone now (overdue and waiting steps, named) and the health of each circuit
+     * @param days 
+     * @param stuckThresholdHours 
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     */
+    public getWorkflowHealth(days?: number, stuckThresholdHours?: number, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<WorkflowHealthDto>;
+    public getWorkflowHealth(days?: number, stuckThresholdHours?: number, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<WorkflowHealthDto>>;
+    public getWorkflowHealth(days?: number, stuckThresholdHours?: number, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<WorkflowHealthDto>>;
+    public getWorkflowHealth(days?: number, stuckThresholdHours?: number, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
+
+        let localVarQueryParameters = new HttpParams({encoder: this.encoder});
+        if (days !== undefined && days !== null) {
+          localVarQueryParameters = this.addToHttpParams(localVarQueryParameters,
+            <any>days, 'days');
+        }
+        if (stuckThresholdHours !== undefined && stuckThresholdHours !== null) {
+          localVarQueryParameters = this.addToHttpParams(localVarQueryParameters,
+            <any>stuckThresholdHours, 'stuckThresholdHours');
+        }
+
+        let localVarHeaders = this.defaultHeaders;
+
+        let localVarCredential: string | undefined;
+        // authentication (BearerToken) required
+        localVarCredential = this.configuration.lookupCredential('BearerToken');
+        if (localVarCredential) {
+            localVarHeaders = localVarHeaders.set('Authorization', 'Bearer ' + localVarCredential);
+        }
+
+        let localVarHttpHeaderAcceptSelected: string | undefined = options && options.httpHeaderAccept;
+        if (localVarHttpHeaderAcceptSelected === undefined) {
+            // to determine the Accept header
+            const httpHeaderAccepts: string[] = [
+                'application/json'
+            ];
+            localVarHttpHeaderAcceptSelected = this.configuration.selectHeaderAccept(httpHeaderAccepts);
+        }
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+
+        let localVarHttpContext: HttpContext | undefined = options && options.context;
+        if (localVarHttpContext === undefined) {
+            localVarHttpContext = new HttpContext();
+        }
+
+
+        let responseType_: 'text' | 'json' | 'blob' = 'json';
+        if (localVarHttpHeaderAcceptSelected) {
+            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+                responseType_ = 'text';
+            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+                responseType_ = 'json';
+            } else {
+                responseType_ = 'blob';
+            }
+        }
+
+        let localVarPath = `/api/v1/workflow/analytics/health`;
+        return this.httpClient.request<WorkflowHealthDto>('get', `${this.configuration.basePath}${localVarPath}`,
+            {
+                context: localVarHttpContext,
+                params: localVarQueryParameters,
                 responseType: <any>responseType_,
                 withCredentials: this.configuration.withCredentials,
                 headers: localVarHeaders,

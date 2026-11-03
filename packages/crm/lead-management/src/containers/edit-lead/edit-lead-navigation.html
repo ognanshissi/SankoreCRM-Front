@@ -329,6 +329,12 @@
             @default {
               @if (nextStepIsQualification()) {
                 <a tas-raised-button color="primary" [routerLink]="['projets']">Qualifier dans un projet</a>
+              } @else if (step.actionType === nextAction.CreateProject && canCreateProject()) {
+                <button tas-raised-button color="primary" type="button" (click)="openCreateProject()">Créer le projet</button>
+              } @else if (step.actionType === nextAction.AdvanceProject) {
+                <a tas-raised-button color="primary" [routerLink]="['projets']">Voir le projet</a>
+              } @else if (step.actionType === nextAction.Dispatch) {
+                <button tas-raised-button color="primary" type="button" (click)="openReassignDrawer()">Attribuer</button>
               }
               @if (!showPlanner()) {
                 <button tas-outlined-button color="primary" type="button" class="bg-white" (click)="openPlanner()">

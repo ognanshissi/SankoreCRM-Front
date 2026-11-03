@@ -117,7 +117,26 @@
     </div>
   </header>
 
-  @if (approvalsCount() > 0) {
+  @if (team()) {
+    @if (kycApprovals() > 0) {
+      <button type="button"
+        class="mx-5 mb-2 flex w-[calc(100%-2.5rem)] items-center gap-2 rounded-xl bg-amber-50 px-4 py-2.5 text-left text-sm text-amber-900 hover:bg-amber-100"
+        (click)="showApprovals.emit()">
+        <tas-icon iconName="feather:shield" style="font-size:14px"></tas-icon>
+        <span class="flex-1"><span class="font-semibold tabular-nums">{{ kycApprovals() }}</span> dossier{{ kycApprovals() > 1 ? 's' : '' }} KYC à valider</span>
+        <tas-icon iconName="feather:chevron-right" style="font-size:14px"></tas-icon>
+      </button>
+    }
+    @if (workflowApprovals() > 0) {
+      <button type="button"
+        class="mx-5 mb-2 flex w-[calc(100%-2.5rem)] items-center gap-2 rounded-xl bg-amber-50 px-4 py-2.5 text-left text-sm text-amber-900 hover:bg-amber-100"
+        (click)="showApprovals.emit()">
+        <tas-icon iconName="feather:git-pull-request" style="font-size:14px"></tas-icon>
+        <span class="flex-1"><span class="font-semibold tabular-nums">{{ workflowApprovals() }}</span> étape{{ workflowApprovals() > 1 ? 's' : '' }} de workflow à approuver</span>
+        <tas-icon iconName="feather:chevron-right" style="font-size:14px"></tas-icon>
+      </button>
+    }
+  } @else if (approvalsCount() > 0) {
     <button type="button"
       class="mx-5 mb-2 flex w-[calc(100%-2.5rem)] items-center gap-2 rounded-xl bg-amber-50 px-4 py-2.5 text-left text-sm text-amber-900 hover:bg-amber-100"
       (click)="showApprovals.emit()">
@@ -197,11 +216,17 @@
   }
 </section>
 
-  <my-day-scorecard
-    [scorecard]="scorecard()"
-    [period]="scorePeriod()"
-    [loading]="scorecardLoading()"
-    [leads]="leads()"
-    (periodChange)="scorePeriodChange.emit($event)"
-  ></my-day-scorecard>
+  @if (team()) {
+    <ng-content select="[team-panel]"></ng-content>
+  } @else {
+    <my-day-scorecard
+      [scorecard]="scorecard()"
+      [period]="scorePeriod()"
+      [loading]="scorecardLoading()"
+      [leads]="leads()"
+      (periodChange)="scorePeriodChange.emit($event)"
+    ></my-day-scorecard>
+  }
 </div>
+
+<ng-content select="[team-table]"></ng-content>

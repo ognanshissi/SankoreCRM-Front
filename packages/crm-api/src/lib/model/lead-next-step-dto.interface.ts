@@ -24,7 +24,7 @@ export interface LeadNextStepDto {
     reminderId?: string | null;
     assigneeId?: string | null;
     /**
-     * One of: Qualify, Dispatch, CollectMoreData, CompleteQualification, ContactAgain, FollowUp, Nurture, Disqualify
+     * One of: Qualify, Dispatch, CollectMoreData, CompleteQualification, ContactAgain, FollowUp, Nurture, Disqualify, CreateProject, AdvanceProject
      */
     actionType?: LeadNextStepDtoActionTypeEnum | null;
     urgency?: string | null;
@@ -43,7 +43,9 @@ export enum LeadNextStepDtoActionTypeEnum {
     ContactAgain = 'ContactAgain',
     FollowUp = 'FollowUp',
     Nurture = 'Nurture',
-    Disqualify = 'Disqualify'
+    Disqualify = 'Disqualify',
+    CreateProject = 'CreateProject',
+    AdvanceProject = 'AdvanceProject'
 };
 
 

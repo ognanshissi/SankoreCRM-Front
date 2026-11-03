@@ -23,6 +23,8 @@ import { ApproveStepRequest } from '../model/approve-step-request.interface';
 // @ts-ignore
 import { AssignRequest } from '../model/assign-request.interface';
 // @ts-ignore
+import { CancelRequest } from '../model/cancel-request.interface';
+// @ts-ignore
 import { DelegateRequest } from '../model/delegate-request.interface';
 // @ts-ignore
 import { InstanceRequirementsDto } from '../model/instance-requirements-dto.interface';
@@ -32,6 +34,8 @@ import { MyStepDto } from '../model/my-step-dto.interface';
 import { PagedResultOfCompletedTaskDto } from '../model/paged-result-of-completed-task-dto.interface';
 // @ts-ignore
 import { RejectStepRequest } from '../model/reject-step-request.interface';
+// @ts-ignore
+import { RemindStepResult } from '../model/remind-step-result.interface';
 // @ts-ignore
 import { StartInstanceRequest } from '../model/start-instance-request.interface';
 // @ts-ignore
@@ -273,13 +277,14 @@ export class WorkflowInstancesApiService {
     /**
      * Cancel an in-progress workflow instance
      * @param id 
+     * @param cancelRequest 
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      */
-    public cancelWorkflowInstance(id: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<any>;
-    public cancelWorkflowInstance(id: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<HttpResponse<any>>;
-    public cancelWorkflowInstance(id: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<HttpEvent<any>>;
-    public cancelWorkflowInstance(id: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<any> {
+    public cancelWorkflowInstance(id: string, cancelRequest?: CancelRequest, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<any>;
+    public cancelWorkflowInstance(id: string, cancelRequest?: CancelRequest, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<HttpResponse<any>>;
+    public cancelWorkflowInstance(id: string, cancelRequest?: CancelRequest, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<HttpEvent<any>>;
+    public cancelWorkflowInstance(id: string, cancelRequest?: CancelRequest, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: undefined, context?: HttpContext}): Observable<any> {
         if (id === null || id === undefined) {
             throw new Error('Required parameter id was null or undefined when calling cancelWorkflowInstance.');
         }
@@ -310,6 +315,15 @@ export class WorkflowInstancesApiService {
         }
 
 
+        // to determine the Content-Type header
+        const consumes: string[] = [
+            'application/json'
+        ];
+        const httpContentTypeSelected: string | undefined = this.configuration.selectHeaderContentType(consumes);
+        if (httpContentTypeSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Content-Type', httpContentTypeSelected);
+        }
+
         let responseType_: 'text' | 'json' | 'blob' = 'json';
         if (localVarHttpHeaderAcceptSelected) {
             if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
@@ -325,6 +339,7 @@ export class WorkflowInstancesApiService {
         return this.httpClient.request<any>('post', `${this.configuration.basePath}${localVarPath}`,
             {
                 context: localVarHttpContext,
+                body: cancelRequest,
                 responseType: <any>responseType_,
                 withCredentials: this.configuration.withCredentials,
                 headers: localVarHeaders,
@@ -973,6 +988,75 @@ export class WorkflowInstancesApiService {
             {
                 context: localVarHttpContext,
                 body: rejectStepRequest,
+                responseType: <any>responseType_,
+                withCredentials: this.configuration.withCredentials,
+                headers: localVarHeaders,
+                observe: observe,
+                reportProgress: reportProgress
+            }
+        );
+    }
+
+    /**
+     * Remind whoever must act on an open step
+     * @param instanceId 
+     * @param stepId 
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     */
+    public remindWorkflowStep(instanceId: string, stepId: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<RemindStepResult>;
+    public remindWorkflowStep(instanceId: string, stepId: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<RemindStepResult>>;
+    public remindWorkflowStep(instanceId: string, stepId: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<RemindStepResult>>;
+    public remindWorkflowStep(instanceId: string, stepId: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
+        if (instanceId === null || instanceId === undefined) {
+            throw new Error('Required parameter instanceId was null or undefined when calling remindWorkflowStep.');
+        }
+        if (stepId === null || stepId === undefined) {
+            throw new Error('Required parameter stepId was null or undefined when calling remindWorkflowStep.');
+        }
+
+        let localVarHeaders = this.defaultHeaders;
+
+        let localVarCredential: string | undefined;
+        // authentication (BearerToken) required
+        localVarCredential = this.configuration.lookupCredential('BearerToken');
+        if (localVarCredential) {
+            localVarHeaders = localVarHeaders.set('Authorization', 'Bearer ' + localVarCredential);
+        }
+
+        let localVarHttpHeaderAcceptSelected: string | undefined = options && options.httpHeaderAccept;
+        if (localVarHttpHeaderAcceptSelected === undefined) {
+            // to determine the Accept header
+            const httpHeaderAccepts: string[] = [
+                'application/json'
+            ];
+            localVarHttpHeaderAcceptSelected = this.configuration.selectHeaderAccept(httpHeaderAccepts);
+        }
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+
+        let localVarHttpContext: HttpContext | undefined = options && options.context;
+        if (localVarHttpContext === undefined) {
+            localVarHttpContext = new HttpContext();
+        }
+
+
+        let responseType_: 'text' | 'json' | 'blob' = 'json';
+        if (localVarHttpHeaderAcceptSelected) {
+            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+                responseType_ = 'text';
+            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+                responseType_ = 'json';
+            } else {
+                responseType_ = 'blob';
+            }
+        }
+
+        let localVarPath = `/api/v1/workflow/instances/${this.configuration.encodeParam({name: "instanceId", value: instanceId, in: "path", style: "simple", explode: false, dataType: "string", dataFormat: "uuid"})}/steps/${this.configuration.encodeParam({name: "stepId", value: stepId, in: "path", style: "simple", explode: false, dataType: "string", dataFormat: "uuid"})}/remind`;
+        return this.httpClient.request<RemindStepResult>('post', `${this.configuration.basePath}${localVarPath}`,
+            {
+                context: localVarHttpContext,
                 responseType: <any>responseType_,
                 withCredentials: this.configuration.withCredentials,
                 headers: localVarHeaders,

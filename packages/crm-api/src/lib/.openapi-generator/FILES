@@ -152,6 +152,7 @@ model/assign-user-manager-request.interface.ts
 model/assignment-dto.interface.ts
 model/attach-lead-to-customer-request.interface.ts
 model/attach-whats-app-conversation-request.interface.ts
+model/attention-item-dto.interface.ts
 model/audit-entry-dto.interface.ts
 model/backfill-phonetic-keys-result.interface.ts
 model/beneficial-owner-dto.interface.ts
@@ -177,6 +178,7 @@ model/call-outcome-dto.interface.ts
 model/cancel-appointment-request.interface.ts
 model/cancel-integration-command-request.interface.ts
 model/cancel-integration-command-result.interface.ts
+model/cancel-request.interface.ts
 model/capture-answer.interface.ts
 model/capture-household-member.interface.ts
 model/capture-lead-request.interface.ts
@@ -184,6 +186,7 @@ model/capture-lead-result.interface.ts
 model/capture-questionnaire.interface.ts
 model/change-password-request.interface.ts
 model/channel-metadata.interface.ts
+model/circuit-health-dto.interface.ts
 model/claim-document-dto.interface.ts
 model/claim-dto.interface.ts
 model/clear-duplicate-flag-request.interface.ts
@@ -704,6 +707,7 @@ model/relay-agent-admission-dto.interface.ts
 model/relay-agent-dto.interface.ts
 model/relay-agent-enrolment-dto.interface.ts
 model/relay-target-health-report.interface.ts
+model/remind-step-result.interface.ts
 model/reminder-dto.interface.ts
 model/remove-client-document-request.interface.ts
 model/remove-group-member-result.interface.ts
@@ -894,6 +898,11 @@ model/task-generation-rule-dto.interface.ts
 model/task-person-dto.interface.ts
 model/task-subject-dto.interface.ts
 model/task-type-dto.interface.ts
+model/team-agency-option-dto.interface.ts
+model/team-agent-option-dto.interface.ts
+model/team-agent-row-dto.interface.ts
+model/team-scorecard-dto.interface.ts
+model/team-tasks-dto.interface.ts
 model/telephony-call-context.interface.ts
 model/telephony-call-list-item-dto.interface.ts
 model/telephony-candidate.interface.ts
@@ -1019,6 +1028,7 @@ model/whats-app-variable-mapping-dto.interface.ts
 model/withdraw-consent-request.interface.ts
 model/workflow-audit-entry-dto.interface.ts
 model/workflow-circuit-summary.interface.ts
+model/workflow-health-dto.interface.ts
 model/workflow-instance-dto.interface.ts
 model/workflow-instance-step-dto.interface.ts
 model/workflow-step-dto.interface.ts

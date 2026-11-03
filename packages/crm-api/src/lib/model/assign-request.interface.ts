@@ -13,5 +13,6 @@
 
 export interface AssignRequest { 
     assignedToUserId?: string;
+    reason?: string | null;
 }
 

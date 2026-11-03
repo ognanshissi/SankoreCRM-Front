@@ -34,6 +34,8 @@ import { MyScorecardDto } from '../model/my-scorecard-dto.interface';
 import { SetAgentObjectiveRequest } from '../model/set-agent-objective-request.interface';
 // @ts-ignore
 import { SlaBreachDto } from '../model/sla-breach-dto.interface';
+// @ts-ignore
+import { TeamScorecardDto } from '../model/team-scorecard-dto.interface';
 
 // @ts-ignore
 import { BASE_PATH, COLLECTION_FORMATS }                     from '../variables';
@@ -601,6 +603,86 @@ export class LeadsAnalyticsApiService {
 
         let localVarPath = `/api/v1/leads/me/scorecard`;
         return this.httpClient.request<MyScorecardDto>('get', `${this.configuration.basePath}${localVarPath}`,
+            {
+                context: localVarHttpContext,
+                params: localVarQueryParameters,
+                responseType: <any>responseType_,
+                withCredentials: this.configuration.withCredentials,
+                headers: localVarHeaders,
+                observe: observe,
+                reportProgress: reportProgress
+            }
+        );
+    }
+
+    /**
+     * Les chiffres d\&#39;équipe de « Ma journée » d\&#39;un responsable : leads capturés, leads attribués par statut, tâches non démarrées, premiers contacts, conversions et une ligne par agent
+     * period &#x3D; day (aujourd\&#39;hui, défaut), week ou month, bornes UTC. Périmètre : toutes les agences pour Administrator, System et SalesManager, sinon les agences accessibles de l\&#39;utilisateur ; agencyId inclut ses sous-agences. L\&#39;équipe &#x3D; comptes actifs Agent / CommercialAgent de ces agences. Tâches non démarrées, leads à contacter et premiers contacts en retard sont lus maintenant, pas sur la période. Agence ou agent hors périmètre : 404.
+     * @param period 
+     * @param agencyId 
+     * @param agentId 
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     */
+    public getTeamScorecard(period?: string, agencyId?: string, agentId?: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<TeamScorecardDto>;
+    public getTeamScorecard(period?: string, agencyId?: string, agentId?: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<TeamScorecardDto>>;
+    public getTeamScorecard(period?: string, agencyId?: string, agentId?: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<TeamScorecardDto>>;
+    public getTeamScorecard(period?: string, agencyId?: string, agentId?: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
+
+        let localVarQueryParameters = new HttpParams({encoder: this.encoder});
+        if (period !== undefined && period !== null) {
+          localVarQueryParameters = this.addToHttpParams(localVarQueryParameters,
+            <any>period, 'period');
+        }
+        if (agencyId !== undefined && agencyId !== null) {
+          localVarQueryParameters = this.addToHttpParams(localVarQueryParameters,
+            <any>agencyId, 'agencyId');
+        }
+        if (agentId !== undefined && agentId !== null) {
+          localVarQueryParameters = this.addToHttpParams(localVarQueryParameters,
+            <any>agentId, 'agentId');
+        }
+
+        let localVarHeaders = this.defaultHeaders;
+
+        let localVarCredential: string | undefined;
+        // authentication (BearerToken) required
+        localVarCredential = this.configuration.lookupCredential('BearerToken');
+        if (localVarCredential) {
+            localVarHeaders = localVarHeaders.set('Authorization', 'Bearer ' + localVarCredential);
+        }
+
+        let localVarHttpHeaderAcceptSelected: string | undefined = options && options.httpHeaderAccept;
+        if (localVarHttpHeaderAcceptSelected === undefined) {
+            // to determine the Accept header
+            const httpHeaderAccepts: string[] = [
+                'application/json'
+            ];
+            localVarHttpHeaderAcceptSelected = this.configuration.selectHeaderAccept(httpHeaderAccepts);
+        }
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+
+        let localVarHttpContext: HttpContext | undefined = options && options.context;
+        if (localVarHttpContext === undefined) {
+            localVarHttpContext = new HttpContext();
+        }
+
+
+        let responseType_: 'text' | 'json' | 'blob' = 'json';
+        if (localVarHttpHeaderAcceptSelected) {
+            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+                responseType_ = 'text';
+            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+                responseType_ = 'json';
+            } else {
+                responseType_ = 'blob';
+            }
+        }
+
+        let localVarPath = `/api/v1/leads/me/team-scorecard`;
+        return this.httpClient.request<TeamScorecardDto>('get', `${this.configuration.basePath}${localVarPath}`,
             {
                 context: localVarHttpContext,
                 params: localVarQueryParameters,

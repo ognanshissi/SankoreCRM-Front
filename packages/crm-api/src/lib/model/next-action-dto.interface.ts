@@ -14,7 +14,7 @@
 export interface NextActionDto { 
     leadId?: string;
     /**
-     * One of: Qualify, Dispatch, CollectMoreData, CompleteQualification, ContactAgain, FollowUp, Nurture, Disqualify
+     * One of: Qualify, Dispatch, CollectMoreData, CompleteQualification, ContactAgain, FollowUp, Nurture, Disqualify, CreateProject, AdvanceProject
      */
     actionType?: NextActionDtoActionTypeEnum;
     title?: string | null;
@@ -30,7 +30,9 @@ export enum NextActionDtoActionTypeEnum {
     ContactAgain = 'ContactAgain',
     FollowUp = 'FollowUp',
     Nurture = 'Nurture',
-    Disqualify = 'Disqualify'
+    Disqualify = 'Disqualify',
+    CreateProject = 'CreateProject',
+    AdvanceProject = 'AdvanceProject'
 };
 
 

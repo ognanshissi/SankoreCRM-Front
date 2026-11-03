@@ -43,7 +43,7 @@ const SOURCE_LABELS: Record<string, string> = {
 /**
  * « Ma journée » des agents (maquette du propriétaire, 2026-10-31) : le bandeau de la tâche à faire
  * en premier, l'avancement du jour, et la journée rangée par moment — tâches, rappels et
- * rendez-vous mêlés. Les rôles de supervision gardent l'écran à calendrier et vues.
+ * rendez-vous mêlés. Les responsables ont la même maquette, avec la journée de leur équipe à droite.
  *
  * Le composant n'ouvre rien lui-même, sauf les rappels qu'il marque faits : tâches et rendez-vous
  * remontent à l'écran, qui possède les drawers et recharge les listes.
@@ -73,6 +73,14 @@ export class MyDayAgent {
   public readonly entries = input<AgendaEntry[]>([]);
   public readonly leads = input<Map<string, LeadDto>>(new Map());
   public readonly approvalsCount = input(0);
+  /**
+   * La maquette des responsables (2026-11-03) : la colonne de droite et le tableau d'équipe sont
+   * projetés par l'écran (`[team-panel]`, `[team-table]`), et les décisions qui l'attendent sont
+   * dites par type plutôt qu'en un seul compte.
+   */
+  public readonly team = input(false);
+  public readonly kycApprovals = input(0);
+  public readonly workflowApprovals = input(0);
   public readonly isLoading = input(false);
   public readonly canManageTasks = input(false);
   public readonly canScheduleAppointment = input(false);

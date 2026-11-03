@@ -19059,6 +19059,60 @@
         }
       }
     },
+    "/api/v1/leads/me/team-scorecard": {
+      "get": {
+        "tags": [
+          "Leads — Analytics"
+        ],
+        "summary": "Les chiffres d'équipe de « Ma journée » d'un responsable : leads capturés, leads attribués par statut, tâches non démarrées, premiers contacts, conversions et une ligne par agent",
+        "description": "period = day (aujourd'hui, défaut), week ou month, bornes UTC. Périmètre : toutes les agences pour Administrator, System et SalesManager, sinon les agences accessibles de l'utilisateur ; agencyId inclut ses sous-agences. L'équipe = comptes actifs Agent / CommercialAgent de ces agences. Tâches non démarrées, leads à contacter et premiers contacts en retard sont lus maintenant, pas sur la période. Agence ou agent hors périmètre : 404.",
+        "operationId": "GetTeamScorecard",
+        "parameters": [
+          {
+            "name": "period",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "default": "day"
+            }
+          },
+          {
+            "name": "agencyId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "agentId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TeamScorecardDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
     "/api/v1/leads/agent-objectives": {
       "get": {
         "tags": [
@@ -31714,6 +31768,45 @@
         }
       }
     },
+    "/api/v1/workflow/analytics/health": {
+      "get": {
+        "tags": [
+          "WorkflowAnalytics"
+        ],
+        "summary": "What needs someone now (overdue and waiting steps, named) and the health of each circuit",
+        "operationId": "GetWorkflowHealth",
+        "parameters": [
+          {
+            "name": "days",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "stuckThresholdHours",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowHealthDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/workflow/instances/my-steps": {
       "get": {
         "tags": [
@@ -32118,6 +32211,15 @@
             }
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CancelRequest"
+              }
+            }
+          }
+        },
         "responses": {
           "204": {
             "description": "No Content"
@@ -32229,6 +32331,55 @@
           },
           "403": {
             "description": "Forbidden"
+          }
+        }
+      }
+    },
+    "/api/v1/workflow/instances/{instanceId}/steps/{stepId}/remind": {
+      "post": {
+        "tags": [
+          "WorkflowInstances"
+        ],
+        "summary": "Remind whoever must act on an open step",
+        "operationId": "RemindWorkflowStep",
+        "parameters": [
+          {
+            "name": "instanceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "stepId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RemindStepResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": { }
+              }
+            }
           }
         }
       }
@@ -35347,6 +35498,10 @@
           "assignedToUserId": {
             "type": "string",
             "format": "uuid"
+          },
+          "reason": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -35490,6 +35645,91 @@
           "leadId": {
             "type": "string",
             "format": "uuid"
+          }
+        },
+        "additionalProperties": false
+      },
+      "AttentionItemDto": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "nullable": true
+          },
+          "instanceId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "instanceStepId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "templateId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "circuit": {
+            "type": "string",
+            "nullable": true
+          },
+          "stepName": {
+            "type": "string",
+            "nullable": true
+          },
+          "entityType": {
+            "type": "string",
+            "nullable": true
+          },
+          "entityId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "recordLabel": {
+            "type": "string",
+            "nullable": true
+          },
+          "recordLink": {
+            "type": "string",
+            "nullable": true
+          },
+          "approverRoleCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "approverRole": {
+            "type": "string",
+            "nullable": true
+          },
+          "assignedToUserId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "assignedTo": {
+            "type": "string",
+            "nullable": true
+          },
+          "waitingSince": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "waitingHours": {
+            "type": "number",
+            "format": "double"
+          },
+          "dueAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "overdueHours": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "escalations": {
+            "type": "integer",
+            "format": "int32"
           }
         },
         "additionalProperties": false
@@ -36203,6 +36443,16 @@
         },
         "additionalProperties": false
       },
+      "CancelRequest": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "CaptureAnswer": {
         "type": "object",
         "properties": {
@@ -36589,6 +36839,60 @@
           },
           "defaultMode": {
             "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "CircuitHealthDto": {
+        "type": "object",
+        "properties": {
+          "templateId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "entityType": {
+            "type": "string",
+            "nullable": true
+          },
+          "versions": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "activeInstances": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "openSteps": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "overdue": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "stuck": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "slaSteps": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "slaBreached": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "slaKeptRate": {
+            "type": "number",
+            "format": "double",
             "nullable": true
           }
         },
@@ -47950,10 +48254,12 @@
               "ContactAgain",
               "FollowUp",
               "Nurture",
-              "Disqualify"
+              "Disqualify",
+              "CreateProject",
+              "AdvanceProject"
             ],
             "type": "string",
-            "description": "One of: Qualify, Dispatch, CollectMoreData, CompleteQualification, ContactAgain, FollowUp, Nurture, Disqualify",
+            "description": "One of: Qualify, Dispatch, CollectMoreData, CompleteQualification, ContactAgain, FollowUp, Nurture, Disqualify, CreateProject, AdvanceProject",
             "nullable": true
           },
           "urgency": {
@@ -50813,10 +51119,12 @@
               "ContactAgain",
               "FollowUp",
               "Nurture",
-              "Disqualify"
+              "Disqualify",
+              "CreateProject",
+              "AdvanceProject"
             ],
             "type": "string",
-            "description": "One of: Qualify, Dispatch, CollectMoreData, CompleteQualification, ContactAgain, FollowUp, Nurture, Disqualify"
+            "description": "One of: Qualify, Dispatch, CollectMoreData, CompleteQualification, ContactAgain, FollowUp, Nurture, Disqualify, CreateProject, AdvanceProject"
           },
           "title": {
             "type": "string",
@@ -56108,6 +56416,16 @@
             "type": "string",
             "format": "date-time",
             "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "RemindStepResult": {
+        "type": "object",
+        "properties": {
+          "reminded": {
+            "type": "integer",
+            "format": "int32"
           }
         },
         "additionalProperties": false
@@ -61479,6 +61797,195 @@
         },
         "additionalProperties": false
       },
+      "TeamAgencyOptionDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "parentAgencyId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "TeamAgentOptionDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "fullName": {
+            "type": "string",
+            "nullable": true
+          },
+          "agencyId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "TeamAgentRowDto": {
+        "type": "object",
+        "properties": {
+          "agentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "fullName": {
+            "type": "string",
+            "nullable": true
+          },
+          "agencyName": {
+            "type": "string",
+            "nullable": true
+          },
+          "captured": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "assigned": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "toContact": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "tasksNotStarted": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "tasksOverdue": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "firstContactRate": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "lateFirstContacts": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "conversions": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "TeamScorecardDto": {
+        "type": "object",
+        "properties": {
+          "period": {
+            "type": "string",
+            "nullable": true
+          },
+          "from": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "to": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "agencyId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "agentId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "allAgencies": {
+            "type": "boolean"
+          },
+          "agencies": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TeamAgencyOptionDto"
+            },
+            "nullable": true
+          },
+          "agents": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TeamAgentOptionDto"
+            },
+            "nullable": true
+          },
+          "captured": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "assigned": {
+            "$ref": "#/components/schemas/ScorecardAssignedDto"
+          },
+          "weeklyReceived": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ScorecardWeekDto"
+            },
+            "nullable": true
+          },
+          "dailyReceived": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ScorecardDayDto"
+            },
+            "nullable": true
+          },
+          "firstContactWithin24h": {
+            "$ref": "#/components/schemas/ScorecardFirstContactDto"
+          },
+          "conversions": {
+            "$ref": "#/components/schemas/ScorecardConversionsDto"
+          },
+          "tasks": {
+            "$ref": "#/components/schemas/TeamTasksDto"
+          },
+          "lateFirstContacts": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "rows": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TeamAgentRowDto"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "TeamTasksDto": {
+        "type": "object",
+        "properties": {
+          "notStarted": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "overdue": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
       "TelephonyCallContext": {
         "type": "object",
         "properties": {
@@ -66252,6 +66759,67 @@
           "templateId": {
             "type": "string",
             "format": "uuid"
+          }
+        },
+        "additionalProperties": false
+      },
+      "WorkflowHealthDto": {
+        "type": "object",
+        "properties": {
+          "asOf": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "from": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "days": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "stuckThresholdHours": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "overdueCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "stuckCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "activeInstances": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "slaSteps": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "slaBreached": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "slaKeptRate": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "attention": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AttentionItemDto"
+            },
+            "nullable": true
+          },
+          "circuits": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CircuitHealthDto"
+            },
+            "nullable": true
           }
         },
         "additionalProperties": false

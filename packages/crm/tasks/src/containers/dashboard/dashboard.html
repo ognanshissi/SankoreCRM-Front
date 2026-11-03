@@ -1,4 +1,4 @@
-@if (isAgentLayout()) {
+@if (isMyDayLayout()) {
   @switch (agentMode()) {
     @case ('upcoming') {
       <button type="button" class="mb-4 inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline" (click)="agentMode.set('today')">
@@ -46,6 +46,9 @@
         [entries]="entries()"
         [leads]="leads()"
         [approvalsCount]="approvalsCount()"
+        [team]="isManagerLayout() && canViewTeam()"
+        [kycApprovals]="kycApprovals()"
+        [workflowApprovals]="workflowApprovals()"
         [isLoading]="isLoading()"
         [canManageTasks]="canManageTasks()"
         [canScheduleAppointment]="canScheduleAppointment()"
@@ -60,7 +63,27 @@
         (agendaChanged)="loadAgenda()"
         (showUpcoming)="agentMode.set('upcoming')"
         (showApprovals)="agentMode.set('approvals')"
-      ></my-day-agent>
+      >
+        @if (isManagerLayout() && canViewTeam()) {
+          <my-day-team team-panel
+            [card]="teamCard()"
+            [period]="teamPeriod()"
+            [agencyId]="teamAgency()"
+            [agentId]="teamAgent()"
+            [loading]="isTeamLoading()"
+            (periodChange)="setTeamPeriod($event)"
+            (agencyChange)="setTeamAgency($event)"
+            (agentChange)="setTeamAgent($event)"
+          ></my-day-team>
+          <my-day-team-table team-table class="mt-4 block"
+            [card]="teamCard()"
+            [selected]="teamAgent()"
+            [loading]="isTeamLoading()"
+            [periodLabel]="teamPeriodLabel()"
+            (pick)="setTeamAgent($event)"
+          ></my-day-team-table>
+        }
+      </my-day-agent>
     }
   }
 } @else {
