@@ -3,7 +3,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { HttpErrorResponse } from '@angular/common/http';
 import { ActivatedRoute, Router } from '@angular/router';
-import { catchError, EMPTY, finalize, forkJoin, map, of } from 'rxjs';
+import { catchError, EMPTY, finalize, forkJoin, map, of, Subscription } from 'rxjs';
 import { TasSelect } from '@talisoft/ui/select';
 import { TasIcon } from '@talisoft/ui/icon';
 import { Button } from '@talisoft/ui/button';
@@ -186,6 +186,12 @@ export class DashboardComponent implements OnInit, OnDestroy {
   public readonly isManagerLayout = computed(() => this.isSupervisor());
   public readonly isMyDayLayout = computed(() => this.isAgentLayout() || this.isManagerLayout());
   public readonly canViewTeam = this._permissions.can('lead:analytics:view');
+  /**
+   * « Mes performances » : les agents, et les responsables sans droit d'analyse, à qui la maquette
+   * rend la colonne de l'agent faute de journée d'équipe. Ne tester que `isAgentLayout` laissait
+   * cette colonne vide chez ces responsables.
+   */
+  public readonly showsOwnScorecard = computed(() => this.isAgentLayout() || (this.isManagerLayout() && !this.canViewTeam()));
   public agentMode = signal<AgentMode>('today');
   /** La journée de l'équipe (`GET leads/me/team-scorecard`) ; agence et agent restent dans l'URL. */
   public teamCard = signal<TeamScorecardDto | null>(null);
@@ -370,7 +376,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
         this._loadAgentNames();
       }
       this._loadTasks();
-      if (this.isAgentLayout()) this.loadScorecard();
+      if (this.showsOwnScorecard()) this.loadScorecard();
       this._loadAgency();
     });
   });
@@ -481,7 +487,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
       switch (result?.action) {
         case 'completed':
           this._loadTasks();
-          if (this.isAgentLayout()) this.loadScorecard();
+          if (this.showsOwnScorecard()) this.loadScorecard();
           if (this.isManagerLayout()) this.loadTeamScorecard();
           break;
         case 'reassign':  this.openReassign(result.task); break;
@@ -578,10 +584,14 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.loadScorecard();
   }
 
+  private _scorecardRequest?: Subscription;
+  private _teamRequest?: Subscription;
+
   /** Les chiffres complètent la journée : leur absence n'empêche pas de travailler. */
   public loadScorecard(): void {
+    this._scorecardRequest?.unsubscribe();
     this.isScorecardLoading.set(true);
-    this._analyticsApi
+    this._scorecardRequest = this._analyticsApi
       .getMyScorecard(this.scorePeriod())
       .pipe(
         catchError(() => of(null)),
@@ -629,8 +639,11 @@ export class DashboardComponent implements OnInit, OnDestroy {
       queryParamsHandling: 'merge',
       replaceUrl: true,
     });
+    // La demande précédente est abandonnée : la réponse lente d'un mois pouvait arriver après celle
+    // du jour et afficher les chiffres du mois sous « aujourd'hui ».
+    this._teamRequest?.unsubscribe();
     this.isTeamLoading.set(true);
-    this._analyticsApi
+    this._teamRequest = this._analyticsApi
       .getTeamScorecard(this.teamPeriod(), this.teamAgency() || undefined, this.teamAgent() || undefined)
       .pipe(
         catchError((err: HttpErrorResponse) => {

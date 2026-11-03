@@ -18101,6 +18101,46 @@
               "type": "string",
               "format": "uuid"
             }
+          },
+          {
+            "name": "intentLevel",
+            "in": "query",
+            "description": "One of: Unknown, Cold, Warm, Hot",
+            "schema": {
+              "enum": [
+                "Unknown",
+                "Cold",
+                "Warm",
+                "Hot"
+              ],
+              "type": "string",
+              "description": "One of: Unknown, Cold, Warm, Hot"
+            }
+          },
+          {
+            "name": "awaitingDispatch",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "cf",
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "name": "agentId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
           }
         ],
         "responses": {
@@ -56424,6 +56464,10 @@
         "type": "object",
         "properties": {
           "reminded": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "alreadyReminded": {
             "type": "integer",
             "format": "int32"
           }

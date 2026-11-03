@@ -13,5 +13,6 @@
 
 export interface RemindStepResult { 
     reminded?: number;
+    alreadyReminded?: number;
 }
 

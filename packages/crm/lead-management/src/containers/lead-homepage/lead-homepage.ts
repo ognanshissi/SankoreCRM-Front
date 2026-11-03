@@ -2,9 +2,11 @@ import {
   Component,
   computed,
   DestroyRef,
+  effect,
   inject,
   OnInit,
   signal,
+  untracked,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
@@ -547,6 +549,27 @@ export class LeadHomepage implements OnInit {
   public readonly moreViews = MORE_VIEWS;
   private readonly _me = computed(() => this._auth.connectedUser()?.id ?? '');
 
+  /**
+   * Le filtre agent et le premier chargement attendent le compte. Lus dans `ngOnInit`, ils ne
+   * l'étaient pas encore à l'ouverture directe ou au rafraîchissement : l'agent arrivait sur
+   * « Tous les leads » au lieu de « Mes leads », et un lien `?owner=<moi>` perdait son filtre
+   * faute de `lead:read:all`.
+   */
+  private _accountReady = false;
+  private readonly _whenAccountReady = effect(() => {
+    const me = this._me();
+    if (!me || this._accountReady) return;
+    this._accountReady = true;
+    untracked(() => {
+      const params = this._route.snapshot.queryParams;
+      if (params['owner'] && (this.canFilterByAgent() || params['owner'] === me)) this.filterOwnerId.set(params['owner']);
+      // Sans aucun filtre dans l'adresse, un agent arrive sur ses leads, un encadrant sur tous.
+      const viewKeys = ['q', 'status', 'leadSource', 'agency', 'intent', 'owner', 'queue', 'cf'];
+      if (!viewKeys.some((k) => k in params) && this.isAgentView()) this.filterOwnerId.set(me);
+      this.reloadCurrentPage();
+    });
+  });
+
   /** La vue dont le jeu de filtres est celui posé ; null quand l'utilisateur a composé le sien. */
   public readonly activeView = computed<LeadView | null>(() =>
     [...PRIMARY_VIEWS, ...MORE_VIEWS].find((v) =>
@@ -614,15 +637,11 @@ export class LeadHomepage implements OnInit {
     if (params['leadSource']) this.filterLeadSourceId.set(params['leadSource']);
     if (params['agency']) this.filterAgencyId.set(params['agency']);
     if (params['intent']) this.filterIntent.set(INTENT_LEGACY_PARAM[params['intent']] ?? params['intent']);
-    if (params['owner'] && (this.canFilterByAgent() || params['owner'] === this._me())) this.filterOwnerId.set(params['owner']);
     if (params['queue'] === '1') this.filterAwaitingDispatch.set(true);
     this.filterCustom.set(this._route.snapshot.queryParamMap.getAll('cf'));
     // La liste est la vue par défaut depuis la maquette du 2026-11-03 ; le pipeline s'ouvre par
     // `view=pipeline`. L'ancien `view=list` reste lu, sans effet.
     if (params['view'] === 'pipeline') this.viewMode.set('kanban');
-    // Sans aucun filtre dans l'adresse, un agent arrive sur ses leads, un encadrant sur tous.
-    const viewKeys = ['q', 'status', 'leadSource', 'agency', 'intent', 'owner', 'queue', 'cf'];
-    if (!viewKeys.some((k) => k in params) && this.isAgentView() && this._me()) this.filterOwnerId.set(this._me());
 
     // « Nouveau lead » de la barre latérale arrive ici avec `?nouveau=1`. Écouté et non lu une
     // fois : depuis cette page, le clic change seulement le paramètre, sans recréer l'écran.
@@ -645,9 +664,8 @@ export class LeadHomepage implements OnInit {
       )
       .subscribe(() => {
         this.reloadCurrentPage();
-          });
+      });
 
-    this.reloadCurrentPage();
     this._loadAgencies();
     this._loadAgents();
     this._loadLeadSources();
@@ -1348,7 +1366,10 @@ export class LeadHomepage implements OnInit {
     const agencyId = this.filterAgencyId() || undefined;
     const search = this.searchQuery() || undefined;
     const leadSourceConfigId = this.filterLeadSourceId() || undefined;
+    const intent = (this.filterIntent() || undefined) as 'Cold' | 'Warm' | 'Hot' | undefined;
 
+    // Les mêmes filtres que la liste : exporter « Chauds », « Mes leads » ou la file d'attente
+    // donnait tous les leads des seuls statut, agence, recherche et source.
     this._leadsApiService
       .exportLeads(
         status,
@@ -1359,6 +1380,10 @@ export class LeadHomepage implements OnInit {
         search,
         undefined,
         leadSourceConfigId,
+        intent,
+        this.filterAwaitingDispatch() || undefined,
+        this.filterCustom().length ? this.filterCustom() : undefined,
+        this.filterOwnerId() || undefined,
       )
       .pipe(
       catchError(() => {

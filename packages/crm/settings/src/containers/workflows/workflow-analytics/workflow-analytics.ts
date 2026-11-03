@@ -1,7 +1,7 @@
 import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { RouterLink } from '@angular/router';
-import { catchError, EMPTY } from 'rxjs';
+import { catchError, EMPTY, Subscription } from 'rxjs';
 import { Button } from '@talisoft/ui/button';
 import { TasCard } from '@talisoft/ui/card';
 import { TasIcon } from '@talisoft/ui/icon';
@@ -362,9 +362,13 @@ export class WorkflowAnalyticsGlobalPage implements OnInit {
     this.load();
   }
 
+  private _request?: Subscription;
+
   public load(): void {
+    // Passer de 90 j à 7 j : la réponse de 90 j, plus lente, écrasait celle de 7 j.
+    this._request?.unsubscribe();
     this.isLoading.set(true);
-    this._analyticsApi.getWorkflowHealth(this.days(), STUCK_THRESHOLD_HOURS).pipe(
+    this._request = this._analyticsApi.getWorkflowHealth(this.days(), STUCK_THRESHOLD_HOURS).pipe(
       catchError(() => {
         this._snackbar.error('Erreur', 'La santé des workflows n\'a pas pu être chargée.');
         this.isLoading.set(false);
@@ -388,6 +392,7 @@ export class WorkflowAnalyticsGlobalPage implements OnInit {
       this.busy.set(null);
       const n = res.reminded ?? 0;
       if (n) this._snackbar.success('Relance envoyée', n > 1 ? `${n} personnes prévenues.` : 'La personne a été prévenue.');
+      else if (res.alreadyReminded) this._snackbar.info('Déjà relancée', 'Cette étape a été relancée il y a moins d\'une heure.');
       else this._snackbar.info('Personne à relancer', 'Aucune personne ne tient cette étape : réaffectez-la.');
     });
   }
