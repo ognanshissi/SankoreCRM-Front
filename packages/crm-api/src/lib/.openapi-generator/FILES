@@ -493,6 +493,7 @@ model/lead-sla-dto.interface.ts
 model/lead-source-detail-dto.interface.ts
 model/lead-source-list-dto.interface.ts
 model/lead-stats-dto.interface.ts
+model/lead-view-counts-dto.interface.ts
 model/leads-add-household-member-request.interface.ts
 model/leads-add-household-member-response.interface.ts
 model/leads-household-member-dto.interface.ts

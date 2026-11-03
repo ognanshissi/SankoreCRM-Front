@@ -400,6 +400,7 @@ export * from './lead-sla-dto.interface';
 export * from './lead-source-detail-dto.interface';
 export * from './lead-source-list-dto.interface';
 export * from './lead-stats-dto.interface';
+export * from './lead-view-counts-dto.interface';
 export * from './leads-add-household-member-request.interface';
 export * from './leads-add-household-member-response.interface';
 export * from './leads-household-member-dto.interface';

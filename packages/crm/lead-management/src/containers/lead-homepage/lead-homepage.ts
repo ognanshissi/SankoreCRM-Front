@@ -11,7 +11,7 @@ import {
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
-import { catchError, debounceTime, EMPTY, filter, map, Subject } from 'rxjs';
+import { catchError, debounceTime, EMPTY, filter, map, of, Subject, Subscription } from 'rxjs';
 import { CdkDragDrop, CdkDragStart, DragDropModule } from '@angular/cdk/drag-drop';
 import { Button } from '@talisoft/ui/button';
 import { TasIcon } from '@talisoft/ui/icon';
@@ -23,6 +23,7 @@ import {
   LogActivityRequestTypeEnum,
   LeadDto,
   LeadsApiService,
+  LeadViewCountsDto,
   LeadSourcesApiService,
   UpdatePipelineStageRequestStageEnum,
   UserDto,
@@ -579,6 +580,20 @@ export class LeadHomepage implements OnInit {
       && (v.mine ? !!this._me() && this.filterOwnerId() === this._me() : !this.filterOwnerId()),
     ) ?? null,
   );
+  /** Combien chaque vue contient, sous les filtres qu'elles partagent (agence, source, recherche, champs). */
+  public readonly viewCounts = signal<LeadViewCountsDto | null>(null);
+  private _viewCountsRequest?: Subscription;
+
+  public viewCount(view: LeadView): number | null {
+    const counts = this.viewCounts();
+    if (!counts) return null;
+    if (view.mine) return counts.mine ?? 0;
+    if (view.queue) return counts.awaitingDispatch ?? 0;
+    if (view.status) return counts.byStatus?.[view.status] ?? 0;
+    if (view.intent) return counts.byIntent?.[view.intent] ?? 0;
+    return counts.total ?? 0;
+  }
+
   public readonly activeMoreView = computed(() => {
     const view = this.activeView();
     return view && MORE_VIEWS.includes(view) ? view : null;
@@ -1042,6 +1057,8 @@ export class LeadHomepage implements OnInit {
 
   public loadLeads(page: number, pageSize: number): void {
     this.isLoading.set(true);
+    // Rechargés avec la liste : un lead qui change de statut ou de température change de vue.
+    this._loadViewCounts();
 
     const status = (this.filterStatus() || undefined) as ListLeadStatus | undefined;
     const agencyId = this.filterAgencyId() || undefined;
@@ -1402,6 +1419,19 @@ export class LeadHomepage implements OnInit {
       this._snackbar.success('Export terminé', 'Le fichier CSV a été téléchargé.');
       this.isExporting.set(false);
     });
+  }
+
+  private _loadViewCounts(): void {
+    this._viewCountsRequest?.unsubscribe();
+    this._viewCountsRequest = this._leadsApiService
+      .getLeadViewCounts(
+        this.filterAgencyId() || undefined,
+        this.searchQuery() || undefined,
+        this.filterLeadSourceId() || undefined,
+        this.filterCustom().length ? this.filterCustom() : undefined,
+      )
+      .pipe(catchError(() => of(null)))
+      .subscribe((counts) => this.viewCounts.set(counts));
   }
 
   private _loadAgencies(): void {

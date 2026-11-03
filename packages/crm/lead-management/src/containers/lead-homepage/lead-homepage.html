@@ -34,8 +34,9 @@
         [attr.aria-current]="activeView()?.key === view.key ? 'page' : null"
         (click)="selectView(view)">
         {{ view.label }}
-        @if (activeView()?.key === view.key && viewMode() === 'list') {
-          <span class="px-1.5 rounded-full bg-primary text-white text-[11px] font-semibold tabular-nums">{{ tableConfig().pagination.totalElements ?? 0 }}</span>
+        @if (viewCount(view); as count) {
+          <span class="px-1.5 rounded-full text-[11px] font-semibold tabular-nums"
+                [class]="activeView()?.key === view.key ? 'bg-primary text-white' : 'bg-slate-100 text-slate-600'">{{ count }}</span>
         }
       </button>
     }
@@ -45,8 +46,8 @@
       TasMenuTrigger [panel]="viewsMenu">
       @if (activeMoreView(); as view) {
         {{ view.label }}
-        @if (viewMode() === 'list') {
-          <span class="px-1.5 rounded-full bg-primary text-white text-[11px] font-semibold tabular-nums">{{ tableConfig().pagination.totalElements ?? 0 }}</span>
+        @if (viewCount(view); as count) {
+          <span class="px-1.5 rounded-full bg-primary text-white text-[11px] font-semibold tabular-nums">{{ count }}</span>
         }
         <tas-icon iconName="feather:chevron-down" style="font-size:12px"></tas-icon>
       } @else {
@@ -60,9 +61,14 @@
           <tas-menu-item>
             <button type="button" class="w-full flex items-center justify-between gap-6 text-left" (click)="selectView(view)">
               {{ view.label }}
-              @if (activeView()?.key === view.key) {
-                <tas-icon iconName="feather:check" class="text-primary" style="font-size:13px"></tas-icon>
-              }
+              <span class="flex items-center gap-2">
+                @if (viewCount(view) !== null) {
+                  <span class="text-xs text-slate-500 tabular-nums">{{ viewCount(view) }}</span>
+                }
+                @if (activeView()?.key === view.key) {
+                  <tas-icon iconName="feather:check" class="text-primary" style="font-size:13px"></tas-icon>
+                }
+              </span>
             </button>
           </tas-menu-item>
         }

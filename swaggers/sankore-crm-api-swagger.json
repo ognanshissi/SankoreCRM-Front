@@ -15569,6 +15569,62 @@
         }
       }
     },
+    "/api/v1/leads/view-counts": {
+      "get": {
+        "tags": [
+          "Leads"
+        ],
+        "summary": "How many leads each view of the list holds, under the filters the views share",
+        "operationId": "GetLeadViewCounts",
+        "parameters": [
+          {
+            "name": "agencyId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "leadSourceConfigId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "cf",
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LeadViewCountsDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/leads/system-capture": {
       "post": {
         "tags": [
@@ -49277,6 +49333,40 @@
           "conversionRate": {
             "type": "number",
             "format": "double"
+          }
+        },
+        "additionalProperties": false
+      },
+      "LeadViewCountsDto": {
+        "type": "object",
+        "properties": {
+          "total": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "mine": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "awaitingDispatch": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "byStatus": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "nullable": true
+          },
+          "byIntent": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "nullable": true
           }
         },
         "additionalProperties": false
