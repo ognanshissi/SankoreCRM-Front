@@ -215,6 +215,8 @@ export class WorkflowInstancesPage {
       .startWorkflowInstance({
         entityType: this.template()?.entityType ?? null,
         entityId: this.startEntityId.trim(),
+        // Ce circuit-ci : sans lui, le serveur démarrait le premier circuit actif du même type.
+        templateId: this.template()?.id ?? null,
       })
       .pipe(
         catchError(() => {

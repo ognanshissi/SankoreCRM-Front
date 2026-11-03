@@ -9,6 +9,7 @@
  * https://openapi-generator.tech
  * Do not edit the class manually.
  */
+import { ProjectBlockingCircuitDto } from './project-blocking-circuit-dto.interface';
 import { ProjectWorkflowRunDto } from './project-workflow-run-dto.interface';
 import { Money } from './money.interface';
 import { ProjectFieldDefinition } from './project-field-definition.interface';
@@ -61,6 +62,7 @@ export interface OpportunityDto {
     templateVersion?: number | null;
     latestTemplateVersion?: number | null;
     blockingSteps?: Array<string> | null;
+    blockingCircuits?: Array<ProjectBlockingCircuitDto> | null;
 }
 export enum OpportunityDtoStageEnum {
     Prospecting = 'Prospecting',

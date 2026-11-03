@@ -1,8 +1,8 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, computed, inject, input, OnInit, signal } from '@angular/core';
 import { NgClass } from '@angular/common';
-import { Router } from '@angular/router';
-import { forkJoin } from 'rxjs';
+import { Router, RouterLink } from '@angular/router';
+import { catchError, forkJoin, of } from 'rxjs';
 import { TasCard } from '@talisoft/ui/card';
 import { Button } from '@talisoft/ui/button';
 import { Severity, TasTag } from '@talisoft/ui/tag';
@@ -20,6 +20,7 @@ import {
   WorkflowInstanceStepDto,
   WorkflowInstancesApiService,
   WorkflowTasksApiService,
+  InstanceRequirementsDto,
 } from '@sankore/crm-api';
 import { SideDrawerService } from '@talisoft/ui/side-drawer';
 // Le module KYC ne dépend pas de la lib settings : l'import ne crée donc pas de cycle.
@@ -30,6 +31,7 @@ import {
 } from '@sankore/crm/kyc';
 import { entityTypeLabel, instanceStatusMeta, stepStatusMeta } from '../workflow-shared';
 import { PermissionsService } from '@sankore/crm/common';
+import { WorkflowStepRequirements } from './step-requirements';
 
 function taskStatusMeta(status: string | undefined): {
   label: string;
@@ -57,7 +59,7 @@ function taskPriorityLabel(priority: string | undefined): string {
 @Component({
   selector: 'workflow-instance-detail',
   templateUrl: './instance-detail.html',
-  imports: [NgClass, TasCard, Button, TasTag, TasSpinner, TasIcon, TimeagoPipe],
+  imports: [NgClass, RouterLink, TasCard, Button, WorkflowStepRequirements, TasTag, TasSpinner, TasIcon, TimeagoPipe],
 })
 export class WorkflowInstanceDetailPage implements OnInit {
   private readonly _permissions = inject(PermissionsService);
@@ -111,6 +113,34 @@ export class WorkflowInstanceDetailPage implements OnInit {
   public showApproveForm = signal(false);
   public showRejectForm = signal(false);
   public approveComment = signal('');
+  /**
+   * Pourquoi le serveur refuse l'approbation (« Champs à remplir avant d'approuver : Site web. »),
+   * affiché dans le formulaire tant qu'il est ouvert : c'est une règle de l'étape, pas une panne.
+   */
+  public approveRefusal = signal<string | null>(null);
+
+  /**
+   * Où compléter le dossier quand l'approbation est refusée. Un projet s'ouvre sur sa page, qui
+   * mène à son lead — les champs d'une étape Formulaire de projet se lisent sur le lead.
+   */
+  public recordLink(): unknown[] | null {
+    const inst = this.instance();
+    if (!inst?.entityId) return null;
+    switch (inst.entityType) {
+      case 'Lead': return ['/leads', inst.entityId];
+      case 'Opportunity': return ['/leads/projets', inst.entityId];
+      case 'Account': return ['/customers', inst.entityId];
+      default: return null;
+    }
+  }
+
+  /** Ce que l'étape ouverte attend du dossier (« Avant d'approuver ») ; null quand la lecture a échoué. */
+  public requirements = signal<InstanceRequirementsDto | null>(null);
+
+  public openApproveForm(): void {
+    this.approveRefusal.set(null);
+    this.showApproveForm.set(true);
+  }
   public rejectComment = signal('');
 
   // ── Assign / Delegate ─────────────────────────────────────────────────────
@@ -223,6 +253,7 @@ export class WorkflowInstanceDetailPage implements OnInit {
       .subscribe({
         next: () => {
           this._snackbar.success('Succès', 'Étape approuvée.');
+          this.approveRefusal.set(null);
           this.showApproveForm.set(false);
           this.approveComment.set('');
           this.isActing.set(false);
@@ -231,7 +262,9 @@ export class WorkflowInstanceDetailPage implements OnInit {
         // Le motif du serveur : une étape Formulaire, questionnaire ou KYC refuse l'approbation tant
         // que le dossier ne la satisfait pas, et dit ce qui manque.
         error: (err: HttpErrorResponse) => {
-          this._snackbar.error('Erreur', err.error?.detail ?? err.error?.error ?? "Impossible d'approuver.");
+          const reason: string | undefined = err.error?.detail ?? err.error?.error;
+          if (err.status === 400 && reason) this.approveRefusal.set(reason);
+          else this._snackbar.error('Erreur', reason ?? "Impossible d'approuver.");
           this.isActing.set(false);
         },
       });
@@ -460,9 +493,12 @@ export class WorkflowInstanceDetailPage implements OnInit {
       instance: this._api.getWorkflowInstance(this.instanceId()),
       audit: this._api.getWorkflowInstanceAudit(this.instanceId()),
       tasks: this._tasksApi.listWorkflowTasks(this.instanceId()),
+      // Un complément d'information : son échec ne doit pas empêcher d'afficher l'instance.
+      requirements: this._api.getWorkflowInstanceRequirements(this.instanceId()).pipe(catchError(() => of(null))),
     }).subscribe({
-      next: ({ instance, audit, tasks }) => {
+      next: ({ instance, audit, tasks, requirements }) => {
         this.instance.set(instance);
+        this.requirements.set(requirements);
         this.audit.set(audit ?? []);
         this.tasks.set(tasks ?? []);
         this.isLoading.set(false);

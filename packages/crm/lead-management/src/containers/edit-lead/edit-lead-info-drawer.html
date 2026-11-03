@@ -57,9 +57,38 @@
           </div>
 
           <p class="text-xs text-slate-400">
-            Le téléphone, la pièce d'identité et les informations d'entreprise ne sont pas
-            modifiables ici : ils ne font pas partie du contrat de mise à jour.
+            Le téléphone et la pièce d'identité ne sont pas modifiables ici : ils ne font pas partie
+            du contrat de mise à jour.
           </p>
+        </div>
+      </div>
+
+      <!--
+        Entreprise : modifiable depuis le 2026-11-02 — une étape « Formulaire » de workflow peut
+        exiger le site web, qui ne pouvait jusque-là être saisi qu'à la création.
+      -->
+      <div class="border-t border-gray-200 pt-4">
+        <p class="text-sm font-medium text-slate-600 mb-3">Entreprise</p>
+        <div class="grid grid-cols-2 gap-4">
+          <tas-form-field>
+            <tas-label>Nom de l'entreprise</tas-label>
+            <input tasInput type="text" [formField]="formSchema.companyName" />
+          </tas-form-field>
+          <tas-form-field>
+            <tas-label>Site web</tas-label>
+            <input tasInput type="url" placeholder="https://" [formField]="formSchema.website" />
+          </tas-form-field>
+          <tas-form-field>
+            <tas-label>E-mail de l'entreprise</tas-label>
+            <input tasInput type="email" [formField]="formSchema.companyEmail" />
+            @if (formSchema.companyEmail().touched() && formSchema.companyEmail().invalid()) {
+              <tas-error>{{ formSchema.companyEmail().errors()[0].message }}</tas-error>
+            }
+          </tas-form-field>
+          <tas-form-field>
+            <tas-label>Téléphone de l'entreprise</tas-label>
+            <input tasInput type="tel" [formField]="formSchema.companyPhone" />
+          </tas-form-field>
         </div>
       </div>
 

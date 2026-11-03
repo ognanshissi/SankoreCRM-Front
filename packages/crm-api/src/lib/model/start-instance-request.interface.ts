@@ -14,5 +14,6 @@
 export interface StartInstanceRequest { 
     entityType?: string | null;
     entityId?: string;
+    templateId?: string | null;
 }
 

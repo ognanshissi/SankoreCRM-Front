@@ -31963,6 +31963,41 @@
         }
       }
     },
+    "/api/v1/workflow/instances/{id}/requirements": {
+      "get": {
+        "tags": [
+          "WorkflowInstances"
+        ],
+        "summary": "What the open step of an instance waits for on its record",
+        "operationId": "GetWorkflowInstanceRequirements",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InstanceRequirementsDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
     "/api/v1/workflow/instances/{id}/approve": {
       "post": {
         "tags": [
@@ -44908,6 +44943,54 @@
         },
         "additionalProperties": false
       },
+      "InstanceRequirementDto": {
+        "type": "object",
+        "properties": {
+          "label": {
+            "type": "string",
+            "nullable": true
+          },
+          "satisfied": {
+            "type": "boolean"
+          },
+          "fieldKey": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "InstanceRequirementsDto": {
+        "type": "object",
+        "properties": {
+          "instanceStepId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "stepName": {
+            "type": "string",
+            "nullable": true
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/InstanceRequirementDto"
+            },
+            "nullable": true
+          },
+          "completeOnEntityType": {
+            "type": "string",
+            "nullable": true
+          },
+          "completeOnEntityId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "InsuranceDistributorDto": {
         "type": "object",
         "properties": {
@@ -51144,6 +51227,13 @@
               "type": "string"
             },
             "nullable": true
+          },
+          "blockingCircuits": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProjectBlockingCircuitDto"
+            },
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -53141,6 +53231,96 @@
         },
         "additionalProperties": false
       },
+      "ProjectBlockingCircuitDto": {
+        "type": "object",
+        "properties": {
+          "instanceId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "circuit": {
+            "type": "string",
+            "nullable": true
+          },
+          "blockingSteps": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "openStep": {
+            "$ref": "#/components/schemas/ProjectBlockingStepDto"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ProjectBlockingRequirementDto": {
+        "type": "object",
+        "properties": {
+          "label": {
+            "type": "string",
+            "nullable": true
+          },
+          "satisfied": {
+            "type": "boolean"
+          },
+          "fieldKey": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ProjectBlockingStepDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "kind": {
+            "type": "string",
+            "nullable": true
+          },
+          "approverRole": {
+            "type": "string",
+            "nullable": true
+          },
+          "assignedTo": {
+            "type": "string",
+            "nullable": true
+          },
+          "canAct": {
+            "type": "boolean"
+          },
+          "dueAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "requirements": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProjectBlockingRequirementDto"
+            },
+            "nullable": true
+          },
+          "completeOnEntityType": {
+            "type": "string",
+            "nullable": true
+          },
+          "completeOnEntityId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "task": {
+            "$ref": "#/components/schemas/ProjectStepTaskDto"
+          }
+        },
+        "additionalProperties": false
+      },
       "ProjectChecklistItem": {
         "type": "object",
         "properties": {
@@ -53882,6 +54062,28 @@
             "items": {
               "type": "string"
             },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ProjectStepTaskDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "nullable": true
+          },
+          "assignedTo": {
+            "type": "string",
             "nullable": true
           }
         },
@@ -59727,6 +59929,11 @@
           "entityId": {
             "type": "string",
             "format": "uuid"
+          },
+          "templateId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -63034,6 +63241,22 @@
           "customFields": {
             "type": "object",
             "additionalProperties": { },
+            "nullable": true
+          },
+          "companyName": {
+            "type": "string",
+            "nullable": true
+          },
+          "companyEmail": {
+            "type": "string",
+            "nullable": true
+          },
+          "companyPhone": {
+            "type": "string",
+            "nullable": true
+          },
+          "website": {
+            "type": "string",
             "nullable": true
           }
         },

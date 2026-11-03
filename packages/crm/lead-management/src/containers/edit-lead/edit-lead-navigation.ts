@@ -405,12 +405,43 @@ export class EditLeadNavigation implements OnDestroy {
         this._loadDuplicates(lead);
         this._loadProjectCount(id);
         this._startPolling(id);
+        this._openEditFromLink();
       });
     });
   }
 
   ngOnDestroy(): void {
     this._stopPolling();
+  }
+
+  /**
+   * « Compléter le dossier » d'une étape de circuit arrive avec `?modifier=1` (et `retour`, l'instance) :
+   * le tiroir de modification s'ouvre tout de suite, et un enregistrement ramène à l'instance, où la
+   * liste « Avant d'approuver » se relit. Le paramètre est retiré de l'adresse pour qu'un
+   * rafraîchissement ne rouvre pas le tiroir.
+   */
+  private _openEditFromLink(): void {
+    const tree = this._router.parseUrl(this._router.url);
+    if (tree.queryParams['modifier'] !== '1') return;
+    const back = tree.queryParams['retour'];
+    delete tree.queryParams['modifier'];
+    delete tree.queryParams['retour'];
+    void this._router.navigateByUrl(tree, { replaceUrl: true });
+    if (!this.canUpdate() || this.isConverted()) return;
+
+    const ref = this._sideDrawerService.open(EditLeadInfoDrawer, {
+      width: '100%',
+      height: '100%',
+      panelClass: 'side-drawer-panel',
+      data: { lead: this.lead()! },
+    });
+    ref.closed.subscribe((updated) => {
+      if (!updated) return;
+      // Seuls un retour vers une instance de circuit ou vers un projet sont suivis : l'adresse vient d'un paramètre.
+      if (typeof back === 'string' && (back.startsWith('/settings/workflows/instances/') || back.startsWith('/leads/projets/')))
+        void this._router.navigateByUrl(back);
+      else this.reload();
+    });
   }
 
   /** Relit le lead pour toute la fiche — voir `LeadEditContext.reload`. */

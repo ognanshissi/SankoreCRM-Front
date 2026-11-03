@@ -5,6 +5,7 @@ import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { catchError, EMPTY } from 'rxjs';
 import { SideDrawerService } from '@talisoft/ui/side-drawer';
+import { WorkflowStepRequirements } from './step-requirements';
 // Le module KYC ne dépend pas de la lib settings : l'import ne crée donc pas de cycle.
 import {
   isKycWorkflowEntity,
@@ -25,6 +26,7 @@ import {
   RejectStepRequest,
   WorkflowInstanceDto,
   WorkflowInstancesApiService,
+  InstanceRequirementsDto,
 } from '@sankore/crm-api';
 
 const COMPLETED_STATUS_META: Record<string, { label: string; severity: 'success' | 'error' | 'warning' | 'neutral' }> = {
@@ -41,7 +43,7 @@ function completedStatusMeta(status: string | null | undefined) {
 
 @Component({
   selector: 'workflow-my-queue',
-  imports: [NgClass, FormsModule, RouterLink, TasCard, TasSpinner, TasIcon, TasTag, Button, TimeagoPipe],
+  imports: [WorkflowStepRequirements, NgClass, FormsModule, RouterLink, TasCard, TasSpinner, TasIcon, TasTag, Button, TimeagoPipe],
   template: `
     <div class="pb-6">
       <!-- Header -->
@@ -263,6 +265,10 @@ function completedStatusMeta(status: string | null | undefined) {
                   >
                     {{ actionType() === 'approve' ? "Confirmer l'approbation" : 'Confirmer le rejet' }}
                   </p>
+                  @if (actionType() === 'approve' && step.instanceId) {
+                    <workflow-step-requirements class="mb-2 block" [requirements]="expandedRequirements()"
+                      [instanceId]="step.instanceId" [entityType]="expandedInstance()?.entityType"></workflow-step-requirements>
+                  }
                   <textarea
                     class="w-full px-2.5 py-1.5 text-sm border rounded-md bg-white focus:outline-none focus:ring-1 resize-none"
                     [ngClass]="actionType() === 'approve'
@@ -552,13 +558,23 @@ export class WorkflowMyQueuePage implements OnInit {
     this.actionType.set(type);
     this.expandedStepId.set(step.stepId ?? null);
     this._resolveExpandedInstance(step);
+    this.expandedRequirements.set(null);
+    if (type === 'approve' && step.instanceId) {
+      this._api.getWorkflowInstanceRequirements(step.instanceId).pipe(catchError(() => EMPTY)).subscribe((req) => {
+        if (this.expandedStepId() === (step.stepId ?? null)) this.expandedRequirements.set(req);
+      });
+    }
   }
+
+  /** « Avant d'approuver » de l'étape ouverte, comme sur l'écran d'instance. */
+  public expandedRequirements = signal<InstanceRequirementsDto | null>(null);
 
   public closeAction(): void {
     this.expandedStepId.set(null);
     this.actionType.set(null);
     this.actionComment = '';
     this.expandedInstance.set(null);
+    this.expandedRequirements.set(null);
   }
 
   /**

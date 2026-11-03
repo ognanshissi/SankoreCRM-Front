@@ -586,7 +586,7 @@ export class JourneyBuilder implements OnInit {
         template: this._api.getWorkflowTemplate(this.id()),
         triggers: this._api.listTriggers(this.id()).pipe(catchError(() => of([] as TriggerDto[]))),
         roles: this._rolesApi.listRoles().pipe(catchError(() => of([]))),
-        all: this._api.listWorkflowTemplates(false).pipe(catchError(() => of([] as WorkflowTemplateDto[]))),
+        all: this._api.listWorkflowTemplates().pipe(catchError(() => of([] as WorkflowTemplateDto[]))),
       }).subscribe({
         next: ({ template, triggers, roles, all }) => {
           this.template.set(template);

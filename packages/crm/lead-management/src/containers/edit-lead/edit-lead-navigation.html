@@ -35,12 +35,12 @@
         <lib-call-button entityType="Lead" [entityId]="id()" label="Appeler"></lib-call-button>
         @if (canWhatsApp()) {
           <div class="inline-flex">
-            <a tas-outlined-button color="primary" class="rounded-r-none bg-white" [routerLink]="['conversations']"
+            <a tas-outlined-button color="primary" class="rounded-r-none! bg-white hover:shadow-none!" [routerLink]="['conversations']"
                title="Ouvrir la conversation WhatsApp">
               <tas-icon iconName="feather:message-circle" style="font-size:14px"></tas-icon>
               &nbsp;WhatsApp
             </a>
-            <button tas-outlined-button color="primary" type="button" class="-ml-px rounded-l-none bg-white px-2"
+            <button tas-outlined-button color="primary" type="button" class="-ml-[1.5px] rounded-l-none! bg-white px-2.5! hover:shadow-none!"
                     TasMenuTrigger [panel]="whatsappMenu" aria-label="Autres actions WhatsApp">
               <tas-icon iconName="feather:chevron-down" style="font-size:12px"></tas-icon>
             </button>
@@ -93,14 +93,14 @@
         -->
         <div class="inline-flex">
           @if (canCreateProject()) {
-            <button tas-raised-button color="primary" type="button" [class]="hasPrimaryMenu() ? 'rounded-r-none' : ''" (click)="openCreateProject()">
+            <button tas-raised-button color="primary" type="button" [class]="hasPrimaryMenu() ? 'rounded-r-none!' : ''" (click)="openCreateProject()">
               <tas-icon iconName="feather:briefcase" style="font-size:14px"></tas-icon>
               &nbsp;Ajouter un projet
             </button>
           }
           @if (hasPrimaryMenu()) {
             <button tas-raised-button color="primary" type="button"
-                    [class]="canCreateProject() ? 'rounded-l-none border-l border-white/30 px-2' : ''"
+                    [class]="canCreateProject() ? 'rounded-l-none! border-l-white/40! px-2.5!' : ''"
                     TasMenuTrigger [panel]="primaryMenu" aria-label="Suites du lead">
               @if (!canCreateProject()) { Suites du lead&nbsp; }
               <tas-icon iconName="feather:chevron-down" style="font-size:12px"></tas-icon>

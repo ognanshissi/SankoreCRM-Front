@@ -79,7 +79,9 @@
       Les étapes bloquantes des circuits lancés sur le projet (par un évènement, pas par une étape du
       parcours) : sans cet encart, l'agent ne les découvrait qu'au refus de « Marquer gagné ».
     -->
-    @if (!closed() && p.blockingSteps?.length) {
+    @if (!closed() && p.blockingCircuits?.length) {
+      <project-blocking-circuits [circuits]="p.blockingCircuits!" [projectId]="p.id!" (goTo)="scrollTo($event)"></project-blocking-circuits>
+    } @else if (!closed() && p.blockingSteps?.length) {
       <div class="flex flex-wrap items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
         <tas-icon iconName="feather:git-pull-request" class="mt-0.5 shrink-0 text-amber-600" style="font-size:16px"></tas-icon>
         <div class="min-w-56 flex-1">
@@ -151,7 +153,7 @@
           ></project-progress>
         }
 
-        <project-tasks [projectId]="p.id!" [projectTitle]="p.title ?? ''"></project-tasks>
+        <project-tasks id="tasks" [projectId]="p.id!" [projectTitle]="p.title ?? ''"></project-tasks>
 
         <!-- Champs du gabarit et pièces du projet -->
         <project-fields [project]="p" [canEdit]="canManage()" (changed)="onFieldsChanged()"></project-fields>

@@ -104,6 +104,11 @@ class RespondentFormModel {
           <div class="flex justify-center py-12"><tas-spinner size="8" class="text-primary"></tas-spinner></div>
         } @else if (loadError()) {
           <p class="rounded-lg bg-red-50 p-3 text-sm text-red-800" role="alert">{{ loadError() }}</p>
+        } @else if (isEmpty()) {
+          <p class="rounded-lg bg-amber-50 p-3 text-sm text-amber-900" role="alert">
+            Ce questionnaire ne contient aucune question : il ne peut pas être rempli. Un administrateur doit en
+            publier une nouvelle version avec ses questions (Paramétrage › Formulaires de qualification).
+          </p>
         } @else if (schema(); as s) {
           @if (data.item.inheritedFromLead) {
             <p class="mb-4 rounded-lg bg-slate-50 p-3 text-sm text-slate-600">
@@ -149,7 +154,7 @@ class RespondentFormModel {
         <button tas-outlined-button type="button" (click)="close()">{{ data.readOnly ? 'Fermer' : 'Annuler' }}</button>
         @if (!data.readOnly) {
           <button tas-raised-button color="primary" type="button"
-                  [disabled]="!schema() || isSubmitting()" [isLoading]="isSubmitting()" (click)="handleSubmit()">
+                  [disabled]="!schema() || isEmpty() || isSubmitting()" [isLoading]="isSubmitting()" (click)="handleSubmit()">
             Enregistrer
           </button>
         }
@@ -175,6 +180,12 @@ export class ProjectQuestionnaireDrawer implements OnInit {
     const t = this._template();
     return t ? templateToSchema(t) : null;
   });
+
+  /**
+   * Un questionnaire publié sans question (le vidage d'un tenant de test effaçait les questions en
+   * gardant le questionnaire) : le bouton « Enregistrer » ne pouvait qu'échouer, sans dire pourquoi.
+   */
+  public readonly isEmpty = computed(() => !!this._template() && (this._template()!.questions ?? []).length === 0);
 
   public readonly withheld = computed(() => {
     const item = this.data.item;

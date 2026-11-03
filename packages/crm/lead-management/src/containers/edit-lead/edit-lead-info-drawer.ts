@@ -119,6 +119,10 @@ export class EditLeadInfoFormModel {
   public campaign!: string;
   public preferredAgencyId!: string;
   public comment!: string;
+  public companyName!: string;
+  public companyEmail!: string;
+  public companyPhone!: string;
+  public website!: string;
 
   public static fromLead(lead: LeadDto): EditLeadInfoFormModel {
     const m = new EditLeadInfoFormModel();
@@ -135,6 +139,10 @@ export class EditLeadInfoFormModel {
     m.campaign = lead.campaign ?? '';
     m.preferredAgencyId = lead.preferredAgencyId ?? '';
     m.comment = lead.comment ?? '';
+    m.companyName = lead.companyName ?? '';
+    m.companyEmail = lead.companyEmail ?? '';
+    m.companyPhone = lead.companyPhone ?? '';
+    m.website = lead.website ?? '';
     return m;
   }
 }
@@ -206,6 +214,7 @@ export class EditLeadInfoDrawer {
 
   public formSchema = form(this.model, (schema) => {
     email(schema.email, { message: 'Adresse e-mail invalide' });
+    email(schema.companyEmail, { message: 'Adresse e-mail invalide' });
 
     validate(schema.dateOfBirth, (ctx) => {
       const value = ctx.value();
@@ -262,6 +271,11 @@ export class EditLeadInfoDrawer {
         latitude: lead.latitude ?? null,
         longitude: lead.longitude ?? null,
         preferredAgencyId: value.preferredAgencyId || null,
+        // Chaîne vide et non null : pour le serveur, null laisse le champ tel quel et vide l'efface.
+        companyName: value.companyName.trim(),
+        companyEmail: value.companyEmail.trim(),
+        companyPhone: value.companyPhone.trim(),
+        website: value.website.trim(),
         expectedUpdatedAt: lead.updatedAt ?? null,
       };
 

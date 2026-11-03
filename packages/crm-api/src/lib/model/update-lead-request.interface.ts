@@ -32,6 +32,10 @@ export interface UpdateLeadRequest {
     preferredAgencyId?: string | null;
     expectedUpdatedAt?: string | null;
     customFields?: { [key: string]: any; } | null;
+    companyName?: string | null;
+    companyEmail?: string | null;
+    companyPhone?: string | null;
+    website?: string | null;
 }
 export enum UpdateLeadRequestGenderEnum {
     Unknown = 'Unknown',

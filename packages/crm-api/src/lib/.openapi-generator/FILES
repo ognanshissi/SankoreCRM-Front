@@ -403,6 +403,8 @@ model/information-sheet-delivery-dto.interface.ts
 model/information-sheet-dto.interface.ts
 model/ingestion-dto.interface.ts
 model/ingestion-payload-dto.interface.ts
+model/instance-requirement-dto.interface.ts
+model/instance-requirements-dto.interface.ts
 model/insurance-distributor-dto.interface.ts
 model/insurance-guarantee.interface.ts
 model/insurance-policy-dto.interface.ts
@@ -613,6 +615,9 @@ model/product-routing-dto.interface.ts
 model/product-routing-line-dto.interface.ts
 model/product-suggestion-dto.interface.ts
 model/project-attachment-dto.interface.ts
+model/project-blocking-circuit-dto.interface.ts
+model/project-blocking-requirement-dto.interface.ts
+model/project-blocking-step-dto.interface.ts
 model/project-checklist-item-input.interface.ts
 model/project-checklist-item.interface.ts
 model/project-contact-dto.interface.ts
@@ -632,6 +637,7 @@ model/project-report-product.interface.ts
 model/project-report-step.interface.ts
 model/project-step-dto.interface.ts
 model/project-step-request.interface.ts
+model/project-step-task-dto.interface.ts
 model/project-suggestion-dto.interface.ts
 model/project-task-dto.interface.ts
 model/project-template-dto.interface.ts

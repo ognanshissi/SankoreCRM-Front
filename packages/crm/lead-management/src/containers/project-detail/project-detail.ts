@@ -39,6 +39,7 @@ import { TasSpinner } from '@talisoft/ui/spinner';
 import { ConvertLeadWizard } from '../edit-lead/convert-lead-wizard';
 import { currentStep, hasTemplateSteps, isClosed, stepLabel } from '../edit-lead/opportunities/opportunity.model';
 import { EditProjectInfoDrawer, EditProjectInfoDrawerData } from './edit-project-info-drawer';
+import { ProjectBlockingCircuits } from './project-blocking-circuits';
 import { ProjectFields } from './project-fields';
 import { ProjectHistory } from './project-history';
 import { ProjectProgress } from './project-progress';
@@ -72,6 +73,7 @@ class LoseFormModel {
   selector: 'project-detail',
   imports: [
     RouterLink, FormRoot, FormField, Anchor, Button, TasCard, TasFormField, TasLabel, TasError, TasIcon, TasInput, TasSpinner,
+    ProjectBlockingCircuits,
     ProjectFields, ProjectHistory, ProjectProgress, ProjectQuestionnaires, ProjectSummary, ProjectTasks, ProjectValidations,
   ],
   templateUrl: './project-detail.html',
@@ -224,7 +226,7 @@ export class ProjectDetail implements OnInit {
       .subscribe((list) => this.validations.set(list ?? []));
   }
 
-  public scrollTo(id: 'questionnaires' | 'validations' | 'exit-conditions' | 'fields'): void {
+  public scrollTo(id: 'questionnaires' | 'validations' | 'exit-conditions' | 'fields' | 'tasks'): void {
     const target =
       id === 'fields'
         ? (document.getElementById('project-fields') ?? document.getElementById('project-files'))
