@@ -89,7 +89,8 @@ export class CreateUserComponent {
   public readonly languageOptions = LANGUAGE_OPTIONS;
 
   public formSchema = form(this.model, (schema) => {
-    required(schema.firstName, { message: 'Le nom complet est obligatoire' });
+    required(schema.firstName, { message: 'Le prénom est obligatoire' });
+    required(schema.lastName, { message: 'Le nom est obligatoire' });
     required(schema.email, { message: "L'adresse e-mail est obligatoire" });
     required(schema.defaultLanguage, { message: 'La langue par défaut est obligatoire' });
   });

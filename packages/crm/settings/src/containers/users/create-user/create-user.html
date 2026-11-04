@@ -13,7 +13,7 @@
 
         <div class="flex space-x-5">
           <tas-form-field>
-            <tas-label>Nom <span class="text-functional-error">*</span></tas-label>
+            <tas-label>Prénom <span class="text-functional-error">*</span></tas-label>
             <input
               tasInput
               type="text"
@@ -26,11 +26,11 @@
           </tas-form-field>
 
           <tas-form-field>
-            <tas-label>Prenom <span class="text-functional-error">*</span></tas-label>
+            <tas-label>Nom <span class="text-functional-error">*</span></tas-label>
             <input
               tasInput
               type="text"
-              placeholder="ex: Amadou Diallo"
+              placeholder="ex: Diallo"
               [formField]="formSchema.lastName"
             />
             @if (formSchema.lastName().touched() && formSchema.lastName().invalid()) {
