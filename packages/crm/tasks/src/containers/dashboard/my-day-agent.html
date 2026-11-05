@@ -113,7 +113,7 @@
         [attr.aria-pressed]="!showAll()" (click)="showAll.set(false)">À faire</button>
       <button type="button" class="min-h-8 rounded-full px-3 text-xs font-semibold transition-colors"
         [class]="showAll() ? 'bg-primary text-white' : 'border border-slate-200 text-slate-700 hover:bg-slate-50'"
-        [attr.aria-pressed]="showAll()" (click)="showAll.set(true)">Tout voir</button>
+        [attr.aria-pressed]="showAll()" (click)="showAll.set(true)">Toute la journée</button>
     </div>
   </header>
 
@@ -207,13 +207,14 @@
     }
   }
 
-  @if (upcoming() > 0) {
-    <div class="border-t border-slate-100 px-5 py-4">
-      <button type="button" class="text-sm font-semibold text-primary hover:underline" (click)="showUpcoming.emit()">
-        Voir toutes mes tâches (<span class="tabular-nums">{{ upcoming() }}</span> à venir) →
+  <div class="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 px-5 py-4">
+    <a routerLink="/tasks" class="text-sm font-semibold text-primary hover:underline">Voir toutes les tâches →</a>
+    @if (upcoming() > 0) {
+      <button type="button" class="text-sm font-semibold text-slate-600 hover:text-primary hover:underline" (click)="showUpcoming.emit()">
+        <span class="tabular-nums">{{ upcoming() }}</span> à venir →
       </button>
-    </div>
-  }
+    }
+  </div>
 </section>
 
   @if (team()) {

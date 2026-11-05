@@ -29,6 +29,7 @@ export const PORTAL_NAVIGATION: PortalNavGroup[] = [
     label: 'Mon activité',
     items: [
       { id: 'my-day', label: 'Ma journée', icon: 'feather:sun', link: '/tasks/my-day' },
+      { id: 'tasks', label: 'Tâches', icon: 'feather:check-square', link: '/tasks', anyOf: [PERMISSIONS.LEAD_TASK_READ] },
       { id: 'calendar', label: 'Calendrier', icon: 'feather:calendar', link: '/tasks/calendar' },
       {
         id: 'mail',

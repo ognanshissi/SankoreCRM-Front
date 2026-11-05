@@ -25070,6 +25070,78 @@
         }
       }
     },
+    "/api/v1/leads/tasks/page": {
+      "get": {
+        "tags": [
+          "Tasks"
+        ],
+        "operationId": "GetCrmTaskPage",
+        "parameters": [
+          {
+            "name": "view",
+            "in": "query",
+            "description": "One of: Open, Overdue, Done, Cancelled, All",
+            "schema": {
+              "enum": [
+                "Open",
+                "Overdue",
+                "Done",
+                "Cancelled",
+                "All"
+              ],
+              "type": "string",
+              "description": "One of: Open, Overdue, Done, Cancelled, All",
+              "default": 0
+            }
+          },
+          {
+            "name": "agentId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 25
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CrmTaskPageDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/leads/tasks/{taskId}": {
       "get": {
         "tags": [
@@ -41700,6 +41772,34 @@
           "typeLabel": {
             "type": "string",
             "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "CrmTaskPageDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CrmTaskDto"
+            },
+            "nullable": true
+          },
+          "totalCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "page": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "counts": {
+            "$ref": "#/components/schemas/TaskPageCountsDto"
           }
         },
         "additionalProperties": false
@@ -61859,6 +61959,32 @@
           "createdAt": {
             "type": "string",
             "format": "date-time"
+          }
+        },
+        "additionalProperties": false
+      },
+      "TaskPageCountsDto": {
+        "type": "object",
+        "properties": {
+          "open": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "overdue": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "done": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "cancelled": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "all": {
+            "type": "integer",
+            "format": "int32"
           }
         },
         "additionalProperties": false

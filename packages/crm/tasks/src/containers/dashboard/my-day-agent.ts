@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, ElementRef, inject, input, linkedSignal, output, signal } from '@angular/core';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { MatPaginator, PageEvent } from '@angular/material/paginator';
 import { catchError, EMPTY, finalize } from 'rxjs';
 import { AgendaAppointmentDto, CrmTaskDto, LeadDto, LeadsApiService, MyScorecardDto } from '@sankore/crm-api';
@@ -51,7 +51,7 @@ const SOURCE_LABELS: Record<string, string> = {
 @Component({
   selector: 'my-day-agent',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [TasIcon, Button, Menu, MenuItem, TasMenuTrigger, MatPaginator, ContactButtons, CallButton, MyDayScorecard],
+  imports: [RouterLink, TasIcon, Button, Menu, MenuItem, TasMenuTrigger, MatPaginator, ContactButtons, CallButton, MyDayScorecard],
   providers: [provideTasPaginatorIntl()],
   templateUrl: './my-day-agent.html',
 })

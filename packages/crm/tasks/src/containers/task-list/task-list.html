@@ -1,0 +1,81 @@
+<div class="mb-4">
+  <h1 class="text-2xl font-semibold text-slate-800">Tâches</h1>
+  <p class="mt-0.5 text-sm text-slate-500">
+    {{ isSupervisor() ? 'Vos tâches et celles de votre équipe, à toute date.' : 'Toutes vos tâches, à toute date.' }}
+  </p>
+</div>
+
+<nav class="mb-4 flex flex-wrap items-end gap-1 border-b border-slate-200" aria-label="Vues des tâches">
+  @for (v of views; track v.key) {
+    <button type="button"
+      class="-mb-px flex items-center gap-2 rounded-t-lg border px-3.5 py-2 text-sm font-medium transition-colors"
+      [class]="view() === v.key
+        ? 'border-slate-200 border-b-white bg-white text-slate-800'
+        : 'border-transparent text-slate-500 hover:text-slate-800'"
+      [attr.aria-current]="view() === v.key ? 'page' : null"
+      (click)="setView(v.key)">
+      {{ v.label }}
+      @if (count(v); as n) {
+        <span class="rounded-full px-1.5 text-[11px] font-semibold tabular-nums"
+              [class]="view() === v.key ? 'bg-primary text-white' : 'bg-slate-100 text-slate-600'">{{ n }}</span>
+      }
+    </button>
+  }
+</nav>
+
+<div class="mb-4 grid grid-cols-1 gap-3 md:grid-cols-4">
+  <tas-form-field class="md:col-span-2">
+    <tas-label>Rechercher</tas-label>
+    <input tasInput type="text" placeholder="Titre de la tâche ou nom du lead…"
+      [ngModel]="search()" (ngModelChange)="onSearchChange($event)" />
+  </tas-form-field>
+  @if (isSupervisor()) {
+    <tas-form-field>
+      <tas-label>Porteur</tas-label>
+      <tas-select [options]="agentOptions()" optionLabel="label" optionValue="value"
+        [ngModel]="agent() || wholeTeam" (ngModelChange)="setAgent($event)"></tas-select>
+    </tas-form-field>
+  }
+</div>
+
+<tas-table
+  [data]="tasks()"
+  [config]="tableConfig()"
+  [hasCaption]="false"
+  [isLoading]="isLoading()"
+  (pageEventChange)="onPageChange($event)"
+  (refresh)="reload()"
+>
+  <ng-template #header>
+    <tr class="text-left text-xs font-medium text-slate-500">
+      <th class="py-2.5">Tâche</th>
+      @if (isSupervisor()) { <th class="py-2.5">Porteur</th> }
+      <th class="py-2.5">Échéance</th>
+      <th class="py-2.5">Priorité</th>
+      <th class="py-2.5">Statut</th>
+    </tr>
+  </ng-template>
+  <ng-template #body let-task>
+    <tr class="align-top">
+      <td class="py-3">
+        <a class="text-sm font-medium text-slate-800 hover:text-primary" [routerLink]="['/tasks', task.id]">{{ task.title }}</a>
+        <p class="text-xs text-slate-500">
+          {{ typeLabel(task) }}@if (leadName(task); as name) { · {{ name }} }
+        </p>
+      </td>
+      @if (isSupervisor()) {
+        <td class="py-3 text-sm" [class]="task.assignedAgentId ? 'text-slate-700' : 'text-slate-400'">{{ holder(task) }}</td>
+      }
+      <td class="py-3 text-sm tabular-nums whitespace-nowrap" [class]="isLate(task) ? 'font-semibold text-red-700' : 'text-slate-700'">
+        {{ task.dueAt | date: 'dd/MM/yyyy HH:mm' }}
+        @if (isLate(task)) { <p class="text-xs font-normal">En retard</p> }
+      </td>
+      <td class="py-3">
+        <span class="rounded-md px-2 py-0.5 text-xs font-medium whitespace-nowrap" [class]="priorityLabels[task.priority]?.tone">{{ priorityLabels[task.priority]?.label }}</span>
+      </td>
+      <td class="py-3">
+        <span class="rounded-md px-2 py-0.5 text-xs font-medium whitespace-nowrap" [class]="statusLabels[task.status]?.tone">{{ statusLabels[task.status]?.label }}</span>
+      </td>
+    </tr>
+  </ng-template>
+</tas-table>

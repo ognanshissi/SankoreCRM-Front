@@ -4,6 +4,12 @@ import { DashboardComponent } from './containers/dashboard/dashboard';
 
 const tasksRoutes: Route[] = [
   {
+    path: '',
+    pathMatch: 'full',
+    canActivate: [hasPermissionGuard(PERMISSIONS.LEAD_TASK_READ)],
+    loadComponent: () => import('./containers/task-list/task-list'),
+  },
+  {
     path: 'my-day',
     canActivate: [],
     component: DashboardComponent,

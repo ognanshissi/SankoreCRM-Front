@@ -303,6 +303,7 @@ model/created-webhook-subscription-dto.interface.ts
 model/credential-dto.interface.ts
 model/crm-task-detail-dto.interface.ts
 model/crm-task-dto.interface.ts
+model/crm-task-page-dto.interface.ts
 model/current-user-dto.interface.ts
 model/customer-match-dto.interface.ts
 model/customer-setting-dto.interface.ts
@@ -896,6 +897,7 @@ model/task-criterion-dto.interface.ts
 model/task-dto.interface.ts
 model/task-due-date-input.interface.ts
 model/task-generation-rule-dto.interface.ts
+model/task-page-counts-dto.interface.ts
 model/task-person-dto.interface.ts
 model/task-subject-dto.interface.ts
 model/task-type-dto.interface.ts
