@@ -1,6 +1,8 @@
 import { Component, computed, inject, signal, OnInit } from '@angular/core';
 import { DIALOG_DATA, DialogRef } from '@angular/cdk/dialog';
 import { FormsModule } from '@angular/forms';
+import { HttpErrorResponse } from '@angular/common/http';
+import { Router } from '@angular/router';
 import { catchError, EMPTY, of } from 'rxjs';
 import { TasIcon } from '@talisoft/ui/icon';
 import { TasSpinner } from '@talisoft/ui/spinner';
@@ -22,7 +24,10 @@ import {
   LeadsApiService,
   LeadDto,
   ConsentDto,
+  NurturingSequenceDto,
+  NurturingSequencesApiService,
 } from '@sankore/crm-api';
+import { nurturingSummary, PermissionsService } from '@sankore/crm/common';
 
 export interface NurtureRecycleDrawerData {
   lead: LeadDto;
@@ -114,9 +119,9 @@ const RECYCLE_REASON_OPTIONS = [
               <div>
                 <p class="text-xs font-semibold text-red-800">Consentement requis</p>
                 <p class="text-xs text-red-700 mt-0.5">
-                  Le consentement de communication du prospect n'est pas enregistré ou a été retiré.
-                  Vous devez d'abord enregistrer un consentement valide depuis l'onglet
-                  <span class="font-medium">Consentement</span> de la fiche lead.
+                  Le consentement marketing du prospect n'est pas enregistré ou a été retiré.
+                  Vous devez d'abord l'enregistrer depuis l'onglet
+                  <span class="font-medium">Conformité</span> de la fiche lead.
                 </p>
                 <p class="text-xs text-red-600 mt-1 font-medium">
                   L'action de nurturing est bloquée tant que le consentement n'est pas actif.
@@ -126,18 +131,61 @@ const RECYCLE_REASON_OPTIONS = [
           } @else {
             <div class="p-3 rounded-lg bg-green-50 border border-green-200 flex items-center gap-2 mb-4">
               <tas-icon iconName="feather:check-circle" class="text-green-500" style="font-size:14px"></tas-icon>
-              <p class="text-xs text-green-700">Consentement de communication actif.</p>
+              <p class="text-xs text-green-700">Consentement marketing actif.</p>
             </div>
 
-            <p class="text-xs text-slate-500 mb-4">
-              Le lead sera placé en séquence de nurturing automatique. Il recevra des communications
-              personnalisées jusqu'à ce qu'il soit prêt à reprendre le processus commercial.
-            </p>
+            @if (!data.lead.email) {
+              <div class="p-3 rounded-lg bg-amber-50 border border-amber-200 flex items-start gap-2">
+                <tas-icon iconName="feather:mail" class="text-amber-500 shrink-0 mt-0.5" style="font-size:14px"></tas-icon>
+                <p class="text-xs text-amber-800">
+                  Ce lead n'a pas d'adresse e-mail : ajoutez-la sur sa fiche pour lui envoyer une séquence.
+                </p>
+              </div>
+            } @else if (isLoadingSequences()) {
+              <div class="flex items-center gap-2 py-4">
+                <tas-spinner size="4" class="text-primary"></tas-spinner>
+                <span class="text-xs text-slate-400">Chargement des séquences…</span>
+              </div>
+            } @else if (sequenceOptions().length === 0) {
+              <div class="p-3 rounded-lg bg-amber-50 border border-amber-200 flex items-start gap-2">
+                <tas-icon iconName="feather:alert-triangle" class="text-amber-500 shrink-0 mt-0.5" style="font-size:14px"></tas-icon>
+                <div class="text-xs text-amber-800">
+                  <p>Aucune séquence active : le lead ne peut pas être placé en nurturing pour l'instant.</p>
+                  @if (canManageSequences()) {
+                    <button tas-text-button type="button" class="mt-1" (click)="goToSequences()">Créer une séquence</button>
+                  } @else {
+                    <p class="mt-1">Demandez à un responsable d'en créer une dans le paramétrage.</p>
+                  }
+                </div>
+              </div>
+            } @else {
+              <tas-form-field>
+                <tas-label>Séquence <span class="text-red-500">*</span></tas-label>
+                <tas-select
+                  [options]="sequenceOptions()"
+                  placeholder="Sélectionnez une séquence"
+                  [ngModel]="sequenceId()"
+                  (ngModelChange)="sequenceId.set($event)"
+                ></tas-select>
+              </tas-form-field>
+              <p class="text-xs text-slate-500 mt-3">
+                Le lead recevra les e-mails de cette séquence tant qu'il reste en nurturing et que son consentement est actif.
+              </p>
+            }
           }
         }
 
         <!-- ===== RECYCLE MODE ===== -->
-        @if (mode() === 'recycle') {
+        @if (mode() === 'recycle' && !canRecycle) {
+          <div class="p-3 rounded-lg bg-amber-50 border border-amber-200 flex items-start gap-2">
+            <tas-icon iconName="feather:info" class="text-amber-500 shrink-0 mt-0.5" style="font-size:14px"></tas-icon>
+            <p class="text-xs text-amber-800">
+              Seul un lead perdu, disqualifié ou en nurturing peut être recyclé. Pour un prospect encore en cours qui
+              n'est pas prêt, choisissez le nurturing.
+            </p>
+          </div>
+        }
+        @if (mode() === 'recycle' && canRecycle) {
           <!-- Motif -->
           <tas-form-field>
             <tas-label>Motif du recyclage <span class="text-red-500">*</span></tas-label>
@@ -176,6 +224,7 @@ const RECYCLE_REASON_OPTIONS = [
           <div class="mt-3">
             <tas-date-picker
               mode="date"
+              [min]="minReactivationDate"
               [ngModel]="reactivationDate()"
               (ngModelChange)="reactivationDate.set($event ?? '')"
             >Date cible de réactivation <span class="text-red-500">*</span></tas-date-picker>
@@ -188,8 +237,8 @@ const RECYCLE_REASON_OPTIONS = [
             <div class="mt-2 p-2.5 rounded-lg bg-blue-50 border border-blue-200 flex items-center gap-2">
               <tas-icon iconName="feather:calendar" class="text-blue-500" style="font-size:14px"></tas-icon>
               <p class="text-xs text-blue-700">
-                Le lead sera marqué <span class="font-semibold">Recyclé</span> et une tâche de
-                reprise sera visible à partir du <span class="font-medium">{{ reactivationDate() }}</span>.
+                Le lead sera marqué <span class="font-semibold">Recyclé</span>. Il redeviendra actif le
+                <span class="font-medium">{{ reactivationLabel() }}</span>, avec une tâche de reprise pour son responsable.
               </p>
             </div>
           }
@@ -218,7 +267,11 @@ export class NurtureRecycleDrawer implements OnInit {
   public readonly data: NurtureRecycleDrawerData = inject(DIALOG_DATA);
   private readonly _dialogRef = inject(DialogRef<NurtureRecycleResult | false>);
   private readonly _leadsApi = inject(LeadsApiService);
+  private readonly _sequencesApi = inject(NurturingSequencesApiService);
+  private readonly _router = inject(Router);
   private readonly _snackbar = inject(SnackbarService);
+
+  public readonly canManageSequences = inject(PermissionsService).can('lead:nurturing-sequence:manage');
 
   public readonly recycleReasonOptions = RECYCLE_REASON_OPTIONS;
 
@@ -229,17 +282,35 @@ export class NurtureRecycleDrawer implements OnInit {
   // Nurture
   public isCheckingConsent = signal(true);
   public hasNurturingConsent = signal(false);
+  public isLoadingSequences = signal(true);
+  public sequences = signal<NurturingSequenceDto[]>([]);
+  public sequenceId = signal('');
+  public readonly sequenceOptions = computed(() =>
+    this.sequences()
+      .filter((s) => s.steps?.length)
+      .map((s) => ({ label: `${s.name} — ${nurturingSummary(s.steps)}`, value: s.id ?? '' })),
+  );
 
   // Recycle
   public recycleReason = signal('');
   public recycleDetail = signal('');
   public reactivationDate = signal('');
+  /** La valeur du champ est ISO, pour le serveur ; l'écran parle en JJ/MM/AAAA. */
+  public readonly reactivationLabel = computed(() => this.reactivationDate().split('-').reverse().join('/'));
+  /** La règle du serveur (`Lead.Recycle`) : l'écran proposait le recyclage à tout lead, puis échouait. */
+  public readonly canRecycle = ['Lost', 'Disqualified', 'Nurturing'].includes(this.data.lead.status ?? '');
+  /** Le serveur refuse aujourd'hui et avant : demain au plus tôt, en date locale. */
+  public readonly minReactivationDate = (() => {
+    const d = new Date();
+    d.setDate(d.getDate() + 1);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  })();
 
   public readonly canSubmit = computed(() => {
     if (this.mode() === 'nurture') {
-      return this.hasNurturingConsent() && !this.isCheckingConsent();
+      return this.hasNurturingConsent() && !this.isCheckingConsent() && !!this.data.lead.email && !!this.sequenceId();
     }
-    if (!this.recycleReason()) return false;
+    if (!this.canRecycle || !this.recycleReason()) return false;
     if (this.recycleReason() === 'other' && !this.recycleDetail().trim()) return false;
     if (!this.reactivationDate()) return false;
     return true;
@@ -247,6 +318,12 @@ export class NurtureRecycleDrawer implements OnInit {
 
   ngOnInit(): void {
     this._checkConsent();
+    this._sequencesApi.listNurturingSequences(true).pipe(
+      catchError(() => of([] as NurturingSequenceDto[])),
+    ).subscribe((sequences) => {
+      this.sequences.set(sequences ?? []);
+      this.isLoadingSequences.set(false);
+    });
   }
 
   public leadDisplayName(): string {
@@ -264,14 +341,14 @@ export class NurtureRecycleDrawer implements OnInit {
     const leadId = this.data.lead.id!;
 
     if (this.mode() === 'nurture') {
-      this._leadsApi.nurtureLead(leadId).pipe(
-        catchError(() => {
-          this._snackbar.error('Erreur', 'Impossible de placer le lead en nurturing.');
+      this._leadsApi.nurtureLead(leadId, { sequenceId: this.sequenceId() }).pipe(
+        catchError((err: HttpErrorResponse) => {
+          this._snackbar.error('Erreur', this._nurtureError(err));
           this.isSubmitting.set(false);
           return EMPTY;
         }),
       ).subscribe(() => {
-        this._snackbar.success('Lead en nurturing', 'Le lead recevra des communications automatiques.');
+        this._snackbar.success('Lead en nurturing', 'Il recevra les e-mails de la séquence choisie.');
         this._dialogRef.close('nurtured');
       });
     } else {
@@ -279,16 +356,19 @@ export class NurtureRecycleDrawer implements OnInit {
         ? this.recycleDetail().trim()
         : RECYCLE_REASON_OPTIONS.find((r) => r.value === this.recycleReason())?.label ?? '';
 
-      this._leadsApi.recycleLead(leadId, {}).pipe(
-        catchError(() => {
-          this._snackbar.error('Erreur', 'Impossible de recycler le lead.');
+      // Le corps partait vide : le motif et la date saisis n'étaient jamais enregistrés.
+      this._leadsApi.recycleLead(leadId, { reason: reasonLabel, reactivateOn: this.reactivationDate() }).pipe(
+        catchError((err: HttpErrorResponse) => {
+          this._snackbar.error('Erreur', err.error?.detail === 'REACTIVATION_DATE_NOT_IN_FUTURE'
+            ? 'La date de réactivation doit être postérieure à aujourd’hui.'
+            : 'Impossible de recycler le lead.');
           this.isSubmitting.set(false);
           return EMPTY;
         }),
       ).subscribe(() => {
         this._snackbar.success(
           'Lead recyclé',
-          `Réactivation prévue le ${this.reactivationDate()}. Motif : ${reasonLabel}`,
+          `Réactivation prévue le ${this.reactivationLabel()}. Motif : ${reasonLabel}`,
         );
         this._dialogRef.close('recycled');
       });
@@ -299,16 +379,30 @@ export class NurtureRecycleDrawer implements OnInit {
     this._dialogRef.close(false);
   }
 
+  public goToSequences(): void {
+    this._dialogRef.close(false);
+    void this._router.navigate(['/settings/nurturing-sequences']);
+  }
+
+  private _nurtureError(err: HttpErrorResponse): string {
+    switch (err.error?.detail) {
+      case 'MARKETING_CONSENT_REQUIRED': return 'Le consentement marketing du lead n’est pas actif.';
+      case 'LEAD_HAS_NO_EMAIL': return 'Ce lead n’a pas d’adresse e-mail.';
+      case 'LEAD_ALREADY_ENROLLED': return 'Ce lead suit déjà une séquence.';
+      case 'SEQUENCE_NOT_FOUND': return 'Cette séquence n’est plus active.';
+      case 'LEAD_CANNOT_BE_NURTURED_FROM_CURRENT_STATUS': return 'Un lead converti ou fermé ne peut pas être placé en nurturing.';
+      default: return 'Impossible de placer le lead en nurturing.';
+    }
+  }
+
   private _checkConsent(): void {
     this.isCheckingConsent.set(true);
     this._leadsApi.listConsents(this.data.lead.id!).pipe(
       catchError(() => of([] as ConsentDto[])),
     ).subscribe((consents) => {
-      const hasConsent = (consents ?? []).some(
-        (c) => (c.type === 'Communication' || c.type === 'Marketing' || c.type === 'DataCollection')
-          && c.status === 'Granted'
-          && !c.withdrawnAt,
-      );
+      // La règle du serveur. Ce test cherchait un statut « Granted » que l'API ne renvoie jamais
+      // (« Active ») : l'écran disait « consentement requis » à tous les leads.
+      const hasConsent = (consents ?? []).some((c) => c.type === 'Marketing' && c.status === 'Active');
       this.hasNurturingConsent.set(hasConsent);
       this.isCheckingConsent.set(false);
     });

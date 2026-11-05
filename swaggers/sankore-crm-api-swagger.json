@@ -51680,6 +51680,10 @@
               "$ref": "#/components/schemas/NurturingStepDto"
             },
             "nullable": true
+          },
+          "activeEnrollments": {
+            "type": "integer",
+            "format": "int32"
           }
         },
         "additionalProperties": false
@@ -56507,6 +56511,15 @@
           },
           "newCampaign": {
             "type": "string",
+            "nullable": true
+          },
+          "reason": {
+            "type": "string",
+            "nullable": true
+          },
+          "reactivateOn": {
+            "type": "string",
+            "format": "date",
             "nullable": true
           }
         },
@@ -64441,6 +64454,13 @@
           },
           "description": {
             "type": "string",
+            "nullable": true
+          },
+          "steps": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StepInput"
+            },
             "nullable": true
           }
         },

@@ -17,6 +17,8 @@ export interface RecycleLeadRequest {
      */
     newSource?: RecycleLeadRequestNewSourceEnum | null;
     newCampaign?: string | null;
+    reason?: string | null;
+    reactivateOn?: string | null;
 }
 export enum RecycleLeadRequestNewSourceEnum {
     Web = 'Web',

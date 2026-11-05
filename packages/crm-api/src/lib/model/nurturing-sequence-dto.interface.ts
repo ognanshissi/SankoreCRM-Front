@@ -19,5 +19,6 @@ export interface NurturingSequenceDto {
     isActive?: boolean;
     createdAt?: string;
     steps?: Array<NurturingStepDto> | null;
+    activeEnrollments?: number;
 }
 

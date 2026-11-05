@@ -288,19 +288,27 @@ const paneRoutes: Routes = [
     loadComponent: () => import('./containers/lead-sources/edit-lead-source/edit-lead-source'),
   },
   {
+    // « Règles de scoring » et « SLA et calendrier ouvré » n'avaient aucun effet (retirés le
+    // 2026-11-05, propriétaire). Les seuils de température et les délais par règle, qui agissent
+    // vraiment, sont sur l'écran Dispatching : les anciennes adresses y mènent.
     path: 'sla-configs',
-    canActivate: [hasPermissionGuard('lead:sla-config:read')],
-    loadComponent: () => import('./containers/sla-configs/sla-configs'),
+    pathMatch: 'full' as const,
+    redirectTo: '/leads/dispatching',
   },
   {
     path: 'sla-configs/create',
-    canActivate: [hasPermissionGuard('lead:sla-config:manage')],
-    loadComponent: () => import('./containers/sla-configs/create-sla-config'),
+    pathMatch: 'full' as const,
+    redirectTo: '/leads/dispatching',
   },
   {
     path: 'scoring-configs',
-    canActivate: [hasPermissionGuard('lead:scoring-config:read')],
-    loadComponent: () => import('./containers/scoring-configs/scoring-configs'),
+    pathMatch: 'full' as const,
+    redirectTo: '/leads/dispatching',
+  },
+  {
+    path: 'nurturing-sequences',
+    canActivate: [hasPermissionGuard('lead:nurturing-sequence:read')],
+    loadComponent: () => import('./containers/nurturing-sequences/nurturing-sequences'),
   },
   {
     // Réservé à qui peut modifier ces réglages (propriétaire, 2026-10-30) : `kyc:read` est le droit

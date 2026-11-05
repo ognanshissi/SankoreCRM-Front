@@ -9,10 +9,12 @@
  * https://openapi-generator.tech
  * Do not edit the class manually.
  */
+import { StepInput } from './step-input.interface';
 
 
 export interface UpdateNurturingSequenceRequest { 
     name?: string | null;
     description?: string | null;
+    steps?: Array<StepInput> | null;
 }
 
