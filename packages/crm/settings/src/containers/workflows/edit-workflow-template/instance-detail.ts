@@ -137,6 +137,12 @@ export class WorkflowInstanceDetailPage implements OnInit {
   /** Ce que l'étape ouverte attend du dossier (« Avant d'approuver ») ; null quand la lecture a échoué. */
   public requirements = signal<InstanceRequirementsDto | null>(null);
 
+  /**
+   * Seul un dossier incomplet se complète. Le refus d'un signataire écarté (dossier de crédit) ne
+   * vient pas du dossier : « Complétez le dossier » l'enverrait chercher ce qui ne manque pas.
+   */
+  public readonly recordIncomplete = computed(() => (this.requirements()?.items ?? []).some((i) => !i.satisfied));
+
   public openApproveForm(): void {
     this.approveRefusal.set(null);
     this.showApproveForm.set(true);
@@ -284,8 +290,10 @@ export class WorkflowInstanceDetailPage implements OnInit {
           this.isActing.set(false);
           this._load();
         },
-        error: () => {
-          this._snackbar.error('Erreur', "Impossible de rejeter.");
+        // Le motif du serveur : sur un dossier de crédit, refuser est une signature, soumise aux mêmes
+        // règles qu'approuver. Sans lui, la personne ne saurait pas qu'elle doit passer la main.
+        error: (err: HttpErrorResponse) => {
+          this._snackbar.error('Erreur', err.error?.detail ?? "Impossible de rejeter.");
           this.isActing.set(false);
         },
       });

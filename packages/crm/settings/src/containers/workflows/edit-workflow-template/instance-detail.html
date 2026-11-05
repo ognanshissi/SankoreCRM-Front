@@ -237,10 +237,12 @@
                 <div role="alert" class="mb-2 flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2">
                   <tas-icon iconName="feather:info" class="text-amber-700 shrink-0 mt-0.5" style="font-size:14px"></tas-icon>
                   <p class="text-sm text-amber-900">
-                    <span class="font-medium">Approbation impossible pour l'instant.</span> {{ refusal }}
-                    Complétez le dossier, puis approuvez à nouveau.
-                    @if (recordLink(); as link) {
-                      <a [routerLink]="link" class="ml-1 font-semibold text-amber-900 underline hover:text-primary">Ouvrir le dossier</a>
+                    <span class="font-medium">Approbation impossible.</span> {{ refusal }}
+                    @if (recordIncomplete()) {
+                      Complétez le dossier, puis approuvez à nouveau.
+                      @if (recordLink(); as link) {
+                        <a [routerLink]="link" class="ml-1 font-semibold text-amber-900 underline hover:text-primary">Ouvrir le dossier</a>
+                      }
                     }
                   </p>
                 </div>
