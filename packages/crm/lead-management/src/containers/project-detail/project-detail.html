@@ -153,6 +153,8 @@
           ></project-progress>
         }
 
+        <project-credit-submission [projectId]="p.id!" [version]="p.updatedAt" [canSend]="canManage()"></project-credit-submission>
+
         <project-tasks id="tasks" [projectId]="p.id!" [projectTitle]="p.title ?? ''"></project-tasks>
 
         <!-- Champs du gabarit et pièces du projet -->

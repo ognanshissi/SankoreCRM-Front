@@ -1,266 +1,92 @@
-@if (isMyDayLayout()) {
-  @switch (agentMode()) {
-    @case ('upcoming') {
-      <button type="button" class="mb-4 inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline" (click)="agentMode.set('today')">
-        <tas-icon iconName="feather:arrow-left" style="font-size:14px"></tas-icon>
-        Retour à ma journée
-      </button>
-      <h1 class="mb-4 text-2xl font-bold text-slate-900">Mes tâches à venir</h1>
-      <my-day-task-list
-        [groups]="upcomingGroups()"
-        [leads]="leads()"
-        [now]="now()"
-        [duplicates]="duplicates()"
-        [canSpread]="true"
-        [busyIds]="busyIds()"
-        pageKey="upcoming"
-        emptyTitle="Rien à venir"
-        emptyText="Les tâches des prochains jours apparaîtront ici."
-        (open)="openTask($event)"
-        (postpone)="postpone($event)"
-        (spread)="spread($event)"
-        (reassign)="openReassign($event)"
-      ></my-day-task-list>
-    }
-    @case ('approvals') {
-      <button type="button" class="mb-4 inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline" (click)="agentMode.set('today')">
-        <tas-icon iconName="feather:arrow-left" style="font-size:14px"></tas-icon>
-        Retour à ma journée
-      </button>
-      <h1 class="mb-4 text-2xl font-bold text-slate-900">Mes approbations</h1>
-      <tasks-approvals-list
-        [items]="approvals()"
-        [kycAwaitingTotal]="kycAwaitingTotal()"
-        [isLoading]="isApprovalsLoading()"
-        [now]="now()"
-        (changed)="loadApprovals()"
-      ></tasks-approvals-list>
-    }
-    @default {
-      <my-day-agent
-        [firstName]="userFirstName()"
-        [agencyName]="agencyName()"
-        [now]="now()"
-        [tasks]="allTasks()"
-        [openTasks]="openTasks()"
-        [entries]="entries()"
-        [leads]="leads()"
-        [approvalsCount]="approvalsCount()"
-        [team]="isManagerLayout() && canViewTeam()"
-        [kycApprovals]="kycApprovals()"
-        [workflowApprovals]="workflowApprovals()"
-        [isLoading]="isLoading()"
-        [canManageTasks]="canManageTasks()"
-        [canScheduleAppointment]="canScheduleAppointment()"
-        [scorecard]="scorecard()"
-        [scorePeriod]="scorePeriod()"
-        [scorecardLoading]="isScorecardLoading()"
-        (scorePeriodChange)="setScorePeriod($event)"
-        (openTask)="openTask($event)"
-        (openAppointment)="openAppointment($event)"
-        (newTask)="openNewTask()"
-        (newAppointment)="openCreateAppointment()"
-        (agendaChanged)="loadAgenda()"
-        (showUpcoming)="agentMode.set('upcoming')"
-        (showApprovals)="agentMode.set('approvals')"
-      >
-        @if (isManagerLayout() && canViewTeam()) {
-          <my-day-team team-panel
-            [card]="teamCard()"
-            [period]="teamPeriod()"
-            [agencyId]="teamAgency()"
-            [agentId]="teamAgent()"
-            [loading]="isTeamLoading()"
-            (periodChange)="setTeamPeriod($event)"
-            (agencyChange)="setTeamAgency($event)"
-            (agentChange)="setTeamAgent($event)"
-          ></my-day-team>
-          <my-day-team-table team-table class="mt-4 block"
-            [card]="teamCard()"
-            [selected]="teamAgent()"
-            [loading]="isTeamLoading()"
-            [periodLabel]="teamPeriodLabel()"
-            (pick)="setTeamAgent($event)"
-          ></my-day-team-table>
-        }
-      </my-day-agent>
-    }
+@switch (agentMode()) {
+  @case ('upcoming') {
+    <button type="button" class="mb-4 inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline" (click)="agentMode.set('today')">
+      <tas-icon iconName="feather:arrow-left" style="font-size:14px"></tas-icon>
+      Retour à ma journée
+    </button>
+    <h1 class="mb-4 text-2xl font-bold text-slate-900">Mes tâches à venir</h1>
+    <my-day-task-list
+      [groups]="upcomingGroups()"
+      [leads]="leads()"
+      [now]="now()"
+      [duplicates]="duplicates()"
+      [canSpread]="true"
+      [busyIds]="busyIds()"
+      pageKey="upcoming"
+      emptyTitle="Rien à venir"
+      emptyText="Les tâches des prochains jours apparaîtront ici."
+      (open)="openTask($event)"
+      (postpone)="postpone($event)"
+      (spread)="spread($event)"
+      (reassign)="openReassign($event)"
+    ></my-day-task-list>
   }
-} @else {
-<!-- En-tête -->
-<div class="mb-6 flex flex-wrap items-start justify-between gap-4">
-  <div>
-    @if (scope() === 'team') {
-      <h1 class="text-2xl font-bold text-slate-900">Tâches de l’équipe</h1>
-      <p class="mt-1 text-sm text-slate-600">
-        Les tâches de vos agents@if (agencyName()) { · {{ agencyName() }} et ses sous-agences}
-      </p>
-    } @else {
-      <h1 class="text-2xl font-bold text-slate-900">Bonjour{{ userFirstName() ? ' ' + userFirstName() : '' }}</h1>
-      <p class="mt-1 text-sm text-slate-600">
-        <span class="tabular-nums">{{ tasksToday() }}</span> tâche{{ tasksToday() > 1 ? 's' : '' }} aujourd’hui,
-        <span class="tabular-nums">{{ reminders().length }}</span> rappel{{ reminders().length > 1 ? 's' : '' }} en attente@if (agencyName()) { · {{ agencyName() }}}
-      </p>
-    }
-  </div>
-
-  <div class="flex flex-wrap items-center gap-2">
-    @if (canManageTasks()) {
-      <button tas-outlined-button type="button" (click)="openNewTask()">
-        <tas-icon iconName="feather:check-square" style="font-size:14px"></tas-icon>
-        Nouvelle tâche
-      </button>
-    }
-    @if (canScheduleAppointment()) {
-      <button tas-raised-button color="primary" type="button" (click)="openCreateAppointment()">
-        <tas-icon iconName="feather:calendar" style="font-size:14px"></tas-icon>
-        Nouveau rendez-vous
-      </button>
-    }
-  @if (isSupervisor()) {
-    <div class="flex flex-wrap items-center gap-2">
-      @if (scope() === 'team') {
-        <div class="w-56">
-          <tas-select
-            [options]="agentOptions()"
-            [ngModel]="agentFilter()"
-            (ngModelChange)="setAgentFilter($event)"
-            placeholder="Tous les agents"
-            aria-label="Agent"
-          ></tas-select>
-        </div>
-      }
-      <div role="group" aria-label="Tâches affichées" class="flex gap-1 rounded-full bg-slate-200/60 p-1">
-        <button type="button" class="min-h-9 rounded-full px-4 text-sm font-semibold transition-colors"
-          [class]="scope() === 'mine' ? 'bg-white text-primary shadow-xs' : 'text-slate-700 hover:text-slate-900'"
-          [attr.aria-pressed]="scope() === 'mine'"
-          (click)="setScope('mine')">Mes tâches</button>
-        <button type="button" class="min-h-9 rounded-full px-4 text-sm font-semibold transition-colors"
-          [class]="scope() === 'team' ? 'bg-white text-primary shadow-xs' : 'text-slate-700 hover:text-slate-900'"
-          [attr.aria-pressed]="scope() === 'team'"
-          (click)="setScope('team')">Équipe</button>
-      </div>
-    </div>
+  @case ('approvals') {
+    <button type="button" class="mb-4 inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline" (click)="agentMode.set('today')">
+      <tas-icon iconName="feather:arrow-left" style="font-size:14px"></tas-icon>
+      Retour à ma journée
+    </button>
+    <h1 class="mb-4 text-2xl font-bold text-slate-900">Mes approbations</h1>
+    <tasks-approvals-list
+      [items]="approvals()"
+      [kycAwaitingTotal]="kycAwaitingTotal()"
+      [isLoading]="isApprovalsLoading()"
+      [now]="now()"
+      (changed)="loadApprovals()"
+    ></tasks-approvals-list>
   }
-  </div>
-</div>
-
-<div class="grid grid-cols-1 items-start gap-5 lg:grid-cols-[290px_minmax(0,1fr)]">
-  <!-- Colonne gauche : calendrier et vues -->
-  <aside class="flex flex-col gap-4">
-    <my-day-calendar
-      [month]="calendarMonth()"
-      [today]="todayKey()"
-      [selected]="selectedDay()"
-      [markers]="markers()"
-      (monthChange)="onMonthChange($event)"
-      (daySelect)="selectedDay.set($event)"
-    ></my-day-calendar>
-
-    <nav class="rounded-2xl border border-slate-100 bg-white p-2 shadow-sm" aria-label="Vues de Ma journée">
-      <ul class="flex flex-col gap-0.5">
-        @for (item of visibleNav(); track item.view) {
-          @let active = view() === item.view;
-          @let count = item.count();
-          <li>
-            <button type="button"
-              class="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-colors"
-              [class]="active ? 'bg-primary font-semibold text-white' : 'text-slate-700 hover:bg-slate-50'"
-              [attr.aria-current]="active ? 'page' : null"
-              (click)="setView(item.view)">
-              <tas-icon [iconName]="item.icon" style="font-size:15px"></tas-icon>
-              <span class="flex-1 text-left">{{ item.label }}</span>
-              <span class="min-w-6 rounded-full px-1.5 text-center text-xs font-semibold tabular-nums"
-                [class]="active ? 'bg-white text-primary'
-                  : count > 0 && item.tone === 'amber' ? 'bg-amber-100 text-amber-800'
-                  : count > 0 && item.tone === 'blue' ? 'bg-blue-100 text-blue-800'
-                  : 'bg-slate-100 text-slate-600'">{{ count }}</span>
-            </button>
-          </li>
-        }
-      </ul>
-    </nav>
-  </aside>
-
-  <!-- Colonne principale -->
-  <main class="flex min-w-0 flex-col gap-4">
-    @if (selectedDay()) {
-      <div class="flex items-center gap-2 text-sm">
-        <span class="text-slate-600">Jour affiché :</span>
-        <span class="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1 font-semibold text-primary">
-          {{ selectedDayLabel() }}
-          <button type="button" class="inline-flex text-primary hover:opacity-70" aria-label="Afficher tous les jours" (click)="selectedDay.set(null)">
-            <tas-icon iconName="feather:x" style="font-size:12px"></tas-icon>
-          </button>
-        </span>
-      </div>
-    }
-
-    @switch (view()) {
-      @case ('approvals') {
-        <tasks-approvals-list
-          [items]="approvals()"
-          [kycAwaitingTotal]="kycAwaitingTotal()"
-          [isLoading]="isApprovalsLoading()"
-          [now]="now()"
-          (changed)="loadApprovals()"
-        ></tasks-approvals-list>
+  @default {
+    <my-day-agent
+      [firstName]="userFirstName()"
+      [agencyName]="agencyName()"
+      [now]="now()"
+      [tasks]="allTasks()"
+      [openTasks]="openTasks()"
+      [entries]="entries()"
+      [leads]="leads()"
+      [approvalsCount]="approvalsCount()"
+      [team]="isTeamView()"
+      [showScorecard]="showsOwnScorecard()"
+      [watchLines]="watchLines()"
+      [kycApprovals]="kycApprovals()"
+      [workflowApprovals]="workflowApprovals()"
+      [isLoading]="isLoading()"
+      [canManageTasks]="canManageTasks()"
+      [canScheduleAppointment]="canScheduleAppointment()"
+      [scorecard]="scorecard()"
+      [scorePeriod]="scorePeriod()"
+      [scorecardLoading]="isScorecardLoading()"
+      (scorePeriodChange)="setScorePeriod($event)"
+      (openTask)="openTask($event)"
+      (openAppointment)="openAppointment($event)"
+      (newTask)="openNewTask()"
+      (newAppointment)="openCreateAppointment()"
+      (agendaChanged)="loadAgenda()"
+      (showUpcoming)="agentMode.set('upcoming')"
+      (showApprovals)="agentMode.set('approvals')"
+    >
+      <!-- Un @if par élément : à deux dans le même bloc, Angular ne les projette plus dans leurs emplacements, et ils ne s'affichent pas. -->
+      @if (isTeamView()) {
+        <my-day-team team-panel
+          [card]="teamCard()"
+          [period]="teamPeriod()"
+          [agencyId]="teamAgency()"
+          [agentId]="teamAgent()"
+          [loading]="isTeamLoading()"
+          (periodChange)="setTeamPeriod($event)"
+          (agencyChange)="setTeamAgency($event)"
+          (agentChange)="setTeamAgent($event)"
+        ></my-day-team>
       }
-      @case ('reminders') {
-        @if (isAgendaLoading() && !agenda()) {
-          <div class="flex justify-center py-16"><span class="size-6 animate-spin rounded-full border-2 border-primary border-t-transparent"></span></div>
-        } @else {
-          <my-day-agenda-list
-            [groups]="reminderGroups()"
-            [leads]="leads()"
-            [now]="now()"
-            emptyTitle="Aucun rappel en attente"
-            emptyText="Les rappels posés sur vos leads apparaîtront ici, en retard compris."
-            (changed)="loadAgenda()"
-          ></my-day-agenda-list>
-        }
+      @if (isTeamView()) {
+        <my-day-team-table team-table class="mt-4 block"
+          [card]="teamCard()"
+          [selected]="teamAgent()"
+          [loading]="isTeamLoading()"
+          [periodLabel]="teamPeriodLabel()"
+          (pick)="setTeamAgent($event)"
+        ></my-day-team-table>
       }
-      @case ('meetings') {
-        @if (isAgendaLoading() && !agenda()) {
-          <div class="flex justify-center py-16"><span class="size-6 animate-spin rounded-full border-2 border-primary border-t-transparent"></span></div>
-        } @else {
-          <my-day-agenda-list
-            [groups]="meetingGroups()"
-            [leads]="leads()"
-            [now]="now()"
-            emptyTitle="Aucun rendez-vous à venir"
-            emptyText="Créez-en un avec « Nouveau rendez-vous » ; les visites et appels enregistrés avec une date prévue apparaissent aussi ici."
-            (changed)="loadAgenda()"
-            (openAppointment)="openAppointment($event)"
-          ></my-day-agenda-list>
-        }
-      }
-      @default {
-        @if (view() === 'todo' && scope() === 'mine' && !selectedDay()) {
-          <my-day-promised-reminders [entries]="reminders()" [leads]="leads()" [now]="now()"></my-day-promised-reminders>
-        }
-        @if (isLoading()) {
-          <div class="flex justify-center py-16"><span class="size-6 animate-spin rounded-full border-2 border-primary border-t-transparent"></span></div>
-        } @else {
-          <my-day-task-list
-            [groups]="taskGroups()"
-            [leads]="leads()"
-            [now]="now()"
-            [duplicates]="duplicates()"
-            [agentNames]="scope() === 'team' ? agentNames() : null"
-            [canSpread]="scope() === 'mine' && view() === 'todo'"
-            [busyIds]="busyIds()"
-            [pageKey]="taskListKey()"
-            [emptyTitle]="view() === 'done' ? 'Aucune tâche terminée' : view() === 'overdue' ? 'Rien en retard' : 'Rien à faire'"
-            [emptyText]="selectedDay() ? 'Aucune tâche ce jour-là.' : view() === 'todo' ? 'Les tâches qui vous sont attribuées apparaîtront ici.' : ''"
-            (open)="openTask($event)"
-            (postpone)="postpone($event)"
-            (spread)="spread($event)"
-            (reassign)="openReassign($event)"
-          ></my-day-task-list>
-        }
-      }
-    }
-  </main>
-</div>
+    </my-day-agent>
+  }
 }

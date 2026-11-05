@@ -35,7 +35,7 @@
   </div>
   <!-- Raccourcis -->
   <div class="flex flex-wrap gap-2" role="radiogroup" aria-label="Vue">
-    @for (q of quickFilters; track q.value) {
+    @for (q of quickFilters(); track q.value) {
       <button type="button" role="radio" [attr.aria-checked]="quick() === q.value"
         class="inline-flex items-center gap-2 px-4 py-2 rounded-full border text-sm font-medium transition-colors"
         [class.bg-primary]="quick() === q.value" [class.text-white]="quick() === q.value" [class.border-primary]="quick() === q.value"

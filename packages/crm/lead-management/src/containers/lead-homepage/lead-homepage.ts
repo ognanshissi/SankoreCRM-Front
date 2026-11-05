@@ -238,8 +238,6 @@ function agentPhaseOf(lead: LeadDto): PipelinePhase['key'] | null {
 }
 
 /** Les rôles de terrain, et ceux qui encadrent : la même règle que « Ma journée ». */
-const AGENT_ROLES = ['Agent', 'CommercialAgent'];
-const SUPERVISOR_ROLES = ['System', 'Administrator', 'SalesManager', 'BranchManager'];
 
 function assigneeId(lead: LeadDto): string | null {
   return lead.currentAssignedId ?? lead.ownerId ?? null;
@@ -471,11 +469,8 @@ export class LeadHomepage implements OnInit {
   public readonly intentFilterOptions = INTENT_FILTER_OPTIONS;
   public readonly kanbanColumns = KANBAN_COLUMNS;
 
-  /** Un agent sans rôle d'encadrement voit son parcours, pas les étapes du dispatch. */
-  public readonly isAgentView = computed(() => {
-    const roles = this._auth.connectedUser()?.roles ?? [];
-    return !roles.some((r) => SUPERVISOR_ROLES.includes(r)) && roles.some((r) => AGENT_ROLES.includes(r));
-  });
+  /** Qui ne lit que ses dossiers voit son parcours, pas les étapes du dispatch, et ses leads par défaut. */
+  public readonly isAgentView = computed(() => !!this._auth.connectedUser() && !this.canFilterByAgent());
   public readonly pipelinePhases = computed(() => (this.isAgentView() ? AGENT_PHASES : PIPELINE_PHASES));
   private phaseOf(lead: LeadDto): PipelinePhase['key'] | null {
     return this.isAgentView() ? agentPhaseOf(lead) : phaseOf(lead);

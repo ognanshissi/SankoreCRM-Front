@@ -33,5 +33,7 @@ export interface ClientContractDto {
     premiumOutstanding?: boolean;
     designationsToReview?: number;
     signedAt?: string | null;
+    endDate?: string | null;
+    daysInArrears?: number | null;
 }
 

@@ -3,14 +3,6 @@ import { AuthenticationService } from './authentification.service';
 import { PermissionCode, TEAM_WRITE_PERMISSIONS } from '../models/permissions';
 
 /**
- * Les rôles qui n'ont pas le Paramétrage (propriétaire, 2026-10-30) : un agent travaille ses
- * dossiers, il ne règle pas l'institution. Ses droits ne suffisent pas à l'écarter — la lecture
- * KYC, la téléphonie ou les imports ouvrent des rubriques —, d'où une règle par rôle. Qui cumule
- * un autre rôle garde le Paramétrage.
- */
-export const ROLES_WITHOUT_SETTINGS: readonly string[] = ['Agent', 'CommercialAgent'];
-
-/**
  * Lecture des permissions de l'utilisateur connecté.
  *
  * Évite que chaque écran réécrive
@@ -32,10 +24,13 @@ export class PermissionsService {
     return granted;
   });
 
-  /** L'entrée « Paramétrage » du menu et son accueil. Voir `ROLES_WITHOUT_SETTINGS`. */
-  public readonly seesSettings = computed(() =>
-    (this._auth.connectedUser()?.roles ?? []).some((r) => !ROLES_WITHOUT_SETTINGS.includes(r)),
-  );
+  /**
+   * L'entrée « Paramétrage » du menu et son accueil. Un droit à part (propriétaire, 2026-11-05), et non
+   * les droits de lecture : la lecture KYC, la téléphonie ou les imports ouvriraient des rubriques à
+   * qui travaille seulement ses dossiers. La liste des rôles exclus laissait entrer tout rôle créé
+   * par une institution.
+   */
+  public readonly seesSettings = computed(() => this.granted().has('settings:access'));
 
   /**
    * Signal vrai si l'utilisateur détient AU MOINS une des permissions.

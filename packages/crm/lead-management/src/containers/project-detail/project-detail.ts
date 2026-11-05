@@ -40,6 +40,7 @@ import { ConvertLeadWizard } from '../edit-lead/convert-lead-wizard';
 import { currentStep, hasTemplateSteps, isClosed, stepLabel } from '../edit-lead/opportunities/opportunity.model';
 import { EditProjectInfoDrawer, EditProjectInfoDrawerData } from './edit-project-info-drawer';
 import { ProjectBlockingCircuits } from './project-blocking-circuits';
+import { ProjectCreditSubmission } from './project-credit-submission';
 import { ProjectFields } from './project-fields';
 import { ProjectHistory } from './project-history';
 import { ProjectProgress } from './project-progress';
@@ -74,6 +75,7 @@ class LoseFormModel {
   imports: [
     RouterLink, FormRoot, FormField, Anchor, Button, TasCard, TasFormField, TasLabel, TasError, TasIcon, TasInput, TasSpinner,
     ProjectBlockingCircuits,
+    ProjectCreditSubmission,
     ProjectFields, ProjectHistory, ProjectProgress, ProjectQuestionnaires, ProjectSummary, ProjectTasks, ProjectValidations,
   ],
   templateUrl: './project-detail.html',

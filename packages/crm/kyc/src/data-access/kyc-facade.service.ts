@@ -515,6 +515,7 @@ export class KycFacadeService {
         filters.page + 1,
         filters.pageSize,
         filters.mine || undefined,
+        filters.documentsExpiring || undefined,
       )
       .pipe(
         map(this._formatResponse),

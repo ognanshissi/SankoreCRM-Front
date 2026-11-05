@@ -88,6 +88,9 @@ export const PERMISSIONS = {
   // Sans les trois « read:all », l'utilisateur ne voit que ses leads, clients et dossiers KYC —
   // le serveur filtre, l'écran n'a rien à faire. Agent et Agent commercial ne les ont pas.
   LEAD_READ_ALL: 'lead:read:all',
+  LEAD_TEAM_SUPERVISE: 'lead:team:supervise',
+  LEAD_TEAM_ALL_AGENCIES: 'lead:team:all-agencies',
+  SETTINGS_ACCESS: 'settings:access',
   LEAD_CREATE: 'lead:create',
   LEAD_UPDATE: 'lead:update',
   LEAD_ASSIGN: 'lead:assign',

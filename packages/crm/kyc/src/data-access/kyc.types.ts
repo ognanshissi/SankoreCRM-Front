@@ -226,6 +226,8 @@ export interface KycDashboardFilters {
   pageSize: number;
   /** « Mes dossiers » : ceux dont l'utilisateur connecté est l'agent responsable. */
   mine?: boolean;
+  /** Dossiers validés dont la dernière pièce a expiré ou expire bientôt. */
+  documentsExpiring?: boolean;
 }
 
 export interface KycDashboardPage {

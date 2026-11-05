@@ -150,6 +150,7 @@ export function templateScopeOptions(
 const ERRORS: Record<string, string> = {
   PROJECT_TEMPLATE_SCOPE_TAKEN: 'Un gabarit existe déjà pour cette famille ou ce produit.',
   PROJECT_TEMPLATE_UNKNOWN_PRODUCT: "Ce produit n'existe pas dans le catalogue.",
+  PROJECT_TEMPLATE_NOT_CREDIT_PRODUCT: "Ce modèle ne vaut que pour un produit de crédit.",
   PROJECT_TEMPLATE_SCOPE_INVALID: 'Un gabarit vaut pour une famille ou pour un produit, pas les deux.',
   PROJECT_TEMPLATE_NAME_REQUIRED: 'Le nom est obligatoire.',
   PROJECT_TEMPLATE_NAME_TOO_LONG: 'Le nom ne peut pas dépasser 100 caractères.',

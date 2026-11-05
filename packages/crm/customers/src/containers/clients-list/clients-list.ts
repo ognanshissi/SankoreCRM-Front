@@ -112,10 +112,11 @@ type ClientTypeParam = 'Individual' | 'Legal';
 type RiskParam = 'Unknown' | 'Low' | 'Medium' | 'High';
 
 /** Raccourcis de la liste, comptés par `GET clients/quick-counts` sous les mêmes critères. */
-export type QuickFilter = 'All' | 'KycToStart' | 'KycInProgress' | 'HighRisk' | 'WithoutAdvisor';
+export type QuickFilter = 'All' | 'Mine' | 'KycToStart' | 'KycInProgress' | 'HighRisk' | 'WithoutAdvisor';
 
 const QUICK_FILTERS: { value: QuickFilter; label: string; count: keyof ClientQuickCountsDto }[] = [
   { value: 'All', label: 'Tous', count: 'all' },
+  { value: 'Mine', label: 'Mes clients', count: 'mine' },
   { value: 'KycToStart', label: 'KYC à démarrer', count: 'kycToStart' },
   { value: 'KycInProgress', label: 'KYC en cours', count: 'kycInProgress' },
   { value: 'HighRisk', label: 'Risque élevé', count: 'highRisk' },
@@ -233,7 +234,10 @@ export class ClientsListPage implements OnInit {
 
   public readonly agencyOptions = this._agencies.asReadonly();
   public readonly advisorOptions = this._advisors.asReadonly();
-  public readonly quickFilters = QUICK_FILTERS;
+  /** Sans la lecture large, « Tous » est déjà le portefeuille de l'utilisateur. */
+  private readonly _canReadAll = this._permissions.can('customers:read:all');
+  public readonly quickFilters = computed(() =>
+    this._canReadAll() ? QUICK_FILTERS : QUICK_FILTERS.filter((q) => q.value !== 'Mine'));
   public readonly pageSizes = PAGE_SIZES;
 
   public readonly statusOptions = CLIENT_STATUS_ORDER.map((name) => ({ label: clientStatusLabel(name), value: name }));

@@ -6,7 +6,7 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { PageEvent } from '@angular/material/paginator';
 import { catchError, debounceTime, EMPTY, filter, of, Subject, Subscription } from 'rxjs';
 import { CrmTaskDto, LeadDto, LeadsApiService, TaskPageCountsDto, TasksApiService, UsersApiService } from '@sankore/crm-api';
-import { AuthenticationService, BreadcrumbService, QuickCreateEvents } from '@sankore/crm/common';
+import { AuthenticationService, BreadcrumbService, PermissionsService, QuickCreateEvents } from '@sankore/crm/common';
 import { TasFormField, TasLabel } from '@talisoft/ui/form-field';
 import { TasInput } from '@talisoft/ui/input';
 import { TasSelect } from '@talisoft/ui/select';
@@ -24,7 +24,6 @@ const VIEWS: { key: TaskView; label: string; count: keyof TaskPageCountsDto }[] 
   { key: 'Cancelled', label: 'Annulées', count: 'cancelled' },
   { key: 'All', label: 'Toutes', count: 'all' },
 ];
-const SUPERVISOR_ROLES = ['System', 'Administrator', 'SalesManager', 'BranchManager'];
 /** `tas-select` n'affiche pas une option de valeur vide : « Toute mon équipe » a la sienne. */
 const WHOLE_TEAM = 'team';
 
@@ -42,6 +41,7 @@ export class TaskListPage implements OnInit {
   private readonly _leadsApi = inject(LeadsApiService);
   private readonly _usersApi = inject(UsersApiService);
   private readonly _auth = inject(AuthenticationService);
+  private readonly _permissions = inject(PermissionsService);
   private readonly _breadcrumb = inject(BreadcrumbService);
   private readonly _quickCreate = inject(QuickCreateEvents);
   private readonly _snackbar = inject(SnackbarService);
@@ -68,9 +68,7 @@ export class TaskListPage implements OnInit {
     pagination: { serverSide: true, pageIndex: 0, pageSize: 25, pageSizeOptions: [10, 25, 50], totalElements: 0 },
   });
 
-  public readonly isSupervisor = computed(() =>
-    (this._auth.connectedUser()?.roles ?? []).some((r) => SUPERVISOR_ROLES.includes(r)),
-  );
+  public readonly isSupervisor = this._permissions.can('lead:team:supervise');
   public readonly wholeTeam = WHOLE_TEAM;
   public readonly agentOptions = computed(() => {
     const me = this._auth.connectedUser()?.id ?? '';

@@ -26,6 +26,7 @@ import {
   MomentGroup,
   todayProgress,
   upcomingCount,
+  WatchLine,
 } from './my-day-agent-meta';
 
 /** Au-delà, la liste se pagine (demande du propriétaire, 2026-10-29, gardée sur la nouvelle maquette). */
@@ -79,6 +80,11 @@ export class MyDayAgent {
    * dites par type plutôt qu'en un seul compte.
    */
   public readonly team = input(false);
+  /** « Mes performances » : pour qui travaille des leads. */
+  public readonly showScorecard = input(false);
+  public readonly watchLines = input<WatchLine[]>([]);
+  public readonly hasToHandle = computed(() =>
+    this.watchLines().length > 0 || this.approvalsCount() > 0 || this.kycApprovals() > 0 || this.workflowApprovals() > 0);
   public readonly kycApprovals = input(0);
   public readonly workflowApprovals = input(0);
   public readonly isLoading = input(false);

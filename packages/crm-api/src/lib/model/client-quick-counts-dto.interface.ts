@@ -18,5 +18,6 @@ export interface ClientQuickCountsDto {
     highRisk?: number;
     withoutAdvisor?: number;
     duplicatesToReview?: number;
+    mine?: number;
 }
 

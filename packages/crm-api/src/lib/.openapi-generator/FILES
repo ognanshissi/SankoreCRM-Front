@@ -264,6 +264,7 @@ model/create-call-outcome-request.interface.ts
 model/create-client-result.interface.ts
 model/create-connection-request.interface.ts
 model/create-connection-response.interface.ts
+model/create-credit-file-template-request.interface.ts
 model/create-dispatching-rule-request.interface.ts
 model/create-email-template-request.interface.ts
 model/create-erasure-request-body.interface.ts
@@ -301,6 +302,7 @@ model/create-user-request.interface.ts
 model/create-user-result.interface.ts
 model/created-webhook-subscription-dto.interface.ts
 model/credential-dto.interface.ts
+model/credit-submission-dto.interface.ts
 model/crm-task-detail-dto.interface.ts
 model/crm-task-dto.interface.ts
 model/crm-task-page-dto.interface.ts

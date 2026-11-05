@@ -77,6 +77,8 @@ export type ContractRow = {
   amountLabel: string;
   amountCaption: string;
   dateLabel: string;
+  endLabel: string;
+  arrearsLabel: string;
   toReview: number;
 };
 
@@ -307,6 +309,8 @@ export class ClientContrats implements OnDestroy {
       amountLabel: contract.amount == null ? '—' : `${contract.amount.toLocaleString('fr-FR')} ${contract.currency ?? ''}`.trim(),
       amountCaption: contract.amountKind ? (AMOUNT_KIND_LABELS[contract.amountKind] ?? contract.amountKind) : '',
       dateLabel: this._formatDate(contract.startDate),
+      endLabel: contract.endDate ? `Jusqu'au ${this._formatDate(contract.endDate)}` : '',
+      arrearsLabel: (contract.daysInArrears ?? 0) > 0 ? `Retard de ${contract.daysInArrears} j` : '',
       toReview: contract.designationsToReview ?? 0,
     };
   }
@@ -343,6 +347,8 @@ const EMPTY_ROW: ContractRow = {
   amountLabel: '',
   amountCaption: '',
   dateLabel: '',
+  endLabel: '',
+  arrearsLabel: '',
   toReview: 0,
 };
 

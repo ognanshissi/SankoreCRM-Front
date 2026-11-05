@@ -3,13 +3,18 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { DatePipe } from '@angular/common';
 import { catchError, EMPTY, finalize, forkJoin, of } from 'rxjs';
 import { ProductDto, ProductsApiService, ProjectTemplateDto, ProjectTemplatesApiService } from '@sankore/crm-api';
-import { BreadcrumbService, PermissionsService, productCategoryLabel, projectAmountLabel } from '@sankore/crm/common';
+import { BreadcrumbService, PermissionsService, productCategoryLabel, projectAmountLabel, TENANT_MODULES, TenantModulesService } from '@sankore/crm/common';
 import { Button } from '@talisoft/ui/button';
+import { SnackbarService } from '@talisoft/ui/snackbar';
 import { TasIcon } from '@talisoft/ui/icon';
+import { Menu, MenuItem, TasMenuTrigger } from '@talisoft/ui/menu';
 import { TableConfig, TasTable } from '@talisoft/ui/table';
 import { Router } from '@angular/router';
 import { phaseLabel, projectTemplateError } from './project-steps.models';
 import { DEFAULT_TEMPLATE, NEW_TEMPLATE } from './project-template-page';
+
+/** Les familles dont les produits sont des crédits, comme le serveur les lit. */
+const CREDIT_CATEGORIES = ['Loan', 'GroupCredit', 'Agriculture'];
 
 interface TemplateRow {
   key: string;
@@ -37,7 +42,7 @@ interface TemplateRow {
  */
 @Component({
   selector: 'project-steps-page',
-  imports: [DatePipe, Button, TasIcon, TasTable],
+  imports: [DatePipe, Button, Menu, MenuItem, TasIcon, TasMenuTrigger, TasTable],
   template: `
     <div class="flex flex-col gap-4 pb-6">
       <div class="flex flex-wrap items-start justify-between gap-3">
@@ -49,10 +54,29 @@ interface TemplateRow {
           </p>
         </div>
         @if (canManage()) {
-          <button tas-raised-button color="primary" type="button" (click)="openNew()">
-            <tas-icon iconName="feather:plus" style="font-size:14px"></tas-icon>
-            Nouveau gabarit
-          </button>
+          <div class="flex flex-wrap items-center gap-2">
+            @if (creditFileTargets().length) {
+              <button tas-outlined-button type="button" [isLoading]="creatingCreditFile()" [disabled]="creatingCreditFile()"
+                title="Crée le gabarit et son circuit : avis de l'analyste, puis décision du chef d'agence"
+                TasMenuTrigger [panel]="creditFileMenu">
+                <tas-icon iconName="feather:file-text" style="font-size:14px"></tas-icon>
+                Modèle « Dossier de crédit »
+              </button>
+              <ng-template #creditFileMenu>
+                <tas-menu>
+                  @for (target of creditFileTargets(); track target.productCode) {
+                    <tas-menu-item>
+                      <button type="button" class="w-full text-left" (click)="createCreditFile(target.productCode)">{{ target.label }}</button>
+                    </tas-menu-item>
+                  }
+                </tas-menu>
+              </ng-template>
+            }
+            <button tas-raised-button color="primary" type="button" (click)="openNew()">
+              <tas-icon iconName="feather:plus" style="font-size:14px"></tas-icon>
+              Nouveau gabarit
+            </button>
+          </div>
         }
       </div>
 
@@ -136,8 +160,23 @@ export class ProjectStepsPage implements OnInit {
   private readonly _permissions = inject(PermissionsService);
   private readonly _breadcrumb = inject(BreadcrumbService);
   private readonly _router = inject(Router);
+  private readonly _snackbar = inject(SnackbarService);
 
   public readonly canManage = this._permissions.can('lead:pipeline-stage:manage');
+  private readonly _canDrawCircuits = this._permissions.can('workflow:manage-steps');
+  private readonly _hasBanking = inject(TenantModulesService).can(TENANT_MODULES.BANKING_MICROFINANCE);
+  public readonly creatingCreditFile = signal(false);
+  /** Où le modèle peut aller : la famille Prêt si elle est libre, et les produits de crédit sans gabarit. */
+  public readonly creditFileTargets = computed<{ label: string; productCode: string | null }[]>(() => {
+    if (!this.canManage() || !this._canDrawCircuits() || !this._hasBanking()) return [];
+    const templates = this.templates();
+    const taken = new Set(templates.map((t) => (t.productCode ?? '').toUpperCase()));
+    const products = this.products()
+      .filter((p) => p.isActive && !!p.code && CREDIT_CATEGORIES.includes(`${p.category}`) && !taken.has(p.code.toUpperCase()))
+      .map((p) => ({ label: p.name ?? p.code!, productCode: p.code! }));
+    const familyFree = !templates.some((t) => t.category === 'Loan' && !t.productCode);
+    return familyFree ? [{ label: 'Toute la famille Prêt', productCode: null }, ...products] : products;
+  });
   public readonly phaseLabel = phaseLabel;
 
   public readonly templates = signal<ProjectTemplateDto[]>([]);
@@ -211,6 +250,20 @@ export class ProjectStepsPage implements OnInit {
   public open(row: TemplateRow): void {
     // Le parcours par défaut n'a pas d'id tant que le tenant ne l'a pas modifié.
     void this._router.navigate(['/settings/project-steps', row.template.id ?? DEFAULT_TEMPLATE]);
+  }
+
+  public createCreditFile(productCode: string | null): void {
+    this.creatingCreditFile.set(true);
+    this._api
+      .createCreditFileTemplate({ productCode })
+      .pipe(
+        catchError((error: HttpErrorResponse) => {
+          this._snackbar.error('Modèle non créé', projectTemplateError(error, 'Le modèle n’a pas pu être créé.'));
+          return EMPTY;
+        }),
+        finalize(() => this.creatingCreditFile.set(false)),
+      )
+      .subscribe((id) => void this._router.navigate(['/settings/project-steps', id]));
   }
 
   public openNew(): void {

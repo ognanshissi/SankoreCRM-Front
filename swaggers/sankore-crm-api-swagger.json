@@ -4205,17 +4205,18 @@
           {
             "name": "quick",
             "in": "query",
-            "description": "One of: All, KycToStart, KycInProgress, HighRisk, WithoutAdvisor",
+            "description": "One of: All, KycToStart, KycInProgress, HighRisk, WithoutAdvisor, Mine",
             "schema": {
               "enum": [
                 "All",
                 "KycToStart",
                 "KycInProgress",
                 "HighRisk",
-                "WithoutAdvisor"
+                "WithoutAdvisor",
+                "Mine"
               ],
               "type": "string",
-              "description": "One of: All, KycToStart, KycInProgress, HighRisk, WithoutAdvisor"
+              "description": "One of: All, KycToStart, KycInProgress, HighRisk, WithoutAdvisor, Mine"
             }
           },
           {
@@ -12677,6 +12678,14 @@
           },
           {
             "name": "mine",
+            "in": "query",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          },
+          {
+            "name": "documentsExpiring",
             "in": "query",
             "schema": {
               "type": "boolean",
@@ -21436,6 +21445,71 @@
         }
       }
     },
+    "/api/v1/leads/opportunities/{opportunityId}/credit-submission": {
+      "get": {
+        "tags": [
+          "Opportunities"
+        ],
+        "operationId": "GetProjectCreditSubmission",
+        "parameters": [
+          {
+            "name": "opportunityId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreditSubmissionDto"
+                }
+              }
+            }
+          },
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Opportunities"
+        ],
+        "operationId": "SendProjectCreditSubmission",
+        "parameters": [
+          {
+            "name": "opportunityId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "409": {
+            "description": "Conflict"
+          }
+        }
+      }
+    },
     "/api/v1/leads/opportunities": {
       "get": {
         "tags": [
@@ -21523,6 +21597,27 @@
           },
           "422": {
             "description": "Unprocessable Entity"
+          }
+        }
+      }
+    },
+    "/api/v1/leads/opportunities/overdue-count": {
+      "get": {
+        "tags": [
+          "Opportunities"
+        ],
+        "operationId": "GetOverdueProjectCount",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "integer",
+                  "format": "int32"
+                }
+              }
+            }
           }
         }
       }
@@ -23366,6 +23461,43 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "/api/v1/leads/project-templates/credit-file": {
+      "post": {
+        "tags": [
+          "Project Templates"
+        ],
+        "operationId": "CreateCreditFileTemplate",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCreditFileTemplateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict"
+          },
+          "422": {
+            "description": "Unprocessable Entity"
           }
         }
       }
@@ -37488,6 +37620,16 @@
             "type": "string",
             "format": "date-time",
             "nullable": true
+          },
+          "endDate": {
+            "type": "string",
+            "format": "date",
+            "nullable": true
+          },
+          "daysInArrears": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -38232,6 +38374,10 @@
             "format": "int32"
           },
           "duplicatesToReview": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "mine": {
             "type": "integer",
             "format": "int32"
           }
@@ -40164,6 +40310,16 @@
         },
         "additionalProperties": false
       },
+      "CreateCreditFileTemplateRequest": {
+        "type": "object",
+        "properties": {
+          "productCode": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "CreateDispatchingRuleRequest": {
         "type": "object",
         "properties": {
@@ -41557,6 +41713,36 @@
           },
           "closedReason": {
             "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "CreditSubmissionDto": {
+        "type": "object",
+        "properties": {
+          "state": {
+            "type": "string",
+            "nullable": true
+          },
+          "reference": {
+            "type": "string",
+            "nullable": true
+          },
+          "message": {
+            "type": "string",
+            "nullable": true
+          },
+          "at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "missing": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
             "nullable": true
           }
         },

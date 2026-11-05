@@ -1,12 +1,9 @@
 import { Component, computed, DestroyRef, effect, inject, signal, OnInit, OnDestroy, untracked } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { FormsModule } from '@angular/forms';
 import { HttpErrorResponse } from '@angular/common/http';
 import { ActivatedRoute, Router } from '@angular/router';
 import { catchError, EMPTY, finalize, forkJoin, map, of, Subscription } from 'rxjs';
-import { TasSelect } from '@talisoft/ui/select';
 import { TasIcon } from '@talisoft/ui/icon';
-import { Button } from '@talisoft/ui/button';
 import { SideDrawerService } from '@talisoft/ui/side-drawer';
 import { SnackbarService } from '@talisoft/ui/snackbar';
 import { ConfirmDialogService } from '@talisoft/ui/confirm-dialog';
@@ -15,15 +12,15 @@ import {
   AgenciesApiService,
   CrmTaskDto,
   CrmTaskDtoStatusEnum,
+  KYCApiService,
   LeadDto,
   LeadsAnalyticsApiService,
   LeadsApiService,
   MyScorecardDto,
   MyAgendaDto,
+  OpportunitiesApiService,
   TeamScorecardDto,
   TasksApiService,
-  UserDto,
-  UsersApiService,
 } from '@sankore/crm-api';
 import { AuthenticationService, BreadcrumbService, PermissionsService, QuickCreateEvents } from '@sankore/crm/common';
 import { leadDisplayName } from './task-meta';
@@ -32,8 +29,8 @@ import { ApprovalItem, MyApprovalsService } from './my-approvals.service';
 import { ApprovalsList } from './approvals-list';
 import { NewTaskDrawer, NewTaskDrawerData } from '../task/new-task-drawer';
 import { agendaEntries } from './agenda-meta';
+import { isLateTask, WatchLine } from './my-day-agent-meta';
 import {
-  addDays,
   byUrgency,
   dayKey,
   dayHeading,
@@ -46,10 +43,7 @@ import {
   spreadOverWeek,
   startOfDay,
 } from './my-day-meta';
-import { DayMarkers, MyDayCalendar } from './my-day-calendar';
-import { PromisedReminders } from './promised-reminders';
 import { TaskDayList } from './task-day-list';
-import { AgendaDayList } from './agenda-day-list';
 import { TaskWorkDrawer, TaskWorkDrawerData, TaskWorkDrawerResult } from './task-work-drawer';
 import { CreateAppointmentDrawer, CreateAppointmentDrawerData } from './create-appointment-drawer';
 import { AppointmentDetailDrawer, AppointmentDetailDrawerData, AppointmentDetailDrawerResult } from './appointment-detail-drawer';
@@ -57,69 +51,33 @@ import { MyDayAgent } from './my-day-agent';
 import { ScorePeriod } from './my-day-scorecard';
 import { MyDayTeam, MyDayTeamTable, TeamPeriod } from './my-day-team';
 
-type MyDayView = 'todo' | 'overdue' | 'reminders' | 'meetings' | 'approvals' | 'done';
-/** L'écran des agents : la journée, ou l'une des deux listes qu'il ouvre. */
+/** La journée, ou l'une des deux listes qu'elle ouvre. */
 type AgentMode = 'today' | 'upcoming' | 'approvals';
-type TaskScope = 'mine' | 'team';
-
-interface NavItem {
-  view: MyDayView;
-  label: string;
-  icon: string;
-  count: () => number;
-  /** Pastille colorée quand le compte n'est pas nul : ce qui attend une réponse de l'agent. */
-  tone: 'neutral' | 'amber' | 'blue';
-  /** Rappels, rendez-vous et approbations sont ceux de l'utilisateur : pas de vue équipe. */
-  mineOnly: boolean;
-}
-
-/**
- * Les rôles que le serveur traite en superviseur (`ListTasksHandler.SupervisorRoles`) : sans agent
- * demandé, il leur rend les tâches de leur équipe — leur agence et ses sous-agences, ou tout le
- * tenant pour un super-utilisateur ou un compte sans agence. À garder alignés.
- */
-const SUPERVISOR_ROLES = ['System', 'Administrator', 'SalesManager', 'BranchManager'];
-
-/** Les rôles qui reçoivent la maquette « agent » (propriétaire, 2026-10-31), sauf s'ils supervisent aussi. */
-const AGENT_ROLES = ['Agent', 'CommercialAgent'];
-
 /** Le plafond de `GET leads?ids=` (`ListLeadsQuery.MaxIds`). */
 const LEADS_PER_CALL = 100;
 
-/** Ce que l'agenda couvre au moins à partir d'aujourd'hui, quel que soit le mois affiché. */
+/** Ce que l'agenda couvre à partir d'aujourd'hui. Les rappels en retard viennent toujours. */
 const AGENDA_AHEAD_DAYS = 14;
-/** Le plafond du serveur (`GetMyAgendaHandler.MaxDays`). */
-const AGENDA_MAX_DAYS = 62;
 
 const LONG_DATE = new Intl.DateTimeFormat('fr-FR', { weekday: 'long', day: 'numeric', month: 'short' });
-
-function deadlineOf(task: CrmTaskDto): number {
-  const d = task.slaDeadline ?? task.dueAt;
-  return d ? new Date(d).getTime() : Infinity;
-}
 
 function isOpen(task: CrmTaskDto): boolean {
   return task.status === CrmTaskDtoStatusEnum.Pending || task.status === CrmTaskDtoStatusEnum.InProgress;
 }
 
 /**
- * « Ma journée » : les tâches de l'agent groupées par jour, ses rappels et rendez-vous, et le
- * calendrier du mois qui dit ce qui tombe quand. Les tâches se traitent dans un drawer (le panneau
- * de travail, qui consigne le résultat de l'appel sur le lead) ; elles se reportent et se
- * répartissent d'ici, sans toucher au SLA de premier contact.
+ * « Ma journée », le même écran pour tous (propriétaire, 2026-11-05) : ses tâches, rappels et
+ * rendez-vous, ce qui attend sa décision. Les droits ajoutent le reste : la journée de son équipe,
+ * ou ses chiffres à qui travaille des leads. Les tâches se traitent dans un drawer (le panneau de
+ * travail, qui consigne le résultat de l'appel sur le lead) ; elles se reportent et se répartissent
+ * d'ici, sans toucher au SLA de premier contact.
  */
 @Component({
   templateUrl: './dashboard.html',
   imports: [
-    FormsModule,
-    TasSelect,
     TasIcon,
-    Button,
     ApprovalsList,
-    MyDayCalendar,
-    PromisedReminders,
     TaskDayList,
-    AgendaDayList,
     MyDayAgent,
     MyDayTeam,
     MyDayTeamTable,
@@ -127,6 +85,8 @@ function isOpen(task: CrmTaskDto): boolean {
 })
 export class DashboardComponent implements OnInit, OnDestroy {
   private readonly _tasksApi = inject(TasksApiService);
+  private readonly _kycApi = inject(KYCApiService);
+  private readonly _projectsApi = inject(OpportunitiesApiService);
   private readonly _leadsApi = inject(LeadsApiService);
   private readonly _analyticsApi = inject(LeadsAnalyticsApiService);
   private readonly _agenciesApi = inject(AgenciesApiService);
@@ -136,7 +96,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
   private readonly _confirm = inject(ConfirmDialogService);
   private readonly _router = inject(Router);
   private readonly _route = inject(ActivatedRoute);
-  private readonly _usersApi = inject(UsersApiService);
   private readonly _breadcrumbService = inject(BreadcrumbService);
   private readonly _approvalsService = inject(MyApprovalsService);
   private readonly _permissions = inject(PermissionsService);
@@ -153,45 +112,13 @@ export class DashboardComponent implements OnInit, OnDestroy {
   public isLoading = signal(true);
   public allTasks = signal<CrmTaskDto[]>([]);
   public leads = signal<Map<string, LeadDto>>(new Map());
-  public view = signal<MyDayView>('todo');
   /** Tâches en cours de report : la ligne est grisée et son bouton désactivé. */
   public busyIds = signal<Set<string>>(new Set());
 
-  // ——— Portée ———
-
-  /**
-   * « Mes tâches » ou « Équipe ». La vue équipe existe parce qu'un responsable qui importe des leads
-   * ne voyait rien arriver : les tâches partent chez les agents, et « Mes tâches » ne montre que les
-   * siennes. Gardée dans l'URL (`vue=equipe`).
-   */
-  public scope = signal<TaskScope>('mine');
-  public readonly isSupervisor = computed(() =>
-    (this._auth.connectedUser()?.roles ?? []).some((r) => SUPERVISOR_ROLES.includes(r)),
-  );
-  /** Filtre agent de la vue équipe, appliqué côté client sur les tâches chargées. */
-  public agentFilter = signal('');
-
-  /**
-   * Les agents ont l'écran de la maquette : bandeau, avancement et journée par moment. Un compte
-   * qui supervise aussi garde l'écran à calendrier, vues et équipe.
-   */
-  public readonly isAgentLayout = computed(() => {
-    const roles = this._auth.connectedUser()?.roles ?? [];
-    return !this.isSupervisor() && roles.some((r) => AGENT_ROLES.includes(r));
-  });
-  /**
-   * Les responsables ont la même maquette (propriétaire, 2026-11-03), avec la journée de leur équipe
-   * à droite et un tableau des agents dessous ; le calendrier et la vue « Équipe » leur sont retirés.
-   */
-  public readonly isManagerLayout = computed(() => this.isSupervisor());
-  public readonly isMyDayLayout = computed(() => this.isAgentLayout() || this.isManagerLayout());
-  public readonly canViewTeam = this._permissions.can('lead:analytics:view');
-  /**
-   * « Mes performances » : les agents, et les responsables sans droit d'analyse, à qui la maquette
-   * rend la colonne de l'agent faute de journée d'équipe. Ne tester que `isAgentLayout` laissait
-   * cette colonne vide chez ces responsables.
-   */
-  public readonly showsOwnScorecard = computed(() => this.isAgentLayout() || (this.isManagerLayout() && !this.canViewTeam()));
+  /** La journée de l'équipe ; sans elle, les chiffres de qui travaille des leads. */
+  public readonly isTeamView = this._permissions.canAll('lead:team:supervise', 'lead:analytics:view');
+  private readonly _worksLeads = this._permissions.can('lead:update');
+  public readonly showsOwnScorecard = computed(() => !this.isTeamView() && this._worksLeads());
   public agentMode = signal<AgentMode>('today');
   /** La journée de l'équipe (`GET leads/me/team-scorecard`) ; agence et agent restent dans l'URL. */
   public teamCard = signal<TeamScorecardDto | null>(null);
@@ -211,32 +138,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
     const later = this.openTasks().filter((t) => !!t.dueAt && dayKey(t.dueAt) > today);
     return groupByDay(later, (t) => t.dueAt, this.now());
   });
-  public agentNames = signal<Map<string, string>>(new Map());
-  public readonly agentOptions = computed(() => {
-    const names = this.agentNames();
-    const ids = [...new Set(this.allTasks().map((t) => t.assignedAgentId).filter((id): id is string => !!id))];
-    return [
-      { label: 'Tous les agents', value: '' },
-      ...ids
-        .map((id) => ({ label: names.get(id) ?? 'Agent inconnu', value: id }))
-        .sort((a, b) => a.label.localeCompare(b.label, 'fr')),
-    ];
-  });
   public agencyName = signal('');
 
-  // ——— Calendrier ———
-
-  public calendarMonth = signal(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
-  /** Jour choisi dans le calendrier : filtre la liste affichée. `null` = tous les jours. */
-  public selectedDay = signal<string | null>(null);
   public readonly todayKey = computed(() => dayKey(this.now()));
-  public readonly selectedDayLabel = computed(() => {
-    const key = this.selectedDay();
-    if (!key) return '';
-    const label = LONG_DATE.format(fromDayKey(key));
-    return label.charAt(0).toUpperCase() + label.slice(1);
-  });
-
   // ——— Agenda et approbations ———
 
   /** Rappels, activités planifiées et alertes SLA de l'utilisateur. Toujours les SIENS. */
@@ -255,14 +159,25 @@ export class DashboardComponent implements OnInit, OnDestroy {
   );
 
   public readonly entries = computed(() => agendaEntries(this.agenda()));
-  public readonly reminders = computed(() => this.entries().filter((e) => e.kind === 'reminder'));
-  /**
-   * Les rendez-vous à venir : ceux planifiés d'ici, et les activités enregistrées avec une date
-   * prévue. Un rendez-vous passé n'a pas de statut « fait », il quitte la liste.
-   */
-  public readonly meetings = computed(() => {
-    const today = startOfDay(new Date(this.now())).getTime();
-    return this.entries().filter((e) => e.kind !== 'reminder' && new Date(e.at).getTime() >= today);
+  // ——— Dossiers à gérer ———
+
+  private readonly _canWorkKyc = this._permissions.can('kyc:manage');
+  private readonly _canWorkProjects = this._permissions.can('lead:opportunity:manage');
+  private readonly _kycReviews = signal(0);
+  private readonly _kycExpiring = signal(0);
+  private readonly _overdueProjects = signal(0);
+
+  /** Chaque nombre est ce que son lien ouvre : mêmes filtres, même périmètre. */
+  public readonly watchLines = computed<WatchLine[]>(() => {
+    const now = this.now();
+    const lateTasks = this.allTasks().filter((t) => isLateTask(t, now)).length;
+    const lines: WatchLine[] = [
+      { key: 'tasks', icon: 'feather:alert-circle', count: lateTasks, label: lateTasks > 1 ? 'tâches en retard' : 'tâche en retard', link: '/tasks', queryParams: { vue: 'Overdue' } },
+      { key: 'projects', icon: 'feather:briefcase', count: this._overdueProjects(), label: this._overdueProjects() > 1 ? 'projets en retard' : 'projet en retard', link: '/leads/projets', queryParams: { statut: 'retard' } },
+      { key: 'reviews', icon: 'feather:refresh-cw', count: this._kycReviews(), label: this._kycReviews() > 1 ? 'révisions KYC à faire' : 'révision KYC à faire', link: '/kyc', queryParams: { filtre: 'revisions' } },
+      { key: 'expiring', icon: 'feather:file-text', count: this._kycExpiring(), label: this._kycExpiring() > 1 ? "pièces d'identité à renouveler" : "pièce d'identité à renouveler", link: '/kyc', queryParams: { filtre: 'pieces' } },
+    ];
+    return lines.filter((l) => l.count > 0);
   });
 
   // ——— Tâches ———
@@ -272,92 +187,19 @@ export class DashboardComponent implements OnInit, OnDestroy {
     return user?.fullName?.trim().split(/\s+/)[0] ?? '';
   });
 
-  private readonly _scopedTasks = computed(() => {
-    const agent = this.scope() === 'team' ? this.agentFilter() : '';
-    return agent ? this.allTasks().filter((t) => t.assignedAgentId === agent) : this.allTasks();
-  });
-
   /** Par urgence (`byUrgency`) ; `groupByDay` les range ensuite par jour d'échéance sans changer cet ordre. */
   public readonly openTasks = computed(() => {
     const leads = this.leads();
     const scoreOf = (t: CrmTaskDto) => (t.leadId ? leads.get(t.leadId)?.score : undefined);
     const intentOf = (t: CrmTaskDto) => (t.leadId ? leads.get(t.leadId)?.intentLevel : undefined);
-    return this._scopedTasks().filter(isOpen).sort(byUrgency(this.now(), scoreOf, intentOf));
+    return this.allTasks().filter(isOpen).sort(byUrgency(this.now(), scoreOf, intentOf));
   });
-  public readonly overdueTasks = computed(() => {
-    const n = this.now();
-    return this.openTasks().filter((t) => deadlineOf(t) < n);
-  });
-  public readonly doneTasks = computed(() =>
-    this._scopedTasks()
-      .filter((t) => t.status === CrmTaskDtoStatusEnum.Completed)
-      .sort((a, b) => new Date(b.completedAt ?? 0).getTime() - new Date(a.completedAt ?? 0).getTime()),
-  );
-  public readonly tasksToday = computed(() => this.openTasks().filter((t) => t.dueAt && dayKey(t.dueAt) === this.todayKey()).length);
   public readonly duplicates = computed(() => duplicateTaskIds(this.openTasks()));
-
-  private _onSelectedDay<T>(items: T[], at: (item: T) => string | null | undefined): T[] {
-    const day = this.selectedDay();
-    return day ? items.filter((i) => { const iso = at(i); return !!iso && dayKey(iso) === day; }) : items;
-  }
-
-  public readonly taskGroups = computed<DayGroup<CrmTaskDto>[]>(() => {
-    const now = this.now();
-    switch (this.view()) {
-      case 'done': {
-        // Les plus récentes d'abord : on relit ce qu'on vient de faire.
-        return groupByDay(this._onSelectedDay(this.doneTasks(), (t) => t.completedAt), (t) => t.completedAt, now).reverse();
-      }
-      case 'overdue':
-        return groupByDay(this._onSelectedDay(this.overdueTasks(), (t) => t.dueAt), (t) => t.dueAt, now);
-      default:
-        return groupByDay(this._onSelectedDay(this.openTasks(), (t) => t.dueAt), (t) => t.dueAt, now);
-    }
-  });
-  /** Ce qui définit la liste affichée : quand il change, elle repart de sa première page. */
-  public readonly taskListKey = computed(() =>
-    [this.view(), this.scope(), this.selectedDay() ?? '', this.agentFilter()].join('|'),
-  );
-  public readonly reminderGroups = computed(() =>
-    groupByDay(this._onSelectedDay(this.reminders(), (e) => e.at), (e) => e.at, this.now()),
-  );
-  public readonly meetingGroups = computed(() =>
-    groupByDay(this._onSelectedDay(this.meetings(), (e) => e.at), (e) => e.at, this.now()),
-  );
-
-  /** Ce que chaque jour du calendrier porte. La vue équipe n'a que des tâches. */
-  public readonly markers = computed(() => {
-    const map = new Map<string, DayMarkers>();
-    const mark = (iso: string | null | undefined, kind: keyof DayMarkers) => {
-      if (!iso) return;
-      const key = dayKey(iso);
-      const m = map.get(key) ?? { tasks: false, reminders: false, meetings: false };
-      m[kind] = true;
-      map.set(key, m);
-    };
-    this.openTasks().forEach((t) => mark(t.dueAt, 'tasks'));
-    if (this.scope() === 'mine') {
-      this.reminders().forEach((e) => mark(e.at, 'reminders'));
-      this.entries().filter((e) => e.kind !== 'reminder').forEach((e) => mark(e.at, 'meetings'));
-    }
-    return map;
-  });
-
-  public readonly nav: NavItem[] = [
-    { view: 'todo',      label: 'À faire',      icon: 'feather:check-square', count: () => this.openTasks().length,    tone: 'neutral', mineOnly: false },
-    { view: 'overdue',   label: 'En retard',    icon: 'feather:alert-circle', count: () => this.overdueTasks().length, tone: 'neutral', mineOnly: false },
-    { view: 'reminders', label: 'Rappels',      icon: 'feather:bell',         count: () => this.reminders().length,    tone: 'amber',   mineOnly: true },
-    { view: 'meetings',  label: 'Rendez-vous',  icon: 'feather:calendar',     count: () => this.meetings().length,     tone: 'blue',    mineOnly: true },
-    { view: 'approvals', label: 'Approbations', icon: 'feather:user-check',   count: () => this.approvalsCount(),      tone: 'amber',   mineOnly: true },
-    { view: 'done',      label: 'Terminées',    icon: 'feather:check',        count: () => this.doneTasks().length,    tone: 'neutral', mineOnly: false },
-  ];
-  public readonly visibleNav = computed(() => this.nav.filter((n) => this.scope() === 'mine' || !n.mineOnly));
 
   /**
    * Ce qui dépend du compte attend qu'il soit chargé. Lu dans `ngOnInit`, il ne l'était pas encore
-   * à l'ouverture directe de la page : un responsable restait sur « Mes tâches » malgré
-   * `?vue=equipe`, ses « Mes tâches » recevaient l'équipe (aucun agent demandé), l'agence manquait
-   * à l'en-tête, et l'écran des agents ne demandait pas ses chiffres.
+   * à l'ouverture directe de la page : ses « Mes tâches » recevaient l'équipe (aucun agent demandé),
+   * l'agence manquait à l'en-tête, et l'écran ne demandait pas ses chiffres.
    */
   private _accountReady = false;
   private readonly _whenAccountReady = effect(() => {
@@ -366,24 +208,23 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this._accountReady = true;
     untracked(() => {
       const params = this._route.snapshot.queryParams;
-      if (this.isManagerLayout()) {
+      if (this.isTeamView()) {
         if (['day', 'week', 'month'].includes(params['periode'])) this.teamPeriod.set(params['periode']);
         this.teamAgency.set(params['agence'] ?? '');
         this.teamAgent.set(params['agent'] ?? '');
         this.loadTeamScorecard();
-      } else if (params['vue'] === 'equipe' && this.isSupervisor()) {
-        this.scope.set('team');
-        this._loadAgentNames();
       }
       this._loadTasks();
+      // Lit les droits : lancé avant, un rechargement de la page ne montrait aucune approbation.
+      this.loadApprovals();
       if (this.showsOwnScorecard()) this.loadScorecard();
+      this._loadWatchCounts();
       this._loadAgency();
     });
   });
 
   ngOnInit(): void {
     this._breadcrumbService.set([{ label: 'Ma journée' }]);
-    this.loadApprovals();
     this.loadAgenda();
     this._tickTimer = setInterval(() => this.now.set(Date.now()), 30_000);
 
@@ -399,36 +240,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
       clearInterval(this._tickTimer);
       this._tickTimer = null;
     }
-  }
-
-  // ——— Navigation de l'écran ———
-
-  public setView(view: MyDayView): void {
-    this.view.set(view);
-  }
-
-  public setScope(scope: TaskScope): void {
-    if (this.scope() === scope) return;
-    this.scope.set(scope);
-    this.agentFilter.set('');
-    if (scope === 'team' && this.nav.find((n) => n.view === this.view())?.mineOnly) this.view.set('todo');
-    this._router.navigate([], {
-      relativeTo: this._route,
-      queryParams: { vue: scope === 'team' ? 'equipe' : null },
-      queryParamsHandling: 'merge',
-      replaceUrl: true,
-    });
-    if (scope === 'team') this._loadAgentNames();
-    this._loadTasks();
-  }
-
-  public setAgentFilter(agentId: string | null): void {
-    this.agentFilter.set(agentId ?? '');
-  }
-
-  public onMonthChange(month: Date): void {
-    this.calendarMonth.set(month);
-    this.loadAgenda();
   }
 
   // ——— Rendez-vous ———
@@ -450,13 +261,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
       width: '100%',
       height: '100%',
       panelClass: 'side-drawer-panel',
-      data: { day: this.selectedDay() },
+      data: { day: null },
     });
     ref.closed.subscribe((id) => {
-      if (!id) return;
-      // On montre ce qu'on vient de créer ; l'écran des agents le montre déjà dans sa journée.
-      if (!this.isAgentLayout()) this.view.set('meetings');
-      this.loadAgenda();
+      if (id) this.loadAgenda();
     });
   }
 
@@ -474,9 +282,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   // ——— Actions sur les tâches ———
 
   public openTask(task: CrmTaskDto): void {
-    const agentName = this.scope() === 'team'
-      ? (task.assignedAgentId ? this.agentNames().get(task.assignedAgentId) ?? 'Agent inconnu' : 'Non affectée')
-      : this._auth.connectedUser()?.fullName?.trim() ?? '';
+    const agentName = this._auth.connectedUser()?.fullName?.trim() ?? '';
     const ref = this._sideDrawer.open<TaskWorkDrawerResult, TaskWorkDrawerData, TaskWorkDrawer>(TaskWorkDrawer, {
       width: '100%',
       height: '100%',
@@ -488,7 +294,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
         case 'completed':
           this._loadTasks();
           if (this.showsOwnScorecard()) this.loadScorecard();
-          if (this.isManagerLayout()) this.loadTeamScorecard();
+          if (this.isTeamView()) this.loadTeamScorecard();
           break;
         case 'reassign':  this.openReassign(result.task); break;
         case 'open-subject': this._router.navigate(result.route); break;
@@ -628,7 +434,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   /** Les chiffres d'équipe complètent la journée : leur absence n'empêche pas de travailler. */
   public loadTeamScorecard(): void {
-    if (!this.canViewTeam()) return;
+    if (!this.isTeamView()) return;
     this._router.navigate([], {
       relativeTo: this._route,
       queryParams: {
@@ -670,23 +476,11 @@ export class DashboardComponent implements OnInit, OnDestroy {
     });
   }
 
-  /**
-   * La fenêtre couvre le mois affiché (pour ses pastilles) et au moins deux semaines à partir
-   * d'aujourd'hui (pour les listes), dans la limite du serveur. Les rappels en retard viennent
-   * toujours, quelle que soit la fenêtre.
-   */
   public loadAgenda(): void {
-    const today = startOfDay(new Date());
-    const month = this.calendarMonth();
-    const nextMonth = new Date(month.getFullYear(), month.getMonth() + 1, 1);
-    const from = month < today ? month : today;
-    const ahead = addDays(today, AGENDA_AHEAD_DAYS);
-    const to = nextMonth > ahead ? nextMonth : ahead;
-    const days = Math.min(AGENDA_MAX_DAYS, Math.max(1, Math.ceil((to.getTime() - from.getTime()) / 86_400_000)));
-
+    const from = startOfDay(new Date());
     this.isAgendaLoading.set(true);
     this._leadsApi
-      .getMyAgenda(from.toISOString(), days)
+      .getMyAgenda(from.toISOString(), AGENDA_AHEAD_DAYS)
       .pipe(
         catchError(() => {
           // L'agenda complète la page : son absence ne doit pas masquer les tâches.
@@ -701,12 +495,27 @@ export class DashboardComponent implements OnInit, OnDestroy {
       });
   }
 
+  /** Ces compteurs complètent la journée : leur absence n'empêche pas de travailler. */
+  private _loadWatchCounts(): void {
+    if (this._canWorkProjects()) {
+      this._projectsApi.getOverdueProjectCount().pipe(catchError(() => EMPTY)).subscribe((n) => this._overdueProjects.set(n ?? 0));
+    }
+    if (this._canWorkKyc()) {
+      const total = (status?: 'UnderReview', expiring?: boolean) =>
+        this._kycApi.listKycFiles(status, undefined, undefined, undefined, undefined, 1, 1, undefined, expiring).pipe(
+          map((page) => page.totalCount ?? 0),
+          catchError(() => of(0)),
+        );
+      total('UnderReview').subscribe((n) => this._kycReviews.set(n));
+      total(undefined, true).subscribe((n) => this._kycExpiring.set(n));
+    }
+  }
+
   private _loadTasks(): void {
     this.isLoading.set(true);
-    // Sans agent demandé, le serveur rend à un superviseur les tâches de son équipe.
-    const agentId = this.scope() === 'team' ? undefined : this._auth.connectedUser()?.id;
+    // L'agent est toujours nommé : sans lui, le serveur rend à un superviseur les tâches de son équipe.
     this._tasksApi
-      .listCrmTasks(undefined, agentId)
+      .listCrmTasks(undefined, this._auth.connectedUser()?.id)
       .pipe(
         catchError(() => {
           this.isLoading.set(false);
@@ -755,21 +564,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
         const next = new Map(this.leads());
         leads.forEach((l) => next.set(l.id!, l));
         this.leads.set(next);
-      });
-  }
-
-  /** Noms des agents pour la vue équipe : la tâche ne porte que l'identifiant de son titulaire. */
-  private _loadAgentNames(): void {
-    if (this.agentNames().size) return;
-    this._usersApi
-      .listUsers(undefined, undefined, undefined, 1, 500)
-      .pipe(catchError(() => of({ items: [] as UserDto[] })))
-      .subscribe((result) => {
-        const names = new Map<string, string>();
-        (result.items ?? []).forEach((u) => {
-          if (u.id) names.set(u.id, u.fullName?.trim() || [u.firstName, u.lastName].filter(Boolean).join(' ') || u.email || '—');
-        });
-        this.agentNames.set(names);
       });
   }
 

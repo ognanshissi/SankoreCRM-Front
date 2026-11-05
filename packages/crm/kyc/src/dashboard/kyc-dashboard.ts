@@ -34,6 +34,13 @@ import { KycOpenFileDrawer } from '../enrolment/open-kyc-file-drawer';
  */
 
 type Scope = 'mine' | 'agency' | 'all';
+/** Ce que les lignes « Dossiers à gérer » de Ma journée ouvrent : `?filtre=`. */
+type Watch = 'revisions' | 'pieces';
+
+const WATCH_LABELS: Record<Watch, string> = {
+  revisions: 'Révisions à faire',
+  pieces: 'Pièces expirées ou bientôt expirées',
+};
 
 type GroupKey = 'decide' | 'blocked' | 'client' | 'validation' | 'validated' | 'closed';
 
@@ -194,6 +201,11 @@ export class KycDashboardPage implements OnInit {
   public readonly awaitingMeCountChange = output<number>();
 
   public readonly scope = signal<Scope>('all');
+  public readonly watch = signal<Watch | null>(null);
+  public readonly watchLabel = computed(() => {
+    const watch = this.watch();
+    return watch ? WATCH_LABELS[watch] : '';
+  });
   public readonly query = signal('');
   private readonly _appliedQuery = signal('');
   private readonly _search$ = new Subject<void>();
@@ -262,6 +274,8 @@ export class KycDashboardPage implements OnInit {
     const params = this._route.snapshot.queryParamMap;
     const scope = params.get('scope') as Scope | null;
     if (scope === 'mine' || scope === 'agency' || scope === 'all') this.scope.set(scope);
+    const watch = params.get('filtre') as Watch | null;
+    if (watch === 'revisions' || watch === 'pieces') this.watch.set(watch);
     const q = params.get('q') ?? '';
     this.query.set(q);
     this._appliedQuery.set(q);
@@ -281,6 +295,12 @@ export class KycDashboardPage implements OnInit {
   public setScope(scope: Scope): void {
     if (scope === this.scope()) return;
     this.scope.set(scope);
+    this._syncUrl();
+    this._load();
+  }
+
+  public clearWatch(): void {
+    this.watch.set(null);
     this._syncUrl();
     this._load();
   }
@@ -333,8 +353,9 @@ export class KycDashboardPage implements OnInit {
     this.loadError.set(null);
     const scope = this.canReadAll() ? this.scope() : 'all';
 
+    const watch = this.watch();
     const base: KycDashboardFilters = {
-      status: '',
+      status: watch === 'revisions' ? 'UnderReview' : '',
       agencyId: scope === 'agency' ? this.myAgencyId() ?? '' : '',
       vigilanceLevel: '',
       from: '',
@@ -342,15 +363,18 @@ export class KycDashboardPage implements OnInit {
       page: 0,
       pageSize: PAGE_SIZE,
       mine: scope === 'mine',
+      documentsExpiring: watch === 'pieces',
     };
     // Le serveur trie par activité la PLUS ANCIENNE d'abord (c'est une file de travail) : au-delà
     // d'une page, les dossiers validés récemment tomberaient hors de la liste. Deux lectures
     // ciblées les ramènent, fusionnées ensuite par identifiant.
     const since = new Date(Date.now() - RECENT_DAYS * DAY_MS).toISOString();
+    const nothing = of<KycFilesPage>({ rows: [], totalCount: 0, awaitingMeCount: 0 });
+    // Filtrée, la liste ne montre que ce qu'annonce le filtre.
     const recent = (status: string) =>
-      this._facade
-        .searchFiles({ ...base, status, from: since })
-        .pipe(catchError(() => of<KycFilesPage>({ rows: [], totalCount: 0, awaitingMeCount: 0 })));
+      watch
+        ? nothing
+        : this._facade.searchFiles({ ...base, status, from: since }).pipe(catchError(() => nothing));
 
     forkJoin({
       main: this._facade.searchFiles(base),
@@ -396,6 +420,7 @@ export class KycDashboardPage implements OnInit {
       queryParams: {
         scope: this.canReadAll() ? this.scope() : null,
         q: this._appliedQuery() || null,
+        filtre: this.watch(),
         step: this.groupFilter(),
         file: null,
       },

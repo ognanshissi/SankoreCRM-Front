@@ -23,11 +23,10 @@ export function isWorkPageUnderSettings(url: string): boolean {
 }
 
 /**
- * Le Paramétrage, fermé aux rôles qui n'en ont pas l'entrée (`ROLES_WITHOUT_SETTINGS`,
- * propriétaire, 2026-10-30) : une URL tapée, un favori ou un lien « Paramétrage » d'un fil
- * d'Ariane renvoient à « Ma journée ». Une règle par rôle, comme le menu : les droits de lecture
- * d'un agent (agences, produits, sources…) servent ses écrans de travail et ouvraient aussi les
- * rubriques correspondantes. Posé en `canActivateChild` sur `settings` : un écran ajouté est
+ * Le Paramétrage, fermé sans le droit `settings:access` (propriétaire, 2026-10-30 et 2026-11-05) :
+ * une URL tapée, un favori ou un lien « Paramétrage » d'un fil d'Ariane renvoient à « Ma journée ».
+ * Un droit à part, comme le menu : les droits de lecture d'un agent (agences, produits, sources…)
+ * servent ses écrans de travail et ouvraient aussi les rubriques correspondantes. Posé en `canActivateChild` sur `settings` : un écran ajouté est
  * couvert sans y penser.
  */
 export const settingsAreaGuard: CanActivateChildFn = (_route, state) => {

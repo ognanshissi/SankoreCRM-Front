@@ -33,6 +33,9 @@ function descendants(root: string, agencies: { id?: string; parentAgencyId?: str
   return result;
 }
 
+/** `tas-select` n'affiche pas une option de valeur vide : « Toutes » et « Tous » ont la leur. */
+const EVERYONE = 'all';
+
 /**
  * La colonne de droite de « Ma journée » des responsables (2026-11-03) : la journée de l'équipe, à
  * la place de « Mes performances ». Agence et agent se choisissent ici ; le périmètre (son agence pour
@@ -46,11 +49,11 @@ function descendants(root: string, agencies: { id?: string; parentAgencyId?: str
   host: { class: 'flex flex-col gap-4' },
   template: `
     <section class="rounded-3xl border border-slate-100 bg-white p-5 shadow-sm" aria-labelledby="my-day-team">
-      <header class="flex items-center justify-between gap-3">
+      <header class="flex flex-wrap items-center justify-between gap-3">
         <h2 id="my-day-team" class="text-lg font-bold text-slate-900">{{ agentId() ? 'Performance de l’agent' : 'Performance de l’équipe' }}</h2>
         <div role="group" aria-label="Période" class="flex gap-1 rounded-xl bg-slate-100 p-1">
           @for (p of periods; track p.value) {
-            <button type="button" class="min-h-8 rounded-lg px-2.5 text-xs font-semibold transition-colors"
+            <button type="button" class="min-h-8 whitespace-nowrap rounded-lg px-2.5 text-xs font-semibold transition-colors"
               [class]="period() === p.value ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'"
               [attr.aria-pressed]="period() === p.value" (click)="periodChange.emit(p.value)">{{ p.label }}</button>
           }
@@ -59,9 +62,9 @@ function descendants(root: string, agencies: { id?: string; parentAgencyId?: str
 
       <div class="mt-4 grid grid-cols-1 gap-2">
         <tas-select [options]="agencyOptions()" [clearable]="false" aria-label="Agence"
-          [ngModel]="agencyId()" (ngModelChange)="agencyChange.emit($event || '')"></tas-select>
+          [ngModel]="agencyId() || everyone" (ngModelChange)="agencyChange.emit(picked($event))"></tas-select>
         <tas-select [options]="agentOptions()" [clearable]="false" aria-label="Agent"
-          [ngModel]="agentId()" (ngModelChange)="agentChange.emit($event || '')"></tas-select>
+          [ngModel]="agentId() || everyone" (ngModelChange)="agentChange.emit(picked($event))"></tas-select>
       </div>
 
       @if (card(); as c) {
@@ -165,6 +168,12 @@ export class MyDayTeam {
   public readonly agencyChange = output<string>();
   public readonly agentChange = output<string>();
 
+  public readonly everyone = EVERYONE;
+
+  public picked(value: string | null): string {
+    return !value || value === EVERYONE ? '' : value;
+  }
+
   public readonly periods: { value: TeamPeriod; label: string }[] = [
     { value: 'day', label: 'Jour' },
     { value: 'week', label: 'Semaine' },
@@ -176,7 +185,7 @@ export class MyDayTeam {
     const agencies = (c?.agencies ?? []).filter((a) => !!a.id);
     // Un chef d'agence qui n'en voit qu'une n'a rien à choisir : son agence est l'équipe.
     const all = c?.allAgencies ? 'Toutes les agences' : agencies.length > 1 ? 'Toutes mes agences' : agencies[0]?.name ?? 'Mon agence';
-    return [{ label: all, value: '' }, ...agencies.map((a) => ({ label: a.name ?? '', value: a.id! }))];
+    return [{ label: all, value: EVERYONE }, ...agencies.map((a) => ({ label: a.name ?? '', value: a.id! }))];
   });
 
   public readonly agentOptions = computed(() => {
@@ -184,7 +193,7 @@ export class MyDayTeam {
     const agency = this.agencyId();
     const inAgency = agency ? descendants(agency, c?.agencies ?? []) : null;
     const agents = (c?.agents ?? []).filter((a) => !!a.id && (!inAgency || (!!a.agencyId && inAgency.has(a.agencyId))));
-    return [{ label: 'Tous les agents', value: '' }, ...agents.map((a) => ({ label: a.fullName ?? '', value: a.id! }))];
+    return [{ label: 'Tous les agents', value: EVERYONE }, ...agents.map((a) => ({ label: a.fullName ?? '', value: a.id! }))];
   });
 
   public readonly periodLabel = computed(() => {

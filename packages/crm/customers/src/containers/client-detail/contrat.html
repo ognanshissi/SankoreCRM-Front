@@ -72,6 +72,18 @@
               <dt class="text-xs text-slate-400">Depuis le</dt>
               <dd class="text-sm font-medium text-slate-800">{{ formatDate(c.startDate) }}</dd>
             </div>
+            @if (c.endDate) {
+              <div>
+                <dt class="text-xs text-slate-400">Fin le</dt>
+                <dd class="text-sm font-medium text-slate-800">{{ formatDate(c.endDate) }}</dd>
+              </div>
+            }
+            @if (c.daysInArrears) {
+              <div>
+                <dt class="text-xs text-slate-400">Retard de paiement</dt>
+                <dd class="text-sm font-semibold text-red-700">{{ c.daysInArrears }} j</dd>
+              </div>
+            }
           </dl>
         </div>
 

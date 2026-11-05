@@ -26,6 +26,14 @@ describe('PermissionsService en mode test', () => {
     service = TestBed.inject(PermissionsService);
   });
 
+  it('ouvre le Paramétrage par le droit, quel que soit le nom du rôle', () => {
+    user.set({ roles: ['AnalysteMaison'], permissions: [], testMode: false });
+    expect(service.seesSettings()).toBe(false);
+
+    user.set({ roles: ['Agent'], permissions: ['settings:access'], testMode: false });
+    expect(service.seesSettings()).toBe(true);
+  });
+
   it('garde en production les droits de modification de l’équipe', () => {
     user.set({ permissions: ['user:create', 'product:update'], testMode: false });
 

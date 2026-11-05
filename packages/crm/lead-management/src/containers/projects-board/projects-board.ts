@@ -26,10 +26,11 @@ import {
 const ALL = 'tous';
 const BUILT_IN = 'standard';
 
-export type ProjectStatusFilter = 'ouverts' | 'gagnes' | 'perdus' | 'tous';
+export type ProjectStatusFilter = 'ouverts' | 'retard' | 'gagnes' | 'perdus' | 'tous';
 
 const STATUS_OPTIONS: { value: ProjectStatusFilter; label: string }[] = [
   { value: 'ouverts', label: 'Ouverts' },
+  { value: 'retard', label: 'En retard' },
   { value: 'gagnes', label: 'Gagnés' },
   { value: 'perdus', label: 'Perdus' },
   { value: 'tous', label: 'Tous' },
@@ -38,6 +39,8 @@ const STATUS_OPTIONS: { value: ProjectStatusFilter; label: string }[] = [
 function hasStatus(p: OpportunityDto, status: ProjectStatusFilter): boolean {
   switch (status) {
     case 'ouverts': return !isClosed(p);
+    // Les mêmes que `GET opportunities/overdue-count`, le chiffre de « Ma journée ».
+    case 'retard': return !isClosed(p) && !!p.expectedCloseDate && new Date(p.expectedCloseDate).getTime() < Date.now();
     case 'gagnes': return p.stage === 'ClosedWon';
     case 'perdus': return p.stage === 'ClosedLost';
     default: return true;

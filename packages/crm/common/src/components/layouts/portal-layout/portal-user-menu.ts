@@ -15,6 +15,9 @@ const ROLE_LABELS: Record<string, string> = {
   BranchManager: "Chef d'agence",
   Cashier: 'Caissier',
   RegulationManager: 'Responsable conformité',
+  AccountManager: 'Gestionnaire de comptes',
+  CreditManager: 'Gestionnaire de crédit',
+  CreditAnalyst: 'Analyste crédit',
 };
 
 const DOT_TONES: Record<string, string> = {

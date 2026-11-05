@@ -36,6 +36,16 @@ export interface MomentGroup {
   items: AgentDayItem[];
 }
 
+/** Une ligne de « Dossiers à gérer » : combien, et la liste filtrée qu'elle ouvre. */
+export interface WatchLine {
+  key: string;
+  icon: string;
+  count: number;
+  label: string;
+  link: string;
+  queryParams: Record<string, string>;
+}
+
 export function isOpenTask(task: CrmTaskDto): boolean {
   return task.status === CrmTaskDtoStatusEnum.Pending || task.status === CrmTaskDtoStatusEnum.InProgress;
 }
