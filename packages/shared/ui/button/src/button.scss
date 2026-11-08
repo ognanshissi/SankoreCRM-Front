@@ -6,9 +6,24 @@
 
 @reference "../../tailwind-ref.css";
 
-// Hide button text on loading state
-button .hide {
-  display: none;
+// Loading state: the label keeps its place (same button width/height)
+// and the spinner is centred on top of it.
+.tas__button__inner {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tas__button__label--hidden {
+  visibility: hidden;
+}
+
+.tas__button__spinner {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  translate: -50% -50%;
 }
 
 .tas__button__base {
