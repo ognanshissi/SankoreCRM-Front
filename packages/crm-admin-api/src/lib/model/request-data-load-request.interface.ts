@@ -13,5 +13,6 @@
 
 export interface RequestDataLoadRequest { 
     kind?: string | null;
+    confirmationName?: string | null;
 }
 

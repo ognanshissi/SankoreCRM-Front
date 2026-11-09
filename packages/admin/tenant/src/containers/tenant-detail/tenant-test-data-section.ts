@@ -189,6 +189,7 @@ export class TenantTestDataSection implements OnInit {
               code === 'TENANT_NOT_TEST' ? 'L’institution n’est pas marquée comme institution de test.'
               : code === 'CONFIRMATION_MISMATCH' ? 'Le nom ressaisi ne correspond pas.'
               : code === 'DATA_WIPE_IN_FLIGHT' ? 'Un vidage est déjà en cours.'
+              : code === 'DATA_LOAD_IN_FLIGHT' ? 'Un chargement de données est en cours : videz une fois qu’il est terminé.'
               : 'La demande n’a pas pu être enregistrée.');
             return EMPTY;
           }),
@@ -197,6 +198,8 @@ export class TenantTestDataSection implements OnInit {
       );
       if (!started) return;
       this.model.set(new WipeFormModel());
+      // Champ vidé mais encore « touché » : sans ce reset, « Le nom ne correspond pas. » s'affichait aussitôt.
+      this.wipeForm().reset();
       this._snackbar.success('Vidage demandé', 'Il sera réalisé dans la minute.');
       this._load();
     });

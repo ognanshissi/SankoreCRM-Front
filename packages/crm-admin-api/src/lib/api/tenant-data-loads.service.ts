@@ -402,7 +402,7 @@ export class TenantDataLoadsApiService {
     }
 
     /**
-     * Load an institution\&#39;s starting data: Starter (configuration) or Demo (test institutions only)
+     * Load an institution\&#39;s starting data: Starter (configuration), Demo or DemoReload (erase the records, then the demo) — test institutions only for the last two
      * @param tenantId 
      * @param requestDataLoadRequest 
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.

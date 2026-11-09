@@ -859,7 +859,7 @@
         "tags": [
           "Tenant data loads"
         ],
-        "summary": "Load an institution's starting data: Starter (configuration) or Demo (test institutions only)",
+        "summary": "Load an institution's starting data: Starter (configuration), Demo or DemoReload (erase the records, then the demo) — test institutions only for the last two",
         "operationId": "RequestTenantDataLoad",
         "parameters": [
           {
@@ -2409,6 +2409,9 @@
           },
           "404": {
             "description": "Not Found"
+          },
+          "409": {
+            "description": "Conflict"
           }
         },
         "security": [
@@ -3111,6 +3114,10 @@
         "type": "object",
         "properties": {
           "kind": {
+            "type": "string",
+            "nullable": true
+          },
+          "confirmationName": {
             "type": "string",
             "nullable": true
           }
