@@ -33,6 +33,10 @@ import { ConnectionHealthDto } from '../model/connection-health-dto.interface';
 // @ts-ignore
 import { HttpValidationProblemDetails } from '../model/http-validation-problem-details.interface';
 // @ts-ignore
+import { ProjectWhatsAppDto } from '../model/project-whats-app-dto.interface';
+// @ts-ignore
+import { ProjectWhatsAppSentDto } from '../model/project-whats-app-sent-dto.interface';
+// @ts-ignore
 import { ReassignWhatsAppConversationRequest } from '../model/reassign-whats-app-conversation-request.interface';
 // @ts-ignore
 import { SaveWhatsAppBotProfileRequest } from '../model/save-whats-app-bot-profile-request.interface';
@@ -42,6 +46,10 @@ import { SaveWhatsAppChannelRequest } from '../model/save-whats-app-channel-requ
 import { SendClientWhatsAppTemplateRequest } from '../model/send-client-whats-app-template-request.interface';
 // @ts-ignore
 import { SendClientWhatsAppTextRequest } from '../model/send-client-whats-app-text-request.interface';
+// @ts-ignore
+import { SendProjectWhatsAppDocumentsRequest } from '../model/send-project-whats-app-documents-request.interface';
+// @ts-ignore
+import { SendProjectWhatsAppTemplateRequest } from '../model/send-project-whats-app-template-request.interface';
 // @ts-ignore
 import { SendWhatsAppMediaResult } from '../model/send-whats-app-media-result.interface';
 // @ts-ignore
@@ -989,6 +997,72 @@ export class WhatsAppApiService {
 
         let localVarPath = `/api/v1/leads/${this.configuration.encodeParam({name: "leadId", value: leadId, in: "path", style: "simple", explode: false, dataType: "string", dataFormat: "uuid"})}/whatsapp/messages/${this.configuration.encodeParam({name: "messageId", value: messageId, in: "path", style: "simple", explode: false, dataType: "string", dataFormat: "uuid"})}/media`;
         return this.httpClient.request<object>('get', `${this.configuration.basePath}${localVarPath}`,
+            {
+                context: localVarHttpContext,
+                responseType: <any>responseType_,
+                withCredentials: this.configuration.withCredentials,
+                headers: localVarHeaders,
+                observe: observe,
+                reportProgress: reportProgress
+            }
+        );
+    }
+
+    /**
+     * Who the project\&#39;s documents go to by WhatsApp, in which conversation, what stops it now, and which files WhatsApp carries
+     * The project\&#39;s lead when it has one, else its client. &#x60;blockers&#x60; holds the refusal a send would get now (WHATSAPP_NOT_HOLDER: take the conversation over first; WHATSAPP_WINDOW_CLOSED: outside the 24-hour window; WHATSAPP_CONVERSATION_NOT_FOUND: the person never wrote; …). A file is sendable when it is a JPEG/PNG (5 MB) or a PDF (10 MB); others go by e-mail only. 404 outside the project page\&#39;s perimeter.
+     * @param id 
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     */
+    public getProjectWhatsApp(id: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<ProjectWhatsAppDto>;
+    public getProjectWhatsApp(id: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<ProjectWhatsAppDto>>;
+    public getProjectWhatsApp(id: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<ProjectWhatsAppDto>>;
+    public getProjectWhatsApp(id: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
+        if (id === null || id === undefined) {
+            throw new Error('Required parameter id was null or undefined when calling getProjectWhatsApp.');
+        }
+
+        let localVarHeaders = this.defaultHeaders;
+
+        let localVarCredential: string | undefined;
+        // authentication (BearerToken) required
+        localVarCredential = this.configuration.lookupCredential('BearerToken');
+        if (localVarCredential) {
+            localVarHeaders = localVarHeaders.set('Authorization', 'Bearer ' + localVarCredential);
+        }
+
+        let localVarHttpHeaderAcceptSelected: string | undefined = options && options.httpHeaderAccept;
+        if (localVarHttpHeaderAcceptSelected === undefined) {
+            // to determine the Accept header
+            const httpHeaderAccepts: string[] = [
+                'application/json'
+            ];
+            localVarHttpHeaderAcceptSelected = this.configuration.selectHeaderAccept(httpHeaderAccepts);
+        }
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+
+        let localVarHttpContext: HttpContext | undefined = options && options.context;
+        if (localVarHttpContext === undefined) {
+            localVarHttpContext = new HttpContext();
+        }
+
+
+        let responseType_: 'text' | 'json' | 'blob' = 'json';
+        if (localVarHttpHeaderAcceptSelected) {
+            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+                responseType_ = 'text';
+            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+                responseType_ = 'json';
+            } else {
+                responseType_ = 'blob';
+            }
+        }
+
+        let localVarPath = `/api/v1/leads/opportunities/${this.configuration.encodeParam({name: "id", value: id, in: "path", style: "simple", explode: false, dataType: "string", dataFormat: "uuid"})}/whatsapp`;
+        return this.httpClient.request<ProjectWhatsAppDto>('get', `${this.configuration.basePath}${localVarPath}`,
             {
                 context: localVarHttpContext,
                 responseType: <any>responseType_,
@@ -2147,6 +2221,107 @@ export class WhatsAppApiService {
     }
 
     /**
+     * Sends the client an image (JPEG, PNG, 5 MB) or a PDF (10 MB) — holder only, inside their window
+     * multipart/form-data: &#x60;file&#x60;, optional &#x60;caption&#x60; and &#x60;complaintId&#x60;. Same refusals as a free text, plus WHATSAPP_MEDIA_TYPE_NOT_ALLOWED (not an image nor a PDF) and WHATSAPP_MEDIA_INVALID (empty, too large, bytes that are not what the type says). A provider refusal answers 200 with status Failed.
+     * @param clientId 
+     * @param file 
+     * @param caption 
+     * @param complaintId 
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     */
+    public sendClientWhatsAppMedia(clientId: string, file: Blob, caption?: string, complaintId?: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<SendWhatsAppMediaResult>;
+    public sendClientWhatsAppMedia(clientId: string, file: Blob, caption?: string, complaintId?: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<SendWhatsAppMediaResult>>;
+    public sendClientWhatsAppMedia(clientId: string, file: Blob, caption?: string, complaintId?: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<SendWhatsAppMediaResult>>;
+    public sendClientWhatsAppMedia(clientId: string, file: Blob, caption?: string, complaintId?: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
+        if (clientId === null || clientId === undefined) {
+            throw new Error('Required parameter clientId was null or undefined when calling sendClientWhatsAppMedia.');
+        }
+        if (file === null || file === undefined) {
+            throw new Error('Required parameter file was null or undefined when calling sendClientWhatsAppMedia.');
+        }
+
+        let localVarHeaders = this.defaultHeaders;
+
+        let localVarCredential: string | undefined;
+        // authentication (BearerToken) required
+        localVarCredential = this.configuration.lookupCredential('BearerToken');
+        if (localVarCredential) {
+            localVarHeaders = localVarHeaders.set('Authorization', 'Bearer ' + localVarCredential);
+        }
+
+        let localVarHttpHeaderAcceptSelected: string | undefined = options && options.httpHeaderAccept;
+        if (localVarHttpHeaderAcceptSelected === undefined) {
+            // to determine the Accept header
+            const httpHeaderAccepts: string[] = [
+                'application/json'
+            ];
+            localVarHttpHeaderAcceptSelected = this.configuration.selectHeaderAccept(httpHeaderAccepts);
+        }
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+
+        let localVarHttpContext: HttpContext | undefined = options && options.context;
+        if (localVarHttpContext === undefined) {
+            localVarHttpContext = new HttpContext();
+        }
+
+        // to determine the Content-Type header
+        const consumes: string[] = [
+            'multipart/form-data'
+        ];
+
+        const canConsumeForm = this.canConsumeForm(consumes);
+
+        let localVarFormParams: { append(param: string, value: any): any; };
+        let localVarUseForm = false;
+        let localVarConvertFormParamsToString = false;
+        // use FormData to transmit files using content-type "multipart/form-data"
+        // see https://stackoverflow.com/questions/4007969/application-x-www-form-urlencoded-or-multipart-form-data
+        localVarUseForm = canConsumeForm;
+        if (localVarUseForm) {
+            localVarFormParams = new FormData();
+        } else {
+            localVarFormParams = new HttpParams({encoder: this.encoder});
+        }
+
+        if (file !== undefined) {
+            localVarFormParams = localVarFormParams.append('file', <any>file) as any || localVarFormParams;
+        }
+        if (caption !== undefined) {
+            localVarFormParams = localVarFormParams.append('caption', <any>caption) as any || localVarFormParams;
+        }
+        if (complaintId !== undefined) {
+            localVarFormParams = localVarFormParams.append('complaintId', <any>complaintId) as any || localVarFormParams;
+        }
+
+        let responseType_: 'text' | 'json' | 'blob' = 'json';
+        if (localVarHttpHeaderAcceptSelected) {
+            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+                responseType_ = 'text';
+            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+                responseType_ = 'json';
+            } else {
+                responseType_ = 'blob';
+            }
+        }
+
+        let localVarPath = `/api/v1/leads/whatsapp/clients/${this.configuration.encodeParam({name: "clientId", value: clientId, in: "path", style: "simple", explode: false, dataType: "string", dataFormat: "uuid"})}/media`;
+        return this.httpClient.request<SendWhatsAppMediaResult>('post', `${this.configuration.basePath}${localVarPath}`,
+            {
+                context: localVarHttpContext,
+                body: localVarConvertFormParamsToString ? localVarFormParams.toString() : localVarFormParams,
+                responseType: <any>responseType_,
+                withCredentials: this.configuration.withCredentials,
+                headers: localVarHeaders,
+                observe: observe,
+                reportProgress: reportProgress
+            }
+        );
+    }
+
+    /**
      * Open the exchange with the client by a template, optionally about one of their complaints
      * No consent asked: following up the client\&#39;s own complaint is a service relationship. Refused when the client\&#39;s processing is restricted, has no usable number, wrote STOP (WHATSAPP_CLIENT_OPTED_OUT), or a template went unanswered in the last 24 h (unless WhatsApp.Send.Force).
      * @param clientId 
@@ -2560,6 +2735,166 @@ export class WhatsAppApiService {
             {
                 context: localVarHttpContext,
                 body: sendWhatsAppTextRequest,
+                responseType: <any>responseType_,
+                withCredentials: this.configuration.withCredentials,
+                headers: localVarHeaders,
+                observe: observe,
+                reportProgress: reportProgress
+            }
+        );
+    }
+
+    /**
+     * Sends some of the project\&#39;s files to its lead or client by WhatsApp, one message each, inside the 24-hour window
+     * 1 to 5 attachment ids of THIS project, the caption on the first message. Checked before anything leaves: the recipient\&#39;s rules (as GET …/whatsapp), every file the project\&#39;s (PROJECT_ATTACHMENT_NOT_FOUND) and carried by WhatsApp (WHATSAPP_MEDIA_TYPE_NOT_ALLOWED, WHATSAPP_MEDIA_INVALID). A provider refusal is answered per file with status Failed. Requires WhatsApp.Reply.
+     * @param id 
+     * @param sendProjectWhatsAppDocumentsRequest 
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     */
+    public sendProjectWhatsAppDocuments(id: string, sendProjectWhatsAppDocumentsRequest: SendProjectWhatsAppDocumentsRequest, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<Array<ProjectWhatsAppSentDto>>;
+    public sendProjectWhatsAppDocuments(id: string, sendProjectWhatsAppDocumentsRequest: SendProjectWhatsAppDocumentsRequest, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<Array<ProjectWhatsAppSentDto>>>;
+    public sendProjectWhatsAppDocuments(id: string, sendProjectWhatsAppDocumentsRequest: SendProjectWhatsAppDocumentsRequest, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<Array<ProjectWhatsAppSentDto>>>;
+    public sendProjectWhatsAppDocuments(id: string, sendProjectWhatsAppDocumentsRequest: SendProjectWhatsAppDocumentsRequest, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
+        if (id === null || id === undefined) {
+            throw new Error('Required parameter id was null or undefined when calling sendProjectWhatsAppDocuments.');
+        }
+        if (sendProjectWhatsAppDocumentsRequest === null || sendProjectWhatsAppDocumentsRequest === undefined) {
+            throw new Error('Required parameter sendProjectWhatsAppDocumentsRequest was null or undefined when calling sendProjectWhatsAppDocuments.');
+        }
+
+        let localVarHeaders = this.defaultHeaders;
+
+        let localVarCredential: string | undefined;
+        // authentication (BearerToken) required
+        localVarCredential = this.configuration.lookupCredential('BearerToken');
+        if (localVarCredential) {
+            localVarHeaders = localVarHeaders.set('Authorization', 'Bearer ' + localVarCredential);
+        }
+
+        let localVarHttpHeaderAcceptSelected: string | undefined = options && options.httpHeaderAccept;
+        if (localVarHttpHeaderAcceptSelected === undefined) {
+            // to determine the Accept header
+            const httpHeaderAccepts: string[] = [
+                'application/json'
+            ];
+            localVarHttpHeaderAcceptSelected = this.configuration.selectHeaderAccept(httpHeaderAccepts);
+        }
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+
+        let localVarHttpContext: HttpContext | undefined = options && options.context;
+        if (localVarHttpContext === undefined) {
+            localVarHttpContext = new HttpContext();
+        }
+
+
+        // to determine the Content-Type header
+        const consumes: string[] = [
+            'application/json'
+        ];
+        const httpContentTypeSelected: string | undefined = this.configuration.selectHeaderContentType(consumes);
+        if (httpContentTypeSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Content-Type', httpContentTypeSelected);
+        }
+
+        let responseType_: 'text' | 'json' | 'blob' = 'json';
+        if (localVarHttpHeaderAcceptSelected) {
+            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+                responseType_ = 'text';
+            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+                responseType_ = 'json';
+            } else {
+                responseType_ = 'blob';
+            }
+        }
+
+        let localVarPath = `/api/v1/leads/opportunities/${this.configuration.encodeParam({name: "id", value: id, in: "path", style: "simple", explode: false, dataType: "string", dataFormat: "uuid"})}/whatsapp/documents`;
+        return this.httpClient.request<Array<ProjectWhatsAppSentDto>>('post', `${this.configuration.basePath}${localVarPath}`,
+            {
+                context: localVarHttpContext,
+                body: sendProjectWhatsAppDocumentsRequest,
+                responseType: <any>responseType_,
+                withCredentials: this.configuration.withCredentials,
+                headers: localVarHeaders,
+                observe: observe,
+                reportProgress: reportProgress
+            }
+        );
+    }
+
+    /**
+     * Sends one of the project\&#39;s files to its lead or client in an approved template with a DOCUMENT or IMAGE header — at any time
+     * For outside the 24-hour window. The template\&#39;s header takes the file: a PDF for DOCUMENT, a JPEG/PNG for IMAGE (WHATSAPP_MEDIA_TYPE_NOT_ALLOWED otherwise; WHATSAPP_TEMPLATE_HAS_NO_FILE_HEADER for a template without one). The record\&#39;s own template rules apply (a lead\&#39;s consent, a STOP, the 24-hour cooldown unless WhatsApp.Send.Force). Queued like any template: the file is kept encrypted until it leaves (WHATSAPP_MEDIA_STORE_UNAVAILABLE when no media store is configured). The message is linked to the project.
+     * @param id 
+     * @param sendProjectWhatsAppTemplateRequest 
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     */
+    public sendProjectWhatsAppTemplate(id: string, sendProjectWhatsAppTemplateRequest: SendProjectWhatsAppTemplateRequest, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<SendWhatsAppTemplateResult>;
+    public sendProjectWhatsAppTemplate(id: string, sendProjectWhatsAppTemplateRequest: SendProjectWhatsAppTemplateRequest, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<SendWhatsAppTemplateResult>>;
+    public sendProjectWhatsAppTemplate(id: string, sendProjectWhatsAppTemplateRequest: SendProjectWhatsAppTemplateRequest, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<SendWhatsAppTemplateResult>>;
+    public sendProjectWhatsAppTemplate(id: string, sendProjectWhatsAppTemplateRequest: SendProjectWhatsAppTemplateRequest, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
+        if (id === null || id === undefined) {
+            throw new Error('Required parameter id was null or undefined when calling sendProjectWhatsAppTemplate.');
+        }
+        if (sendProjectWhatsAppTemplateRequest === null || sendProjectWhatsAppTemplateRequest === undefined) {
+            throw new Error('Required parameter sendProjectWhatsAppTemplateRequest was null or undefined when calling sendProjectWhatsAppTemplate.');
+        }
+
+        let localVarHeaders = this.defaultHeaders;
+
+        let localVarCredential: string | undefined;
+        // authentication (BearerToken) required
+        localVarCredential = this.configuration.lookupCredential('BearerToken');
+        if (localVarCredential) {
+            localVarHeaders = localVarHeaders.set('Authorization', 'Bearer ' + localVarCredential);
+        }
+
+        let localVarHttpHeaderAcceptSelected: string | undefined = options && options.httpHeaderAccept;
+        if (localVarHttpHeaderAcceptSelected === undefined) {
+            // to determine the Accept header
+            const httpHeaderAccepts: string[] = [
+                'application/json'
+            ];
+            localVarHttpHeaderAcceptSelected = this.configuration.selectHeaderAccept(httpHeaderAccepts);
+        }
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+
+        let localVarHttpContext: HttpContext | undefined = options && options.context;
+        if (localVarHttpContext === undefined) {
+            localVarHttpContext = new HttpContext();
+        }
+
+
+        // to determine the Content-Type header
+        const consumes: string[] = [
+            'application/json'
+        ];
+        const httpContentTypeSelected: string | undefined = this.configuration.selectHeaderContentType(consumes);
+        if (httpContentTypeSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Content-Type', httpContentTypeSelected);
+        }
+
+        let responseType_: 'text' | 'json' | 'blob' = 'json';
+        if (localVarHttpHeaderAcceptSelected) {
+            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+                responseType_ = 'text';
+            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+                responseType_ = 'json';
+            } else {
+                responseType_ = 'blob';
+            }
+        }
+
+        let localVarPath = `/api/v1/leads/opportunities/${this.configuration.encodeParam({name: "id", value: id, in: "path", style: "simple", explode: false, dataType: "string", dataFormat: "uuid"})}/whatsapp/template`;
+        return this.httpClient.request<SendWhatsAppTemplateResult>('post', `${this.configuration.basePath}${localVarPath}`,
+            {
+                context: localVarHttpContext,
+                body: sendProjectWhatsAppTemplateRequest,
                 responseType: <any>responseType_,
                 withCredentials: this.configuration.withCredentials,
                 headers: localVarHeaders,

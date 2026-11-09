@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "license": "MIT",
   "scripts": {
-    "start": "npx nx run crm:serve:development --port 4222",
+    "start": "npx nx run crm:serve:development --port 4222 --host tenant-1.sankoreio.local --ssl",
     "ui:watch": "npx nx run ui:build:development --watch",
     "ui:build": "npx nx run ui:build:development --verbose",
     "openapi-generator": "npx @openapitools/openapi-generator-cli generate --generator-key sankoreAPI --skip-validate-spec --verbose",

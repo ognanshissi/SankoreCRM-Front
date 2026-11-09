@@ -158,6 +158,11 @@ export class ProjectHistory {
         return row('feather:file-text', 'bg-green-100 text-green-800', 'Contrat ouvert', null,
           clientId && e.relatedId ? ['/customers', clientId, 'contrats', `holding:${e.relatedId}`] : null);
       }
+      case 'DocumentSent': {
+        // Le canal, puis les fichiers tels qu'ils s'appelaient à l'envoi (lot 4 de l'envoi des documents).
+        const channel = e.to === 'Email' ? 'par e-mail' : e.to === 'WhatsApp' ? 'par WhatsApp' : '';
+        return row('feather:send', 'bg-emerald-50 text-emerald-700', `Document envoyé ${channel}`.trim(), e.detail ?? null);
+      }
       case 'WorkflowRestarted':
         return row('feather:refresh-cw', 'bg-amber-50 text-amber-700',
           e.to ? `Circuit de validation relancé · étape « ${e.to} »` : 'Circuit de validation relancé');

@@ -72,6 +72,9 @@
       "continuous": true,
       "executor": "@angular/build:dev-server",
       "defaultConfiguration": "development",
+      "options": {
+        "allowedHosts": [".localhost", ".sankoreio.local"]
+      },
       "configurations": {
         "production": {
           "buildTarget": "crm:build:production"

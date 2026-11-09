@@ -25,5 +25,7 @@ export interface TenantResponse {
     activeModules?: Array<string> | null;
     readOnlyModules?: Array<string> | null;
     isTest?: boolean;
+    parentTenantId?: string | null;
+    testTenantId?: string | null;
 }
 

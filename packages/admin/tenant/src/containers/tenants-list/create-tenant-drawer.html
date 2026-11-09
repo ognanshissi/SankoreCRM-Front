@@ -82,9 +82,42 @@
         }
       </div>
 
+      <div class="flex flex-col gap-2">
+        <p class="text-sm font-medium text-slate-700">Données de départ</p>
+        <div role="radiogroup" aria-label="Données de départ" class="grid grid-cols-1 gap-2 sm:grid-cols-3">
+          @for (option of startingOptions; track option.code) {
+            <button
+              type="button"
+              role="radio"
+              [attr.aria-checked]="formSchema.startingData().value() === option.code"
+              class="flex flex-col items-start gap-1 rounded-xl border p-3 text-left transition-colors"
+              [class]="
+                formSchema.startingData().value() === option.code
+                  ? 'border-primary bg-primary/5'
+                  : 'border-slate-200 hover:border-slate-300'
+              "
+              (click)="pickStartingData(option.code)"
+            >
+              <span class="flex w-full items-center justify-between gap-2">
+                <span class="text-sm font-semibold text-slate-800">{{ option.label }}</span>
+                @if (formSchema.startingData().value() === option.code) {
+                  <tas-icon iconName="feather:check-circle" class="text-primary" style="font-size: 16px"></tas-icon>
+                }
+              </span>
+              <span class="text-xs text-slate-500">{{ option.description }}</span>
+            </button>
+          }
+        </div>
+      </div>
+
       <p class="rounded-xl bg-slate-50 px-4 py-3 text-xs text-slate-600">
-        Le compte racine du CRM n’est pas créé ici : il l’est au déploiement de l’API du tenant, ou par
-        <span class="font-mono">POST users/create-root</span>.
+        @if (formSchema.startingData().value() === 'None') {
+          Le compte racine du CRM n’est pas créé ici : il l’est au déploiement de l’API du tenant, ou par
+          <span class="font-mono">POST users/create-root</span>.
+        } @else {
+          Le chargement crée aussi le compte racine s’il manque : son titulaire choisit son mot de passe avec
+          « Mot de passe oublié ».
+        }
       </p>
 
       @if (serverError()) {

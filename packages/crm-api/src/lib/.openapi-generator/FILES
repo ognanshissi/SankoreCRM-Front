@@ -632,6 +632,7 @@ model/project-field-definition.interface.ts
 model/project-field-option.interface.ts
 model/project-field-request.interface.ts
 model/project-history-dto.interface.ts
+model/project-mail-dto.interface.ts
 model/project-questionnaire-item-dto.interface.ts
 model/project-questionnaires-dto.interface.ts
 model/project-report-dto.interface.ts
@@ -651,6 +652,9 @@ model/project-template-dto.interface.ts
 model/project-template-summary-dto.interface.ts
 model/project-validation-decision-dto.interface.ts
 model/project-validation-dto.interface.ts
+model/project-whats-app-dto.interface.ts
+model/project-whats-app-file-dto.interface.ts
+model/project-whats-app-sent-dto.interface.ts
 model/project-workflow-run-dto.interface.ts
 model/promotion-dependency.interface.ts
 model/promotion-result.interface.ts
@@ -796,6 +800,8 @@ model/select-connected-calendar-request.interface.ts
 model/send-client-whats-app-template-request.interface.ts
 model/send-client-whats-app-text-request.interface.ts
 model/send-mail-outcome.interface.ts
+model/send-project-whats-app-documents-request.interface.ts
+model/send-project-whats-app-template-request.interface.ts
 model/send-snippet-request.interface.ts
 model/send-test-email-request.interface.ts
 model/send-whats-app-media-result.interface.ts

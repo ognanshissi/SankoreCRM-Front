@@ -21,6 +21,8 @@ import { Observable }                                        from 'rxjs';
 // @ts-ignore
 import { CreateTenantRequest } from '../model/create-tenant-request.interface';
 // @ts-ignore
+import { EnsureTestTwinResponse } from '../model/ensure-test-twin-response.interface';
+// @ts-ignore
 import { TenantResponse } from '../model/tenant-response.interface';
 // @ts-ignore
 import { UpdateTenantRequest } from '../model/update-tenant-request.interface';
@@ -167,7 +169,7 @@ export class TenantsApiService {
 
     /**
      * Create a new tenant
-     * Profile (optional: ImfOrBank, CaisseWithInsurance, InsuranceDistributor, CrmOnly — GET /api/v1/tenant-profiles) or ActiveModules (codes: BankingMicrofinance, Insurance) choose the paid modules switched on at creation; not both. Neither: the socle alone. 409 TENANT_FQDN_TAKEN when the address belongs to another tenant.
+     * Profile (optional: ImfOrBank, CaisseWithInsurance, InsuranceDistributor, CrmOnly — GET /api/v1/tenant-profiles) or ActiveModules (codes: BankingMicrofinance, Insurance) choose the paid modules switched on at creation; not both. Neither: the socle alone. StartingData (optional: Starter, Demo) queues the starting data; Demo marks the tenant as a test one. 409 TENANT_FQDN_TAKEN when the address belongs to another tenant.
      * @param createTenantRequest 
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
@@ -388,6 +390,77 @@ export class TenantsApiService {
     }
 
     /**
+     * Create, or answer, the test twin of a live tenant
+     * @param id 
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     */
+    public ensureTestTwin(id: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<EnsureTestTwinResponse>;
+    public ensureTestTwin(id: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<EnsureTestTwinResponse>>;
+    public ensureTestTwin(id: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<EnsureTestTwinResponse>>;
+    public ensureTestTwin(id: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
+        if (id === null || id === undefined) {
+            throw new Error('Required parameter id was null or undefined when calling ensureTestTwin.');
+        }
+
+        let localVarHeaders = this.defaultHeaders;
+
+        let localVarCredential: string | undefined;
+        // authentication (ApiKey) required
+        localVarCredential = this.configuration.lookupCredential('ApiKey');
+        if (localVarCredential) {
+            localVarHeaders = localVarHeaders.set('X-Api-Key', localVarCredential);
+        }
+
+        // authentication (Bearer) required
+        localVarCredential = this.configuration.lookupCredential('Bearer');
+        if (localVarCredential) {
+            localVarHeaders = localVarHeaders.set('Authorization', 'Bearer ' + localVarCredential);
+        }
+
+        let localVarHttpHeaderAcceptSelected: string | undefined = options && options.httpHeaderAccept;
+        if (localVarHttpHeaderAcceptSelected === undefined) {
+            // to determine the Accept header
+            const httpHeaderAccepts: string[] = [
+                'application/json'
+            ];
+            localVarHttpHeaderAcceptSelected = this.configuration.selectHeaderAccept(httpHeaderAccepts);
+        }
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+
+        let localVarHttpContext: HttpContext | undefined = options && options.context;
+        if (localVarHttpContext === undefined) {
+            localVarHttpContext = new HttpContext();
+        }
+
+
+        let responseType_: 'text' | 'json' | 'blob' = 'json';
+        if (localVarHttpHeaderAcceptSelected) {
+            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+                responseType_ = 'text';
+            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+                responseType_ = 'json';
+            } else {
+                responseType_ = 'blob';
+            }
+        }
+
+        let localVarPath = `/api/v1/tenants/${this.configuration.encodeParam({name: "id", value: id, in: "path", style: "simple", explode: false, dataType: "string", dataFormat: "uuid"})}/test-twin`;
+        return this.httpClient.request<EnsureTestTwinResponse>('post', `${this.configuration.basePath}${localVarPath}`,
+            {
+                context: localVarHttpContext,
+                responseType: <any>responseType_,
+                withCredentials: this.configuration.withCredentials,
+                headers: localVarHeaders,
+                observe: observe,
+                reportProgress: reportProgress
+            }
+        );
+    }
+
+    /**
      * Get a tenant by ID
      * @param id 
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
@@ -539,18 +612,23 @@ export class TenantsApiService {
     /**
      * List all tenants
      * @param activeOnly 
+     * @param includeTwins 
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      */
-    public listTenants(activeOnly?: boolean, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<Array<TenantResponse>>;
-    public listTenants(activeOnly?: boolean, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<Array<TenantResponse>>>;
-    public listTenants(activeOnly?: boolean, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<Array<TenantResponse>>>;
-    public listTenants(activeOnly?: boolean, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
+    public listTenants(activeOnly?: boolean, includeTwins?: boolean, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<Array<TenantResponse>>;
+    public listTenants(activeOnly?: boolean, includeTwins?: boolean, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<Array<TenantResponse>>>;
+    public listTenants(activeOnly?: boolean, includeTwins?: boolean, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<Array<TenantResponse>>>;
+    public listTenants(activeOnly?: boolean, includeTwins?: boolean, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
 
         let localVarQueryParameters = new HttpParams({encoder: this.encoder});
         if (activeOnly !== undefined && activeOnly !== null) {
           localVarQueryParameters = this.addToHttpParams(localVarQueryParameters,
             <any>activeOnly, 'activeOnly');
+        }
+        if (includeTwins !== undefined && includeTwins !== null) {
+          localVarQueryParameters = this.addToHttpParams(localVarQueryParameters,
+            <any>includeTwins, 'includeTwins');
         }
 
         let localVarHeaders = this.defaultHeaders;

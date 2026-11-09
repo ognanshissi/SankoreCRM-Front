@@ -18,5 +18,6 @@ export interface CreateTenantRequest {
     trialExpiresAt?: string | null;
     activeModules?: Array<string> | null;
     profile?: string | null;
+    startingData?: string | null;
 }
 

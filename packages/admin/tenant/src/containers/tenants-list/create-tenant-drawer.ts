@@ -26,6 +26,7 @@ class CreateTenantFormModel {
   public fqdn!: string;
   public trialExpiresAt!: string;
   public profile!: string;
+  public startingData!: string;
 
   public static instantiate(): CreateTenantFormModel {
     const m = new CreateTenantFormModel();
@@ -34,9 +35,25 @@ class CreateTenantFormModel {
     m.fqdn = '';
     m.trialExpiresAt = '';
     m.profile = '';
+    m.startingData = 'None';
     return m;
   }
 }
+
+/** Les deux jeux de données de départ (docs/donnees-demarrage-demo.md, 2026-11-08). */
+const STARTING_OPTIONS = [
+  { code: 'None', label: 'Aucune', description: 'Le tenant démarre vide.' },
+  {
+    code: 'Starter',
+    label: 'Démarrage',
+    description: 'Le paramétrage de base d’une vraie institution, sans personne fictive.',
+  },
+  {
+    code: 'Demo',
+    label: 'Démo',
+    description: 'Le démarrage, des comptes de chaque profil et des dossiers fictifs. Le tenant devient un tenant de test.',
+  },
+] as const;
 
 /**
  * Création d'un tenant dans le registre. Le profil choisit les modules payants activés d'emblée,
@@ -56,6 +73,7 @@ export class CreateTenantDrawer implements OnInit {
   private readonly _tenantsApi = inject(TenantsApiService);
   private readonly _catalogApi = inject(ModuleCatalogApiService);
 
+  public readonly startingOptions = STARTING_OPTIONS;
   public readonly profiles = signal<TenantProfile[]>([]);
   public readonly profilesError = signal(false);
   public readonly serverError = signal<string | null>(null);
@@ -96,6 +114,10 @@ export class CreateTenantDrawer implements OnInit {
     this.model.update((m) => ({ ...m, profile: code }));
   }
 
+  public pickStartingData(code: string): void {
+    this.model.update((m) => ({ ...m, startingData: code }));
+  }
+
   public moduleNames(profile: TenantProfile): string {
     const modules = profile.modules ?? [];
     return modules.length === 0 ? 'Aucun module payant' : modules.map((m) => MODULE_LABELS[m] ?? m).join(' + ');
@@ -114,6 +136,7 @@ export class CreateTenantDrawer implements OnInit {
             // Fin de la journée choisie, en UTC, comme la fin de validité d'un domaine.
             trialExpiresAt: v.trialExpiresAt ? `${v.trialExpiresAt}T23:59:59Z` : null,
             profile: v.profile,
+            startingData: v.startingData === 'None' ? null : v.startingData,
           })
           .pipe(
             map((created: { id?: string } | null) => created?.id ?? null),
@@ -139,6 +162,8 @@ export class CreateTenantDrawer implements OnInit {
         return 'Cette origine appartient déjà à un autre tenant.';
       case 'PROFILE_UNKNOWN':
         return 'Ce profil n’existe plus. Rechargez la page.';
+      case 'DATA_LOAD_KIND_UNKNOWN':
+        return 'Ce choix de données de départ n’existe pas. Rechargez la page.';
       default:
         return err.error?.detail ?? err.error?.title ?? 'Le tenant n’a pas pu être créé.';
     }

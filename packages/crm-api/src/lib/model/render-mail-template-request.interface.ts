@@ -15,5 +15,6 @@ export interface RenderMailTemplateRequest {
     leadId?: string | null;
     clientId?: string | null;
     accountId?: string | null;
+    projectId?: string | null;
 }
 

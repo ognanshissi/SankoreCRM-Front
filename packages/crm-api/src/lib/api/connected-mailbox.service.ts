@@ -25,6 +25,8 @@ import { MailThreadDto } from '../model/mail-thread-dto.interface';
 // @ts-ignore
 import { MailThreadPageDto } from '../model/mail-thread-page-dto.interface';
 // @ts-ignore
+import { ProjectMailDto } from '../model/project-mail-dto.interface';
+// @ts-ignore
 import { RenderMailTemplateRequest } from '../model/render-mail-template-request.interface';
 // @ts-ignore
 import { RenderedMailTemplateDto } from '../model/rendered-mail-template-dto.interface';
@@ -545,6 +547,72 @@ export class ConnectedMailboxApiService {
     }
 
     /**
+     * The e-mails filed on a project, newest first — subject and preview for the mailbox\&#39;s owner only
+     * Filed by the mailbox sync: a message sent with &#x60;projectId&#x60; (recognised by the id its provider gave it) and the replies in its conversation. 404 OPPORTUNITY_NOT_FOUND outside the project page\&#39;s perimeter. Requires lead:opportunity:read.
+     * @param projectId 
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     */
+    public listProjectMails(projectId: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<Array<ProjectMailDto>>;
+    public listProjectMails(projectId: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<Array<ProjectMailDto>>>;
+    public listProjectMails(projectId: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<Array<ProjectMailDto>>>;
+    public listProjectMails(projectId: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
+        if (projectId === null || projectId === undefined) {
+            throw new Error('Required parameter projectId was null or undefined when calling listProjectMails.');
+        }
+
+        let localVarHeaders = this.defaultHeaders;
+
+        let localVarCredential: string | undefined;
+        // authentication (BearerToken) required
+        localVarCredential = this.configuration.lookupCredential('BearerToken');
+        if (localVarCredential) {
+            localVarHeaders = localVarHeaders.set('Authorization', 'Bearer ' + localVarCredential);
+        }
+
+        let localVarHttpHeaderAcceptSelected: string | undefined = options && options.httpHeaderAccept;
+        if (localVarHttpHeaderAcceptSelected === undefined) {
+            // to determine the Accept header
+            const httpHeaderAccepts: string[] = [
+                'application/json'
+            ];
+            localVarHttpHeaderAcceptSelected = this.configuration.selectHeaderAccept(httpHeaderAccepts);
+        }
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+
+        let localVarHttpContext: HttpContext | undefined = options && options.context;
+        if (localVarHttpContext === undefined) {
+            localVarHttpContext = new HttpContext();
+        }
+
+
+        let responseType_: 'text' | 'json' | 'blob' = 'json';
+        if (localVarHttpHeaderAcceptSelected) {
+            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+                responseType_ = 'text';
+            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+                responseType_ = 'json';
+            } else {
+                responseType_ = 'blob';
+            }
+        }
+
+        let localVarPath = `/api/v1/integration/projects/${this.configuration.encodeParam({name: "projectId", value: projectId, in: "path", style: "simple", explode: false, dataType: "string", dataFormat: "uuid"})}/mails`;
+        return this.httpClient.request<Array<ProjectMailDto>>('get', `${this.configuration.basePath}${localVarPath}`,
+            {
+                context: localVarHttpContext,
+                responseType: <any>responseType_,
+                withCredentials: this.configuration.withCredentials,
+                headers: localVarHeaders,
+                observe: observe,
+                reportProgress: reportProgress
+            }
+        );
+    }
+
+    /**
      * Fills a template for one lead or client; the variables with no value are listed in &#x60;missing&#x60;
      * @param id 
      * @param renderMailTemplateRequest 
@@ -689,7 +757,7 @@ export class ConnectedMailboxApiService {
 
     /**
      * Sends an e-mail from one of the caller\&#39;s mailboxes — new, reply or forward — with attachments
-     * multipart/form-data. &#x60;to&#x60;, &#x60;cc&#x60;, &#x60;bcc&#x60;: repeated fields, or one field separated by commas. &#x60;body&#x60;: HTML. &#x60;replyToMessageId&#x60;: a kept message of the same mailbox — the reply is threaded. &#x60;forwardMessageId&#x60; + repeated &#x60;forwardAttachmentIds&#x60;: the original\&#39;s attachments, fetched now. &#x60;files&#x60;: up to 10 files, 20 MB in all, executables refused. Answers 202: the provider accepted it; it appears in the conversation after the sync that follows, when a lead or a client is among its recipients. Limited to 30 sends a minute per user. &#x60;sendAt&#x60;: « Programmer l\&#39;envoi » — everything is checked now and the message is kept, encrypted, to leave at that instant; the answer carries its &#x60;scheduledId&#x60;.
+     * multipart/form-data. &#x60;to&#x60;, &#x60;cc&#x60;, &#x60;bcc&#x60;: repeated fields, or one field separated by commas. &#x60;body&#x60;: HTML. &#x60;replyToMessageId&#x60;: a kept message of the same mailbox — the reply is threaded. &#x60;forwardMessageId&#x60; + repeated &#x60;forwardAttachmentIds&#x60;: the original\&#39;s attachments, fetched now. &#x60;files&#x60;: up to 10 files, 20 MB in all, executables refused. Answers 202: the provider accepted it; it appears in the conversation after the sync that follows, when a lead or a client is among its recipients. Limited to 30 sends a minute per user. &#x60;sendAt&#x60;: « Programmer l\&#39;envoi » — everything is checked now and the message is kept, encrypted, to leave at that instant; the answer carries its &#x60;scheduledId&#x60;. &#x60;projectId&#x60; + repeated &#x60;projectAttachmentIds&#x60;: written from a project\&#39;s page, with some of its files read on the server; the message and its conversation are filed on the project.
      * @param accountId 
      * @param to 
      * @param cc 
@@ -703,13 +771,15 @@ export class ConnectedMailboxApiService {
      * @param toClientId 
      * @param sendAt 
      * @param complaintId 
+     * @param projectId 
+     * @param projectAttachmentIds 
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      */
-    public sendMail(accountId?: string, to?: Array<string>, cc?: Array<string>, bcc?: Array<string>, subject?: string, body?: string, replyToMessageId?: string, forwardMessageId?: string, forwardAttachmentIds?: Array<string>, files?: Array<Blob>, toClientId?: string, sendAt?: string, complaintId?: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<SendMailOutcome>;
-    public sendMail(accountId?: string, to?: Array<string>, cc?: Array<string>, bcc?: Array<string>, subject?: string, body?: string, replyToMessageId?: string, forwardMessageId?: string, forwardAttachmentIds?: Array<string>, files?: Array<Blob>, toClientId?: string, sendAt?: string, complaintId?: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<SendMailOutcome>>;
-    public sendMail(accountId?: string, to?: Array<string>, cc?: Array<string>, bcc?: Array<string>, subject?: string, body?: string, replyToMessageId?: string, forwardMessageId?: string, forwardAttachmentIds?: Array<string>, files?: Array<Blob>, toClientId?: string, sendAt?: string, complaintId?: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<SendMailOutcome>>;
-    public sendMail(accountId?: string, to?: Array<string>, cc?: Array<string>, bcc?: Array<string>, subject?: string, body?: string, replyToMessageId?: string, forwardMessageId?: string, forwardAttachmentIds?: Array<string>, files?: Array<Blob>, toClientId?: string, sendAt?: string, complaintId?: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
+    public sendMail(accountId?: string, to?: Array<string>, cc?: Array<string>, bcc?: Array<string>, subject?: string, body?: string, replyToMessageId?: string, forwardMessageId?: string, forwardAttachmentIds?: Array<string>, files?: Array<Blob>, toClientId?: string, sendAt?: string, complaintId?: string, projectId?: string, projectAttachmentIds?: Array<string>, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<SendMailOutcome>;
+    public sendMail(accountId?: string, to?: Array<string>, cc?: Array<string>, bcc?: Array<string>, subject?: string, body?: string, replyToMessageId?: string, forwardMessageId?: string, forwardAttachmentIds?: Array<string>, files?: Array<Blob>, toClientId?: string, sendAt?: string, complaintId?: string, projectId?: string, projectAttachmentIds?: Array<string>, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<SendMailOutcome>>;
+    public sendMail(accountId?: string, to?: Array<string>, cc?: Array<string>, bcc?: Array<string>, subject?: string, body?: string, replyToMessageId?: string, forwardMessageId?: string, forwardAttachmentIds?: Array<string>, files?: Array<Blob>, toClientId?: string, sendAt?: string, complaintId?: string, projectId?: string, projectAttachmentIds?: Array<string>, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<SendMailOutcome>>;
+    public sendMail(accountId?: string, to?: Array<string>, cc?: Array<string>, bcc?: Array<string>, subject?: string, body?: string, replyToMessageId?: string, forwardMessageId?: string, forwardAttachmentIds?: Array<string>, files?: Array<Blob>, toClientId?: string, sendAt?: string, complaintId?: string, projectId?: string, projectAttachmentIds?: Array<string>, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
 
         let localVarHeaders = this.defaultHeaders;
 
@@ -824,6 +894,18 @@ export class ConnectedMailboxApiService {
         }
         if (complaintId !== undefined) {
             localVarFormParams = localVarFormParams.append('complaintId', <any>complaintId) as any || localVarFormParams;
+        }
+        if (projectId !== undefined) {
+            localVarFormParams = localVarFormParams.append('projectId', <any>projectId) as any || localVarFormParams;
+        }
+        if (projectAttachmentIds) {
+            if (localVarUseForm) {
+                projectAttachmentIds.forEach((element) => {
+                    localVarFormParams = localVarFormParams.append('projectAttachmentIds', <any>element) as any || localVarFormParams;
+            })
+            } else {
+                localVarFormParams = localVarFormParams.append('projectAttachmentIds', [...projectAttachmentIds].join(COLLECTION_FORMATS['csv'])) as any || localVarFormParams;
+            }
         }
 
         let responseType_: 'text' | 'json' | 'blob' = 'json';

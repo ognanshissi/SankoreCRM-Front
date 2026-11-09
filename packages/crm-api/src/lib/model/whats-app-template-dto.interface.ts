@@ -29,5 +29,6 @@ export interface WhatsAppTemplateDto {
     productLineIds?: Array<string> | null;
     variableMappings?: Array<WhatsAppVariableMappingDto> | null;
     syncedAt?: string;
+    headerFormat?: string | null;
 }
 

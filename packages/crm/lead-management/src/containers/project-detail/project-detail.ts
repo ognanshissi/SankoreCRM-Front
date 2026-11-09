@@ -36,6 +36,7 @@ import { TasInput } from '@talisoft/ui/input';
 import { SideDrawerService } from '@talisoft/ui/side-drawer';
 import { SnackbarService } from '@talisoft/ui/snackbar';
 import { TasSpinner } from '@talisoft/ui/spinner';
+import { MailComposeDrawer, MailComposeDrawerData } from '@sankore/crm/tasks';
 import { ConvertLeadWizard } from '../edit-lead/convert-lead-wizard';
 import { currentStep, hasTemplateSteps, isClosed, stepLabel } from '../edit-lead/opportunities/opportunity.model';
 import { EditProjectInfoDrawer, EditProjectInfoDrawerData } from './edit-project-info-drawer';
@@ -48,6 +49,7 @@ import { ProjectQuestionnaires } from './project-questionnaires';
 import { ProjectSummary, ProjectUpdate } from './project-summary';
 import { ProjectTasks } from './project-tasks';
 import { ProjectValidations } from './project-validations';
+import { ProjectWhatsAppDrawer, ProjectWhatsAppDrawerData, ProjectWhatsAppDrawerResult } from './project-whatsapp-drawer';
 
 class LoseFormModel {
   public reason!: string;
@@ -114,6 +116,8 @@ export class ProjectDetail implements OnInit {
   private _target: string | null = null;
 
   private readonly _canManage = this._permissions.can('lead:opportunity:manage');
+  public readonly canMail = this._permissions.can('ConnectedAccounts.Use');
+  public readonly canWhatsApp = this._permissions.can('WhatsApp.Send');
   public readonly canManage = computed(() => this._canManage() && !!this.project() && !isClosed(this.project()!));
 
   private readonly _users = toSignal(
@@ -150,6 +154,26 @@ export class ProjectDetail implements OnInit {
     ...(this.project()?.customerEntityId ? [] : [{ value: '', label: 'À préciser' }]),
     ...this._products().map((p) => ({ value: p.label, label: p.label })),
   ]);
+
+  /**
+   * À qui part un e-mail du projet : l'adresse du lead, en clair comme sur sa fiche ; sinon le
+   * client par sa fiche — son adresse reste masquée, c'est le serveur qui la lit à l'envoi.
+   */
+  public readonly mailTarget = computed<Pick<MailComposeDrawerData, 'to' | 'client' | 'context'> | null>(() => {
+    const lead = this.lead();
+    if (lead?.email) return { to: [lead.email], context: { leadId: lead.id ?? null } };
+    const client = this.client();
+    const email = (client?.contactPoints ?? [])
+      .filter((cp) => cp.type === 'Email' && cp.isActive)
+      .sort((a, b) => Number(!!b.isPrimary) - Number(!!a.isPrimary))[0];
+    if (client?.id && email) {
+      return {
+        client: { id: client.id, name: client.displayName ?? 'Client', maskedEmail: email.valueMasked || 'adresse du dossier' },
+        context: { clientId: client.id },
+      };
+    }
+    return null;
+  });
 
   /** Le projet est gagné et peut encore ouvrir son contrat : la clôture a pu échouer en silence. */
   public readonly canOpenHolding = computed(
@@ -226,6 +250,48 @@ export class ProjectDetail implements OnInit {
       .getProjectValidations(project.id)
       .pipe(catchError(() => of([] as ProjectValidationDto[])))
       .subscribe((list) => this.validations.set(list ?? []));
+  }
+
+  // ——— Envoyer les documents (envoi des documents, lot 5) ———
+
+  /** Un e-mail depuis la boîte connectée de l'agent, avec les pièces du projet à cocher. */
+  public openMail(): void {
+    const project = this.project();
+    const target = this.mailTarget();
+    if (!project?.id || !target) return;
+    const ref = this._sideDrawer.open<boolean, MailComposeDrawerData, MailComposeDrawer>(MailComposeDrawer, {
+      width: '100%',
+      height: '100%',
+      panelClass: 'side-drawer-panel',
+      data: {
+        mode: 'new',
+        ...target,
+        subject: project.title ?? '',
+        project: {
+          id: project.id,
+          files: (project.attachments ?? []).map((a) => ({ id: a.id ?? '', fileName: a.fileName ?? 'pièce', sizeBytes: a.sizeBytes })),
+        },
+      },
+    });
+    // L'historique note l'envoi dès que le fournisseur l'a pris.
+    ref.closed.subscribe((sent) => {
+      if (sent) this._history()?.load();
+    });
+  }
+
+  public openWhatsApp(): void {
+    const project = this.project();
+    if (!project?.id) return;
+    const ref = this._sideDrawer.open<ProjectWhatsAppDrawerResult, ProjectWhatsAppDrawerData, ProjectWhatsAppDrawer>(ProjectWhatsAppDrawer, {
+      width: '100%',
+      height: '100%',
+      panelClass: 'side-drawer-panel',
+      // « — » est le repli d'affichage de la page, pas un nom : le tiroir a sa propre tournure sans nom.
+      data: { projectId: project.id, personName: this.personName() === '—' ? null : this.personName() },
+    });
+    ref.closed.subscribe((sent) => {
+      if (sent) this._history()?.load();
+    });
   }
 
   public scrollTo(id: 'questionnaires' | 'validations' | 'exit-conditions' | 'fields' | 'tasks'): void {

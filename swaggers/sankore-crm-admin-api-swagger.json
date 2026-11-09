@@ -854,6 +854,252 @@
         ]
       }
     },
+    "/api/v1/tenants/{tenantId}/data-loads": {
+      "post": {
+        "tags": [
+          "Tenant data loads"
+        ],
+        "summary": "Load an institution's starting data: Starter (configuration) or Demo (test institutions only)",
+        "operationId": "RequestTenantDataLoad",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RequestDataLoadRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantDataLoadResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "409": {
+            "description": "Conflict"
+          }
+        },
+        "security": [
+          {
+            "ApiKey": [ ]
+          },
+          {
+            "Bearer": [ ]
+          }
+        ]
+      },
+      "get": {
+        "tags": [
+          "Tenant data loads"
+        ],
+        "operationId": "ListTenantDataLoads",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TenantDataLoadResponse"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "ApiKey": [ ]
+          },
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/api/v1/data-loads/pending": {
+      "get": {
+        "tags": [
+          "Tenant data loads"
+        ],
+        "operationId": "ListPendingDataLoads",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PendingDataLoadResponse"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "ApiKey": [ ]
+          },
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/api/v1/data-loads/{loadId}/start": {
+      "post": {
+        "tags": [
+          "Tenant data loads"
+        ],
+        "operationId": "StartDataLoad",
+        "parameters": [
+          {
+            "name": "loadId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "ApiKey": [ ]
+          },
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/api/v1/data-loads/{loadId}/complete": {
+      "post": {
+        "tags": [
+          "Tenant data loads"
+        ],
+        "operationId": "CompleteDataLoad",
+        "parameters": [
+          {
+            "name": "loadId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CompleteDataLoadRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "ApiKey": [ ]
+          },
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/api/v1/data-loads/{loadId}/fail": {
+      "post": {
+        "tags": [
+          "Tenant data loads"
+        ],
+        "operationId": "FailDataLoad",
+        "parameters": [
+          {
+            "name": "loadId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FailDataLoadRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "ApiKey": [ ]
+          },
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
     "/api/v1/tenants/{tenantId}/test-flag": {
       "put": {
         "tags": [
@@ -2012,6 +2258,13 @@
             "schema": {
               "type": "boolean"
             }
+          },
+          {
+            "name": "includeTwins",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
           }
         ],
         "responses": {
@@ -2043,7 +2296,7 @@
           "Tenants"
         ],
         "summary": "Create a new tenant",
-        "description": "Profile (optional: ImfOrBank, CaisseWithInsurance, InsuranceDistributor, CrmOnly — GET /api/v1/tenant-profiles) or ActiveModules (codes: BankingMicrofinance, Insurance) choose the paid modules switched on at creation; not both. Neither: the socle alone. 409 TENANT_FQDN_TAKEN when the address belongs to another tenant.",
+        "description": "Profile (optional: ImfOrBank, CaisseWithInsurance, InsuranceDistributor, CrmOnly — GET /api/v1/tenant-profiles) or ActiveModules (codes: BankingMicrofinance, Insurance) choose the paid modules switched on at creation; not both. Neither: the socle alone. StartingData (optional: Starter, Demo) queues the starting data; Demo marks the tenant as a test one. 409 TENANT_FQDN_TAKEN when the address belongs to another tenant.",
         "operationId": "CreateTenant",
         "requestBody": {
           "content": {
@@ -2315,6 +2568,49 @@
           }
         ]
       }
+    },
+    "/api/v1/tenants/{id}/test-twin": {
+      "post": {
+        "tags": [
+          "Tenants"
+        ],
+        "summary": "Create, or answer, the test twin of a live tenant",
+        "operationId": "EnsureTestTwin",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnsureTestTwinResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        },
+        "security": [
+          {
+            "ApiKey": [ ]
+          },
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
     }
   },
   "components": {
@@ -2347,6 +2643,16 @@
           "userId": {
             "type": "string",
             "format": "uuid"
+          }
+        },
+        "additionalProperties": false
+      },
+      "CompleteDataLoadRequest": {
+        "type": "object",
+        "properties": {
+          "summary": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -2428,6 +2734,10 @@
           "profile": {
             "type": "string",
             "nullable": true
+          },
+          "startingData": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -2463,6 +2773,26 @@
             "format": "uuid"
           },
           "email": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "EnsureTestTwinResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "additionalProperties": false
+      },
+      "FailDataLoadRequest": {
+        "type": "object",
+        "properties": {
+          "error": {
             "type": "string",
             "nullable": true
           }
@@ -2619,6 +2949,24 @@
         },
         "additionalProperties": false
       },
+      "PendingDataLoadResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "tenantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kind": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "PendingDataWipeResponse": {
         "type": "object",
         "properties": {
@@ -2753,6 +3101,16 @@
         "type": "object",
         "properties": {
           "reason": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "RequestDataLoadRequest": {
+        "type": "object",
+        "properties": {
+          "kind": {
             "type": "string",
             "nullable": true
           }
@@ -3136,6 +3494,54 @@
         },
         "additionalProperties": false
       },
+      "TenantDataLoadResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "tenantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kind": {
+            "type": "string",
+            "nullable": true
+          },
+          "requestedBy": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "requestedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "status": {
+            "type": "string",
+            "nullable": true
+          },
+          "startedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "finishedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "summary": {
+            "type": "string",
+            "nullable": true
+          },
+          "error": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "TenantDataWipeResponse": {
         "type": "object",
         "properties": {
@@ -3459,6 +3865,16 @@
           },
           "isTest": {
             "type": "boolean"
+          },
+          "parentTenantId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "testTenantId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
           }
         },
         "additionalProperties": false

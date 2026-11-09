@@ -365,7 +365,8 @@ export class LeadWhatsAppConversation {
       case 'Document': return message.mediaFileName || 'Document';
       case 'Audio': return 'Message vocal';
       case 'Video': return 'Vidéo';
-      default: return 'Pièce jointe';
+      // Un modèle à en-tête document (devis d'un projet) est de type Template mais porte le nom de son fichier.
+      default: return message.mediaFileName || 'Pièce jointe';
     }
   }
 

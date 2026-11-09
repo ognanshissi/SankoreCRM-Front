@@ -60,6 +60,16 @@ export interface MailComposeDrawerData {
    * message comme la réponse du client se rangent sur la réclamation.
    */
   complaintId?: string | null;
+  /**
+   * Écrit depuis un projet : ses pièces (devis, proposition…) sont proposées, cochées si
+   * `selected` les nomme, et c'est le serveur qui les lit — le navigateur ne les renvoie pas. Le
+   * message et la réponse du client se rangent sur le projet, et son historique note l'envoi.
+   */
+  project?: {
+    id: string;
+    files: { id: string; fileName: string; sizeBytes?: number | null }[];
+    selected?: string[];
+  } | null;
 }
 
 class ComposeFormModel {
@@ -178,6 +188,18 @@ class ComposeFormModel {
                 }
               }
 
+              @if (projectFiles().length > 0) {
+                <p class="text-xs font-medium text-slate-600">Pièces du projet</p>
+                @for (f of projectFiles(); track f.id) {
+                  <label class="flex items-center gap-2 text-sm text-slate-700">
+                    <input type="checkbox" class="h-4 w-4 accent-primary" [checked]="projectFileIds().has(f.id)" (change)="toggleProjectFile(f.id, $any($event.target).checked)" />
+                    <tas-icon iconName="feather:paperclip" iconClass="!size-3" class="text-slate-400"></tas-icon>
+                    <span class="truncate">{{ f.fileName }}</span>
+                    <span class="shrink-0 text-xs text-slate-400 tabular-nums">{{ size(f.sizeBytes) }}</span>
+                  </label>
+                }
+              }
+
               @for (f of files(); track $index) {
                 <div class="flex items-center gap-2 text-sm text-slate-700">
                   <tas-icon iconName="feather:paperclip" iconClass="!size-3" class="text-slate-400"></tas-icon>
@@ -244,6 +266,8 @@ export class MailComposeDrawer implements OnInit {
   public readonly missing = signal<string[]>([]);
   public readonly files = signal<File[]>(this.data.files ?? []);
   public readonly forwardIds = signal<Set<string>>(new Set());
+  public readonly projectFiles = signal(this.data.project?.files ?? []);
+  public readonly projectFileIds = signal<Set<string>>(new Set(this.data.project?.selected ?? []));
   public readonly submitError = signal<string | null>(null);
   public readonly showCopies = signal(false);
 
@@ -271,8 +295,12 @@ export class MailComposeDrawer implements OnInit {
 
   public readonly attachmentError = computed(() => {
     const forwarded = this.forwardable().filter((a) => this.forwardIds().has(a.id!));
-    const count = this.files().length + forwarded.length;
-    const bytes = this.files().reduce((s, f) => s + f.size, 0) + forwarded.reduce((s, a) => s + (a.size ?? 0), 0);
+    const fromProject = this.projectFiles().filter((f) => this.projectFileIds().has(f.id));
+    const count = this.files().length + forwarded.length + fromProject.length;
+    const bytes =
+      this.files().reduce((s, f) => s + f.size, 0) +
+      forwarded.reduce((s, a) => s + (a.size ?? 0), 0) +
+      fromProject.reduce((s, f) => s + (f.sizeBytes ?? 0), 0);
 
     if (count > MAX_ATTACHMENTS) return `${MAX_ATTACHMENTS} pièces jointes au plus.`;
     if (bytes > MAX_ATTACHMENT_BYTES) return 'Les pièces jointes dépassent 20 Mo au total.';
@@ -343,6 +371,7 @@ export class MailComposeDrawer implements OnInit {
           leadId: this.data.context?.leadId ?? null,
           clientId: this.data.context?.clientId ?? null,
           accountId: this.model().accountId || null,
+          projectId: this.data.project?.id ?? null,
         })
         .pipe(
           catchError(() => {
@@ -370,6 +399,15 @@ export class MailComposeDrawer implements OnInit {
 
   public removeFile(index: number): void {
     this.files.update((list) => list.filter((_, i) => i !== index));
+  }
+
+  public toggleProjectFile(id: string, checked: boolean): void {
+    this.projectFileIds.update((set) => {
+      const next = new Set(set);
+      if (checked) next.add(id);
+      else next.delete(id);
+      return next;
+    });
   }
 
   public toggleForward(id: string, checked: boolean): void {
@@ -412,6 +450,8 @@ export class MailComposeDrawer implements OnInit {
             this.data.client?.id,
             at?.toISOString(),
             this.data.complaintId ?? undefined,
+            this.data.project?.id ?? undefined,
+            this.projectFiles().filter((f) => this.projectFileIds().has(f.id)).map((f) => f.id),
           )
           .pipe(
             catchError((err: HttpErrorResponse) => {

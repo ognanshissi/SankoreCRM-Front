@@ -22,5 +22,6 @@ export interface WhatsAppComposeTemplateDto {
     footerText?: string | null;
     buttons?: Array<string> | null;
     variables?: Array<WhatsAppComposeVariableDto> | null;
+    headerFormat?: string | null;
 }
 

@@ -30,6 +30,17 @@
         </div>
 
         <div class="flex flex-wrap items-center gap-2">
+          <!-- Envoyer le devis, la proposition… : y compris sur un projet gagné, qui a encore un contrat à signer. -->
+          @if (canMail() && mailTarget()) {
+            <button tas-outlined-button color="primary" type="button" (click)="openMail()">
+              <tas-icon iconName="feather:mail" style="font-size:14px"></tas-icon> E-mail
+            </button>
+          }
+          @if (canWhatsApp() && (p.leadId || p.customerEntityId)) {
+            <button tas-outlined-button color="primary" type="button" (click)="openWhatsApp()">
+              <tas-icon iconName="feather:message-circle" style="font-size:14px"></tas-icon> WhatsApp
+            </button>
+          }
           @if (canManage()) {
             <button tas-outlined-button color="primary" type="button" (click)="editInfo()">
               <tas-icon iconName="feather:edit-2" style="font-size:14px"></tas-icon> Modifier

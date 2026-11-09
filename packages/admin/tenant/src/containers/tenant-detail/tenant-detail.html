@@ -154,6 +154,10 @@
 
     <tenant-support-section [tenantId]="t.id!" />
 
+    <!-- Données de départ (docs/donnees-demarrage-demo.md) : démarrage ou démo, chargés par l'API. -->
+    <tenant-starting-data-section [tenantId]="t.id!" [tenantName]="t.name ?? ''" [isTest]="t.isTest ?? false"
+                                  [isTwin]="!!t.parentTenantId" />
+
     <!-- Purge de données, lot 4 : vider une institution de recette ou de démo. -->
     <tenant-test-data-section [tenantId]="t.id!" [tenantName]="t.name ?? ''" [isTest]="t.isTest ?? false" (changed)="load()" />
   }

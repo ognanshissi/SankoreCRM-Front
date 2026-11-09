@@ -17,7 +17,7 @@ export const MAIL_SEND_ERRORS: Record<string, string> = {
   MAIL_TOO_MANY_ATTACHMENTS: '10 pièces jointes au plus.',
   MAIL_ATTACHMENTS_TOO_LARGE: 'Les pièces jointes dépassent 20 Mo au total.',
   MAIL_ATTACHMENT_BLOCKED: 'Les fichiers exécutables ne peuvent pas être envoyés.',
-  MAIL_ATTACHMENT_NOT_FOUND: 'Une pièce jointe du message d’origine n’existe plus.',
+  MAIL_ATTACHMENT_NOT_FOUND: 'Une pièce jointe n’existe plus (message d’origine ou pièce du projet).',
   MAIL_MESSAGE_NOT_FOUND: 'Le message d’origine n’existe plus.',
   MAIL_MESSAGE_OF_ANOTHER_MAILBOX: 'Une réponse part de la boîte qui a reçu le message.',
   MAIL_SEND_REFUSED: 'Le fournisseur a refusé l’envoi (destinataire, taille ou règle de sécurité).',
@@ -32,6 +32,8 @@ export const MAIL_SEND_ERRORS: Record<string, string> = {
   MAIL_CLIENT_RESTRICTED: 'Ce client a demandé l’effacement de ses données : plus de contact à notre initiative.',
   MAIL_CLIENT_EMAIL_MISSING: 'Ce client n’a pas d’adresse e-mail active : ajoutez-en une dans Coordonnées.',
   MAIL_COMPLAINT_NOT_FOUND: 'Cette réclamation n’est pas celle de ce client.',
+  MAIL_PROJECT_NOT_FOUND: 'Ce projet n’existe plus ou ne vous est pas accessible.',
+  MAIL_PROJECT_FILES_UNAVAILABLE: 'Les pièces du projet ne peuvent pas être lues pour le moment : rien n’est parti.',
 };
 
 /** « a@b.ci, c@d.ci; e@f.ci » → trois adresses. */

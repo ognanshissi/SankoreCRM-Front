@@ -91,6 +91,7 @@ const CHANNEL_LABELS: Record<string, string> = {
   HandedOnPaper: 'remis sur papier',
   ShownOnScreen: 'présenté à l’écran',
   SentByEmail: 'envoyé par e-mail',
+  SentByWhatsApp: 'envoyé par WhatsApp',
   CustomerSpace: 'espace client',
   PaperAtCounter: 'papier au guichet',
   ElectronicSignaturePad: 'tablette de signature',
