@@ -20,7 +20,7 @@ import {
 
 /**
  * « Moyens de paiement » du client (Mobile Money, RIB), dans l'onglet Coordonnées : de quoi
- * encaisser une prime et verser un remboursement. Le serveur ne renvoie que le numéro masqué.
+ * encaisser un paiement du client et lui verser un remboursement. Le serveur ne renvoie que le numéro masqué.
  */
 @Component({
   selector: 'client-payment-instruments-card',
@@ -36,7 +36,7 @@ import {
               <div>
                 <p class="text-sm font-medium text-slate-800">Moyens de paiement</p>
                 <p class="text-xs text-slate-500">
-                  Utilisés pour encaisser une prime et verser un remboursement. Le numéro est enregistré
+                  Utilisés pour encaisser un paiement du client et lui verser un remboursement. Le numéro est enregistré
                   chiffré : seuls ses derniers chiffres sont affichés.
                 </p>
               </div>

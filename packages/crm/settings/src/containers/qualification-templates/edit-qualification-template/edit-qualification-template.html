@@ -339,7 +339,7 @@
             <div class="flex flex-col gap-4 p-5">
               <tas-form-field>
                 <tas-label>Nom du formulaire <span class="text-functional-error">*</span></tas-label>
-                <input tasInput type="text" placeholder="Ex : Qualification Prêt v2" [ngModel]="editName()" (ngModelChange)="editName.set($event)" [disabled]="isReadonly()" />
+                <input tasInput type="text" placeholder="Ex : Qualification nouveaux clients v2" [ngModel]="editName()" (ngModelChange)="editName.set($event)" [disabled]="isReadonly()" />
               </tas-form-field>
               <tas-form-field>
                 <tas-label>Description</tas-label>
@@ -368,6 +368,8 @@
                 <tas-hint>Une seule fois pour le dossier, ou une fois par personne du foyer.</tas-hint>
               </tas-form-field>
 
+              <!-- Isolation du socle (lot 3) : le questionnaire santé est une affaire d'assureur. -->
+              @if (showHealthOption()) {
               <label class="flex items-start gap-2 text-sm" [class.cursor-pointer]="!scopeForm.isHealthQuestionnaire().disabled()" [class.opacity-60]="scopeForm.isHealthQuestionnaire().disabled()">
                 <input type="checkbox" class="mt-0.5 accent-primary" [formField]="scopeForm.isHealthQuestionnaire" />
                 <span>
@@ -381,6 +383,7 @@
                   </span>
                 </span>
               </label>
+              }
 
               <label class="flex items-start gap-2 text-sm" [class.cursor-pointer]="!scopeForm.excludedFromScoring().disabled()" [class.opacity-60]="scopeForm.excludedFromScoring().disabled()">
                 <input type="checkbox" class="mt-0.5 accent-primary" [formField]="scopeForm.excludedFromScoring" />

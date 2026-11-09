@@ -52,7 +52,7 @@
             « Zone de danger » ne s'affiche pas sans le droit de supprimer : un onglet dont le
             volet est vide se lit comme une panne, et `activeTab` replie le même cas côté URL.
           -->
-          @if (tab !== 'danger' || canDelete()) {
+          @if ((tab !== 'danger' || canDelete()) && (tab !== 'beneficiaires' || showBeneficiaries())) {
             <button
               type="button"
               role="tab"
@@ -138,7 +138,7 @@
           <form [formRoot]="formSchema" class="grid grid-cols-1 gap-4 mt-4">
             <tas-form-field>
               <tas-label>Nom commercial</tas-label>
-              <input tasInput type="text" placeholder="Assurance vie Sérénité"
+              <input tasInput type="text" placeholder="Ex : Formule Sérénité"
                 [formField]="formSchema.name" />
               <tas-hint>Ce que l'agent voit dans la liste des produits et sur une fiche lead.</tas-hint>
               @if (formSchema.name().touched() && formSchema.name().invalid()) {
@@ -246,6 +246,7 @@
           il n'appartient ni à l'identité commerciale ni à une politique. Il garde son propre
           bouton — son endpoint, sa validation — et n'a donc pas de pastille d'onglet.
         -->
+        @if (showCbsLink()) {
         <section class="rounded-2xl bg-white shadow-sm border border-slate-100 p-6">
           <h2 class="text-xl font-bold text-primary">Intégration back-office</h2>
           <p class="text-sm text-slate-600 mt-1">
@@ -300,6 +301,7 @@
             </form>
           }
         </section>
+        }
       </div>
     </div>
 

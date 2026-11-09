@@ -83,7 +83,7 @@ interface EmailTemplateRow {
 
           <tas-form-field>
             <tas-label>Nom <span class="text-functional-error">*</span></tas-label>
-            <input tasInput type="text" placeholder="Ex. Relance crédit après 3 mois" [formField]="formSchema.name" />
+            <input tasInput type="text" placeholder="Ex. Relance des prospects après 3 mois" [formField]="formSchema.name" />
             @if (formSchema.name().touched() && formSchema.name().invalid()) {
               <tas-error>{{ formSchema.name().errors()[0].message }}</tas-error>
             }

@@ -25,6 +25,7 @@ import { TasSpinner } from '@talisoft/ui/spinner';
 import { TasSwitch } from '@talisoft/ui/switch';
 import { SnackbarService } from '@talisoft/ui/snackbar';
 import { UpdateStepRequest, UpdateStepRequestKindEnum, WorkflowStepDto, WorkflowTemplatesApiService } from '@sankore/crm-api';
+import { TENANT_MODULES, TenantModulesService } from '@sankore/crm/common';
 import {
   CHANNEL_OPTIONS,
   END_OUTCOME_OPTIONS,
@@ -80,7 +81,7 @@ class StepFormModel {
   public endOutcome!: string;
   public endAction!: string;
 
-  public static fromStep(step: WorkflowStepDto): StepFormModel {
+  public static fromStep(step: WorkflowStepDto, defaultTarget = 'Insurance'): StepFormModel {
     const config = parseStepConfig(step.configJson);
     const m = new StepFormModel();
     m.name = step.name ?? '';
@@ -90,7 +91,7 @@ class StepFormModel {
     m.kycLevel = config.kycLevel ?? 'Full';
     m.escalation = config.escalation ?? 'none';
     m.channel = config.channel ?? 'Email';
-    m.target = config.target ?? 'Insurance';
+    m.target = config.target ?? defaultTarget;
     m.isBlocking = !!step.isBlocking;
     const recipients = notificationRecipients(config);
     m.notifySubject = recipients.includes('subject');
@@ -125,6 +126,7 @@ export class JourneyStepPanel {
   private readonly _api = inject(WorkflowTemplatesApiService);
   private readonly _snackbar = inject(SnackbarService);
   private readonly _destroyRef = inject(DestroyRef);
+  private readonly _modules = inject(TenantModulesService);
 
   public templateId = input.required<string>();
   public step = input.required<WorkflowStepDto>();
@@ -160,14 +162,25 @@ export class JourneyStepPanel {
   public readonly escalationOptions = ESCALATION_OPTIONS;
   public readonly slaOptions = SLA_OPTIONS;
   public readonly channelOptions = CHANNEL_OPTIONS;
-  public readonly targetOptions = TARGET_OPTIONS;
+  /**
+   * Isolation du socle (lot 3) : seuls les systèmes des modules actifs, plus celui déjà choisi. Le
+   * serveur refuse d'activer un circuit qui attendrait un système absent.
+   */
+  public readonly targetOptions = computed(() => {
+    const current = parseStepConfig(this.step().configJson).target;
+    return TARGET_OPTIONS.filter((o) => this._modules.active().has(o.module) || o.value === current)
+      .map(({ label, value }) => ({ label, value }));
+  });
   public readonly StepKind = StepKind;
 
   public isSaving = signal(false);
 
   public model = linkedSignal({
     source: () => this.step().id,
-    computation: () => StepFormModel.fromStep(this.step()),
+    computation: () => StepFormModel.fromStep(
+      this.step(),
+      this._modules.has(TENANT_MODULES.INSURANCE) ? 'Insurance' : 'CoreBanking',
+    ),
   });
   public formSchema = form(this.model, (schema) => {
     required(schema.name, { message: "Le nom de l'étape est obligatoire" });

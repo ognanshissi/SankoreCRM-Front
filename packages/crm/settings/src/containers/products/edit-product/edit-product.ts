@@ -33,6 +33,8 @@ import {
   CustomFieldsCard,
   PermissionsService,
   productCategoryLabel,
+  TENANT_MODULES,
+  TenantModulesService,
   WireValue,
 } from '@sankore/crm/common';
 import { ProductParametersEditor } from '../product-parameters-editor';
@@ -192,6 +194,7 @@ class CbsFormModel {
 export class EditProductPage {
   private readonly _productsApi = inject(ProductsApiService);
   private readonly _permissions = inject(PermissionsService);
+  private readonly _modules = inject(TenantModulesService);
   private readonly _snackbar = inject(SnackbarService);
   private readonly _confirmDialog = inject(ConfirmDialogService);
   private readonly _router = inject(Router);
@@ -227,8 +230,20 @@ export class EditProductPage {
 
     if (!asked || !PRODUCT_TABS.includes(asked)) return 'identite';
     if (asked === 'danger' && !this.canDelete()) return 'identite';
+    if (asked === 'beneficiaires' && !this.showBeneficiaries()) return 'identite';
 
     return asked;
+  });
+
+  /**
+   * Isolation du socle (lot 3) : le lien Core Banking n'existe qu'avec Banking - Microfinance, et la
+   * politique bénéficiaires (assurés, consentements crédit et assureur) n'a pas d'objet pour un
+   * produit Standard — le serveur lui donne « aucune ».
+   */
+  public readonly showCbsLink = computed(() => this._modules.canRead(TENANT_MODULES.BANKING_MICROFINANCE));
+  public readonly showBeneficiaries = computed(() => {
+    const category = this.product()?.category;
+    return !!category && category !== 'Standard';
   });
 
   public readonly tabs = PRODUCT_TABS;

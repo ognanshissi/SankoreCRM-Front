@@ -123,7 +123,11 @@ export class ClientContratPage {
     return !!source && source !== 'Crm';
   });
   public readonly isInsurance = computed(() => this.contract()?.nature === 'Insurance');
-  public readonly isBanking = computed(() => !!this.contract()?.accountRef || !!this.contract()?.loanRef);
+  // Isolation du socle (lot 3) : la banque ne se montre qu'avec Banking - Microfinance, et son solde
+  // ne s'actualise que si le module est actif (désactivé, la page est en consultation).
+  public readonly isBanking = computed(
+    () => (!!this.contract()?.accountRef || !!this.contract()?.loanRef) && this._modules.canRead(TENANT_MODULES.BANKING_MICROFINANCE),
+  );
 
   public readonly showSubscriptions = computed(
     () => this.isInsurance() && !!this.holdingId() && this._insuranceReadable() && this._canFollowSubscriptions(),
@@ -131,7 +135,9 @@ export class ClientContratPage {
   public readonly showClaims = computed(
     () => this.isInsurance() && !!this.contract()?.policyId && this._insuranceReadable() && this._canViewClaims(),
   );
-  public readonly canRefreshBalance = computed(() => !!this.contract()?.accountRef && this._canViewLiveBalance());
+  public readonly canRefreshBalance = computed(
+    () => !!this.contract()?.accountRef && this._canViewLiveBalance() && this._modules.has(TENANT_MODULES.BANKING_MICROFINANCE),
+  );
 
   public readonly title = computed(() => {
     const c = this.contract();

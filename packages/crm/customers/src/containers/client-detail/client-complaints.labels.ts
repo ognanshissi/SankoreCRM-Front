@@ -24,6 +24,13 @@ export const COMPLAINT_CATEGORY_OPTIONS = [
   { value: 'Other', label: 'Autre' },
 ];
 
+/** « Crédit » et « Épargne » relèvent de Banking - Microfinance (isolation du socle, lot 4), comme côté serveur et dans le bot. */
+export function complaintCategoryOptions(banking: boolean) {
+  return banking
+    ? COMPLAINT_CATEGORY_OPTIONS
+    : COMPLAINT_CATEGORY_OPTIONS.filter((o) => o.value !== 'Credit' && o.value !== 'Savings');
+}
+
 const STATUSES: Record<string, { label: string; severity: Severity }> = {
   Received: { label: 'Reçue', severity: 'warning' },
   Acknowledged: { label: 'Prise en charge', severity: 'info' },

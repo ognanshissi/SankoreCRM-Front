@@ -5,8 +5,8 @@
       <div>
         <p class="text-sm font-semibold text-slate-800">Documents</p>
         <p class="mt-0.5 text-sm text-slate-500">
-          Ce que le client a donné et reçu : pièces KYC, documents d'assurance, pièces jointes,
-          médias WhatsApp, courriers, e-mails et SMS.
+          Ce que le client a donné et reçu : pièces KYC, pièces jointes, médias WhatsApp, courriers,
+          e-mails et SMS.
         </p>
       </div>
 
@@ -48,7 +48,7 @@
       <tas-form-field>
         <tas-label>Origine</tas-label>
         <tas-select
-          [options]="sourceOptions"
+          [options]="sourceOptions()"
           placeholder="Toutes les origines"
           clearable
           [ngModel]="source()"

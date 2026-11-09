@@ -72,7 +72,7 @@ const REQUIRED_DOCUMENTS = [
   {
     value: 'ProofOfAddress',
     label: 'Justificatif de domicile',
-    hint: 'Exigé par CIMA art. 13.6 pour une vente à distance en assurance.',
+    hint: 'Exigé notamment pour une vente à distance en assurance (CIMA art. 13.6).',
   },
 ];
 

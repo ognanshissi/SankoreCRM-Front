@@ -101,7 +101,7 @@ export class TestModePage implements OnInit {
       lines: [
         'E-mails, SMS, WhatsApp et appels ne vont qu’aux utilisateurs de l’institution ; le reste est bloqué et tracé.',
         'Les webhooks portent « test »: true, et ceux repris de la production arrivent désactivés.',
-        'Le core banking et l’assureur suivent la connexion configurée dans le mode test.',
+        'Les systèmes externes reliés suivent la connexion configurée dans le mode test.',
       ],
     },
     {

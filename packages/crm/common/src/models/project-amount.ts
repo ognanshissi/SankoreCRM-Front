@@ -1,4 +1,5 @@
 import { HttpErrorResponse } from '@angular/common/http';
+import { TENANT_MODULES, TenantModule } from './tenant-modules';
 
 /**
  * Ce que le montant d'un projet représente, fixé par son gabarit (Paramètres › Étapes des
@@ -13,6 +14,23 @@ export const PROJECT_AMOUNT_KINDS: { value: ProjectAmountKind; label: string; am
   { value: 'Premium', label: 'La prime annuelle, à encaisser', amountLabel: 'Prime annuelle', flowLabel: 'Primes (assurance)' },
   { value: 'Deposit', label: 'Le montant du dépôt, à collecter', amountLabel: 'Montant du dépôt', flowLabel: 'Collecte (épargne, dépôts)' },
 ];
+
+/**
+ * Le module dont relève chaque nature de montant, comme `ProjectTemplateModules.ModuleOf` côté
+ * serveur (isolation du socle, lot 1) : un tenant du socle n'a que le montant estimé.
+ */
+export const PROJECT_AMOUNT_KIND_MODULE: Record<ProjectAmountKind, TenantModule | null> = {
+  Generic: null,
+  Loan: TENANT_MODULES.BANKING_MICROFINANCE,
+  Deposit: TENANT_MODULES.BANKING_MICROFINANCE,
+  Premium: TENANT_MODULES.INSURANCE,
+};
+
+/** Une nature de montant est-elle proposable avec ces modules actifs ? */
+export function isAmountKindOpen(kind: string, activeModules: ReadonlySet<string>): boolean {
+  const module = PROJECT_AMOUNT_KIND_MODULE[kind as ProjectAmountKind];
+  return !module || activeModules.has(module);
+}
 
 function kindOf(kind: string | null | undefined) {
   return PROJECT_AMOUNT_KINDS.find((k) => k.value === kind) ?? PROJECT_AMOUNT_KINDS[0];

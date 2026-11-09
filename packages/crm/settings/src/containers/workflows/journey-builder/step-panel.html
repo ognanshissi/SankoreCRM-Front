@@ -265,7 +265,7 @@
     @if (kind() === StepKind.IntegrationAction) {
       <tas-form-field>
         <tas-label>Système cible</tas-label>
-        <tas-select [options]="targetOptions" [formField]="formSchema.target"></tas-select>
+        <tas-select [options]="targetOptions()" [formField]="formSchema.target"></tas-select>
       </tas-form-field>
     }
   </form>

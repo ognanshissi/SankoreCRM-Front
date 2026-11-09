@@ -78,7 +78,7 @@ class AddPaymentInstrumentFormModel {
 
       <tas-drawer-content>
         <tas-alert type="info" class="mb-5 block">
-          Sert à encaisser une prime et à verser un remboursement. Le numéro est enregistré chiffré :
+          Sert à encaisser un paiement du client et à lui verser un remboursement. Le numéro est enregistré chiffré :
           seuls ses derniers chiffres seront affichés.
         </tas-alert>
 

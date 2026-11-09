@@ -5,8 +5,7 @@
       <div>
         <p class="text-sm font-semibold text-slate-800">Contrats</p>
         <p class="mt-0.5 text-sm text-slate-500">
-          Tout ce que le client détient : assurances, comptes, épargne et crédits, quel que soit le
-          système qui les gère.
+          Tout ce que le client détient, quel que soit le système qui le gère.
         </p>
       </div>
 
@@ -58,10 +57,11 @@
   <!-- Filtre -->
   <tas-card class="block">
     <div class="grid grid-cols-1 gap-3 p-4 sm:grid-cols-2 lg:grid-cols-4">
+      @if (natureOptions().length > 1) {
       <tas-form-field>
         <tas-label>Nature</tas-label>
         <tas-select
-          [options]="natureOptions"
+          [options]="natureOptions()"
           placeholder="Tous les contrats"
           clearable
           [ngModel]="nature()"
@@ -69,6 +69,7 @@
           [ngModelOptions]="{ standalone: true }"
         ></tas-select>
       </tas-form-field>
+      }
 
       @if (coreBankingAsOf(); as asOf) {
         <div class="flex items-end lg:col-span-3">

@@ -43,7 +43,9 @@ import {
   holdingStatusSeverity,
   institutionCurrency,
   isDesignationToReview,
+  PRODUCT_CATEGORY_MODULE,
   productCategoryLabel,
+  TENANT_MODULES,
 } from '@sankore/crm/common';
 import { ClientDetailStore } from '../../models/client-detail.store';
 import { DesignationsEditor } from './designations-editor';
@@ -916,6 +918,22 @@ export class HoldingDetailPanel implements OnInit, OnDestroy {
   );
 
   public readonly isAmendment = computed(() => this.holding()?.status === 'Active');
+
+  /**
+   * Les termes que la catégorie du contrat porte (isolation du socle, lot 3) : capital et prime pour
+   * l'assurance, taux et dépôt pour la banque, ni l'un ni l'autre pour un produit Standard.
+   */
+  public readonly terms = computed<'insurance' | 'banking' | 'standard'>(() => {
+    const module = PRODUCT_CATEGORY_MODULE[this.holding()?.productCategory ?? ''] ?? null;
+    return module === TENANT_MODULES.INSURANCE ? 'insurance'
+      : module === TENANT_MODULES.BANKING_MICROFINANCE ? 'banking'
+      : 'standard';
+  });
+
+  /** La clause bénéficiaire, quand la politique du produit prévoit des rôles — ou qu'une désignation existe déjà. */
+  public readonly showBeneficiaryClause = computed(
+    () => this.policyRoles().length > 0 || (this.holding()?.designations ?? []).length > 0,
+  );
 
   public readonly canDesignate = computed(
     () => !this.isReadOnly() && isHoldingActionAvailable(this.holding(), 'designate'),

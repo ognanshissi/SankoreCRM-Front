@@ -4,6 +4,15 @@
 
 @reference "../../tailwind-ref.css";
 
+// tas-form-field n'a pas de display : élément inline, son mt-3 ne compte que lorsqu'un parent
+// flex ou grid le rend « bloc ». Un champ voisin, enfant direct de la grille, avait donc sa marge
+// et le champ du sélecteur, enfermé dans tas-date-picker, ne l'avait pas : la date était 12 px
+// plus haut que le champ d'à côté (« Montant » / « Clôture prévue », 2026-11-09).
+tas-date-picker,
+tas-date-picker > tas-form-field {
+  display: block;
+}
+
 .tas-date-picker__popup {
   @apply bg-white rounded-lg shadow-lg border border-gray-200 overflow-hidden select-none;
   min-width: 280px;

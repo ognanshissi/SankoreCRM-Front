@@ -13,7 +13,7 @@ import { SnackbarService } from '@talisoft/ui/snackbar';
 import { TableConfig, TasTable } from '@talisoft/ui/table';
 import { Severity, TasTag } from '@talisoft/ui/tag';
 import { BASE_PATH, ClientDocumentDto, ClientDocumentsApiService } from '@sankore/crm-api';
-import { PermissionsService } from '@sankore/crm/common';
+import { PermissionsService, TENANT_MODULES, TenantModulesService } from '@sankore/crm/common';
 import { ClientDetailStore } from '../../models/client-detail.store';
 import {
   DOCUMENT_DIRECTION_OPTIONS,
@@ -73,13 +73,17 @@ export class ClientDocumentsPage {
   private readonly _sideDrawer = inject(SideDrawerService);
   private readonly _snackbar = inject(SnackbarService);
   private readonly _permissions = inject(PermissionsService);
+  private readonly _modules = inject(TenantModulesService);
   protected readonly store = inject(ClientDetailStore);
 
   private readonly _canUpdate = this._permissions.can('customers:update');
   public readonly canUpload = computed(() => this._canUpdate() && !this.store.isReadOnly());
 
   public readonly directionOptions = DOCUMENT_DIRECTION_OPTIONS;
-  public readonly sourceOptions = DOCUMENT_SOURCE_OPTIONS;
+  // La source « Assurance » n'existe qu'avec le module (isolation du socle, lot 3).
+  public readonly sourceOptions = computed(() =>
+    DOCUMENT_SOURCE_OPTIONS.filter((o) => o.value !== 'Insurance' || this._modules.canRead(TENANT_MODULES.INSURANCE)),
+  );
 
   public readonly direction = signal('');
   public readonly source = signal('');

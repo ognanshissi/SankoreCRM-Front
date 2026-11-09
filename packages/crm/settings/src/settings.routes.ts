@@ -101,7 +101,8 @@ const paneRoutes: Routes = [
         // Lecture avec la fiche (`GET users/{id}/credentials` exige user:read) ; enregistrer ou
         // retirer exige user:credential:manage, vérifié par l'écran et par le serveur.
         path: 'carte-professionnelle',
-        canActivate: [hasPermissionGuard('user:read')],
+        // La carte d'intermédiaire CIMA est de l'Assurance (isolation du socle, lot 3).
+        canActivate: [hasPermissionGuard('user:read'), canReadModuleGuard(TENANT_MODULES.INSURANCE)],
         loadComponent: () => import('./containers/users/edit-user/carte-professionnelle'),
       },
       {

@@ -71,7 +71,7 @@
           }
           <tas-form-field>
             <tas-label>Nom <span class="text-functional-error">*</span></tas-label>
-            <input tasInput type="text" placeholder="Ex. Parcours crédit" [formField]="formSchema.name" />
+            <input tasInput type="text" placeholder="Ex. Parcours vente accompagnée" [formField]="formSchema.name" />
             @if (formSchema.name().touched() && formSchema.name().invalid()) {
               <tas-error>{{ formSchema.name().errors()[0].message }}</tas-error>
             } @else if (isNew) {
@@ -84,18 +84,18 @@
           <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Montant et prévision</p>
           <tas-form-field>
             <tas-label>Le montant d'un projet est</tas-label>
-            <tas-select [options]="amountKindOptions" [formField]="formSchema.amountKind"></tas-select>
+            <tas-select [options]="amountKindOptions()" [formField]="formSchema.amountKind"></tas-select>
             <tas-hint>La prévision n'additionne jamais deux natures de montant.</tas-hint>
           </tas-form-field>
           <!-- tas-switch n'est pas un contrôle de formulaire : il lit et écrit le champ lui-même. -->
           <div class="flex items-center justify-between gap-3 text-sm text-slate-700"
-               title="Pour une vente qui dure (crédit, assurance, compte) : ses projets comptent dans la prévision pondérée. Désactivez pour un produit vendu au rendez-vous.">
+               title="Pour une vente qui dure plusieurs rendez-vous : ses projets comptent dans la prévision pondérée. Désactivez pour un produit vendu au rendez-vous.">
             <span><span class="font-medium">Suivre la prévision</span><span class="ms-1 text-slate-500">— probabilité et clôture prévue</span></span>
             <tas-switch [checked]="formSchema.tracksForecast().value()" [disabled]="formSchema.tracksForecast().disabled()" ariaLabel="Suivre la prévision"
                           (toggle)="formSchema.tracksForecast().value.set($event)"></tas-switch>
           </div>
           <div class="flex items-center justify-between gap-3 text-sm text-slate-700" [class.opacity-50]="!model().tracksForecast"
-               title="Une échéance, pas une estimation (crédit de campagne) : la date devient obligatoire, et une tâche urgente est créée le matin où elle est dépassée.">
+               title="Une échéance, pas une estimation (une offre saisonnière, une date butoir) : la date devient obligatoire, et une tâche urgente est créée le matin où elle est dépassée.">
             <span><span class="font-medium">Date de clôture critique</span><span class="ms-1 text-slate-500">— obligatoire, relance si dépassée</span></span>
             <tas-switch [checked]="formSchema.criticalCloseDate().value()" [disabled]="formSchema.criticalCloseDate().disabled()" ariaLabel="Date de clôture critique"
                           (toggle)="formSchema.criticalCloseDate().value.set($event)"></tas-switch>
@@ -193,7 +193,7 @@
           @if (canManage() && isNew) {
             <div class="mb-3 flex flex-wrap gap-1.5 text-xs">
               <span class="w-full text-slate-500">Partir d'un modèle :</span>
-              @for (p of presets; track p.key) {
+              @for (p of presets(); track p.key) {
                 <button type="button" class="rounded-full border border-slate-200 px-2.5 py-1 font-semibold text-slate-700 hover:bg-slate-50"
                         (click)="applyPreset(p.key)">{{ p.label }}</button>
               }

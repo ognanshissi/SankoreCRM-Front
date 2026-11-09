@@ -1,15 +1,14 @@
 import { computed, inject, Injectable, linkedSignal, Signal } from '@angular/core';
 import { AuthenticationService } from './authentification.service';
-import { TENANT_MODULES, TenantModule } from '../models/tenant-modules';
-
-const ALL_MODULES: readonly string[] = Object.values(TENANT_MODULES);
+import { TenantModule } from '../models/tenant-modules';
 
 /**
  * Modules payants actifs pour l'institution de l'utilisateur connecté.
  *
- * La liste vient de `GET users/auth-context`. Absente — API antérieure aux modules, profil pas
- * encore chargé — elle se lit comme « tous les modules », comme côté serveur : dans le doute, un
- * tenant garde ce qu'il a. Vide, c'est le socle seul.
+ * La liste vient de `GET users/auth-context`, qui l'envoie toujours. Absente — profil pas encore
+ * chargé — elle se lit comme « aucun module » : lue comme « tous », elle montrait les écrans de
+ * crédit et d'assurance à un tenant du socle le temps du chargement (isolation du socle, lot 3).
+ * Les gardes de route attendent le profil (`afterUserLoaded`). Vide, c'est le socle seul.
  */
 @Injectable({ providedIn: 'root' })
 export class TenantModulesService {
@@ -24,7 +23,7 @@ export class TenantModulesService {
     () => this._auth.connectedUser()?.activeModules ?? null,
   );
 
-  public readonly active = computed<ReadonlySet<string>>(() => new Set(this._list() ?? ALL_MODULES));
+  public readonly active = computed<ReadonlySet<string>>(() => new Set(this._list() ?? []));
 
   /** Modules désactivés par l'institution : leurs écrans restent ouverts en consultation seule. */
   private readonly _readOnlyList = linkedSignal<readonly string[]>(

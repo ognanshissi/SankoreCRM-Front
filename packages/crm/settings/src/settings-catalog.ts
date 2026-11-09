@@ -74,7 +74,7 @@ export const SETTINGS_CATALOG: ReadonlyArray<SettingsGroup> = [
     icon: 'feather:package',
     tint: 'bg-[#f6efe5]',
     entries: [
-      { id: 'products', title: 'Produits', icon: 'feather:credit-card', link: '/settings/products', permission: 'product:read', description: 'Comptes, crédits et épargne.' },
+      { id: 'products', title: 'Produits', icon: 'feather:credit-card', link: '/settings/products', permission: 'product:read', description: 'Le catalogue des produits et offres de l’institution.' },
       { id: 'insurance-products', title: 'Assurances', icon: 'feather:umbrella', link: '/settings/integrations/insurance-products', permission: 'Ins.Product.Manage', description: 'Les offres des assureurs partenaires que vos agents peuvent proposer.' , modules: [TENANT_MODULES.INSURANCE] },
     ],
   },
@@ -109,13 +109,13 @@ export const SETTINGS_CATALOG: ReadonlyArray<SettingsGroup> = [
   {
     id: 'integrations',
     title: 'Intégrations',
-    description: 'Relier SANKORE au core banking et aux back-offices des assureurs.',
+    description: 'Relier SANKORE aux services et systèmes externes de l’institution.',
     icon: 'feather:link',
     tint: 'bg-[#f6efe5]',
     entries: [
       { id: 'integrations-hub', title: 'Vue d’ensemble', icon: 'feather:grid', link: '/settings/integrations', permission: 'lead:source:read', description: 'Les services externes connectables depuis SANKORE, et leur état.' },
       { id: 'webhooks', title: 'Webhooks', icon: 'feather:zap', link: '/settings/webhooks', permission: 'Integration.Webhook.View', description: 'Les événements leads, projets et clients envoyés à vos partenaires, et leurs livraisons.' },
-      { id: 'connections', title: 'Connexions', icon: 'feather:link', link: '/settings/integrations/connections', permission: 'Integration.Connection.View', description: 'Core banking, assurance et téléphonie.' },
+      { id: 'connections', title: 'Connexions', icon: 'feather:link', link: '/settings/integrations/connections', permission: 'Integration.Connection.View', description: 'Les systèmes externes reliés : téléphonie, messagerie, et selon vos modules core banking ou assureurs.' },
       { id: 'mappings', title: 'Correspondances de codes', icon: 'feather:repeat', link: '/settings/integrations/mappings', permission: 'Integration.Mapping.Manage', description: 'Les codes du CRM et ceux attendus par chaque système externe.' , modules: BANKING_OR_INSURANCE },
       { id: 'commands', title: 'Écritures et rejets', icon: 'feather:send', link: '/settings/integrations/commands', permission: 'Integration.Command.View', description: 'Les écritures envoyées aux systèmes externes, et les rejets à traiter.' , modules: BANKING_OR_INSURANCE },
       { id: 'batch-files', title: 'Fichiers échangés', icon: 'feather:file', link: '/settings/integrations/batch-files', permission: 'Integration.Command.View', description: 'Les fichiers sortants et entrants, et les accusés manquants.' , modules: BANKING_OR_INSURANCE },

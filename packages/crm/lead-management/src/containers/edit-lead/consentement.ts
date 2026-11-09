@@ -21,7 +21,15 @@ import {
   RecordConsentRequestChannelEnum,
   RecordConsentRequestTypeEnum,
 } from '@sankore/crm-api';
-import { AuthenticationService, EntityFormReferences, PermissionsService, ProductNamesStore } from '@sankore/crm/common';
+import {
+  AuthenticationService,
+  EntityFormReferences,
+  PermissionsService,
+  ProductNamesStore,
+  TENANT_MODULES,
+  TenantModule,
+  TenantModulesService,
+} from '@sankore/crm/common';
 import { interestedProductLabel } from '../../components/interested-product';
 import { ConvertedLeadNotice } from './converted-lead-notice';
 import { LeadComplianceStore } from './lead-compliance-store';
@@ -35,6 +43,8 @@ interface ConsentPurpose {
   icon: string;
   /** Ce que le prospect accepte, en une phrase ; `product` est le produit demandé, s'il est connu. */
   describe: (product: string | null) => string;
+  /** Le module qui la rend utile ; sans lui, elle n'est proposée que si elle est exigée ou déjà recueillie. */
+  module?: TenantModule;
 }
 
 /**
@@ -54,12 +64,14 @@ const MAIN_PURPOSES: ReadonlyArray<ConsentPurpose> = [
     type: RecordConsentRequestTypeEnum.CreditBureauCheck,
     title: 'Consultation du Bureau d’Information sur le Crédit',
     icon: 'feather:search',
+    module: TENANT_MODULES.BANKING_MICROFINANCE,
     describe: (product) => `Vérifier son historique de crédit avant d’étudier ${product ? `le ${product.toLowerCase()}` : 'sa demande'}.`,
   },
   {
     type: RecordConsentRequestTypeEnum.ThirdPartySharing,
     title: 'Partage avec l’assureur partenaire',
     icon: 'feather:umbrella',
+    module: TENANT_MODULES.INSURANCE,
     describe: () => 'Transmettre son dossier à l’assureur pour l’assurance emprunteur.',
   },
   {
@@ -183,6 +195,7 @@ interface HistoryEntry {
 })
 export class LeadConsentementPage {
   private readonly _permissions = inject(PermissionsService);
+  private readonly _modules = inject(TenantModulesService);
   private readonly _context = inject(LeadEditContext);
   private readonly _productNames = inject(ProductNamesStore).ensureLoaded();
   private readonly _leadsApi = inject(LeadsApiService);
@@ -247,8 +260,11 @@ export class LeadConsentementPage {
   public readonly purposes = computed<PurposeView[]>(() => {
     const required = this._required();
     const latest = this._latestByType();
+    // Isolation du socle (lot 3) : le Bureau d'Information sur le Crédit et l'assureur partenaire
+    // n'ont pas d'objet sans leur module.
+    const active = this._modules.active();
     const shown = [
-      ...MAIN_PURPOSES,
+      ...MAIN_PURPOSES.filter((p) => !p.module || active.has(p.module) || required.has(p.type) || latest.has(p.type)),
       ...OTHER_PURPOSES.filter((p) => required.has(p.type) || latest.has(p.type)),
     ];
     return shown

@@ -7,6 +7,7 @@ import {
   inject,
   input,
   signal,
+  untracked,
 } from '@angular/core';
 import { PageEvent } from '@angular/material/paginator';
 import {
@@ -140,8 +141,13 @@ export class CallHistory {
         return;
       }
 
-      this._resetPage();
-      this._load();
+      // Hors suivi : `_load` lit `tableConfig`, que sa réponse réécrit (totalElements). Lu dans
+      // l'effet, ce signal en devenait une dépendance et chaque réponse relançait la requête —
+      // la fiche appelait `GET telephony/calls` en boucle (2026-11-09).
+      untracked(() => {
+        this._resetPage();
+        this._load();
+      });
     });
   }
 

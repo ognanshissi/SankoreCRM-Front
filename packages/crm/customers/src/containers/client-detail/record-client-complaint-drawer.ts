@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, inject, OnInit, signal } from '@angular/core';
+import { TENANT_MODULES, TenantModulesService } from '@sankore/crm/common';
 import { DIALOG_DATA, DialogRef } from '@angular/cdk/dialog';
 import { HttpErrorResponse } from '@angular/common/http';
 import { FormField, FormRoot, form, maxLength, required, submit } from '@angular/forms/signals';
@@ -10,7 +11,7 @@ import { TasSelect } from '@talisoft/ui/select';
 import { TasDrawerAction, TasDrawerContent, TasDrawerTitle, TasSideDrawer } from '@talisoft/ui/side-drawer';
 import { SnackbarService } from '@talisoft/ui/snackbar';
 import { ClientComplaintsApiService, ProductHoldingsApiService } from '@sankore/crm-api';
-import { COMPLAINT_CATEGORY_OPTIONS, COMPLAINT_CHANNEL_OPTIONS } from './client-complaints.labels';
+import { complaintCategoryOptions, COMPLAINT_CHANNEL_OPTIONS } from './client-complaints.labels';
 
 export interface RecordClientComplaintDrawerData {
   clientId: string;
@@ -144,7 +145,9 @@ export class RecordClientComplaintDrawer implements OnInit {
   public readonly data = inject<RecordClientComplaintDrawerData>(DIALOG_DATA);
 
   public readonly channelOptions = COMPLAINT_CHANNEL_OPTIONS;
-  public readonly categoryOptions = COMPLAINT_CATEGORY_OPTIONS;
+  public readonly categoryOptions = complaintCategoryOptions(
+    inject(TenantModulesService).has(TENANT_MODULES.BANKING_MICROFINANCE),
+  );
   public readonly holdingOptions = signal<{ value: string; label: string }[]>([]);
 
   public readonly model = signal(RecordClientComplaintFormModel.instantiate());

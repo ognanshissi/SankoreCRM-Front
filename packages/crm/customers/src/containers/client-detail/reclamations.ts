@@ -11,10 +11,10 @@ import { SideDrawerService } from '@talisoft/ui/side-drawer';
 import { TableConfig, TasTable } from '@talisoft/ui/table';
 import { Severity, TasTag } from '@talisoft/ui/tag';
 import { ClientComplaintSummaryDto, ClientComplaintsApiService } from '@sankore/crm-api';
-import { PermissionsService } from '@sankore/crm/common';
+import { PermissionsService, TENANT_MODULES, TenantModulesService } from '@sankore/crm/common';
 import { ClientDetailStore } from '../../models/client-detail.store';
 import {
-  COMPLAINT_CATEGORY_OPTIONS,
+  complaintCategoryOptions,
   COMPLAINT_STATUS_FILTER_OPTIONS,
   complaintCategoryLabel,
   complaintChannelLabel,
@@ -66,7 +66,10 @@ export class ClientComplaintsPage {
   public readonly canRecord = computed(() => this._canManage() && !this.store.isReadOnly());
 
   public readonly statusOptions = COMPLAINT_STATUS_FILTER_OPTIONS;
-  public readonly categoryOptions = COMPLAINT_CATEGORY_OPTIONS;
+  // Le filtre garde « Crédit » et « Épargne » tant que le module est consultable (désactivé compris).
+  public readonly categoryOptions = complaintCategoryOptions(
+    inject(TenantModulesService).canRead(TENANT_MODULES.BANKING_MICROFINANCE),
+  );
 
   // Filtres en paramètres d'URL, comme les autres listes : un lien (celui d'une notification
   // de retard, par exemple) rouvre la même vue.

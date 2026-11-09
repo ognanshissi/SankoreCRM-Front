@@ -11,7 +11,7 @@ import {
   UsersApiService,
   WorkflowTemplatesApiService,
 } from '@sankore/crm-api';
-import { PermissionCode, PermissionsService } from '@sankore/crm/common';
+import { PermissionCode, PermissionsService, TENANT_MODULES, TenantModulesService } from '@sankore/crm/common';
 
 export type StatusTone = 'ok' | 'warn' | 'neutral';
 
@@ -47,6 +47,7 @@ const plural = (n: number, one: string, many: string) => `${n} ${n > 1 ? many : 
 @Injectable({ providedIn: 'root' })
 export class SettingsStatusService {
   private readonly _permissions = inject(PermissionsService);
+  private readonly _modules = inject(TenantModulesService);
   private readonly _agencies = inject(AgenciesApiService);
   private readonly _territories = inject(TerritoriesApiService);
   private readonly _users = inject(UsersApiService);
@@ -160,14 +161,18 @@ export class SettingsStatusService {
             ? { label: plural(production.length, 'connexion en production', 'connexions en production'), tone: 'ok' }
             : { label: simulators > 0 ? 'Seul le simulateur est actif' : 'Aucune connexion active', tone: 'warn' };
 
-          const coreBanking = production.filter((c) => c.family === 'CoreBanking').length;
-          const coreSimulator = r.connections.some((c) => c.family === 'CoreBanking' && c.kind === 'Fake');
-          setup.push({
-            title: 'Core banking',
-            detail: coreBanking > 0 ? 'Connecté en production' : coreSimulator ? 'Seul le simulateur est actif' : 'Aucune connexion',
-            done: coreBanking > 0,
-            link: '/settings/integrations/connections',
-          });
+          // L'étape core banking n'existe qu'avec Banking - Microfinance : un tenant du socle
+          // n'atteindrait sinon jamais 100 % (isolation du socle, lot 3).
+          if (this._modules.has(TENANT_MODULES.BANKING_MICROFINANCE)) {
+            const coreBanking = production.filter((c) => c.family === 'CoreBanking').length;
+            const coreSimulator = r.connections.some((c) => c.family === 'CoreBanking' && c.kind === 'Fake');
+            setup.push({
+              title: 'Core banking',
+              detail: coreBanking > 0 ? 'Connecté en production' : coreSimulator ? 'Seul le simulateur est actif' : 'Aucune connexion',
+              done: coreBanking > 0,
+              link: '/settings/integrations/connections',
+            });
+          }
         }
 
         return { entries, setup };

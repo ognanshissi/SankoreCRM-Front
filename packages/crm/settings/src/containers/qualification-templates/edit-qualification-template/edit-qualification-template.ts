@@ -40,6 +40,8 @@ import {
   DynamicFormSchema,
   PermissionsService,
   ProductConfigService,
+  TENANT_MODULES,
+  TenantModulesService,
 } from '@sankore/crm/common';
 import {
   EditableQuestion, EditableRule, EditableSection,
@@ -116,6 +118,7 @@ class TemplateScopeFormModel {
 })
 export class EditQualificationTemplate implements OnInit {
   private readonly _leadsApi = inject(LeadsApiService);
+  private readonly _modules = inject(TenantModulesService);
   private readonly _snackbar = inject(SnackbarService);
   private readonly _confirmDialog = inject(ConfirmDialogService);
   private readonly _breadcrumbService = inject(BreadcrumbService);
@@ -219,6 +222,14 @@ export class EditQualificationTemplate implements OnInit {
   /** Un questionnaire santé n'est proposé que pour une catégorie d'assurance. */
   public readonly isInsurance = computed(() =>
     isInsuranceCategory(this.editProductType()),
+  );
+
+  /**
+   * La case « Questionnaire santé » : seulement avec l'Assurance, ou si le questionnaire l'est déjà
+   * (isolation du socle, lot 3).
+   */
+  public readonly showHealthOption = computed(
+    () => this._modules.canRead(TENANT_MODULES.INSURANCE) || !!this.scopeForm.isHealthQuestionnaire().value(),
   );
 
   public readonly isDraft = computed(() => this.templateStatus() === 'Draft');

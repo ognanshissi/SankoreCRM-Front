@@ -10,7 +10,7 @@ import { Menu, MenuItem, TasMenuTrigger } from '@talisoft/ui/menu';
 import { SideDrawerService } from '@talisoft/ui/side-drawer';
 import { SnackbarService } from '@talisoft/ui/snackbar';
 import { AuditApiService, InvitationSentDto, UsersApiService } from '@sankore/crm-api';
-import { AuthenticationService, BreadcrumbService, PermissionsService } from '@sankore/crm/common';
+import { AuthenticationService, BreadcrumbService, PermissionsService, TENANT_MODULES, TenantModulesService } from '@sankore/crm/common';
 import { EditUserState } from './edit-user-state';
 import { ImpersonateDialog, ImpersonateDialogData } from './impersonate-dialog';
 
@@ -156,6 +156,7 @@ export class EditUserNavigation {
   private readonly _breadcrumb = inject(BreadcrumbService);
   private readonly _breadcrumbOwner = inject(DestroyRef);
   private readonly _permissions = inject(PermissionsService);
+  private readonly _modules = inject(TenantModulesService);
   private readonly _drawer = inject(SideDrawerService);
   private readonly _snackbar = inject(SnackbarService);
   public readonly auth = inject(AuthenticationService);
@@ -213,7 +214,10 @@ export class EditUserNavigation {
       ...(this.canManageObjectives() && (u?.roles ?? []).some((r) => AGENT_ROLES.includes(r))
         ? [{ route: 'objectifs', label: 'Objectifs', hint: 'Premier contact, conversions du mois', danger: false }]
         : []),
-      { route: 'carte-professionnelle', label: 'Carte professionnelle', hint: "Intermédiaire d'assurance (CIMA)", danger: false },
+      // Intermédiaire d'assurance : un onglet de l'Assurance (isolation du socle, lot 3).
+      ...(this._modules.canRead(TENANT_MODULES.INSURANCE)
+        ? [{ route: 'carte-professionnelle', label: 'Carte professionnelle', hint: "Intermédiaire d'assurance (CIMA)", danger: false }]
+        : []),
       {
         route: 'connexions',
         label: 'Connexions et sécurité',

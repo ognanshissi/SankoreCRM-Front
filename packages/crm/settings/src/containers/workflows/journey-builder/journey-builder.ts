@@ -23,7 +23,7 @@ import {
   WorkflowTemplateDto,
   WorkflowTemplatesApiService,
 } from '@sankore/crm-api';
-import { BreadcrumbService, PermissionsService } from '@sankore/crm/common';
+import { BreadcrumbService, PermissionsService, TENANT_MODULES, TenantModulesService } from '@sankore/crm/common';
 import {
   FlowRow,
   hasAssignee,
@@ -98,6 +98,7 @@ type DragPayload = { type: 'step'; kind: StepKind } | { type: 'trigger'; preset:
 })
 export class JourneyBuilder implements OnInit {
   private readonly _api = inject(WorkflowTemplatesApiService);
+  private readonly _modules = inject(TenantModulesService);
   private readonly _rolesApi = inject(RolesApiService);
   private readonly _snackbar = inject(SnackbarService);
   private readonly _confirm = inject(ConfirmDialogService);
@@ -113,7 +114,15 @@ export class JourneyBuilder implements OnInit {
   public readonly id = input.required<string>();
 
   public readonly paletteGroups = PALETTE_GROUPS;
-  public readonly kindsOf = kindsOf;
+  /**
+   * La palette. « Action Integration » attend le core banking ou l'assureur : sans l'un des deux
+   * modules, elle n'a rien à attendre (isolation du socle, lot 3). Une étape déjà posée reste affichée.
+   */
+  public readonly kindsOf = (group: Parameters<typeof kindsOf>[0]) =>
+    kindsOf(group).filter(
+      (k) => k !== StepKind.IntegrationAction
+        || this._modules.has(TENANT_MODULES.BANKING_MICROFINANCE, TENANT_MODULES.INSURANCE),
+    );
   public readonly STEP_KIND_META = STEP_KIND_META;
   public readonly STEP_KIND_SUPPORT = STEP_KIND_SUPPORT;
   public readonly triggerPresets = TRIGGER_PRESETS;

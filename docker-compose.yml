@@ -29,7 +29,7 @@ services:
       # statique et ne lit pas process.env, c'est ce qui rend l'image réutilisable d'un
       # environnement à l'autre. `host.docker.internal` joint l'API qui tourne sur la
       # machine hôte ; en déploiement, le domaine public de l'API.
-      NG_API_URL: "${NG_API_URL:-http://localhost:5080}"
+      NG_API_URL: "${NG_API_URL:-https://localhost:5080}"
       # Hôte public d'ingestion (webhooks remis aux fournisseurs). Vide → retombe sur
       # l'URL de l'API, ce qui est le comportement attendu en local.
       NG_INGEST_URL: "${NG_INGEST_URL:-}"

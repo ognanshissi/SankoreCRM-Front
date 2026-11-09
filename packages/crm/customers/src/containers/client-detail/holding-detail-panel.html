@@ -117,6 +117,7 @@
 
           @if (mode() === 'specifics') {
             <form [formRoot]="specificsForm" class="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+              @if (terms() === 'insurance') {
               <tas-form-field>
                 <tas-label>Capital assuré</tas-label>
                 <input tasInput type="number" [formField]="specificsForm.insuredCapital" />
@@ -125,14 +126,18 @@
                 <tas-label>Prime</tas-label>
                 <input tasInput type="number" [formField]="specificsForm.premium" />
               </tas-form-field>
+              }
+              @if (terms() !== 'standard') {
               <tas-form-field>
                 <tas-label>Périodicité</tas-label>
                 <tas-select [options]="periodicityOptions" placeholder="Non précisée" [formField]="specificsForm.periodicity"></tas-select>
               </tas-form-field>
+              }
               <tas-form-field>
                 <tas-label>Durée (mois)</tas-label>
                 <input tasInput type="number" [formField]="specificsForm.durationMonths" />
               </tas-form-field>
+              @if (terms() === 'banking') {
               <tas-form-field>
                 <tas-label>Taux annuel (%)</tas-label>
                 <input tasInput type="number" [formField]="specificsForm.annualRatePercent" />
@@ -141,8 +146,11 @@
                 <tas-label>Dépôt initial</tas-label>
                 <input tasInput type="number" [formField]="specificsForm.initialDeposit" />
               </tas-form-field>
+              }
+              @if (terms() !== 'standard') {
               <!-- La devise du contrat ne se change pas ici : un nouveau contrat prend celle de l'institution. -->
               <p class="self-end pb-2 text-xs text-slate-500">Montants en {{ specificsForm.currency().value() }}</p>
+              }
               <tas-date-picker mode="date" [formField]="specificsForm.effectiveFrom">Prise d'effet</tas-date-picker>
               <tas-form-field class="sm:col-span-2">
                 <tas-label>Remarques</tas-label>
@@ -167,6 +175,7 @@
             </form>
           } @else {
             <dl class="mt-3 grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-3">
+              @if (terms() === 'insurance') {
               <div>
                 <dt class="text-xs text-slate-400">Capital assuré</dt>
                 <dd class="text-sm font-medium text-slate-800 tabular-nums">
@@ -179,24 +188,29 @@
                   {{ formatAmount(h.specifics?.premium, h.specifics?.currency) }}
                 </dd>
               </div>
+              }
+              @if (terms() !== 'standard') {
               <div>
                 <dt class="text-xs text-slate-400">Périodicité</dt>
                 <dd class="text-sm font-medium text-slate-800">
                   {{ periodicityLabel(h.specifics?.periodicity) }}
                 </dd>
               </div>
+              }
               <div>
                 <dt class="text-xs text-slate-400">Durée</dt>
                 <dd class="text-sm font-medium text-slate-800 tabular-nums">
                   {{ h.specifics?.durationMonths ? h.specifics.durationMonths + ' mois' : '—' }}
                 </dd>
               </div>
+              @if (terms() === 'banking') {
               <div>
                 <dt class="text-xs text-slate-400">Taux annuel</dt>
                 <dd class="text-sm font-medium text-slate-800 tabular-nums">
                   {{ h.specifics?.annualRatePercent != null ? h.specifics.annualRatePercent + ' %' : '—' }}
                 </dd>
               </div>
+              }
               <div>
                 <dt class="text-xs text-slate-400">Prise d'effet</dt>
                 <dd class="text-sm font-medium text-slate-800">
@@ -211,6 +225,7 @@
         </div>
 
         <!-- Clause bénéficiaire -->
+        @if (showBeneficiaryClause()) {
         <div class="rounded-lg border border-slate-200 p-3">
           <div class="flex flex-wrap items-center justify-between gap-2">
             <div>
@@ -340,6 +355,7 @@
             </tas-table>
           }
         </div>
+        }
 
         <!-- Versions de clause -->
         @if (versions().length > 1) {

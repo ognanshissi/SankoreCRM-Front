@@ -252,8 +252,8 @@ export function smsSegments(text: string): { segments: number; length: number; p
 }
 
 export const TARGET_OPTIONS = [
-  { label: 'Core banking (CBS)', value: 'CoreBanking' },
-  { label: 'Back office assurance', value: 'Insurance' },
+  { label: 'Core banking (CBS)', value: 'CoreBanking', module: 'BankingMicrofinance' },
+  { label: 'Back office assurance', value: 'Insurance', module: 'Insurance' },
 ];
 
 /** Types dont l'étape est confiée à un rôle, avec un délai. */

@@ -6,9 +6,10 @@ import { AuthenticationService } from './authentification.service';
 import { TenantModulesService } from './tenant-modules.service';
 
 /**
- * Le point qui compte : une liste ABSENTE n'est pas une liste vide. Absente, c'est une API
- * antérieure aux modules ou un profil pas encore chargé, et le serveur lit alors « tous les
- * modules » ; la lire comme vide masquerait des écrans que l'institution a payés.
+ * Une liste ABSENTE se lit comme « aucun module » (isolation du socle, lot 3, 2026-11-09). Le
+ * serveur l'envoie toujours — un tenant antérieur aux modules y reçoit les deux — : absente, c'est
+ * un profil pas encore chargé, et la lire comme « tous » montrait les écrans de crédit et
+ * d'assurance à un tenant du socle. Les gardes de route attendent le profil.
  */
 describe('TenantModulesService', () => {
   const user = signal<CurrentUserDto | null>(null);
@@ -22,11 +23,11 @@ describe('TenantModulesService', () => {
     service = TestBed.inject(TenantModulesService);
   });
 
-  it('lit une liste absente comme tous les modules', () => {
+  it('lit une liste absente comme aucun module', () => {
     user.set({ activeModules: null });
 
-    expect(service.has('BankingMicrofinance')).toBe(true);
-    expect(service.has('Insurance')).toBe(true);
+    expect(service.has('BankingMicrofinance')).toBe(false);
+    expect(service.has('Insurance')).toBe(false);
   });
 
   it('lit une liste vide comme le socle seul', () => {

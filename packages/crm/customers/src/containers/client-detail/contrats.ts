@@ -19,7 +19,13 @@ import { TasSelect } from '@talisoft/ui/select';
 import { TableConfig, TasTable } from '@talisoft/ui/table';
 import { Severity, TasTag } from '@talisoft/ui/tag';
 import { ClientContractDto, ProductHoldingsApiService } from '@sankore/crm-api';
-import { PermissionsService, holdingStatusLabel, holdingStatusSeverity } from '@sankore/crm/common';
+import {
+  PermissionsService,
+  holdingStatusLabel,
+  holdingStatusSeverity,
+  TENANT_MODULES,
+  TenantModulesService,
+} from '@sankore/crm/common';
 // Les statuts d'une police appartiennent au module Intégration.
 // eslint-disable-next-line @nx/enforce-module-boundaries
 import { policyStatusMeta } from '@sankore/crm/integration';
@@ -115,16 +121,23 @@ export class ClientContrats implements OnDestroy {
   private readonly _holdingsApi = inject(ProductHoldingsApiService);
   private readonly _router = inject(Router);
   private readonly _permissions = inject(PermissionsService);
+  private readonly _modules = inject(TenantModulesService);
   protected readonly store = inject(ClientDetailStore);
 
   private readonly _canManageProjects = this._permissions.can('lead:opportunity:manage');
 
   public readonly canCreateProject = computed(() => this._canManageProjects() && !this.store.isReadOnly());
 
-  public readonly natureOptions = NATURE_ORDER.map((nature) => ({
-    label: NATURE_LABELS[nature],
-    value: nature,
-  }));
+  /**
+   * Isolation du socle (lot 3) : « Assurances » avec l'Assurance, « Comptes et épargne » et « Crédits »
+   * avec Banking - Microfinance ; un tenant du socle n'a que ses produits, et pas de filtre.
+   */
+  public readonly natureOptions = computed(() =>
+    NATURE_ORDER.filter((nature) =>
+      nature === 'Insurance' ? this._modules.canRead(TENANT_MODULES.INSURANCE)
+        : nature === 'Other' || this._modules.canRead(TENANT_MODULES.BANKING_MICROFINANCE),
+    ).map((nature) => ({ label: NATURE_LABELS[nature], value: nature })),
+  );
 
   /**
    * Lié au query param `?holding=<id>` : la conversion d'un lead, le bloc des projets et la

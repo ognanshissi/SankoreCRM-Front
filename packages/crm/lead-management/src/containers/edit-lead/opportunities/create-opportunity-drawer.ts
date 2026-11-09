@@ -78,7 +78,7 @@ class CreateOpportunityFormModel {
         <form [formRoot]="formSchema" class="flex flex-col gap-4">
           <tas-form-field>
             <tas-label>Titre <span class="text-functional-error">*</span></tas-label>
-            <input tasInput type="text" placeholder="Ex. Crédit pour un chantier à Daloa" [formField]="formSchema.title" />
+            <input tasInput type="text" placeholder="Ex. Équipement du nouveau magasin à Daloa" [formField]="formSchema.title" />
             @if (formSchema.title().touched() && formSchema.title().invalid()) {
               <tas-error>{{ formSchema.title().errors()[0].message }}</tas-error>
             }

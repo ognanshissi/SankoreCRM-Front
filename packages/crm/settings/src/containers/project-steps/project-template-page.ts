@@ -29,7 +29,13 @@ import { TasAlert } from '@talisoft/ui/alert';
 import { SnackbarService } from '@talisoft/ui/snackbar';
 import { TasSpinner } from '@talisoft/ui/spinner';
 import { TasSwitch } from '@talisoft/ui/switch';
-import { BreadcrumbService, PermissionsService, PROJECT_AMOUNT_KINDS } from '@sankore/crm/common';
+import {
+  BreadcrumbService,
+  isAmountKindOpen,
+  PermissionsService,
+  PROJECT_AMOUNT_KINDS,
+  TenantModulesService,
+} from '@sankore/crm/common';
 import {
   FAMILY_AMOUNT_KIND,
   fieldKeyOf,
@@ -193,6 +199,7 @@ export class ProjectTemplatePage implements OnInit {
   private readonly _router = inject(Router);
   private readonly _breadcrumb = inject(BreadcrumbService);
   private readonly _permissions = inject(PermissionsService);
+  private readonly _modules = inject(TenantModulesService);
 
   public readonly canManage = this._permissions.can('lead:pipeline-stage:manage');
   private readonly _key = this._route.snapshot.paramMap.get('templateId') ?? NEW_TEMPLATE;
@@ -217,8 +224,17 @@ export class ProjectTemplatePage implements OnInit {
     return [{ value: NO_CIRCUIT, label: 'Aucun' }, ...active, ...orphans];
   });
   public readonly phaseOptions = PHASE_OPTIONS;
-  public readonly presets = PRESETS;
-  public readonly amountKindOptions = PROJECT_AMOUNT_KINDS.map((k) => ({ value: k.value, label: k.label }));
+  /**
+   * Isolation du socle (lot 3) : crédit et dépôt relèvent de Banking - Microfinance, la prime de
+   * l'Assurance — le serveur refuse les autres. La nature déjà enregistrée reste affichée : un
+   * gabarit créé avec le module se modifie encore après sa désactivation.
+   */
+  public readonly presets = computed(() => PRESETS.filter((p) => isAmountKindOpen(p.amountKind, this._modules.active())));
+  public readonly amountKindOptions = computed(() =>
+    PROJECT_AMOUNT_KINDS.filter(
+      (k) => isAmountKindOpen(k.value, this._modules.active()) || k.value === this.template()?.amountKind,
+    ).map((k) => ({ value: k.value, label: k.label })),
+  );
   public readonly maxSteps = 12;
   public readonly maxFields = 30;
   public readonly fieldTypes = PROJECT_FIELD_TYPES;
@@ -242,7 +258,7 @@ export class ProjectTemplatePage implements OnInit {
   public readonly phaseLabel = phaseLabel;
   public readonly noCircuit = NO_CIRCUIT;
   public readonly amountKindLabel = computed(
-    () => this.amountKindOptions.find((k) => k.value === this.model().amountKind)?.label ?? '',
+    () => PROJECT_AMOUNT_KINDS.find((k) => k.value === this.model().amountKind)?.label ?? '',
   );
 
   public model = signal(TemplateFormModel.instantiate(null));
