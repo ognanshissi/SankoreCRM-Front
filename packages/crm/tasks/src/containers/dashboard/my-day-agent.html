@@ -46,6 +46,15 @@
           {{ heroLate() ? 'En retard · à faire en premier' : 'À faire en premier' }}
         </p>
         <h2 class="mt-0.5 truncate text-xl font-bold">{{ taskVerb(task) }} {{ taskName(task) }}</h2>
+        @if (badges(task); as list) {
+          @if (list.length) {
+            <p class="mt-1 flex flex-wrap gap-1.5">
+              @for (b of list; track b.label) {
+                <span class="rounded-full px-2 py-0.5 text-[11px] font-semibold" [class]="b.tone">{{ b.label }}</span>
+              }
+            </p>
+          }
+        }
         @if (taskSubtitle(task)) {
           <p class="mt-0.5 truncate text-sm text-white/80">{{ taskSubtitle(task) }}</p>
         }
@@ -200,6 +209,11 @@
               <!-- Sans lead, le titre de la tâche est tout ce qu'il y a à lire : il prend le gras du nom. -->
               <p class="truncate text-sm" [class]="name(item) ? 'text-slate-500' : 'font-semibold text-slate-900'" [class.line-through]="item.done">
                 {{ verb(item) }} <span class="font-semibold text-slate-900">{{ name(item) }}</span>
+                @if (!item.done) {
+                  @for (b of badges(item); track b.label) {
+                    <span class="ml-1.5 rounded-full px-2 py-0.5 align-middle text-[11px] font-semibold" [class]="b.tone">{{ b.label }}</span>
+                  }
+                }
               </p>
               @if (subtitle(item)) {
                 <p class="truncate text-xs text-slate-500">{{ subtitle(item) }}</p>

@@ -21,13 +21,19 @@ import { Observable }                                        from 'rxjs';
 // @ts-ignore
 import { IntentThresholdsDto } from '../model/intent-thresholds-dto.interface';
 // @ts-ignore
+import { KeyAccountSettingsDto } from '../model/key-account-settings-dto.interface';
+// @ts-ignore
 import { LeadSettingDto } from '../model/lead-setting-dto.interface';
+// @ts-ignore
+import { ProblemDetails } from '../model/problem-details.interface';
 // @ts-ignore
 import { RetentionPreviewDto } from '../model/retention-preview-dto.interface';
 // @ts-ignore
 import { SetIntentThresholdsRequest } from '../model/set-intent-thresholds-request.interface';
 // @ts-ignore
 import { SetIntentThresholdsResultDto } from '../model/set-intent-thresholds-result-dto.interface';
+// @ts-ignore
+import { SetKeyAccountSettingsRequest } from '../model/set-key-account-settings-request.interface';
 // @ts-ignore
 import { UpdateLeadSettingRequest } from '../model/update-lead-setting-request.interface';
 
@@ -152,6 +158,68 @@ export class LeadSettingsApiService {
 
         let localVarPath = `/api/v1/lead-settings/intent-thresholds`;
         return this.httpClient.request<IntentThresholdsDto>('get', `${this.configuration.basePath}${localVarPath}`,
+            {
+                context: localVarHttpContext,
+                responseType: <any>responseType_,
+                withCredentials: this.configuration.withCredentials,
+                headers: localVarHeaders,
+                observe: observe,
+                reportProgress: reportProgress
+            }
+        );
+    }
+
+    /**
+     * What makes a company prospect a big one
+     * Yearly-purchase thresholds (0 &#x3D; not set) and targeted sectors, read by the score\&#39;s « Potentiel » dimension.
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     */
+    public getKeyAccountSettings(observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<KeyAccountSettingsDto>;
+    public getKeyAccountSettings(observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<KeyAccountSettingsDto>>;
+    public getKeyAccountSettings(observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<KeyAccountSettingsDto>>;
+    public getKeyAccountSettings(observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
+
+        let localVarHeaders = this.defaultHeaders;
+
+        let localVarCredential: string | undefined;
+        // authentication (BearerToken) required
+        localVarCredential = this.configuration.lookupCredential('BearerToken');
+        if (localVarCredential) {
+            localVarHeaders = localVarHeaders.set('Authorization', 'Bearer ' + localVarCredential);
+        }
+
+        let localVarHttpHeaderAcceptSelected: string | undefined = options && options.httpHeaderAccept;
+        if (localVarHttpHeaderAcceptSelected === undefined) {
+            // to determine the Accept header
+            const httpHeaderAccepts: string[] = [
+                'application/json'
+            ];
+            localVarHttpHeaderAcceptSelected = this.configuration.selectHeaderAccept(httpHeaderAccepts);
+        }
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+
+        let localVarHttpContext: HttpContext | undefined = options && options.context;
+        if (localVarHttpContext === undefined) {
+            localVarHttpContext = new HttpContext();
+        }
+
+
+        let responseType_: 'text' | 'json' | 'blob' = 'json';
+        if (localVarHttpHeaderAcceptSelected) {
+            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+                responseType_ = 'text';
+            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+                responseType_ = 'json';
+            } else {
+                responseType_ = 'blob';
+            }
+        }
+
+        let localVarPath = `/api/v1/lead-settings/key-accounts`;
+        return this.httpClient.request<KeyAccountSettingsDto>('get', `${this.configuration.basePath}${localVarPath}`,
             {
                 context: localVarHttpContext,
                 responseType: <any>responseType_,
@@ -420,6 +488,83 @@ export class LeadSettingsApiService {
             {
                 context: localVarHttpContext,
                 body: setIntentThresholdsRequest,
+                responseType: <any>responseType_,
+                withCredentials: this.configuration.withCredentials,
+                headers: localVarHeaders,
+                observe: observe,
+                reportProgress: reportProgress
+            }
+        );
+    }
+
+    /**
+     * Change what makes a company prospect a big one
+     * Both thresholds and the sectors at once. 0 ≤ good &lt; major when both are set (else 400 KEY_ACCOUNT_THRESHOLDS_INVALID); an unknown sector is 400 LEAD_ACTIVITY_SECTOR_INVALID. The open company prospects are rescored in the background. Requires permission: lead:dispatching-rule:manage, like the temperature thresholds.
+     * @param setKeyAccountSettingsRequest 
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     */
+    public setKeyAccountSettings(setKeyAccountSettingsRequest: SetKeyAccountSettingsRequest, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json' | 'application/problem+json', context?: HttpContext}): Observable<KeyAccountSettingsDto>;
+    public setKeyAccountSettings(setKeyAccountSettingsRequest: SetKeyAccountSettingsRequest, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json' | 'application/problem+json', context?: HttpContext}): Observable<HttpResponse<KeyAccountSettingsDto>>;
+    public setKeyAccountSettings(setKeyAccountSettingsRequest: SetKeyAccountSettingsRequest, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json' | 'application/problem+json', context?: HttpContext}): Observable<HttpEvent<KeyAccountSettingsDto>>;
+    public setKeyAccountSettings(setKeyAccountSettingsRequest: SetKeyAccountSettingsRequest, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json' | 'application/problem+json', context?: HttpContext}): Observable<any> {
+        if (setKeyAccountSettingsRequest === null || setKeyAccountSettingsRequest === undefined) {
+            throw new Error('Required parameter setKeyAccountSettingsRequest was null or undefined when calling setKeyAccountSettings.');
+        }
+
+        let localVarHeaders = this.defaultHeaders;
+
+        let localVarCredential: string | undefined;
+        // authentication (BearerToken) required
+        localVarCredential = this.configuration.lookupCredential('BearerToken');
+        if (localVarCredential) {
+            localVarHeaders = localVarHeaders.set('Authorization', 'Bearer ' + localVarCredential);
+        }
+
+        let localVarHttpHeaderAcceptSelected: string | undefined = options && options.httpHeaderAccept;
+        if (localVarHttpHeaderAcceptSelected === undefined) {
+            // to determine the Accept header
+            const httpHeaderAccepts: string[] = [
+                'application/json',
+                'application/problem+json'
+            ];
+            localVarHttpHeaderAcceptSelected = this.configuration.selectHeaderAccept(httpHeaderAccepts);
+        }
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+
+        let localVarHttpContext: HttpContext | undefined = options && options.context;
+        if (localVarHttpContext === undefined) {
+            localVarHttpContext = new HttpContext();
+        }
+
+
+        // to determine the Content-Type header
+        const consumes: string[] = [
+            'application/json'
+        ];
+        const httpContentTypeSelected: string | undefined = this.configuration.selectHeaderContentType(consumes);
+        if (httpContentTypeSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Content-Type', httpContentTypeSelected);
+        }
+
+        let responseType_: 'text' | 'json' | 'blob' = 'json';
+        if (localVarHttpHeaderAcceptSelected) {
+            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+                responseType_ = 'text';
+            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+                responseType_ = 'json';
+            } else {
+                responseType_ = 'blob';
+            }
+        }
+
+        let localVarPath = `/api/v1/lead-settings/key-accounts`;
+        return this.httpClient.request<KeyAccountSettingsDto>('put', `${this.configuration.basePath}${localVarPath}`,
+            {
+                context: localVarHttpContext,
+                body: setKeyAccountSettingsRequest,
                 responseType: <any>responseType_,
                 withCredentials: this.configuration.withCredentials,
                 headers: localVarHeaders,

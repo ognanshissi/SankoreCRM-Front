@@ -45,6 +45,18 @@ export const LEAD_TARGET_FIELDS: LeadTargetField[] = [
   { key: 'referrer',          label: 'Provenance',              required: false },
   { key: 'latitude',          label: 'Latitude',                required: false },
   { key: 'longitude',         label: 'Longitude',               required: false },
+  // L'entreprise (grands comptes, lot 1) : un formulaire web n'en transmettait rien, et un lead B2B
+  // du site arrivait comme un particulier. Le type se lit aussi en français (« Entreprise »), le
+  // secteur par son code ou son libellé, l'effectif par sa tranche ou un nombre de personnes.
+  { key: 'prospectType',      label: 'Type de prospect',        required: false },
+  { key: 'companyName',       label: 'Nom de l\'entreprise',     required: false },
+  { key: 'companyEmail',      label: 'E-mail de l\'entreprise',  required: false },
+  { key: 'companyPhone',      label: 'Téléphone de l\'entreprise', required: false },
+  { key: 'website',           label: 'Site web',                required: false },
+  { key: 'activitySector',    label: 'Secteur d\'activité',      required: false },
+  { key: 'companySize',       label: 'Effectif',                required: false },
+  { key: 'estimatedAnnualPurchases', label: 'Volume d\'achat annuel estimé', required: false },
+  { key: 'contactJobTitle',   label: 'Fonction du contact',     required: false },
 ];
 
 /** Le préfixe des champs personnalisés comme cible de correspondance ou colonne d'import. */

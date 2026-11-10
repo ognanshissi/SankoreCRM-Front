@@ -32,6 +32,7 @@ import { PullConnection } from '../pull-connection';
 import { PullDryRun } from '../pull-dry-run';
 import { RunHistory } from '../run-history';
 import { SourceScorePoints } from '../source-score-points';
+import { SourceProductRequest, SourceProductRequestChange } from '../source-product-request';
 import { IngestionList } from '../ingestion-list';
 import { TasCard } from '@talisoft/ui/card';
 import { TasSpinner } from '@talisoft/ui/spinner';
@@ -48,7 +49,7 @@ import { PromoteButton } from '../../../components/promote-to-production/promote
 @Component({
   selector: 'edit-lead-source',
   standalone: true,
-  imports: [PromoteButton, SourceScorePoints, 
+  imports: [PromoteButton, SourceScorePoints, SourceProductRequest, 
     RouterLink,
     TasCard,
     TasSpinner,
@@ -560,6 +561,23 @@ export class EditLeadSource implements OnInit {
       });
   }
 
+  public onProductRequestSaved(change: SourceProductRequestChange): void {
+    const src = this.source();
+    if (!src) return;
+
+    this._sourcesService
+      .update(src.id!, {
+        ...this._unchanged(src),
+        settings: writeSettings(src.settings, src.mode, { defaultProductCode: change.defaultProductCode }),
+        productRequestIsHot: change.productRequestIsHot,
+      })
+      .pipe(catchError(() => EMPTY))
+      .subscribe(() => {
+        this._snackbar.success('Enregistré', 'La demande de produit de cette source a été mise à jour.');
+        this._load(src.id!);
+      });
+  }
+
   public onScorePointsSaved(scorePoints: number | null): void {
     const src = this.source();
     if (!src) return;
@@ -596,6 +614,8 @@ export class EditLeadSource implements OnInit {
       defaultAgencyId: src.defaultAgencyId ?? null,
       defaultDispatchingRuleId: src.defaultDispatchingRuleId ?? null,
       scorePoints: src.scorePoints ?? null,
+      // Remplacé lui aussi : l'omettre remettait le réglage du canal à chaque enregistrement d'onglet.
+      productRequestIsHot: src.productRequestIsHot ?? null,
     };
   }
 

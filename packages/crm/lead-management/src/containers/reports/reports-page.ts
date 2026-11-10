@@ -267,6 +267,33 @@ export class ReportsPage implements OnInit {
     })),
   );
 
+  /**
+   * Grands comptes, lot 4 : les entreprises captées sur la période selon leur palier, puis selon leur
+   * secteur. `byPotential` est nul tant que l'institution n'a réglé aucun seuil.
+   */
+  public readonly potentials = computed<BarItem[] | null>(() => {
+    const rows = this.report()?.byPotential;
+    if (!rows) return null;
+    const label: Record<string, string> = { KeyAccount: 'Grands comptes', GoodCustomer: 'Bons clients', None: 'Autres entreprises' };
+    return rows.map((p) => ({
+      key: String(p.tier),
+      label: label[String(p.tier)] ?? String(p.tier),
+      value: p.captured ?? 0,
+      value2: p.converted ?? 0,
+      note: `${p.projects ?? 0} avec un projet · ${formatPercent(p.conversionRate)} convertis`,
+    }));
+  });
+
+  public readonly sectors = computed<BarItem[]>(() =>
+    (this.report()?.bySector ?? []).map((s) => ({
+      key: s.sector ?? 'none',
+      label: s.label ?? '—',
+      value: s.captured ?? 0,
+      value2: s.converted ?? 0,
+      note: `${formatPercent(s.conversionRate)} convertis`,
+    })),
+  );
+
   /** Null sous un filtre d'agence : le coût d'une source ne se découpe pas par agence. */
   public readonly sourceCosts = computed(() =>
     (this.report()?.sourceCosts ?? null)?.filter((c) => (c.received ?? 0) > 0) ?? null,

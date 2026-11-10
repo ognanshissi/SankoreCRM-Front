@@ -9,17 +9,19 @@
  * https://openapi-generator.tech
  * Do not edit the class manually.
  */
+import { LeadReportForecast } from './lead-report-forecast.interface';
+import { LeadReportKpis } from './lead-report-kpis.interface';
+import { LeadReportProjectPhase } from './lead-report-project-phase.interface';
+import { LeadReportSector } from './lead-report-sector.interface';
+import { LeadReportAgent } from './lead-report-agent.interface';
+import { LeadReportPoint } from './lead-report-point.interface';
 import { LeadReportAgency } from './lead-report-agency.interface';
 import { LeadReportStage } from './lead-report-stage.interface';
 import { LeadReportStatus } from './lead-report-status.interface';
-import { LeadReportForecast } from './lead-report-forecast.interface';
-import { LeadReportKpis } from './lead-report-kpis.interface';
 import { SourceQualityDto } from './source-quality-dto.interface';
-import { LeadReportProjectPhase } from './lead-report-project-phase.interface';
 import { LeadReportPeriodKpis } from './lead-report-period-kpis.interface';
-import { LeadReportAgent } from './lead-report-agent.interface';
 import { LeadReportTemperature } from './lead-report-temperature.interface';
-import { LeadReportPoint } from './lead-report-point.interface';
+import { LeadReportPotential } from './lead-report-potential.interface';
 import { LeadReportSource } from './lead-report-source.interface';
 
 
@@ -42,6 +44,8 @@ export interface LeadReportDto {
     previous?: LeadReportPeriodKpis;
     byTemperature?: Array<LeadReportTemperature> | null;
     sourceCosts?: Array<SourceQualityDto> | null;
+    byPotential?: Array<LeadReportPotential> | null;
+    bySector?: Array<LeadReportSector> | null;
 }
 export enum LeadReportDtoGranularityEnum {
     Day = 'Day',

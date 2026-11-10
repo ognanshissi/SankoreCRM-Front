@@ -36,12 +36,25 @@ export interface UpdateLeadRequest {
     companyEmail?: string | null;
     companyPhone?: string | null;
     website?: string | null;
+    /**
+     * One of: Individual, Corporate
+     */
+    prospectType?: UpdateLeadRequestProspectTypeEnum | null;
+    activitySector?: string | null;
+    companySize?: string | null;
+    estimatedAnnualPurchases?: number | null;
+    clearEstimatedAnnualPurchases?: boolean;
+    contactJobTitle?: string | null;
 }
 export enum UpdateLeadRequestGenderEnum {
     Unknown = 'Unknown',
     Male = 'Male',
     Female = 'Female',
     Other = 'Other'
+};
+export enum UpdateLeadRequestProspectTypeEnum {
+    Individual = 'Individual',
+    Corporate = 'Corporate'
 };
 
 

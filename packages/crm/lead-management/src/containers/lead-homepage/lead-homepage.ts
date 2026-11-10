@@ -45,7 +45,18 @@ import { Severity } from '@talisoft/ui/tag';
 import { AuthenticationService, PermissionsService, ProductNamesStore, QuickCreateEvents } from '@sankore/crm/common';
 import { CallButton } from '@sankore/crm/telephony';
 import { LogActivityDrawer, LogActivityDrawerData } from '../edit-lead/log-activity-drawer';
-import { formatAmount, formatDay, originLabel, statusStepIndex, statusStepLabel } from '../edit-lead/lead-view.models';
+import {
+  ACTIVITY_SECTOR_OPTIONS,
+  activitySectorLabel,
+  companyOf,
+  COMPANY_SIZE_OPTIONS,
+  companySizeLabel,
+  formatAmount,
+  formatDay,
+  originLabel,
+  statusStepIndex,
+  statusStepLabel,
+} from '../edit-lead/lead-view.models';
 import { LeadFilters, LeadFiltersDrawer, LeadFiltersDrawerData } from './lead-filters-drawer';
 
 function leadStatusMeta(status: string | null | undefined): { label: string; severity: Severity } {
@@ -266,6 +277,10 @@ export interface CardSla {
 /** Le paramètre `status` de `listLeads` : le nom du statut serveur. */
 type ListLeadStatus = Parameters<LeadsApiService['listLeads']>[2];
 
+type LeadFilterChipKey =
+  'status' | 'intent' | 'agent' | 'queue' | 'agency' | 'leadSource' | 'custom' | 'prospectType' | 'sector' | 'size'
+  | 'potential';
+
 /** Les anciens liens portaient l'indice de l'onglet (`status=1`) : on les relit sous leur sens d'alors. */
 const LEGACY_STATUS_PARAM: Record<string, string> = { '0': 'New', '1': 'Open', '2': 'Qualified', '3': 'Converted', '4': 'Lost' };
 
@@ -292,15 +307,19 @@ export interface LeadView {
   intent: string;
   mine: boolean;
   queue: boolean;
+  /** Grands comptes, lot 4 : un `LeadPotentialTier`, vide = tous. */
+  potential: string;
 }
 
-const VIEW: Omit<LeadView, 'key' | 'label'> = { status: '', intent: '', mine: false, queue: false };
+const VIEW: Omit<LeadView, 'key' | 'label'> = { status: '', intent: '', mine: false, queue: false, potential: '' };
 const PRIMARY_VIEWS: LeadView[] = [
   { ...VIEW, key: 'mine', label: 'Mes leads', mine: true },
   { ...VIEW, key: 'new', label: 'Nouveaux', status: 'New' },
   { ...VIEW, key: 'hot', label: 'Chauds', intent: 'Hot' },
   { ...VIEW, key: 'all', label: 'Tous les leads' },
 ];
+/** Montrée parmi les vues principales dès que l'institution a des grands comptes (lot 4). */
+const KEY_ACCOUNTS_VIEW: LeadView = { ...VIEW, key: 'keyAccounts', label: 'Grands comptes', potential: 'KeyAccount' };
 const MORE_VIEWS: LeadView[] = [
   { ...VIEW, key: 'contacted', label: 'Contactés', status: 'Open' },
   { ...VIEW, key: 'qualified', label: 'Qualifiés', status: 'Qualified' },
@@ -312,7 +331,8 @@ const MORE_VIEWS: LeadView[] = [
 
 /** Les propriétés qu'une ligne peut montrer ; le nom est toujours là. */
 export type LeadColumnKey =
-  'product' | 'phone' | 'status' | 'intent' | 'agent' | 'created' | 'nextStep' | 'email' | 'source' | 'agency' | 'type' | 'score';
+  'product' | 'phone' | 'status' | 'intent' | 'agent' | 'created' | 'nextStep' | 'email' | 'source' | 'agency' | 'type' | 'score'
+  | 'sector' | 'size' | 'potential';
 
 export const LEAD_COLUMNS: ReadonlyArray<{ key: LeadColumnKey; label: string; byDefault: boolean }> = [
   { key: 'product',  label: 'Produit',          byDefault: true },
@@ -327,6 +347,28 @@ export const LEAD_COLUMNS: ReadonlyArray<{ key: LeadColumnKey; label: string; by
   { key: 'agency',   label: 'Agence',           byDefault: false },
   { key: 'type',     label: 'Type',             byDefault: false },
   { key: 'score',    label: 'Score',            byDefault: false },
+  { key: 'sector',   label: 'Secteur',          byDefault: false },
+  { key: 'size',     label: 'Effectif',         byDefault: false },
+  { key: 'potential', label: 'Potentiel',       byDefault: false },
+];
+
+/** Les paliers de `LeadPotentialTier`, en français. */
+export const POTENTIAL_FILTER_OPTIONS = [
+  { label: 'Grands comptes', value: 'KeyAccount' },
+  { label: 'Bons clients', value: 'GoodCustomer' },
+];
+
+export function potentialLabel(tier: string | null | undefined): string | null {
+  switch (tier) {
+    case 'KeyAccount': return 'Grand compte';
+    case 'GoodCustomer': return 'Bon client';
+    default: return null;
+  }
+}
+
+const PROSPECT_TYPE_FILTER_OPTIONS = [
+  { label: 'Particuliers', value: 'Individual' },
+  { label: 'Entreprises', value: 'Corporate' },
 ];
 
 /** Le choix des colonnes reste propre à ce navigateur : un confort, pas une donnée partagée. */
@@ -458,6 +500,11 @@ export class LeadHomepage implements OnInit {
    */
   public filterLeadSourceId = signal('');
   public filterAgencyId = signal('');
+  /** Grands comptes, lot 1. */
+  public filterProspectType = signal('');
+  public filterSector = signal('');
+  public filterSize = signal('');
+  public filterPotential = signal('');
   public filterIntent = signal('');
   public agencyOptions = signal<{ label: string; value: string }[]>([{ label: 'Toutes', value: '' }]);
 
@@ -541,7 +588,10 @@ export class LeadHomepage implements OnInit {
 
   // ——— Vues et puces de filtre (maquette du 2026-11-03) ———
 
-  public readonly primaryViews = PRIMARY_VIEWS;
+  public readonly primaryViews = computed(() =>
+    (this.viewCounts()?.keyAccounts ?? 0) > 0 || this.filterPotential() === 'KeyAccount'
+      ? [...PRIMARY_VIEWS.slice(0, 3), KEY_ACCOUNTS_VIEW, ...PRIMARY_VIEWS.slice(3)]
+      : PRIMARY_VIEWS);
   public readonly moreViews = MORE_VIEWS;
   private readonly _me = computed(() => this._auth.connectedUser()?.id ?? '');
 
@@ -568,9 +618,10 @@ export class LeadHomepage implements OnInit {
 
   /** La vue dont le jeu de filtres est celui posé ; null quand l'utilisateur a composé le sien. */
   public readonly activeView = computed<LeadView | null>(() =>
-    [...PRIMARY_VIEWS, ...MORE_VIEWS].find((v) =>
+    [...PRIMARY_VIEWS, KEY_ACCOUNTS_VIEW, ...MORE_VIEWS].find((v) =>
       v.status === this.filterStatus()
       && v.intent === this.filterIntent()
+      && v.potential === this.filterPotential()
       && v.queue === this.filterAwaitingDispatch()
       && (v.mine ? !!this._me() && this.filterOwnerId() === this._me() : !this.filterOwnerId()),
     ) ?? null,
@@ -584,6 +635,7 @@ export class LeadHomepage implements OnInit {
     if (!counts) return null;
     if (view.mine) return counts.mine ?? 0;
     if (view.queue) return counts.awaitingDispatch ?? 0;
+    if (view.potential === 'KeyAccount') return counts.keyAccounts ?? 0;
     if (view.status) return counts.byStatus?.[view.status] ?? 0;
     if (view.intent) return counts.byIntent?.[view.intent] ?? 0;
     return counts.total ?? 0;
@@ -597,7 +649,7 @@ export class LeadHomepage implements OnInit {
   /** Les filtres posés en plus de la vue, une puce chacun. */
   public readonly filterChips = computed(() => {
     const view = this.activeView();
-    const chips: { key: 'status' | 'intent' | 'agent' | 'queue' | 'agency' | 'leadSource' | 'custom'; label: string }[] = [];
+    const chips: { key: LeadFilterChipKey; label: string }[] = [];
     if (!view) {
       if (this.filterStatus()) chips.push({ key: 'status', label: STATUS_FILTER_OPTIONS.find((o) => o.value === this.filterStatus())?.label ?? this.filterStatus() });
       if (this.filterIntent()) chips.push({ key: 'intent', label: `Intérêt : ${intentMeta(this.filterIntent()).label}` });
@@ -611,6 +663,15 @@ export class LeadHomepage implements OnInit {
       chips.push({ key: 'agency', label: this.agencyOptions().find((o) => o.value === this.filterAgencyId())?.label || 'Agence' });
     if (this.filterLeadSourceId())
       chips.push({ key: 'leadSource', label: this.sourceFilterOptions().find((o) => o.value === this.filterLeadSourceId())?.label || 'Source' });
+    if (this.filterProspectType())
+      chips.push({ key: 'prospectType', label: PROSPECT_TYPE_FILTER_OPTIONS.find((o) => o.value === this.filterProspectType())?.label ?? 'Type' });
+    if (this.filterSector())
+      chips.push({ key: 'sector', label: activitySectorLabel(this.filterSector()) ?? 'Secteur' });
+    if (this.filterSize())
+      chips.push({ key: 'size', label: `Effectif : ${companySizeLabel(this.filterSize())}` });
+    // La vue « Grands comptes » porte déjà ce filtre : pas de puce en double.
+    if (this.filterPotential() && !view?.potential)
+      chips.push({ key: 'potential', label: POTENTIAL_FILTER_OPTIONS.find((o) => o.value === this.filterPotential())?.label ?? 'Potentiel' });
     const custom = this.filterCustom().length;
     if (custom) chips.push({ key: 'custom', label: custom > 1 ? `${custom} champs personnalisés` : '1 champ personnalisé' });
     return chips;
@@ -648,6 +709,10 @@ export class LeadHomepage implements OnInit {
     if (params['agency']) this.filterAgencyId.set(params['agency']);
     if (params['intent']) this.filterIntent.set(INTENT_LEGACY_PARAM[params['intent']] ?? params['intent']);
     if (params['queue'] === '1') this.filterAwaitingDispatch.set(true);
+    if (params['type']) this.filterProspectType.set(params['type']);
+    if (params['secteur']) this.filterSector.set(params['secteur']);
+    if (params['effectif']) this.filterSize.set(params['effectif']);
+    if (params['potentiel']) this.filterPotential.set(params['potentiel']);
     this.filterCustom.set(this._route.snapshot.queryParamMap.getAll('cf'));
     // La liste est la vue par défaut depuis la maquette du 2026-11-03 ; le pipeline s'ouvre par
     // `view=pipeline`. L'ancien `view=list` reste lu, sans effet.
@@ -1029,6 +1094,10 @@ export class LeadHomepage implements OnInit {
         intent: this.filterIntent() || null,
         owner: this.filterOwnerId() || null,
         queue: this.filterAwaitingDispatch() ? '1' : null,
+        type: this.filterProspectType() || null,
+        secteur: this.filterSector() || null,
+        effectif: this.filterSize() || null,
+        potentiel: this.filterPotential() || null,
         // Répété dans l'URL (`cf=a:b&cf=c:d`), comme le serveur le lit.
         cf: this.filterCustom().length ? this.filterCustom() : null,
       },
@@ -1084,6 +1153,7 @@ export class LeadHomepage implements OnInit {
         // Les leads que l'agent tient — affectés, ou à lui sans affectation —, ce que dit la colonne
         // « Agent ». `ownerId` seul manquait les leads dispatchés à un agent qui n'en est pas le propriétaire.
         ownerId,
+        ...this._companyFilters(),
       )
       .subscribe({
         next: (result) => {
@@ -1105,6 +1175,12 @@ export class LeadHomepage implements OnInit {
   }
 
   public initials(lead: LeadDto): string {
+    // Un lead entreprise est affiché par son entreprise : l'avatar en reprend les initiales.
+    const company = companyOf(lead);
+    if (company) {
+      const words = company.split(/\s+/).filter((w) => /^[\p{L}\p{N}]/u.test(w));
+      return ((words[0]?.[0] ?? '') + (words[1]?.[0] ?? '')).toUpperCase() || '?';
+    }
     const first = lead.firstName ?? lead.fullName ?? '';
     const last = lead.lastName ?? '';
     return ((first[0] ?? '') + (last[0] ?? '')).toUpperCase() || '?';
@@ -1135,13 +1211,23 @@ export class LeadHomepage implements OnInit {
     });
   }
 
-  public prospectTypeLabel(type: number | null | undefined): string {
-    switch (Number(type)) {
-      case 0: return 'Individuel';
-      case 1: return 'Entreprise';
+  /**
+   * `LeadDto.prospectType` est un NOM (« Individual », « Corporate ») : la lecture en indice
+   * (`Number(type)`) rendait `NaN` et la colonne « Type » affichait toujours « — » (2026-11-09).
+   * L'indice reste lu pour une ancienne réponse.
+   */
+  public prospectTypeLabel(type: string | number | null | undefined): string {
+    switch (String(type ?? '')) {
+      case 'Individual': case '0': return 'Particulier';
+      case 'Corporate':  case '1': return 'Entreprise';
       default: return '—';
     }
   }
+
+  public readonly activitySectorLabel = activitySectorLabel;
+  public readonly companySizeLabel = companySizeLabel;
+  public readonly potentialLabel = potentialLabel;
+  public readonly companyOf = companyOf;
 
   // ——— Vues, filtres, colonnes ———
 
@@ -1150,10 +1236,11 @@ export class LeadHomepage implements OnInit {
     this.filterIntent.set(view.intent);
     this.filterOwnerId.set(view.mine ? this._me() : '');
     this.filterAwaitingDispatch.set(view.queue);
+    this.filterPotential.set(view.potential);
     this._applyFilters();
   }
 
-  public removeChip(key: 'status' | 'intent' | 'agent' | 'queue' | 'agency' | 'leadSource' | 'custom'): void {
+  public removeChip(key: LeadFilterChipKey): void {
     switch (key) {
       case 'status':     this.filterStatus.set(''); break;
       case 'intent':     this.filterIntent.set(''); break;
@@ -1162,6 +1249,10 @@ export class LeadHomepage implements OnInit {
       case 'agency':     this.filterAgencyId.set(''); break;
       case 'leadSource': this.filterLeadSourceId.set(''); break;
       case 'custom':     this.filterCustom.set([]); break;
+      case 'prospectType': this.filterProspectType.set(''); break;
+      case 'sector':     this.filterSector.set(''); break;
+      case 'size':       this.filterSize.set(''); break;
+      case 'potential':  this.filterPotential.set(''); break;
     }
     this._applyFilters();
   }
@@ -1181,12 +1272,20 @@ export class LeadHomepage implements OnInit {
           leadSource: this.filterLeadSourceId(),
           queue: this.filterAwaitingDispatch(),
           custom: this.filterCustom(),
+          prospectType: this.filterProspectType(),
+          sector: this.filterSector(),
+          size: this.filterSize(),
+          potential: this.filterPotential(),
         },
         statusOptions: STATUS_FILTER_OPTIONS,
         intentOptions: withoutAll(INTENT_FILTER_OPTIONS),
         agencyOptions: withoutAll(this.agencyOptions()),
         sourceOptions: withoutAll(this.sourceFilterOptions()),
         agentOptions: this.canFilterByAgent() ? this.agentOptions() : [],
+        prospectTypeOptions: PROSPECT_TYPE_FILTER_OPTIONS,
+        sectorOptions: ACTIVITY_SECTOR_OPTIONS,
+        sizeOptions: COMPANY_SIZE_OPTIONS,
+        potentialOptions: POTENTIAL_FILTER_OPTIONS,
       },
     });
     ref.closed.subscribe((next) => {
@@ -1198,6 +1297,10 @@ export class LeadHomepage implements OnInit {
       this.filterLeadSourceId.set(next.leadSource);
       this.filterAwaitingDispatch.set(next.queue);
       this.filterCustom.set(next.custom);
+      this.filterProspectType.set(next.prospectType);
+      this.filterSector.set(next.sector);
+      this.filterSize.set(next.size);
+      this.filterPotential.set(next.potential);
       this._applyFilters();
     });
   }
@@ -1396,6 +1499,7 @@ export class LeadHomepage implements OnInit {
         this.filterAwaitingDispatch() || undefined,
         this.filterCustom().length ? this.filterCustom() : undefined,
         this.filterOwnerId() || undefined,
+        ...this._companyFilters(),
       )
       .pipe(
       catchError(() => {
@@ -1416,6 +1520,21 @@ export class LeadHomepage implements OnInit {
     });
   }
 
+  /** Type, secteur, effectif et potentiel, dans l'ordre où la liste et l'export les prennent en dernier. */
+  private _companyFilters(): [
+    'Individual' | 'Corporate' | undefined,
+    string | undefined,
+    'Micro' | 'Small' | 'Medium' | 'Large' | undefined,
+    'None' | 'GoodCustomer' | 'KeyAccount' | undefined,
+  ] {
+    return [
+      (this.filterProspectType() || undefined) as 'Individual' | 'Corporate' | undefined,
+      this.filterSector() || undefined,
+      (this.filterSize() || undefined) as 'Micro' | 'Small' | 'Medium' | 'Large' | undefined,
+      (this.filterPotential() || undefined) as 'None' | 'GoodCustomer' | 'KeyAccount' | undefined,
+    ];
+  }
+
   private _loadViewCounts(): void {
     this._viewCountsRequest?.unsubscribe();
     this._viewCountsRequest = this._leadsApiService
@@ -1424,6 +1543,10 @@ export class LeadHomepage implements OnInit {
         this.searchQuery() || undefined,
         this.filterLeadSourceId() || undefined,
         this.filterCustom().length ? this.filterCustom() : undefined,
+        // Le potentiel est une vue (« Grands comptes ») : les compteurs ne le prennent pas.
+        ...(this._companyFilters().slice(0, 3) as [
+          'Individual' | 'Corporate' | undefined, string | undefined, 'Micro' | 'Small' | 'Medium' | 'Large' | undefined,
+        ]),
       )
       .pipe(catchError(() => of(null)))
       .subscribe((counts) => this.viewCounts.set(counts));

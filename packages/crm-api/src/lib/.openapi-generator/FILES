@@ -428,6 +428,7 @@ model/invitation-sent-dto.interface.ts
 model/issue-credential-request.interface.ts
 model/issue-kyc-remote-invitation-request.interface.ts
 model/issue-kyc-remote-invitation-response.interface.ts
+model/key-account-settings-dto.interface.ts
 model/kyc-approval-circuit-dto.interface.ts
 model/kyc-approval-step-dto.interface.ts
 model/kyc-auto-approval-control-item.interface.ts
@@ -485,7 +486,9 @@ model/lead-report-kind-amount.interface.ts
 model/lead-report-kpis.interface.ts
 model/lead-report-period-kpis.interface.ts
 model/lead-report-point.interface.ts
+model/lead-report-potential.interface.ts
 model/lead-report-project-phase.interface.ts
+model/lead-report-sector.interface.ts
 model/lead-report-source.interface.ts
 model/lead-report-stage.interface.ts
 model/lead-report-status.interface.ts
@@ -822,6 +825,7 @@ model/set-household-resources-request.interface.ts
 model/set-intent-level-request.interface.ts
 model/set-intent-thresholds-request.interface.ts
 model/set-intent-thresholds-result-dto.interface.ts
+model/set-key-account-settings-request.interface.ts
 model/set-kyc-remote-policy-request.interface.ts
 model/set-legal-hold-request.interface.ts
 model/set-life-insurance-request.interface.ts

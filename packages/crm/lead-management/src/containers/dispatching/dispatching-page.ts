@@ -19,6 +19,7 @@ import {
 } from '@sankore/crm-api';
 import { BreadcrumbService, PermissionsService } from '@sankore/crm/common';
 import { IntentThresholdsCard } from './intent-thresholds-card';
+import { KeyAccountsCard } from './key-accounts-card';
 import { formatDuration, formatNumber, label, SOURCE_LABELS } from '../reports/report-labels';
 
 type PeriodKey = 'jour' | '7j' | '30j';
@@ -72,7 +73,7 @@ interface Insight {
  */
 @Component({
   templateUrl: './dispatching-page.html',
-  imports: [RouterLink, Anchor, Button, TasIcon, TasSpinner, TasTable, TasSwitch, IntentThresholdsCard],
+  imports: [RouterLink, Anchor, Button, TasIcon, TasSpinner, TasTable, TasSwitch, IntentThresholdsCard, KeyAccountsCard],
 })
 export class DispatchingPage implements OnInit {
   private readonly _api = inject(LeadDispatchingApiService);

@@ -66,6 +66,7 @@ import {
   leadStatusMeta,
   missingAddressParts,
   originLabel,
+  potentialBadge,
 } from './lead-view.models';
 
 interface LeadMenuItem {
@@ -204,6 +205,8 @@ export class EditLeadNavigation implements OnDestroy {
   public readonly isConverted = computed(() => this.lead()?.status === 'Converted');
 
   public readonly intent = computed(() => intentOption(this.lead()?.intentLevel));
+  /** « Grand compte » / « Bon client » à côté de la température (grands comptes, lot 4). */
+  public readonly potential = computed(() => potentialBadge(this.lead()?.potentialTier));
 
   public readonly productLabel = computed(() => interestedProductLabel(this.lead()?.interestedProduct, this._productNames.names()));
   public readonly name = computed(() => displayName(this.lead()));

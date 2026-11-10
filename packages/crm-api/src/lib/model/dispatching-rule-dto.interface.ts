@@ -31,6 +31,8 @@ export interface DispatchingRuleDto {
     firstContactSlaHot?: string | null;
     firstContactSlaWarm?: string | null;
     firstContactSlaCold?: string | null;
+    keyAccountsOnly?: boolean;
+    reservedAgentIds?: Array<string> | null;
 }
 export enum DispatchingRuleDtoStrategyEnum {
     RoundRobin = 'RoundRobin',

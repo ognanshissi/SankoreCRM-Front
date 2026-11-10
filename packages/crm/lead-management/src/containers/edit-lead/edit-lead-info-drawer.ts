@@ -37,8 +37,16 @@ import {
   ProductsApiService,
   UpdateLeadRequest,
   UpdateLeadRequestGenderEnum,
+  UpdateLeadRequestProspectTypeEnum,
 } from '@sankore/crm-api';
 import { currencyUnit, HiddenFormFieldsStore, institutionCurrency } from '@sankore/crm/common';
+import { ACTIVITY_SECTOR_OPTIONS, amountText, COMPANY_SIZE_OPTIONS, parseAmount } from './lead-view.models';
+
+/** `tas-select` n'a pas de bouton d'effacement : l'option vide permet de retirer une valeur. */
+const PROSPECT_TYPE_OPTIONS = [
+  { label: 'Particulier', value: UpdateLeadRequestProspectTypeEnum.Individual },
+  { label: 'Entreprise', value: UpdateLeadRequestProspectTypeEnum.Corporate },
+];
 
 export interface EditLeadInfoDrawerData {
   lead: LeadDto;
@@ -123,6 +131,11 @@ export class EditLeadInfoFormModel {
   public companyEmail!: string;
   public companyPhone!: string;
   public website!: string;
+  public prospectType!: string;
+  public activitySector!: string;
+  public companySize!: string;
+  public estimatedAnnualPurchases!: string;
+  public contactJobTitle!: string;
 
   public static fromLead(lead: LeadDto): EditLeadInfoFormModel {
     const m = new EditLeadInfoFormModel();
@@ -143,6 +156,11 @@ export class EditLeadInfoFormModel {
     m.companyEmail = lead.companyEmail ?? '';
     m.companyPhone = lead.companyPhone ?? '';
     m.website = lead.website ?? '';
+    m.prospectType = lead.prospectType === 'Corporate' ? 'Corporate' : 'Individual';
+    m.activitySector = lead.activitySector ?? '';
+    m.companySize = lead.companySize ?? '';
+    m.estimatedAnnualPurchases = amountText(lead.estimatedAnnualPurchases?.amount);
+    m.contactJobTitle = lead.contactJobTitle ?? '';
     return m;
   }
 }
@@ -182,6 +200,11 @@ export class EditLeadInfoDrawer {
   public readonly showAmount = computed(() => this._formFields.isVisible('Lead', 'desiredAmount'));
 
   public readonly genderOptions = GENDER_OPTIONS;
+  public readonly prospectTypeOptions = PROSPECT_TYPE_OPTIONS;
+  public readonly sectorOptions = [{ value: '', label: 'Non précisé' }, ...ACTIVITY_SECTOR_OPTIONS];
+  public readonly sizeOptions = [{ value: '', label: 'Non précisé' }, ...COMPANY_SIZE_OPTIONS];
+  /** La monnaie du volume déjà saisi, sinon celle de l'institution. */
+  public readonly purchasesCurrency = this.data.lead.estimatedAnnualPurchases?.currency ?? institutionCurrency();
   public readonly languageOptions = LANGUAGE_OPTIONS;
   public readonly currencyUnit = currencyUnit;
 
@@ -221,6 +244,13 @@ export class EditLeadInfoDrawer {
       if (!value) return null;
       return value > todayISODate()
         ? { kind: 'max', message: 'La date de naissance ne peut pas être dans le futur' }
+        : null;
+    });
+
+    validate(schema.estimatedAnnualPurchases, (ctx) => {
+      const amount = parseAmount(ctx.value());
+      return amount !== null && (Number.isNaN(amount) || amount <= 0)
+        ? { kind: 'amount', message: 'Saisissez un montant positif, en chiffres' }
         : null;
     });
 
@@ -276,6 +306,14 @@ export class EditLeadInfoDrawer {
         companyEmail: value.companyEmail.trim(),
         companyPhone: value.companyPhone.trim(),
         website: value.website.trim(),
+        prospectType: value.prospectType as UpdateLeadRequestProspectTypeEnum,
+        // Même convention : vide efface, et le volume s'efface par son drapeau.
+        activitySector: value.activitySector,
+        companySize: value.companySize,
+        contactJobTitle: value.contactJobTitle.trim(),
+        estimatedAnnualPurchases: parseAmount(value.estimatedAnnualPurchases),
+        clearEstimatedAnnualPurchases: parseAmount(value.estimatedAnnualPurchases) === null
+          && lead.estimatedAnnualPurchases?.amount != null,
         expectedUpdatedAt: lead.updatedAt ?? null,
       };
 

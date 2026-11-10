@@ -23,6 +23,9 @@
             <span class="w-1.5 h-1.5 rounded-full" [class]="intent.dot"></span>
             {{ intent.label }}
           </span>
+          @if (potential; as p) {
+            <span class="rounded-full px-2 py-0.5 text-[11px] font-semibold" [class]="p.tone">{{ p.label }}</span>
+          }
         </div>
       </div>
     </div>

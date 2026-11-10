@@ -167,10 +167,19 @@ export class TaskDayList {
       return { label: `SLA dans ${fmtDur(new Date(task.slaDeadline!).getTime() - this.now())}`, tone: 'bg-amber-50 text-amber-800' };
     // Un premier contact est toujours créé en priorité haute : ce badge-là s'affichait sur chacun
     // et noyait « Lead chaud », la seule différence qui compte entre eux.
-    if (isFirstContact(task))
-      return task.leadId && this.leads().get(task.leadId)?.intentLevel === 'Hot'
-        ? { label: 'Lead chaud', tone: 'bg-red-50 text-red-700' }
-        : null;
+    const lead = task.leadId ? this.leads().get(task.leadId) : undefined;
+    // Grands comptes, lot 4 : un gros prospect se signale, chaud ou non.
+    const keyAccount = lead?.potentialTier === 'KeyAccount'
+      ? { label: 'Grand compte', tone: 'bg-violet-50 text-violet-700' }
+      : null;
+    if (isFirstContact(task)) {
+      if (lead?.intentLevel !== 'Hot') return keyAccount;
+      // Grands comptes, lot 3 : un formulaire rempli pour un produit précis rend le lead chaud, quel
+      // que soit son score — le badge le dit, l'agent sait ce que le prospect a demandé.
+      const hot = lead.productRequestAt ? 'Lead chaud · demande produit' : 'Lead chaud';
+      return { label: keyAccount ? `${hot} · grand compte` : hot, tone: 'bg-red-50 text-red-700' };
+    }
+    if (keyAccount) return keyAccount;
     if (task.priority === 'Critical') return { label: 'Critique', tone: 'bg-red-50 text-red-700' };
     if (task.priority === 'High') return { label: 'Priorité haute', tone: 'bg-orange-50 text-orange-800' };
     return null;

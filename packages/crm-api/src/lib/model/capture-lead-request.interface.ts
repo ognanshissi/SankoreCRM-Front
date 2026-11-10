@@ -71,6 +71,10 @@ export interface CaptureLeadRequest {
     postalCode?: string | null;
     city?: string | null;
     countryCode?: string | null;
+    activitySector?: string | null;
+    companySize?: string | null;
+    estimatedAnnualPurchases?: number | null;
+    contactJobTitle?: string | null;
 }
 export enum CaptureLeadRequestSourceEnum {
     Web = 'Web',

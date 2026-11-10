@@ -184,6 +184,15 @@ export const LEAD_LINK_TARGETS: ReadonlyArray<{ value: string; label: string }> 
   { value: 'referrer', label: 'Provenance' },
   { value: 'latitude', label: 'Latitude' },
   { value: 'longitude', label: 'Longitude' },
+  { value: 'prospectType', label: 'Type de prospect' },
+  { value: 'companyName', label: 'Nom de l\'entreprise' },
+  { value: 'companyEmail', label: 'E-mail de l\'entreprise' },
+  { value: 'companyPhone', label: 'Téléphone de l\'entreprise' },
+  { value: 'website', label: 'Site web' },
+  { value: 'activitySector', label: 'Secteur d\'activité' },
+  { value: 'companySize', label: 'Effectif' },
+  { value: 'estimatedAnnualPurchases', label: 'Volume d\'achat annuel estimé' },
+  { value: 'contactJobTitle', label: 'Fonction du contact' },
 ];
 
 export const NAME_TARGETS = ['fullName', 'firstName', 'lastName'];

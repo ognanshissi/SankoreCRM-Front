@@ -241,35 +241,38 @@
                 <dt class="text-sm text-slate-500">Type de prospect</dt>
                 <dd class="mt-0.5 font-semibold text-primary">{{ prospectTypeLabel(l.prospectType) }}</dd>
               </div>
-              <div class="rounded-xl p-2.5">
-                <dt class="text-sm text-slate-500">Date de naissance</dt>
-                <dd class="mt-0.5 font-semibold text-primary">
-                  @if (l.dateOfBirth) {
-                    {{ formatDay(l.dateOfBirth) }}@if (age() !== null) { <span class="font-normal text-slate-500">· {{ age() }} ans</span>}
-                  } @else {
-                    <span class="font-normal text-slate-400">Non renseignée</span>
-                  }
-                </dd>
-              </div>
-              <div class="rounded-xl p-2.5">
-                <dt class="text-sm text-slate-500">Genre</dt>
-                <dd class="mt-0.5 font-semibold text-primary">{{ genderLabel(l.gender) }}</dd>
-              </div>
-              <div class="rounded-xl p-2.5">
-                <dt class="text-sm text-slate-500">Pièce d'identité</dt>
-                @if (documentDisplay(); as doc) {
-                  <dd class="mt-0.5 flex items-center gap-2">
-                    <span class="font-mono text-sm font-semibold tracking-wide text-primary">{{ doc }}</span>
-                    <button type="button" class="text-slate-500 hover:text-primary"
-                            [attr.aria-label]="showDocument() ? 'Masquer le numéro' : 'Afficher le numéro'"
-                            (click)="showDocument.set(!showDocument())">
-                      <tas-icon [iconName]="showDocument() ? 'feather:eye-off' : 'feather:eye'" style="font-size:13px"></tas-icon>
-                    </button>
+              <!-- Date de naissance, genre et pièce sont ceux d'une personne : sans objet pour une entreprise. -->
+              @if (!isCompany()) {
+                <div class="rounded-xl p-2.5">
+                  <dt class="text-sm text-slate-500">Date de naissance</dt>
+                  <dd class="mt-0.5 font-semibold text-primary">
+                    @if (l.dateOfBirth) {
+                      {{ formatDay(l.dateOfBirth) }}@if (age() !== null) { <span class="font-normal text-slate-500">· {{ age() }} ans</span>}
+                    } @else {
+                      <span class="font-normal text-slate-400">Non renseignée</span>
+                    }
                   </dd>
-                } @else {
-                  <dd class="mt-0.5 text-sm text-slate-400">Non renseignée</dd>
-                }
-              </div>
+                </div>
+                <div class="rounded-xl p-2.5">
+                  <dt class="text-sm text-slate-500">Genre</dt>
+                  <dd class="mt-0.5 font-semibold text-primary">{{ genderLabel(l.gender) }}</dd>
+                </div>
+                <div class="rounded-xl p-2.5">
+                  <dt class="text-sm text-slate-500">Pièce d'identité</dt>
+                  @if (documentDisplay(); as doc) {
+                    <dd class="mt-0.5 flex items-center gap-2">
+                      <span class="font-mono text-sm font-semibold tracking-wide text-primary">{{ doc }}</span>
+                      <button type="button" class="text-slate-500 hover:text-primary"
+                              [attr.aria-label]="showDocument() ? 'Masquer le numéro' : 'Afficher le numéro'"
+                              (click)="showDocument.set(!showDocument())">
+                        <tas-icon [iconName]="showDocument() ? 'feather:eye-off' : 'feather:eye'" style="font-size:13px"></tas-icon>
+                      </button>
+                    </dd>
+                  } @else {
+                    <dd class="mt-0.5 text-sm text-slate-400">Non renseignée</dd>
+                  }
+                </div>
+              }
               @if (isCompany() || l.companyName) {
                 <div class="rounded-xl p-2.5">
                   <dt class="text-sm text-slate-500">Entreprise</dt>
@@ -291,6 +294,30 @@
                   <div class="rounded-xl p-2.5">
                     <dt class="text-sm text-slate-500">Site web</dt>
                     <dd class="mt-0.5 truncate font-semibold text-primary">{{ l.website }}</dd>
+                  </div>
+                }
+                @if (activitySectorLabel(l.activitySector); as sector) {
+                  <div class="rounded-xl p-2.5">
+                    <dt class="text-sm text-slate-500">Secteur d'activité</dt>
+                    <dd class="mt-0.5 font-semibold text-primary">{{ sector }}</dd>
+                  </div>
+                }
+                @if (companySizeLabel(l.companySize); as size) {
+                  <div class="rounded-xl p-2.5">
+                    <dt class="text-sm text-slate-500">Effectif</dt>
+                    <dd class="mt-0.5 font-semibold text-primary">{{ size }}</dd>
+                  </div>
+                }
+                @if (l.estimatedAnnualPurchases?.amount; as purchases) {
+                  <div class="rounded-xl p-2.5">
+                    <dt class="text-sm text-slate-500">Volume d'achat annuel estimé</dt>
+                    <dd class="mt-0.5 font-semibold tabular-nums text-primary">{{ formatAmount(purchases, l.estimatedAnnualPurchases!.currency) }}</dd>
+                  </div>
+                }
+                @if (l.contactJobTitle) {
+                  <div class="rounded-xl p-2.5">
+                    <dt class="text-sm text-slate-500">Fonction du contact</dt>
+                    <dd class="mt-0.5 font-semibold text-primary">{{ l.contactJobTitle }}</dd>
                   </div>
                 }
               }

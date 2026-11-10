@@ -354,6 +354,12 @@
             (save)="onScorePointsSaved($event)"
           ></source-score-points>
 
+          <source-product-request
+            [source]="source()!"
+            [canWrite]="canWrite()"
+            (save)="onProductRequestSaved($event)"
+          ></source-product-request>
+
           <!-- Secrets -->
           @if (source()!.secrets?.length) {
             <tas-card class="block mt-4">

@@ -70,6 +70,10 @@
       <div class="border-t border-gray-200 pt-4">
         <p class="text-sm font-medium text-slate-600 mb-3">Entreprise</p>
         <div class="grid grid-cols-2 gap-4">
+          <tas-form-field class="col-span-2">
+            <tas-label>Type de prospect</tas-label>
+            <tas-select [options]="prospectTypeOptions" [formField]="formSchema.prospectType"></tas-select>
+          </tas-form-field>
           <tas-form-field>
             <tas-label>Nom de l'entreprise</tas-label>
             <input tasInput type="text" [formField]="formSchema.companyName" />
@@ -89,6 +93,31 @@
             <tas-label>Téléphone de l'entreprise</tas-label>
             <input tasInput type="tel" [formField]="formSchema.companyPhone" />
           </tas-form-field>
+          <!-- Grands comptes, lot 1 : ce qui distingue un grossiste d'une boutique de quartier. -->
+          @if (formSchema.prospectType().value() === 'Corporate') {
+            <tas-form-field>
+              <tas-label>Secteur d'activité</tas-label>
+              <tas-select [options]="sectorOptions" placeholder="Non précisé" [formField]="formSchema.activitySector"></tas-select>
+            </tas-form-field>
+            <tas-form-field>
+              <tas-label>Effectif</tas-label>
+              <tas-select [options]="sizeOptions" placeholder="Non précisé" [formField]="formSchema.companySize"></tas-select>
+            </tas-form-field>
+            <tas-form-field>
+              <tas-label>Volume d'achat annuel estimé</tas-label>
+              <input tasInput type="text" inputmode="numeric" placeholder="Ex. 25 000 000" [formField]="formSchema.estimatedAnnualPurchases" />
+              <button tasSuffix type="button" tabindex="-1" aria-hidden="true" class="cursor-default whitespace-nowrap pr-3 text-sm text-slate-500">
+                {{ currencyUnit(purchasesCurrency) }}
+              </button>
+              @if (formSchema.estimatedAnnualPurchases().touched() && formSchema.estimatedAnnualPurchases().invalid()) {
+                <tas-error>{{ formSchema.estimatedAnnualPurchases().errors()[0].message }}</tas-error>
+              }
+            </tas-form-field>
+            <tas-form-field>
+              <tas-label>Fonction du contact</tas-label>
+              <input tasInput type="text" placeholder="Ex. Responsable des achats" [formField]="formSchema.contactJobTitle" />
+            </tas-form-field>
+          }
         </div>
       </div>
 

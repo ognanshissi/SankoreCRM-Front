@@ -15288,6 +15288,68 @@
         }
       }
     },
+    "/api/v1/lead-settings/key-accounts": {
+      "get": {
+        "tags": [
+          "Lead Settings"
+        ],
+        "summary": "What makes a company prospect a big one",
+        "description": "Yearly-purchase thresholds (0 = not set) and targeted sectors, read by the score's « Potentiel » dimension.",
+        "operationId": "GetKeyAccountSettings",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KeyAccountSettingsDto"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Lead Settings"
+        ],
+        "summary": "Change what makes a company prospect a big one",
+        "description": "Both thresholds and the sectors at once. 0 ≤ good < major when both are set (else 400 KEY_ACCOUNT_THRESHOLDS_INVALID); an unknown sector is 400 LEAD_ACTIVITY_SECTOR_INVALID. The open company prospects are rescored in the background. Requires permission: lead:dispatching-rule:manage, like the temperature thresholds.",
+        "operationId": "SetKeyAccountSettings",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetKeyAccountSettingsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KeyAccountSettingsDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/lead-settings/{key}": {
       "get": {
         "tags": [
@@ -15560,6 +15622,55 @@
               "type": "string",
               "format": "uuid"
             }
+          },
+          {
+            "name": "prospectType",
+            "in": "query",
+            "description": "One of: Individual, Corporate",
+            "schema": {
+              "enum": [
+                "Individual",
+                "Corporate"
+              ],
+              "type": "string",
+              "description": "One of: Individual, Corporate"
+            }
+          },
+          {
+            "name": "activitySector",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "companySize",
+            "in": "query",
+            "description": "One of: Micro, Small, Medium, Large",
+            "schema": {
+              "enum": [
+                "Micro",
+                "Small",
+                "Medium",
+                "Large"
+              ],
+              "type": "string",
+              "description": "One of: Micro, Small, Medium, Large"
+            }
+          },
+          {
+            "name": "potential",
+            "in": "query",
+            "description": "One of: None, GoodCustomer, KeyAccount",
+            "schema": {
+              "enum": [
+                "None",
+                "GoodCustomer",
+                "KeyAccount"
+              ],
+              "type": "string",
+              "description": "One of: None, GoodCustomer, KeyAccount"
+            }
           }
         ],
         "responses": {
@@ -15656,6 +15767,41 @@
               "items": {
                 "type": "string"
               }
+            }
+          },
+          {
+            "name": "prospectType",
+            "in": "query",
+            "description": "One of: Individual, Corporate",
+            "schema": {
+              "enum": [
+                "Individual",
+                "Corporate"
+              ],
+              "type": "string",
+              "description": "One of: Individual, Corporate"
+            }
+          },
+          {
+            "name": "activitySector",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "companySize",
+            "in": "query",
+            "description": "One of: Micro, Small, Medium, Large",
+            "schema": {
+              "enum": [
+                "Micro",
+                "Small",
+                "Medium",
+                "Large"
+              ],
+              "type": "string",
+              "description": "One of: Micro, Small, Medium, Large"
             }
           }
         ],
@@ -18244,6 +18390,55 @@
             "schema": {
               "type": "string",
               "format": "uuid"
+            }
+          },
+          {
+            "name": "prospectType",
+            "in": "query",
+            "description": "One of: Individual, Corporate",
+            "schema": {
+              "enum": [
+                "Individual",
+                "Corporate"
+              ],
+              "type": "string",
+              "description": "One of: Individual, Corporate"
+            }
+          },
+          {
+            "name": "activitySector",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "companySize",
+            "in": "query",
+            "description": "One of: Micro, Small, Medium, Large",
+            "schema": {
+              "enum": [
+                "Micro",
+                "Small",
+                "Medium",
+                "Large"
+              ],
+              "type": "string",
+              "description": "One of: Micro, Small, Medium, Large"
+            }
+          },
+          {
+            "name": "potential",
+            "in": "query",
+            "description": "One of: None, GoodCustomer, KeyAccount",
+            "schema": {
+              "enum": [
+                "None",
+                "GoodCustomer",
+                "KeyAccount"
+              ],
+              "type": "string",
+              "description": "One of: None, GoodCustomer, KeyAccount"
             }
           }
         ],
@@ -37290,6 +37485,23 @@
           "countryCode": {
             "type": "string",
             "nullable": true
+          },
+          "activitySector": {
+            "type": "string",
+            "nullable": true
+          },
+          "companySize": {
+            "type": "string",
+            "nullable": true
+          },
+          "estimatedAnnualPurchases": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "contactJobTitle": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -40628,6 +40840,17 @@
             "type": "string",
             "format": "date-span",
             "nullable": true
+          },
+          "keyAccountsOnly": {
+            "type": "boolean"
+          },
+          "reservedAgentIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -41032,6 +41255,10 @@
           "scorePoints": {
             "type": "integer",
             "format": "int32",
+            "nullable": true
+          },
+          "productRequestIsHot": {
+            "type": "boolean",
             "nullable": true
           }
         },
@@ -43729,6 +43956,17 @@
           "firstContactSlaCold": {
             "type": "string",
             "format": "date-span",
+            "nullable": true
+          },
+          "keyAccountsOnly": {
+            "type": "boolean"
+          },
+          "reservedAgentIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
             "nullable": true
           }
         },
@@ -46971,6 +47209,30 @@
         },
         "additionalProperties": false
       },
+      "KeyAccountSettingsDto": {
+        "type": "object",
+        "properties": {
+          "goodPurchases": {
+            "type": "number",
+            "format": "double"
+          },
+          "majorPurchases": {
+            "type": "number",
+            "format": "double"
+          },
+          "targetSectors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "isConfigured": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
       "KycApprovalCircuitDto": {
         "type": "object",
         "properties": {
@@ -48658,6 +48920,30 @@
           "maritalStatus": {
             "type": "string",
             "nullable": true
+          },
+          "activitySector": {
+            "type": "string",
+            "nullable": true
+          },
+          "companySize": {
+            "type": "string",
+            "nullable": true
+          },
+          "estimatedAnnualPurchases": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "contactJobTitle": {
+            "type": "string",
+            "nullable": true
+          },
+          "productRequestAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "potentialTier": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -49066,6 +49352,20 @@
               "$ref": "#/components/schemas/SourceQualityDto"
             },
             "nullable": true
+          },
+          "byPotential": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LeadReportPotential"
+            },
+            "nullable": true
+          },
+          "bySector": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LeadReportSector"
+            },
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -49333,6 +49633,37 @@
         },
         "additionalProperties": false
       },
+      "LeadReportPotential": {
+        "type": "object",
+        "properties": {
+          "tier": {
+            "enum": [
+              "None",
+              "GoodCustomer",
+              "KeyAccount"
+            ],
+            "type": "string",
+            "description": "One of: None, GoodCustomer, KeyAccount"
+          },
+          "captured": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "projects": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "converted": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "conversionRate": {
+            "type": "number",
+            "format": "double"
+          }
+        },
+        "additionalProperties": false
+      },
       "LeadReportProjectPhase": {
         "type": "object",
         "properties": {
@@ -49359,6 +49690,32 @@
               "$ref": "#/components/schemas/LeadReportKindAmount"
             },
             "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "LeadReportSector": {
+        "type": "object",
+        "properties": {
+          "sector": {
+            "type": "string",
+            "nullable": true
+          },
+          "label": {
+            "type": "string",
+            "nullable": true
+          },
+          "captured": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "converted": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "conversionRate": {
+            "type": "number",
+            "format": "double"
           }
         },
         "additionalProperties": false
@@ -49723,6 +50080,13 @@
           "defaultScorePoints": {
             "type": "integer",
             "format": "int32"
+          },
+          "productRequestIsHot": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "defaultProductRequestIsHot": {
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -49898,6 +50262,10 @@
               "format": "int32"
             },
             "nullable": true
+          },
+          "keyAccounts": {
+            "type": "integer",
+            "format": "int32"
           }
         },
         "additionalProperties": false
@@ -51114,6 +51482,9 @@
             "type": "boolean"
           },
           "takeAddress": {
+            "type": "boolean"
+          },
+          "takeCompanyProfile": {
             "type": "boolean"
           }
         },
@@ -60160,6 +60531,27 @@
         },
         "additionalProperties": false
       },
+      "SetKeyAccountSettingsRequest": {
+        "type": "object",
+        "properties": {
+          "goodPurchases": {
+            "type": "number",
+            "format": "double"
+          },
+          "majorPurchases": {
+            "type": "number",
+            "format": "double"
+          },
+          "targetSectors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "SetKycRemotePolicyRequest": {
         "type": "object",
         "properties": {
@@ -64511,6 +64903,17 @@
             "type": "string",
             "format": "date-span",
             "nullable": true
+          },
+          "keyAccountsOnly": {
+            "type": "boolean"
+          },
+          "reservedAgentIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -64694,6 +65097,35 @@
           "website": {
             "type": "string",
             "nullable": true
+          },
+          "prospectType": {
+            "enum": [
+              "Individual",
+              "Corporate"
+            ],
+            "type": "string",
+            "description": "One of: Individual, Corporate",
+            "nullable": true
+          },
+          "activitySector": {
+            "type": "string",
+            "nullable": true
+          },
+          "companySize": {
+            "type": "string",
+            "nullable": true
+          },
+          "estimatedAnnualPurchases": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "clearEstimatedAnnualPurchases": {
+            "type": "boolean"
+          },
+          "contactJobTitle": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -64762,6 +65194,10 @@
           "scorePoints": {
             "type": "integer",
             "format": "int32",
+            "nullable": true
+          },
+          "productRequestIsHot": {
+            "type": "boolean",
             "nullable": true
           }
         },

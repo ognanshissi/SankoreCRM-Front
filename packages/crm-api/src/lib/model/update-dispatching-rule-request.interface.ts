@@ -24,5 +24,7 @@ export interface UpdateDispatchingRuleRequest {
     firstContactSlaHot?: string | null;
     firstContactSlaWarm?: string | null;
     firstContactSlaCold?: string | null;
+    keyAccountsOnly?: boolean;
+    reservedAgentIds?: Array<string> | null;
 }
 

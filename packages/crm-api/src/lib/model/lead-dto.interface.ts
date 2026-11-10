@@ -75,5 +75,11 @@ export interface LeadDto {
     customerId?: string | null;
     profession?: string | null;
     maritalStatus?: string | null;
+    activitySector?: string | null;
+    companySize?: string | null;
+    estimatedAnnualPurchases?: Money;
+    contactJobTitle?: string | null;
+    productRequestAt?: string | null;
+    potentialTier?: string | null;
 }
 

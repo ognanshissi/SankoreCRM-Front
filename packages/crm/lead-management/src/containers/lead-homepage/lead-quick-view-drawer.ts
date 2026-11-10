@@ -26,6 +26,7 @@ import {
   intentOption,
   leadStatusMeta,
   originLabel,
+  potentialBadge,
   prospectTypeLabel,
 } from '../edit-lead/lead-view.models';
 
@@ -73,6 +74,7 @@ export class LeadQuickViewDrawer implements OnInit {
   public readonly initials = initials(this.name);
   public readonly status = leadStatusMeta(this.lead.status);
   public readonly intent = intentOption(this.lead.intentLevel);
+  public readonly potential = potentialBadge(this.lead.potentialTier);
   public readonly product = computed(() => interestedProductLabel(this.lead.interestedProduct, this._productNames.names()));
   public readonly showAmount = computed(() => this._formFields.isVisible('Lead', 'desiredAmount'));
   public readonly amount = formatAmount(this.lead.desiredAmount?.amount, this.lead.desiredAmount?.currency);

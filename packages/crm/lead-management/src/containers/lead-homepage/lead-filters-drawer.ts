@@ -17,6 +17,12 @@ export interface LeadFilters {
   leadSource: string;
   queue: boolean;
   custom: string[];
+  /** Grands comptes, lot 1 : particulier ou entreprise, secteur et tranche d'effectif. */
+  prospectType: string;
+  sector: string;
+  size: string;
+  /** Grands comptes, lot 4 : un `LeadPotentialTier`. */
+  potential: string;
 }
 
 export interface LeadFiltersDrawerData {
@@ -27,10 +33,15 @@ export interface LeadFiltersDrawerData {
   sourceOptions: { label: string; value: string }[];
   /** Vide quand l'utilisateur ne voit que ses leads : filtrer par agent n'aurait rien à montrer. */
   agentOptions: { label: string; value: string }[];
+  prospectTypeOptions: { label: string; value: string }[];
+  sectorOptions: ReadonlyArray<{ label: string; value: string }>;
+  sizeOptions: ReadonlyArray<{ label: string; value: string }>;
+  potentialOptions: ReadonlyArray<{ label: string; value: string }>;
 }
 
 export const NO_LEAD_FILTERS: LeadFilters = {
   status: '', intent: '', agent: '', agency: '', leadSource: '', queue: false, custom: [],
+  prospectType: '', sector: '', size: '', potential: '',
 };
 
 /**
@@ -79,6 +90,28 @@ export const NO_LEAD_FILTERS: LeadFilters = {
                         [ngModel]="value().leadSource" (ngModelChange)="set('leadSource', $event)"></tas-select>
           </tas-form-field>
 
+          <tas-form-field>
+            <tas-label>Type de prospect</tas-label>
+            <tas-select clearable [options]="data.prospectTypeOptions" placeholder="Particuliers et entreprises"
+                        [ngModel]="value().prospectType" (ngModelChange)="set('prospectType', $event)"></tas-select>
+          </tas-form-field>
+          <tas-form-field>
+            <tas-label>Secteur d'activité</tas-label>
+            <tas-select clearable [options]="sectorOptions" placeholder="Tous les secteurs"
+                        [ngModel]="value().sector" (ngModelChange)="set('sector', $event)"></tas-select>
+          </tas-form-field>
+          <tas-form-field>
+            <tas-label>Effectif</tas-label>
+            <tas-select clearable [options]="sizeOptions" placeholder="Toutes les tailles"
+                        [ngModel]="value().size" (ngModelChange)="set('size', $event)"></tas-select>
+          </tas-form-field>
+
+          <tas-form-field>
+            <tas-label>Potentiel</tas-label>
+            <tas-select clearable [options]="potentialOptions" placeholder="Tous les leads"
+                        [ngModel]="value().potential" (ngModelChange)="set('potential', $event)"></tas-select>
+          </tas-form-field>
+
           <label class="flex items-start gap-2 text-sm text-slate-700 cursor-pointer">
             <input type="checkbox" class="form-checkbox accent-primary mt-0.5"
                    [checked]="value().queue" (change)="setQueue($any($event.target).checked)" />
@@ -113,16 +146,22 @@ export class LeadFiltersDrawer {
   private readonly _dialogRef = inject(DialogRef<LeadFilters | null>);
 
   public readonly value = signal<LeadFilters>({ ...this.data.value, custom: [...this.data.value.custom] });
+  public readonly sectorOptions = [...this.data.sectorOptions];
+  public readonly sizeOptions = [...this.data.sizeOptions];
+  public readonly potentialOptions = [...this.data.potentialOptions];
 
   /** Le nombre de filtres posés, pour le bouton : un champ personnalisé compte pour un. */
   public readonly count = computed(() => {
     const v = this.value();
-    return [v.status, v.intent, v.agent, v.agency, v.leadSource].filter(Boolean).length
+    return [v.status, v.intent, v.agent, v.agency, v.leadSource, v.prospectType, v.sector, v.size, v.potential].filter(Boolean).length
       + (v.queue ? 1 : 0) + v.custom.length;
   });
 
   // La croix d'un `tas-select` notifie `null` : ramené à la chaîne vide, « aucun filtre » pour la page.
-  public set(key: 'status' | 'intent' | 'agent' | 'agency' | 'leadSource', next: string | null): void {
+  public set(
+    key: 'status' | 'intent' | 'agent' | 'agency' | 'leadSource' | 'prospectType' | 'sector' | 'size' | 'potential',
+    next: string | null,
+  ): void {
     this.value.update((v) => ({ ...v, [key]: next ?? '' }));
   }
 

@@ -602,6 +602,12 @@ export class CreateLeadComponent {
       companyEmail: shown('companyEmail'),
       companyPhone: shown('companyPhone'),
       website: shown('website'),
+      activitySector: shown('activitySector'),
+      companySize: shown('companySize'),
+      estimatedAnnualPurchases: renderer.isVisible('estimatedAnnualPurchases')
+        ? (money(v, 'estimatedAnnualPurchases')?.amount ?? null)
+        : null,
+      contactJobTitle: shown('contactJobTitle'),
       phoneNumber: text(v, 'phoneNumber'),
       email: shown('email'),
       preferredLanguage: text(v, 'preferredLanguage') ?? 'fr',

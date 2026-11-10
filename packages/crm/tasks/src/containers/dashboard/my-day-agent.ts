@@ -189,20 +189,40 @@ export class MyDayAgent {
     return lead ? leadDisplayName(lead) : '';
   }
 
+  /**
+   * Ce qui rend le lead prioritaire, en pastilles (grands comptes, lots 3 et 4) : « Lead chaud » — avec
+   * « demande produit » quand un formulaire l'a rendu chaud — et « Grand compte ». Vide pour les autres.
+   */
+  public badges(item: AgentDayItem | CrmTaskDto): { label: string; tone: string }[] {
+    const lead = this.lead(item);
+    if (!lead) return [];
+    const badges: { label: string; tone: string }[] = [];
+    if (lead.intentLevel === 'Hot')
+      badges.push({ label: lead.productRequestAt ? 'Lead chaud · demande produit' : 'Lead chaud', tone: 'bg-red-50 text-red-700' });
+    if (lead.potentialTier === 'KeyAccount') badges.push({ label: 'Grand compte', tone: 'bg-violet-50 text-violet-700' });
+    return badges;
+  }
+
   /** « Compte Épargne · demande les pièces à fournir » : le produit, puis ce qui est à faire. */
   public subtitle(item: AgentDayItem): string {
     const product = this._product(this.lead(item));
     if (item.kind === 'task') return this.taskSubtitle(item.task!);
+    // Un prospect entreprise se lit par son entreprise d'abord : le contact seul ne dit pas qui achète.
+    const company = this._company(this.lead(item));
     const detail = item.kind === 'reminder'
       ? [item.entry!.title !== 'Rappel' ? item.entry!.title : null, item.entry!.notes]
       : [item.entry!.title, item.entry!.notes];
-    return [product, ...detail].filter(Boolean).join(' · ');
+    return [company, product, ...detail].filter(Boolean).join(' · ');
   }
 
   public taskSubtitle(task: CrmTaskDto): string {
     const lead = task.leadId ? this.leads().get(task.leadId) ?? null : null;
     const source = lead?.leadSourceLabel?.trim() || SOURCE_LABELS[lead?.channel ?? ''] || SOURCE_LABELS[lead?.source ?? ''];
-    return [this._product(lead), task.description?.trim() || source].filter(Boolean).join(' · ');
+    return [this._company(lead), this._product(lead), task.description?.trim() || source].filter(Boolean).join(' · ');
+  }
+
+  private _company(lead: LeadDto | null): string | null {
+    return lead?.prospectType === 'Corporate' ? lead.companyName?.trim() || null : null;
   }
 
   private _product(lead: LeadDto | null): string | null {

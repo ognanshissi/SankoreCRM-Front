@@ -149,6 +149,27 @@
         </section>
       </div>
 
+      @if (potentials() || sectors().length) {
+        <section class="rounded-2xl border border-slate-100 bg-white p-5 shadow-xs">
+          <h2 class="text-base font-semibold text-slate-900">Entreprises</h2>
+          <p class="mb-4 text-xs text-slate-500">Les prospects entreprise captés sur la période, et combien sont convertis à ce jour.</p>
+          <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+            @if (potentials(); as items) {
+              <div>
+                <h3 class="mb-2 text-sm font-semibold text-slate-700">Par potentiel</h3>
+                <report-bar-list [items]="items" [color]="colors.captured" [color2]="colors.converted" name="Captées" name2="Converties"></report-bar-list>
+              </div>
+            }
+            @if (sectors().length) {
+              <div>
+                <h3 class="mb-2 text-sm font-semibold text-slate-700">Par secteur d’activité</h3>
+                <report-bar-list [items]="sectors()" [color]="colors.captured" [color2]="colors.converted" name="Captées" name2="Converties"></report-bar-list>
+              </div>
+            }
+          </div>
+        </section>
+      }
+
       <!-- Classement -->
       <report-agent-ranking
         [agents]="agents()"

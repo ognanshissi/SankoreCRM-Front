@@ -306,3 +306,63 @@ export function householdBudget(
   const charges = (housing && !Number.isNaN(housing) ? housing : 0) + (otherDebts && !Number.isNaN(otherDebts) ? otherDebts : 0);
   return { disposable: income - charges, commitmentPercent: Math.round((charges / income) * 100) };
 }
+
+/**
+ * Secteurs d'activité d'un prospect entreprise — la liste neutre du socle, la même que celle du
+ * serveur (`LeadActivitySectors`) et des options du formulaire des leads (grands comptes, lot 1).
+ */
+export const ACTIVITY_SECTOR_OPTIONS: ReadonlyArray<{ value: string; label: string }> = [
+  { value: 'WholesaleTrade', label: 'Commerce de gros et distribution' },
+  { value: 'RetailTrade', label: 'Commerce de détail' },
+  { value: 'Construction', label: 'BTP et construction' },
+  { value: 'Manufacturing', label: 'Industrie et transformation' },
+  { value: 'Agriculture', label: 'Agriculture, élevage et pêche' },
+  { value: 'EnergyMining', label: 'Énergie, mines et pétrole' },
+  { value: 'TransportLogistics', label: 'Transport et logistique' },
+  { value: 'HospitalityTourism', label: 'Hôtellerie, restauration et tourisme' },
+  { value: 'Health', label: 'Santé et pharmacie' },
+  { value: 'Education', label: 'Éducation et formation' },
+  { value: 'PublicSector', label: 'Administration et collectivités' },
+  { value: 'NonProfit', label: 'ONG, associations et organisations internationales' },
+  { value: 'Technology', label: 'Informatique et télécommunications' },
+  { value: 'BusinessServices', label: 'Services aux entreprises' },
+  { value: 'RealEstate', label: 'Immobilier' },
+  { value: 'FinancialServices', label: 'Banques, assurances et services financiers' },
+  { value: 'MediaEvents', label: 'Médias, communication et événementiel' },
+  { value: 'Other', label: 'Autre' },
+];
+
+/** Tranches d'effectif, aux noms de `LeadCompanySize`. */
+export const COMPANY_SIZE_OPTIONS: ReadonlyArray<{ value: string; label: string }> = [
+  { value: 'Micro', label: '1 à 9 personnes' },
+  { value: 'Small', label: '10 à 49 personnes' },
+  { value: 'Medium', label: '50 à 249 personnes' },
+  { value: 'Large', label: '250 personnes et plus' },
+];
+
+export function activitySectorLabel(code: string | null | undefined): string | null {
+  if (!code) return null;
+  return ACTIVITY_SECTOR_OPTIONS.find((o) => o.value === code)?.label ?? code;
+}
+
+export function companySizeLabel(size: string | null | undefined): string | null {
+  if (!size) return null;
+  return COMPANY_SIZE_OPTIONS.find((o) => o.value === size)?.label ?? size;
+}
+
+/**
+ * Le palier d'un lead entreprise face aux seuils « grands comptes » de l'institution (lot 4), en
+ * pastille ; null pour un particulier ou une entreprise sous les seuils.
+ */
+export function potentialBadge(tier: string | null | undefined): { label: string; tone: string } | null {
+  switch (tier) {
+    case 'KeyAccount': return { label: 'Grand compte', tone: 'bg-violet-50 text-violet-700' };
+    case 'GoodCustomer': return { label: 'Bon client', tone: 'bg-slate-100 text-slate-700' };
+    default: return null;
+  }
+}
+
+/** L'entreprise d'un lead entreprise, ce qui se lit d'abord en B2B ; null pour un particulier. */
+export function companyOf(lead: LeadDto | null | undefined): string | null {
+  return lead?.prospectType === 'Corporate' ? lead.companyName?.trim() || null : null;
+}

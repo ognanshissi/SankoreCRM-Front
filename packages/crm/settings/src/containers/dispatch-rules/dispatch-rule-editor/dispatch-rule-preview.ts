@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject, input, OnInit, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, input, signal, untracked } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { catchError, of } from 'rxjs';
 import { TasSpinner } from '@talisoft/ui/spinner';
@@ -147,7 +147,7 @@ const VISIBLE_CANDIDATES = 4;
     </div>
   `,
 })
-export class DispatchRulePreview implements OnInit {
+export class DispatchRulePreview {
   private readonly _leadsApi = inject(LeadsApiService);
 
   public readonly strategy = input.required<DispatchingRuleDtoStrategyEnum>();
@@ -157,6 +157,8 @@ export class DispatchRulePreview implements OnInit {
   public readonly maxTasksPerAgent = input.required<number>();
   public readonly antiMonopolyThreshold = input.required<number>();
   public readonly excludedAgentIds = input.required<string[]>();
+  /** Règle réservée aux grands comptes : l'aperçu prend des grands comptes, les seuls qu'elle recevra. */
+  public readonly keyAccountsOnly = input(false);
 
   public readonly criteria = CRITERIA;
   public readonly visibleCount = VISIBLE_CANDIDATES;
@@ -221,13 +223,29 @@ export class DispatchRulePreview implements OnInit {
     this.showAll() ? this.ranked() : this.ranked().slice(0, VISIBLE_CANDIDATES),
   );
 
-  ngOnInit(): void {
-    this._leadsApi.listLeads(1, 20).pipe(catchError(() => of({ items: [] as LeadDto[] }))).subscribe((res) => {
-      const open = (res.items ?? []).filter((l) => !!l.id && !CLOSED_STATUSES.includes(l.status ?? '')).slice(0, 3);
-      this.leads.set(open);
-      this.leadsLoading.set(false);
-      if (open[0]?.id) this.selectLead(open[0].id);
+  constructor() {
+    // Rechargé quand la case « Réservée aux grands comptes » change : une règle de grands comptes
+    // ne reçoit jamais la boutique de quartier que l'aperçu montrait d'abord (grands comptes, lot 4).
+    effect(() => {
+      const keyAccounts = this.keyAccountsOnly();
+      untracked(() => this._loadLeads(keyAccounts));
     });
+  }
+
+  private _loadLeads(keyAccounts: boolean): void {
+    this.leadsLoading.set(true);
+    this._leadsApi
+      .listLeads(1, 20, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined,
+        undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined,
+        keyAccounts ? 'KeyAccount' : undefined)
+      .pipe(catchError(() => of({ items: [] as LeadDto[] })))
+      .subscribe((res) => {
+        const open = (res.items ?? []).filter((l) => !!l.id && !CLOSED_STATUSES.includes(l.status ?? '')).slice(0, 3);
+        this.leads.set(open);
+        this.leadsLoading.set(false);
+        this.selectedLeadId.set(null);
+        if (open[0]?.id) this.selectLead(open[0].id);
+      });
   }
 
   public selectLead(leadId: string): void {

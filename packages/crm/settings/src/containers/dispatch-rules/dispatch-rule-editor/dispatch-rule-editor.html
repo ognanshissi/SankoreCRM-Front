@@ -42,6 +42,18 @@
               }
             </tas-form-field>
 
+            <!-- Grands comptes, lot 4 -->
+            <label class="flex items-start gap-2 text-sm text-slate-700 cursor-pointer">
+              <input type="checkbox" class="mt-0.5 accent-primary" [formField]="formSchema.keyAccountsOnly" />
+              <span>
+                Réservée aux grands comptes
+                <span class="block text-xs text-slate-500">
+                  Elle reçoit les leads entreprise dont le volume d’achat atteint le seuil « grand compte », avant toute
+                  autre règle, et aucun autre lead. Le seuil se règle dans la carte « Grands comptes » de l’écran Dispatching.
+                </span>
+              </span>
+            </label>
+
             <!-- Priorité : le rang de la règle parmi les autres, réglable dès la création -->
             <div class="flex flex-col gap-2" role="group" aria-labelledby="dispatch-priority-label">
               <div>
@@ -80,7 +92,14 @@
               </ol>
 
               <div class="rounded-xl bg-slate-50 px-4 py-3 text-sm text-slate-700">
-                @if (!activeRuleAbove()) {
+                @if (formSchema.keyAccountsOnly().value()) {
+                  <!-- Grands comptes, lot 4 : la position ne joue qu'entre règles de grands comptes. -->
+                  <p>
+                    Réservée aux grands comptes, elle {{ isActive() ? 'reçoit' : 'recevra une fois activée' }} les leads entreprise
+                    au seuil « grand compte » avant toute autre règle, y compris celle qu'une source impose. Les autres leads ne
+                    passent jamais par elle.
+                  </p>
+                } @else if (!activeRuleAbove()) {
                   <p>
                     En position {{ position() + 1 }}, c'est elle qui attribue
                     {{ isActive() ? '' : 'une fois activée ' }}tous les leads dont la source n'impose pas de règle.
@@ -276,6 +295,18 @@
             @if (agentRows().length === 0) {
               <p class="text-sm text-slate-500 py-4 text-center">Aucun utilisateur trouvé.</p>
             } @else {
+              <div class="flex rounded-lg border border-slate-200 p-0.5 text-xs font-medium self-start" role="radiogroup" aria-label="Mode de sélection des agents">
+                <button type="button" role="radio" [attr.aria-checked]="!closedList()" class="rounded-md px-3 py-1.5"
+                        [class]="!closedList() ? 'bg-primary text-white' : 'text-slate-600 hover:bg-slate-50'"
+                        (click)="setClosedList(false)">Tous sauf les décochés</button>
+                <button type="button" role="radio" [attr.aria-checked]="closedList()" class="rounded-md px-3 py-1.5"
+                        [class]="closedList() ? 'bg-primary text-white' : 'text-slate-600 hover:bg-slate-50'"
+                        (click)="setClosedList(true)">Seulement les cochés</button>
+              </div>
+              @if (closedList()) {
+                <p class="text-xs text-slate-500">Liste fermée : un agent ajouté plus tard ne reçoit pas les leads de cette règle tant qu’il n’est pas coché.</p>
+              }
+
               <div class="flex flex-wrap items-center gap-3">
                 @if (agentRows().length > 10) {
                   <input
@@ -343,6 +374,7 @@
           [maxTasksPerAgent]="formSchema.maxTasksPerAgent().value()"
           [antiMonopolyThreshold]="formSchema.antiMonopolyThreshold().value()"
           [excludedAgentIds]="excludedAgentIds()"
+          [keyAccountsOnly]="formSchema.keyAccountsOnly().value()"
         ></dispatch-rule-preview>
       </aside>
     </div>

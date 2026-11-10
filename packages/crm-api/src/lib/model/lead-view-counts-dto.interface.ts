@@ -17,5 +17,6 @@ export interface LeadViewCountsDto {
     awaitingDispatch?: number;
     byStatus?: { [key: string]: number; } | null;
     byIntent?: { [key: string]: number; } | null;
+    keyAccounts?: number;
 }
 

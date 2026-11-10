@@ -22,6 +22,9 @@ const FACTOR_LABELS: Record<string, string> = {
   declarativeCoherence: 'Cohérence déclarative',
   location: 'Localisation',
   address: 'Adresse',
+  // Grands comptes, lot 2 : le potentiel d'une entreprise, selon les seuils de l'institution.
+  potential: "Potentiel de l'entreprise",
+  inactivity: 'Inactivité',
 };
 
 function parseFactors(factorsJson: string | null | undefined): ScoreFactor[] {
@@ -31,6 +34,8 @@ function parseFactors(factorsJson: string | null | undefined): ScoreFactor[] {
     if (Array.isArray(parsed)) return parsed;
     return Object.entries(parsed)
       .filter(([key]) => key !== 'total')
+      // Le potentiel ne vaut que pour une entreprise, une fois les seuils réglés : à 0, il ne dit rien.
+      .filter(([key, val]) => key !== 'potential' || Number(val) !== 0)
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .map(([key, val]: [string, any]) => ({
         label: FACTOR_LABELS[key] ?? key,
@@ -84,6 +89,13 @@ function parseFactors(factorsJson: string | null | undefined): ScoreFactor[] {
           </span>
           <span class="shrink-0 tabular-nums">seuil {{ threshold() }}</span>
         </p>
+        <!-- Grands comptes, lot 3 : chaud par sa demande, pas par son score — la raison se lit ici. -->
+        @if (l.intentLevel === 'Hot' && l.productRequestAt) {
+          <p class="mt-2 flex items-center gap-1.5 rounded-lg bg-red-50 px-2.5 py-1.5 text-[11px] text-red-700">
+            <tas-icon iconName="feather:zap" style="font-size:12px" aria-hidden="true"></tas-icon>
+            <span>Chaud : a demandé ce produit par formulaire {{ l.productRequestAt | dateTimeAgo }}</span>
+          </p>
+        }
         @if (showFactors()) {
           <div id="score-factors-panel" class="mt-3 overflow-hidden rounded-lg border border-slate-200" role="region" aria-label="Détail du score">
             @for (factor of factors(); track factor.label) {

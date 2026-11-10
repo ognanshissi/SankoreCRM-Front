@@ -25,5 +25,6 @@ export interface UpdateLeadSourceRequest {
     defaultAgencyId?: string | null;
     defaultDispatchingRuleId?: string | null;
     scorePoints?: number | null;
+    productRequestIsHot?: boolean | null;
 }
 

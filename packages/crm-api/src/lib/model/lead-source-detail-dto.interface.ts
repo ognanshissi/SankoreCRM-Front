@@ -53,6 +53,8 @@ export interface LeadSourceDetailDto {
     lastRejectedReason?: string | null;
     scorePoints?: number | null;
     defaultScorePoints?: number;
+    productRequestIsHot?: boolean | null;
+    defaultProductRequestIsHot?: boolean;
 }
 export enum LeadSourceDetailDtoChannelTypeEnum {
     WebForm = 'WebForm',

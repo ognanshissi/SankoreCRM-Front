@@ -56,7 +56,9 @@ import { ReassignLeadDrawer } from './reassign-lead-drawer';
 import { CreateOpportunityDrawer, CreateOpportunityDrawerData } from './opportunities/create-opportunity-drawer';
 import { isClosed, stepLabel } from './opportunities/opportunity.model';
 import {
+  activitySectorLabel,
   ageOf,
+  companySizeLabel,
   formatAmount,
   formatDay,
   INTENT_OPTIONS,
@@ -228,6 +230,8 @@ export class LeadInformationsPage {
   });
 
   public readonly formatAmount = formatAmount;
+  public readonly activitySectorLabel = activitySectorLabel;
+  public readonly companySizeLabel = companySizeLabel;
   public readonly origin = computed(() => originLabel(this.lead()));
   public readonly showAll = signal(false);
 

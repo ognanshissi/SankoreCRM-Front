@@ -25,7 +25,7 @@
 <!-- Vues et actions -->
 <div class="flex flex-wrap items-end justify-between gap-3 border-b border-slate-200 mb-4">
   <nav class="flex flex-wrap items-end gap-1 -mb-px" aria-label="Vues de la liste">
-    @for (view of primaryViews; track view.key) {
+    @for (view of primaryViews(); track view.key) {
       <button type="button"
         class="flex items-center gap-2 px-3.5 py-2 rounded-t-lg border text-sm font-medium transition-colors"
         [class]="activeView()?.key === view.key
@@ -256,6 +256,9 @@
         @if (isVisible('score')) { <th class="py-2.5">Score</th> }
         @if (isVisible('source')) { <th class="py-2.5">Source</th> }
         @if (isVisible('type')) { <th class="py-2.5">Type</th> }
+        @if (isVisible('sector')) { <th class="py-2.5">Secteur</th> }
+        @if (isVisible('size')) { <th class="py-2.5">Effectif</th> }
+        @if (isVisible('potential')) { <th class="py-2.5">Potentiel</th> }
         @if (isVisible('agent')) { <th class="py-2.5">Agent</th> }
         @if (isVisible('agency')) { <th class="py-2.5">Agence</th> }
         @if (isVisible('created')) { <th class="py-2.5">Créé</th> }
@@ -279,9 +282,17 @@
               {{ initials(item) }}
             </div>
             <div class="min-w-0 flex-1">
-              <div class="font-medium text-primary leading-tight truncate">{{ displayName(item) }}</div>
-              @if (origin(item) !== '—') {
-                <div class="text-xs text-slate-500 mt-0.5 truncate">Venu par {{ origin(item) }}</div>
+              <!-- Un lead entreprise se lit par son entreprise ; le contact passe dessous (grands comptes). -->
+              @if (companyOf(item); as company) {
+                <div class="font-medium text-primary leading-tight truncate">{{ company }}</div>
+                <div class="text-xs text-slate-500 mt-0.5 truncate">
+                  {{ displayName(item) }}@if (origin(item) !== '—') { · venu par {{ origin(item) }}}
+                </div>
+              } @else {
+                <div class="font-medium text-primary leading-tight truncate">{{ displayName(item) }}</div>
+                @if (origin(item) !== '—') {
+                  <div class="text-xs text-slate-500 mt-0.5 truncate">Venu par {{ origin(item) }}</div>
+                }
               }
               @if (item.awaitingDispatchSince && !item.currentAssignmentId) {
                 <div class="mt-0.5 text-[11px] font-medium text-amber-800"
@@ -374,6 +385,20 @@
         }
         @if (isVisible('type')) {
           <td class="py-3 text-sm text-slate-600">{{ prospectTypeLabel(item.prospectType) }}</td>
+        }
+        @if (isVisible('sector')) {
+          <td class="py-3 text-sm text-slate-600">{{ activitySectorLabel(item.activitySector) ?? '—' }}</td>
+        }
+        @if (isVisible('size')) {
+          <td class="py-3 text-sm text-slate-600 whitespace-nowrap">{{ companySizeLabel(item.companySize) ?? '—' }}</td>
+        }
+        @if (isVisible('potential')) {
+          <td class="py-3 text-sm whitespace-nowrap">
+            @if (potentialLabel(item.potentialTier); as tier) {
+              <span class="rounded-full px-2 py-0.5 text-xs font-medium"
+                    [class]="item.potentialTier === 'KeyAccount' ? 'bg-violet-50 text-violet-700' : 'bg-slate-100 text-slate-700'">{{ tier }}</span>
+            } @else { <span class="text-slate-400">—</span> }
+          </td>
         }
         @if (isVisible('agent')) {
           <td class="py-3 text-sm text-slate-700 whitespace-nowrap">{{ agentName(item) || '—' }}</td>

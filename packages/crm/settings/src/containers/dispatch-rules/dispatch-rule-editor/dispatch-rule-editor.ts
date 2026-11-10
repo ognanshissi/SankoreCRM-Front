@@ -54,6 +54,11 @@ class DispatchRuleFormModel {
   public slaColdMinutes!: number;
   public antiMonopolyThreshold!: number;
   public excludedAgentIds!: string[];
+  /** Grands comptes, lot 4 : la règle ne reçoit que les leads entreprise au seuil « grand compte ». */
+  public keyAccountsOnly!: boolean;
+  /** Liste fermée : seuls les agents cochés reçoivent les leads, un nouvel agent n'y entre pas d'office. */
+  public closedList!: boolean;
+  public reservedAgentIds!: string[];
 
   // Mêmes valeurs que DispatchingRule.Default() côté serveur.
   public static instantiate(): DispatchRuleFormModel {
@@ -70,6 +75,9 @@ class DispatchRuleFormModel {
     m.slaColdMinutes = 24 * 60;
     m.antiMonopolyThreshold = 5;
     m.excludedAgentIds = [];
+    m.keyAccountsOnly = false;
+    m.closedList = false;
+    m.reservedAgentIds = [];
     return m;
   }
 
@@ -87,6 +95,9 @@ class DispatchRuleFormModel {
     m.slaColdMinutes = timeSpanToMinutes(dto.firstContactSlaCold) ?? m.firstContactSlaMinutes;
     m.antiMonopolyThreshold = dto.antiMonopolyThreshold || m.antiMonopolyThreshold;
     m.excludedAgentIds = [...(dto.excludedAgentIds ?? [])];
+    m.keyAccountsOnly = dto.keyAccountsOnly ?? false;
+    m.reservedAgentIds = [...(dto.reservedAgentIds ?? [])];
+    m.closedList = m.reservedAgentIds.length > 0;
     return m;
   }
 }
@@ -162,7 +173,16 @@ export class DispatchRuleEditorPage implements OnInit {
   public readonly strategy = computed(() => this.formSchema.strategy().value());
   public readonly showWeights = computed(() => needsWeights(this.strategy()));
   public readonly normalizedWeights = computed(() => normalizeWeights(this.formSchema.weights().value()));
-  public readonly excludedAgentIds = computed(() => this.formSchema.excludedAgentIds().value());
+  public readonly closedList = computed(() => this.formSchema.closedList().value());
+  /**
+   * Les agents qui NE recevront PAS de leads, quel que soit le mode : en liste fermée, tous ceux qui
+   * ne sont pas cochés. L'aperçu et les compteurs lisent celle-ci.
+   */
+  public readonly excludedAgentIds = computed(() => {
+    if (!this.closedList()) return this.formSchema.excludedAgentIds().value();
+    const reserved = new Set(this.formSchema.reservedAgentIds().value());
+    return this.agentRows().filter((a) => !reserved.has(a.id)).map((a) => a.id);
+  });
 
   public readonly activePreset = computed(() => {
     const raw = this.formSchema.weights().value();
@@ -195,8 +215,9 @@ export class DispatchRuleEditorPage implements OnInit {
   });
 
   /** Première règle active placée avant celle-ci : c'est elle qui prend les leads sans source imposée. */
+  /** Une règle réservée aux grands comptes ne prend pas les autres leads : elle ne passe « avant » personne. */
   public readonly activeRuleAbove = computed(
-    () => this.otherRules().slice(0, this.position()).find((r) => r.isActive) ?? null,
+    () => this.otherRules().slice(0, this.position()).find((r) => r.isActive && !r.keyAccountsOnly) ?? null,
   );
 
   // ── Agents ────────────────────────────────────────────────────────────
@@ -283,16 +304,37 @@ export class DispatchRuleEditorPage implements OnInit {
 
   public toggleAgent(agent: AgentRow): void {
     if (agent.blockedReason) return;
-    const field = this.formSchema.excludedAgentIds();
+    // En liste fermée, cocher ajoute l'agent aux désignés ; sinon, décocher l'ajoute aux exclus.
+    const field = this.closedList() ? this.formSchema.reservedAgentIds() : this.formSchema.excludedAgentIds();
     const current = field.value();
     field.value.set(current.includes(agent.id) ? current.filter((x) => x !== agent.id) : [...current, agent.id]);
   }
 
   public setAllAgents(included: boolean): void {
     const eligible = this.agentRows().filter((a) => !a.blockedReason).map((a) => a.id);
+    if (this.closedList()) {
+      this.formSchema.reservedAgentIds().value.set(included ? eligible : []);
+      return;
+    }
     const field = this.formSchema.excludedAgentIds();
     const others = field.value().filter((x) => !eligible.includes(x));
     field.value.set(included ? others : [...others, ...eligible]);
+  }
+
+  /** Passer en liste fermée reprend les agents cochés à cet instant, et inversement. */
+  public setClosedList(closed: boolean): void {
+    if (closed === this.closedList()) return;
+    const eligible = this.agentRows().filter((a) => !a.blockedReason).map((a) => a.id);
+    if (closed) {
+      const excluded = new Set(this.formSchema.excludedAgentIds().value());
+      this.formSchema.reservedAgentIds().value.set(eligible.filter((id) => !excluded.has(id)));
+      this.formSchema.excludedAgentIds().value.set([]);
+    } else {
+      const reserved = new Set(this.formSchema.reservedAgentIds().value());
+      this.formSchema.excludedAgentIds().value.set(eligible.filter((id) => !reserved.has(id)));
+      this.formSchema.reservedAgentIds().value.set([]);
+    }
+    this.formSchema.closedList().value.set(closed);
   }
 
   public toggleActive(active: boolean): void {
@@ -334,7 +376,9 @@ export class DispatchRuleEditorPage implements OnInit {
         firstContactSlaCold: value.slaByIntent ? minutesToTimeSpan(value.slaColdMinutes) : null,
         antiMonopolyThreshold: value.antiMonopolyThreshold,
         priority: plan.self,
-        excludedAgentIds: value.excludedAgentIds,
+        excludedAgentIds: value.closedList ? [] : value.excludedAgentIds,
+        keyAccountsOnly: value.keyAccountsOnly,
+        reservedAgentIds: value.closedList ? value.reservedAgentIds : [],
       };
 
       let ruleId = this.id();
@@ -438,6 +482,9 @@ export class DispatchRuleEditorPage implements OnInit {
         antiMonopolyThreshold: rule.antiMonopolyThreshold,
         priority,
         excludedAgentIds: rule.excludedAgentIds ?? [],
+        // Idem : le serveur remplace ces deux-là aussi.
+        keyAccountsOnly: rule.keyAccountsOnly ?? false,
+        reservedAgentIds: rule.reservedAgentIds ?? [],
       }).pipe(map(() => true), catchError(() => of(false))));
       if (!ok) failures++;
     }
