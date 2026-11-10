@@ -2,7 +2,7 @@ import { Component, computed, effect, inject, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { RouterLink } from '@angular/router';
-import { disabled, email, form, FormField, FormRoot, pattern, readonly, required, submit } from '@angular/forms/signals';
+import { disabled, email, form, FormField, FormRoot, maxLength, pattern, readonly, required, submit } from '@angular/forms/signals';
 import { catchError, firstValueFrom, map, of } from 'rxjs';
 import { Button } from '@talisoft/ui/button';
 import { TasError, TasFormField, TasHint, TasLabel } from '@talisoft/ui/form-field';
@@ -37,6 +37,7 @@ class IdentityFormModel {
   public lastName!: string;
   public email!: string;
   public workPhone!: string;
+  public additionalEmail!: string;
   public agencyId!: string;
 
   public static fromUser(user: UserDto | null): IdentityFormModel {
@@ -45,6 +46,7 @@ class IdentityFormModel {
     m.lastName = user?.lastName ?? '';
     m.email = user?.email ?? '';
     m.workPhone = user?.workPhone ?? '';
+    m.additionalEmail = user?.additionalEmail ?? '';
     m.agencyId = user?.agencyId ?? '';
     return m;
   }
@@ -95,6 +97,15 @@ class IdentityFormModel {
                 <tas-input-phone defaultCountry="CI" [formField]="formSchema.workPhone"></tas-input-phone>
                 @if (formSchema.workPhone().touched() && formSchema.workPhone().invalid()) {
                   <tas-error>{{ phoneErrorMessage(formSchema.workPhone().errors()) }}</tas-error>
+                }
+              </tas-form-field>
+              <tas-form-field>
+                <tas-label>E-mail supplémentaire</tas-label>
+                <input tasInput type="email" placeholder="Facultatif" [formField]="formSchema.additionalEmail" />
+                @if (formSchema.additionalEmail().touched() && formSchema.additionalEmail().invalid()) {
+                  <tas-error>{{ formSchema.additionalEmail().errors()[0].message }}</tas-error>
+                } @else {
+                  <tas-hint>Une seconde adresse de la personne. En mode test, les messages vers elle ne sont pas bloqués.</tas-hint>
                 }
               </tas-form-field>
 
@@ -210,10 +221,13 @@ export class UserInformationsPage {
     required(schema.email, { message: "L'adresse est obligatoire" });
     email(schema.email, { message: 'Adresse invalide' });
     pattern(schema.workPhone, PHONE_PATTERN, { message: 'Numéro invalide' });
+    email(schema.additionalEmail, { message: 'Adresse invalide' });
+    maxLength(schema.additionalEmail, 256, { message: '256 caractères au plus' });
     required(schema.agencyId, { message: "L'agence est obligatoire" });
     readonly(schema.firstName, () => !this.canUpdate());
     readonly(schema.lastName, () => !this.canUpdate());
     readonly(schema.workPhone, () => !this.canUpdate());
+    readonly(schema.additionalEmail, () => !this.canUpdate());
     // L'adresse est l'identifiant de connexion : figée une fois le compte activé (règle serveur).
     readonly(schema.email, () => !this.canUpdate() || this.user()?.status !== 'PendingActivation');
     disabled(schema.agencyId, () => !this.canUpdate());
@@ -276,6 +290,9 @@ export class UserInformationsPage {
       if (value.firstName.trim() !== initial.firstName) request.firstName = value.firstName.trim();
       if (value.lastName.trim() !== initial.lastName) request.lastName = value.lastName.trim();
       if (value.workPhone.trim() !== initial.workPhone) request.workPhone = value.workPhone.trim();
+      // Vide efface : le serveur lit une chaîne vide comme « plus d'adresse », null comme « inchangée ».
+      if (value.additionalEmail.trim().toLowerCase() !== initial.additionalEmail.toLowerCase())
+        request.additionalEmail = value.additionalEmail.trim();
       if (value.agencyId !== initial.agencyId) request.agencyId = value.agencyId;
       const emailChanged = value.email.trim().toLowerCase() !== initial.email.toLowerCase();
       if (emailChanged) request.email = value.email.trim();

@@ -28,5 +28,6 @@ export interface MyProfileDto {
     managerName?: string | null;
     memberSince?: string | null;
     updatedAt?: string | null;
+    additionalEmail?: string | null;
 }
 

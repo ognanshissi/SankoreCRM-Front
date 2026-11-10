@@ -52494,6 +52494,10 @@
             "type": "string",
             "format": "date-time",
             "nullable": true
+          },
+          "additionalEmail": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -66317,6 +66321,10 @@
           "amountFormat": {
             "type": "string",
             "nullable": true
+          },
+          "additionalEmail": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -67031,6 +67039,10 @@
           "workPhone": {
             "type": "string",
             "nullable": true
+          },
+          "additionalEmail": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -67278,6 +67290,10 @@
             "nullable": true
           },
           "reportsToAgencyName": {
+            "type": "string",
+            "nullable": true
+          },
+          "additionalEmail": {
             "type": "string",
             "nullable": true
           }

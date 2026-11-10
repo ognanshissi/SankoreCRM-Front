@@ -22,5 +22,6 @@ export interface UpdateUserRequest {
     lastName?: string | null;
     email?: string | null;
     workPhone?: string | null;
+    additionalEmail?: string | null;
 }
 

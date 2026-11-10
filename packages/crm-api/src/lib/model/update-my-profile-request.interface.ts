@@ -20,5 +20,6 @@ export interface UpdateMyProfileRequest {
     interfaceLanguage?: string | null;
     timeZone?: string | null;
     amountFormat?: string | null;
+    additionalEmail?: string | null;
 }
 

@@ -1,7 +1,7 @@
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { DatePipe, TitleCasePipe } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
-import { form, FormField, FormRoot, maxLength, pattern, required, submit } from '@angular/forms/signals';
+import { email, form, FormField, FormRoot, maxLength, pattern, required, submit } from '@angular/forms/signals';
 import { catchError, EMPTY, firstValueFrom, map, of } from 'rxjs';
 import { Button } from '@talisoft/ui/button';
 import { TasFormField, TasLabel, TasError, TasHint } from '@talisoft/ui/form-field';
@@ -49,6 +49,7 @@ class ProfileFormModel {
   public lastName!: string;
   public workPhone!: string;
   public whatsApp!: string;
+  public additionalEmail!: string;
   public signature!: string;
   public interfaceLanguage!: string;
   public timeZone!: string;
@@ -60,6 +61,7 @@ class ProfileFormModel {
     m.lastName = dto.lastName ?? '';
     m.workPhone = dto.workPhone ?? '';
     m.whatsApp = dto.whatsAppNumber ?? '';
+    m.additionalEmail = dto.additionalEmail ?? '';
     m.signature = dto.signature ?? '';
     m.interfaceLanguage = dto.interfaceLanguage ?? 'fr';
     m.timeZone = dto.timeZone ?? 'Africa/Abidjan';
@@ -99,6 +101,8 @@ export class AccountProfile implements OnInit {
     required(schema.lastName, { message: 'Le nom est obligatoire' });
     pattern(schema.workPhone, PHONE_PATTERN, { message: 'Numéro invalide' });
     pattern(schema.whatsApp, PHONE_PATTERN, { message: 'Numéro invalide' });
+    email(schema.additionalEmail, { message: 'Adresse invalide' });
+    maxLength(schema.additionalEmail, 256, { message: '256 caractères au plus' });
     maxLength(schema.signature, SIGNATURE_MAX_LENGTH, {
       message: `${SIGNATURE_MAX_LENGTH} caractères au maximum`,
     });
@@ -171,6 +175,8 @@ export class AccountProfile implements OnInit {
         lastName: value.lastName.trim(),
         workPhone: value.workPhone.trim() || null,
         whatsAppNumber: value.whatsApp.trim() || null,
+        // Toujours envoyée : vide l'efface (le serveur lit null comme « inchangée »).
+        additionalEmail: value.additionalEmail.trim(),
         signature: value.signature.trim() || null,
         interfaceLanguage: value.interfaceLanguage,
         timeZone: value.timeZone,

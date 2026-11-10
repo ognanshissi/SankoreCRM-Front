@@ -44,5 +44,6 @@ export interface UserDto {
     directReportsCount?: number;
     reportsToRoleLabel?: string | null;
     reportsToAgencyName?: string | null;
+    additionalEmail?: string | null;
 }
 

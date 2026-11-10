@@ -85,6 +85,15 @@
                 {{ dto()?.employeeNumber || '—' }}
               </div>
             </div>
+            <tas-form-field>
+              <tas-label>E-mail supplémentaire</tas-label>
+              <input tasInput type="email" placeholder="Facultatif" [formField]="formSchema.additionalEmail" />
+              @if (formSchema.additionalEmail().touched() && formSchema.additionalEmail().invalid()) {
+                <tas-error>{{ formSchema.additionalEmail().errors()[0].message }}</tas-error>
+              } @else {
+                <tas-hint>Une seconde adresse à vous. En mode test, les messages vers elle ne sont pas bloqués.</tas-hint>
+              }
+            </tas-form-field>
           </div>
         </section>
 
