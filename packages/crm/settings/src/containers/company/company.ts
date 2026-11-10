@@ -27,6 +27,15 @@ import { QuoteSettingsCard } from './quote-settings-card';
 const LOGO_MAX_BYTES = 1024 * 1024;
 const LOGO_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
 
+/**
+ * « #1A4D4DFF » → « #1A4D4D » : le sélecteur de couleur du navigateur n'accepte que 6 chiffres et
+ * montrait du noir pour les couleurs par défaut du serveur, qui portent une opacité.
+ */
+function sixDigitHex(value: string | null | undefined): string {
+  const v = (value ?? '').trim();
+  return /^#[0-9a-f]{8}$/i.test(v) ? v.slice(0, 7) : v;
+}
+
 class CompanyFormModel {
   public name!: string;
   public description!: string;
@@ -41,9 +50,10 @@ class CompanyFormModel {
     m.name = dto.name ?? '';
     m.description = dto.description ?? '';
     m.logoUrl = dto.logoUrl ?? '';
-    m.primaryColor = dto.primaryColor ?? '';
-    m.secondaryColor = dto.secondaryColor ?? '';
-    m.defaultLanguage = dto.defaultLanguage != null ? String(dto.defaultLanguage) : '0';
+    m.primaryColor = sixDigitHex(dto.primaryColor);
+    m.secondaryColor = sixDigitHex(dto.secondaryColor);
+    // Le serveur parle en noms (« Fr », « En ») : les options en '0'/'1' laissaient le champ vide.
+    m.defaultLanguage = dto.defaultLanguage ? String(dto.defaultLanguage) : UpdateCompanyInfoCommandDefaultLanguageEnum.Fr;
     m.currency = dto.currency || DEFAULT_INSTITUTION_CURRENCY;
     return m;
   }
@@ -106,8 +116,8 @@ export class CompanyPage {
   });
 
   public readonly languageOptions = [
-    { label: 'Français', value: '0' },
-    { label: 'English', value: '1' },
+    { label: 'Français', value: UpdateCompanyInfoCommandDefaultLanguageEnum.Fr },
+    { label: 'English', value: UpdateCompanyInfoCommandDefaultLanguageEnum.En },
   ];
 
   ngOnInit(): void {

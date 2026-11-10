@@ -68,8 +68,13 @@ export class TenantProvider {
     }
   }
 
+  /**
+   * « #1A4D4D » ou « #1A4D4DFF » : les couleurs par défaut du serveur portent une opacité, et la
+   * forme à 8 chiffres était refusée — le thème n'était alors jamais appliqué au chargement.
+   * L'opacité est ignorée : la couleur principale est toujours opaque.
+   */
   private _hexToRgbTriplet(hex: string): string | null {
-    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})(?:[a-f\d]{2})?$/i.exec(hex.trim());
     if (!result) return null;
     return `${parseInt(result[1], 16)}, ${parseInt(result[2], 16)}, ${parseInt(result[3], 16)}`;
   }
