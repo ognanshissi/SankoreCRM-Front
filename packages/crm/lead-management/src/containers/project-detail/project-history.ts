@@ -166,8 +166,31 @@ export class ProjectHistory {
       case 'WorkflowRestarted':
         return row('feather:refresh-cw', 'bg-amber-50 text-amber-700',
           e.to ? `Circuit de validation relancé · étape « ${e.to} »` : 'Circuit de validation relancé');
+      // Devis en lignes (lots 3 et 5). « kind » est typé par le client généré : les nouveaux cas passent par une chaîne.
       default:
-        return row('feather:circle', neutral, String(e.kind ?? ''));
+        return this._quoteRow(String(e.kind ?? ''), e, row, neutral);
+    }
+  }
+
+  /** Les lignes d'historique des devis : lignes enregistrées, remise décidée, devis généré. */
+  private _quoteRow(
+    kind: string,
+    e: { to?: string | null; detail?: string | null },
+    row: (icon: string, tone: string, text: string, note?: string | null) => HistoryRow,
+    neutral: string,
+  ): HistoryRow {
+    switch (kind) {
+      case 'QuoteLinesChanged':
+        return row('feather:list', neutral,
+          e.to ? `Lignes du devis enregistrées · ${formatAmount(Number(e.to), null)} HT` : 'Lignes du devis enregistrées', e.detail ?? null);
+      case 'QuoteDiscountApproved':
+        return row('feather:check-circle', 'bg-green-100 text-green-800', 'Remise acceptée', e.detail ?? null);
+      case 'QuoteDiscountRejected':
+        return row('feather:x-circle', 'bg-red-100 text-red-700', 'Remise refusée', e.detail ?? null);
+      case 'QuoteIssued':
+        return row('feather:file-text', 'bg-primary/10 text-primary', e.to ? `Devis généré · ${e.to}` : 'Devis généré');
+      default:
+        return row('feather:circle', neutral, kind);
     }
   }
 }

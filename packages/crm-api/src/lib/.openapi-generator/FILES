@@ -320,6 +320,7 @@ model/daily-breach-dto.interface.ts
 model/decide-erasure-request-body.interface.ts
 model/decide-kyc-approval-request.interface.ts
 model/decide-kyc-approval-response.interface.ts
+model/decide-project-quote-request.interface.ts
 model/declare-beneficial-owners-request.interface.ts
 model/declare-beneficial-owners-result.interface.ts
 model/declare-claim-request.interface.ts
@@ -428,6 +429,7 @@ model/invitation-sent-dto.interface.ts
 model/issue-credential-request.interface.ts
 model/issue-kyc-remote-invitation-request.interface.ts
 model/issue-kyc-remote-invitation-response.interface.ts
+model/issue-project-quote-request.interface.ts
 model/key-account-settings-dto.interface.ts
 model/kyc-approval-circuit-dto.interface.ts
 model/kyc-approval-step-dto.interface.ts
@@ -509,6 +511,7 @@ model/leads-person-identity-dto.interface.ts
 model/leads-remove-household-member-request.interface.ts
 model/leads-update-household-member-request.interface.ts
 model/legal-form-dto.interface.ts
+model/legal-identity-dto.interface.ts
 model/link-call-request.interface.ts
 model/link-my-telephony-account-response.interface.ts
 model/link-product-to-cbs-request.interface.ts
@@ -617,6 +620,7 @@ model/policy-operation-dto.interface.ts
 model/postal-address-input.interface.ts
 model/preview-mapping-request.interface.ts
 model/preview-mapping-result.interface.ts
+model/pricing-rules-dto.interface.ts
 model/problem-details.interface.ts
 model/product-dto.interface.ts
 model/product-factor.interface.ts
@@ -638,6 +642,10 @@ model/project-history-dto.interface.ts
 model/project-mail-dto.interface.ts
 model/project-questionnaire-item-dto.interface.ts
 model/project-questionnaires-dto.interface.ts
+model/project-quote-dto.interface.ts
+model/project-quote-issue-dto.interface.ts
+model/project-quote-line-dto.interface.ts
+model/project-quote-line-input.interface.ts
 model/project-report-dto.interface.ts
 model/project-report-kpis.interface.ts
 model/project-report-loss-reason.interface.ts
@@ -674,6 +682,8 @@ model/question-rule-dto.interface.ts
 model/questionnaire-answer-input.interface.ts
 model/questionnaire-respondent-dto.interface.ts
 model/quote-insurance-product-request.interface.ts
+model/quote-settings-dto.interface.ts
+model/quote-vat-breakdown.interface.ts
 model/raise-kyc-review-request.interface.ts
 model/raise-kyc-review-result.interface.ts
 model/raise-suspicion-alert-request.interface.ts
@@ -828,14 +838,19 @@ model/set-intent-thresholds-result-dto.interface.ts
 model/set-key-account-settings-request.interface.ts
 model/set-kyc-remote-policy-request.interface.ts
 model/set-legal-hold-request.interface.ts
+model/set-legal-identity-request.interface.ts
 model/set-life-insurance-request.interface.ts
 model/set-mail-signature-request.interface.ts
 model/set-mail-thread-read-request.interface.ts
 model/set-monthly-quota-command.interface.ts
 model/set-pep-status-request.interface.ts
+model/set-pricing-rules-request.interface.ts
+model/set-product-pricing-request.interface.ts
 model/set-project-checklist-item-request.interface.ts
 model/set-project-fields-request.interface.ts
+model/set-project-quote-request.interface.ts
 model/set-qualification-completeness-request.interface.ts
+model/set-quote-settings-request.interface.ts
 model/set-recording-policy-request.interface.ts
 model/set-secret-request.interface.ts
 model/set-sms-monthly-quota-command.interface.ts

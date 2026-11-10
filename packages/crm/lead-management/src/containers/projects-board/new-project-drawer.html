@@ -68,6 +68,7 @@
         }
       </tas-form-field>
 
+      @if (!withLines()) {
       <tas-form-field>
         <tas-label>Produit @if (target() === 'client') { <span class="text-functional-error">*</span> }</tas-label>
         <tas-select [options]="productOptions()" [placeholder]="target() === 'client' ? 'Choisir un produit' : 'À préciser'" [formField]="formSchema.product"></tas-select>
@@ -76,6 +77,7 @@
           <tas-error>{{ formSchema.product().errors()[0].message }}</tas-error>
         }
       </tas-form-field>
+      }
 
       <tas-form-field>
         <tas-label>Besoin exprimé</tas-label>
@@ -86,13 +88,15 @@
       </tas-form-field>
 
       <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <tas-form-field>
-          <tas-label>{{ rules.amountLabel() }} ({{ currencyUnit(currency()) }})</tas-label>
-          <input tasInput type="text" inputmode="numeric" placeholder="Ex. 5 000 000" [formField]="formSchema.amount" />
-          @if (formSchema.amount().touched() && formSchema.amount().invalid()) {
-            <tas-error>{{ formSchema.amount().errors()[0].message }}</tas-error>
-          }
-        </tas-form-field>
+        @if (!withLines()) {
+          <tas-form-field>
+            <tas-label>{{ rules.amountLabel() }} ({{ currencyUnit(currency()) }})</tas-label>
+            <input tasInput type="text" inputmode="numeric" placeholder="Ex. 5 000 000" [formField]="formSchema.amount" />
+            @if (formSchema.amount().touched() && formSchema.amount().invalid()) {
+              <tas-error>{{ formSchema.amount().errors()[0].message }}</tas-error>
+            }
+          </tas-form-field>
+        }
         @if (rules.tracksForecast()) {
           <div>
             <tas-date-picker mode="date" [formField]="formSchema.expectedCloseDate">
@@ -107,6 +111,11 @@
           </div>
         }
       </div>
+
+      <!-- Produits et prix (devis en lignes, lot 4) : pas sur un projet de crédit, d'épargne ou d'assurance -->
+      @if (quotable()) {
+        <quote-lines-section></quote-lines-section>
+      }
 
       @if (duplicateCount() !== null) {
         <div class="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm" role="alert">
@@ -125,7 +134,7 @@
   <tas-drawer-action>
     <button tas-outlined-button type="button" (click)="close()">Annuler</button>
     <button tas-raised-button color="primary" type="button"
-            [disabled]="formSchema().invalid() || formSchema().submitting()"
+            [disabled]="formSchema().invalid() || formSchema().submitting() || (quoteLines()?.invalid() ?? false)"
             [isLoading]="formSchema().submitting()"
             (click)="handleSubmit()">
       Créer le projet

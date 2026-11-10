@@ -120,6 +120,8 @@ const TEMPLATE_LABELS: Record<string, string> = {
 export function documentDetailLabel(source: string | null | undefined, detail: string | null | undefined): string {
   if (!detail) return '';
   if (source === 'Message') return TEMPLATE_LABELS[detail] ?? detail;
+  // Un devis généré par le CRM (devis en lignes, lot 5) est rangé sous la clé « quote ».
+  if (source === 'Project' && detail === 'quote') return 'Devis';
   return CHANNEL_LABELS[detail] ?? detail;
 }
 

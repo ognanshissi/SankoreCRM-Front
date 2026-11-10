@@ -48,6 +48,7 @@ import { ProjectProgress } from './project-progress';
 import { ProjectQuestionnaires } from './project-questionnaires';
 import { ProjectSummary, ProjectUpdate } from './project-summary';
 import { ProjectTasks } from './project-tasks';
+import { ProjectQuote } from './project-quote';
 import { ProjectValidations } from './project-validations';
 import { ProjectWhatsAppDrawer, ProjectWhatsAppDrawerData, ProjectWhatsAppDrawerResult } from './project-whatsapp-drawer';
 
@@ -79,6 +80,7 @@ class LoseFormModel {
     ProjectBlockingCircuits,
     ProjectCreditSubmission,
     ProjectFields, ProjectHistory, ProjectProgress, ProjectQuestionnaires, ProjectSummary, ProjectTasks, ProjectValidations,
+    ProjectQuote,
   ],
   templateUrl: './project-detail.html',
 })
@@ -108,6 +110,8 @@ export class ProjectDetail implements OnInit {
   public readonly isLoading = signal(true);
   public readonly loadError = signal<string | null>(null);
   public readonly busy = signal(false);
+  /** Le projet a des lignes : montant et produit viennent d'elles (devis en lignes, lot 4). */
+  public readonly linesDriven = signal(false);
   /** Le formulaire « Marquer perdu », ouvert sous l'en-tête. */
   public readonly losing = signal(false);
   /** La souscription qu'un « gagné » vient d'ouvrir, pour la proposer tout de suite. */
@@ -255,7 +259,7 @@ export class ProjectDetail implements OnInit {
   // ——— Envoyer les documents (envoi des documents, lot 5) ———
 
   /** Un e-mail depuis la boîte connectée de l'agent, avec les pièces du projet à cocher. */
-  public openMail(): void {
+  public openMail(selected?: string[]): void {
     const project = this.project();
     const target = this.mailTarget();
     if (!project?.id || !target) return;
@@ -270,6 +274,7 @@ export class ProjectDetail implements OnInit {
         project: {
           id: project.id,
           files: (project.attachments ?? []).map((a) => ({ id: a.id ?? '', fileName: a.fileName ?? 'pièce', sizeBytes: a.sizeBytes })),
+          selected,
         },
       },
     });
@@ -279,7 +284,7 @@ export class ProjectDetail implements OnInit {
     });
   }
 
-  public openWhatsApp(): void {
+  public openWhatsApp(selected?: string[]): void {
     const project = this.project();
     if (!project?.id) return;
     const ref = this._sideDrawer.open<ProjectWhatsAppDrawerResult, ProjectWhatsAppDrawerData, ProjectWhatsAppDrawer>(ProjectWhatsAppDrawer, {
@@ -287,14 +292,14 @@ export class ProjectDetail implements OnInit {
       height: '100%',
       panelClass: 'side-drawer-panel',
       // « — » est le repli d'affichage de la page, pas un nom : le tiroir a sa propre tournure sans nom.
-      data: { projectId: project.id, personName: this.personName() === '—' ? null : this.personName() },
+      data: { projectId: project.id, personName: this.personName() === '—' ? null : this.personName(), selected },
     });
     ref.closed.subscribe((sent) => {
       if (sent) this._history()?.load();
     });
   }
 
-  public scrollTo(id: 'questionnaires' | 'validations' | 'exit-conditions' | 'fields' | 'tasks'): void {
+  public scrollTo(id: 'questionnaires' | 'validations' | 'exit-conditions' | 'fields' | 'tasks' | 'quote'): void {
     const target =
       id === 'fields'
         ? (document.getElementById('project-fields') ?? document.getElementById('project-files'))
@@ -306,6 +311,10 @@ export class ProjectDetail implements OnInit {
 
   /** Depuis un refus « montant obligatoire » : le tiroir s'ouvre, le curseur sur le montant. */
   public fixAmount(): void {
+    if (this.linesDriven()) {
+      this.scrollTo('quote');
+      return;
+    }
     this.editInfo('amount');
   }
 
@@ -415,6 +424,7 @@ export class ProjectDetail implements OnInit {
         amountLabel: projectAmountLabel(project.amountKind),
         save: (patch) => this._update(patch, 'Projet mis à jour'),
         focus,
+        linesDriven: this.linesDriven(),
       },
     });
   }

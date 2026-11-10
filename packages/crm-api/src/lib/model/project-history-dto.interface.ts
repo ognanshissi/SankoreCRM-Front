@@ -14,7 +14,7 @@
 export interface ProjectHistoryDto { 
     id?: string;
     /**
-     * One of: Created, StepChanged, AmountChanged, ProductChanged, CloseDateChanged, TemplateVersionChanged, Won, Lost, HoldingOpened, WorkflowRestarted, DocumentSent
+     * One of: Created, StepChanged, AmountChanged, ProductChanged, CloseDateChanged, TemplateVersionChanged, Won, Lost, HoldingOpened, WorkflowRestarted, DocumentSent, QuoteLinesChanged, QuoteDiscountApproved, QuoteDiscountRejected, QuoteIssued
      */
     kind?: ProjectHistoryDtoKindEnum;
     at?: string;
@@ -37,7 +37,11 @@ export enum ProjectHistoryDtoKindEnum {
     Lost = 'Lost',
     HoldingOpened = 'HoldingOpened',
     WorkflowRestarted = 'WorkflowRestarted',
-    DocumentSent = 'DocumentSent'
+    DocumentSent = 'DocumentSent',
+    QuoteLinesChanged = 'QuoteLinesChanged',
+    QuoteDiscountApproved = 'QuoteDiscountApproved',
+    QuoteDiscountRejected = 'QuoteDiscountRejected',
+    QuoteIssued = 'QuoteIssued'
 };
 
 

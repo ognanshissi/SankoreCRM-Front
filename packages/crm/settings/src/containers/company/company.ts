@@ -20,6 +20,10 @@ import {
   TenantProvider,
 } from '@sankore/crm/common';
 
+import { LegalIdentityCard } from './legal-identity-card';
+import { PricingRulesCard } from './pricing-rules-card';
+import { QuoteSettingsCard } from './quote-settings-card';
+
 const LOGO_MAX_BYTES = 1024 * 1024;
 const LOGO_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
 
@@ -60,6 +64,9 @@ class CompanyFormModel {
     TasSpinner,
     FormRoot,
     FormField,
+    PricingRulesCard,
+    LegalIdentityCard,
+    QuoteSettingsCard,
   ],
 })
 export class CompanyPage {

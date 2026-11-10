@@ -4830,6 +4830,194 @@
         }
       }
     },
+    "/api/v1/company-info/pricing": {
+      "get": {
+        "tags": [
+          "Company Info"
+        ],
+        "summary": "The institution's VAT rates and discount ceiling",
+        "description": "Defaults 18 % and 9 % (Côte d'Ivoire) until the institution sets its own. Requires permission: company-info:read.",
+        "operationId": "GetPricingRules",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PricingRulesDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Company Info"
+        ],
+        "summary": "Set the institution's VAT rates and discount ceiling",
+        "description": "Rates between 0 and 100, the reduced one not above the standard one (VAT_RATES_INVALID); ceiling between 0 and 100 or null (MAX_DISCOUNT_INVALID). Lines already on a project keep the rate of their entry. Requires permission: company-info:update.",
+        "operationId": "SetPricingRules",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetPricingRulesRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/api/v1/company-info/legal-identity": {
+      "get": {
+        "tags": [
+          "Company Info"
+        ],
+        "summary": "The institution's legal identity, printed on its quotes",
+        "operationId": "GetLegalIdentity",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LegalIdentityDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Company Info"
+        ],
+        "summary": "Set the institution's legal identity (raison sociale, siège, RCCM, NCC…)",
+        "description": "Replaced whole; every field is optional and a blank one clears it. The code imposes no mandatory mention. Requires permission: company-info:update.",
+        "operationId": "SetLegalIdentity",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetLegalIdentityRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/api/v1/company-info/quote-settings": {
+      "get": {
+        "tags": [
+          "Company Info"
+        ],
+        "summary": "Numbering, validity and payment terms of the institution's quotes",
+        "description": "NextNumber is what the next quote of this year will take, read without taking it. Requires permission: company-info:read.",
+        "operationId": "GetQuoteSettings",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuoteSettingsDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Company Info"
+        ],
+        "summary": "Set the prefix, default validity and default payment terms of quotes",
+        "description": "Numbers are DEV-2026-000001: prefix, year, rank in the year, starting again each January. Changing the prefix does not renumber quotes already issued. Requires permission: company-info:update.",
+        "operationId": "SetQuoteSettings",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetQuoteSettingsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
     "/api/v1/public/branding/{tenantId}/logo": {
       "get": {
         "tags": [
@@ -21679,6 +21867,196 @@
         }
       }
     },
+    "/api/v1/leads/opportunities/{id}/quote": {
+      "get": {
+        "tags": [
+          "Opportunities"
+        ],
+        "summary": "The lines, discounts and totals of a project's offer",
+        "description": "Standard products only. An empty offer answers lines = [] and Quotable, which is false for a credit, savings or insurance project.",
+        "operationId": "GetProjectQuote",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectQuoteDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Opportunities"
+        ],
+        "summary": "Replace the lines and the global discount of a project's offer",
+        "description": "Prices excluding VAT; the discount comes before the VAT. The project's estimated amount becomes the total excluding VAT and its product the first line's. A discount against the catalogue beyond the institution's ceiling puts the offer « À valider » until a manager decides. Errors: QUOTE_FINANCE_PROJECT, QUOTE_PRODUCT_NOT_FOUND, QUOTE_PRODUCT_NOT_STANDARD, QUOTE_PRODUCT_INACTIVE, QUOTE_LINE_PRICE_REQUIRED, QUOTE_DISCOUNT_ABOVE_AMOUNT, QUOTE_DISCOUNT_INVALID, QUOTE_LINE_*.",
+        "operationId": "SetProjectQuote",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetProjectQuoteRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectQuoteDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "409": {
+            "description": "Conflict"
+          }
+        }
+      }
+    },
+    "/api/v1/leads/opportunities/{id}/quote/decision": {
+      "post": {
+        "tags": [
+          "Opportunities"
+        ],
+        "summary": "Approve or refuse a discount beyond the institution's ceiling",
+        "description": "A manager (lead:team:supervise) whose team holds the project's owner, or who covers every agency; never the owner nor whoever saved the lines (QUOTE_SELF_APPROVAL_FORBIDDEN). A refusal needs a reason.",
+        "operationId": "DecideProjectQuote",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DecideProjectQuoteRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectQuoteDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/api/v1/leads/opportunities/{id}/quote/issue": {
+      "post": {
+        "tags": [
+          "Opportunities"
+        ],
+        "summary": "Generate the quote PDF of the offer and file it on the project",
+        "description": "The first PDF takes the institution's next number (DEV-2026-000001), later ones a new version of it. Refused while the offer is empty (QUOTE_EMPTY) or its discount awaits or failed approval (QUOTE_DISCOUNT_NOT_APPROVED). The file is a project attachment (key « quote »): the e-mail and WhatsApp sending take it. Requires permission: lead:opportunity:manage.",
+        "operationId": "IssueProjectQuote",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IssueProjectQuoteRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectQuoteDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "503": {
+            "description": "Service Unavailable"
+          }
+        }
+      }
+    },
     "/api/v1/leads/opportunities/{opportunityId}/credit-submission": {
       "get": {
         "tags": [
@@ -23554,6 +23932,54 @@
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/SetKycRemotePolicyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/api/v1/products/{productId}/pricing": {
+      "put": {
+        "tags": [
+          "Products"
+        ],
+        "summary": "Set the unit price, unit and VAT category of a Standard product",
+        "description": "Standard products only (PRODUCT_PRICING_STANDARD_ONLY otherwise): a credit, savings or insurance line has no unit price. The price is excluding VAT, in the institution's currency; the rates themselves are the institution's (company-info/pricing). Requires permission: product:update.",
+        "operationId": "SetProductPricing",
+        "parameters": [
+          {
+            "name": "productId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetProductPricingRequest"
               }
             }
           },
@@ -42936,6 +43362,19 @@
         },
         "additionalProperties": false
       },
+      "DecideProjectQuoteRequest": {
+        "type": "object",
+        "properties": {
+          "approve": {
+            "type": "boolean"
+          },
+          "comment": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "DeclareBeneficialOwnersRequest": {
         "type": "object",
         "properties": {
@@ -47209,6 +47648,21 @@
         },
         "additionalProperties": false
       },
+      "IssueProjectQuoteRequest": {
+        "type": "object",
+        "properties": {
+          "validityDays": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "paymentTerms": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "KeyAccountSettingsDto": {
         "type": "object",
         "properties": {
@@ -50507,6 +50961,52 @@
           "displayOrder": {
             "type": "integer",
             "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "LegalIdentityDto": {
+        "type": "object",
+        "properties": {
+          "legalName": {
+            "type": "string",
+            "nullable": true
+          },
+          "legalForm": {
+            "type": "string",
+            "nullable": true
+          },
+          "headOfficeAddress": {
+            "type": "string",
+            "nullable": true
+          },
+          "phone": {
+            "type": "string",
+            "nullable": true
+          },
+          "email": {
+            "type": "string",
+            "nullable": true
+          },
+          "website": {
+            "type": "string",
+            "nullable": true
+          },
+          "rccm": {
+            "type": "string",
+            "nullable": true
+          },
+          "taxpayerNumber": {
+            "type": "string",
+            "nullable": true
+          },
+          "taxRegime": {
+            "type": "string",
+            "nullable": true
+          },
+          "quoteFooter": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -54306,6 +54806,25 @@
         },
         "additionalProperties": false
       },
+      "PricingRulesDto": {
+        "type": "object",
+        "properties": {
+          "vatStandardRate": {
+            "type": "number",
+            "format": "double"
+          },
+          "vatReducedRate": {
+            "type": "number",
+            "format": "double"
+          },
+          "maxDiscountPercent": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "ProblemDetails": {
         "type": "object",
         "properties": {
@@ -54406,6 +54925,24 @@
             "type": "object",
             "additionalProperties": { },
             "nullable": true
+          },
+          "unitPrice": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "priceUnit": {
+            "type": "string",
+            "nullable": true
+          },
+          "vatCategory": {
+            "enum": [
+              "Standard",
+              "Reduced",
+              "Exempt"
+            ],
+            "type": "string",
+            "description": "One of: Standard, Reduced, Exempt"
           }
         },
         "additionalProperties": false
@@ -54857,10 +55394,14 @@
               "Lost",
               "HoldingOpened",
               "WorkflowRestarted",
-              "DocumentSent"
+              "DocumentSent",
+              "QuoteLinesChanged",
+              "QuoteDiscountApproved",
+              "QuoteDiscountRejected",
+              "QuoteIssued"
             ],
             "type": "string",
-            "description": "One of: Created, StepChanged, AmountChanged, ProductChanged, CloseDateChanged, TemplateVersionChanged, Won, Lost, HoldingOpened, WorkflowRestarted, DocumentSent"
+            "description": "One of: Created, StepChanged, AmountChanged, ProductChanged, CloseDateChanged, TemplateVersionChanged, Won, Lost, HoldingOpened, WorkflowRestarted, DocumentSent, QuoteLinesChanged, QuoteDiscountApproved, QuoteDiscountRejected, QuoteIssued"
           },
           "at": {
             "type": "string",
@@ -55055,6 +55596,324 @@
           },
           "planUnavailable": {
             "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ProjectQuoteDto": {
+        "type": "object",
+        "properties": {
+          "opportunityId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "quotable": {
+            "type": "boolean"
+          },
+          "notQuotableReason": {
+            "type": "string",
+            "nullable": true
+          },
+          "currency": {
+            "type": "string",
+            "nullable": true
+          },
+          "lines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProjectQuoteLineDto"
+            },
+            "nullable": true
+          },
+          "globalDiscountKind": {
+            "enum": [
+              "None",
+              "Percent",
+              "Amount"
+            ],
+            "type": "string",
+            "description": "One of: None, Percent, Amount"
+          },
+          "globalDiscountValue": {
+            "type": "number",
+            "format": "double"
+          },
+          "subtotalExclTax": {
+            "type": "number",
+            "format": "double"
+          },
+          "globalDiscountAmount": {
+            "type": "number",
+            "format": "double"
+          },
+          "totalExclTax": {
+            "type": "number",
+            "format": "double"
+          },
+          "totalVat": {
+            "type": "number",
+            "format": "double"
+          },
+          "totalInclTax": {
+            "type": "number",
+            "format": "double"
+          },
+          "vatByRate": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/QuoteVatBreakdown"
+            },
+            "nullable": true
+          },
+          "effectiveDiscountPercent": {
+            "type": "number",
+            "format": "double"
+          },
+          "discountCeilingPercent": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "approvalStatus": {
+            "enum": [
+              "NotRequired",
+              "Pending",
+              "Approved",
+              "Rejected"
+            ],
+            "type": "string",
+            "description": "One of: NotRequired, Pending, Approved, Rejected"
+          },
+          "decidedByName": {
+            "type": "string",
+            "nullable": true
+          },
+          "decidedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "decisionComment": {
+            "type": "string",
+            "nullable": true
+          },
+          "canDecide": {
+            "type": "boolean"
+          },
+          "canBeIssued": {
+            "type": "boolean"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "number": {
+            "type": "string",
+            "nullable": true
+          },
+          "changedSinceIssue": {
+            "type": "boolean"
+          },
+          "issues": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProjectQuoteIssueDto"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ProjectQuoteIssueDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "label": {
+            "type": "string",
+            "nullable": true
+          },
+          "number": {
+            "type": "string",
+            "nullable": true
+          },
+          "version": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "issuedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "issuedByName": {
+            "type": "string",
+            "nullable": true
+          },
+          "validUntil": {
+            "type": "string",
+            "format": "date"
+          },
+          "totalExclTax": {
+            "type": "number",
+            "format": "double"
+          },
+          "totalInclTax": {
+            "type": "number",
+            "format": "double"
+          },
+          "currency": {
+            "type": "string",
+            "nullable": true
+          },
+          "attachmentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "fileName": {
+            "type": "string",
+            "nullable": true
+          },
+          "lastSentAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "lastSentChannel": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ProjectQuoteLineDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "productId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "productCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "label": {
+            "type": "string",
+            "nullable": true
+          },
+          "quantity": {
+            "type": "number",
+            "format": "double"
+          },
+          "unit": {
+            "type": "string",
+            "nullable": true
+          },
+          "unitPrice": {
+            "type": "number",
+            "format": "double"
+          },
+          "catalogueUnitPrice": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "discountKind": {
+            "enum": [
+              "None",
+              "Percent",
+              "Amount"
+            ],
+            "type": "string",
+            "description": "One of: None, Percent, Amount"
+          },
+          "discountValue": {
+            "type": "number",
+            "format": "double"
+          },
+          "vatCategory": {
+            "enum": [
+              "Standard",
+              "Reduced",
+              "Exempt"
+            ],
+            "type": "string",
+            "description": "One of: Standard, Reduced, Exempt"
+          },
+          "vatRate": {
+            "type": "number",
+            "format": "double"
+          },
+          "grossExclTax": {
+            "type": "number",
+            "format": "double"
+          },
+          "discountAmount": {
+            "type": "number",
+            "format": "double"
+          },
+          "netExclTax": {
+            "type": "number",
+            "format": "double"
+          },
+          "vatAmount": {
+            "type": "number",
+            "format": "double"
+          },
+          "totalInclTax": {
+            "type": "number",
+            "format": "double"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ProjectQuoteLineInput": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "productId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "quantity": {
+            "type": "number",
+            "format": "double"
+          },
+          "label": {
+            "type": "string",
+            "nullable": true
+          },
+          "unit": {
+            "type": "string",
+            "nullable": true
+          },
+          "unitPrice": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "discountKind": {
+            "enum": [
+              "None",
+              "Percent",
+              "Amount"
+            ],
+            "type": "string",
+            "description": "One of: None, Percent, Amount"
+          },
+          "discountValue": {
+            "type": "number",
+            "format": "double"
           }
         },
         "additionalProperties": false
@@ -56496,6 +57355,46 @@
             "type": "number",
             "format": "double",
             "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "QuoteSettingsDto": {
+        "type": "object",
+        "properties": {
+          "prefix": {
+            "type": "string",
+            "nullable": true
+          },
+          "validityDays": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "paymentTerms": {
+            "type": "string",
+            "nullable": true
+          },
+          "nextNumber": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "QuoteVatBreakdown": {
+        "type": "object",
+        "properties": {
+          "rate": {
+            "type": "number",
+            "format": "double"
+          },
+          "base": {
+            "type": "number",
+            "format": "double"
+          },
+          "vat": {
+            "type": "number",
+            "format": "double"
           }
         },
         "additionalProperties": false
@@ -60604,6 +61503,52 @@
         },
         "additionalProperties": false
       },
+      "SetLegalIdentityRequest": {
+        "type": "object",
+        "properties": {
+          "legalName": {
+            "type": "string",
+            "nullable": true
+          },
+          "legalForm": {
+            "type": "string",
+            "nullable": true
+          },
+          "headOfficeAddress": {
+            "type": "string",
+            "nullable": true
+          },
+          "phone": {
+            "type": "string",
+            "nullable": true
+          },
+          "email": {
+            "type": "string",
+            "nullable": true
+          },
+          "website": {
+            "type": "string",
+            "nullable": true
+          },
+          "rccm": {
+            "type": "string",
+            "nullable": true
+          },
+          "taxpayerNumber": {
+            "type": "string",
+            "nullable": true
+          },
+          "taxRegime": {
+            "type": "string",
+            "nullable": true
+          },
+          "quoteFooter": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "SetLifeInsuranceRequest": {
         "type": "object",
         "properties": {
@@ -60657,6 +61602,49 @@
         },
         "additionalProperties": false
       },
+      "SetPricingRulesRequest": {
+        "type": "object",
+        "properties": {
+          "vatStandardRate": {
+            "type": "number",
+            "format": "double"
+          },
+          "vatReducedRate": {
+            "type": "number",
+            "format": "double"
+          },
+          "maxDiscountPercent": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "SetProductPricingRequest": {
+        "type": "object",
+        "properties": {
+          "unitPrice": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "priceUnit": {
+            "type": "string",
+            "nullable": true
+          },
+          "vatCategory": {
+            "enum": [
+              "Standard",
+              "Reduced",
+              "Exempt"
+            ],
+            "type": "string",
+            "description": "One of: Standard, Reduced, Exempt"
+          }
+        },
+        "additionalProperties": false
+      },
       "SetProjectChecklistItemRequest": {
         "type": "object",
         "properties": {
@@ -60677,12 +61665,61 @@
         },
         "additionalProperties": false
       },
+      "SetProjectQuoteRequest": {
+        "type": "object",
+        "properties": {
+          "lines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProjectQuoteLineInput"
+            },
+            "nullable": true
+          },
+          "globalDiscountKind": {
+            "enum": [
+              "None",
+              "Percent",
+              "Amount"
+            ],
+            "type": "string",
+            "description": "One of: None, Percent, Amount"
+          },
+          "globalDiscountValue": {
+            "type": "number",
+            "format": "double"
+          },
+          "expectedUpdatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "SetQualificationCompletenessRequest": {
         "type": "object",
         "properties": {
           "completeness": {
             "type": "number",
             "format": "double"
+          }
+        },
+        "additionalProperties": false
+      },
+      "SetQuoteSettingsRequest": {
+        "type": "object",
+        "properties": {
+          "prefix": {
+            "type": "string",
+            "nullable": true
+          },
+          "validityDays": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "paymentTerms": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false

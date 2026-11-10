@@ -32,6 +32,12 @@ export interface ProductDto {
     allowMultipleHoldings?: boolean;
     kycRemotePolicy?: KycRemotePolicy;
     customFields?: { [key: string]: any; } | null;
+    unitPrice?: number | null;
+    priceUnit?: string | null;
+    /**
+     * One of: Standard, Reduced, Exempt
+     */
+    vatCategory?: ProductDtoVatCategoryEnum;
 }
 export enum ProductDtoCategoryEnum {
     Loan = 'Loan',
@@ -44,6 +50,11 @@ export enum ProductDtoCategoryEnum {
     Agriculture = 'Agriculture',
     CurrentAccount = 'CurrentAccount',
     Standard = 'Standard'
+};
+export enum ProductDtoVatCategoryEnum {
+    Standard = 'Standard',
+    Reduced = 'Reduced',
+    Exempt = 'Exempt'
 };
 
 

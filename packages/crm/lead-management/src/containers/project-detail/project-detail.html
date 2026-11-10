@@ -164,6 +164,12 @@
           ></project-progress>
         }
 
+        <!-- Produits et prix : absent d'un projet de crédit, d'épargne ou d'assurance -->
+        <project-quote [project]="p" [canManage]="canManage()"
+                       [canMail]="canMail() && !!mailTarget()" [canWhatsApp]="canWhatsApp() && !!(p.leadId || p.customerEntityId)"
+                       (changed)="load()" (linesDriven)="linesDriven.set($event)"
+                       (sendByMail)="openMail([$event])" (sendByWhatsApp)="openWhatsApp([$event])"></project-quote>
+
         <project-credit-submission [projectId]="p.id!" [version]="p.updatedAt" [canSend]="canManage()"></project-credit-submission>
 
         <project-tasks id="tasks" [projectId]="p.id!" [projectTitle]="p.title ?? ''"></project-tasks>

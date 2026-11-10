@@ -159,7 +159,8 @@ export class ProjectFields {
     return (this.project().attachments ?? []).map((a) => ({
       ...a,
       id: a.id ?? '',
-      fieldLabel: labels.get(a.fieldKey ?? '') ?? a.fieldKey ?? '',
+      // « quote » : un devis généré par le CRM (devis en lignes, lot 5), pas un champ du gabarit.
+      fieldLabel: labels.get(a.fieldKey ?? '') ?? (a.fieldKey === 'quote' ? 'Devis' : a.fieldKey ?? ''),
     }));
   });
 

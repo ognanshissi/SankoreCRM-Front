@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal, viewChild } from '@angular/core';
 import { DIALOG_DATA, DialogRef } from '@angular/cdk/dialog';
 import { HttpErrorResponse } from '@angular/common/http';
 import { toSignal } from '@angular/core/rxjs-interop';
@@ -20,6 +20,7 @@ import { TasTitle } from '@talisoft/ui/title';
 import { FormFieldReferenceTargetEnum, LeadDto, OpportunitiesApiService } from '@sankore/crm-api';
 import { currencyUnit, EntityFormReferences, projectCreationRules, projectSaveErrorMessage, TenantProvider } from '@sankore/crm/common';
 import { amountText, parseAmount } from '../lead-view.models';
+import { QuoteLinesSection } from '../../../components/quote-lines/quote-lines-section';
 
 export interface CreateOpportunityDrawerData {
   lead: LeadDto;
@@ -67,6 +68,7 @@ class CreateOpportunityFormModel {
     TasInput,
     TasDatePicker,
     TasSelect,
+    QuoteLinesSection,
   ],
   template: `
     <tas-side-drawer>
@@ -92,20 +94,24 @@ class CreateOpportunityFormModel {
             }
           </tas-form-field>
 
-          <tas-form-field>
-            <tas-label>Produit</tas-label>
-            <tas-select [options]="productOptions()" placeholder="À préciser" [formField]="formSchema.product"></tas-select>
-            <tas-hint>Laissez « À préciser » si le besoin n'est pas encore rattaché à un produit.</tas-hint>
-          </tas-form-field>
+          @if (!withLines()) {
+            <tas-form-field>
+              <tas-label>Produit</tas-label>
+              <tas-select [options]="productOptions()" placeholder="À préciser" [formField]="formSchema.product"></tas-select>
+              <tas-hint>Laissez « À préciser » si le besoin n'est pas encore rattaché à un produit.</tas-hint>
+            </tas-form-field>
+          }
 
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <tas-form-field>
-              <tas-label>{{ rules.amountLabel() }} ({{ currencyUnit(currency()) }})</tas-label>
-              <input tasInput type="text" inputmode="numeric" placeholder="Ex. 5 000 000" [formField]="formSchema.amount" />
-              @if (formSchema.amount().touched() && formSchema.amount().invalid()) {
-                <tas-error>{{ formSchema.amount().errors()[0].message }}</tas-error>
-              }
-            </tas-form-field>
+            @if (!withLines()) {
+              <tas-form-field>
+                <tas-label>{{ rules.amountLabel() }} ({{ currencyUnit(currency()) }})</tas-label>
+                <input tasInput type="text" inputmode="numeric" placeholder="Ex. 5 000 000" [formField]="formSchema.amount" />
+                @if (formSchema.amount().touched() && formSchema.amount().invalid()) {
+                  <tas-error>{{ formSchema.amount().errors()[0].message }}</tas-error>
+                }
+              </tas-form-field>
+            }
             @if (rules.tracksForecast()) {
               <div>
                 <tas-date-picker mode="date" [formField]="formSchema.expectedCloseDate">
@@ -127,6 +133,11 @@ class CreateOpportunityFormModel {
             </p>
           }
 
+          <!-- Produits et prix (devis en lignes, lot 4) : pas sur un projet de crédit, d'épargne ou d'assurance -->
+          @if (quotable()) {
+            <quote-lines-section></quote-lines-section>
+          }
+
           @if (submitError(); as message) {
             <p class="text-sm text-functional-error" role="alert">{{ message }}</p>
           }
@@ -137,7 +148,7 @@ class CreateOpportunityFormModel {
         <div class="space-x-4">
           <button tas-outlined-button type="button" (click)="close()">Annuler</button>
           <button tas-raised-button color="primary" type="button"
-                  [disabled]="formSchema().invalid() || formSchema().submitting()"
+                  [disabled]="formSchema().invalid() || formSchema().submitting() || (quoteLines()?.invalid() ?? false)"
                   [isLoading]="formSchema().submitting()"
                   (click)="handleSubmit()">
             Créer le projet
@@ -170,7 +181,16 @@ export class CreateOpportunityDrawer {
 
   public model = signal(this._initialModel());
   /** Le gabarit du produit choisi : nom du montant, date critique. */
-  public readonly rules = projectCreationRules(() => this.model().product);
+  public readonly rules = projectCreationRules(() => (this.withLines() ? this.quoteLines()!.firstProductName() : this.model().product));
+
+  /** Les lignes saisies à la création : le produit est alors la première, le montant le total HT. */
+  public readonly quoteLines = viewChild(QuoteLinesSection);
+  public readonly withLines = computed(() => this.quoteLines()?.hasLines() ?? false);
+  /** Un parcours de crédit, d'épargne ou d'assurance garde un seul produit et son montant. */
+  public readonly quotable = computed(() => {
+    const kind = this.rules.template()?.amountKind;
+    return !kind || kind === 'Generic';
+  });
 
   public formSchema = form(this.model, (schema) => {
     required(schema.title, { message: 'Le titre est obligatoire' });
@@ -210,12 +230,14 @@ export class CreateOpportunityDrawer {
     this.submitError.set(null);
     submit(this.formSchema, async (field) => {
       const value = field().value();
-      const amount = parseAmount(value.amount);
+      const withLines = this.withLines();
+      const amount = withLines ? null : parseAmount(value.amount);
+      const product = withLines ? this.quoteLines()!.firstProductName() : value.product;
       const id = await firstValueFrom(
         this._opportunitiesApi.createOpportunity({
           leadId: this.data.lead.id!,
           title: value.title.trim(),
-          product: value.product || null,
+          product: product || null,
           description: value.description.trim() || null,
           estimatedAmount: amount,
           estimatedCurrency: amount !== null ? this.currency() : null,
@@ -233,6 +255,10 @@ export class CreateOpportunityDrawer {
         { defaultValue: null },
       );
       if (!id) return;
+      if (!(await this.quoteLines()?.saveAfterCreation(id) ?? true)) {
+        this._dialogRef.close(id);
+        return;
+      }
       this._snackbar.success('Projet créé', `« ${value.title.trim()} » est ajouté au lead.`);
       this._dialogRef.close(id);
     });

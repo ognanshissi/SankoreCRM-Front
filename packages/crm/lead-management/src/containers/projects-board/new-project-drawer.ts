@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal, viewChild } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { DialogRef } from '@angular/cdk/dialog';
 import { HttpErrorResponse } from '@angular/common/http';
@@ -22,6 +22,7 @@ import { TasDrawerAction, TasDrawerContent, TasDrawerTitle, TasSideDrawer } from
 import { SnackbarService } from '@talisoft/ui/snackbar';
 import { TasSpinner } from '@talisoft/ui/spinner';
 import { TasTitle } from '@talisoft/ui/title';
+import { QuoteLinesSection } from '../../components/quote-lines/quote-lines-section';
 
 type Target = 'lead' | 'client';
 
@@ -79,6 +80,7 @@ function parseAmount(text: string): number | null {
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './new-project-drawer.html',
   imports: [
+    QuoteLinesSection,
     FormsModule, FormRoot, FormField,
     TasSideDrawer, TasDrawerTitle, TasDrawerContent, TasDrawerAction, TasTitle, Button,
     TasFormField, TasLabel, TasError, TasHint, TasInput, TasDatePicker, TasSelect, TasIcon, TasSpinner,
@@ -104,7 +106,16 @@ export class NewProjectDrawer {
 
   public model = signal(NewProjectFormModel.instantiate());
   /** Le gabarit du produit choisi : nom du montant, date critique. */
-  public readonly rules = projectCreationRules(() => this.model().product);
+  public readonly rules = projectCreationRules(() => (this.withLines() ? this.quoteLines()!.firstProductName() : this.model().product));
+
+  /** Les lignes saisies à la création : le produit est alors la première, le montant le total HT. */
+  public readonly quoteLines = viewChild(QuoteLinesSection);
+  public readonly withLines = computed(() => this.quoteLines()?.hasLines() ?? false);
+  /** Un parcours de crédit, d'épargne ou d'assurance garde un seul produit et son montant. */
+  public readonly quotable = computed(() => {
+    const kind = this.rules.template()?.amountKind;
+    return !kind || kind === 'Generic';
+  });
   public formSchema = form(this.model, (schema) => {
     validate(schema.expectedCloseDate, (ctx) =>
       this.rules.criticalCloseDate() && this.rules.tracksForecast() && !ctx.value()
@@ -117,7 +128,7 @@ export class NewProjectDrawer {
     maxLength(schema.description, 2000, { message: '2 000 caractères au plus' });
     // Le serveur l'exige pour un client : un projet sur une fiche existante porte sur un produit.
     validate(schema.product, (ctx) =>
-      ctx.valueOf(schema.target) === 'client' && !ctx.value() ? { kind: 'required', message: 'Choisissez le produit' } : null,
+      ctx.valueOf(schema.target) === 'client' && !ctx.value() && !this.withLines() ? { kind: 'required', message: 'Choisissez le produit' } : null,
     );
     validate(schema.amount, (ctx) => {
       const amount = parseAmount(ctx.value());
@@ -260,7 +271,9 @@ export class NewProjectDrawer {
   public handleSubmit(force = false): void {
     submit(this.formSchema, async (field) => {
       const v = field().value();
-      const amount = parseAmount(v.amount);
+      const withLines = this.withLines();
+      const amount = withLines ? null : parseAmount(v.amount);
+      const product = withLines ? this.quoteLines()!.firstProductName() : v.product;
       const common = {
         title: v.title.trim(),
         description: v.description.trim() || null,
@@ -273,10 +286,10 @@ export class NewProjectDrawer {
       const call: Observable<string | null> =
         v.target === 'lead'
           ? this._opportunitiesApi
-              .createOpportunity({ ...common, leadId: v.subjectId, product: v.product || null })
+              .createOpportunity({ ...common, leadId: v.subjectId, product: product || null })
               .pipe(map((id) => id || null))
           : this._opportunitiesApi
-              .createOpportunityForCustomer({ ...common, customerEntityId: v.subjectId, product: v.product, force })
+              .createOpportunityForCustomer({ ...common, customerEntityId: v.subjectId, product, force })
               .pipe(
                 map((result) => {
                   // Le doublon arrive en 200, sans projet créé : on demande confirmation.
@@ -303,6 +316,10 @@ export class NewProjectDrawer {
       );
 
       if (!id) return;
+      if (!(await this.quoteLines()?.saveAfterCreation(id) ?? true)) {
+        this._dialogRef.close(id);
+        return;
+      }
       this._snackbar.success(
         'Projet créé',
         v.target === 'lead' ? `« ${common.title} » est ajouté au lead.` : `« ${common.title} » est ajouté à la fiche du client.`,

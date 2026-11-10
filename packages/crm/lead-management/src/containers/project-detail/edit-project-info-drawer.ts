@@ -17,6 +17,11 @@ export interface EditProjectInfoDrawerData {
   save: (patch: UpdateOpportunityRequest) => Promise<boolean>;
   /** Ouvert depuis un refus « montant obligatoire » : le curseur va au montant. */
   focus?: 'amount';
+  /**
+   * Le projet a des lignes (devis en lignes, lot 4) : son produit et son montant en viennent, le
+   * serveur refuse de les taper à la main. Ils sont alors montrés, pas modifiables.
+   */
+  linesDriven?: boolean;
 }
 
 class EditProjectInfoFormModel {
@@ -68,19 +73,27 @@ function parseAmount(text: string): number | null {
             }
           </tas-form-field>
 
-          <tas-form-field>
-            <tas-label>Produit</tas-label>
-            <tas-select [options]="data.productOptions" [formField]="formSchema.product"></tas-select>
-            <tas-hint>Changer de produit peut changer le parcours : le projet se replace alors sur l'étape de même phase.</tas-hint>
-          </tas-form-field>
+          @if (data.linesDriven) {
+            <div class="rounded-xl bg-slate-50 px-4 py-3 text-sm text-slate-700">
+              <p><span class="text-slate-500">Produit :</span> {{ data.project.product || '—' }}</p>
+              <p class="mt-1"><span class="text-slate-500">{{ data.amountLabel }} :</span> {{ data.project.estimatedAmount?.amount ?? '—' }}</p>
+              <p class="mt-2 text-xs text-slate-500">Calculés à partir des lignes : modifiez-les dans « Produits et prix ».</p>
+            </div>
+          } @else {
+            <tas-form-field>
+              <tas-label>Produit</tas-label>
+              <tas-select [options]="data.productOptions" [formField]="formSchema.product"></tas-select>
+              <tas-hint>Changer de produit peut changer le parcours : le projet se replace alors sur l'étape de même phase.</tas-hint>
+            </tas-form-field>
 
-          <tas-form-field>
-            <tas-label>{{ data.amountLabel }}</tas-label>
-            <input tasInput type="text" inputmode="numeric" [formField]="formSchema.amount" />
-            @if (formSchema.amount().touched() && formSchema.amount().invalid()) {
-              <tas-error>{{ formSchema.amount().errors()[0].message }}</tas-error>
-            }
-          </tas-form-field>
+            <tas-form-field>
+              <tas-label>{{ data.amountLabel }}</tas-label>
+              <input tasInput type="text" inputmode="numeric" [formField]="formSchema.amount" />
+              @if (formSchema.amount().touched() && formSchema.amount().invalid()) {
+                <tas-error>{{ formSchema.amount().errors()[0].message }}</tas-error>
+              }
+            </tas-form-field>
+          }
 
           <tas-form-field>
             <tas-label>Besoin exprimé</tas-label>
@@ -140,9 +153,9 @@ export class EditProjectInfoDrawer implements AfterViewInit {
       const amount = parseAmount(v.amount);
       const done = await this.data.save({
         title: v.title.trim(),
-        product: v.product,
         description: v.description.trim(),
-        ...(amount !== null
+        ...(this.data.linesDriven ? {} : { product: v.product }),
+        ...(amount !== null && !this.data.linesDriven
           ? { estimatedAmount: amount, estimatedCurrency: this.data.project.estimatedAmount?.currency ?? institutionCurrency() }
           : {}),
       });

@@ -241,6 +241,15 @@
           </div>
         </section>
 
+        <!-- Prix et TVA : produits Standard seulement (devis en lignes, lot 1). -->
+        @if (dto.category === 'Standard') {
+          <product-pricing-card
+            [product]="dto"
+            [canUpdate]="canUpdate()"
+            (saved)="reloadProduct()"
+          ></product-pricing-card>
+        }
+
         <!--
           Le lien Core Banking est un paramètre technique du produit, et c'est ici qu'il tombe :
           il n'appartient ni à l'identité commerciale ni à une politique. Il garde son propre

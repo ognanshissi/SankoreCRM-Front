@@ -206,4 +206,11 @@
     </div>
 
   </form>
+
+  <!-- Devis en lignes (lots 1-2) : chaque carte a son propre bouton et son propre endpoint. -->
+  <div class="max-w-2xl mt-5 flex flex-col gap-5">
+    <legal-identity-card [canUpdate]="canUpdate()"></legal-identity-card>
+    <quote-settings-card [canUpdate]="canUpdate()"></quote-settings-card>
+    <pricing-rules-card [canUpdate]="canUpdate()"></pricing-rules-card>
+  </div>
 }

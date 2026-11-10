@@ -33,6 +33,10 @@ import { CreateOpportunityRequest } from '../model/create-opportunity-request.in
 // @ts-ignore
 import { CreditSubmissionDto } from '../model/credit-submission-dto.interface';
 // @ts-ignore
+import { DecideProjectQuoteRequest } from '../model/decide-project-quote-request.interface';
+// @ts-ignore
+import { IssueProjectQuoteRequest } from '../model/issue-project-quote-request.interface';
+// @ts-ignore
 import { MoveOpportunityToStepRequest } from '../model/move-opportunity-to-step-request.interface';
 // @ts-ignore
 import { OpportunityDto } from '../model/opportunity-dto.interface';
@@ -43,6 +47,8 @@ import { ProjectHistoryDto } from '../model/project-history-dto.interface';
 // @ts-ignore
 import { ProjectQuestionnairesDto } from '../model/project-questionnaires-dto.interface';
 // @ts-ignore
+import { ProjectQuoteDto } from '../model/project-quote-dto.interface';
+// @ts-ignore
 import { ProjectTaskDto } from '../model/project-task-dto.interface';
 // @ts-ignore
 import { ProjectTemplateSummaryDto } from '../model/project-template-summary-dto.interface';
@@ -52,6 +58,8 @@ import { ProjectValidationDto } from '../model/project-validation-dto.interface'
 import { SetProjectChecklistItemRequest } from '../model/set-project-checklist-item-request.interface';
 // @ts-ignore
 import { SetProjectFieldsRequest } from '../model/set-project-fields-request.interface';
+// @ts-ignore
+import { SetProjectQuoteRequest } from '../model/set-project-quote-request.interface';
 // @ts-ignore
 import { SubmitProjectQuestionnaireResponseRequest } from '../model/submit-project-questionnaire-response-request.interface';
 // @ts-ignore
@@ -543,6 +551,86 @@ export class OpportunitiesApiService {
     }
 
     /**
+     * Approve or refuse a discount beyond the institution\&#39;s ceiling
+     * A manager (lead:team:supervise) whose team holds the project\&#39;s owner, or who covers every agency; never the owner nor whoever saved the lines (QUOTE_SELF_APPROVAL_FORBIDDEN). A refusal needs a reason.
+     * @param id 
+     * @param decideProjectQuoteRequest 
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     */
+    public decideProjectQuote(id: string, decideProjectQuoteRequest: DecideProjectQuoteRequest, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<ProjectQuoteDto>;
+    public decideProjectQuote(id: string, decideProjectQuoteRequest: DecideProjectQuoteRequest, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<ProjectQuoteDto>>;
+    public decideProjectQuote(id: string, decideProjectQuoteRequest: DecideProjectQuoteRequest, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<ProjectQuoteDto>>;
+    public decideProjectQuote(id: string, decideProjectQuoteRequest: DecideProjectQuoteRequest, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
+        if (id === null || id === undefined) {
+            throw new Error('Required parameter id was null or undefined when calling decideProjectQuote.');
+        }
+        if (decideProjectQuoteRequest === null || decideProjectQuoteRequest === undefined) {
+            throw new Error('Required parameter decideProjectQuoteRequest was null or undefined when calling decideProjectQuote.');
+        }
+
+        let localVarHeaders = this.defaultHeaders;
+
+        let localVarCredential: string | undefined;
+        // authentication (BearerToken) required
+        localVarCredential = this.configuration.lookupCredential('BearerToken');
+        if (localVarCredential) {
+            localVarHeaders = localVarHeaders.set('Authorization', 'Bearer ' + localVarCredential);
+        }
+
+        let localVarHttpHeaderAcceptSelected: string | undefined = options && options.httpHeaderAccept;
+        if (localVarHttpHeaderAcceptSelected === undefined) {
+            // to determine the Accept header
+            const httpHeaderAccepts: string[] = [
+                'application/json'
+            ];
+            localVarHttpHeaderAcceptSelected = this.configuration.selectHeaderAccept(httpHeaderAccepts);
+        }
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+
+        let localVarHttpContext: HttpContext | undefined = options && options.context;
+        if (localVarHttpContext === undefined) {
+            localVarHttpContext = new HttpContext();
+        }
+
+
+        // to determine the Content-Type header
+        const consumes: string[] = [
+            'application/json'
+        ];
+        const httpContentTypeSelected: string | undefined = this.configuration.selectHeaderContentType(consumes);
+        if (httpContentTypeSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Content-Type', httpContentTypeSelected);
+        }
+
+        let responseType_: 'text' | 'json' | 'blob' = 'json';
+        if (localVarHttpHeaderAcceptSelected) {
+            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+                responseType_ = 'text';
+            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+                responseType_ = 'json';
+            } else {
+                responseType_ = 'blob';
+            }
+        }
+
+        let localVarPath = `/api/v1/leads/opportunities/${this.configuration.encodeParam({name: "id", value: id, in: "path", style: "simple", explode: false, dataType: "string", dataFormat: "uuid"})}/quote/decision`;
+        return this.httpClient.request<ProjectQuoteDto>('post', `${this.configuration.basePath}${localVarPath}`,
+            {
+                context: localVarHttpContext,
+                body: decideProjectQuoteRequest,
+                responseType: <any>responseType_,
+                withCredentials: this.configuration.withCredentials,
+                headers: localVarHeaders,
+                observe: observe,
+                reportProgress: reportProgress
+            }
+        );
+    }
+
+    /**
      * @param id 
      * @param attachmentId 
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
@@ -991,6 +1079,72 @@ export class OpportunitiesApiService {
     }
 
     /**
+     * The lines, discounts and totals of a project\&#39;s offer
+     * Standard products only. An empty offer answers lines &#x3D; [] and Quotable, which is false for a credit, savings or insurance project.
+     * @param id 
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     */
+    public getProjectQuote(id: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<ProjectQuoteDto>;
+    public getProjectQuote(id: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<ProjectQuoteDto>>;
+    public getProjectQuote(id: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<ProjectQuoteDto>>;
+    public getProjectQuote(id: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
+        if (id === null || id === undefined) {
+            throw new Error('Required parameter id was null or undefined when calling getProjectQuote.');
+        }
+
+        let localVarHeaders = this.defaultHeaders;
+
+        let localVarCredential: string | undefined;
+        // authentication (BearerToken) required
+        localVarCredential = this.configuration.lookupCredential('BearerToken');
+        if (localVarCredential) {
+            localVarHeaders = localVarHeaders.set('Authorization', 'Bearer ' + localVarCredential);
+        }
+
+        let localVarHttpHeaderAcceptSelected: string | undefined = options && options.httpHeaderAccept;
+        if (localVarHttpHeaderAcceptSelected === undefined) {
+            // to determine the Accept header
+            const httpHeaderAccepts: string[] = [
+                'application/json'
+            ];
+            localVarHttpHeaderAcceptSelected = this.configuration.selectHeaderAccept(httpHeaderAccepts);
+        }
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+
+        let localVarHttpContext: HttpContext | undefined = options && options.context;
+        if (localVarHttpContext === undefined) {
+            localVarHttpContext = new HttpContext();
+        }
+
+
+        let responseType_: 'text' | 'json' | 'blob' = 'json';
+        if (localVarHttpHeaderAcceptSelected) {
+            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+                responseType_ = 'text';
+            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+                responseType_ = 'json';
+            } else {
+                responseType_ = 'blob';
+            }
+        }
+
+        let localVarPath = `/api/v1/leads/opportunities/${this.configuration.encodeParam({name: "id", value: id, in: "path", style: "simple", explode: false, dataType: "string", dataFormat: "uuid"})}/quote`;
+        return this.httpClient.request<ProjectQuoteDto>('get', `${this.configuration.basePath}${localVarPath}`,
+            {
+                context: localVarHttpContext,
+                responseType: <any>responseType_,
+                withCredentials: this.configuration.withCredentials,
+                headers: localVarHeaders,
+                observe: observe,
+                reportProgress: reportProgress
+            }
+        );
+    }
+
+    /**
      * @param product 
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
@@ -1113,6 +1267,86 @@ export class OpportunitiesApiService {
         return this.httpClient.request<Array<ProjectValidationDto>>('get', `${this.configuration.basePath}${localVarPath}`,
             {
                 context: localVarHttpContext,
+                responseType: <any>responseType_,
+                withCredentials: this.configuration.withCredentials,
+                headers: localVarHeaders,
+                observe: observe,
+                reportProgress: reportProgress
+            }
+        );
+    }
+
+    /**
+     * Generate the quote PDF of the offer and file it on the project
+     * The first PDF takes the institution\&#39;s next number (DEV-2026-000001), later ones a new version of it. Refused while the offer is empty (QUOTE_EMPTY) or its discount awaits or failed approval (QUOTE_DISCOUNT_NOT_APPROVED). The file is a project attachment (key « quote »): the e-mail and WhatsApp sending take it. Requires permission: lead:opportunity:manage.
+     * @param id 
+     * @param issueProjectQuoteRequest 
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     */
+    public issueProjectQuote(id: string, issueProjectQuoteRequest: IssueProjectQuoteRequest, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<ProjectQuoteDto>;
+    public issueProjectQuote(id: string, issueProjectQuoteRequest: IssueProjectQuoteRequest, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<ProjectQuoteDto>>;
+    public issueProjectQuote(id: string, issueProjectQuoteRequest: IssueProjectQuoteRequest, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<ProjectQuoteDto>>;
+    public issueProjectQuote(id: string, issueProjectQuoteRequest: IssueProjectQuoteRequest, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
+        if (id === null || id === undefined) {
+            throw new Error('Required parameter id was null or undefined when calling issueProjectQuote.');
+        }
+        if (issueProjectQuoteRequest === null || issueProjectQuoteRequest === undefined) {
+            throw new Error('Required parameter issueProjectQuoteRequest was null or undefined when calling issueProjectQuote.');
+        }
+
+        let localVarHeaders = this.defaultHeaders;
+
+        let localVarCredential: string | undefined;
+        // authentication (BearerToken) required
+        localVarCredential = this.configuration.lookupCredential('BearerToken');
+        if (localVarCredential) {
+            localVarHeaders = localVarHeaders.set('Authorization', 'Bearer ' + localVarCredential);
+        }
+
+        let localVarHttpHeaderAcceptSelected: string | undefined = options && options.httpHeaderAccept;
+        if (localVarHttpHeaderAcceptSelected === undefined) {
+            // to determine the Accept header
+            const httpHeaderAccepts: string[] = [
+                'application/json'
+            ];
+            localVarHttpHeaderAcceptSelected = this.configuration.selectHeaderAccept(httpHeaderAccepts);
+        }
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+
+        let localVarHttpContext: HttpContext | undefined = options && options.context;
+        if (localVarHttpContext === undefined) {
+            localVarHttpContext = new HttpContext();
+        }
+
+
+        // to determine the Content-Type header
+        const consumes: string[] = [
+            'application/json'
+        ];
+        const httpContentTypeSelected: string | undefined = this.configuration.selectHeaderContentType(consumes);
+        if (httpContentTypeSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Content-Type', httpContentTypeSelected);
+        }
+
+        let responseType_: 'text' | 'json' | 'blob' = 'json';
+        if (localVarHttpHeaderAcceptSelected) {
+            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+                responseType_ = 'text';
+            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+                responseType_ = 'json';
+            } else {
+                responseType_ = 'blob';
+            }
+        }
+
+        let localVarPath = `/api/v1/leads/opportunities/${this.configuration.encodeParam({name: "id", value: id, in: "path", style: "simple", explode: false, dataType: "string", dataFormat: "uuid"})}/quote/issue`;
+        return this.httpClient.request<ProjectQuoteDto>('post', `${this.configuration.basePath}${localVarPath}`,
+            {
+                context: localVarHttpContext,
+                body: issueProjectQuoteRequest,
                 responseType: <any>responseType_,
                 withCredentials: this.configuration.withCredentials,
                 headers: localVarHeaders,
@@ -1747,6 +1981,86 @@ export class OpportunitiesApiService {
             {
                 context: localVarHttpContext,
                 body: setProjectFieldsRequest,
+                responseType: <any>responseType_,
+                withCredentials: this.configuration.withCredentials,
+                headers: localVarHeaders,
+                observe: observe,
+                reportProgress: reportProgress
+            }
+        );
+    }
+
+    /**
+     * Replace the lines and the global discount of a project\&#39;s offer
+     * Prices excluding VAT; the discount comes before the VAT. The project\&#39;s estimated amount becomes the total excluding VAT and its product the first line\&#39;s. A discount against the catalogue beyond the institution\&#39;s ceiling puts the offer « À valider » until a manager decides. Errors: QUOTE_FINANCE_PROJECT, QUOTE_PRODUCT_NOT_FOUND, QUOTE_PRODUCT_NOT_STANDARD, QUOTE_PRODUCT_INACTIVE, QUOTE_LINE_PRICE_REQUIRED, QUOTE_DISCOUNT_ABOVE_AMOUNT, QUOTE_DISCOUNT_INVALID, QUOTE_LINE_*.
+     * @param id 
+     * @param setProjectQuoteRequest 
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     */
+    public setProjectQuote(id: string, setProjectQuoteRequest: SetProjectQuoteRequest, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<ProjectQuoteDto>;
+    public setProjectQuote(id: string, setProjectQuoteRequest: SetProjectQuoteRequest, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpResponse<ProjectQuoteDto>>;
+    public setProjectQuote(id: string, setProjectQuoteRequest: SetProjectQuoteRequest, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<HttpEvent<ProjectQuoteDto>>;
+    public setProjectQuote(id: string, setProjectQuoteRequest: SetProjectQuoteRequest, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext}): Observable<any> {
+        if (id === null || id === undefined) {
+            throw new Error('Required parameter id was null or undefined when calling setProjectQuote.');
+        }
+        if (setProjectQuoteRequest === null || setProjectQuoteRequest === undefined) {
+            throw new Error('Required parameter setProjectQuoteRequest was null or undefined when calling setProjectQuote.');
+        }
+
+        let localVarHeaders = this.defaultHeaders;
+
+        let localVarCredential: string | undefined;
+        // authentication (BearerToken) required
+        localVarCredential = this.configuration.lookupCredential('BearerToken');
+        if (localVarCredential) {
+            localVarHeaders = localVarHeaders.set('Authorization', 'Bearer ' + localVarCredential);
+        }
+
+        let localVarHttpHeaderAcceptSelected: string | undefined = options && options.httpHeaderAccept;
+        if (localVarHttpHeaderAcceptSelected === undefined) {
+            // to determine the Accept header
+            const httpHeaderAccepts: string[] = [
+                'application/json'
+            ];
+            localVarHttpHeaderAcceptSelected = this.configuration.selectHeaderAccept(httpHeaderAccepts);
+        }
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+
+        let localVarHttpContext: HttpContext | undefined = options && options.context;
+        if (localVarHttpContext === undefined) {
+            localVarHttpContext = new HttpContext();
+        }
+
+
+        // to determine the Content-Type header
+        const consumes: string[] = [
+            'application/json'
+        ];
+        const httpContentTypeSelected: string | undefined = this.configuration.selectHeaderContentType(consumes);
+        if (httpContentTypeSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Content-Type', httpContentTypeSelected);
+        }
+
+        let responseType_: 'text' | 'json' | 'blob' = 'json';
+        if (localVarHttpHeaderAcceptSelected) {
+            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+                responseType_ = 'text';
+            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+                responseType_ = 'json';
+            } else {
+                responseType_ = 'blob';
+            }
+        }
+
+        let localVarPath = `/api/v1/leads/opportunities/${this.configuration.encodeParam({name: "id", value: id, in: "path", style: "simple", explode: false, dataType: "string", dataFormat: "uuid"})}/quote`;
+        return this.httpClient.request<ProjectQuoteDto>('put', `${this.configuration.basePath}${localVarPath}`,
+            {
+                context: localVarHttpContext,
+                body: setProjectQuoteRequest,
                 responseType: <any>responseType_,
                 withCredentials: this.configuration.withCredentials,
                 headers: localVarHeaders,
