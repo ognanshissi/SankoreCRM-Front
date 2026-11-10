@@ -62,8 +62,7 @@ import {
   formSteps,
   FormStep,
   PermissionsService,
-  WireValues,
-} from '@sankore/crm/common';
+  WireValues, TenantKycService } from '@sankore/crm/common';
 import {
   CONTROL_TYPE_OPTIONS,
   controlTypeLabel,
@@ -215,6 +214,8 @@ export class CreateLegalClient {
   private readonly _snackbarService = inject(SnackbarService);
   private readonly _confirmDialogService = inject(ConfirmDialogService);
   private readonly _router = inject(Router);
+  /** KYC désactivé pour l'institution : le client est actif dès sa création (docs/kyc-par-institution.md). */
+  public readonly kycInForce = inject(TenantKycService).inForce;
   private readonly _destroyRef = inject(DestroyRef);
   private readonly _permissions = inject(PermissionsService);
 
@@ -646,13 +647,13 @@ export class CreateLegalClient {
 
       this._snackbarService.success(
         'Client créé',
-        `${legalName || 'Le client'} est créé — KYC initié, en attente de validation.`,
+        this.kycInForce()
+          ? `${legalName || 'Le client'} est créé — KYC initié, en attente de validation.`
+          : `${legalName || 'Le client'} est créé et actif.`,
       );
       this._created.set(true);
       // La fiche n'a pas à connaître ce paramètre : s'il est ignoré, seul le bandeau manque.
-      this._router.navigate(['/customers', clientId], {
-        queryParams: { kyc: 'initie' },
-      });
+      this._router.navigate(['/customers', clientId], this.kycInForce() ? { queryParams: { kyc: 'initie' } } : {});
 
       return undefined;
     });

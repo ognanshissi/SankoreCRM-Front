@@ -10,7 +10,7 @@ import { TasIcon } from '@talisoft/ui/icon';
 import { ImpersonationBanner } from '../../impersonation-banner/impersonation-banner';
 import { TestModeBanner, TestModeToggle } from '../../test-mode/test-mode';
 import { NotificationBell } from '../../notification-bell/notification-bell';
-import { AuthenticationService, BreadcrumbItem, BreadcrumbService, PermissionsService, TenantProvider } from '../../../services';
+import { AuthenticationService, BreadcrumbItem, BreadcrumbService, PermissionsService, TenantKycService, TenantProvider } from '../../../services';
 import { ENVIRONMENT_CONFIG } from '../../../utils/environment-config.token';
 import { CommandPalette } from './command-palette';
 import { NavBadges } from './nav-badges.service';
@@ -41,6 +41,7 @@ export class PortalLayoutComponent {
   private readonly _tenantProvider = inject(TenantProvider);
   private readonly _auth = inject(AuthenticationService);
   private readonly _permissions = inject(PermissionsService);
+  private readonly _kyc = inject(TenantKycService);
   private readonly _breadcrumb = inject(BreadcrumbService);
   private readonly _router = inject(Router);
   private readonly _dialog = inject(Dialog);
@@ -93,9 +94,10 @@ export class PortalLayoutComponent {
   /** Les groupes, réduits aux entrées que l'utilisateur peut ouvrir ; un groupe vide disparaît. */
   public readonly groups = computed<PortalNavGroup[]>(() => {
     const granted = this._permissions.granted();
+    const kycReadable = this._kyc.readable();
     return PORTAL_NAVIGATION.map((g) => ({
       ...g,
-      items: g.items.filter((i) => !i.anyOf || i.anyOf.some((p) => granted.has(p))),
+      items: g.items.filter((i) => (!i.anyOf || i.anyOf.some((p) => granted.has(p))) && (!i.kyc || kycReadable)),
     })).filter((g) => g.items.length > 0);
   });
 

@@ -26,7 +26,10 @@ import { TENANT_MODULE_LABELS, TenantModule } from '../../models/tenant-modules'
         <tas-alert type="info" class="bg-white">
           <div class="flex items-start gap-3 w-full">
             <div class="flex-1 min-w-0">
-              @if (denial.modules?.length) {
+              @if (denial.message; as m) {
+                <p class="text-sm font-medium">{{ m.title }}</p>
+                <p class="text-xs text-slate-600 mt-0.5">{{ m.text }}</p>
+              } @else if (denial.modules?.length) {
                 <p class="text-sm font-medium">Module non activé</p>
                 <p class="text-xs text-slate-600 mt-0.5">
                   Cette page fait partie du module {{ moduleNames(denial.modules!) }}, qui n'est pas activé

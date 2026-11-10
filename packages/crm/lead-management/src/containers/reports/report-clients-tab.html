@@ -13,14 +13,14 @@
     <div class="grid grid-cols-1 gap-5 xl:grid-cols-2">
       <section class="rounded-2xl border border-slate-100 bg-white p-5 shadow-xs">
         <h2 class="text-base font-semibold text-slate-900">Personnes physiques et morales</h2>
-        <p class="mb-4 text-xs text-slate-500">Les clients actifs ou en attente de KYC aujourd’hui, et les nouveaux de la période.</p>
+        <p class="mb-4 text-xs text-slate-500">{{ kycInForce() ? 'Les clients actifs ou en attente de KYC aujourd’hui, et les nouveaux de la période.' : 'Les clients actifs aujourd’hui, et les nouveaux de la période.' }}</p>
         <report-bar-list [items]="byType()" [color]="colors.captured" [color2]="colors.converted"
           name="Clients" name2="Nouveaux"></report-bar-list>
       </section>
 
       <section class="rounded-2xl border border-slate-100 bg-white p-5 shadow-xs">
         <h2 class="text-base font-semibold text-slate-900">Segments</h2>
-        <p class="mb-4 text-xs text-slate-500">Les clients actifs ou en attente de KYC, par segment aujourd’hui.</p>
+        <p class="mb-4 text-xs text-slate-500">{{ kycInForce() ? 'Les clients actifs ou en attente de KYC, par segment aujourd’hui.' : 'Les clients actifs, par segment aujourd’hui.' }}</p>
         @if (!bySegment().length) {
           <p class="py-6 text-center text-sm text-slate-500">Aucun client.</p>
         } @else {

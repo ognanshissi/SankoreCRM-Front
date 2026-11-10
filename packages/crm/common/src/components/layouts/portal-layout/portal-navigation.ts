@@ -11,6 +11,8 @@ export interface PortalNavItem {
   /** Un de ces droits suffit ; absent, l'entrée est pour tous. */
   anyOf?: PermissionCode[];
   badge?: NavBadgeKey;
+  /** Entrée du KYC : affichée tant qu'il est en vigueur, ou qu'il reste des dossiers à consulter. */
+  kyc?: true;
 }
 
 export interface PortalNavGroup {
@@ -55,7 +57,7 @@ export const PORTAL_NAVIGATION: PortalNavGroup[] = [
       { id: 'leads', label: 'Leads', icon: 'feather:target', link: '/leads', anyOf: [PERMISSIONS.LEAD_READ], badge: 'leads' },
       { id: 'projects', label: 'Projets', icon: 'feather:briefcase', link: '/leads/projets', anyOf: [PERMISSIONS.LEAD_OPPORTUNITY_READ] },
       { id: 'customers', label: 'Clients', icon: 'feather:users', link: '/customers', anyOf: [PERMISSIONS.CUSTOMERS_READ] },
-      { id: 'kyc', label: 'Dossiers KYC', icon: 'feather:user-check', link: '/kyc', anyOf: [PERMISSIONS.KYC_READ], badge: 'kyc' },
+      { id: 'kyc', label: 'Dossiers KYC', icon: 'feather:user-check', link: '/kyc', anyOf: [PERMISSIONS.KYC_READ], badge: 'kyc', kyc: true },
     ],
   },
   {

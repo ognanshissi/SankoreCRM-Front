@@ -12,7 +12,7 @@ import {
   UsersApiService,
 } from '@sankore/crm-api';
 import { Router } from '@angular/router';
-import { PermissionsService } from '@sankore/crm/common';
+import { PermissionsService, KycReadOnlyNotice, TenantKycService } from '@sankore/crm/common';
 // Le module KYC ne dépend pas de la lib clients : l'import ne crée donc pas de cycle.
 import {
   KycCapsPanel,
@@ -62,10 +62,12 @@ interface HistoryRow {
     Button,
     KycCapsPanel,
     KycRemoteInvitationsPanel,
+    KycReadOnlyNotice,
   ],
   template: `
     @if (client()) {
       <div class="flex flex-col gap-4">
+        <kyc-read-only-notice></kyc-read-only-notice>
         <!-- Dossier KYC -->
         <tas-card class="block">
           <div class="p-4">
@@ -156,14 +158,17 @@ interface HistoryRow {
 
         <!--
           Plafonds du KYC simplifié (KYC-F-09). L'encart se masque de lui-même quand le dossier n'est
-          pas en KYC simplifié : inutile de le conditionner ici.
+          pas en KYC simplifié : inutile de le conditionner ici. Masqué quand l'institution a
+          désactivé le KYC : ni plafonds ni passage au KYC complet.
         -->
         @if (clientId(); as customerId) {
+          @if (kycInForce()) {
           <kyc-caps-panel
             [customerId]="customerId"
             context="customer-file"
             (upgradeRequested)="goToEnrolment()"
           ></kyc-caps-panel>
+          }
         }
 
         <!-- Historique des statuts -->
@@ -280,7 +285,8 @@ export class ClientKycPage {
    * d'enrôlement** (`kyc.routes.ts`) : sur un autre code, l'écran proposerait une action que le
    * routeur refuserait ensuite.
    */
-  public readonly canOpenFile = this._permissions.can('kyc:manage');
+  public readonly canOpenFile = inject(TenantKycService).whileInForce(this._permissions.can('kyc:manage'));
+  public readonly kycInForce = inject(TenantKycService).inForce;
 
   private readonly _kycFacade = inject(KycFacadeService);
   private readonly _router = inject(Router);

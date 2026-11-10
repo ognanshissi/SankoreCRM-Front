@@ -1,5 +1,6 @@
 import { DatePipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input, output } from '@angular/core';
+import { TenantKycService } from '@sankore/crm/common';
 import { OpportunityDto, ProjectStepDto } from '@sankore/crm-api';
 import { Button } from '@talisoft/ui/button';
 import { TasCard } from '@talisoft/ui/card';
@@ -133,6 +134,9 @@ import { currentStep, projectSteps, stageMeta } from '../edit-lead/opportunities
   `,
 })
 export class ProjectProgress {
+  /** KYC désactivé pour l'institution : l'approbation n'attend plus de KYC (docs/kyc-par-institution.md). */
+  private readonly _kycInForce = inject(TenantKycService).inForce;
+
   public readonly project = input.required<OpportunityDto>();
   public readonly canManage = input(false);
   public readonly busy = input(false);
@@ -176,7 +180,13 @@ export class ProjectProgress {
       reqs.push({ icon: 'feather:user-plus', label: 'Dossier client', title: "Le dossier client doit être ouvert pour atteindre l'étape" });
     }
     if (step.isApproval) {
-      reqs.push({ icon: 'feather:shield', label: 'Approbation', title: "Le dossier KYC du client doit être validé pour atteindre l'étape" });
+      reqs.push({
+        icon: 'feather:shield',
+        label: 'Approbation',
+        title: this._kycInForce()
+          ? "Le dossier KYC du client doit être validé pour atteindre l'étape"
+          : "Le client doit exister pour atteindre l'étape ; l'atteindre convertit le lead",
+      });
     }
     if (step.requiresQuestionnaires) {
       reqs.push({ icon: 'feather:clipboard', label: 'Questionnaires', title: "Les questionnaires doivent être remplis pour atteindre l'étape" });

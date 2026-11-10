@@ -13,6 +13,11 @@
         } @else {
           <tas-tag severity="neutral">PPE inactive</tas-tag>
         }
+        @if (kycEnabled()) {
+          <tas-tag severity="success">KYC actif</tas-tag>
+        } @else {
+          <tas-tag severity="neutral">KYC désactivé</tas-tag>
+        }
       </div>
     }
     <p class="text-sm text-slate-400">
@@ -70,6 +75,36 @@
     </button>
   </div>
 } @else {
+  <!-- KYC de l'institution (docs/kyc-par-institution.md) : sa propre route, appliquée à la bascule. -->
+  <tas-card class="block mb-5">
+    <div class="p-4 flex items-start justify-between gap-4">
+      <div class="min-w-0">
+        <p class="text-sm font-medium text-slate-800">KYC des clients</p>
+        <p class="text-xs text-slate-500 mt-1">
+          @if (kycEnabled()) {
+            Chaque nouveau client fait l'objet d'un dossier KYC, au niveau exigé par son produit.
+          } @else {
+            Désactivé : les nouveaux clients sont actifs dès leur création, sans dossier KYC. Les
+            dossiers existants restent consultables.
+          }
+        </p>
+        @if (kycLockedBy(); as module) {
+          <p class="text-xs text-slate-600 mt-2 flex items-center gap-1.5">
+            <tas-icon iconName="feather:lock" style="font-size:12px"></tas-icon>
+            Obligatoire tant que le module « {{ module }} » est actif.
+          </p>
+        }
+      </div>
+      <tas-switch
+        [checked]="kycEnabled()"
+        [disabled]="!canManage() || !!kycLockedBy()"
+        [isLoading]="kycSwitching()"
+        ariaLabel="KYC des clients"
+        (toggle)="onKycToggle($event)"
+      ></tas-switch>
+    </div>
+  </tas-card>
+
   <!--
     Onglets locaux, pas des routes : les deux volets partagent un seul formulaire et un seul
     `PUT`, donc les séparer en routes enfants ferait perdre la saisie en cours au changement

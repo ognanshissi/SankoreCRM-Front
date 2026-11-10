@@ -35,6 +35,7 @@ import {
   PermissionsService,
   PROJECT_AMOUNT_KINDS,
   TenantModulesService,
+  TenantKycService,
 } from '@sankore/crm/common';
 import {
   FAMILY_AMOUNT_KIND,
@@ -192,6 +193,8 @@ function probabilityOf(text: string): number | null {
 })
 export class ProjectTemplatePage implements OnInit {
   private readonly _api = inject(ProjectTemplatesApiService);
+  /** Les textes de l'étape d'approbation ne parlent plus de KYC quand il est désactivé. */
+  public readonly kycInForce = inject(TenantKycService).inForce;
   private readonly _productsApi = inject(ProductsApiService);
   private readonly _snackbar = inject(SnackbarService);
   private readonly _confirm = inject(ConfirmDialogService);

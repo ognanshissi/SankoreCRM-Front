@@ -163,6 +163,7 @@
     </section>
 
     <!-- Accès aux données -->
+    @if (kycReadable()) {
     <section class="rounded-2xl bg-white shadow-sm border border-slate-100 p-6">
       <h2 class="text-xl font-bold text-primary">Accès aux données</h2>
       <p class="text-sm text-slate-700 mt-3 leading-relaxed">
@@ -172,6 +173,7 @@
         Voir mes 30 derniers accès
       </button>
     </section>
+    }
   </div>
 </div>
 

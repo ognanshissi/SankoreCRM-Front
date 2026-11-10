@@ -26,7 +26,7 @@ import {
   RunKycVerificationResponse,
   RunKycVerificationResponseOutcomeEnum,
 } from '@sankore/crm-api';
-import { PermissionsService } from '@sankore/crm/common';
+import { PermissionsService, TenantKycService } from '@sankore/crm/common';
 import { KycFacadeService } from '../data-access/kyc-facade.service';
 import { isKycDocumentType, KYC_DOCUMENT_TYPE_OPTIONS } from '../data-access/kyc-referential';
 import {
@@ -208,7 +208,7 @@ export class KycDocumentCapture {
    * proposait donc la correction à tout le monde, et c'est le 403 du serveur qui tranchait après
    * coup, une fois la saisie faite.
    */
-  public readonly canVerify = this._permissions.can('kyc:verify');
+  public readonly canVerify = inject(TenantKycService).whileInForce(this._permissions.can('kyc:verify'));
 
   public readonly kycFileId = input.required<string>();
 

@@ -9,6 +9,8 @@ export interface AccessDenial {
   required: PermissionCode[];
   /** Renseigné quand c'est un module payant inactif, et non une permission, qui ferme la page. */
   modules?: TenantModule[];
+  /** Un refus qui n'est ni une permission ni un module (le KYC coupé, par exemple). */
+  message?: { title: string; text: string };
 }
 
 /** Effacement automatique, pour que la bannière ne reste pas indéfiniment. */
@@ -43,6 +45,13 @@ export class AccessDeniedService {
   /** Appelé par la garde de module : la page appartient à un module que l'institution n'a pas. */
   public notifyModule(attemptedUrl: string, modules: TenantModule[]): void {
     this._notice.set({ attemptedUrl, required: [], modules });
+    this._skipNextSettle = true;
+    this._restartTimer();
+  }
+
+  /** Refus expliqué par un message (le KYC désactivé pour l'institution). */
+  public notifyMessage(attemptedUrl: string, title: string, text: string): void {
+    this._notice.set({ attemptedUrl, required: [], message: { title, text } });
     this._skipNextSettle = true;
     this._restartTimer();
   }

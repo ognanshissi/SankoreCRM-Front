@@ -10,7 +10,7 @@ import { SideDrawerService } from '@talisoft/ui/side-drawer';
 import { SnackbarService } from '@talisoft/ui/snackbar';
 import { ConfirmDialogService } from '@talisoft/ui/confirm-dialog';
 import { LoginHistoryDto, SecurityOverviewDto, UserSessionDto, UsersApiService } from '@sankore/crm-api';
-import { AuthenticationService } from '@sankore/crm/common';
+import { AuthenticationService, TenantKycService } from '@sankore/crm/common';
 import { ChangePasswordDrawer } from './change-password-drawer';
 import { KycAccessDrawer } from './kyc-access-drawer';
 import { ReportLoginDrawer, ReportLoginDrawerData } from './report-login-drawer';
@@ -48,6 +48,8 @@ const UNPAGED: TableConfig = {
 export class AccountSecurity implements OnInit {
   private readonly _usersApi = inject(UsersApiService);
   private readonly _auth = inject(AuthenticationService);
+  /** Le journal des accès KYC n'a d'objet que s'il reste des dossiers à consulter. */
+  public readonly kycReadable = inject(TenantKycService).readable;
   private readonly _drawer = inject(SideDrawerService);
   private readonly _snackbar = inject(SnackbarService);
   private readonly _confirm = inject(ConfirmDialogService);

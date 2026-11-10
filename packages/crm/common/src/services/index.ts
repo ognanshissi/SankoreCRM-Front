@@ -5,6 +5,7 @@ export * from './product-config.service';
 export * from './permissions.service';
 export * from './compliance-config.service';
 export * from './tenant-modules.service';
+export * from './tenant-kyc.service';
 export * from './task-types.store';
 export * from './product-names.store';
 export * from './hidden-form-fields.store';

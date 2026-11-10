@@ -260,8 +260,13 @@
             <ul class="mt-2 flex list-disc flex-col gap-1 pl-4">
               <li>La <span class="font-semibold">phase</span> range l'étape dans l'entonnoir ; elle ne revient jamais en arrière d'une étape à la suivante.</li>
               <li>La <span class="font-semibold">probabilité</span> est celle de signer une fois l'étape atteinte.</li>
-              <li><span class="font-semibold">Ouvre le dossier client</span> : le prospect doit être client — son dossier KYC s'ouvre là si le produit en exige un.</li>
-              <li><span class="font-semibold">Approbation</span> : le KYC doit être validé au niveau du produit ; l'atteindre convertit le lead.</li>
+              @if (kycInForce()) {
+                <li><span class="font-semibold">Ouvre le dossier client</span> : le prospect doit être client — son dossier KYC s'ouvre là si le produit en exige un.</li>
+                <li><span class="font-semibold">Approbation</span> : le KYC doit être validé au niveau du produit ; l'atteindre convertit le lead.</li>
+              } @else {
+                <li><span class="font-semibold">Ouvre le dossier client</span> : le prospect doit être client.</li>
+                <li><span class="font-semibold">Approbation</span> : l'atteindre convertit le lead (le KYC est désactivé pour l'institution).</li>
+              }
               <li><span class="font-semibold">Points à vérifier</span> et <span class="font-semibold">circuit de validation</span> : exigés pour QUITTER l'étape, ou gagner le projet.</li>
             </ul>
           </details>
@@ -332,7 +337,7 @@
                           (toggle)="step.opensClientFile().value.set($event)"></tas-switch>
                   </div>
                   <div class="flex items-center justify-between gap-3">
-                    <span>Étape d'approbation<span class="ms-1 text-xs text-slate-400">— KYC validé, lead converti</span></span>
+                    <span>Étape d'approbation<span class="ms-1 text-xs text-slate-400">— {{ kycInForce() ? 'KYC validé, lead converti' : 'lead converti' }}</span></span>
                     <tas-switch [checked]="step.isApproval().value()" [disabled]="step.isApproval().disabled()" ariaLabel="Étape d'approbation"
                           (toggle)="step.isApproval().value.set($event)"></tas-switch>
                   </div>

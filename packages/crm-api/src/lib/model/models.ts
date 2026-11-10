@@ -818,6 +818,8 @@ export * from './suspend-client-request.interface';
 export * from './suspend-group-request.interface';
 export * from './suspend-group-result.interface';
 export * from './suspicion-alert-dto.interface';
+export * from './switch-kyc-request.interface';
+export * from './switch-kyc-result.interface';
 export * from './switch-test-mode-request.interface';
 export * from './system-capture-lead-request.interface';
 export * from './tag-dto.interface';

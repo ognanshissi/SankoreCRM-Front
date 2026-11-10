@@ -33,7 +33,7 @@ import {
   ProductsApiService,
   SetBeneficiaryPolicyRequest,
 } from '@sankore/crm-api';
-import { designationRoleLabel, productCategoryLabel } from '@sankore/crm/common';
+import { designationRoleLabel, productCategoryLabel, TenantKycService } from '@sankore/crm/common';
 
 /**
  * Rôles de désignation proposés. `DesignationRoleInput.code` est une chaîne
@@ -385,6 +385,8 @@ function positiveIntegerValidator(max: number, message: string) {
             </p>
           }
 
+          <!-- KYC désactivé pour l'institution : le niveau ne s'applique pas, il est conservé tel quel. -->
+          @if (kycInForce()) {
           <tas-form-field class="mt-4 block max-w-xs">
             <tas-label>Niveau KYC requis</tas-label>
             <tas-select [options]="kycTierOptions()" [formField]="formSchema.requiredKycTier"></tas-select>
@@ -396,6 +398,7 @@ function positiveIntegerValidator(max: number, message: string) {
               }
             </tas-hint>
           </tas-form-field>
+          }
         </fieldset>
 
         @if (canUpdate()) {
@@ -461,6 +464,9 @@ export class BeneficiaryPolicyEditor {
    * catégorie étant ce qu'un régulateur regarde. Une valeur déjà enregistrée hors de la liste
    * reste affichée telle quelle plutôt que d'être effacée en silence.
    */
+  /** Masque le niveau KYC quand l'institution a désactivé le KYC (docs/kyc-par-institution.md). */
+  public readonly kycInForce = inject(TenantKycService).inForce;
+
   public readonly kycTierOptions = computed(() => {
     const options = [
       { value: '', label: 'Socle du tenant (dossier KYC standard)' },

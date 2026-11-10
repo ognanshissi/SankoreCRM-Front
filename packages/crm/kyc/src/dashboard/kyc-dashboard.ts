@@ -16,7 +16,7 @@ import { TasIcon } from '@talisoft/ui/icon';
 import { SideDrawerService } from '@talisoft/ui/side-drawer';
 import { TableConfig, TasTable } from '@talisoft/ui/table';
 import { AgenciesApiService } from '@sankore/crm-api';
-import { AuthenticationService, BreadcrumbService, PermissionsService } from '@sankore/crm/common';
+import { AuthenticationService, BreadcrumbService, PermissionsService, TenantKycService, KycReadOnlyNotice } from '@sankore/crm/common';
 import { KycFacadeService } from '../data-access/kyc-facade.service';
 import { KycDashboardFilters, KycDashboardPage as KycFilesPage, KycDashboardRow } from '../data-access/kyc.types';
 import { kycTierLabel } from '../data-access/kyc-referential';
@@ -175,7 +175,7 @@ function subtitleOf(row: KycDashboardRow): string {
 @Component({
   selector: 'kyc-dashboard',
   templateUrl: './kyc-dashboard.html',
-  imports: [FormsModule, Button, TasIcon, TasTable],
+  imports: [KycReadOnlyNotice, FormsModule, Button, TasIcon, TasTable],
 })
 export class KycDashboardPage implements OnInit {
   private readonly _facade = inject(KycFacadeService);
@@ -188,7 +188,7 @@ export class KycDashboardPage implements OnInit {
   private readonly _router = inject(Router);
   private readonly _destroyRef = inject(DestroyRef);
 
-  public readonly canOpenFile = this._permissions.can('kyc:manage');
+  public readonly canOpenFile = inject(TenantKycService).whileInForce(this._permissions.can('kyc:manage'));
   /**
    * Sans « kyc:read:all » (Agent, Agent commercial), le serveur ne renvoie déjà que les dossiers
    * de l'utilisateur (responsable, sinon créateur) : « Mon agence » et « Toutes les agences »

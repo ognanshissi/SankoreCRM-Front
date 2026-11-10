@@ -19,7 +19,7 @@ import {
   KycApprovalCircuitDto,
   KycFileDto,
 } from '@sankore/crm-api';
-import { AuthenticationService, PermissionsService } from '@sankore/crm/common';
+import { AuthenticationService, PermissionsService, TenantKycService } from '@sankore/crm/common';
 import { KycFacadeService } from '../data-access/kyc-facade.service';
 import {
   KYC_COMPLEMENT_REASONS,
@@ -196,7 +196,7 @@ export class KycApprovalDecision implements OnInit {
    * la seule barrière était l'heuristique sur les libellés de rôles — un rôle nommé « Chef
    * d'agence » suffisait donc à afficher les boutons, droit de décision ou non.
    */
-  public readonly canApprove = this._permissions.can('kyc:approve');
+  public readonly canApprove = inject(TenantKycService).whileInForce(this._permissions.can('kyc:approve'));
 
   /**
    * Les actions ne s'affichent que si l'utilisateur a le droit de décider **et** que le prochain

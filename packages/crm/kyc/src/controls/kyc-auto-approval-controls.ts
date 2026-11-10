@@ -18,7 +18,7 @@ import {
   KycAutoApprovalControlItem,
   KycAutoApprovalControlPage,
 } from '@sankore/crm-api';
-import { BreadcrumbService, PermissionsService } from '@sankore/crm/common';
+import { BreadcrumbService, PermissionsService, TenantKycService } from '@sankore/crm/common';
 import { RecordKycAutoApprovalControlDrawer } from './record-kyc-auto-approval-control-drawer';
 
 const STATUS_META: Record<string, { label: string; severity: Severity }> = {
@@ -68,7 +68,7 @@ export class KycAutoApprovalControlsPage implements OnInit {
   private readonly _snackbar = inject(SnackbarService);
   private readonly _router = inject(Router);
 
-  public readonly canControl = this._permissions.can('kyc:auto-approval:control');
+  public readonly canControl = inject(TenantKycService).whileInForce(this._permissions.can('kyc:auto-approval:control'));
 
   public isLoading = signal(true);
   public loadError = signal('');

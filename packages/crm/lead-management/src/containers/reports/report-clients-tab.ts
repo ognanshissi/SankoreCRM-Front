@@ -9,6 +9,7 @@ import { BarItem, ReportBarList } from './report-bar-list';
 import { Kpi, relativeDelta, ReportKpiTiles } from './report-kpi';
 import { ReportRange } from './report-projects-tab';
 import { formatNumber, SERIES_COLORS } from './report-labels';
+import { TenantKycService } from '@sankore/crm/common';
 
 const decimal = new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 2 });
 const days = (n: number | null | undefined) => (n == null ? '—' : `${decimal.format(n)} j`);
@@ -25,6 +26,9 @@ const days = (n: number | null | undefined) => (n == null ? '—' : `${decimal.f
 })
 export class ReportClientsTab {
   private readonly _reports = inject(ClientReportsApiService);
+  /** KYC désactivé pour l'institution : plus de clients « en attente de KYC » (docs/kyc-par-institution.md). */
+  public readonly kycInForce = inject(TenantKycService).inForce;
+  private readonly _baseHint = computed(() => (this.kycInForce() ? 'Actifs ou en attente de KYC' : 'Clients actifs'));
   private readonly _destroyRef = inject(DestroyRef);
   private readonly _load$ = new Subject<ReportRange>();
 
@@ -48,7 +52,7 @@ export class ReportClientsTab {
       {
         label: 'Sans conseiller',
         value: formatNumber(k.withoutAdvisor),
-        hint: 'Actifs ou en attente de KYC',
+        hint: this._baseHint(),
         tone: (k.withoutAdvisor ?? 0) > 0 ? 'warn' : undefined,
       },
       { label: 'Produits par client', value: k.avgProductsPerClient == null ? '—' : decimal.format(k.avgProductsPerClient),
@@ -63,7 +67,7 @@ export class ReportClientsTab {
         hint: `${formatNumber(k.openComplaints)} ouverte${(k.openComplaints ?? 0) > 1 ? 's' : ''} aujourd’hui`,
         tone: (k.overdueComplaints ?? 0) > 0 ? 'warn' : undefined,
       },
-      { label: 'Risque élevé', value: formatNumber(k.highRisk), hint: 'Actifs ou en attente de KYC' },
+      { label: 'Risque élevé', value: formatNumber(k.highRisk), hint: this._baseHint() },
       { label: 'PPE', value: formatNumber(k.pep), hint: 'Exposés politiquement' },
       { label: 'Suspendus ou archivés', value: formatNumber(period.suspendedOrArchived), hint: 'Sur la période',
         delta: relativeDelta(period.suspendedOrArchived, p?.suspendedOrArchived, 'down', formatNumber) },

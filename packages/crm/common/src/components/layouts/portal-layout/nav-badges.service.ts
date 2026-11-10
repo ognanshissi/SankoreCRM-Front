@@ -6,6 +6,7 @@ import { ConnectedMailboxApiService, KYCApiService, LeadsApiService, WhatsAppApi
 import { PERMISSIONS } from '../../../models/permissions';
 import { AuthenticationService } from '../../../services/authentification.service';
 import { PermissionsService } from '../../../services/permissions.service';
+import { TenantKycService } from '../../../services/tenant-kyc.service';
 import { NavBadgeKey } from './portal-navigation';
 
 /** Un travail en attente toutes les deux minutes suffit : ce sont des rappels, pas des alarmes. */
@@ -32,6 +33,7 @@ export class NavBadges {
   private readonly _mail = inject(ConnectedMailboxApiService);
   private readonly _leads = inject(LeadsApiService);
   private readonly _kyc = inject(KYCApiService);
+  private readonly _tenantKyc = inject(TenantKycService);
   private readonly _workflows = inject(WorkflowAnalyticsApiService);
   private readonly _auth = inject(AuthenticationService);
   private readonly _permissions = inject(PermissionsService);
@@ -86,7 +88,8 @@ export class NavBadges {
       calls.mail = this._mail.listMyMailThreads(undefined, true, 1, 1).pipe(map((page) => page.totalCount ?? 0));
     }
 
-    if (this._permissions.has(PERMISSIONS.KYC_READ)) {
+    // KYC coupé : plus rien n'attend personne (docs/kyc-par-institution.md).
+    if (this._permissions.has(PERMISSIONS.KYC_READ) && this._tenantKyc.inForce()) {
       calls.kyc = this._kyc
         .listKycFiles(undefined, undefined, undefined, undefined, undefined, 1, 1)
         .pipe(map((page) => page.awaitingMeCount ?? 0));

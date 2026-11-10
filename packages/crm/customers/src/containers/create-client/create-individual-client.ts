@@ -38,8 +38,7 @@ import {
   formSteps,
   FormStep,
   PermissionsService,
-  WireValues,
-} from '@sankore/crm/common';
+  WireValues, TenantKycService } from '@sankore/crm/common';
 import { DuplicateCandidateView, DuplicateCheckBanner } from './duplicate-check-banner';
 import {
   buildAddress,
@@ -108,6 +107,8 @@ export class CreateIndividualClient {
   private readonly _snackbarService = inject(SnackbarService);
   private readonly _confirmDialogService = inject(ConfirmDialogService);
   private readonly _router = inject(Router);
+  /** KYC désactivé pour l'institution : le client est actif dès sa création (docs/kyc-par-institution.md). */
+  public readonly kycInForce = inject(TenantKycService).inForce;
   private readonly _destroyRef = inject(DestroyRef);
   private readonly _permissions = inject(PermissionsService);
 
@@ -382,11 +383,13 @@ export class CreateIndividualClient {
         this.warningDuplicates.set([]);
         this._snackbarService.success(
           'Client créé',
-          `${this.fullName() || 'Le client'} est créé — KYC initié, en attente de validation.`,
+          this.kycInForce()
+            ? `${this.fullName() || 'Le client'} est créé — KYC initié, en attente de validation.`
+            : `${this.fullName() || 'Le client'} est créé et actif.`,
         );
         this._created.set(true);
         // La fiche n'a pas à connaître ce paramètre : s'il est ignoré, seul le bandeau manque.
-        this._router.navigate(['/customers', result.clientId], { queryParams: { kyc: 'initie' } });
+        this._router.navigate(['/customers', result.clientId], this.kycInForce() ? { queryParams: { kyc: 'initie' } } : {});
         return;
       }
 

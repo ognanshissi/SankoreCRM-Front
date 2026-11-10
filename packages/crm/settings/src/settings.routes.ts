@@ -4,7 +4,7 @@ import AgenciesHomePage from './containers/agencies/agencies-homepage/agencies-h
 import EditRoleNavigation from './containers/roles/edit-role/edit-role-navigation';
 import EditUserNavigation from './containers/users/edit-user/edit-user-navigation';
 import EditWorkflowTemplateNavigation from './containers/workflows/edit-workflow-template/edit-workflow-template-navigation';
-import { canReadModuleGuard, hasPermissionGuard, TENANT_MODULES } from '@sankore/crm/common';
+import { canReadModuleGuard, hasPermissionGuard, TENANT_MODULES, kycGuard } from '@sankore/crm/common';
 
 const paneRoutes: Routes = [
   {
@@ -323,7 +323,8 @@ const paneRoutes: Routes = [
     // `kyc:settings:manage`, comme `GET /kyc-settings` (propriétaire, 2026-10-30) : `kyc:read` est le
     // droit d'un agent sur ses dossiers, et aucun écran de travail ne lit ces paramètres.
     path: 'kyc',
-    canActivate: [hasPermissionGuard('kyc:settings:manage')],
+    // Masqué et fermé quand l'institution a désactivé le KYC (docs/kyc-par-institution.md).
+    canActivate: [hasPermissionGuard('kyc:settings:manage'), kycGuard()],
     loadComponent: () => import('./containers/kyc-settings/kyc-settings'),
   },
   {

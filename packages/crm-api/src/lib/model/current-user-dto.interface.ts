@@ -29,5 +29,6 @@ export interface CurrentUserDto {
     activeModules?: Array<string> | null;
     readOnlyModules?: Array<string> | null;
     testMode?: boolean;
+    kycInForce?: boolean;
 }
 

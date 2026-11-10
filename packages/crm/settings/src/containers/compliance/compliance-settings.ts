@@ -36,6 +36,7 @@ import { TasTag } from '@talisoft/ui/tag';
 import {
   AuditApiService,
   AuditEntryDto,
+  ClientsApiService,
   ComplianceSettingsApiService,
   ComplianceSettingsResponse,
   UpdateComplianceSettingsCommand,
@@ -49,6 +50,9 @@ import {
   fatcaRegimeLabel,
   GIIN_PATTERN,
   PermissionsService,
+  TENANT_MODULE_LABELS,
+  TenantKycService,
+  TenantModule,
   UNKNOWN_CODE_LABEL,
 } from '@sankore/crm/common';
 
@@ -156,6 +160,20 @@ export class ComplianceSettingsPage implements OnInit {
   private readonly _router = inject(Router);
   private readonly _route = inject(ActivatedRoute);
   private readonly _complianceConfig = inject(ComplianceConfigService);
+  private readonly _clientsApi = inject(ClientsApiService);
+  private readonly _tenantKyc = inject(TenantKycService);
+
+  // ── KYC de l'institution (docs/kyc-par-institution.md) ──────────────────────────────────────
+  // Hors du formulaire : sa propre route (`PUT compliance-settings/kyc`), appliquée à la bascule.
+
+  /** L'interrupteur, tel que le serveur l'a rendu. */
+  public readonly kycEnabled = computed(() => this.settings()?.kycEnabled !== false);
+  /** Le module qui rend le KYC obligatoire, ou null en socle seul. */
+  public readonly kycLockedBy = computed(() => {
+    const module = this.settings()?.kycRequiredByModule;
+    return module ? (TENANT_MODULE_LABELS[module as TenantModule] ?? module) : null;
+  });
+  public readonly kycSwitching = signal(false);
 
   /** Deux droits distincts : consulter le régime en vigueur n'est pas le modifier. */
   // Le droit que `PUT /compliance-settings` exige : `kyc:settings:manage` laissait l'écran éditable
@@ -411,6 +429,64 @@ export class ComplianceSettingsPage implements OnInit {
     if (!this.canManage()) return;
     this.formSchema.fatcaEnabled().value.set(value);
     this.formSchema.fatcaEnabled().markAsDirty();
+  }
+
+  public async onKycToggle(enabled: boolean): Promise<void> {
+    if (!this.canManage() || this.kycLockedBy() || this.kycSwitching()) return;
+    if (enabled === this.kycEnabled()) return;
+
+    let message: string;
+    if (enabled) {
+      message =
+        "Chaque nouveau client fera de nouveau l'objet d'un dossier KYC, au niveau exigé par son produit. Les clients activés sans KYC resteront actifs : un projet qui atteint son étape KYC leur ouvrira un dossier. Confirmez-vous la réactivation ?";
+    } else {
+      const waiting = await firstValueFrom(
+        this._clientsApi
+          .searchClients(undefined, undefined, undefined, undefined, 'PendingKyc', undefined, undefined, undefined, undefined, 1, 1)
+          .pipe(map((page) => page.totalCount ?? 0), catchError(() => of(null))),
+      );
+      const who =
+        waiting === null
+          ? 'Les clients en attente de KYC passeront actifs.'
+          : waiting === 0
+            ? 'Aucun client n\'est en attente de KYC.'
+            : `${waiting} client${waiting > 1 ? 's' : ''} en attente de KYC passer${waiting > 1 ? 'ont' : 'a'} actif${waiting > 1 ? 's' : ''}, sans retour en attente à la réactivation.`;
+      message = `Les nouveaux clients seront actifs dès leur création, sans dossier KYC. ${who} Les dossiers existants restent consultables, sans modification possible, et les tâches KYC ouvertes sont annulées. Confirmez-vous la désactivation ?`;
+    }
+
+    const confirmed = await new Promise<boolean>((resolve) =>
+      this._confirmDialog.confirm({
+        title: enabled ? 'Réactiver le KYC' : 'Désactiver le KYC',
+        message,
+        closable: true,
+        showCancelButton: true,
+        acceptButtonProps: { label: enabled ? 'Réactiver le KYC' : 'Désactiver le KYC', theme: enabled ? 'primary' : 'warn' },
+        rejectButtonProps: { label: 'Annuler' },
+        accept: () => resolve(true),
+        reject: () => resolve(false),
+      }),
+    );
+    if (!confirmed) return;
+
+    this.kycSwitching.set(true);
+    this._api
+      .switchKyc({ enabled })
+      .pipe(
+        catchError((err: HttpErrorResponse) => {
+          this.kycSwitching.set(false);
+          this._snackbar.error('KYC non modifié', err.error?.detail ?? "Le réglage n'a pas pu être enregistré.");
+          return EMPTY;
+        }),
+      )
+      .subscribe((result) => {
+        this.kycSwitching.set(false);
+        const value = result.enabled ?? enabled;
+        this.settings.update((s) => (s ? { ...s, kycEnabled: value } : s));
+        this._tenantKyc.sync(value);
+        this._snackbar.success(value ? 'KYC réactivé' : 'KYC désactivé', value
+          ? 'Les nouveaux clients passent de nouveau par le KYC.'
+          : 'Les nouveaux clients sont actifs dès leur création.');
+      });
   }
 
   public onPepToggle(value: boolean): void {

@@ -47,7 +47,7 @@
   <!-- Onglets : mêmes période et agence pour tous -->
   <nav class="rounded-2xl border border-slate-100 bg-white px-2 shadow-xs" role="tablist" aria-label="Rapports">
     <div class="flex flex-wrap items-center gap-1">
-      @for (t of tabs; track t.key) {
+      @for (t of tabs(); track t.key) {
         <button type="button" role="tab"
           class="flex items-center gap-2 border-b-2 px-4 py-3 text-sm whitespace-nowrap"
           [class]="tab() === t.key ? 'border-primary font-semibold text-primary' : 'border-transparent text-slate-600 hover:text-slate-900'"

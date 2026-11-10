@@ -35,8 +35,7 @@ import {
   productCategoryLabel,
   TENANT_MODULES,
   TenantModulesService,
-  WireValue,
-} from '@sankore/crm/common';
+  WireValue, TenantKycService } from '@sankore/crm/common';
 import { ProductParametersEditor } from '../product-parameters-editor';
 import { QualificationTemplatesPanel } from '../qualification-templates-panel';
 import { BeneficiaryPolicyEditor } from '../beneficiary-policy-editor';
@@ -196,6 +195,8 @@ export class EditProductPage {
   private readonly _productsApi = inject(ProductsApiService);
   private readonly _permissions = inject(PermissionsService);
   private readonly _modules = inject(TenantModulesService);
+  /** « KYC à distance » n'a pas d'objet quand l'institution a désactivé le KYC (docs/kyc-par-institution.md). */
+  public readonly showRemoteKyc = inject(TenantKycService).inForce;
   private readonly _snackbar = inject(SnackbarService);
   private readonly _confirmDialog = inject(ConfirmDialogService);
   private readonly _router = inject(Router);
@@ -232,6 +233,7 @@ export class EditProductPage {
     if (!asked || !PRODUCT_TABS.includes(asked)) return 'identite';
     if (asked === 'danger' && !this.canDelete()) return 'identite';
     if (asked === 'beneficiaires' && !this.showBeneficiaries()) return 'identite';
+    if (asked === 'kyc' && !this.showRemoteKyc()) return 'identite';
 
     return asked;
   });

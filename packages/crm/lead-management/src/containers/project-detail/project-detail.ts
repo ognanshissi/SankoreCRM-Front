@@ -26,6 +26,7 @@ import {
   projectAmountLabel,
   projectGateMessage,
   projectSaveErrorMessage,
+  TenantKycService,
 } from '@sankore/crm/common';
 import { Anchor, Button } from '@talisoft/ui/button';
 import { TasCard } from '@talisoft/ui/card';
@@ -144,6 +145,9 @@ export class ProjectDetail implements OnInit {
   });
 
   /** Le client du projet : sa fiche, ou celle de son lead converti. */
+  /** « Voir le KYC du client » n'a d'objet que s'il reste des dossiers à consulter. */
+  public readonly kycReadable = inject(TenantKycService).readable;
+
   public readonly clientId = computed(
     () => this.project()?.customerEntityId ?? this.lead()?.convertedToCustomerId ?? null,
   );

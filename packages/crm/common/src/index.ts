@@ -12,6 +12,7 @@ export * from './guards/authorized.guard';
 export * from './guards/permission.guard';
 export * from './guards/settings.guard';
 export * from './guards/module.guard';
+export * from './guards/kyc.guard';
 export * from './guards/tenant.guard';
 
 export * from './models';

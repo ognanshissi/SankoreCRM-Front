@@ -10,7 +10,7 @@ import { TasSelect } from '@talisoft/ui/select';
 import { TasSpinner } from '@talisoft/ui/spinner';
 import { TableConfig, TasTable } from '@talisoft/ui/table';
 import { AgenciesApiService, AgentComparisonDto, ClientReportsApiService, LeadReportDto, LeadReportsApiService } from '@sankore/crm-api';
-import { BreadcrumbService, projectFlowLabel } from '@sankore/crm/common';
+import { BreadcrumbService, projectFlowLabel, TenantKycService } from '@sankore/crm/common';
 import { SnackbarService } from '@talisoft/ui/snackbar';
 import { ReportLineChart, LinePoint, LineSeries } from './report-line-chart';
 import { BarItem, ReportBarList } from './report-bar-list';
@@ -80,7 +80,9 @@ export class ReportsPage implements OnInit {
   private readonly _agentReload$ = new Subject<void>();
 
   public readonly periods = PERIODS;
-  public readonly tabs = TABS;
+  /** L'onglet KYC disparaît quand l'institution a désactivé le KYC (docs/kyc-par-institution.md). */
+  private readonly _kycInForce = inject(TenantKycService).inForce;
+  public readonly tabs = computed(() => TABS.filter((t) => t.key !== 'kyc' || this._kycInForce()));
   /** L'onglet ouvert, gardé dans l'URL (`onglet`) pour qu'un lien rouvre le même. */
   public tab = signal<ReportTab>('leads');
   /** La période et l'agence transmises aux onglets qui chargent leurs propres chiffres. */
@@ -318,7 +320,7 @@ export class ReportsPage implements OnInit {
     const p = params.get('periode');
     if (PERIODS.some((x) => x.key === p)) this.period.set(p as PeriodKey);
     const tab = params.get('onglet');
-    if (TABS.some((t) => t.key === tab)) this.tab.set(tab as ReportTab);
+    if (this.tabs().some((t) => t.key === tab)) this.tab.set(tab as ReportTab);
     this.agencyId.set(params.get('agence') ?? '');
     const criterion = params.get('classement');
     if (['score', 'converted', 'conversionRate', 'sla', 'firstContact'].includes(criterion ?? '')) {

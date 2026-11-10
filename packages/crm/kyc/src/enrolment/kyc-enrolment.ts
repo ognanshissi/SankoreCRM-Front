@@ -12,7 +12,7 @@ import {
   RunKycVerificationRequestDocumentTypeEnum,
 } from '@sankore/crm-api';
 import { SideDrawerService } from '@talisoft/ui/side-drawer';
-import { BreadcrumbService, PermissionsService } from '@sankore/crm/common';
+import { BreadcrumbService, PermissionsService, TenantKycService } from '@sankore/crm/common';
 import { KycFacadeService } from '../data-access/kyc-facade.service';
 import { KycDraftStore } from '../data-access/kyc-draft.store';
 import { KycImageRef } from '../data-access/kyc.types';
@@ -94,13 +94,13 @@ export class KycEnrolmentPage {
   /** Même droit que sur l'écran de détail : voir `kyc-file-detail.ts`. */
   public readonly canSeeRawDetail = this._permissions.can('kyc:document:reveal');
   /** Droit de valider les pièces à la main quand la biométrie n'a pas tranché. */
-  public readonly canValidateManually = this._permissions.can('kyc:document:validate');
+  public readonly canValidateManually = inject(TenantKycService).whileInForce(this._permissions.can('kyc:document:validate'));
 
   /**
    * Lever un signalement de doublon a son propre droit (`kyc:duplicate:clear`), distinct de
    * `kyc:manage` : enrôler et décider qu'un doublon n'en est pas un ne sont pas le même geste.
    */
-  public readonly canClearDuplicate = this._permissions.can('kyc:duplicate:clear');
+  public readonly canClearDuplicate = inject(TenantKycService).whileInForce(this._permissions.can('kyc:duplicate:clear'));
 
   private readonly _scorePanel = viewChild(KycScorePanel);
 

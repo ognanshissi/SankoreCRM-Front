@@ -22,7 +22,7 @@ import {
   TeamScorecardDto,
   TasksApiService,
 } from '@sankore/crm-api';
-import { AuthenticationService, BreadcrumbService, PermissionsService, QuickCreateEvents } from '@sankore/crm/common';
+import { AuthenticationService, BreadcrumbService, PermissionsService, QuickCreateEvents, TenantKycService } from '@sankore/crm/common';
 import { leadDisplayName } from './task-meta';
 import { ReassignTaskDrawer, ReassignTaskDrawerData } from './reassign-task-drawer';
 import { ApprovalItem, MyApprovalsService } from './my-approvals.service';
@@ -161,7 +161,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
   public readonly entries = computed(() => agendaEntries(this.agenda()));
   // ——— Dossiers à gérer ———
 
-  private readonly _canWorkKyc = this._permissions.can('kyc:manage');
+  // KYC désactivé pour l'institution : révisions et pièces à renouveler n'ont plus d'objet (docs/kyc-par-institution.md).
+  private readonly _canWorkKyc = inject(TenantKycService).whileInForce(this._permissions.can('kyc:manage'));
   private readonly _canWorkProjects = this._permissions.can('lead:opportunity:manage');
   private readonly _kycReviews = signal(0);
   private readonly _kycExpiring = signal(0);

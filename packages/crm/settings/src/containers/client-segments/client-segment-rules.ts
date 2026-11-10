@@ -39,7 +39,7 @@ import {
   SegmentRuleDefinition,
   SegmentRulesDto,
 } from '@sankore/crm-api';
-import { BreadcrumbService, PermissionsService, TENANT_MODULES, TenantModulesService } from '@sankore/crm/common';
+import { BreadcrumbService, PermissionsService, TENANT_MODULES, TenantKycService, TenantModulesService } from '@sankore/crm/common';
 
 // ─── Catalogue de critères ───────────────────────────────────────────────────
 
@@ -210,6 +210,7 @@ const CODE_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_-]{1,39}$/;
 export class ClientSegmentRulesPage implements OnInit {
   private readonly _segmentsApiService = inject(ClientTimelineSegmentsApiService);
   private readonly _modules = inject(TenantModulesService);
+  private readonly _tenantKyc = inject(TenantKycService);
   private readonly _snackbarService = inject(SnackbarService);
   private readonly _confirmDialogService = inject(ConfirmDialogService);
   private readonly _breadcrumbService = inject(BreadcrumbService);
@@ -333,7 +334,13 @@ export class ClientSegmentRulesPage implements OnInit {
     // Les encours sont une notion bancaire : sans Banking - Microfinance, la règle n'est pas proposée
     // (isolation du socle, lot 3).
     const banking = this._modules.canRead(TENANT_MODULES.BANKING_MICROFINANCE);
-    return SEGMENT_CRITERIA.filter((def) => !used.has(def.key) && (banking || def.key !== 'requiresOutstandingData'));
+    // KYC désactivé pour l'institution : le statut KYC ne départage plus les clients (docs/kyc-par-institution.md).
+    const kyc = this._tenantKyc.inForce();
+    return SEGMENT_CRITERIA.filter(
+      (def) => !used.has(def.key)
+        && (banking || def.key !== 'requiresOutstandingData')
+        && (kyc || def.key !== 'requiredKycStatus'),
+    );
   }
 
   /** Une part à 12,3456 % ne dit rien de plus qu'une part à 12,3 %. */

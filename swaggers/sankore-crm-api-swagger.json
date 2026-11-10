@@ -5228,6 +5228,46 @@
         }
       }
     },
+    "/api/v1/compliance-settings/kyc": {
+      "put": {
+        "tags": [
+          "Compliance Settings"
+        ],
+        "summary": "Switch the institution's KYC on or off (off only without a Banking - Microfinance or Insurance module)",
+        "operationId": "SwitchKyc",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SwitchKycRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SwitchKycResult"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        }
+      }
+    },
     "/api/v1/integration/me/calendar-events": {
       "get": {
         "tags": [
@@ -40258,6 +40298,13 @@
               "type": "string"
             },
             "nullable": true
+          },
+          "kycEnabled": {
+            "type": "boolean"
+          },
+          "kycRequiredByModule": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -42970,6 +43017,9 @@
             "nullable": true
           },
           "testMode": {
+            "type": "boolean"
+          },
+          "kycInForce": {
             "type": "boolean"
           }
         },
@@ -63585,6 +63635,27 @@
           "handledByName": {
             "type": "string",
             "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "SwitchKycRequest": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "SwitchKycResult": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "changed": {
+            "type": "boolean"
           }
         },
         "additionalProperties": false

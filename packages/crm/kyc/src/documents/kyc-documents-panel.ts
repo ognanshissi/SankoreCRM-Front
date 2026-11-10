@@ -21,7 +21,7 @@ import { SideDrawerService } from '@talisoft/ui/side-drawer';
 import { ConfirmDialogService } from '@talisoft/ui/confirm-dialog';
 import { SnackbarService } from '@talisoft/ui/snackbar';
 import { ReviewKycDocumentRequestDecisionEnum } from '@sankore/crm-api';
-import { PermissionsService } from '@sankore/crm/common';
+import { PermissionsService, TenantKycService } from '@sankore/crm/common';
 import { KycFacadeService } from '../data-access/kyc-facade.service';
 import {
   kycDocumentDecisionMeta,
@@ -99,7 +99,7 @@ export class KycDocumentsPanel {
   public readonly goToValidation = output<void>();
 
   /** Décider demande `kyc:document:validate`, ouvrir une image `kyc:document:reveal`. */
-  public readonly canValidate = this._permissions.can('kyc:document:validate');
+  public readonly canValidate = inject(TenantKycService).whileInForce(this._permissions.can('kyc:document:validate'));
   public readonly canReveal = this._permissions.can('kyc:document:reveal');
 
   public readonly isLoading = signal(true);

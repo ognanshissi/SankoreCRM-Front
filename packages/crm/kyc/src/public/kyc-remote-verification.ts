@@ -242,6 +242,8 @@ export class KycRemoteVerificationPage implements OnInit {
         return "Ce lien a été désactivé par votre agence. Contactez-la pour en recevoir un nouveau.";
       case 'FileClosed':
         return "Votre dossier est déjà pris en charge par votre agence : il n'y a plus de pièce à déposer ici.";
+      case 'Disabled':
+        return "Ce lien n'est plus valable : votre institution ne collecte plus les pièces en ligne. Contactez votre agence.";
       case 'WrongTenant':
         return "Ce lien n'appartient pas à cette institution. Vérifiez que vous avez ouvert le lien reçu par email.";
       case 'Unreachable':

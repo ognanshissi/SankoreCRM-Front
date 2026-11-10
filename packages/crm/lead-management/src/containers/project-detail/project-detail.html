@@ -123,7 +123,7 @@
           <button tas-raised-button color="primary" type="button" (click)="fixCloseDate()">Renseigner la date</button>
         } @else if (g.code === 'PROJECT_CLIENT_FILE_REQUIRED' && lead()) {
           <button tas-raised-button color="primary" type="button" (click)="convertForGate()">Ouvrir le dossier client</button>
-        } @else if (clientId()) {
+        } @else if (clientId() && kycReadable()) {
           <a tas-outlined-button color="primary" [routerLink]="['/customers', clientId(), 'kyc']">Voir le KYC du client</a>
         }
         <button tas-button iconButton type="button" aria-label="Fermer" (click)="gate.set(null)">

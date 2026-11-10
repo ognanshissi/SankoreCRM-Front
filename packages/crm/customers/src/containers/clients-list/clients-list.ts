@@ -30,7 +30,7 @@ import {
   RevealSensitiveFieldRequestFieldEnum,
   UsersApiService,
 } from '@sankore/crm-api';
-import { BreadcrumbService, CustomFieldFilters, PermissionsService, TENANT_MODULES, TenantModulesService } from '@sankore/crm/common';
+import { BreadcrumbService, CustomFieldFilters, PermissionsService, TENANT_MODULES, TenantModulesService, TenantKycService } from '@sankore/crm/common';
 import {
   CLIENT_STATUS_ORDER,
   CLIENT_TYPE_ORDER,
@@ -185,6 +185,10 @@ export class ClientsListPage implements OnInit {
   private readonly _breadcrumb = inject(BreadcrumbService);
   private readonly _permissions = inject(PermissionsService);
   private readonly _tenantModules = inject(TenantModulesService);
+  private readonly _tenantKyc = inject(TenantKycService);
+  /** KYC désactivé : la colonne et le panneau « Parcours KYC » disparaissent. */
+  public readonly kycInForce = this._tenantKyc.inForce;
+  public readonly kycReadable = this._tenantKyc.readable;
   private readonly _snackbar = inject(SnackbarService);
   private readonly _destroyRef = inject(DestroyRef);
   private readonly _route = inject(ActivatedRoute);
@@ -237,7 +241,9 @@ export class ClientsListPage implements OnInit {
   /** Sans la lecture large, « Tous » est déjà le portefeuille de l'utilisateur. */
   private readonly _canReadAll = this._permissions.can('customers:read:all');
   public readonly quickFilters = computed(() =>
-    this._canReadAll() ? QUICK_FILTERS : QUICK_FILTERS.filter((q) => q.value !== 'Mine'));
+    QUICK_FILTERS.filter((q) => (this._canReadAll() || q.value !== 'Mine')
+      // KYC désactivé pour l'institution : plus de parcours à suivre (docs/kyc-par-institution.md).
+      && (this.kycInForce() || (q.value !== 'KycToStart' && q.value !== 'KycInProgress'))));
   public readonly pageSizes = PAGE_SIZES;
 
   public readonly statusOptions = CLIENT_STATUS_ORDER.map((name) => ({ label: clientStatusLabel(name), value: name }));

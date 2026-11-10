@@ -6,7 +6,7 @@ import {
   WorkflowInstanceDto,
   WorkflowInstancesApiService,
 } from '@sankore/crm-api';
-import { PermissionsService } from '@sankore/crm/common';
+import { PermissionsService, TenantKycService } from '@sankore/crm/common';
 // eslint-disable-next-line @nx/enforce-module-boundaries
 import { isKycWorkflowEntity } from '@sankore/crm/kyc';
 
@@ -63,6 +63,7 @@ export class MyApprovalsService {
   private readonly _kyc = inject(KYCApiService);
   private readonly _workflows = inject(WorkflowInstancesApiService);
   private readonly _permissions = inject(PermissionsService);
+  private readonly _tenantKyc = inject(TenantKycService);
 
   public load(): Observable<MyApprovals> {
     return forkJoin({ kyc: this._loadKyc(), workflow: this._loadWorkflowSteps() }).pipe(
@@ -74,7 +75,8 @@ export class MyApprovalsService {
   }
 
   private _loadKyc(): Observable<{ items: ApprovalItem[]; total: number }> {
-    if (!this._permissions.has('kyc:read')) return of({ items: [], total: 0 });
+    // KYC désactivé pour l'institution : plus rien à valider (docs/kyc-par-institution.md).
+    if (!this._permissions.has('kyc:read') || !this._tenantKyc.inForce()) return of({ items: [], total: 0 });
 
     // Le serveur place en tête les dossiers qui attendent l'appelant, sur TOUTE la liste : une
     // page suffit tant qu'il n'y en a pas plus de KYC_PAGE_SIZE, et le total dit s'il y en a plus.

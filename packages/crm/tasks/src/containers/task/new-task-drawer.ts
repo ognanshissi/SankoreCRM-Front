@@ -14,7 +14,7 @@ import {
   TasksApiService,
   UsersApiService,
 } from '@sankore/crm-api';
-import { AuthenticationService, SYSTEM_TASK_TYPES, TaskTypesStore } from '@sankore/crm/common';
+import { AuthenticationService, SYSTEM_TASK_TYPES, TaskTypesStore, TenantKycService } from '@sankore/crm/common';
 import { Button } from '@talisoft/ui/button';
 import { TasError, TasFormField, TasHint, TasLabel } from '@talisoft/ui/form-field';
 import { TasIcon } from '@talisoft/ui/icon';
@@ -148,11 +148,14 @@ export class NewTaskDrawer {
   public readonly subjectLocked = signal(!!this._subject);
   /** Une sélection de leads ne se retire pas : c'est elle qui fait créer une tâche par lead. */
   public readonly canRemoveSubject = !this._bulkLeads;
-  public readonly subjectOptions = computed(() =>
-    this.subjectLocked() && this._subject?.type === 'project'
-      ? [...SUBJECT_OPTIONS, { label: 'Un projet', value: 'project' as const }]
-      : SUBJECT_OPTIONS,
-  );
+  /** KYC désactivé pour l'institution : plus de tâche sur un dossier KYC (docs/kyc-par-institution.md). */
+  private readonly _kycInForce = inject(TenantKycService).inForce;
+  public readonly subjectOptions = computed(() => {
+    const base = SUBJECT_OPTIONS.filter((o) => o.value !== 'kyc' || this._kycInForce());
+    return this.subjectLocked() && this._subject?.type === 'project'
+      ? [...base, { label: 'Un projet', value: 'project' as const }]
+      : base;
+  });
   public readonly priorityOptions = PRIORITY_OPTIONS;
   /** Les types actifs du paramétrage du tenant, dans son ordre d'affichage. */
   public readonly typeOptions = this._taskTypes.options;

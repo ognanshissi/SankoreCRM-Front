@@ -1,10 +1,10 @@
-import { ChangeDetectionStrategy, Component, computed, input, output, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input, output, signal } from '@angular/core';
 import { TasCard } from '@talisoft/ui/card';
 import { TasIcon } from '@talisoft/ui/icon';
 import { Severity, TasTag } from '@talisoft/ui/tag';
 import { TasSpinner } from '@talisoft/ui/spinner';
 import { Button } from '@talisoft/ui/button';
-import { FatcaStatusBadge, holdingStatusLabel } from '@sankore/crm/common';
+import { FatcaStatusBadge, holdingStatusLabel, TenantKycService } from '@sankore/crm/common';
 import {
   ClientSearchItemDto,
   CustomerMatchDto,
@@ -284,12 +284,14 @@ export function customerMatchViewFromClient(
                   {{ c.clientNumber ?? '—' }}
                 </dd>
               </div>
-              <div>
-                <dt class="text-xs text-slate-400">Statut KYC</dt>
-                <dd class="mt-0.5">
-                  <tas-tag [severity]="kycSeverity(c.kycStatus)">{{ kycLabel(c.kycStatus) }}</tas-tag>
-                </dd>
-              </div>
+              @if (kycInForce()) {
+                <div>
+                  <dt class="text-xs text-slate-400">Statut KYC</dt>
+                  <dd class="mt-0.5">
+                    <tas-tag [severity]="kycSeverity(c.kycStatus)">{{ kycLabel(c.kycStatus) }}</tas-tag>
+                  </dd>
+                </div>
+              }
             </dl>
           </div>
         </tas-card>
@@ -324,12 +326,14 @@ export function customerMatchViewFromClient(
             <div class="flex flex-col items-start sm:items-end gap-1.5 shrink-0">
               <!-- Un libellé accompagne toujours le badge : la couleur ne porte
                    jamais seule l'information (WCAG 2.1 AA). -->
-              <span class="inline-flex items-center gap-1.5">
-                <span class="text-xs text-slate-400">KYC</span>
-                <tas-tag [severity]="kycSeverity(linked()!.kycStatus)">
-                  {{ kycLabel(linked()!.kycStatus) }}
-                </tas-tag>
-              </span>
+              @if (kycInForce()) {
+                <span class="inline-flex items-center gap-1.5">
+                  <span class="text-xs text-slate-400">KYC</span>
+                  <tas-tag [severity]="kycSeverity(linked()!.kycStatus)">
+                    {{ kycLabel(linked()!.kycStatus) }}
+                  </tas-tag>
+                </span>
+              }
               @if (fatcaEnabled()) {
                 <span class="inline-flex items-center gap-1.5">
                   <span class="text-xs text-slate-400">FATCA</span>
@@ -381,6 +385,7 @@ export function customerMatchViewFromClient(
                 <tas-icon iconName="feather:external-link" style="font-size:12px"></tas-icon>
                 Fiche client
               </button>
+              @if (kycReadable()) {
               <button
                 tas-text-button
                 color="primary"
@@ -390,6 +395,7 @@ export function customerMatchViewFromClient(
               >
                 Dossier KYC
               </button>
+              }
             }
             @if (canDetach()) {
               <button
@@ -458,10 +464,12 @@ export function customerMatchViewFromClient(
                       </p>
                     </div>
                     <!-- Un libellé accompagne toujours le badge : la couleur ne porte jamais seule l'information (WCAG 2.1 AA). -->
-                    <span class="inline-flex shrink-0 items-center gap-1.5">
-                      <span class="text-xs text-slate-400">KYC</span>
-                      <tas-tag [severity]="kycSeverity(item.kycStatus)">{{ kycLabel(item.kycStatus) }}</tas-tag>
-                    </span>
+                    @if (kycInForce()) {
+                      <span class="inline-flex shrink-0 items-center gap-1.5">
+                        <span class="text-xs text-slate-400">KYC</span>
+                        <tas-tag [severity]="kycSeverity(item.kycStatus)">{{ kycLabel(item.kycStatus) }}</tas-tag>
+                      </span>
+                    }
                     <div class="flex shrink-0 items-center gap-1">
                       @if (canAct()) {
                         <button tas-outlined-button color="primary" type="button" class="text-xs"
@@ -554,6 +562,11 @@ export class CustomerMatchBanner {
   public readonly detach = output<CustomerMatchView>();
   public readonly openCustomer = output<string>();
   public readonly openCustomerKyc = output<string>();
+
+  /** KYC désactivé pour l'institution (docs/kyc-par-institution.md) : statuts et lien KYC masqués. */
+  private readonly _tenantKyc = inject(TenantKycService);
+  public readonly kycInForce = this._tenantKyc.inForce;
+  public readonly kycReadable = this._tenantKyc.readable;
 
   /** Le client auquel le lead est déjà rattaché, s'il y en a un. */
   public readonly linked = computed(

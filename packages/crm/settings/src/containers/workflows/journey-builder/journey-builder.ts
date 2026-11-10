@@ -23,7 +23,7 @@ import {
   WorkflowTemplateDto,
   WorkflowTemplatesApiService,
 } from '@sankore/crm-api';
-import { BreadcrumbService, PermissionsService, TENANT_MODULES, TenantModulesService } from '@sankore/crm/common';
+import { BreadcrumbService, PermissionsService, TENANT_MODULES, TenantModulesService, TenantKycService } from '@sankore/crm/common';
 import {
   FlowRow,
   hasAssignee,
@@ -99,6 +99,7 @@ type DragPayload = { type: 'step'; kind: StepKind } | { type: 'trigger'; preset:
 export class JourneyBuilder implements OnInit {
   private readonly _api = inject(WorkflowTemplatesApiService);
   private readonly _modules = inject(TenantModulesService);
+  private readonly _tenantKyc = inject(TenantKycService);
   private readonly _rolesApi = inject(RolesApiService);
   private readonly _snackbar = inject(SnackbarService);
   private readonly _confirm = inject(ConfirmDialogService);
@@ -120,8 +121,11 @@ export class JourneyBuilder implements OnInit {
    */
   public readonly kindsOf = (group: Parameters<typeof kindsOf>[0]) =>
     kindsOf(group).filter(
-      (k) => k !== StepKind.IntegrationAction
-        || this._modules.has(TENANT_MODULES.BANKING_MICROFINANCE, TENANT_MODULES.INSURANCE),
+      (k) => (k !== StepKind.IntegrationAction
+        || this._modules.has(TENANT_MODULES.BANKING_MICROFINANCE, TENANT_MODULES.INSURANCE))
+        // KYC désactivé pour l'institution : rien à vérifier (docs/kyc-par-institution.md). Une
+        // étape déjà posée reste, et le serveur la fait passer d'elle-même.
+        && (k !== StepKind.KycCheck || this._tenantKyc.inForce()),
     );
   public readonly STEP_KIND_META = STEP_KIND_META;
   public readonly STEP_KIND_SUPPORT = STEP_KIND_SUPPORT;

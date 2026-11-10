@@ -169,7 +169,9 @@
                     [checked]="allChecked()" (change)="toggleAll($any($event.target).checked)" />
                 </th>
                 <th class="py-3 px-3 font-medium">Client</th>
-                <th class="py-3 px-3 font-medium">Parcours KYC</th>
+                @if (kycInForce()) {
+                  <th class="py-3 px-3 font-medium">Parcours KYC</th>
+                }
                 <th class="py-3 px-3 font-medium">Risque</th>
                 <th class="py-3 px-3 font-medium">Produits</th>
                 <th class="py-3 px-3 font-medium">Suivi</th>
@@ -201,6 +203,7 @@
                     </div>
                   </div>
                 </td>
+                @if (kycInForce()) {
                 <td class="py-3 px-3 min-w-[9rem]">
                   <p class="text-sm font-medium"
                     [class.text-slate-600]="row.kycTone === 'muted'" [class.text-amber-700]="row.kycTone === 'warn'"
@@ -212,6 +215,7 @@
                     }
                   </div>
                 </td>
+                }
                 <td class="py-3 px-3 whitespace-nowrap">
                   @if (row.risk === 'Unknown') {
                     <span class="text-sm text-slate-600">{{ row.riskLabel }}</span>
@@ -303,7 +307,8 @@
           <p class="text-xs text-slate-500 tabular-nums mt-2">{{ client.phoneMasked }}</p>
         }
 
-        <!-- Parcours KYC -->
+        <!-- Parcours KYC (masqué quand l'institution a désactivé le KYC) -->
+        @if (kycInForce()) {
         <div class="mt-4 p-4 rounded-xl border border-slate-200 bg-slate-50">
           <div class="flex items-center justify-between gap-2">
             <p class="text-sm font-semibold text-slate-900">Parcours KYC</p>
@@ -338,6 +343,7 @@
             <p class="text-xs text-slate-500 mt-2">Aucun dossier KYC n'a encore été ouvert pour ce client.</p>
           }
         </div>
+        }
 
         <dl class="grid grid-cols-2 gap-x-4 gap-y-3 mt-4">
           <div>
@@ -369,9 +375,11 @@
         </div>
 
         <div class="flex flex-col gap-2 mt-5 pt-5 border-t border-slate-100">
-          <button tas-raised-button color="primary" type="button" class="!rounded-full w-full" (click)="openKyc(client)">
-            {{ client.item.kyc ? 'Vérifier le dossier' : 'Démarrer le KYC' }}
-          </button>
+          @if (kycInForce() || (client.item.kyc && kycReadable())) {
+            <button tas-raised-button color="primary" type="button" class="!rounded-full w-full" (click)="openKyc(client)">
+              {{ client.item.kyc ? (kycInForce() ? 'Vérifier le dossier' : 'Consulter le dossier KYC') : 'Démarrer le KYC' }}
+            </button>
+          }
           <button tas-outlined-button type="button" class="!rounded-full w-full" (click)="openClient(client.id)">
             Ouvrir la fiche 360 <tas-icon iconName="feather:chevron-right" style="font-size:14px"></tas-icon>
           </button>

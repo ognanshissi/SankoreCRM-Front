@@ -8,6 +8,7 @@ import { TasIcon } from '@talisoft/ui/icon';
 import { TasSpinner } from '@talisoft/ui/spinner';
 import { PERMISSIONS } from '../../../models/permissions';
 import { PermissionsService } from '../../../services/permissions.service';
+import { TenantKycService } from '../../../services/tenant-kyc.service';
 import { PORTAL_NAVIGATION, SETTINGS_NAV_ITEM } from './portal-navigation';
 
 interface PaletteResult {
@@ -103,6 +104,7 @@ export class CommandPalette {
   private readonly _leads = inject(LeadsApiService);
   private readonly _clients = inject(ClientsApiService);
   private readonly _permissions = inject(PermissionsService);
+  private readonly _kyc = inject(TenantKycService);
 
   public readonly query = signal('');
   public readonly active = signal(0);
@@ -114,7 +116,7 @@ export class CommandPalette {
     const granted = this._permissions.granted();
     const settings = this._permissions.seesSettings() ? [{ item: SETTINGS_NAV_ITEM, group: '' }] : [];
     return [...PORTAL_NAVIGATION.flatMap((g) => g.items.map((item) => ({ item, group: g.label }))), ...settings]
-      .filter(({ item }) => !item.anyOf || item.anyOf.some((p) => granted.has(p)))
+      .filter(({ item }) => (!item.anyOf || item.anyOf.some((p) => granted.has(p))) && (!item.kyc || this._kyc.readable()))
       .map(({ item, group }) => ({
         key: `p-${item.id}`,
         section: 'Pages' as const,

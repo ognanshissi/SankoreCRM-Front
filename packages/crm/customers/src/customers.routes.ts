@@ -1,6 +1,6 @@
 import { inject } from '@angular/core';
 import { CanActivateFn, Route, Router } from '@angular/router';
-import { canReadModuleGuard, hasAllPermissionsGuard, hasModuleGuard, hasPermissionGuard, TENANT_MODULES } from '@sankore/crm/common';
+import { canReadModuleGuard, hasAllPermissionsGuard, hasModuleGuard, hasPermissionGuard, kycReadGuard, TENANT_MODULES } from '@sankore/crm/common';
 import ImportClientsPage from './containers/import-clients/import-clients';
 
 /**
@@ -141,6 +141,8 @@ export const customersRoutes: Route[] = [
       },
       {
         path: 'kyc',
+        // KYC désactivé pour l'institution : consultable tant qu'il reste des dossiers (docs/kyc-par-institution.md).
+        canActivate: [kycReadGuard()],
         loadComponent: () => import('./containers/client-detail/kyc'),
       },
       {

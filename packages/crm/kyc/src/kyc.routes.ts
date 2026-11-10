@@ -1,5 +1,5 @@
 import { Route } from '@angular/router';
-import { hasPermissionGuard } from '@sankore/crm/common';
+import { hasPermissionGuard, kycGuard, kycReadGuard } from '@sankore/crm/common';
 
 /**
  * Routes du module KYC.
@@ -21,13 +21,14 @@ import { hasPermissionGuard } from '@sankore/crm/common';
 export const kycRoutes: Route[] = [
   {
     path: '',
-    canActivate: [hasPermissionGuard('kyc:read')],
+    // KYC désactivé pour l'institution : consultable tant qu'il reste des dossiers (docs/kyc-par-institution.md).
+    canActivate: [hasPermissionGuard('kyc:read'), kycReadGuard()],
     loadComponent: () => import('./dashboard/kyc-dashboard'),
   },
   {
     // Avant `:id`, sinon le joker capturerait « enrolment » comme identifiant de dossier.
     path: 'enrolment/:customerId',
-    canActivate: [hasPermissionGuard('kyc:manage')],
+    canActivate: [hasPermissionGuard('kyc:manage'), kycGuard()],
     loadComponent: () => import('./enrolment/kyc-enrolment'),
   },
   {
@@ -38,12 +39,12 @@ export const kycRoutes: Route[] = [
     // contrôle auquel l'établissement répond devant le régulateur, pas une étape du circuit —
     // voir KYC_AUTO_APPROVAL_CONTROL au catalogue.
     path: 'auto-approval-controls',
-    canActivate: [hasPermissionGuard('kyc:auto-approval:control')],
+    canActivate: [hasPermissionGuard('kyc:auto-approval:control'), kycGuard()],
     loadComponent: () => import('./controls/kyc-auto-approval-controls'),
   },
   {
     path: ':id',
-    canActivate: [hasPermissionGuard('kyc:read')],
+    canActivate: [hasPermissionGuard('kyc:read'), kycReadGuard()],
     loadComponent: () => import('./detail/kyc-file-detail'),
   },
 ];

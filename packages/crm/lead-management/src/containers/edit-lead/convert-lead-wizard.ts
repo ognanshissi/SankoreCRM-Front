@@ -46,6 +46,7 @@ import {
   PERMISSIONS,
   PermissionsService,
   ProductNamesStore,
+  TenantKycService,
 } from '@sankore/crm/common';
 import {
   ConvertLeadRequest,
@@ -268,6 +269,8 @@ export class ConvertLeadWizard implements OnInit {
   private readonly _leadsApi = inject(LeadsApiService);
   private readonly _productNames = inject(ProductNamesStore).ensureLoaded();
   private readonly _permissions = inject(PermissionsService);
+  /** KYC désactivé pour l'institution : le client est créé actif, sans dossier (docs/kyc-par-institution.md). */
+  public readonly kycInForce = inject(TenantKycService).inForce;
   private readonly _complianceConfig = inject(ComplianceConfigService);
   private readonly _snackbar = inject(SnackbarService);
   private readonly _router = inject(Router);

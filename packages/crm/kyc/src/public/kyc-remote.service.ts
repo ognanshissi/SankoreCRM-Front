@@ -12,6 +12,8 @@ import { KycRemoteSessionStore } from './kyc-remote-session.store';
 
 /** Les états qu'un lien peut avoir, tels que le serveur les nomme. */
 export type KycLinkState =
+  /** L'institution a désactivé le KYC (409 KYC_DISABLED) : plus aucune pièce n'est collectée. */
+  | 'Disabled'
   | 'Usable'
   | 'Expired'
   | 'Consumed'
@@ -56,7 +58,13 @@ export class KycRemoteService {
         (response.status ?? 'Unknown') as KycLinkState,
       ),
       catchError((error: HttpErrorResponse) =>
-        of<KycLinkState>(error.status === 403 ? 'WrongTenant' : 'Unreachable'),
+        of<KycLinkState>(
+          error.status === 403
+            ? 'WrongTenant'
+            : error.status === 409 && error.error?.code === 'KYC_DISABLED'
+              ? 'Disabled'
+              : 'Unreachable',
+        ),
       ),
     );
   }

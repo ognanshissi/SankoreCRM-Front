@@ -12,6 +12,7 @@ import {
   PermissionsService,
   TENANT_MODULES,
   TenantModule,
+  TenantKycService,
   TenantModulesService,
 } from '@sankore/crm/common';
 import { AgenciesApiService, UsersApiService } from '@sankore/crm-api';
@@ -51,6 +52,8 @@ interface ClientTab {
   permissions?: PermissionCode[];
   /** Module payant dont relève l'onglet (actif ou désactivé). Absent : socle, toujours visible. */
   module?: TenantModule;
+  /** Onglet du KYC : visible tant qu'il est en vigueur, ou qu'il reste des dossiers à consulter. */
+  kyc?: true;
 }
 
 /** Au-delà de ce délai en attente de KYC, la fiche affiche une alerte. */
@@ -198,10 +201,12 @@ const PENDING_KYC_ALERT_DAYS = 15;
             </div>
 
             <div class="grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-4 mt-4 pt-4 border-t border-slate-100">
-              <div>
-                <p class="text-xs text-slate-400 mb-1">Statut KYC</p>
-                <tas-tag [severity]="kycSeverity()">{{ kycLabel() }}</tas-tag>
-              </div>
+              @if (kycInForce()) {
+                <div>
+                  <p class="text-xs text-slate-400 mb-1">Statut KYC</p>
+                  <tas-tag [severity]="kycSeverity()">{{ kycLabel() }}</tas-tag>
+                </div>
+              }
               <div>
                 <p class="text-xs text-slate-400 mb-1">Niveau de risque</p>
                 <tas-tag [severity]="riskSeverity()">{{ riskLabel() }}</tas-tag>
@@ -270,6 +275,9 @@ export class ClientDetailNavigation {
 
   private readonly _permissions = inject(PermissionsService);
   private readonly _tenantModules = inject(TenantModulesService);
+  private readonly _tenantKyc = inject(TenantKycService);
+  /** KYC désactivé pour l'institution (docs/kyc-par-institution.md) : statut, bandeaux et alerte disparaissent. */
+  protected readonly kycInForce = this._tenantKyc.inForce;
   public readonly canReveal = this._permissions.can('customers:reveal_sensitive');
   private readonly _canMail = this._permissions.can('ConnectedAccounts.Use');
   private readonly _drawer = inject(SideDrawerService);
@@ -288,7 +296,7 @@ export class ClientDetailNavigation {
   private readonly _kycBannerDismissed = signal(false);
 
   protected readonly showKycInitiatedBanner = computed(
-    () => this.kyc() === 'initie' && !this._kycBannerDismissed(),
+    () => this.kyc() === 'initie' && !this._kycBannerDismissed() && this.kycInForce(),
   );
 
   protected readonly client = this.store.client;
@@ -319,7 +327,7 @@ export class ClientDetailNavigation {
     { label: 'Relations', icon: 'feather:users', route: 'relations' },
     { label: 'Groupes', icon: 'feather:layers', route: 'groupes', module: TENANT_MODULES.BANKING_MICROFINANCE },
     { label: 'Bénéficiaires effectifs', icon: 'feather:pie-chart', route: 'beneficiaires', legalOnly: true },
-    { label: 'KYC', icon: 'feather:shield', route: 'kyc' },
+    { label: 'KYC', icon: 'feather:shield', route: 'kyc', kyc: true },
     { label: 'Historique', icon: 'feather:clock', route: 'historique' },
   ];
 
@@ -332,6 +340,7 @@ export class ClientDetailNavigation {
       (t) =>
         (!t.legalOnly || isLegal) &&
         (!t.module || modules.has(t.module)) &&
+        (!t.kyc || this._tenantKyc.readable()) &&
         (!t.permissions || t.permissions.some((c) => granted.has(c))),
     );
   });
@@ -363,7 +372,7 @@ export class ClientDetailNavigation {
    */
   protected readonly pendingKycDays = computed(() => {
     const client = this.client();
-    if (!client || !isPendingKycStatus(client.status) || !client.createdAt) return null;
+    if (!client || !isPendingKycStatus(client.status) || !client.createdAt || !this.kycInForce()) return null;
     const days = Math.floor(
       (Date.now() - new Date(client.createdAt).getTime()) / 86_400_000,
     );

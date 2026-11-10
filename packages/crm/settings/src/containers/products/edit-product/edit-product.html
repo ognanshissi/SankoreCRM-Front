@@ -52,7 +52,7 @@
             « Zone de danger » ne s'affiche pas sans le droit de supprimer : un onglet dont le
             volet est vide se lit comme une panne, et `activeTab` replie le même cas côté URL.
           -->
-          @if ((tab !== 'danger' || canDelete()) && (tab !== 'beneficiaires' || showBeneficiaries())) {
+          @if ((tab !== 'danger' || canDelete()) && (tab !== 'beneficiaires' || showBeneficiaries()) && (tab !== 'kyc' || showRemoteKyc())) {
             <button
               type="button"
               role="tab"

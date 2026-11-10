@@ -18,7 +18,7 @@ import { SnackbarService } from '@talisoft/ui/snackbar';
 import { ConfirmDialogService } from '@talisoft/ui/confirm-dialog';
 import { SideDrawerService } from '@talisoft/ui/side-drawer';
 import { KycRemoteInvitationDto, KycRemoteInvitationListDto } from '@sankore/crm-api';
-import { PermissionsService } from '@sankore/crm/common';
+import { PermissionsService, TenantKycService } from '@sankore/crm/common';
 import { KycFacadeService } from '../data-access/kyc-facade.service';
 import {
   kycRemoteChannelLabel,
@@ -95,7 +95,7 @@ export class KycRemoteInvitationsPanel {
    */
   public readonly kycFileId = input<string | null>(null);
 
-  public readonly canInvite = this._permissions.can('kyc:remote-invite');
+  public readonly canInvite = inject(TenantKycService).whileInForce(this._permissions.can('kyc:remote-invite'));
 
   public readonly isLoading = signal(false);
   public readonly loadFailed = signal(false);

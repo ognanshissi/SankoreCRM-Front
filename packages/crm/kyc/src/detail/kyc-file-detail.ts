@@ -22,7 +22,7 @@ import { TasSpinner } from '@talisoft/ui/spinner';
 import { TasTable, TableConfig } from '@talisoft/ui/table';
 import { TasTag } from '@talisoft/ui/tag';
 import { KycApprovalCircuitDto, KycFileDto, UsersApiService } from '@sankore/crm-api';
-import { BreadcrumbService, PermissionsService, TENANT_MODULES, TenantModulesService } from '@sankore/crm/common';
+import { BreadcrumbService, PermissionsService, TENANT_MODULES, TenantModulesService, TenantKycService, KycReadOnlyNotice } from '@sankore/crm/common';
 import { KycFacadeService } from '../data-access/kyc-facade.service';
 import {
   kycApprovalDecisionMeta,
@@ -111,7 +111,7 @@ const HISTORY_ICONS: Record<KycHistoryKind, string> = {
 @Component({
   selector: 'kyc-file-detail',
   templateUrl: './kyc-file-detail.html',
-  imports: [
+  imports: [KycReadOnlyNotice, 
     DatePipe,
     RouterLink,
     Button,
@@ -159,15 +159,15 @@ export class KycFileDetailPage implements OnInit {
    * pas une signature du circuit, c'est le jugement d'un validateur sur les preuves — et celui qui
    * le porte ne pourra justement signer aucun niveau du circuit ensuite.
    */
-  public readonly canValidateDocuments = this._permissions.can('kyc:document:validate');
+  public readonly canValidateDocuments = inject(TenantKycService).whileInForce(this._permissions.can('kyc:document:validate'));
 
   /**
    * Signer un niveau du circuit. Le serveur n'exige que ce droit et le bon ordre : aucun rôle n'est
    * rattaché à un niveau, donc les actions s'affichent sur la ligne en attente pour tout porteur du
    * droit. Les quatre yeux (pas de signature par le soumissionnaire) sont tranchés côté serveur.
    */
-  public readonly canApprove = this._permissions.can('kyc:approve');
-  public readonly canUploadDocuments = this._permissions.can('kyc:manage');
+  public readonly canApprove = inject(TenantKycService).whileInForce(this._permissions.can('kyc:approve'));
+  public readonly canUploadDocuments = inject(TenantKycService).whileInForce(this._permissions.can('kyc:manage'));
 
   /**
    * Pièces du dossier, relues avec le circuit. `null` tant que la lecture n'a pas abouti : une

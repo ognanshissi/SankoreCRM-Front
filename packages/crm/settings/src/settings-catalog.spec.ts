@@ -47,4 +47,14 @@ describe('visibleCatalog', () => {
     const none = visibleCatalog(new Set(), new Set(['BankingMicrofinance', 'Insurance']));
     expect(none.flatMap((g) => g.entries.map((e) => e.id))).not.toContain('mappings');
   });
+
+  it('masque « Règles KYC » quand l\'institution a désactivé le KYC', () => {
+    const granted = new Set(['kyc:settings:manage', 'admin:compliance:manage']);
+    const entries = (inForce: boolean) =>
+      visibleCatalog(granted, new Set(), inForce).flatMap((g) => g.entries.map((e) => e.id));
+
+    expect(entries(true)).toContain('kyc');
+    expect(entries(false)).not.toContain('kyc');
+    expect(entries(false)).toContain('compliance');
+  });
 });

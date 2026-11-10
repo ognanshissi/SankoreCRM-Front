@@ -13,6 +13,8 @@ export interface SettingsEntry {
    * s'ouvre alors en consultation seule). Absent : socle.
    */
   modules?: TenantModule[];
+  /** Réglages du KYC : masqués quand l'institution l'a désactivé (docs/kyc-par-institution.md). */
+  kyc?: true;
 }
 
 export interface SettingsGroup {
@@ -132,7 +134,7 @@ export const SETTINGS_CATALOG: ReadonlyArray<SettingsGroup> = [
     tint: 'bg-[#e3ebeb]',
     entries: [
       { id: 'audit', title: 'Journal d’audit', icon: 'feather:activity', link: '/settings/audit', permission: 'audit:read', description: 'Qui a fait quoi, quand.' },
-      { id: 'kyc', title: 'Règles KYC', icon: 'feather:user-check', link: '/settings/kyc', permission: 'kyc:settings:manage', description: 'Plafonds du KYC simplifié, seuils d’alerte, revue et comparaison faciale.' },
+      { id: 'kyc', title: 'Règles KYC', icon: 'feather:user-check', link: '/settings/kyc', permission: 'kyc:settings:manage', description: 'Plafonds du KYC simplifié, seuils d’alerte, revue et comparaison faciale.', kyc: true },
       { id: 'compliance', title: 'FATCA et conformité', icon: 'feather:flag', link: '/settings/conformite', permission: 'admin:compliance:manage', description: 'FATCA, régime de l’institution, GIIN et maintien du statut PPE.' },
       { id: 'insurance-distribution', title: 'Distribution d’assurance', icon: 'feather:umbrella', link: '/settings/distribution-assurance', description: 'Statut de distributeur, mention légale, SMIG et pièces (agrément, garantie, RC) qui autorisent les souscriptions.', modules: [TENANT_MODULES.INSURANCE] },
       { id: 'erasure', title: 'Demandes d’effacement', icon: 'feather:user-x', link: '/settings/effacements', permission: 'privacy:erasure:request', description: 'Personnes demandant l’effacement de leurs données : décision, restriction et effacement.' },
@@ -159,9 +161,14 @@ export const SETTINGS_CATALOG: ReadonlyArray<SettingsGroup> = [
  * Les rubriques que l'utilisateur peut ouvrir — permission ET module payant —, groupe vide retiré. Une entrée « Bientôt » reste
  * visible : elle n'ouvre rien et ne révèle rien.
  */
-export function visibleCatalog(granted: ReadonlySet<string>, activeModules: ReadonlySet<string>): SettingsGroup[] {
+export function visibleCatalog(
+  granted: ReadonlySet<string>,
+  activeModules: ReadonlySet<string>,
+  kycInForce = true,
+): SettingsGroup[] {
   const allowed = (entry: SettingsEntry) => {
     if (entry.modules && !entry.modules.some((m) => activeModules.has(m))) return false;
+    if (entry.kyc && !kycInForce) return false;
     if (!entry.permission) return true;
     const codes = Array.isArray(entry.permission) ? entry.permission : [entry.permission];
     return codes.some((c) => granted.has(c));

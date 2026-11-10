@@ -25,7 +25,7 @@ import {
   RunKycVerificationResponse,
   RunKycVerificationResponseOutcomeEnum,
 } from '@sankore/crm-api';
-import { PermissionsService } from '@sankore/crm/common';
+import { PermissionsService, TenantKycService } from '@sankore/crm/common';
 import { KycFacadeService } from '../data-access/kyc-facade.service';
 import { kycConfidenceMeta } from '../data-access/kyc-referential';
 import { KycImageRef } from '../data-access/kyc.types';
@@ -166,7 +166,7 @@ export class KycSelfieCapture {
   private readonly _destroyRef = inject(DestroyRef);
 
   /** Même droit que sur la capture de pièce : la comparaison faciale note le dossier. */
-  public readonly canVerify = this._permissions.can('kyc:verify');
+  public readonly canVerify = inject(TenantKycService).whileInForce(this._permissions.can('kyc:verify'));
 
   public readonly kycFileId = input.required<string>();
 

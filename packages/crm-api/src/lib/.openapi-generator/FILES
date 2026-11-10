@@ -912,6 +912,8 @@ model/suspend-client-request.interface.ts
 model/suspend-group-request.interface.ts
 model/suspend-group-result.interface.ts
 model/suspicion-alert-dto.interface.ts
+model/switch-kyc-request.interface.ts
+model/switch-kyc-result.interface.ts
 model/switch-test-mode-request.interface.ts
 model/system-capture-lead-request.interface.ts
 model/tag-dto.interface.ts

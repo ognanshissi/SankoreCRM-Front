@@ -26,5 +26,7 @@ export interface ComplianceSettingsResponse {
     allowedRegimes?: Array<string> | null;
     allowedRequiredAt?: Array<string> | null;
     allowedKycTiers?: Array<string> | null;
+    kycEnabled?: boolean;
+    kycRequiredByModule?: string | null;
 }
 
