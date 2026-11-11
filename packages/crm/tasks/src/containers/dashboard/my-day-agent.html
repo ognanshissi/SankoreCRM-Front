@@ -33,10 +33,18 @@
   }
 </div>
 
-<!-- Gauche : bandeau puis journée ; droite : avancement puis chiffres -->
-<div class="grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(0,1fr)_380px]">
+<!--
+  Gauche : bandeau, journée, puis tableau d'équipe ; droite : avancement puis chiffres.
+  La colonne de droite est UN bloc qui couvre toutes les lignes : quand elle était rangée ligne par
+  ligne avec la gauche, « Aujourd'hui » attendait la fin de la carte des chiffres, et un grand vide
+  s'ouvrait sous la journée avant le tableau d'équipe. La dernière ligne (1fr) absorbe l'écart.
+  Sur téléphone, le bloc de droite s'efface (`contents`) et `order` garde l'ordre d'avant :
+  bandeau, avancement, journée, chiffres, équipe.
+-->
+<div class="grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(0,1fr)_380px]"
+  [class]="hasSide() ? 'lg:grid-rows-[auto_auto_auto_1fr]' : ''">
   @if (hero(); as task) {
-    <section class="flex flex-wrap items-center gap-5 rounded-3xl px-6 py-5 text-white shadow-sm"
+    <section class="flex flex-wrap items-center gap-5 rounded-3xl px-6 py-5 text-white shadow-sm lg:col-start-1 lg:row-start-1"
       [class]="heroLate() ? 'bg-red-900' : 'bg-primary'" aria-label="À faire en premier">
       <span class="inline-flex size-12 shrink-0 items-center justify-center rounded-2xl bg-white/15">
         <tas-icon [iconName]="heroLate() ? 'feather:bell' : 'feather:star'" style="font-size:20px"></tas-icon>
@@ -85,7 +93,7 @@
       </div>
     </section>
   } @else {
-    <section class="flex items-center gap-4 rounded-3xl border border-slate-100 bg-white px-6 py-5 shadow-sm" aria-label="À faire en premier">
+    <section class="flex items-center gap-4 rounded-3xl border border-slate-100 bg-white px-6 py-5 shadow-sm lg:col-start-1 lg:row-start-1" aria-label="À faire en premier">
       <span class="inline-flex size-12 shrink-0 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700">
         <tas-icon iconName="feather:check-circle" style="font-size:20px"></tas-icon>
       </span>
@@ -98,6 +106,7 @@
     </section>
   }
 
+  <div class="contents lg:col-start-2 lg:row-start-1 lg:flex lg:flex-col lg:gap-4" [class]="hasSide() ? 'lg:[grid-row:1/-1]' : ''">
   <section class="flex items-center gap-4 rounded-3xl border border-slate-100 bg-white px-6 py-5 shadow-sm" aria-label="Avancement du jour">
     <svg viewBox="0 0 80 80" class="size-20 shrink-0 -rotate-90" aria-hidden="true">
       <circle cx="40" cy="40" r="34" fill="none" stroke-width="8" class="stroke-slate-100"></circle>
@@ -112,9 +121,26 @@
     </div>
   </section>
 
+  @if (team()) {
+    <div class="min-w-0 max-lg:order-1">
+      <ng-content select="[team-panel]"></ng-content>
+    </div>
+  } @else if (showScorecard()) {
+    <div class="min-w-0 max-lg:order-1">
+      <my-day-scorecard
+        [scorecard]="scorecard()"
+        [period]="scorePeriod()"
+        [loading]="scorecardLoading()"
+        [leads]="leads()"
+        (periodChange)="scorePeriodChange.emit($event)"
+      ></my-day-scorecard>
+    </div>
+  }
+  </div>
+
 <!-- Aujourd'hui -->
-<section class="rounded-3xl border border-slate-100 bg-white shadow-sm" aria-labelledby="my-day-today"
-  [class]="team() || showScorecard() ? '' : 'lg:col-span-2'">
+<section class="min-w-0 rounded-3xl border border-slate-100 bg-white shadow-sm lg:col-start-1 lg:row-start-2" aria-labelledby="my-day-today"
+  [class]="hasSide() ? '' : 'lg:col-span-2'">
   <header class="flex flex-wrap items-center justify-between gap-3 px-5 pb-2 pt-5">
     <h2 id="my-day-today" class="text-lg font-bold text-slate-900">Aujourd’hui</h2>
     <div role="group" aria-label="Éléments affichés" class="flex gap-1">
@@ -245,16 +271,8 @@
 </section>
 
   @if (team()) {
-    <ng-content select="[team-panel]"></ng-content>
-  } @else if (showScorecard()) {
-    <my-day-scorecard
-      [scorecard]="scorecard()"
-      [period]="scorePeriod()"
-      [loading]="scorecardLoading()"
-      [leads]="leads()"
-      (periodChange)="scorePeriodChange.emit($event)"
-    ></my-day-scorecard>
+    <div class="min-w-0 max-lg:order-2 lg:col-start-1 lg:row-start-3">
+      <ng-content select="[team-table]"></ng-content>
+    </div>
   }
 </div>
-
-<ng-content select="[team-table]"></ng-content>

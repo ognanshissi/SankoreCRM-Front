@@ -83,6 +83,8 @@ export class MyDayAgent {
   /** « Mes performances » : pour qui travaille des leads. */
   public readonly showScorecard = input(false);
   public readonly watchLines = input<WatchLine[]>([]);
+  /** Une colonne de droite qui porte des chiffres (équipe ou les siens) : elle couvre toute la hauteur. */
+  public readonly hasSide = computed(() => this.team() || this.showScorecard());
   public readonly hasToHandle = computed(() =>
     this.watchLines().length > 0 || this.approvalsCount() > 0 || this.kycApprovals() > 0 || this.workflowApprovals() > 0);
   public readonly kycApprovals = input(0);

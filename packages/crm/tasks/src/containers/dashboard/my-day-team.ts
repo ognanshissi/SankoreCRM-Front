@@ -260,15 +260,17 @@ export class MyDayTeam {
       <div class="px-5 pb-4">
         <tas-table [data]="rows()" identifierField="agentId" [config]="table" [hasCaption]="false">
           <ng-template #header>
-            <tr class="text-left text-xs font-medium text-slate-500">
+            <!-- tas-table interdit le retour à la ligne des en-têtes : dans la colonne de « Ma journée », huit
+                 en-têtes sur une ligne faisaient défiler le tableau. « ! » passe devant sa feuille de style. -->
+            <tr class="text-left text-xs font-medium text-slate-500 [&>th]:whitespace-normal! [&>th]:break-normal! [&>th]:align-bottom">
               <th class="py-2.5">Agent</th>
-              <th class="py-2.5 text-right">Capturés</th>
-              <th class="py-2.5 text-right">Attribués</th>
-              <th class="py-2.5 text-right">À contacter</th>
-              <th class="py-2.5 text-right">Tâches non démarrées</th>
-              <th class="py-2.5 text-right">1er contact en retard</th>
-              <th class="py-2.5 text-right">1er contact &lt; 24 h</th>
-              <th class="py-2.5 text-right">Convertis</th>
+              <th class="py-2.5">Capturés</th>
+              <th class="py-2.5">Attribués</th>
+              <th class="py-2.5">À contacter</th>
+              <th class="py-2.5">Tâches non démarrées</th>
+              <th class="py-2.5">1er contact en retard</th>
+              <th class="py-2.5">1er contact &lt; 24 h</th>
+              <th class="py-2.5">Convertis</th>
             </tr>
           </ng-template>
           <ng-template #body let-row>
@@ -277,16 +279,16 @@ export class MyDayTeam {
                 <p class="text-sm font-semibold text-slate-900">{{ row.fullName }}</p>
                 @if (row.agencyName) { <p class="text-xs text-slate-500">{{ row.agencyName }}</p> }
               </td>
-              <td class="py-2.5 text-right text-sm tabular-nums">{{ row.captured }}</td>
-              <td class="py-2.5 text-right text-sm tabular-nums">{{ row.assigned }}</td>
-              <td class="py-2.5 text-right text-sm tabular-nums" [class.font-semibold]="row.toContact > 0">{{ row.toContact }}</td>
-              <td class="py-2.5 text-right text-sm tabular-nums">
+              <td class="py-2.5 text-sm tabular-nums">{{ row.captured }}</td>
+              <td class="py-2.5 text-sm tabular-nums">{{ row.assigned }}</td>
+              <td class="py-2.5 text-sm tabular-nums" [class.font-semibold]="row.toContact > 0">{{ row.toContact }}</td>
+              <td class="py-2.5 text-sm tabular-nums">
                 {{ row.tasksNotStarted }}
                 @if (row.tasksOverdue > 0) { <span class="ms-1 rounded-full bg-red-50 px-1.5 py-0.5 text-xs font-semibold text-red-700">{{ row.tasksOverdue }} en retard</span> }
               </td>
-              <td class="py-2.5 text-right text-sm tabular-nums" [class]="row.lateFirstContacts > 0 ? 'font-semibold text-amber-700' : ''">{{ row.lateFirstContacts }}</td>
-              <td class="py-2.5 text-right text-sm tabular-nums">{{ row.firstContactRate != null ? (row.firstContactRate | number: '1.0-0') + ' %' : '—' }}</td>
-              <td class="py-2.5 text-right text-sm tabular-nums">{{ row.conversions }}</td>
+              <td class="py-2.5 text-sm tabular-nums" [class]="row.lateFirstContacts > 0 ? 'font-semibold text-amber-700' : ''">{{ row.lateFirstContacts }}</td>
+              <td class="py-2.5 text-sm tabular-nums">{{ row.firstContactRate != null ? (row.firstContactRate | number: '1.0-0') + ' %' : '—' }}</td>
+              <td class="py-2.5 text-sm tabular-nums">{{ row.conversions }}</td>
             </tr>
           </ng-template>
         </tas-table>
