@@ -2,4 +2,5 @@ export * from './lib/tenant/tenant';
 export { tenantRoutes } from './tenant.routes';
 export { moduleRoutes } from './modules.routes';
 export { supportRoutes } from './support.routes';
+export { trialSignupRoutes } from './trial-signups.routes';
 export { default } from './tenant.routes';

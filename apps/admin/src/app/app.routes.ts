@@ -15,6 +15,7 @@ export const appRoutes: Route[] = [
       { path: 'tenants', loadChildren: () => import('@sankore/admin/tenant') },
       { path: 'modules', loadChildren: () => import('@sankore/admin/tenant').then((m) => m.moduleRoutes) },
       { path: 'support', loadChildren: () => import('@sankore/admin/tenant').then((m) => m.supportRoutes) },
+      { path: 'essais', loadChildren: () => import('@sankore/admin/tenant').then((m) => m.trialSignupRoutes) },
     ],
   },
   { path: '**', redirectTo: '' },

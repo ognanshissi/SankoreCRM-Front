@@ -1,0 +1,132 @@
+<div class="flex flex-col gap-5">
+  <a routerLink="/essais" class="flex w-fit items-center gap-1 text-sm font-semibold text-slate-600 hover:text-primary">
+    <tas-icon iconName="feather:arrow-left" style="font-size: 14px"></tas-icon>
+    Demandes d’essai
+  </a>
+
+  @if (isLoading() && !detail()) {
+    <div class="flex justify-center py-16"><tas-spinner size="10" class="text-primary"></tas-spinner></div>
+  } @else if (loadError()) {
+    <div role="alert" class="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-red-50 px-5 py-4">
+      <p class="text-sm text-red-800">{{ loadError() }}</p>
+      <button tas-outlined-button color="primary" type="button" (click)="load()">Réessayer</button>
+    </div>
+  } @else if (signup(); as s) {
+    <div class="flex flex-wrap items-start justify-between gap-4">
+      <div>
+        <h1 class="text-xl font-bold text-slate-800">{{ s.institutionName }}</h1>
+        <p class="mt-0.5 font-mono text-sm text-slate-500">{{ s.fqdn ?? s.slug }}</p>
+        <span class="mt-2 flex items-center gap-1.5 text-sm font-semibold" [class]="status().tone">
+          <span class="size-2 rounded-full" [class]="status().dot" aria-hidden="true"></span>
+          {{ status().label }}
+        </span>
+      </div>
+      <div class="flex flex-wrap gap-2">
+        @if (canReject()) {
+          <button tas-outlined-button color="warn" type="button" [disabled]="isApproving()" (click)="openReject()">
+            Refuser
+          </button>
+        }
+        @if (canApprove()) {
+          <button tas-filled-button color="primary" type="button" [disabled]="isApproving()"
+                  [isLoading]="isApproving()" (click)="confirmApprove()">
+            Approuver et créer l’institution
+          </button>
+        }
+        @if (s.tenantId) {
+          <a tas-outlined-button color="primary" [routerLink]="['/tenants', s.tenantId]">Voir l’institution</a>
+        }
+      </div>
+    </div>
+
+    @if (s.status === 'PendingEmail') {
+      <p class="rounded-2xl bg-blue-50 px-5 py-4 text-sm text-blue-900">
+        Le demandeur n’a pas encore confirmé son adresse e-mail. La demande ne pourra être approuvée qu’après sa confirmation.
+      </p>
+    } @else if (s.status === 'Expired') {
+      <p class="rounded-2xl bg-slate-100 px-5 py-4 text-sm text-slate-700">
+        Le lien de confirmation a expiré sans être ouvert. L’adresse demandée est de nouveau libre ; le demandeur peut refaire une demande.
+      </p>
+    } @else if (s.status === 'Rejected') {
+      <p class="rounded-2xl bg-red-50 px-5 py-4 text-sm text-red-900">
+        Refusée le {{ s.decidedAt | date: 'd MMMM y à HH:mm' }}{{ decidedBy() }} — motif envoyé au demandeur :
+        « {{ s.rejectionReason }} »
+      </p>
+    } @else if (s.status === 'Approved') {
+      <p class="rounded-2xl bg-green-50 px-5 py-4 text-sm text-green-900">
+        Approuvée le {{ s.decidedAt | date: 'd MMMM y à HH:mm' }}{{ decidedBy() }}. L’e-mail « Votre CRM est prêt » part dès que le compte de l’institution est créé par ses données de démarrage.
+      </p>
+    }
+
+    <div class="grid grid-cols-1 gap-5 lg:grid-cols-2">
+      <section class="rounded-3xl bg-white p-5">
+        <h2 class="text-sm font-bold uppercase tracking-wide text-slate-500">Demandeur</h2>
+        <dl class="mt-3 grid grid-cols-[auto_1fr] gap-x-6 gap-y-2 text-sm">
+          <dt class="text-slate-500">Nom</dt><dd class="font-semibold text-slate-800">{{ s.firstName }} {{ s.lastName }}</dd>
+          <dt class="text-slate-500">E-mail</dt><dd class="text-slate-800">{{ s.email }}</dd>
+          <dt class="text-slate-500">Téléphone</dt><dd class="text-slate-800 tabular-nums">{{ s.phone }}</dd>
+          <dt class="text-slate-500">Pays</dt><dd class="text-slate-800">{{ country() }}</dd>
+          <dt class="text-slate-500">Activité</dt><dd class="text-slate-800">{{ s.activityType }}</dd>
+        </dl>
+      </section>
+
+      <section class="rounded-3xl bg-white p-5">
+        <h2 class="text-sm font-bold uppercase tracking-wide text-slate-500">Demande</h2>
+        <dl class="mt-3 grid grid-cols-[auto_1fr] gap-x-6 gap-y-2 text-sm">
+          <dt class="text-slate-500">Reçue</dt><dd class="text-slate-800 tabular-nums">{{ s.createdAt | date: 'd MMMM y à HH:mm' }}</dd>
+          <dt class="text-slate-500">E-mail confirmé</dt>
+          <dd class="text-slate-800 tabular-nums">
+            @if (s.confirmedAt) { {{ s.confirmedAt | date: 'd MMMM y à HH:mm' }} } @else { — }
+          </dd>
+          <dt class="text-slate-500">Adresse IP</dt><dd class="font-mono text-slate-800">{{ detail()?.requestIp ?? '—' }}</dd>
+          <dt class="text-slate-500">Navigateur</dt>
+          <dd class="break-all text-xs text-slate-600">{{ detail()?.userAgent ?? '—' }}</dd>
+        </dl>
+      </section>
+    </div>
+
+    <section class="flex flex-col gap-3">
+      <h2 class="text-sm font-bold uppercase tracking-wide text-slate-500">Autres demandes depuis la même adresse IP</h2>
+      @if (sameIp().length === 0) {
+        <p class="rounded-3xl bg-white px-5 py-6 text-sm text-slate-500">Aucune.</p>
+      } @else {
+        <ng-container [ngTemplateOutlet]="related" [ngTemplateOutletContext]="{ $implicit: sameIp() }" />
+      }
+    </section>
+
+    <section class="flex flex-col gap-3">
+      <h2 class="text-sm font-bold uppercase tracking-wide text-slate-500">Autres demandes du même domaine d’e-mail</h2>
+      @if (sameDomain().length === 0) {
+        <p class="rounded-3xl bg-white px-5 py-6 text-sm text-slate-500">Aucune.</p>
+      } @else {
+        <ng-container [ngTemplateOutlet]="related" [ngTemplateOutletContext]="{ $implicit: sameDomain() }" />
+      }
+    </section>
+  }
+</div>
+
+<ng-template #related let-rows>
+  <tas-table [data]="rows" identifierField="id" [config]="relatedConfig()" [hasCaption]="false">
+    <ng-template #header>
+      <tr class="text-left text-xs font-bold uppercase tracking-wide text-slate-500">
+        <th class="py-2.5 pl-5">Institution</th>
+        <th class="py-2.5">E-mail</th>
+        <th class="py-2.5">Statut</th>
+        <th class="py-2.5 pr-5 text-right">Reçue</th>
+      </tr>
+    </ng-template>
+    <ng-template #body let-row>
+      <tr class="cursor-pointer transition-colors hover:bg-slate-50" (click)="open(row.id)">
+        <td class="py-3 pl-5 text-sm font-semibold text-slate-800">{{ row.institution }}</td>
+        <td class="py-3 text-sm text-slate-600">{{ row.email }}</td>
+        <td class="py-3">
+          <span class="flex items-center gap-1.5 text-sm font-semibold" [class]="row.tone">
+            <span class="size-2 rounded-full" [class]="row.dot" aria-hidden="true"></span>
+            {{ row.label }}
+          </span>
+        </td>
+        <td class="py-3 pr-5 text-right text-xs text-slate-500 tabular-nums">{{ row.createdAt | date: 'd MMM y, HH:mm' }}</td>
+      </tr>
+    </ng-template>
+  </tas-table>
+</ng-template>

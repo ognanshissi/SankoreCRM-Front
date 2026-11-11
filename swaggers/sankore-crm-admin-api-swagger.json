@@ -1664,6 +1664,475 @@
         ]
       }
     },
+    "/api/v1/tenant-signups/slug-availability": {
+      "get": {
+        "tags": [
+          "Tenant signups"
+        ],
+        "summary": "Whether a free-trial address can be given",
+        "description": "Status: Available, TRIAL_SLUG_INVALID, TRIAL_SLUG_RESERVED or TRIAL_SLUG_TAKEN. Says nothing about WHO holds a taken name.",
+        "operationId": "CheckTrialSlug",
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrialSlugAvailability"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "ApiKey": [ ]
+          },
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/api/v1/tenant-signups": {
+      "post": {
+        "tags": [
+          "Tenant signups"
+        ],
+        "summary": "Record a free-trial request from the website, waiting for its e-mail confirmation",
+        "description": "400 TRIAL_SIGNUP_INVALID (errors by field) / TRIAL_SLUG_INVALID / TRIAL_SLUG_RESERVED; 409 TRIAL_SLUG_TAKEN / TRIAL_EMAIL_IN_USE. TRIAL_EMAIL_IN_USE is for the API only: the public must get the same answer as for a new address.",
+        "operationId": "CreateTenantSignup",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateTenantSignupRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateTenantSignupResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "409": {
+            "description": "Conflict"
+          },
+          "503": {
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "ApiKey": [ ]
+          },
+          {
+            "Bearer": [ ]
+          }
+        ]
+      },
+      "get": {
+        "tags": [
+          "Tenant signups"
+        ],
+        "summary": "Free-trial requests. Confirmed ones (waiting for a decision) are served oldest first, the rest newest first",
+        "operationId": "ListTenantSignups",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/TenantSignupView"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantSignupPage"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "security": [
+          {
+            "ApiKey": [ ]
+          },
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/api/v1/tenant-signups/confirm": {
+      "post": {
+        "tags": [
+          "Tenant signups"
+        ],
+        "summary": "Confirm a free-trial request's e-mail address by the hash of its link's token",
+        "description": "404 TRIAL_TOKEN_UNKNOWN; 410 TRIAL_TOKEN_EXPIRED; 409 TRIAL_SIGNUP_ALREADY_DECIDED. A second confirmation answers 200 with newlyConfirmed=false.",
+        "operationId": "ConfirmTenantSignup",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfirmTenantSignupRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfirmTenantSignupResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "409": {
+            "description": "Conflict"
+          },
+          "410": {
+            "description": "Gone"
+          }
+        },
+        "security": [
+          {
+            "ApiKey": [ ]
+          },
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/api/v1/tenant-signups/decisions-to-notify": {
+      "get": {
+        "tags": [
+          "Tenant signups"
+        ],
+        "summary": "Approved or rejected requests whose requester has not been told yet, oldest decision first",
+        "operationId": "ListTenantSignupDecisionsToNotify",
+        "parameters": [
+          {
+            "name": "take",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TenantSignupDecision"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "ApiKey": [ ]
+          },
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/api/v1/tenant-signups/{signupId}/decision-notified": {
+      "post": {
+        "tags": [
+          "Tenant signups"
+        ],
+        "summary": "Record that the requester was told the decision (idempotent)",
+        "operationId": "MarkTenantSignupDecisionNotified",
+        "parameters": [
+          {
+            "name": "signupId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "409": {
+            "description": "Conflict"
+          }
+        },
+        "security": [
+          {
+            "ApiKey": [ ]
+          },
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/api/v1/tenant-signups/counts": {
+      "get": {
+        "tags": [
+          "Tenant signups"
+        ],
+        "summary": "How many free-trial requests per status",
+        "operationId": "CountTenantSignups",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantSignupCounts"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "security": [
+          {
+            "ApiKey": [ ]
+          },
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/api/v1/tenant-signups/{signupId}": {
+      "get": {
+        "tags": [
+          "Tenant signups"
+        ],
+        "summary": "A free-trial request, with the other requests from the same IP or the same e-mail domain",
+        "operationId": "GetTenantSignup",
+        "parameters": [
+          {
+            "name": "signupId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantSignupDetail"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        },
+        "security": [
+          {
+            "ApiKey": [ ]
+          },
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/api/v1/tenant-signups/{signupId}/approve": {
+      "post": {
+        "tags": [
+          "Tenant signups"
+        ],
+        "summary": "Create the free-trial institution of a confirmed request",
+        "description": "Socle only, starting data « Starter », trial of TrialSignup:TrialDays days from now. 409 TRIAL_SIGNUP_NOT_CONFIRMED / TRIAL_SIGNUP_ALREADY_DECIDED / TRIAL_SLUG_TAKEN / TRIAL_EMAIL_IN_USE.",
+        "operationId": "ApproveTenantSignup",
+        "parameters": [
+          {
+            "name": "signupId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApprovedTenantSignup"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "409": {
+            "description": "Conflict"
+          },
+          "503": {
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "ApiKey": [ ]
+          },
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/api/v1/tenant-signups/{signupId}/reject": {
+      "post": {
+        "tags": [
+          "Tenant signups"
+        ],
+        "summary": "Refuse a free-trial request, with the reason the requester will read",
+        "operationId": "RejectTenantSignup",
+        "parameters": [
+          {
+            "name": "signupId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DecideTenantSignupEndpointsRejectRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "409": {
+            "description": "Conflict"
+          }
+        },
+        "security": [
+          {
+            "ApiKey": [ ]
+          },
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
     "/api/v1/tenants/{tenantId}/support/tickets": {
       "get": {
         "tags": [
@@ -2614,6 +3083,59 @@
           }
         ]
       }
+    },
+    "/api/v1/tenants/{id}/trial-end": {
+      "put": {
+        "tags": [
+          "Tenants"
+        ],
+        "summary": "Move the end of a free trial",
+        "description": "409 TENANT_NOT_A_TRIAL for a paying institution, TRIAL_END_IN_PAST for a date already past.",
+        "operationId": "SetTenantTrialEnd",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetTrialEndRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "409": {
+            "description": "Conflict"
+          }
+        },
+        "security": [
+          {
+            "ApiKey": [ ]
+          },
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
     }
   },
   "components": {
@@ -2634,6 +3156,28 @@
             "nullable": true
           },
           "refreshTokenExpiresAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ApprovedTenantSignup": {
+        "type": "object",
+        "properties": {
+          "signupId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "tenantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "fqdn": {
+            "type": "string",
+            "nullable": true
+          },
+          "trialExpiresAt": {
             "type": "string",
             "format": "date-time"
           }
@@ -2664,6 +3208,65 @@
         "type": "object",
         "properties": {
           "summary": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ConfirmTenantSignupRequest": {
+        "type": "object",
+        "properties": {
+          "tokenHash": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ConfirmTenantSignupResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "institutionName": {
+            "type": "string",
+            "nullable": true
+          },
+          "email": {
+            "type": "string",
+            "nullable": true
+          },
+          "newlyConfirmed": {
+            "type": "boolean"
+          },
+          "firstName": {
+            "type": "string",
+            "nullable": true
+          },
+          "lastName": {
+            "type": "string",
+            "nullable": true
+          },
+          "phone": {
+            "type": "string",
+            "nullable": true
+          },
+          "country": {
+            "type": "string",
+            "nullable": true
+          },
+          "activityType": {
+            "type": "string",
+            "nullable": true
+          },
+          "slug": {
+            "type": "string",
+            "nullable": true
+          },
+          "locale": {
             "type": "string",
             "nullable": true
           }
@@ -2745,6 +3348,78 @@
         },
         "additionalProperties": false
       },
+      "CreateTenantSignupRequest": {
+        "type": "object",
+        "properties": {
+          "institutionName": {
+            "type": "string",
+            "nullable": true
+          },
+          "slug": {
+            "type": "string",
+            "nullable": true
+          },
+          "firstName": {
+            "type": "string",
+            "nullable": true
+          },
+          "lastName": {
+            "type": "string",
+            "nullable": true
+          },
+          "email": {
+            "type": "string",
+            "nullable": true
+          },
+          "phone": {
+            "type": "string",
+            "nullable": true
+          },
+          "country": {
+            "type": "string",
+            "nullable": true
+          },
+          "activityType": {
+            "type": "string",
+            "nullable": true
+          },
+          "tokenHash": {
+            "type": "string",
+            "nullable": true
+          },
+          "requestIp": {
+            "type": "string",
+            "nullable": true
+          },
+          "userAgent": {
+            "type": "string",
+            "nullable": true
+          },
+          "locale": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "CreateTenantSignupResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "fqdn": {
+            "type": "string",
+            "nullable": true
+          },
+          "tokenExpiresAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false
+      },
       "CurrentAdminResponse": {
         "type": "object",
         "properties": {
@@ -2776,6 +3451,16 @@
             "format": "uuid"
           },
           "email": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "DecideTenantSignupEndpointsRejectRequest": {
+        "type": "object",
+        "properties": {
+          "reason": {
             "type": "string",
             "nullable": true
           }
@@ -3161,6 +3846,16 @@
         "properties": {
           "isTest": {
             "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "SetTrialEndRequest": {
+        "type": "object",
+        "properties": {
+          "trialExpiresAt": {
+            "type": "string",
+            "format": "date-time"
           }
         },
         "additionalProperties": false
@@ -3788,6 +4483,13 @@
         },
         "additionalProperties": false
       },
+      "TenantOffer": {
+        "enum": [
+          "Paid",
+          "Trial"
+        ],
+        "type": "string"
+      },
       "TenantProfile": {
         "type": "object",
         "properties": {
@@ -3882,9 +4584,235 @@
             "type": "string",
             "format": "uuid",
             "nullable": true
+          },
+          "offer": {
+            "$ref": "#/components/schemas/TenantOffer"
           }
         },
         "additionalProperties": false
+      },
+      "TenantSignupCounts": {
+        "type": "object",
+        "properties": {
+          "pendingEmailCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "expiredCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "confirmedCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "approvedCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "rejectedCount": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "TenantSignupDecision": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "$ref": "#/components/schemas/TenantSignupStatus"
+          },
+          "institutionName": {
+            "type": "string",
+            "nullable": true
+          },
+          "firstName": {
+            "type": "string",
+            "nullable": true
+          },
+          "email": {
+            "type": "string",
+            "nullable": true
+          },
+          "fqdn": {
+            "type": "string",
+            "nullable": true
+          },
+          "rejectionReason": {
+            "type": "string",
+            "nullable": true
+          },
+          "tenantId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "decidedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "locale": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "TenantSignupDetail": {
+        "type": "object",
+        "properties": {
+          "signup": {
+            "$ref": "#/components/schemas/TenantSignupSummary"
+          },
+          "requestIp": {
+            "type": "string",
+            "nullable": true
+          },
+          "userAgent": {
+            "type": "string",
+            "nullable": true
+          },
+          "decidedByAdminName": {
+            "type": "string",
+            "nullable": true
+          },
+          "sameIp": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TenantSignupSummary"
+            },
+            "nullable": true
+          },
+          "sameEmailDomain": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TenantSignupSummary"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "TenantSignupPage": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TenantSignupSummary"
+            },
+            "nullable": true
+          },
+          "total": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "page": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "TenantSignupStatus": {
+        "enum": [
+          "PendingEmail",
+          "Confirmed",
+          "Approved",
+          "Rejected"
+        ],
+        "type": "string"
+      },
+      "TenantSignupSummary": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "institutionName": {
+            "type": "string",
+            "nullable": true
+          },
+          "slug": {
+            "type": "string",
+            "nullable": true
+          },
+          "fqdn": {
+            "type": "string",
+            "nullable": true
+          },
+          "firstName": {
+            "type": "string",
+            "nullable": true
+          },
+          "lastName": {
+            "type": "string",
+            "nullable": true
+          },
+          "email": {
+            "type": "string",
+            "nullable": true
+          },
+          "phone": {
+            "type": "string",
+            "nullable": true
+          },
+          "country": {
+            "type": "string",
+            "nullable": true
+          },
+          "activityType": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "$ref": "#/components/schemas/TenantSignupView"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "confirmedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "decidedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "rejectionReason": {
+            "type": "string",
+            "nullable": true
+          },
+          "tenantId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "TenantSignupView": {
+        "enum": [
+          "PendingEmail",
+          "Expired",
+          "Confirmed",
+          "Approved",
+          "Rejected"
+        ],
+        "type": "string"
       },
       "TenantSupportActorRequest": {
         "type": "object",
@@ -3918,6 +4846,24 @@
             "type": "boolean"
           },
           "body": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "TrialSlugAvailability": {
+        "type": "object",
+        "properties": {
+          "slug": {
+            "type": "string",
+            "nullable": true
+          },
+          "fqdn": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
             "type": "string",
             "nullable": true
           }

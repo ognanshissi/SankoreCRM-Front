@@ -20,6 +20,7 @@ import { TenantModulesSection } from './tenant-modules-section';
 import { TenantSupportSection } from './tenant-support-section';
 import { TenantTestDataSection } from './tenant-test-data-section';
 import { TenantStartingDataSection } from './tenant-starting-data-section';
+import { TrialEndDrawer, TrialEndDrawerData } from './trial-end-drawer';
 
 type DomainState = 'active' | 'scheduled' | 'expired' | 'inactive';
 
@@ -107,6 +108,22 @@ export class TenantDetail implements OnInit {
         this.tenant.set(tenant);
         this.domains.set(domains ?? []);
       });
+  }
+
+  public openTrialEnd(): void {
+    const t = this.tenant();
+    if (!t?.id) return;
+    const ref = this._drawer.open<boolean, TrialEndDrawerData, TrialEndDrawer>(TrialEndDrawer, {
+      width: '100%',
+      height: '100%',
+      panelClass: 'side-drawer-panel',
+      data: { tenantId: t.id, tenantName: t.name ?? '', trialExpiresAt: t.trialExpiresAt ?? null },
+    });
+    ref.closed.subscribe((moved) => {
+      if (!moved) return;
+      this._snackbar.success('Essai prolongé', 'La nouvelle date est prise en compte par le CRM dans les 30 secondes.');
+      this.load();
+    });
   }
 
   public openAddDomain(): void {

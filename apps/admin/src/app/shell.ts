@@ -22,6 +22,13 @@ import { AdminAuthService } from '@sankore/admin/auth';
               >Tenants</a
             >
             <a
+              routerLink="/essais"
+              routerLinkActive="bg-primary/10 text-primary"
+              ariaCurrentWhenActive="page"
+              class="rounded-full px-4 py-2 text-sm font-semibold text-slate-700 hover:text-slate-900"
+              >Demandes d’essai</a
+            >
+            <a
               routerLink="/modules/demandes"
               routerLinkActive="bg-primary/10 text-primary"
               ariaCurrentWhenActive="page"

@@ -9,6 +9,7 @@
  * https://openapi-generator.tech
  * Do not edit the class manually.
  */
+import { TenantOffer } from './tenant-offer.interface';
 
 
 export interface TenantResponse { 
@@ -27,5 +28,8 @@ export interface TenantResponse {
     isTest?: boolean;
     parentTenantId?: string | null;
     testTenantId?: string | null;
+    offer?: TenantOffer;
 }
+
+
 
