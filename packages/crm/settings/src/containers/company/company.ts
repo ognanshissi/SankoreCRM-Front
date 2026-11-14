@@ -161,18 +161,17 @@ export class CompanyPage {
             }),
           ),
       );
-      // Les écrans ouverts prennent la nouvelle monnaie sans recharger l'application.
-      this._tenantProvider.setCurrency(value.currency);
+      // Nom, logo, couleurs et monnaie s'appliquent sans recharger, ici et dans les autres onglets.
+      this._tenantProvider.updateContext({
+        companyName: value.name || null,
+        description: value.description || null,
+        logoUrl: value.logoUrl || null,
+        primaryColor: value.primaryColor || null,
+        secondaryColor: value.secondaryColor || null,
+        defaultLanguage: value.defaultLanguage || null,
+        currency: value.currency,
+      });
       this.savedCurrency.set(value.currency);
-      // Appliquer immédiatement les nouvelles couleurs au thème
-      const ctx = this._tenantProvider.context();
-      if (ctx) {
-        this._tenantProvider.setContext({
-          ...ctx,
-          primaryColor: value.primaryColor || null,
-          secondaryColor: value.secondaryColor || null,
-        });
-      }
       this._snackbarService.success('Succès', 'Informations mises à jour.');
       this.isSaving.set(false);
     });
@@ -209,6 +208,8 @@ export class CompanyPage {
         // Reporté dans le formulaire : sans cela, « Enregistrer » renverrait l'ancienne adresse et
         // effacerait le logo qui vient d'être déposé.
         this._setLogoUrl(res.logoUrl ?? '');
+        // Le logo est enregistré dès le dépôt, sans « Enregistrer » : la barre latérale suit tout de suite.
+        this._tenantProvider.updateContext({ logoUrl: res.logoUrl ?? null });
         this.isLogoBusy.set(false);
         this._snackbarService.success('Logo mis à jour', 'Il apparaît désormais dans les e-mails envoyés.');
       });
@@ -227,6 +228,7 @@ export class CompanyPage {
       )
       .subscribe(() => {
         this._setLogoUrl('');
+        this._tenantProvider.updateContext({ logoUrl: null });
         this.isLogoBusy.set(false);
         this._snackbarService.success('Logo retiré', '');
       });

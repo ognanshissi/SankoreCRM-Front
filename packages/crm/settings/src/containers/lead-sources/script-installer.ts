@@ -13,7 +13,9 @@ import { SnackbarService } from '@talisoft/ui/snackbar';
 import { ConfirmDialogService } from '@talisoft/ui/confirm-dialog';
 import { SnippetResult } from '@sankore/crm-api';
 import { LeadSourcesService } from './lead-sources.service';
-import { angularSnippet, expectedFields, reactSnippet } from './framework-snippets';
+import {
+  angularHostedSnippet, angularSnippet, expectedFields, hostedScriptTag, reactHostedSnippet, reactSnippet,
+} from './framework-snippets';
 import { MappingRule } from './field-mapping.types';
 
 /**
@@ -124,6 +126,18 @@ import { MappingRule } from './field-mapping.types';
                 </div>
               }
               @case ('angular') {
+                @if (hosted()) {
+                  <div class="text-xs text-slate-600 space-y-2">
+                    <p>Le formulaire est composé dans le CRM (onglet « Champs du formulaire ») : le site ne fait que l'afficher.</p>
+                    <p><strong>1.</strong> Collez ce script <strong>une seule fois</strong> dans <code class="bg-slate-100 px-1 rounded">src/index.html</code>, avant <code class="bg-slate-100 px-1 rounded">&lt;/body&gt;</code>.</p>
+                  </div>
+                  <ng-container [ngTemplateOutlet]="frameworkCode" [ngTemplateOutletContext]="{ $implicit: hostedScript(), id: 'angular-script' }" />
+                  <div class="text-xs text-slate-600 space-y-2 mt-4">
+                    <p><strong>2.</strong> Ajoutez ce composant, puis affichez <code class="bg-slate-100 px-1 rounded">&lt;app-sankore-form /&gt;</code> où le formulaire doit apparaître. Le script le remplit dès qu'il s'affiche, y compris après un changement de page.</p>
+                    <p><strong>3.</strong> Ajoutez l'adresse du site dans les origines autorisées de la source. Champs, consentement, captcha et message se règlent ensuite dans le CRM, sans redéployer le site (5 minutes au plus).</p>
+                  </div>
+                  <ng-container [ngTemplateOutlet]="frameworkCode" [ngTemplateOutletContext]="{ $implicit: angularHostedCode(), id: 'angular' }" />
+                } @else {
                 <div class="text-xs text-slate-600 space-y-2">
                   <p>Le script ci-dessus cherche le formulaire au chargement de la page : dans une application Angular, il ne le trouve pas. Utilisez ce service à la place, sans balise <code class="bg-slate-100 px-1 rounded">&lt;script&gt;</code>.</p>
                   <p><strong>1.</strong> Créez le fichier <code class="bg-slate-100 px-1 rounded">sankore-lead.service.ts</code> avec le code ci-dessous.</p>
@@ -132,8 +146,21 @@ import { MappingRule } from './field-mapping.types';
                   <ng-container [ngTemplateOutlet]="expectedFieldsNote" />
                 </div>
                 <ng-container [ngTemplateOutlet]="frameworkCode" [ngTemplateOutletContext]="{ $implicit: angularCode(), id: 'angular' }" />
+                }
               }
               @case ('react') {
+                @if (hosted()) {
+                  <div class="text-xs text-slate-600 space-y-2">
+                    <p>Le formulaire est composé dans le CRM (onglet « Champs du formulaire ») : le site ne fait que l'afficher.</p>
+                    <p><strong>1.</strong> Collez ce script <strong>une seule fois</strong> dans <code class="bg-slate-100 px-1 rounded">index.html</code> (Vite) ou dans le <code class="bg-slate-100 px-1 rounded">&lt;head&gt;</code> de votre mise en page (Next.js).</p>
+                  </div>
+                  <ng-container [ngTemplateOutlet]="frameworkCode" [ngTemplateOutletContext]="{ $implicit: hostedScript(), id: 'react-script' }" />
+                  <div class="text-xs text-slate-600 space-y-2 mt-4">
+                    <p><strong>2.</strong> Ajoutez ce composant, puis affichez <code class="bg-slate-100 px-1 rounded">&lt;SankoreForm /&gt;</code> où le formulaire doit apparaître. Le script le remplit dès qu'il s'affiche, y compris après un changement de page.</p>
+                    <p><strong>3.</strong> Ajoutez l'adresse du site dans les origines autorisées de la source. Champs, consentement, captcha et message se règlent ensuite dans le CRM, sans redéployer le site (5 minutes au plus).</p>
+                  </div>
+                  <ng-container [ngTemplateOutlet]="frameworkCode" [ngTemplateOutletContext]="{ $implicit: reactHostedCode(), id: 'react' }" />
+                } @else {
                 <div class="text-xs text-slate-600 space-y-2">
                   <p>Le script ci-dessus cherche le formulaire au chargement de la page : dans une application React, il ne le trouve pas. Utilisez ce hook à la place, sans balise <code class="bg-slate-100 px-1 rounded">&lt;script&gt;</code>.</p>
                   <p><strong>1.</strong> Créez le fichier <code class="bg-slate-100 px-1 rounded">useSankoreLead.ts</code> avec le code ci-dessous (Next.js : ajoutez <code class="bg-slate-100 px-1 rounded">'use client'</code>).</p>
@@ -142,6 +169,7 @@ import { MappingRule } from './field-mapping.types';
                   <ng-container [ngTemplateOutlet]="expectedFieldsNote" />
                 </div>
                 <ng-container [ngTemplateOutlet]="frameworkCode" [ngTemplateOutletContext]="{ $implicit: reactCode(), id: 'react' }" />
+                }
               }
               @case ('wix') {
                 <div class="text-xs text-slate-600 space-y-2">
@@ -276,6 +304,8 @@ export class ScriptInstaller implements OnInit {
   public readonly sourceLabel = input('');
   /** Règles de correspondance enregistrées : elles disent quels champs le site doit envoyer. */
   public readonly mappingRules = input<MappingRule[]>([]);
+  /** Formulaire composé dans le CRM : les onglets Angular/React donnent un composant d'affichage. */
+  public readonly hosted = input(false);
 
   public readonly keyRotated = output<void>();
 
@@ -337,6 +367,21 @@ export class ScriptInstaller implements OnInit {
     };
   });
   public readonly angularCode = computed(() => angularSnippet(this._frameworkInput()));
+
+  private readonly _hostedInput = computed(() => {
+    const s = this.snippet();
+    return {
+      sdkUrl: s?.sdkUrl ?? '',
+      sriHash: s?.sriHash ?? '',
+      publicKey: s?.publicKey ?? '',
+      apiBaseUrl: (s?.apiBaseUrl ?? '').replace(/\/+$/, ''),
+      containerId: s?.formContainerId || 'sankore-form',
+      sourceLabel: this.sourceLabel(),
+    };
+  });
+  public readonly hostedScript = computed(() => hostedScriptTag(this._hostedInput()));
+  public readonly angularHostedCode = computed(() => angularHostedSnippet(this._hostedInput()));
+  public readonly reactHostedCode = computed(() => reactHostedSnippet(this._hostedInput()));
   public readonly reactCode = computed(() => reactSnippet(this._frameworkInput()));
   public copiedId = signal<string | null>(null);
 

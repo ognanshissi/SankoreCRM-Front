@@ -158,8 +158,14 @@ export class HostedFormEditor implements OnInit {
 
   // ——— Enregistrement ———
 
+  /**
+   * Sans texte de consentement, le formulaire n'affiche aucune case, et le CRM refuse tout envoi
+   * sans consentement : chaque lead serait perdu (l'activation le refuse aussi).
+   */
+  public readonly consentMissing = computed(() => !this.config().consentText?.trim());
+
   public readonly canSave = computed(() =>
-    this.config().fields.every((f) => !!f.label.trim()),
+    this.config().fields.every((f) => !!f.label.trim()) && !this.consentMissing(),
   );
 
   public save(): void {

@@ -278,3 +278,98 @@ function exampleFields(input: FrameworkSnippetInput, prefix: string): string {
   });
   return '{ ' + pairs.join(', ') + ' }';
 }
+
+// ——— Formulaire hébergé (docs/formulaire-heberge.md, lot 4) ———
+
+/**
+ * Ce que le script doit savoir pour le formulaire créé dans le CRM. Depuis la version 1.4.0, il
+ * surveille la page : chargé UNE fois dans `index.html`, il remplit le conteneur dès qu'il apparaît
+ * (route, @if, rendu React) et prévient la page par les évènements `sankore:success` et
+ * `sankore:error`. Plus besoin de charger le script depuis un composant ni d'observer la page.
+ */
+export interface HostedSnippetInput {
+  sdkUrl: string;
+  sriHash: string;
+  publicKey: string;
+  apiBaseUrl: string;
+  containerId: string;
+  sourceLabel: string;
+}
+
+export function hostedScriptTag(input: HostedSnippetInput): string {
+  return `<!-- Sankore CRM — formulaire « ${input.sourceLabel} » : une seule fois, dans index.html -->
+<script src="${input.sdkUrl}"
+        integrity="${input.sriHash}"
+        crossorigin="anonymous"
+        data-sankore-key="${input.publicKey}"
+        data-sankore-api="${input.apiBaseUrl}"
+        data-sankore-render="true"
+        data-sankore-container="#${input.containerId}"
+        defer></script>`;
+}
+
+export function angularHostedSnippet(input: HostedSnippetInput): string {
+  return `// sankore-form.ts — le formulaire « ${input.sourceLabel} », composé dans le CRM
+import { Component, ElementRef, afterNextRender, inject, output } from '@angular/core';
+
+/**
+ * Affichez <app-sankore-form /> où le formulaire doit apparaître. Le script chargé dans index.html
+ * le remplit ; ses champs, son texte et son captcha se règlent dans le CRM (onglet « Champs du formulaire »).
+ */
+@Component({
+  selector: 'app-sankore-form',
+  template: '<div id="${input.containerId}"></div>',
+})
+export class SankoreForm {
+  /** Le CRM a reçu la demande. */
+  public readonly sent = output<string | null>();
+  /** Le CRM a refusé la demande (le formulaire affiche déjà le message). */
+  public readonly failed = output<string | null>();
+
+  constructor() {
+    const host = inject(ElementRef).nativeElement as HTMLElement;
+    afterNextRender(() => {
+      host.addEventListener('sankore:success', (e) => this.sent.emit((e as CustomEvent).detail?.ingestionId ?? null));
+      host.addEventListener('sankore:error', (e) => this.failed.emit((e as CustomEvent).detail?.error ?? null));
+    });
+  }
+}
+`;
+}
+
+export function reactHostedSnippet(input: HostedSnippetInput): string {
+  return `// SankoreForm.tsx — le formulaire « ${input.sourceLabel} », composé dans le CRM
+// Next.js : ajoutez 'use client'; en première ligne.
+import { useEffect, useRef } from 'react';
+
+interface Props {
+  /** Le CRM a reçu la demande. */
+  onSent?: (ingestionId: string | null) => void;
+  /** Le CRM a refusé la demande (le formulaire affiche déjà le message). */
+  onError?: (error: string | null) => void;
+}
+
+/**
+ * Affichez <SankoreForm /> où le formulaire doit apparaître. Le script chargé dans index.html le
+ * remplit ; ses champs, son texte et son captcha se règlent dans le CRM (onglet « Champs du formulaire »).
+ */
+export function SankoreForm({ onSent, onError }: Props) {
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const sent = (e: Event) => onSent?.((e as CustomEvent).detail?.ingestionId ?? null);
+    const failed = (e: Event) => onError?.((e as CustomEvent).detail?.error ?? null);
+    el.addEventListener('sankore:success', sent);
+    el.addEventListener('sankore:error', failed);
+    return () => {
+      el.removeEventListener('sankore:success', sent);
+      el.removeEventListener('sankore:error', failed);
+    };
+  }, [onSent, onError]);
+
+  return <div id="${input.containerId}" ref={ref} />;
+}
+`;
+}

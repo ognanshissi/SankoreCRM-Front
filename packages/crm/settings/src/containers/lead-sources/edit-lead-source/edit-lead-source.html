@@ -459,6 +459,7 @@
           [canManageSecrets]="canManageSecrets()"
           [sourceLabel]="source()!.label ?? ''"
           [mappingRules]="mappingRules()"
+          [hosted]="scriptConfig()?.formMode === 'hosted'"
           [wasRegenerated]="keyWasRegenerated()"
           (keyRotated)="onKeyRotated()"
         ></script-installer>

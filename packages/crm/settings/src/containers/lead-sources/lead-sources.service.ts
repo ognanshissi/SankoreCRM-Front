@@ -282,6 +282,8 @@ const PREREQUISITE_LABELS: Record<string, string> = {
   NoFieldMappingConfigured: 'configurez la correspondance des champs',
   NoEndpointConfigured: 'renseignez l’adresse du fournisseur',
   ConnectionNotConnected: 'connectez le compte de la plateforme',
+  HostedConsentTextMissing: 'saisissez le texte de consentement (onglet Champs du formulaire)',
+  CaptchaSecretMissing: 'enregistrez la clé secrète du captcha (onglet Formulaire, bloc Captcha)',
 };
 
 /** `ACTIVATION_PREREQUISITES_NOT_MET:SecretMissing,…` en une phrase, ou null pour un autre refus. */

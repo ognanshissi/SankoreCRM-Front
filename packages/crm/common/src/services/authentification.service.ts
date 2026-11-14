@@ -1,6 +1,7 @@
 import { computed, inject, Injectable, PLATFORM_ID, signal } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { Router } from '@angular/router';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import {
   catchError,
   finalize, forkJoin,
@@ -20,6 +21,7 @@ import {
   UserPermissionsDto,
   UsersApiService,
 } from '@sankore/crm-api';
+import { CrossTabChannel } from './cross-tab-channel';
 
 export const TOKEN_STORAGE_KEY = 'SANKORE_ACCESS_TOKEN';
 const IMPERSONATION_STORAGE_KEY = 'SANKORE_IMPERSONATION';
@@ -49,6 +51,7 @@ export class AuthenticationService {
   private readonly _usersApiService = inject(UsersApiService);
 
   private readonly _router = inject(Router);
+  private readonly _crossTab = inject(CrossTabChannel);
   // User signals
   private readonly _connectedUser = signal<CurrentUserDto | null>(null);
   public connectedUser = this._connectedUser.asReadonly();
@@ -87,6 +90,16 @@ export class AuthenticationService {
         localStorage.removeItem(IMPERSONATION_STORAGE_KEY);
       }
     }
+
+    // Déconnexion faite dans un autre onglet : le jeton a déjà disparu du stockage partagé, cet
+    // onglet suit. Un onglet sans session (connexion, page publique de vérification KYC) n'a rien
+    // à quitter et ne doit pas être renvoyé vers la connexion.
+    this._crossTab
+      .on('logout')
+      .pipe(takeUntilDestroyed())
+      .subscribe(() => {
+        if (this._accessToken() || this._impersonation()) this._logoutLocally();
+      });
   }
 
   /**
@@ -231,7 +244,13 @@ export class AuthenticationService {
     } catch { return true; }
   }
 
+  /** Déconnecte cet onglet et tous les autres onglets ouverts sur l'institution. */
   public logout(): void {
+    this._logoutLocally();
+    this._crossTab.post({ type: 'logout' });
+  }
+
+  private _logoutLocally(): void {
     // Pendant une usurpation, « se déconnecter » — ou un jeton d'usurpation expiré, que
     // l'intercepteur traite comme une déconnexion — ramène au compte de l'administrateur.
     const impersonation = this._impersonation();

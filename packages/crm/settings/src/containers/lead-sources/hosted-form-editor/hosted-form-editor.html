@@ -115,9 +115,13 @@
       </div>
       <div class="p-4 flex flex-col gap-3">
         <tas-form-field>
-          <tas-label>Texte de consentement</tas-label>
+          <tas-label>Texte de consentement <span class="text-functional-error">*</span></tas-label>
           <input tasInput type="text" [ngModel]="config().consentText"
+                 placeholder="J'accepte que mes données soient utilisées pour être recontacté(e)."
                  (ngModelChange)="updateConfig('consentText', $event)" [disabled]="readonly()" />
+          @if (consentMissing()) {
+            <tas-hint class="text-functional-error mt-1">Obligatoire : sans case de consentement cochée, le CRM refuse chaque envoi.</tas-hint>
+          }
         </tas-form-field>
         <tas-form-field>
           <tas-label>Case WhatsApp (facultative)</tas-label>

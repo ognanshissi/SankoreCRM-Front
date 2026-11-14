@@ -228,10 +228,18 @@ export const HOSTED_FIELD_CATALOG: HostedFieldTemplate[] = [
   { name: 'firstName', label: 'Prénom', type: 'text', placeholder: 'Votre prénom' },
   { name: 'phoneNumber', label: 'Téléphone', type: 'tel', placeholder: '07 00 00 00 00', locked: true },
   { name: 'email', label: 'E-mail', type: 'email', placeholder: 'vous@exemple.ci' },
-  { name: 'city', label: 'Ville', type: 'text', placeholder: 'Votre ville' },
-  { name: 'productCode', label: "Produit d'intérêt", type: 'select', placeholder: '' },
-  { name: 'message', label: 'Message', type: 'textarea', placeholder: 'Votre message' },
+  { name: 'interestedProduct', label: "Produit d'intérêt", type: 'select', placeholder: '' },
+  { name: 'comment', label: 'Message', type: 'textarea', placeholder: 'Votre message' },
 ];
+
+/**
+ * Les noms que le catalogue proposait avant le 2026-11-14 : l'ingestion ne les lisait pas, et le
+ * produit, le message et la ville saisis par le visiteur étaient perdus. Un formulaire enregistré
+ * avec eux est renommé à l'ouverture. La ville, sans champ de capture, garde son nom et n'est plus
+ * proposée : le serveur la verse au commentaire. Il lit aussi les anciens noms à l'ingestion tant
+ * que l'ancien formulaire reste en ligne (`LegacyFormFieldNames`).
+ */
+const LEGACY_HOSTED_NAMES: Record<string, string> = { productCode: 'interestedProduct', message: 'comment' };
 
 /** Le telephone est toujours present et toujours obligatoire (FE-16 AC3). */
 export const LOCKED_FIELD_NAME = 'phoneNumber';
@@ -437,7 +445,7 @@ function readHostedForm(value: unknown): HostedFormConfig | null {
   const base = defaultHostedFormConfig();
   const fields = Array.isArray(raw.fields)
     ? raw.fields.map((f) => ({
-        name: f?.name ?? '',
+        name: LEGACY_HOSTED_NAMES[f?.name ?? ''] ?? f?.name ?? '',
         label: f?.label ?? '',
         type: f?.type ?? 'text',
         isRequired: !!f?.isRequired,
