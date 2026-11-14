@@ -121,6 +121,16 @@ export class ConsentPolicyEditor implements OnInit {
     return '';
   });
 
+  constructor() {
+    // Relâche le bouton « Enregistrer » : sur refus serveur (`saveFailedAt` incrémenté)
+    // comme sur succès (le parent recharge la source, d'où une nouvelle `initialConfig`).
+    effect(() => {
+      this.saveFailedAt();
+      this.initialConfig();
+      this.isSaving.set(false);
+    });
+  }
+
   ngOnInit(): void {
     const initial = this.initialConfig();
     if (initial) {

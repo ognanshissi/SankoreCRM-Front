@@ -73,7 +73,7 @@
       "executor": "@angular/build:dev-server",
       "defaultConfiguration": "development",
       "options": {
-        "allowedHosts": [".localhost", ".sankoreio.local"]
+        "allowedHosts": ["localhost", ".localhost", ".sankoreio.local"]
       },
       "configurations": {
         "production": {

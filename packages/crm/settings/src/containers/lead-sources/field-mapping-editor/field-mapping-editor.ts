@@ -121,6 +121,13 @@ export class FieldMappingEditor implements OnInit {
 
   constructor() {
     this._loadCustomTargets();
+    // Relâche le bouton « Enregistrer » : sur refus serveur (`saveFailedAt` incrémenté)
+    // comme sur succès (le parent recharge la source, d'où de nouvelles `initialRules`).
+    effect(() => {
+      this.saveFailedAt();
+      this.initialRules();
+      this.isSaving.set(false);
+    });
   }
 
   // ——— Rule CRUD ———
