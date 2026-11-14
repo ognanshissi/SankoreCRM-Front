@@ -33,6 +33,7 @@ api/distribution-credentials.service.ts
 api/email-templates.service.ts
 api/erasure-requests.service.ts
 api/forms.service.ts
+api/free-trial.service.ts
 api/health.service.ts
 api/holdings-endpoints.service.ts
 api/ingest.service.ts
@@ -243,6 +244,7 @@ model/condition-field-dto.interface.ts
 model/condition-field-option-dto.interface.ts
 model/configure-whats-app-template-request.interface.ts
 model/configure-whats-app-webhook-response.interface.ts
+model/confirm-request.interface.ts
 model/connected-account-dto.interface.ts
 model/connected-accounts-dto.interface.ts
 model/connected-calendar-dto.interface.ts

@@ -150,6 +150,7 @@ export * from './condition-field-dto.interface';
 export * from './condition-field-option-dto.interface';
 export * from './configure-whats-app-template-request.interface';
 export * from './configure-whats-app-webhook-response.interface';
+export * from './confirm-request.interface';
 export * from './connected-account-dto.interface';
 export * from './connected-accounts-dto.interface';
 export * from './connected-calendar-dto.interface';

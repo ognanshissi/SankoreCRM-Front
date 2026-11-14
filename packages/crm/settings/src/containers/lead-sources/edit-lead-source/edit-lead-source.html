@@ -426,8 +426,23 @@
           [initialConfig]="scriptConfig()"
           [readonly]="!canWrite()"
           [sourceStatus]="source()!.status ?? null"
+          [isTestSource]="source()!.publicKey?.startsWith('pk_test_') ?? false"
           (saved)="onScriptConfigSaved($event)"
         ></script-wizard>
+        @if (captchaSlots().length > 0) {
+          <div class="mt-4 max-w-3xl">
+            <source-secrets
+              [sourceId]="source()!.id!"
+              [secrets]="source()!.secrets ?? []"
+              [slots]="captchaSlots()"
+              [canManage]="canManageSecrets()"
+              [readonly]="!canWrite()"
+              title="Captcha"
+              subtitle="La clé secrète est saisie une seule fois et n'est jamais réaffichée."
+              (secretSaved)="onSourceActivated()"
+            ></source-secrets>
+          </div>
+        }
       }
 
       @case ('hosted-form') {
@@ -442,6 +457,7 @@
         <script-installer
           [sourceId]="source()!.id!"
           [canManageSecrets]="canManageSecrets()"
+          [sourceLabel]="source()!.label ?? ''"
           [wasRegenerated]="keyWasRegenerated()"
           (keyRotated)="onKeyRotated()"
         ></script-installer>

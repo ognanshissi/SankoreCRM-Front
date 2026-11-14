@@ -312,6 +312,8 @@ const AFTER_SUBMIT_OPTIONS = [
 })
 export class ScriptWizard implements OnInit {
   public readonly initialConfig = input<ScriptConfig | null>(null);
+  /** Source de test (cle `pk_test_`) : `http://localhost` y est accepte a tout statut. */
+  public readonly isTestSource = input(false);
   public readonly readonly = input(false);
   public readonly saved = output<ScriptConfig>();
 
@@ -382,11 +384,16 @@ export class ScriptWizard implements OnInit {
   /**
    * FE-10 AC1 — `http://localhost` n'est accepte qu'en statut « Test » : une
    * source active ne doit pas accepter de soumissions depuis un poste de dev.
+   * Pour une source de test (cle `pk_test_` : « Mode test » ou institution de
+   * test), a tout statut (choix du proprietaire, 2026-11-14) : elle existe pour
+   * etre essayee, et une source active ne repasse jamais en « Test ». Lire le
+   * « Mode test » de la session ne suffisait pas : une institution de test n'y
+   * est pas. « Copier en production » retire ces origines.
    */
-  public readonly allowsLocalhost = computed(() => this.sourceStatus() === 'Testing');
+  public readonly allowsLocalhost = computed(() => this.sourceStatus() === 'Testing' || this.isTestSource());
 
   public readonly originHintText = computed(() =>
-    originHint({ allowLocalhost: this.allowsLocalhost() }),
+    originHint({ allowLocalhost: this.allowsLocalhost(), testMode: this.isTestSource() }),
   );
 
   public invalidOrigins(): string[] {

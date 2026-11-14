@@ -17,5 +17,6 @@ export interface SnippetResult {
     sriHash?: string | null;
     publicKey?: string | null;
     formContainerId?: string | null;
+    apiBaseUrl?: string | null;
 }
 

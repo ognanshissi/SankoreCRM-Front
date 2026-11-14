@@ -1,5 +1,7 @@
 import { Component, computed, inject, input, output, signal, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { NgTemplateOutlet } from '@angular/common';
+import { HttpErrorResponse } from '@angular/common/http';
 import { catchError, EMPTY } from 'rxjs';
 import { TasCard } from '@talisoft/ui/card';
 import { TasSpinner } from '@talisoft/ui/spinner';
@@ -11,6 +13,7 @@ import { SnackbarService } from '@talisoft/ui/snackbar';
 import { ConfirmDialogService } from '@talisoft/ui/confirm-dialog';
 import { SnippetResult } from '@sankore/crm-api';
 import { LeadSourcesService } from './lead-sources.service';
+import { angularSnippet, reactSnippet } from './framework-snippets';
 
 /**
  * FE-11 — Obtenir et partager le script à installer
@@ -19,6 +22,7 @@ import { LeadSourcesService } from './lead-sources.service';
   selector: 'script-installer',
   standalone: true,
   imports: [
+    NgTemplateOutlet,
     FormsModule, TasCard, TasSpinner, TasIcon, Button,
     TasFormField, TasLabel, TasInput,
   ],
@@ -27,6 +31,11 @@ import { LeadSourcesService } from './lead-sources.service';
       @if (isLoading()) {
         <div class="flex justify-center py-12">
           <tas-spinner size="8" class="text-primary"></tas-spinner>
+        </div>
+      } @else if (loadError()) {
+        <div class="p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-start gap-2">
+          <tas-icon iconName="feather:alert-triangle" class="text-amber-500 shrink-0 mt-0.5" style="font-size:14px"></tas-icon>
+          <p class="text-xs text-amber-700">{{ loadError() }}</p>
         </div>
       } @else if (snippet()) {
         <!-- Regenerated warning -->
@@ -66,8 +75,8 @@ import { LeadSourcesService } from './lead-sources.service';
                 </button>
               }
               <button tas-outlined-button type="button" class="text-xs" (click)="copyScript()">
-                <tas-icon [iconName]="copied() ? 'feather:check' : 'feather:copy'" style="font-size:12px"></tas-icon>
-                {{ copied() ? 'Copié !' : 'Copier' }}
+                <tas-icon [iconName]="copiedId() === 'script' ? 'feather:check' : 'feather:copy'" style="font-size:12px"></tas-icon>
+                {{ copiedId() === 'script' ? 'Copié !' : 'Copier' }}
               </button>
             </div>
           </div>
@@ -86,7 +95,7 @@ import { LeadSourcesService } from './lead-sources.service';
           </div>
           <div class="p-4">
             <!-- Tab buttons -->
-            <div class="flex gap-1 mb-4">
+            <div class="flex flex-wrap gap-1 mb-4">
               @for (tab of guideTabs; track tab.id) {
                 <button class="px-3 py-1.5 rounded-md text-xs font-medium transition-colors"
                         [class]="activeGuide() === tab.id
@@ -113,6 +122,24 @@ import { LeadSourcesService } from './lead-sources.service';
                   <p><strong>3.</strong> Enregistrez les modifications.</p>
                 </div>
               }
+              @case ('angular') {
+                <div class="text-xs text-slate-600 space-y-2">
+                  <p>Le script ci-dessus cherche le formulaire au chargement de la page : dans une application Angular, il ne le trouve pas. Utilisez ce service à la place, sans balise <code class="bg-slate-100 px-1 rounded">&lt;script&gt;</code>.</p>
+                  <p><strong>1.</strong> Créez le fichier <code class="bg-slate-100 px-1 rounded">sankore-lead.service.ts</code> avec le code ci-dessous.</p>
+                  <p><strong>2.</strong> Dans le composant du formulaire, injectez <code class="bg-slate-100 px-1 rounded">SankoreLeadService</code> et appelez <code class="bg-slate-100 px-1 rounded">submit()</code> à l'envoi. Compatible SSR.</p>
+                  <p><strong>3.</strong> Ajoutez l'adresse du site dans les origines autorisées de la source, et faites correspondre les clés envoyées aux champs du CRM.</p>
+                </div>
+                <ng-container [ngTemplateOutlet]="frameworkCode" [ngTemplateOutletContext]="{ $implicit: angularCode(), id: 'angular' }" />
+              }
+              @case ('react') {
+                <div class="text-xs text-slate-600 space-y-2">
+                  <p>Le script ci-dessus cherche le formulaire au chargement de la page : dans une application React, il ne le trouve pas. Utilisez ce hook à la place, sans balise <code class="bg-slate-100 px-1 rounded">&lt;script&gt;</code>.</p>
+                  <p><strong>1.</strong> Créez le fichier <code class="bg-slate-100 px-1 rounded">useSankoreLead.ts</code> avec le code ci-dessous (Next.js : ajoutez <code class="bg-slate-100 px-1 rounded">'use client'</code>).</p>
+                  <p><strong>2.</strong> Dans le formulaire, appelez <code class="bg-slate-100 px-1 rounded">submit()</code> du hook à l'envoi ; <code class="bg-slate-100 px-1 rounded">status</code> et <code class="bg-slate-100 px-1 rounded">error</code> pilotent l'affichage.</p>
+                  <p><strong>3.</strong> Ajoutez l'adresse du site dans les origines autorisées de la source, et faites correspondre les clés envoyées aux champs du CRM.</p>
+                </div>
+                <ng-container [ngTemplateOutlet]="frameworkCode" [ngTemplateOutletContext]="{ $implicit: reactCode(), id: 'react' }" />
+              }
               @case ('wix') {
                 <div class="text-xs text-slate-600 space-y-2">
                   <p><strong>1.</strong> Dans l'éditeur Wix, allez dans <strong>Paramètres → Onglets avancés → Code personnalisé</strong>.</p>
@@ -124,6 +151,17 @@ import { LeadSourcesService } from './lead-sources.service';
             }
           </div>
         </tas-card>
+
+        <ng-template #frameworkCode let-code let-id="id">
+          <div class="mt-3 relative">
+            <button tas-outlined-button type="button" class="text-xs absolute top-2 right-2 bg-white"
+                    (click)="copyText(code, id)">
+              <tas-icon [iconName]="copiedId() === id ? 'feather:check' : 'feather:copy'" style="font-size:12px"></tas-icon>
+              {{ copiedId() === id ? 'Copié !' : 'Copier le code' }}
+            </button>
+            <pre class="bg-slate-900 text-green-400 text-xs p-4 pt-12 rounded-lg overflow-x-auto max-h-[420px] font-mono">{{ code }}</pre>
+          </div>
+        </ng-template>
 
         <!-- Send to webmaster -->
         <tas-card class="block">
@@ -214,12 +252,15 @@ export class ScriptInstaller implements OnInit {
   public readonly wasRegenerated = input(false);
   /** FE-03 — sans `lead:source:credentials`, pas de rotation de cle. */
   public readonly canManageSecrets = input(false);
+  /** Nom de la source, repris en tête du code Angular/React. */
+  public readonly sourceLabel = input('');
 
   public readonly keyRotated = output<void>();
 
   public isLoading = signal(true);
+  /** Le serveur refuse de construire un script inutilisable (adresse publique de l'API absente). */
+  public loadError = signal<string | null>(null);
   public snippet = signal<SnippetResult | null>(null);
-  public copied = signal(false);
   public webmasterEmail = signal('');
   public isSending = signal(false);
   public activeGuide = signal('html');
@@ -258,14 +299,32 @@ export class ScriptInstaller implements OnInit {
     { id: 'html', label: 'HTML' },
     { id: 'wordpress', label: 'WordPress' },
     { id: 'wix', label: 'Wix / Webflow' },
+    { id: 'angular', label: 'Angular' },
+    { id: 'react', label: 'React' },
   ];
+
+  private readonly _frameworkInput = computed(() => {
+    const s = this.snippet();
+    return {
+      apiBaseUrl: (s?.apiBaseUrl ?? '').replace(/\/+$/, ''),
+      publicKey: s?.publicKey ?? '',
+      sourceLabel: this.sourceLabel(),
+    };
+  });
+  public readonly angularCode = computed(() => angularSnippet(this._frameworkInput()));
+  public readonly reactCode = computed(() => reactSnippet(this._frameworkInput()));
+  public copiedId = signal<string | null>(null);
 
   ngOnInit(): void {
     this._loadSnippet();
   }
 
   public copyScript(): void {
-    const html = this.snippet()?.html;
+    this.copyText(this.snippet()?.html, 'script');
+  }
+
+  public copyText(text: string | null | undefined, id: string): void {
+    const html = text;
     if (!html) return;
     // Hors contexte securise, `navigator.clipboard` est absent ou la promesse est
     // rejetee : le bouton restait sur « Copier » sans le moindre retour.
@@ -278,8 +337,8 @@ export class ScriptInstaller implements OnInit {
     }
     navigator.clipboard.writeText(html).then(
       () => {
-        this.copied.set(true);
-        setTimeout(() => this.copied.set(false), 2000);
+        this.copiedId.set(id);
+        setTimeout(() => this.copiedId.set(null), 2000);
       },
       () => {
         this._snackbar.error(
@@ -343,8 +402,14 @@ export class ScriptInstaller implements OnInit {
 
   private _loadSnippet(): void {
     this.isLoading.set(true);
+    this.loadError.set(null);
     this._sourcesService.getSnippet(this.sourceId()).pipe(
-      catchError(() => {
+      catchError((err: HttpErrorResponse) => {
+        if (err.error?.title === 'SNIPPET_PUBLIC_URL_NOT_CONFIGURED') {
+          this.loadError.set(
+            "Le script ne peut pas être généré : l'adresse publique de l'API n'est pas configurée sur le serveur (Leads:Snippet:PublicBaseUrl). Contactez l'administrateur de la plateforme.",
+          );
+        }
         this.isLoading.set(false);
         return EMPTY;
       }),

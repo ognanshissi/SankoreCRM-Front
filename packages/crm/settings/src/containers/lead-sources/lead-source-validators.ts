@@ -132,7 +132,10 @@ export function isValidOrigin(
   return !!rules.allowLocalhost && url.protocol === 'http:' && isLoopback;
 }
 
-export function originHint(rules: OriginRules = {}): string {
+export function originHint(rules: OriginRules & { testMode?: boolean } = {}): string {
+  if (rules.allowLocalhost && rules.testMode) {
+    return "Origines https:// sans chemin. http://localhost est accepté pour une source de test ; il n'est pas copié en production.";
+  }
   return rules.allowLocalhost
     ? "Origines https:// sans chemin. http://localhost est accepté tant que la source est en statut « Test »."
     : 'Seules les origines https:// sans chemin sont acceptées.';

@@ -22,6 +22,7 @@ import {
 } from '../lead-source-settings.types';
 import { isValidJsonPath } from '../lead-source-validators';
 import { ConsentPolicyEditor } from '../consent-policy-editor/consent-policy-editor';
+import { SecretSlot, SourceSecrets } from '../source-secrets/source-secrets';
 import { ScriptWizard } from '../script-wizard';
 import { HostedFormEditor } from '../hosted-form-editor/hosted-form-editor';
 import { ScriptInstaller } from '../script-installer';
@@ -68,6 +69,7 @@ import { PromoteButton } from '../../../components/promote-to-production/promote
     WebhookConnection,
     PullWizard,
     PullConnection,
+    SourceSecrets,
     PullDryRun,
     RunHistory,
     IngestionList,
@@ -307,6 +309,21 @@ export class EditLeadSource implements OnInit {
 
   public readonly consentConfig = computed((): ConsentConfig | null => {
     return this.settings()?.consent ?? null;
+  });
+
+  /**
+   * La cle secrete du captcha (Turnstile, hCaptcha, reCAPTCHA), lue par l'API pour verifier chaque
+   * lead : sans elle, une source protegee par captcha refuse tout (hors developpement).
+   */
+  public readonly captchaSlots = computed((): SecretSlot[] => {
+    const provider = this.scriptConfig()?.captchaProvider;
+    if (!provider || provider === 'None') return [];
+    const name = provider === 'Turnstile' ? 'Cloudflare Turnstile' : provider === 'HCaptcha' ? 'hCaptcha' : 'reCAPTCHA v3';
+    return [{
+      name: 'captchaSecret',
+      label: `Clé secrète ${name}`,
+      description: "Fournie avec la clé du site par le service de captcha. Sans elle, les leads de cette source sont refusés.",
+    }];
   });
 
   public readonly scriptConfig = computed((): ScriptConfig | null => {

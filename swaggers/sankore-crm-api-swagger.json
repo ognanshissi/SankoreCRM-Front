@@ -7841,6 +7841,76 @@
         }
       }
     },
+    "/api/v1/public/trial-signups/slug-availability": {
+      "get": {
+        "tags": [
+          "Free trial"
+        ],
+        "summary": "Whether a free-trial address can be chosen: Available, TRIAL_SLUG_INVALID, TRIAL_SLUG_RESERVED or TRIAL_SLUG_TAKEN",
+        "operationId": "CheckTrialAddress",
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/public/trial-signups": {
+      "post": {
+        "tags": [
+          "Free trial"
+        ],
+        "summary": "Ask for a free trial; a confirmation link is mailed",
+        "description": "Decided by the tenant registry, relayed here. 202 CONFIRMATION_SENT — also when the address already administers a CRM, which is said by e-mail only. 400 TRIAL_SIGNUP_INVALID (errors by field), TRIAL_CAPTCHA_FAILED, TRIAL_SLUG_INVALID, TRIAL_SLUG_RESERVED; 409 TRIAL_SLUG_TAKEN; 429; 503.",
+        "operationId": "SubmitTrialSignup",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/public/trial-signups/confirm": {
+      "post": {
+        "tags": [
+          "Free trial"
+        ],
+        "summary": "Confirm the e-mail address of a free-trial request with the token of its link",
+        "operationId": "ConfirmTrialSignup",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfirmRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/health": {
       "get": {
         "tags": [
@@ -40379,6 +40449,16 @@
         },
         "additionalProperties": false
       },
+      "ConfirmRequest": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "ConnectedAccountDto": {
         "type": "object",
         "properties": {
@@ -62306,6 +62386,10 @@
             "nullable": true
           },
           "formContainerId": {
+            "type": "string",
+            "nullable": true
+          },
+          "apiBaseUrl": {
             "type": "string",
             "nullable": true
           }
