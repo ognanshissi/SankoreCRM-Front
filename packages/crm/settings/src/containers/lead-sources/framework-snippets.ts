@@ -8,17 +8,101 @@
  *
  * Le code généré n'utilise pas de gabarits `${…}` : il est lui-même écrit dans un gabarit.
  */
+import { LEAD_TARGET_FIELDS, MappingRule, REQUIRED_FIELD_GROUPS } from './field-mapping.types';
+
 export interface FrameworkSnippetInput {
   apiBaseUrl: string;
   publicKey: string;
   sourceLabel: string;
+  /** Les champs attendus par la source, tels que le CRM les configure (voir `expectedFields`). */
+  fields: ExpectedField[];
+  /** Vrai : les champs viennent des règles de correspondance ; faux : noms du CRM, faute de règle. */
+  fromRules: boolean;
 }
 
-const CORE = (apiBaseUrl: string, publicKey: string) => `const SANKORE_API = '${apiBaseUrl}';
-const SANKORE_KEY = '${publicKey}';
+/** Une clé que le site envoie dans `fields`, et ce que le CRM en fait. */
+export interface ExpectedField {
+  key: string;
+  /** Où la valeur arrive dans le lead (« Téléphone », « Nom complet »…). */
+  target: string;
+  required: boolean;
+  /** Pour un champ d'un groupe dont un seul membre suffit (« au moins un de : … »). */
+  note?: string;
+}
+
+/**
+ * Les champs attendus sont ceux que le CRM configure : les règles de « Correspondance des champs »
+ * (une clé envoyée par le site → un champ du lead). Sans règle, l'ingestion lit les clés comme des
+ * noms du CRM : ce sont alors eux qui sont attendus. Une clé est obligatoire quand elle est la seule
+ * à alimenter le téléphone, ou le nom.
+ */
+export function expectedFields(rules: MappingRule[], customLabels: Record<string, string> = {}): { fields: ExpectedField[]; fromRules: boolean } {
+  const labelOf = (target: string) =>
+    LEAD_TARGET_FIELDS.find((f) => f.key === target)?.label ?? customLabels[target] ?? target;
+  const usable = rules.filter((r) => r.sourceField?.trim() && r.targetField);
+
+  if (usable.length === 0) {
+    return {
+      fromRules: false,
+      fields: LEAD_TARGET_FIELDS.map((f) => ({
+        key: f.key,
+        target: f.label,
+        required: f.required,
+        note: f.requiredGroup ? 'au moins un de : fullName, firstName, lastName' : undefined,
+      })),
+    };
+  }
+
+  const byKey = new Map<string, ExpectedField>();
+  for (const rule of usable) {
+    const key = rule.sourceField.trim();
+    const existing = byKey.get(key);
+    const target = labelOf(rule.targetField);
+    byKey.set(key, existing
+      ? { ...existing, target: existing.target + ', ' + target }
+      : { key, target, required: false });
+  }
+  for (const group of REQUIRED_FIELD_GROUPS) {
+    const feeding = [...new Set(usable.filter((r) => group.keys.includes(r.targetField)).map((r) => r.sourceField.trim()))];
+    if (feeding.length === 1) {
+      byKey.get(feeding[0])!.required = true;
+    } else {
+      feeding.forEach((k) => (byKey.get(k)!.note = 'au moins un de : ' + feeding.join(', ')));
+    }
+  }
+  return { fromRules: true, fields: [...byKey.values()] };
+}
+
+const IDENTIFIER = /^[A-Za-z_$][A-Za-z0-9_$]*$/;
+
+/** L'interface TypeScript des champs attendus, à jour de la configuration du CRM. */
+function fieldsInterface(input: FrameworkSnippetInput): string {
+  const origin = input.fromRules
+    ? "l'onglet « Correspondance des champs » de la source"
+    : "aucune règle de correspondance : les clés sont les noms du CRM";
+  const lines = input.fields.map((f) => {
+    const name = IDENTIFIER.test(f.key) ? f.key : "'" + f.key.replace(/'/g, "\\'") + "'";
+    const doc = '→ ' + f.target + (f.required ? ' (obligatoire)' : '') + (f.note ? ' — ' + f.note : '');
+    return '  /** ' + doc.replace(/\*\//g, '* /') + ' */\n  ' + name + (f.required ? '' : '?') + ': SankoreValue;';
+  });
+  return [
+    '/**',
+    ' * Champs attendus par le CRM (' + origin + ').',
+    ' * Si la configuration change dans le CRM, recopiez ce fichier.',
+    ' */',
+    'export interface SankoreLeadFields {',
+    ...lines,
+    '}',
+  ].join('\n');
+}
+
+const CORE = (input: FrameworkSnippetInput) => `const SANKORE_API = '${input.apiBaseUrl}';
+const SANKORE_KEY = '${input.publicKey}';
 const UTM_KEYS = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term'] as const;
 
-export type SankoreFields = Record<string, string | number | boolean | string[] | null | undefined>;
+export type SankoreValue = string | number | boolean | string[] | null | undefined;
+
+${fieldsInterface(input)}
 
 export interface SankoreSubmitOptions {
   /** La personne accepte le traitement de ses données. Obligatoire : refusé (422) sinon. */
@@ -60,16 +144,16 @@ function ping(): void {
   }).catch(() => undefined);
 }
 
-function toText(value: SankoreFields[string]): string | null {
+function toText(value: SankoreValue): string | null {
   if (value === null || value === undefined) return null;
   if (Array.isArray(value)) return value.join('; ');
   return String(value);
 }
 
-async function sendLead(fields: SankoreFields, options: SankoreSubmitOptions, loadedAt: Date): Promise<SankoreResult> {
+async function sendLead(fields: SankoreLeadFields, options: SankoreSubmitOptions, loadedAt: Date): Promise<SankoreResult> {
   const utm = storedUtm();
   const payload = {
-    fields: Object.fromEntries(Object.entries(fields).map(([k, v]) => [k, toText(v)])),
+    fields: Object.fromEntries(Object.entries(fields).map(([k, v]) => [k, toText(v as SankoreValue)])),
     consent: options.consent,
     consentVersion: null,
     whatsAppConsent: options.whatsAppConsent ?? null,
@@ -105,7 +189,7 @@ export function angularSnippet(input: FrameworkSnippetInput): string {
 import { Injectable, PLATFORM_ID, inject } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 
-${CORE(input.apiBaseUrl, input.publicKey)}
+${CORE(input)}
 
 @Injectable({ providedIn: 'root' })
 export class SankoreLeadService {
@@ -116,11 +200,8 @@ export class SankoreLeadService {
     if (this._browser) { captureUtm(); ping(); }
   }
 
-  /**
-   * Envoie un lead. Les clés de \`fields\` sont celles de votre formulaire : faites-les
-   * correspondre aux champs du CRM dans l'onglet « Correspondance des champs ».
-   */
-  public submit(fields: SankoreFields, options: SankoreSubmitOptions): Promise<SankoreResult> {
+  /** Envoie un lead : \`fields\` suit \`SankoreLeadFields\`, la liste que le CRM attend. */
+  public submit(fields: SankoreLeadFields, options: SankoreSubmitOptions): Promise<SankoreResult> {
     if (!this._browser) return Promise.resolve({ ok: false, status: 0, error: 'SERVER_SIDE' });
     return sendLead(fields, options, this._loadedAt);
   }
@@ -133,7 +214,7 @@ export class SankoreLeadService {
 
   async send(): Promise<void> {
     const result = await this._sankore.submit(
-      { fullName: this.fullName, phone: this.phone, email: this.email },
+      ${exampleFields(input, 'this.')},
       { consent: this.consent, formLoadedAt: this._shownAt },
     );
     if (result.ok) { ... } else { console.warn('Sankore', result.error); }
@@ -147,14 +228,11 @@ export function reactSnippet(input: FrameworkSnippetInput): string {
 // Next.js : ajoutez 'use client'; en première ligne.
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-${CORE(input.apiBaseUrl, input.publicKey)}
+${CORE(input)}
 
 type Status = 'idle' | 'sending' | 'sent' | 'error';
 
-/**
- * Les clés de \`fields\` sont celles de votre formulaire : faites-les correspondre aux champs
- * du CRM dans l'onglet « Correspondance des champs ».
- */
+/** \`submit(fields)\` : \`fields\` suit \`SankoreLeadFields\`, la liste que le CRM attend. */
 export function useSankoreLead() {
   const loadedAt = useRef(new Date());
   const [status, setStatus] = useState<Status>('idle');
@@ -162,7 +240,7 @@ export function useSankoreLead() {
 
   useEffect(() => { captureUtm(); ping(); }, []);
 
-  const submit = useCallback(async (fields: SankoreFields, options: SankoreSubmitOptions) => {
+  const submit = useCallback(async (fields: SankoreLeadFields, options: SankoreSubmitOptions) => {
     setStatus('sending');
     setError(null);
     const result = await sendLead(fields, options, loadedAt.current);
@@ -182,9 +260,21 @@ export function useSankoreLead() {
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    const data = Object.fromEntries(new FormData(e.currentTarget)) as Record<string, string>;
-    await submit({ fullName: data.fullName, phone: data.phone, email: data.email }, { consent: true });
+    const data = Object.fromEntries(new FormData(e.currentTarget)) as Record<string, string>; // ou votre état
+    await submit(${exampleFields(input, 'data.')}, { consent: true });
   }
 */
 `;
+}
+
+/** Les champs obligatoires (au moins deux) de l'exemple d'utilisation. */
+function exampleFields(input: FrameworkSnippetInput, prefix: string): string {
+  const required = input.fields.filter((f) => f.required);
+  const picked = (required.length >= 2 ? required : [...required, ...input.fields.filter((f) => !f.required)]).slice(0, 3);
+  const pairs = picked.map((f) => {
+    const name = IDENTIFIER.test(f.key) ? f.key : "'" + f.key + "'";
+    const value = IDENTIFIER.test(f.key) ? prefix + f.key : prefix.replace(/\.$/, '') + "['" + f.key + "']";
+    return name + ': ' + value;
+  });
+  return '{ ' + pairs.join(', ') + ' }';
 }

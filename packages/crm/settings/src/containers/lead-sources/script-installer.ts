@@ -13,7 +13,8 @@ import { SnackbarService } from '@talisoft/ui/snackbar';
 import { ConfirmDialogService } from '@talisoft/ui/confirm-dialog';
 import { SnippetResult } from '@sankore/crm-api';
 import { LeadSourcesService } from './lead-sources.service';
-import { angularSnippet, reactSnippet } from './framework-snippets';
+import { angularSnippet, expectedFields, reactSnippet } from './framework-snippets';
+import { MappingRule } from './field-mapping.types';
 
 /**
  * FE-11 — Obtenir et partager le script à installer
@@ -127,7 +128,8 @@ import { angularSnippet, reactSnippet } from './framework-snippets';
                   <p>Le script ci-dessus cherche le formulaire au chargement de la page : dans une application Angular, il ne le trouve pas. Utilisez ce service à la place, sans balise <code class="bg-slate-100 px-1 rounded">&lt;script&gt;</code>.</p>
                   <p><strong>1.</strong> Créez le fichier <code class="bg-slate-100 px-1 rounded">sankore-lead.service.ts</code> avec le code ci-dessous.</p>
                   <p><strong>2.</strong> Dans le composant du formulaire, injectez <code class="bg-slate-100 px-1 rounded">SankoreLeadService</code> et appelez <code class="bg-slate-100 px-1 rounded">submit()</code> à l'envoi. Compatible SSR.</p>
-                  <p><strong>3.</strong> Ajoutez l'adresse du site dans les origines autorisées de la source, et faites correspondre les clés envoyées aux champs du CRM.</p>
+                  <p><strong>3.</strong> Ajoutez l'adresse du site dans les origines autorisées de la source.</p>
+                  <ng-container [ngTemplateOutlet]="expectedFieldsNote" />
                 </div>
                 <ng-container [ngTemplateOutlet]="frameworkCode" [ngTemplateOutletContext]="{ $implicit: angularCode(), id: 'angular' }" />
               }
@@ -136,7 +138,8 @@ import { angularSnippet, reactSnippet } from './framework-snippets';
                   <p>Le script ci-dessus cherche le formulaire au chargement de la page : dans une application React, il ne le trouve pas. Utilisez ce hook à la place, sans balise <code class="bg-slate-100 px-1 rounded">&lt;script&gt;</code>.</p>
                   <p><strong>1.</strong> Créez le fichier <code class="bg-slate-100 px-1 rounded">useSankoreLead.ts</code> avec le code ci-dessous (Next.js : ajoutez <code class="bg-slate-100 px-1 rounded">'use client'</code>).</p>
                   <p><strong>2.</strong> Dans le formulaire, appelez <code class="bg-slate-100 px-1 rounded">submit()</code> du hook à l'envoi ; <code class="bg-slate-100 px-1 rounded">status</code> et <code class="bg-slate-100 px-1 rounded">error</code> pilotent l'affichage.</p>
-                  <p><strong>3.</strong> Ajoutez l'adresse du site dans les origines autorisées de la source, et faites correspondre les clés envoyées aux champs du CRM.</p>
+                  <p><strong>3.</strong> Ajoutez l'adresse du site dans les origines autorisées de la source.</p>
+                  <ng-container [ngTemplateOutlet]="expectedFieldsNote" />
                 </div>
                 <ng-container [ngTemplateOutlet]="frameworkCode" [ngTemplateOutletContext]="{ $implicit: reactCode(), id: 'react' }" />
               }
@@ -151,6 +154,23 @@ import { angularSnippet, reactSnippet } from './framework-snippets';
             }
           </div>
         </tas-card>
+
+        <ng-template #expectedFieldsNote>
+          <div class="mt-3 p-3 rounded-lg border text-xs"
+               [class]="expected().fromRules ? 'bg-slate-50 border-slate-200 text-slate-600' : 'bg-amber-50 border-amber-200 text-amber-700'">
+            @if (expected().fromRules) {
+              <p class="font-semibold text-slate-700 mb-1">Champs attendus par cette source</p>
+              <p class="mb-2">Ils viennent de l'onglet « Correspondance des champs » et sont typés dans le code (<code class="bg-white px-1 rounded">SankoreLeadFields</code>) : une clé oubliée ou mal orthographiée ne compile pas. Si vous changez la correspondance, recopiez le code.</p>
+              <ul class="space-y-0.5">
+                @for (f of expected().fields; track f.key) {
+                  <li><code class="bg-white px-1 rounded">{{ f.key }}</code> → {{ f.target }}@if (f.required) { <span class="text-functional-error">*</span> }@if (f.note) { <span class="text-slate-400"> ({{ f.note }})</span> }</li>
+                }
+              </ul>
+            } @else {
+              <p>Aucune règle dans « Correspondance des champs » : le site doit envoyer les noms du CRM (<code class="bg-white px-1 rounded">fullName</code>, <code class="bg-white px-1 rounded">phoneNumber</code>…), listés dans le code. Pour garder les noms de votre formulaire, déclarez-les d'abord dans cet onglet.</p>
+            }
+          </div>
+        </ng-template>
 
         <ng-template #frameworkCode let-code let-id="id">
           <div class="mt-3 relative">
@@ -254,6 +274,8 @@ export class ScriptInstaller implements OnInit {
   public readonly canManageSecrets = input(false);
   /** Nom de la source, repris en tête du code Angular/React. */
   public readonly sourceLabel = input('');
+  /** Règles de correspondance enregistrées : elles disent quels champs le site doit envoyer. */
+  public readonly mappingRules = input<MappingRule[]>([]);
 
   public readonly keyRotated = output<void>();
 
@@ -303,12 +325,15 @@ export class ScriptInstaller implements OnInit {
     { id: 'react', label: 'React' },
   ];
 
+  public readonly expected = computed(() => expectedFields(this.mappingRules()));
+
   private readonly _frameworkInput = computed(() => {
     const s = this.snippet();
     return {
       apiBaseUrl: (s?.apiBaseUrl ?? '').replace(/\/+$/, ''),
       publicKey: s?.publicKey ?? '',
       sourceLabel: this.sourceLabel(),
+      ...this.expected(),
     };
   });
   public readonly angularCode = computed(() => angularSnippet(this._frameworkInput()));
