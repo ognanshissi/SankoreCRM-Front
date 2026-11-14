@@ -16,6 +16,7 @@ import { LeadSourcesService } from './lead-sources.service';
 import {
   angularHostedSnippet, angularSnippet, expectedFields, hostedScriptTag, reactHostedSnippet, reactSnippet,
 } from './framework-snippets';
+import { HighlightLanguage, highlightCode } from './code-highlight';
 import { MappingRule } from './field-mapping.types';
 
 /**
@@ -30,7 +31,7 @@ import { MappingRule } from './field-mapping.types';
     TasFormField, TasLabel, TasInput,
   ],
   template: `
-    <div class="max-w-3xl flex flex-col gap-4">
+    <div class="max-w-=full flex flex-col gap-4">
       @if (isLoading()) {
         <div class="flex justify-center py-12">
           <tas-spinner size="8" class="text-primary"></tas-spinner>
@@ -84,7 +85,7 @@ import { MappingRule } from './field-mapping.types';
             </div>
           </div>
           <div class="p-4">
-            <pre class="bg-slate-900 text-green-400 text-xs p-4 rounded-lg overflow-x-auto whitespace-pre-wrap font-mono select-all">{{ snippet()!.html }}</pre>
+            <pre class="code-block text-xs p-4 rounded-lg overflow-x-auto whitespace-pre-wrap font-mono select-all"><code [innerHTML]="highlight(snippet()!.html, 'html')"></code></pre>
           </div>
         </tas-card>
 
@@ -131,7 +132,7 @@ import { MappingRule } from './field-mapping.types';
                     <p>Le formulaire est composé dans le CRM (onglet « Champs du formulaire ») : le site ne fait que l'afficher.</p>
                     <p><strong>1.</strong> Collez ce script <strong>une seule fois</strong> dans <code class="bg-slate-100 px-1 rounded">src/index.html</code>, avant <code class="bg-slate-100 px-1 rounded">&lt;/body&gt;</code>.</p>
                   </div>
-                  <ng-container [ngTemplateOutlet]="frameworkCode" [ngTemplateOutletContext]="{ $implicit: hostedScript(), id: 'angular-script' }" />
+                  <ng-container [ngTemplateOutlet]="frameworkCode" [ngTemplateOutletContext]="{ $implicit: hostedScript(), id: 'angular-script', lang: 'html' }" />
                   <div class="text-xs text-slate-600 space-y-2 mt-4">
                     <p><strong>2.</strong> Ajoutez ce composant, puis affichez <code class="bg-slate-100 px-1 rounded">&lt;app-sankore-form /&gt;</code> où le formulaire doit apparaître. Le script le remplit dès qu'il s'affiche, y compris après un changement de page.</p>
                     <p><strong>3.</strong> Ajoutez l'adresse du site dans les origines autorisées de la source. Champs, consentement, captcha et message se règlent ensuite dans le CRM, sans redéployer le site (5 minutes au plus).</p>
@@ -154,7 +155,7 @@ import { MappingRule } from './field-mapping.types';
                     <p>Le formulaire est composé dans le CRM (onglet « Champs du formulaire ») : le site ne fait que l'afficher.</p>
                     <p><strong>1.</strong> Collez ce script <strong>une seule fois</strong> dans <code class="bg-slate-100 px-1 rounded">index.html</code> (Vite) ou dans le <code class="bg-slate-100 px-1 rounded">&lt;head&gt;</code> de votre mise en page (Next.js).</p>
                   </div>
-                  <ng-container [ngTemplateOutlet]="frameworkCode" [ngTemplateOutletContext]="{ $implicit: hostedScript(), id: 'react-script' }" />
+                  <ng-container [ngTemplateOutlet]="frameworkCode" [ngTemplateOutletContext]="{ $implicit: hostedScript(), id: 'react-script', lang: 'html' }" />
                   <div class="text-xs text-slate-600 space-y-2 mt-4">
                     <p><strong>2.</strong> Ajoutez ce composant, puis affichez <code class="bg-slate-100 px-1 rounded">&lt;SankoreForm /&gt;</code> où le formulaire doit apparaître. Le script le remplit dès qu'il s'affiche, y compris après un changement de page.</p>
                     <p><strong>3.</strong> Ajoutez l'adresse du site dans les origines autorisées de la source. Champs, consentement, captcha et message se règlent ensuite dans le CRM, sans redéployer le site (5 minutes au plus).</p>
@@ -200,14 +201,14 @@ import { MappingRule } from './field-mapping.types';
           </div>
         </ng-template>
 
-        <ng-template #frameworkCode let-code let-id="id">
+        <ng-template #frameworkCode let-code let-id="id" let-lang="lang">
           <div class="mt-3 relative">
             <button tas-outlined-button type="button" class="text-xs absolute top-2 right-2 bg-white"
                     (click)="copyText(code, id)">
               <tas-icon [iconName]="copiedId() === id ? 'feather:check' : 'feather:copy'" style="font-size:12px"></tas-icon>
               {{ copiedId() === id ? 'Copié !' : 'Copier le code' }}
             </button>
-            <pre class="bg-slate-900 text-green-400 text-xs p-4 pt-12 rounded-lg overflow-x-auto max-h-[420px] font-mono">{{ code }}</pre>
+            <pre class="code-block text-xs p-4 pt-12 rounded-lg overflow-x-auto max-h-[420px] font-mono"><code [innerHTML]="highlight(code, lang)"></code></pre>
           </div>
         </ng-template>
 
@@ -271,20 +272,48 @@ import { MappingRule } from './field-mapping.types';
                 <span class="ml-1 rounded bg-orange-100 px-1 font-semibold text-orange-700" title="Les leads de ce script arrivent dans le mode test">test</span>
               }
             </p>
-            <p class="text-xs text-slate-700 font-mono truncate">{{ snippet()!.publicKey }}</p>
+            <ng-container [ngTemplateOutlet]="copyableValue" [ngTemplateOutletContext]="{ $implicit: snippet()!.publicKey, id: 'public-key' }" />
           </div>
           <div class="p-3 bg-slate-50 rounded-lg">
             <p class="text-[10px] text-slate-400 mb-0.5">SDK URL</p>
-            <p class="text-xs text-slate-700 font-mono truncate">{{ snippet()!.sdkUrl }}</p>
+            <ng-container [ngTemplateOutlet]="copyableValue" [ngTemplateOutletContext]="{ $implicit: snippet()!.sdkUrl, id: 'sdk-url' }" />
           </div>
           <div class="p-3 bg-slate-50 rounded-lg">
             <p class="text-[10px] text-slate-400 mb-0.5">SRI Hash</p>
-            <p class="text-xs text-slate-700 font-mono truncate">{{ snippet()!.sriHash }}</p>
+            <ng-container [ngTemplateOutlet]="copyableValue" [ngTemplateOutletContext]="{ $implicit: snippet()!.sriHash, id: 'sri-hash' }" />
           </div>
         </div>
+
+        <!-- Valeur tronquée à l'écran : le bouton copie la valeur entière, le survol l'affiche. -->
+        <ng-template #copyableValue let-value let-id="id">
+          <div class="flex items-center gap-1">
+            <p class="min-w-0 flex-1 text-xs text-slate-700 font-mono truncate" [title]="value ?? ''">{{ value }}</p>
+            <button tas-button iconButton type="button" class="shrink-0 text-slate-500 hover:text-slate-800"
+                    [attr.aria-label]="copiedId() === id ? 'Copié' : 'Copier'"
+                    [title]="copiedId() === id ? 'Copié !' : 'Copier'"
+                    (click)="copyText(value, id)">
+              <tas-icon [iconName]="copiedId() === id ? 'feather:check' : 'feather:copy'" style="font-size:13px"></tas-icon>
+            </button>
+          </div>
+        </ng-template>
       }
     </div>
   `,
+  // Coloration du guide d'installation. `::ng-deep` parce que les jetons sont posés par
+  // `[innerHTML]` et ne portent donc pas l'attribut d'encapsulation du composant.
+  styles: [`
+    .code-block { background: #0f172a; color: #e2e8f0; line-height: 1.6; }
+    :host ::ng-deep .code-block .tok-comment { color: #64748b; font-style: italic; }
+    :host ::ng-deep .code-block .tok-keyword { color: #c084fc; }
+    :host ::ng-deep .code-block .tok-string { color: #86efac; }
+    :host ::ng-deep .code-block .tok-number { color: #fdba74; }
+    :host ::ng-deep .code-block .tok-type { color: #67e8f9; }
+    :host ::ng-deep .code-block .tok-fn { color: #93c5fd; }
+    :host ::ng-deep .code-block .tok-decorator { color: #fcd34d; }
+    :host ::ng-deep .code-block .tok-tag { color: #f87171; }
+    :host ::ng-deep .code-block .tok-attr { color: #fcd34d; }
+    :host ::ng-deep .code-block .tok-punct { color: #94a3b8; }
+  `],
 })
 export class ScriptInstaller implements OnInit {
   private readonly _sourcesService = inject(LeadSourcesService);
@@ -391,6 +420,11 @@ export class ScriptInstaller implements OnInit {
 
   public copyScript(): void {
     this.copyText(this.snippet()?.html, 'script');
+  }
+
+  /** Les extraits sont générés ici même ; seuls les deux balisages `<script>` sont en HTML. */
+  public highlight(code: string | null | undefined, lang: HighlightLanguage | undefined): string {
+    return highlightCode(code ?? '', lang ?? 'typescript');
   }
 
   public copyText(text: string | null | undefined, id: string): void {
